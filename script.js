@@ -5283,6 +5283,11 @@ if (showLastLivePriceToggle) {
     // Already added to window.addEventListener('resize') in sidebar section
 }
 
+// Call adjustMainContentPadding initially and on window load/resize
+    // Removed: window.addEventListener('load', adjustMainContentPadding); // Removed, handled by onAuthStateChanged
+    // Already added to window.addEventListener('resize') in sidebar section
+} // This closes the initializeAppLogic function.
+
 document.addEventListener('DOMContentLoaded', function() {
     logDebug('script.js DOMContentLoaded fired.');
 
