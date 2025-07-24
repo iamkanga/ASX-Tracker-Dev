@@ -1729,7 +1729,7 @@ function renderWatchlistSelect() {
     allSharesOption.value = ALL_SHARES_ID;
     allSharesOption.textContent = 'All Shares';
     watchlistSelect.appendChild(allSharesOption);
-    // REMOVED MISPLACED '}' HERE
+    // The misplaced '}' was here and has been removed.
     userWatchlists.forEach(watchlist => {
         // Skip adding "Cash & Assets" if it's already a hardcoded option in HTML
         if (watchlist.id === CASH_BANK_WATCHLIST_ID) {
@@ -1764,6 +1764,23 @@ function renderWatchlistSelect() {
         currentSelectedWatchlistIds = [ALL_SHARES_ID]; // Ensure currentSelectedWatchlistIds is consistent
         logDebug('UI Update: Watchlist select defaulted to All Shares as desired ID was not found.');
     }
+    // Check if any shares in the currently selected watchlist(s) have hit their target
+    const sharesInCurrentView = allSharesData.filter(share => currentSelectedWatchlistIds.includes(ALL_SHARES_ID) || currentSelectedWatchlistIds.includes(share.watchlistId));
+    const anyTargetHitsInCurrentView = sharesInCurrentView.some(share => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        return livePriceData && livePriceData.targetHit;
+    });
+
+    if (anyTargetHitsInCurrentView && !targetHitIconDismissed) {
+        watchlistSelect.classList.add('has-alert-border');
+    } else {
+        watchlistSelect.classList.remove('has-alert-border');
+    }
+
+    logDebug('UI Update: Watchlist select dropdown rendered. Selected value: ' + watchlistSelect.value);
+    updateMainTitle(); // Update main title based on newly selected watchlist
+    updateAddHeaderButton(); // Update the plus button context (and sidebar button context)
+} // This is the correct closing brace for the `renderWatchlistSelect` function.
     // Check if any shares in the currently selected watchlist(s) have hit their target
     const sharesInCurrentView = allSharesData.filter(share => currentSelectedWatchlistIds.includes(ALL_SHARES_ID) || currentSelectedWatchlistIds.includes(share.watchlistId));
     const anyTargetHitsInCurrentView = sharesInCurrentView.some(share => {
@@ -5475,7 +5492,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Removed: startLivePriceUpdates(); // This is now called by renderWatchlist based on selected type
             } // This closing brace correctly ends the `if (user)` block
-
+            
             else {
                 currentUserId = null;
                 mainTitle.textContent = 'Share Watchlist';
