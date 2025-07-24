@@ -188,7 +188,7 @@ const targetHitModalTitle = document.getElementById('targetHitModalTitle');
 const minimizeTargetHitModalBtn = document.getElementById('minimizeTargetHitModalBtn');
 const dismissAllTargetHitsBtn = document.getElementById('dismissAllTargetHitsBtn');
 const targetHitSharesList = document.getElementById('targetHitSharesList');
-const closeTargetHitModalBtn = document.getElementById('closeTargetHitModalBtn');
+// closeTargetHitModalBtn is removed as per user request, replaced by minimizeTargetHitModalBtn
 const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 const splashScreen = document.getElementById('splashScreen');
@@ -1036,6 +1036,16 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     shareNameInput.value = shareToEdit.shareName || '';
     currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? Number(shareToEdit.currentPrice).toFixed(2) : '';
     targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? Number(shareToEdit.targetPrice).toFixed(2) : '';
+    
+    // NEW: Set the correct radio button for target direction
+    const targetAboveRadio = document.getElementById('targetAbove');
+    const targetBelowRadio = document.getElementById('targetBelow');
+    if (shareToEdit.targetDirection === 'below' && targetBelowRadio) {
+        targetBelowRadio.checked = true;
+    } else if (targetAboveRadio) { // Default to 'above' if not set or 'above'
+        targetAboveRadio.checked = true;
+    }
+
     dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? Number(shareToEdit.dividendAmount).toFixed(3) : '';
     frankingCreditsInput.value = Number(shareToEdit.frankingCredits) !== null && !isNaN(Number(shareToEdit.frankingCredits)) ? Number(shareToEdit.frankingCredits).toFixed(1) : '';
 
@@ -1093,6 +1103,8 @@ function getCurrentFormData() {
         shareName: shareNameInput.value.trim().toUpperCase(),
         currentPrice: parseFloat(currentPriceInput.value),
         targetPrice: parseFloat(targetPriceInput.value),
+        // NEW: Get the selected target direction (above/below)
+        targetDirection: document.querySelector('input[name="targetDirection"]:checked') ? document.querySelector('input[name="targetDirection"]:checked').value : 'above', // Default to 'above' if no selection
         dividendAmount: parseFloat(dividendAmountInput.value),
         frankingCredits: parseFloat(frankingCreditsInput.value),
         // Get the selected star rating as a number
@@ -1113,7 +1125,7 @@ function getCurrentFormData() {
 function areShareDataEqual(data1, data2) {
     if (!data1 || !data2) return false;
 
-    const fields = ['shareName', 'currentPrice', 'targetPrice', 'dividendAmount', 'frankingCredits', 'watchlistId', 'starRating']; // Include watchlistId and starRating
+    const fields = ['shareName', 'currentPrice', 'targetPrice', 'targetDirection', 'dividendAmount', 'frankingCredits', 'watchlistId', 'starRating']; // Include new targetDirection
     for (const field of fields) {
         let val1 = data1[field];
         let val2 = data2[field];
@@ -1231,6 +1243,8 @@ async function saveShareData(isSilent = false) {
         shareName: shareName,
         currentPrice: isNaN(currentPrice) ? null : currentPrice,
         targetPrice: isNaN(targetPrice) ? null : targetPrice,
+        // NEW: Save the selected target direction
+        targetDirection: document.querySelector('input[name="targetDirection"]:checked') ? document.querySelector('input[name="targetDirection"]:checked').value : 'above', // Default to 'above' if no selection
         dividendAmount: isNaN(dividendAmount) ? null : dividendAmount,
         frankingCredits: isNaN(frankingCredits) ? null : frankingCredits,
         comments: comments,
@@ -2761,7 +2775,17 @@ async function fetchLivePrices() {
         ? parseFloat(shareData.targetPrice)
         : undefined;
 
-    const isTargetHit = (targetPrice !== undefined && livePrice <= targetPrice);
+    // Determine if target is hit based on targetDirection (new field) or default to 'below' for old shares
+    const targetDirection = shareData && shareData.targetDirection ? shareData.targetDirection : 'below'; // Default to 'below' for existing shares without the field
+    
+    let isTargetHit = false;
+    if (targetPrice !== undefined) { // Only check if targetPrice is defined
+        if (targetDirection === 'above') {
+            isTargetHit = (livePrice >= targetPrice);
+        } else { // 'below' or any other unexpected value
+            isTargetHit = (livePrice <= targetPrice);
+        }
+    }
 
     newLivePrices[asxCode] = {
         live: livePrice,
@@ -4284,9 +4308,14 @@ async function initializeAppLogic() {
         }
     });
 
-    // NEW: Add event listener for the shareWatchlistSelect for dirty state checking
-    if (shareWatchlistSelect) {
-        shareWatchlistSelect.addEventListener('change', checkFormDirtyState);
+    // NEW: Add event listeners for target direction radio buttons
+    const targetAboveRadio = document.getElementById('targetAbove');
+    const targetBelowRadio = document.getElementById('targetBelow');
+    if (targetAboveRadio) {
+        targetAboveRadio.addEventListener('change', checkFormDirtyState);
+    }
+    if (targetBelowRadio) {
+        targetBelowRadio.addEventListener('change', checkFormDirtyState);
     }
 
     // NEW: Add event listeners for cash asset form inputs for dirty state checking (2.1)
