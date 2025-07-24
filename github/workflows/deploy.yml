@@ -1,3 +1,8 @@
+# Temporary change to trigger re-processing
+# Simple workflow for deploying static content to GitHub Pages
+name: Deploy static content to Pages
+# ... (rest of the file content)
+
 # Simple workflow for deploying static content to GitHub Pages
 name: Deploy static content to Pages
 
