@@ -185,10 +185,12 @@ const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW
 // NEW: Target Hit Details Modal Elements
 const targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
 const targetHitModalTitle = document.getElementById('targetHitModalTitle');
-const minimizeTargetHitModalBtn = document.getElementById('minimizeTargetHitModalBtn');
-const dismissAllTargetHitsBtn = document.getElementById('dismissAllTargetHitsBtn');
 const targetHitSharesList = document.getElementById('targetHitSharesList');
-const closeTargetHitModalBtn = document.getElementById('closeTargetHitModalBtn');
+// This element (closeTargetHitModalHeaderBtn) is REMOVED from HTML, so we set its reference to null:
+const closeTargetHitModalHeaderBtn = null; 
+const minimizeTargetHitModalBtn = document.getElementById('minimizeTargetHitModalBtn'); // Now correctly referencing footer button
+const dismissAllTargetHitsBtn = document.getElementById('dismissAllTargetHitsBtn'); // Now correctly referencing footer button
+const closeTargetHitModalBtn = document.getElementById('closeTargetHitModalBtn'); // Now correctly referencing footer button
 const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 const splashScreen = document.getElementById('splashScreen');
@@ -4512,29 +4514,33 @@ async function initializeAppLogic() {
         });
     }
 
-    // Event listener for Minimize Target Hit Modal button (now just hides modal, keeps icon active)
+    // No header 'X' button to listen to, as it's removed from HTML.
+    // The previous 'if (closeTargetHitModalHeaderBtn)' block is now correctly absent or will be skipped.
+
+    // Event listener for the 'Minimize to Icon' button (in footer)
     if (minimizeTargetHitModalBtn) {
         minimizeTargetHitModalBtn.addEventListener('click', () => {
-            hideModal(targetHitDetailsModal);
+            hideModal(targetHitDetailsModal); // Close modal
+            // The icon remains visible as alerts are not dismissed
         });
     }
 
-    // Event listener for Dismiss All Target Hits button (now from its specific button)
+    // Event listener for the 'Dismiss All Alerts' button (in footer)
     if (dismissAllTargetHitsBtn) {
         dismissAllTargetHitsBtn.addEventListener('click', () => {
             targetHitIconDismissed = true;
             localStorage.setItem('targetHitIconDismissed', 'true');
-            updateTargetHitBanner();
+            updateTargetHitBanner(); // Will hide the icon
             hideModal(targetHitDetailsModal);
             showCustomAlert('Target Price Alerts dismissed until next login.', 2000, true);
             renderWatchlist();
         });
     }
 
-    // Event listener for the new Close button at the bottom of the modal
+    // Event listener for the 'Close' button at the bottom of the modal
     if (closeTargetHitModalBtn) {
         closeTargetHitModalBtn.addEventListener('click', () => {
-            hideModal(targetHitDetailsModal);
+            hideModal(targetHitDetailsModal); // Standard close for the modal
         });
     }
 
