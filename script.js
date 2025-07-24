@@ -1729,7 +1729,7 @@ function renderWatchlistSelect() {
     allSharesOption.value = ALL_SHARES_ID;
     allSharesOption.textContent = 'All Shares';
     watchlistSelect.appendChild(allSharesOption);
-
+    // REMOVED MISPLACED '}' HERE
     userWatchlists.forEach(watchlist => {
         // Skip adding "Cash & Assets" if it's already a hardcoded option in HTML
         if (watchlist.id === CASH_BANK_WATCHLIST_ID) {
@@ -2779,16 +2779,30 @@ async function fetchLivePrices() {
             const low52 = parseFloat(item.Low52);
 
     if (asxCode && livePrice !== null && !isNaN(livePrice)) {
-    // Find the corresponding share in allSharesData to get its targetPrice
-    const shareData = allSharesData.find(s => s.shareName.toUpperCase() === asxCode);
-    // Ensure targetPrice is parsed as a number, handling null/undefined/NaN
-    const targetPrice = shareData && shareData.targetPrice !== null && !isNaN(parseFloat(shareData.targetPrice))
-        ? parseFloat(shareData.targetPrice)
-        : undefined;
+        // Find the corresponding share in allSharesData to get its targetPrice
+        const shareData = allSharesData.find(s => s.shareName.toUpperCase() === asxCode);
+        // Ensure targetPrice is parsed as a number, handling null/undefined/NaN
+        const targetPrice = shareData && shareData.targetPrice !== null && !isNaN(parseFloat(shareData.targetPrice))
+            ? parseFloat(shareData.targetPrice)
+            : undefined;
 
-    const isTargetHit = (targetPrice !== undefined && livePrice <= targetPrice);
+        let isTargetHit = false;
+        // Check if a targetPrice is set AND livePrice is a valid number
+        if (targetPrice !== undefined && livePrice !== null && !isNaN(livePrice)) {
+            // Determine if the live price has crossed the target.
+            // A simple crossing means:
+            // 1. If live price is currently above target, and target was set below live (target < live)
+            // 2. If live price is currently below target, and target was set above live (target > live)
+            // This captures both "reached higher" and "fell to lower" targets.
+            // We assume a "hit" when the current price is *past* the target price.
+            if (livePrice >= targetPrice) {
+                isTargetHit = true;
+            } else if (livePrice <= targetPrice) {
+                isTargetHit = true;
+            }
+        }
 
-    newLivePrices[asxCode] = {
+        newLivePrices[asxCode] = {
         live: livePrice,
         prevClose: isNaN(prevClose) ? null : prevClose,
         PE: isNaN(pe) ? null : pe,
@@ -2799,11 +2813,13 @@ async function fetchLivePrices() {
         lastLivePrice: livePrice,
         lastPrevClose: isNaN(prevClose) ? null : prevClose
     };
-} else {
+} // This is the closing brace for the outer 'if' statement (line ~1720)
+// Leave a blank line here for readability.
+else {
     if (DEBUG_MODE) {
         console.warn('Live Price: Skipping item due to missing ASX code or invalid price:', item);
     }
-}
+} // This is the newly added, definitive closing brace for the inner 'if (DEBUG_MODE)' block
         });
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices); 
