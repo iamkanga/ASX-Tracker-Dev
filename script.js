@@ -410,7 +410,7 @@ function showCustomAlert(message, duration = 1000) {
     if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); }
     autoDismissTimeout = setTimeout(() => { hideModal(customDialogModal); autoDismissTimeout = null; }, duration);
     logDebug('Alert: Showing alert: "' + message + '"');
-} // This closes the showCustomAlert function.
+}
 
 // Date Formatting Helper Functions (Australian Style)
 function formatDate(dateString) {
@@ -419,89 +419,6 @@ function formatDate(dateString) {
     if (isNaN(date.getTime())) return '';
     return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
-
-// --- NEWLY MOVED THEME FUNCTIONS ---
-
-async function applyTheme(themeName) {
-    const body = document.body;
-    // Remove all existing theme classes
-    body.className = body.className.split(' ').filter(c => !c.endsWith('-theme') && !c.startsWith('theme-')).join(' ');
-
-    logDebug('Theme Debug: Attempting to apply theme: ' + themeName);
-    currentActiveTheme = themeName;
-
-    if (themeName === 'system-default') {
-        body.removeAttribute('data-theme');
-        localStorage.removeItem('selectedTheme');
-        localStorage.removeItem('theme');
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (systemPrefersDark) {
-            body.classList.add('dark-theme');
-        }
-        logDebug('Theme Debug: Reverted to system default theme.');
-        // When reverting to system-default, ensure currentCustomThemeIndex is reset to -1
-        currentCustomThemeIndex = -1; 
-    } else if (themeName === 'light' || themeName === 'dark') {
-        body.removeAttribute('data-theme');
-        localStorage.removeItem('selectedTheme');
-        localStorage.setItem('theme', themeName);
-        if (themeName === 'dark') {
-            body.classList.add('dark-theme');
-        }
-        logDebug('Theme Debug: Applied explicit default theme: ' + themeName);
-        // When applying explicit light/dark, ensure currentCustomThemeIndex is reset to -1
-        currentCustomThemeIndex = -1; 
-    } else {
-        // For custom themes, apply the class and set data-theme attribute
-        // The class name is 'theme-' followed by the themeName (e.g., 'theme-bold-1', 'theme-muted-blue')
-        body.classList.add('theme-' + themeName.toLowerCase().replace(/\s/g, '-')); // Convert "Muted Blue" to "muted-blue" for class
-        body.setAttribute('data-theme', themeName); // Keep the full name in data-theme
-        localStorage.setItem('selectedTheme', themeName);
-        localStorage.removeItem('theme');
-        logDebug('Theme Debug: Applied custom theme: ' + themeName);
-        // When applying a custom theme, set currentCustomThemeIndex to its position
-        currentCustomThemeIndex = CUSTOM_THEMES.indexOf(themeName); 
-    }
-    
-    logDebug('Theme Debug: Body classes after applying: ' + body.className);
-    logDebug('Theme Debug: currentCustomThemeIndex after applying: ' + currentCustomThemeIndex);
-
-    if (currentUserId && db && window.firestore) {
-        const userProfileDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-        try {
-            await window.firestore.setDoc(userProfileDocRef, { lastTheme: themeName }, { merge: true });
-            logDebug('Theme: Saved theme preference to Firestore: ' + themeName);
-        } catch (error) {
-            console.error('Theme: Error saving theme preference to Firestore:', error);
-        }
-    }
-    updateThemeToggleAndSelector();
-}
-
-function updateThemeToggleAndSelector() {
-    if (colorThemeSelect) {
-        // Set the dropdown value to the current active theme if it's a custom theme
-        if (CUSTOM_THEMES.includes(currentActiveTheme)) {
-            colorThemeSelect.value = currentActiveTheme;
-        } else {
-            // If not a custom theme (system-default, light, dark), set dropdown to 'none' (No Custom Theme)
-            colorThemeSelect.value = 'none';
-        }
-        logDebug('Theme UI: Color theme select updated to: ' + colorThemeSelect.value);
-    }
-
-    // This part ensures currentCustomThemeIndex is correctly set based on the currentActiveTheme
-    // regardless of whether it was set by toggle or dropdown/load.
-    // This is crucial for the toggle button to know where it is in the cycle.
-    if (CUSTOM_THEMES.includes(currentActiveTheme)) {
-        currentCustomThemeIndex = CUSTOM_THEMES.indexOf(currentActiveTheme);
-    } else {
-        currentCustomThemeIndex = -1; // Not a custom theme, so reset index
-    }
-    logDebug('Theme UI: currentCustomThemeIndex after updateThemeToggleAndSelector: ' + currentCustomThemeIndex);
-}
-
-// --- END NEWLY MOVED THEME FUNCTIONS ---
 
 // --- UI State Management Functions ---
 
@@ -525,6 +442,163 @@ function addShareToTable(share) {
     // Apply target-hit-alert class if target is hit and not dismissed
     if (isTargetHit && !targetHitIconDismissed) {
         row.classList.add('target-hit-alert');
+    }
+
+    // Declare these variables once at the top of the function
+    const isMarketOpen = isAsxMarketOpen();
+    let displayLivePrice = 'N/A';
+    let displayPriceChange = '';
+    let priceClass = '';
+
+    // Logic to determine display values
+    if (livePriceData) {
+        const currentLivePrice = livePriceData.live;
+        const previousClosePrice = livePriceData.prevClose;
+        const lastFetchedLive = livePriceData.lastLivePrice;
+        const lastFetchedPrevClose = livePriceData.lastPrevClose;
+
+        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
+            // Show live data if market is open, or if market is closed but toggle is ON
+            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+            }
+            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                const change = currentLivePrice - previousClosePrice;
+                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+            }
+        } else {
+            // Market closed and toggle is OFF, show zero change
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayPriceChange = '0.00 (0.00%)';
+            priceClass = 'neutral';
+        }
+    }
+
+    row.innerHTML = `
+        <td><span class="share-code-display ${priceClass}">${share.shareName || ''}</span></td>
+        <td class="live-price-cell">
+            <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
+            <span class="price-change ${priceClass}">${displayPriceChange}</span>
+        </td>
+        <td>${Number(share.currentPrice) !== null && !isNaN(Number(share.currentPrice)) ? '$' + Number(share.currentPrice).toFixed(2) : 'N/A'}</td>
+        <td>${Number(share.targetPrice) !== null && !isNaN(Number(share.targetPrice)) ? '$' + Number(share.targetPrice).toFixed(2) : 'N/A'}</td>
+    <td>
+        ${
+            // Determine the effective yield for display in the table
+            // Prioritize franked yield if franking credits are present and yield is valid, otherwise use unfranked yield
+            // Default to N/A if no valid yield can be calculated
+            (() => {
+                const dividendAmount = Number(share.dividendAmount) || 0;
+                const frankingCredits = Number(share.frankingCredits) || 0;
+                const enteredPrice = Number(share.currentPrice) || 0; // Fallback for entered price if live not available
+
+                // Use the price that is actually displayed for yield calculation if possible
+                // If displayLivePrice is 'N/A', use enteredPrice from share object
+                const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
+                                    ? parseFloat(displayLivePrice.substring(1))
+                                    : (enteredPrice > 0 ? enteredPrice : 0);
+
+                if (priceForYield === 0) return 'N/A'; // Cannot calculate yield if price is zero
+
+                const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
+                const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
+
+                if (frankingCredits > 0 && frankedYield > 0) {
+                    return frankedYield.toFixed(2) + '% (F)'; // Display franked yield with (F)
+                } else if (unfrankedYield > 0) {
+                    return unfrankedYield.toFixed(2) + '% (U)'; // Display unfranked yield with (U)
+                }
+                return 'N/A'; // No valid yield
+            })()
+        }
+    </td>
+    <td class="star-rating-cell">
+        ${share.starRating > 0 ? '⭐ ' + share.starRating : 'N/A'}
+    </td>
+`;
+
+    row.addEventListener('click', () => {
+        logDebug('Table Row Click: Share ID: ' + share.id);
+        selectShare(share.id);
+        showShareDetails();
+    });
+
+    // Add long press / context menu for desktop
+    let touchStartTime = 0;
+    row.addEventListener('touchstart', (e) => {
+        touchStartTime = Date.now();
+        selectedElementForTap = row; // Store the element that started the touch
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+
+        longPressTimer = setTimeout(() => {
+            if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
+                selectShare(share.id); // Select the share first
+                showContextMenu(e, share.id);
+                e.preventDefault(); // Prevent default browser context menu
+            }
+        }, LONG_PRESS_THRESHOLD);
+    }, { passive: false });
+
+    row.addEventListener('touchmove', (e) => {
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
+        if (dist > TOUCH_MOVE_THRESHOLD) {
+            clearTimeout(longPressTimer);
+            touchStartTime = 0; // Reset
+        }
+    });
+
+    row.addEventListener('touchend', () => {
+        clearTimeout(longPressTimer);
+        if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === row) {
+            // This is a short tap, let the click event handler fire naturally if it hasn't been prevented.
+            // No explicit click() call needed here as a short tap naturally dispatches click.
+        }
+        touchStartTime = 0;
+        selectedElementForTap = null;
+    });
+
+
+    // Right-click / Context menu for desktop
+    row.addEventListener('contextmenu', (e) => {
+        if (window.innerWidth > 768) { // Only enable on desktop
+            e.preventDefault();
+            selectShare(share.id);
+            showContextMenu(e, share.id);
+        }
+    });
+
+    shareTableBody.appendChild(row);
+    logDebug('Table: Added share ' + share.shareName + ' to table.');
+}
+
+function addShareToMobileCards(share) {
+    if (!mobileShareCardsContainer) {
+        console.error('addShareToMobileCards: mobileShareCardsContainer element not found.');
+        return;
+    }
+
+    const card = document.createElement('div');
+    card.classList.add('mobile-card');
+    card.dataset.docId = share.id;
+
+    // Check if target price is hit for this share
+    const livePriceData = livePrices[share.shareName.toUpperCase()];
+    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
+
+    // Apply target-hit-alert class if target is hit and not dismissed
+    if (isTargetHit && !targetHitIconDismissed) {
+        card.classList.add('target-hit-alert');
     }
 
     // Declare these variables once at the top of the function
@@ -661,7 +735,7 @@ function addShareToTable(share) {
 
     mobileShareCardsContainer.appendChild(card);
     logDebug('Mobile Cards: Added share ' + share.shareName + ' to mobile cards.');
-} // This closes the addShareToMobileCards function.
+}
 
 function updateMainButtonsState(enable) {
     logDebug('UI State: Setting main buttons state to: ' + (enable ? 'ENABLED' : 'DISABLED'));
@@ -971,7 +1045,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
         deleteShareBtn.classList.add('hidden');
         setIconDisabled(deleteShareBtn, false);
         logDebug('showEditFormForSelectedShare: deleteShareBtn shown and enabled.');
-    } // <--- ADD THIS CLOSING BRACE
+    }
 
     originalShareData = getCurrentFormData();
     setIconDisabled(saveShareBtn, true); // Save button disabled initially for editing
@@ -1378,7 +1452,7 @@ function showShareDetails() {
     if (modalNewsLink && share.shareName) {
         const newsUrl = 'https://news.google.com/search?q=' + encodeURIComponent(share.shareName) + '%20ASX&hl=en-AU&gl=AU&ceid=AU%3Aen';
         modalNewsLink.href = newsUrl;
-        modalNewsLink.innerHTML = 'View ' + share.shareName.toUpperCase() + ' News <i class="fas fa-external-link-alt"></i>'; // Added icon
+        modalNewsLink.textContent = 'View ' + share.shareName.toUpperCase() + ' News';
         modalNewsLink.style.display = 'inline-flex';
         setIconDisabled(modalNewsLink, false);
     } else if (modalNewsLink) {
@@ -1389,7 +1463,7 @@ function showShareDetails() {
     if (modalMarketIndexLink && share.shareName) {
         const marketIndexUrl = 'https://www.marketindex.com.au/asx/' + share.shareName.toLowerCase();
         modalMarketIndexLink.href = marketIndexUrl;
-        modalMarketIndexLink.innerHTML = 'View ' + share.shareName.toUpperCase() + ' on MarketIndex.com.au <i class="fas fa-external-link-alt"></i>'; // Added icon
+        modalMarketIndexLink.textContent = 'View ' + share.shareName.toUpperCase() + ' on MarketIndex.com.au';
         modalMarketIndexLink.style.display = 'inline-flex';
         setIconDisabled(modalMarketIndexLink, false);
     } else if (modalMarketIndexLink) {
@@ -1400,7 +1474,7 @@ function showShareDetails() {
     // Fool.com.au Link
     if (modalFoolLink && share.shareName) {
         modalFoolLink.href = `https://www.fool.com.au/quote/${share.shareName}/`;
-        modalFoolLink.innerHTML = 'View on Fool.com.au <i class="fas fa-external-link-alt"></i>'; // Added icon
+        modalFoolLink.textContent = 'View on Fool.com.au';
         modalFoolLink.style.display = 'inline-flex';
         setIconDisabled(modalFoolLink, false);
     } else if (modalFoolLink) {
@@ -1412,7 +1486,7 @@ function showShareDetails() {
     if (modalListcorpLink && share.shareName) {
         const listcorpUrl = `https://www.listcorp.com/asx/${share.shareName.toLowerCase()}`;
         modalListcorpLink.href = listcorpUrl;
-        modalListcorpLink.innerHTML = `View on Listcorp.com <i class="fas fa-external-link-alt"></i>`; // Added icon
+        modalListcorpLink.textContent = `View on Listcorp.com`;
         modalListcorpLink.style.display = 'inline-flex';
         setIconDisabled(modalListcorpLink, false);
     } else if (modalListcorpLink) {
@@ -1423,13 +1497,21 @@ function showShareDetails() {
     // CommSec.com.au Link
     if (modalCommSecLink && share.shareName) {
         modalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${share.shareName}`;
-        modalCommSecLink.innerHTML = 'View on CommSec.com.au <i class="fas fa-external-link-alt"></i>'; // Added icon
+        modalCommSecLink.textContent = 'View on CommSec.com.au';
         modalCommSecLink.style.display = 'inline-flex';
         setIconDisabled(modalCommSecLink, false);
     } else if (modalCommSecLink) {
         modalCommSecLink.style.display = 'none';
         setIconDisabled(modalCommSecLink, true);
     }
+
+    if (commSecLoginMessage) {
+        commSecLoginMessage.style.display = 'block'; 
+    }
+
+    showModal(shareDetailModal);
+    logDebug('Details: Displayed details for share: ' + share.shareName + ' (ID: ' + selectedShareDocId + ')');
+}
 
 function sortShares() {
     const sortValue = currentSortOrder;
@@ -2329,7 +2411,90 @@ function getOperatorSymbol(op) {
     }
 }
 
-// --- END NEWLY MOVED THEME FUNCTIONS ---
+function resetCalculator() {
+    currentCalculatorInput = ''; operator = null; previousCalculatorInput = '';
+    resultDisplayed = false; calculatorInput.textContent = ''; calculatorResult.textContent = '0';
+    logDebug('Calculator: Calculator state reset.');
+}
+
+async function applyTheme(themeName) {
+    const body = document.body;
+    // Remove all existing theme classes
+    body.className = body.className.split(' ').filter(c => !c.endsWith('-theme') && !c.startsWith('theme-')).join(' ');
+
+    logDebug('Theme Debug: Attempting to apply theme: ' + themeName);
+    currentActiveTheme = themeName;
+
+    if (themeName === 'system-default') {
+        body.removeAttribute('data-theme');
+        localStorage.removeItem('selectedTheme');
+        localStorage.removeItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (systemPrefersDark) {
+            body.classList.add('dark-theme');
+        }
+        logDebug('Theme Debug: Reverted to system default theme.');
+        // When reverting to system-default, ensure currentCustomThemeIndex is reset to -1
+        currentCustomThemeIndex = -1; 
+    } else if (themeName === 'light' || themeName === 'dark') {
+        body.removeAttribute('data-theme');
+        localStorage.removeItem('selectedTheme');
+        localStorage.setItem('theme', themeName);
+        if (themeName === 'dark') {
+            body.classList.add('dark-theme');
+        }
+        logDebug('Theme Debug: Applied explicit default theme: ' + themeName);
+        // When applying explicit light/dark, ensure currentCustomThemeIndex is reset to -1
+        currentCustomThemeIndex = -1; 
+    } else {
+        // For custom themes, apply the class and set data-theme attribute
+        // The class name is 'theme-' followed by the themeName (e.g., 'theme-bold-1', 'theme-muted-blue')
+        body.classList.add('theme-' + themeName.toLowerCase().replace(/\s/g, '-')); // Convert "Muted Blue" to "muted-blue" for class
+        body.setAttribute('data-theme', themeName); // Keep the full name in data-theme
+        localStorage.setItem('selectedTheme', themeName);
+        localStorage.removeItem('theme');
+        logDebug('Theme Debug: Applied custom theme: ' + themeName);
+        // When applying a custom theme, set currentCustomThemeIndex to its position
+        currentCustomThemeIndex = CUSTOM_THEMES.indexOf(themeName); 
+    }
+    
+    logDebug('Theme Debug: Body classes after applying: ' + body.className);
+    logDebug('Theme Debug: currentCustomThemeIndex after applying: ' + currentCustomThemeIndex);
+
+    if (currentUserId && db && window.firestore) {
+        const userProfileDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+        try {
+            await window.firestore.setDoc(userProfileDocRef, { lastTheme: themeName }, { merge: true });
+            logDebug('Theme: Saved theme preference to Firestore: ' + themeName);
+        } catch (error) {
+            console.error('Theme: Error saving theme preference to Firestore:', error);
+        }
+    }
+    updateThemeToggleAndSelector();
+}
+
+function updateThemeToggleAndSelector() {
+    if (colorThemeSelect) {
+        // Set the dropdown value to the current active theme if it's a custom theme
+        if (CUSTOM_THEMES.includes(currentActiveTheme)) {
+            colorThemeSelect.value = currentActiveTheme;
+        } else {
+            // If not a custom theme (system-default, light, dark), set dropdown to 'none' (No Custom Theme)
+            colorThemeSelect.value = 'none';
+        }
+        logDebug('Theme UI: Color theme select updated to: ' + colorThemeSelect.value);
+    }
+
+    // This part ensures currentCustomThemeIndex is correctly set based on the currentActiveTheme
+    // regardless of whether it was set by toggle or dropdown/load.
+    // This is crucial for the toggle button to know where it is in the cycle.
+    if (CUSTOM_THEMES.includes(currentActiveTheme)) {
+        currentCustomThemeIndex = CUSTOM_THEMES.indexOf(currentActiveTheme);
+    } else {
+        currentCustomThemeIndex = -1; // Not a custom theme, so reset index
+    }
+    logDebug('Theme UI: currentCustomThemeIndex after updateThemeToggleAndSelector: ' + currentCustomThemeIndex);
+}
 
 function getDefaultWatchlistId(userId) {
     return userId + '_' + DEFAULT_WATCHLIST_ID_SUFFIX;
@@ -5119,13 +5284,12 @@ if (showLastLivePriceToggle) {
             }
         });
     }
-    
-}
 
-// Call adjustMainContentPadding initially and on window load/resize
+
+    // Call adjustMainContentPadding initially and on window load/resize
     // Removed: window.addEventListener('load', adjustMainContentPadding); // Removed, handled by onAuthStateChanged
     // Already added to window.addEventListener('resize') in sidebar section
-} // This closes the initializeAppLogic function.
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     logDebug('script.js DOMContentLoaded fired.');
