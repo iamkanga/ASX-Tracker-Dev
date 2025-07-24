@@ -135,6 +135,7 @@ const deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailB
 const modalNewsLink = document.getElementById('modalNewsLink');
 const modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
 const modalFoolLink = document.getElementById('modalFoolLink');
+const modalListcorpLink = document.getElementById('modalListcorpLink'); // NEW: Reference for Listcorp link
 const modalCommSecLink = document.getElementById('modalCommSecLink');
 const commSecLoginMessage = document.getElementById('commSecLoginMessage');
 const dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
@@ -1468,6 +1469,40 @@ function showShareDetails() {
     } else if (modalMarketIndexLink) {
         modalMarketIndexLink.style.display = 'none';
         setIconDisabled(modalMarketIndexLink, true);
+    }
+
+    // Fool.com.au Link
+    if (modalFoolLink && share.shareName) {
+        modalFoolLink.href = `https://www.fool.com.au/quote/${share.shareName}/`;
+        modalFoolLink.textContent = 'View on Fool.com.au';
+        modalFoolLink.style.display = 'inline-flex';
+        setIconDisabled(modalFoolLink, false);
+    } else if (modalFoolLink) {
+        modalFoolLink.style.display = 'none';
+        setIconDisabled(modalFoolLink, true);
+    }
+
+    // Listcorp.com Link (NEW)
+    if (modalListcorpLink && share.shareName) {
+        const listcorpUrl = `https://www.listcorp.com/asx/${share.shareName.toLowerCase()}`;
+        modalListcorpLink.href = listcorpUrl;
+        modalListcorpLink.textContent = `View on Listcorp.com`;
+        modalListcorpLink.style.display = 'inline-flex';
+        setIconDisabled(modalListcorpLink, false);
+    } else if (modalListcorpLink) {
+        modalListcorpLink.style.display = 'none';
+        setIconDisabled(modalListcorpLink, true);
+    }
+
+    // CommSec.com.au Link
+    if (modalCommSecLink && share.shareName) {
+        modalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${share.shareName}`;
+        modalCommSecLink.textContent = 'View on CommSec.com.au';
+        modalCommSecLink.style.display = 'inline-flex';
+        setIconDisabled(modalCommSecLink, false);
+    } else if (modalCommSecLink) {
+        modalCommSecLink.style.display = 'none';
+        setIconDisabled(modalCommSecLink, true);
     }
 
     if (commSecLoginMessage) {
