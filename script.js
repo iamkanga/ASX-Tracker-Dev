@@ -186,6 +186,10 @@ let detailCashAssetBalance = null;
 let detailCashAssetLastUpdated = null;
 let editCashAssetFromDetailBtn = null;
 let deleteCashAssetFromDetailBtn = null;
+
+watchlistSelect = document.getElementById('watchlistSelect');
+sortSelect = document.getElementById('sortSelect');
+
 let modalCashAssetCommentsContainer = null;
 
 
