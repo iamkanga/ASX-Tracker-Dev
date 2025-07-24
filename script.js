@@ -4447,74 +4447,6 @@ async function initializeAppLogic() {
         });
     }
 
-    // Function to show the target hit details modal
-function showTargetHitDetailsModal() {
-    if (!targetHitDetailsModal || !targetHitSharesList || !sharesAtTargetPrice) {
-        console.error('Target Hit Modal: Required elements or data not found.');
-        showCustomAlert('Error displaying target hit details. Please try again.', 2000);
-        return;
-    }
-
-    targetHitSharesList.innerHTML = ''; // Clear previous content
-
-    if (sharesAtTargetPrice.length === 0) {
-        targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
-    } else {
-        sharesAtTargetPrice.forEach(share => {
-            const livePriceData = livePrices[share.shareName.toUpperCase()];
-            if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
-                // Skip if live price data is unavailable or invalid
-                return;
-            }
-
-            const currentLivePrice = livePriceData.live;
-            const targetPrice = share.targetPrice;
-            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative'; // Determine color based on whether it passed target up or down
-
-            const targetHitItem = document.createElement('div');
-            targetHitItem.classList.add('target-hit-item');
-            targetHitItem.dataset.shareId = share.id; // Add data attribute for potential future interaction
-
-            targetHitItem.innerHTML = `
-                <div class="target-hit-item-header">
-                    <span class="share-name-code ${priceClass}">${share.shareName}</span>
-                    <span class="live-price-display ${priceClass}">$${currentLivePrice.toFixed(2)}</span>
-                </div>
-                <p>Target: <strong>$${targetPrice !== null && !isNaN(targetPrice) ? targetPrice.toFixed(2) : 'N/A'}</strong></p>
-                <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
-            `;
-            targetHitSharesList.appendChild(targetHitItem);
-        });
-    }
-
-    showModal(targetHitDetailsModal);
-    logDebug('Target Hit Modal: Displayed details for ' + sharesAtTargetPrice.length + ' shares.');
-}
-
-    // NEW: Target hit icon button listener (opens the modal)
-    if (targetHitIconBtn) {
-        targetHitIconBtn.addEventListener('click', (event) => {
-            logDebug('Target Alert: Icon button clicked. Opening details modal.');
-            showTargetHitDetailsModal();
-        });
-    }}
-
-    // NEW: Target hit icon button listener to open alert panel (if you decide to use it later)
-    // For now, this is commented out as the user wants simple dismissal on click.
-    /*
-    if (targetHitIconBtn) {
-        targetHitIconBtn.addEventListener('click', () => {
-            logDebug('Target Alert: Icon button clicked. Toggling alert panel.');
-            if (alertPanel.style.display === 'flex') {
-                hideModal(alertPanel);
-            } else {
-                renderAlertsInPanel(); // Render alerts before showing
-                showModal(alertPanel);
-            }
-        });
-    }
-    */
-
     // Event listener for Minimize Target Hit Modal button
     if (minimizeTargetHitModalBtn) {
         minimizeTargetHitModalBtn.addEventListener('click', () => {
@@ -5355,7 +5287,60 @@ if (showLastLivePriceToggle) {
     // Call adjustMainContentPadding initially and on window load/resize
     // Removed: window.addEventListener('load', adjustMainContentPadding); // Removed, handled by onAuthStateChanged
     // Already added to window.addEventListener('resize') in sidebar section
-} // This closing brace correctly ends the `initializeAppLogic` function here.
+} 
+// This closing brace correctly ends the `initializeAppLogic` function here.
+
+// Function to show the target hit details modal (moved to global scope)
+function showTargetHitDetailsModal() {
+    if (!targetHitDetailsModal || !targetHitSharesList || !sharesAtTargetPrice) {
+        console.error('Target Hit Modal: Required elements or data not found.');
+        showCustomAlert('Error displaying target hit details. Please try again.', 2000);
+        return;
+    }
+
+    targetHitSharesList.innerHTML = ''; // Clear previous content
+
+    if (sharesAtTargetPrice.length === 0) {
+        targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
+    } else {
+        sharesAtTargetPrice.forEach(share => {
+            const livePriceData = livePrices[share.shareName.toUpperCase()];
+            if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
+                // Skip if live price data is unavailable or invalid
+                return;
+            }
+
+            const currentLivePrice = livePriceData.live;
+            const targetPrice = share.targetPrice;
+            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative'; // Determine color based on whether it passed target up or down
+
+            const targetHitItem = document.createElement('div');
+            targetHitItem.classList.add('target-hit-item');
+            targetHitItem.dataset.shareId = share.id; // Add data attribute for potential future interaction
+
+            targetHitItem.innerHTML = `
+                <div class="target-hit-item-header">
+                    <span class="share-name-code ${priceClass}">${share.shareName}</span>
+                    <span class="live-price-display ${priceClass}">$${currentLivePrice.toFixed(2)}</span>
+                </div>
+                <p>Target: <strong>$${targetPrice !== null && !isNaN(targetPrice) ? targetPrice.toFixed(2) : 'N/A'}</strong></p>
+                <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
+            `;
+            targetHitSharesList.appendChild(targetHitItem);
+        });
+    }
+
+    showModal(targetHitDetailsModal);
+    logDebug('Target Hit Modal: Displayed details for ' + sharesAtTargetPrice.length + ' shares.');
+}
+
+// NEW: Target hit icon button listener (opens the modal) - moved to global scope
+if (targetHitIconBtn) {
+    targetHitIconBtn.addEventListener('click', (event) => {
+        logDebug('Target Alert: Icon button clicked. Opening details modal.');
+        showTargetHitDetailsModal();
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     logDebug('script.js DOMContentLoaded fired.');
@@ -5375,12 +5360,13 @@ document.addEventListener('DOMContentLoaded', function() {
         logDebug('Splash Screen: Displayed on DOMContentLoaded, body overflow hidden.');
     } else {
         console.warn('Splash Screen: Splash screen element not found. App will start without it.');
-        // If splash screen2t
+        // If splash screen not found, set flags to true and hide the splash screen logic.
+        // This is a fallback to allow the app to run without the splash screen HTML.
         window._firebaseInitialized = true;
-        window._userAuthenticated = false; // Will be set by onAuthStateChanged
+        window._userAuthenticated = false;
         window._appDataLoaded = true;
         window._livePricesLoaded = true;
-    }
+    } // This closing brace completes the 'else' block for the splash screen check.
 
     // Initially hide main app content and header
     if (mainContainer) {
@@ -5436,8 +5422,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
 
                 // Removed: startLivePriceUpdates(); // This is now called by renderWatchlist based on selected type
-                
-            } else {
+            } // This closing brace correctly ends the `if (user)` block
+
+            else {
                 currentUserId = null;
                 mainTitle.textContent = 'Share Watchlist';
                 logDebug('AuthState: User signed out.');
