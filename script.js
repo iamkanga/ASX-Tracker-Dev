@@ -48,150 +48,6 @@ let currentContextMenuShareId = null; // Stores the ID of the share that opened 
 let originalShareData = null; // Stores the original share data when editing for dirty state check
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
 
-// --- GLOBAL UI ELEMENT VARIABLES ---
-// These are declared globally so they can be accessed by all functions
-let appHeader = null;
-let mainContainer = null;
-let mainTitle = null;
-let addShareHeaderBtn = null;
-let newShareBtn = null;
-let standardCalcBtn = null;
-let dividendCalcBtn = null;
-let asxCodeButtonsContainer = null;
-let shareFormSection = null;
-let formCloseButton = null;
-let formTitle = null;
-let saveShareBtn = null;
-let deleteShareBtn = null;
-let shareNameInput = null;
-let currentPriceInput = null;
-let targetPriceInput = null;
-let dividendAmountInput = null;
-let frankingCreditsInput = null;
-let shareRatingSelect = null;
-let commentsFormContainer = null;
-let modalStarRating = null; 
-let addCommentSectionBtn = null;
-let shareTableBody = null;
-let mobileShareCardsContainer = null;
-let tableContainer = null;
-let loadingIndicator = null;
-let shareDetailModal = null;
-let modalShareName = null;
-let modalEnteredPrice = null;
-let modalTargetPrice = null;
-let modalDividendAmount = null;
-let modalFrankingCredits = null;
-let modalEntryDate = null;
-let modalCommentsContainer = null;
-let modalUnfrankedYieldSpan = null;
-let modalFrankedYieldSpan = null;
-let editShareFromDetailBtn = null;
-let deleteShareFromDetailBtn = null;
-let modalNewsLink = null;
-let modalMarketIndexLink = null;
-let modalFoolLink = null;
-let modalListcorpLink = null;
-let modalCommSecLink = null;
-let commSecLoginMessage = null;
-let dividendCalculatorModal = null;
-let calcCloseButton = null;
-let calcCurrentPriceInput = null;
-let calcDividendAmountInput = null;
-let calcFrankingCreditsInput = null;
-let calcUnfrankedYieldSpan = null;
-let calcFrankedYieldSpan = null;
-let investmentValueSelect = null;
-let calcEstimatedDividend = null;
-let sortSelect = null;
-let customDialogModal = null;
-let customDialogMessage = null;
-let calculatorModal = null;
-let calculatorInput = null;
-let calculatorResult = null;
-let calculatorButtons = null;
-let watchlistSelect = null;
-let themeToggleBtn = null;
-let colorThemeSelect = null;
-let revertToDefaultThemeBtn = null;
-let scrollToTopBtn = null;
-let hamburgerBtn = null;
-let appSidebar = null;
-let closeMenuBtn = null;
-let addWatchlistBtn = null;
-let editWatchlistBtn = null;
-let addWatchlistModal = null;
-let newWatchlistNameInput = null;
-let saveWatchlistBtn = null;
-let manageWatchlistModal = null;
-let editWatchlistNameInput = null;
-let saveWatchlistNameBtn = null;
-let deleteWatchlistInModalBtn = null;
-let shareContextMenu = null;
-let contextEditShareBtn = null;
-let contextDeleteShareBtn = null;
-let logoutBtn = null;
-let deleteAllUserDataBtn = null;
-let exportWatchlistBtn = null;
-let refreshLivePricesBtn = null;
-let shareWatchlistSelect = null;
-let modalLivePriceDisplaySection = null; 
-let targetHitIconBtn = null;
-let targetHitIconCount = null;
-let targetHitDetailsModal = null;
-let targetHitModalTitle = null;
-let targetHitSharesList = null;
-let closeTargetHitModalHeaderBtn = null;
-let minimizeTargetHitModalBtn = null;
-let dismissAllTargetHitsBtn = null;
-let closeTargetHitModalBtn = null;
-let toggleCompactViewBtn = null;
-let showLastLivePriceToggle = null;
-let splashScreen = null;
-let searchStockBtn = null;
-let stockSearchModal = null;
-let stockSearchTitle = null;
-let asxSearchInput = null;
-let asxSuggestions = null;
-let searchResultDisplay = null;
-let searchModalActionButtons = null;
-let searchModalCloseButton = null;
-let allAsxCodes = [];
-let splashKangarooIcon = null;
-let splashSignInBtn = null;
-let alertPanel = null;
-let alertList = null;
-let closeAlertPanelBtn = null;
-let clearAllAlertsBtn = null;
-let stockWatchlistSection = null;
-let cashAssetsSection = null;
-let cashCategoriesContainer = null;
-let addCashCategoryBtn = null;
-let saveCashBalancesBtn = null;
-let totalCashDisplay = null;
-let addCashAssetSidebarBtn = null;
-let cashAssetFormModal = null;
-let cashFormTitle = null;
-let cashAssetNameInput = null;
-let cashAssetBalanceInput = null;
-let saveCashAssetBtn = null;
-let deleteCashAssetBtn = null;
-let cashAssetFormCloseButton = null;
-let cashAssetCommentsContainer = null;
-let addCashAssetCommentBtn = null;
-let cashAssetDetailModal = null;
-let modalCashAssetName = null;
-let detailCashAssetName = null;
-let detailCashAssetBalance = null;
-let detailCashAssetLastUpdated = null;
-let editCashAssetFromDetailBtn = null;
-let deleteCashAssetFromDetailBtn = null;
-
-watchlistSelect = document.getElementById('watchlistSelect');
-sortSelect = document.getElementById('sortSelect');
-
-let modalCashAssetCommentsContainer = null;
-
 
 // Live Price Data
 // IMPORTANT: This URL is the exact string provided in your initial script.js file.
@@ -234,7 +90,156 @@ let originalCashAssetData = null; // NEW: To store original cash asset data for 
 // This will now be managed directly by the 'isHidden' property on the cash asset object itself.
 let cashAssetVisibility = {}; // This object will still track the *current session's* visibility.
 // NEW: Reference for the hide/show checkbox in the cash asset form modal
+const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 
+
+// --- UI Element References ---
+const appHeader = document.getElementById('appHeader'); // Reference to the main header
+const mainContainer = document.querySelector('main.container'); // Reference to the main content container
+const mainTitle = document.getElementById('mainTitle');
+const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
+const newShareBtn = document.getElementById('newShareBtn');
+const standardCalcBtn = document.getElementById('standardCalcBtn');
+const dividendCalcBtn = document.getElementById('dividendCalcBtn');
+const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
+const shareFormSection = document.getElementById('shareFormSection');
+const formCloseButton = document.querySelector('.form-close-button');
+const formTitle = document.getElementById('formTitle');
+const saveShareBtn = document.getElementById('saveShareBtn');
+const deleteShareBtn = document.getElementById('deleteShareBtn');
+const shareNameInput = document.getElementById('shareName');
+const currentPriceInput = document.getElementById('currentPrice');
+const targetPriceInput = document.getElementById('targetPrice');
+const dividendAmountInput = document.getElementById('dividendAmount');
+const frankingCreditsInput = document.getElementById('frankingCredits');
+const shareRatingSelect = document.getElementById('shareRating');
+const commentsFormContainer = document.getElementById('dynamicCommentsArea');
+const modalStarRating = document.getElementById('modalStarRating'); 
+const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
+const shareTableBody = document.querySelector('#shareTable tbody');
+const mobileShareCardsContainer = document.getElementById('mobileShareCards');
+const tableContainer = document.querySelector('.table-container');
+const loadingIndicator = document.getElementById('loadingIndicator');
+const shareDetailModal = document.getElementById('shareDetailModal');
+const modalShareName = document.getElementById('modalShareName');
+const modalEnteredPrice = document.getElementById('modalEnteredPrice');
+const modalTargetPrice = document.getElementById('modalTargetPrice');
+const modalDividendAmount = document.getElementById('modalDividendAmount');
+const modalFrankingCredits = document.getElementById('modalFrankingCredits');
+const modalEntryDate = document.getElementById('modalEntryDate');
+const modalCommentsContainer = document.getElementById('modalCommentsContainer');
+const modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
+const modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
+const editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
+const deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
+const modalNewsLink = document.getElementById('modalNewsLink');
+const modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
+const modalFoolLink = document.getElementById('modalFoolLink');
+const modalListcorpLink = document.getElementById('modalListcorpLink'); // NEW: Reference for Listcorp link
+const modalCommSecLink = document.getElementById('modalCommSecLink');
+const commSecLoginMessage = document.getElementById('commSecLoginMessage');
+const dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
+const calcCloseButton = document.querySelector('.calc-close-button');
+const calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
+const calcDividendAmountInput = document.getElementById('calcDividendAmount');
+const calcFrankingCreditsInput = document.getElementById('calcFrankingCredits');
+const calcUnfrankedYieldSpan = document.getElementById('calcUnfrankedYield');
+const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
+const investmentValueSelect = document.getElementById('investmentValueSelect');
+const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
+const sortSelect = document.getElementById('sortSelect');
+const customDialogModal = document.getElementById('customDialogModal');
+const customDialogMessage = document.getElementById('customDialogMessage');
+const calculatorModal = document.getElementById('calculatorModal');
+const calculatorInput = document.getElementById('calculatorInput');
+const calculatorResult = document.getElementById('calculatorResult');
+const calculatorButtons = document.querySelector('.calculator-buttons');
+const watchlistSelect = document.getElementById('watchlistSelect');
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const colorThemeSelect = document.getElementById('colorThemeSelect');
+const revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
+const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const appSidebar = document.getElementById('appSidebar');
+const closeMenuBtn = document.getElementById('closeMenuBtn');
+const addWatchlistBtn = document.getElementById('addWatchlistBtn');
+const editWatchlistBtn = document.getElementById('editWatchlistBtn');
+const addWatchlistModal = document.getElementById('addWatchlistModal');
+const newWatchlistNameInput = document.getElementById('newWatchlistName');
+const saveWatchlistBtn = document.getElementById('saveWatchlistBtn');
+const manageWatchlistModal = document.getElementById('manageWatchlistModal');
+const editWatchlistNameInput = document.getElementById('editWatchlistName');
+const saveWatchlistNameBtn = document.getElementById('saveWatchlistNameBtn');
+const deleteWatchlistInModalBtn = document.getElementById('deleteWatchlistInModalBtn');
+const shareContextMenu = document.getElementById('shareContextMenu');
+const contextEditShareBtn = document.getElementById('contextEditShareBtn');
+const contextDeleteShareBtn = document.getElementById('contextDeleteShareBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
+const exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
+const refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
+const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
+const modalLivePriceDisplaySection = document.querySelector('.live-price-display-section'); 
+const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
+const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
+// NEW: Target Hit Details Modal Elements
+const targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
+const targetHitModalTitle = document.getElementById('targetHitModalTitle');
+const minimizeTargetHitModalBtn = document.getElementById('minimizeTargetHitModalBtn');
+const dismissAllTargetHitsBtn = document.getElementById('dismissAllTargetHitsBtn');
+const targetHitSharesList = document.getElementById('targetHitSharesList');
+const closeTargetHitModalBtn = document.getElementById('closeTargetHitModalBtn');
+const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
+const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
+const splashScreen = document.getElementById('splashScreen');
+const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
+const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
+const stockSearchTitle = document.getElementById('stockSearchTitle'); // NEW: Title for search modal
+const asxSearchInput = document.getElementById('asxSearchInput'); // NEW: Search input field
+const asxSuggestions = document.getElementById('asxSuggestions'); // NEW: Autocomplete suggestions container
+const searchResultDisplay = document.getElementById('searchResultDisplay'); // NEW: Display area for search results
+const searchModalActionButtons = document.querySelector('#stockSearchModal .modal-action-buttons-footer'); // NEW: Action buttons container
+const searchModalCloseButton = document.querySelector('.search-close-button'); // NEW: Close button for search modal
+
+// NEW: Global variable for storing loaded ASX code data from CSV
+let allAsxCodes = []; // { code: 'BHP', name: 'BHP Group Ltd' }
+let currentSelectedSuggestionIndex = -1; // For keyboard navigation in autocomplete
+let currentSearchShareData = null; // Stores data of the currently displayed stock in search modal
+const splashKangarooIcon = document.getElementById('splashKangarooIcon');
+const splashSignInBtn = document.getElementById('splashSignInBtn');
+const alertPanel = document.getElementById('alertPanel'); // NEW: Reference to the alert panel (not in current HTML, but kept for consistency)
+const alertList = document.getElementById('alertList'); // NEW: Reference to the alert list container (not in current HTML, but kept for consistency)
+const closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn'); // NEW: Reference to close alert panel button (not in current HTML, but kept for consistency)
+const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: Reference to clear all alerts button (not in current HTML, but kept for consistency)
+
+// NEW: Cash & Assets UI Elements (1)
+const stockWatchlistSection = document.getElementById('stockWatchlistSection');
+const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
+const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
+const addCashCategoryBtn = document.getElementById('addCashCategoryBtn'); // This will be removed or repurposed
+const saveCashBalancesBtn = document.getElementById('saveCashBalancesBtn'); // This will be removed or repurposed
+const totalCashDisplay = document.getElementById('totalCashDisplay');
+const addCashAssetSidebarBtn = document.getElementById('addCashAssetSidebarBtn'); // NEW: Sidebar button for cash asset
+
+// NEW: Cash Asset Modal Elements (2.1, 2.2)
+const cashAssetFormModal = document.getElementById('cashAssetFormModal');
+const cashFormTitle = document.getElementById('cashFormTitle');
+const cashAssetNameInput = document.getElementById('cashAssetName');
+const cashAssetBalanceInput = document.getElementById('cashAssetBalance');
+const saveCashAssetBtn = document.getElementById('saveCashAssetBtn');
+const deleteCashAssetBtn = document.getElementById('deleteCashAssetBtn');
+const cashAssetFormCloseButton = document.querySelector('.cash-form-close-button'); // NEW: Specific close button for cash asset form
+const cashAssetCommentsContainer = document.getElementById('cashAssetCommentsArea'); // NEW: Comments container for cash asset form
+const addCashAssetCommentBtn = document.getElementById('addCashAssetCommentBtn'); // NEW: Add comment button for cash asset form
+
+const cashAssetDetailModal = document.getElementById('cashAssetDetailModal');
+const modalCashAssetName = document.getElementById('modalCashAssetName');
+const detailCashAssetName = document.getElementById('detailCashAssetName');
+const detailCashAssetBalance = document.getElementById('detailCashAssetBalance');
+const detailCashAssetLastUpdated = document.getElementById('detailCashAssetLastUpdated');
+const editCashAssetFromDetailBtn = document.getElementById('editCashAssetFromDetailBtn');
+const deleteCashAssetFromDetailBtn = document.getElementById('deleteCashAssetFromDetailBtn');
+const modalCashAssetCommentsContainer = document.getElementById('modalCashAssetCommentsContainer'); // NEW: Comments container for cash asset details
 
 
 let sidebarOverlay = document.querySelector('.sidebar-overlay');
@@ -449,17 +454,16 @@ function addShareToTable(share) {
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-    // Apply target-hit-alert class if target is hit and not dismissed (now also adding has-alert-border for consistency)
+    // Apply target-hit-alert class if target is hit and not dismissed
     if (isTargetHit && !targetHitIconDismissed) {
-        row.classList.add('target-hit-alert', 'has-alert-border');
+        row.classList.add('target-hit-alert');
     }
 
     // Declare these variables once at the top of the function
     const isMarketOpen = isAsxMarketOpen();
     let displayLivePrice = 'N/A';
     let displayPriceChange = '';
-    let priceClass = ''; // 'positive', 'negative', 'neutral'
-    let cardHueClass = ''; // 'positive-hue', 'negative-hue' for compact view background
+    let priceClass = '';
 
     // Logic to determine display values
     if (livePriceData) {
@@ -478,27 +482,19 @@ function addShareToTable(share) {
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
                 displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardHueClass = change > 0 ? 'positive-hue' : (change < 0 ? 'negative-hue' : '');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
                 displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardHueClass = change > 0 ? 'positive-hue' : (change < 0 ? 'negative-hue' : '');
             }
         } else {
             // Market closed and toggle is OFF, show zero change
             displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
-            cardHueClass = ''; // No hue if market closed and not showing last live price
         }
-    }
-
-    // Add hue class to the card based on price change direction (only in compact mode)
-    if (currentMobileViewMode === 'compact' && cardHueClass) {
-        card.classList.add(cardHueClass);
     }
 
     row.innerHTML = `
@@ -615,9 +611,9 @@ function addShareToMobileCards(share) {
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-    // Apply target-hit-alert class if target is hit and not dismissed (now also adding has-alert-border for consistency)
+    // Apply target-hit-alert class if target is hit and not dismissed
     if (isTargetHit && !targetHitIconDismissed) {
-        card.classList.add('target-hit-alert', 'has-alert-border');
+        card.classList.add('target-hit-alert');
     }
 
     // Declare these variables once at the top of the function
@@ -1733,7 +1729,7 @@ function renderWatchlistSelect() {
     allSharesOption.value = ALL_SHARES_ID;
     allSharesOption.textContent = 'All Shares';
     watchlistSelect.appendChild(allSharesOption);
-    // The misplaced '}' was here and has been removed.
+
     userWatchlists.forEach(watchlist => {
         // Skip adding "Cash & Assets" if it's already a hardcoded option in HTML
         if (watchlist.id === CASH_BANK_WATCHLIST_ID) {
@@ -1768,39 +1764,10 @@ function renderWatchlistSelect() {
         currentSelectedWatchlistIds = [ALL_SHARES_ID]; // Ensure currentSelectedWatchlistIds is consistent
         logDebug('UI Update: Watchlist select defaulted to All Shares as desired ID was not found.');
     }
-    // Check if any shares in the currently selected watchlist(s) have hit their target
-    const sharesInCurrentView = allSharesData.filter(share => currentSelectedWatchlistIds.includes(ALL_SHARES_ID) || currentSelectedWatchlistIds.includes(share.watchlistId));
-    const anyTargetHitsInCurrentView = sharesInCurrentView.some(share => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        return livePriceData && livePriceData.targetHit;
-    });
-
-    if (anyTargetHitsInCurrentView && !targetHitIconDismissed) {
-        watchlistSelect.classList.add('has-alert-border');
-    } else {
-        watchlistSelect.classList.remove('has-alert-border');
-    }
-
     logDebug('UI Update: Watchlist select dropdown rendered. Selected value: ' + watchlistSelect.value);
     updateMainTitle(); // Update main title based on newly selected watchlist
     updateAddHeaderButton(); // Update the plus button context (and sidebar button context)
-} // This is the correct closing brace for the `renderWatchlistSelect` function.
-    // Check if any shares in the currently selected watchlist(s) have hit their target
-    const sharesInCurrentView = allSharesData.filter(share => currentSelectedWatchlistIds.includes(ALL_SHARES_ID) || currentSelectedWatchlistIds.includes(share.watchlistId));
-    const anyTargetHitsInCurrentView = sharesInCurrentView.some(share => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        return livePriceData && livePriceData.targetHit;
-    });
-
-    if (anyTargetHitsInCurrentView && !targetHitIconDismissed) {
-        watchlistSelect.classList.add('has-alert-border');
-    } else {
-        watchlistSelect.classList.remove('has-alert-border');
-    }
-
-    logDebug('UI Update: Watchlist select dropdown rendered. Selected value: ' + watchlistSelect.value);
-    updateMainTitle(); // Update main title based on newly selected watchlist
-    updateAddHeaderButton(); // Update the plus button context (and sidebar button context)
+}
 
 function renderSortSelect() {
         if (!sortSelect) { console.error('renderSortSelect: sortSelect element not found.'); return; }
@@ -1864,19 +1831,6 @@ function renderSortSelect() {
             sortSelect.value = defaultSortValue;
             currentSortOrder = defaultSortValue;
             logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
-        }
-
-        // Check if any shares in the currently selected watchlist(s) have hit their target
-        const sharesInCurrentView = allSharesData.filter(share => currentSelectedWatchlistIds.includes(ALL_SHARES_ID) || currentSelectedWatchlistIds.includes(share.watchlistId));
-        const anyTargetHitsInCurrentView = sharesInCurrentView.some(share => {
-            const livePriceData = livePrices[share.shareName.toUpperCase()];
-            return livePriceData && livePriceData.targetHit;
-        });
-
-        if (anyTargetHitsInCurrentView && !targetHitIconDismissed) {
-            sortSelect.classList.add('has-alert-border');
-        } else {
-            sortSelect.classList.remove('has-alert-border');
         }
 
         logDebug('UI Update: Sort select rendered. Sort select disabled: ' + sortSelect.disabled);
@@ -2800,53 +2754,31 @@ async function fetchLivePrices() {
             const low52 = parseFloat(item.Low52);
 
     if (asxCode && livePrice !== null && !isNaN(livePrice)) {
-        // Find the corresponding share in allSharesData to get its targetPrice
-        const shareData = allSharesData.find(s => s.shareName.toUpperCase() === asxCode);
-        // Ensure targetPrice is parsed as a number, handling null/undefined/NaN
-        const targetPrice = shareData && shareData.targetPrice !== null && !isNaN(parseFloat(shareData.targetPrice))
-            ? parseFloat(shareData.targetPrice)
-            : undefined;
+    // Find the corresponding share in allSharesData to get its targetPrice
+    const shareData = allSharesData.find(s => s.shareName.toUpperCase() === asxCode);
+    // Ensure targetPrice is parsed as a number, handling null/undefined/NaN
+    const targetPrice = shareData && shareData.targetPrice !== null && !isNaN(parseFloat(shareData.targetPrice))
+        ? parseFloat(shareData.targetPrice)
+        : undefined;
 
-        let isTargetHit = false;
-        // Check if a targetPrice is set AND livePrice is a valid number
-        if (targetPrice !== undefined && livePrice !== null && !isNaN(livePrice)) {
-            // Determine if the live price has hit or crossed the target based on its relationship to currentPrice.
-            // This logic assumes `shareData.currentPrice` is the user's "reference point" for their target.
+    const isTargetHit = (targetPrice !== undefined && livePrice <= targetPrice);
 
-            // If targetPrice is higher than the entered price: Trigger if livePrice reaches or exceeds target.
-            if (targetPrice > shareData.currentPrice && livePrice >= targetPrice) {
-                isTargetHit = true;
-            }
-            // If targetPrice is lower than the entered price: Trigger if livePrice reaches or falls below target.
-            else if (targetPrice < shareData.currentPrice && livePrice <= targetPrice) {
-                isTargetHit = true;
-            }
-            // If targetPrice is the same as entered price, and livePrice is also the same.
-            else if (targetPrice === shareData.currentPrice && livePrice === targetPrice) {
-                 isTargetHit = true;
-            }
-            // Prevent hits for targets at or below zero, unless explicitly desired differently
-            if (targetPrice <= 0 && isTargetHit) { 
-                 isTargetHit = false; 
-            }
-        }
-
-        newLivePrices[asxCode] = {
-            live: livePrice,
-            prevClose: isNaN(prevClose) ? null : prevClose,
-            PE: isNaN(pe) ? null : pe,
-            High52: isNaN(high52) ? null : high52,
-            Low52: isNaN(low52) ? null : low52,
-            targetHit: isTargetHit,
-            // Store the fetched live and prevClose prices for use when market is closed
-            lastLivePrice: livePrice,
-            lastPrevClose: isNaN(prevClose) ? null : prevClose
-        };
-    } else {
-        if (DEBUG_MODE) {
-            console.warn('Live Price: Skipping item due to missing ASX code or invalid price:', item);
-        }
+    newLivePrices[asxCode] = {
+        live: livePrice,
+        prevClose: isNaN(prevClose) ? null : prevClose,
+        PE: isNaN(pe) ? null : pe,
+        High52: isNaN(high52) ? null : high52,
+        Low52: isNaN(low52) ? null : low52,
+        targetHit: isTargetHit,
+        // Store the fetched live and prevClose prices for use when market is closed
+        lastLivePrice: livePrice,
+        lastPrevClose: isNaN(prevClose) ? null : prevClose
+    };
+} else {
+    if (DEBUG_MODE) {
+        console.warn('Live Price: Skipping item due to missing ASX code or invalid price:', item);
     }
+}
         });
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices); 
@@ -4173,148 +4105,10 @@ async function deleteAllUserData() {
 }
 
 async function initializeAppLogic() {
+    // DEBUG: Log when initializeAppLogic starts
     logDebug('initializeAppLogic: Firebase is ready. Starting app logic.');
 
-    // Assign UI Element References (once, globally)
-    appHeader = document.getElementById('appHeader');
-    mainContainer = document.querySelector('main.container');
-    mainTitle = document.getElementById('mainTitle');
-    addShareHeaderBtn = document.getElementById('addShareHeaderBtn');
-    newShareBtn = document.getElementById('newShareBtn');
-    standardCalcBtn = document.getElementById('standardCalcBtn');
-    dividendCalcBtn = document.getElementById('dividendCalcBtn');
-    asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
-    shareFormSection = document.getElementById('shareFormSection');
-    formCloseButton = document.querySelector('.form-close-button');
-    formTitle = document.getElementById('formTitle');
-    saveShareBtn = document.getElementById('saveShareBtn');
-    deleteShareBtn = document.getElementById('deleteShareBtn');
-    shareNameInput = document.getElementById('shareName');
-    currentPriceInput = document.getElementById('currentPrice');
-    targetPriceInput = document.getElementById('targetPrice');
-    dividendAmountInput = document.getElementById('dividendAmount');
-    frankingCreditsInput = document.getElementById('frankingCredits');
-    shareRatingSelect = document.getElementById('shareRating');
-    commentsFormContainer = document.getElementById('dynamicCommentsArea');
-    modalStarRating = document.getElementById('modalStarRating'); 
-    addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
-    shareTableBody = document.querySelector('#shareTable tbody');
-    mobileShareCardsContainer = document.getElementById('mobileShareCards');
-    tableContainer = document.querySelector('.table-container');
-    loadingIndicator = document.getElementById('loadingIndicator');
-    shareDetailModal = document.getElementById('shareDetailModal');
-    modalShareName = document.getElementById('modalShareName');
-    modalEnteredPrice = document.getElementById('modalEnteredPrice');
-    modalTargetPrice = document.getElementById('modalTargetPrice');
-    modalDividendAmount = document.getElementById('modalDividendAmount');
-    modalFrankingCredits = document.getElementById('modalFrankingCredits');
-    modalEntryDate = document.getElementById('modalEntryDate');
-    modalCommentsContainer = document.getElementById('modalCommentsContainer');
-    modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
-    modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
-    editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
-    deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
-    modalNewsLink = document.getElementById('modalNewsLink');
-    modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
-    modalFoolLink = document.getElementById('modalFoolLink');
-    modalListcorpLink = document.getElementById('modalListcorpLink');
-    modalCommSecLink = document.getElementById('modalCommSecLink');
-    commSecLoginMessage = document.getElementById('commSecLoginMessage');
-    dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
-    calcCloseButton = document.querySelector('.calc-close-button');
-    calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
-    calcDividendAmountInput = document.getElementById('calcDividendAmount');
-    calcFrankingCreditsInput = document.getElementById('calcFrankingCredits');
-    calcUnfrankedYieldSpan = document.getElementById('calcUnfrankedYield');
-    calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
-    investmentValueSelect = document.getElementById('investmentValueSelect');
-    calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
-    sortSelect = document.getElementById('sortSelect');
-    customDialogModal = document.getElementById('customDialogModal');
-    customDialogMessage = document.getElementById('customDialogMessage');
-    calculatorModal = document.getElementById('calculatorModal');
-    calculatorInput = document.getElementById('calculatorInput');
-    calculatorResult = document.getElementById('calculatorResult');
-    calculatorButtons = document.querySelector('.calculator-buttons');
-    watchlistSelect = document.getElementById('watchlistSelect');
-    themeToggleBtn = document.getElementById('themeToggleBtn');
-    colorThemeSelect = document.getElementById('colorThemeSelect');
-    revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
-    scrollToTopBtn = document.getElementById('scrollToTopBtn');
-    hamburgerBtn = document.getElementById('hamburgerBtn');
-    appSidebar = document.getElementById('appSidebar');
-    closeMenuBtn = document.getElementById('closeMenuBtn');
-    addWatchlistBtn = document.getElementById('addWatchlistBtn');
-    editWatchlistBtn = document.getElementById('editWatchlistBtn');
-    addWatchlistModal = document.getElementById('addWatchlistModal');
-    newWatchlistNameInput = document.getElementById('newWatchlistName');
-    saveWatchlistBtn = document.getElementById('saveWatchlistBtn');
-    manageWatchlistModal = document.getElementById('manageWatchlistModal');
-    editWatchlistNameInput = document.getElementById('editWatchlistName');
-    saveWatchlistNameBtn = document.getElementById('saveWatchlistNameBtn');
-    deleteWatchlistInModalBtn = document.getElementById('deleteWatchlistInModalBtn');
-    shareContextMenu = document.getElementById('shareContextMenu');
-    contextEditShareBtn = document.getElementById('contextEditShareBtn');
-    contextDeleteShareBtn = document.getElementById('contextDeleteShareBtn');
-    logoutBtn = document.getElementById('logoutBtn');
-    deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
-    exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
-    refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
-    shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
-    modalLivePriceDisplaySection = document.querySelector('.live-price-display-section'); 
-    targetHitIconBtn = document.getElementById('targetHitIconBtn');
-    targetHitIconCount = document.getElementById('targetHitIconCount');
-    targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
-    targetHitModalTitle = document.getElementById('targetHitModalTitle');
-    targetHitSharesList = document.getElementById('targetHitSharesList');
-    closeTargetHitModalHeaderBtn = null; // No header X button in HTML
-    minimizeTargetHitModalBtn = document.getElementById('minimizeTargetHitModalBtn'); // In footer
-    dismissAllTargetHitsBtn = document.getElementById('dismissAllTargetHitsBtn'); // In footer
-    closeTargetHitModalBtn = document.getElementById('closeTargetHitModalBtn'); // In footer
-    toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
-    showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
-    splashScreen = document.getElementById('splashScreen');
-    searchStockBtn = document.getElementById('searchStockBtn');
-    stockSearchModal = document.getElementById('stockSearchModal');
-    stockSearchTitle = document.getElementById('stockSearchTitle');
-    asxSearchInput = document.getElementById('asxSearchInput');
-    asxSuggestions = document.getElementById('asxSuggestions');
-    searchResultDisplay = document.getElementById('searchResultDisplay');
-    searchModalActionButtons = document.querySelector('#stockSearchModal .modal-action-buttons-footer');
-    searchModalCloseButton = document.querySelector('.search-close-button');
-    allAsxCodes = []; // This is correctly set via loadAsxCodesFromCSV in onAuthStateChanged
-    splashKangarooIcon = document.getElementById('splashKangarooIcon');
-    splashSignInBtn = document.getElementById('splashSignInBtn');
-    alertPanel = document.getElementById('alertPanel');
-    alertList = document.getElementById('alertList');
-    closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn');
-    clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn');
-    stockWatchlistSection = document.getElementById('stockWatchlistSection');
-    cashAssetsSection = document.getElementById('cashAssetsSection');
-    cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
-    addCashCategoryBtn = document.getElementById('addCashCategoryBtn');
-    saveCashBalancesBtn = document.getElementById('saveCashBalancesBtn');
-    totalCashDisplay = document.getElementById('totalCashDisplay');
-    addCashAssetSidebarBtn = document.getElementById('addCashAssetSidebarBtn');
-    cashAssetFormModal = document.getElementById('cashAssetFormModal');
-    cashFormTitle = document.getElementById('cashFormTitle');
-    cashAssetNameInput = document.getElementById('cashAssetName');
-    cashAssetBalanceInput = document.getElementById('cashAssetBalance');
-    saveCashAssetBtn = document.getElementById('saveCashAssetBtn');
-    deleteCashAssetBtn = document.getElementById('deleteCashAssetBtn');
-    cashAssetFormCloseButton = document.querySelector('.cash-form-close-button');
-    cashAssetCommentsContainer = document.getElementById('cashAssetCommentsArea');
-    addCashAssetCommentBtn = document.getElementById('addCashAssetCommentBtn');
-    cashAssetDetailModal = document.getElementById('cashAssetDetailModal');
-    modalCashAssetName = document.getElementById('modalCashAssetName');
-    detailCashAssetName = document.getElementById('detailCashAssetName');
-    detailCashAssetBalance = document.getElementById('detailCashAssetBalance');
-    detailCashAssetLastUpdated = document.getElementById('detailCashAssetLastUpdated');
-    editCashAssetFromDetailBtn = document.getElementById('editCashAssetFromDetailBtn');
-    deleteCashAssetFromDetailBtn = document.getElementById('deleteCashAssetFromDetailBtn');
-    modalCashAssetCommentsContainer = document.getElementById('modalCashAssetCommentsContainer');
-
-    // Initial modal hiding (using global refs now)
+    // Initial modal hiding
     if (shareFormSection) shareFormSection.style.setProperty('display', 'none', 'important');
     if (dividendCalculatorModal) dividendCalculatorModal.style.setProperty('display', 'none', 'important');
     if (shareDetailModal) shareDetailModal.style.setProperty('display', 'none', 'important');
@@ -4323,12 +4117,14 @@ async function initializeAppLogic() {
     if (customDialogModal) customDialogModal.style.setProperty('display', 'none', 'important');
     if (calculatorModal) calculatorModal.style.setProperty('display', 'none', 'important');
     if (shareContextMenu) shareContextMenu.style.setProperty('display', 'none', 'important');
-    if (targetHitIconBtn) targetHitIconBtn.classList.add('app-hidden');
-    if (alertPanel) alertPanel.style.display = 'none';
+    if (targetHitIconBtn) targetHitIconBtn.classList.add('app-hidden'); // Ensure icon is hidden initially via class
+    if (alertPanel) alertPanel.style.display = 'none'; // NEW: Ensure alert panel is hidden initially
+    // NEW: Hide cash asset modals initially
     if (cashAssetFormModal) cashAssetFormModal.style.setProperty('display', 'none', 'important');
     if (cashAssetDetailModal) cashAssetDetailModal.style.setProperty('display', 'none', 'important');
-    if (stockSearchModal) stockSearchModal.style.setProperty('display', 'none', 'important');
-    if (targetHitDetailsModal) targetHitDetailsModal.style.setProperty('display', 'none', 'important');
+    if (stockSearchModal) stockSearchModal.style.setProperty('display', 'none', 'important'); // NEW: Hide stock search modal
+    if (targetHitDetailsModal) targetHitDetailsModal.style.setProperty('display', 'none', 'important'); // Hide target hit details modal initially
+
 
     // Service Worker Registration
     if ('serviceWorker' in navigator) {
@@ -4658,33 +4454,29 @@ async function initializeAppLogic() {
         });
     }
 
-    // No header 'X' button to listen to, as it's removed from HTML.
-    // The previous 'if (closeTargetHitModalHeaderBtn)' block is now correctly absent or will be skipped.
-
-    // Event listener for the 'Minimize to Icon' button (in footer)
+    // Event listener for Minimize Target Hit Modal button (now just hides modal, keeps icon active)
     if (minimizeTargetHitModalBtn) {
         minimizeTargetHitModalBtn.addEventListener('click', () => {
-            hideModal(targetHitDetailsModal); // Close modal
-            // The icon remains visible as alerts are not dismissed
+            hideModal(targetHitDetailsModal);
         });
     }
 
-    // Event listener for the 'Dismiss All Alerts' button (in footer)
+    // Event listener for Dismiss All Target Hits button (now from its specific button)
     if (dismissAllTargetHitsBtn) {
         dismissAllTargetHitsBtn.addEventListener('click', () => {
             targetHitIconDismissed = true;
             localStorage.setItem('targetHitIconDismissed', 'true');
-            updateTargetHitBanner(); // Will hide the icon
+            updateTargetHitBanner();
             hideModal(targetHitDetailsModal);
             showCustomAlert('Target Price Alerts dismissed until next login.', 2000, true);
             renderWatchlist();
         });
     }
 
-    // Event listener for the 'Close' button at the bottom of the modal
+    // Event listener for the new Close button at the bottom of the modal
     if (closeTargetHitModalBtn) {
         closeTargetHitModalBtn.addEventListener('click', () => {
-            hideModal(targetHitDetailsModal); // Standard close for the modal
+            hideModal(targetHitDetailsModal);
         });
     }
 
@@ -4763,41 +4555,33 @@ if (deleteAllUserDataBtn) {
 
     // Watchlist Select Change Listener
     if (watchlistSelect) {
-        // Remove existing listener to prevent multiple bindings on subsequent calls
-        if (watchlistSelect._changeListener) { // Check for a stored listener
-            watchlistSelect.removeEventListener('change', watchlistSelect._changeListener);
-        }
-        const newWatchlistListener = async (event) => {
+        watchlistSelect.addEventListener('change', async (event) => {
             logDebug('Watchlist Select: Change event fired. New value: ' + event.target.value);
             currentSelectedWatchlistIds = [event.target.value];
             await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
+            // Just render the watchlist. The listeners for shares/cash are already active.
             renderWatchlist();
-        };
-        watchlistSelect.addEventListener('change', newWatchlistListener);
-        watchlistSelect._changeListener = newWatchlistListener; // Store listener for future removal
+        });
     }
 
     // Sort Select Change Listener
-    if (sortSelect) {
-        // Remove existing listener to prevent multiple bindings on subsequent calls
-        if (sortSelect._changeListener) { // Check for a stored listener
-            sortSelect.removeEventListener('change', sortSelect._changeListener);
+if (sortSelect) {
+    sortSelect.addEventListener('change', async (event) => {
+        logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
+        currentSortOrder = sortSelect.value;
+        // Determine whether to sort shares or cash assets
+        if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+            renderCashCategories(); // Re-render cash categories with new sort order
+        } else {
+            sortShares(); // Sorts allSharesData and calls renderWatchlist
         }
-        const newSortListener = async (event) => {
-            logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
-            currentSortOrder = sortSelect.value;
-            if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-                renderCashCategories();
-            } else {
-                sortShares();
-            }
-            await saveSortOrderPreference(currentSortOrder);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            logDebug('Sort: Scrolled to top after sorting.');
-        };
-        sortSelect.addEventListener('change', newSortListener);
-        sortSelect._changeListener = newSortListener; // Store listener for future removal
-    }
+        await saveSortOrderPreference(currentSortOrder);
+
+        // NEW: Scroll to the top of the page after sorting/rendering
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        logDebug('Sort: Scrolled to top after sorting.');
+    });
+}
 
     // New Share Button (from sidebar) - Now contextual, handled by updateSidebarAddButtonContext
     // The event listener will be set dynamically by updateSidebarAddButtonContext()
@@ -5650,7 +5434,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Removed: startLivePriceUpdates(); // This is now called by renderWatchlist based on selected type
             } // This closing brace correctly ends the `if (user)` block
-            
+
             else {
                 currentUserId = null;
                 mainTitle.textContent = 'Share Watchlist';
@@ -5735,6 +5519,4 @@ document.addEventListener('DOMContentLoaded', function() {
         // NEW: Hide splash screen if Firebase fails to initialize
         hideSplashScreen();
     }
-}); // This closes the 'onAuthStateChanged' event listener callback function.
-// Leave a blank line here for readability.
-// No content should follow here. This is the absolute end of the script.
+});
