@@ -1452,7 +1452,7 @@ function showShareDetails() {
     if (modalNewsLink && share.shareName) {
         const newsUrl = 'https://news.google.com/search?q=' + encodeURIComponent(share.shareName) + '%20ASX&hl=en-AU&gl=AU&ceid=AU%3Aen';
         modalNewsLink.href = newsUrl;
-        modalNewsLink.textContent = 'View ' + share.shareName.toUpperCase() + ' News';
+        modalNewsLink.innerHTML = 'View ' + share.shareName.toUpperCase() + ' News <i class="fas fa-external-link-alt"></i>'; // Added icon
         modalNewsLink.style.display = 'inline-flex';
         setIconDisabled(modalNewsLink, false);
     } else if (modalNewsLink) {
@@ -1463,7 +1463,7 @@ function showShareDetails() {
     if (modalMarketIndexLink && share.shareName) {
         const marketIndexUrl = 'https://www.marketindex.com.au/asx/' + share.shareName.toLowerCase();
         modalMarketIndexLink.href = marketIndexUrl;
-        modalMarketIndexLink.textContent = 'View ' + share.shareName.toUpperCase() + ' on MarketIndex.com.au';
+        modalMarketIndexLink.innerHTML = 'View ' + share.shareName.toUpperCase() + ' on MarketIndex.com.au <i class="fas fa-external-link-alt"></i>'; // Added icon
         modalMarketIndexLink.style.display = 'inline-flex';
         setIconDisabled(modalMarketIndexLink, false);
     } else if (modalMarketIndexLink) {
@@ -1474,7 +1474,7 @@ function showShareDetails() {
     // Fool.com.au Link
     if (modalFoolLink && share.shareName) {
         modalFoolLink.href = `https://www.fool.com.au/quote/${share.shareName}/`;
-        modalFoolLink.textContent = 'View on Fool.com.au';
+        modalFoolLink.innerHTML = 'View on Fool.com.au <i class="fas fa-external-link-alt"></i>'; // Added icon
         modalFoolLink.style.display = 'inline-flex';
         setIconDisabled(modalFoolLink, false);
     } else if (modalFoolLink) {
@@ -1486,7 +1486,7 @@ function showShareDetails() {
     if (modalListcorpLink && share.shareName) {
         const listcorpUrl = `https://www.listcorp.com/asx/${share.shareName.toLowerCase()}`;
         modalListcorpLink.href = listcorpUrl;
-        modalListcorpLink.textContent = `View on Listcorp.com`;
+        modalListcorpLink.innerHTML = `View on Listcorp.com <i class="fas fa-external-link-alt"></i>`; // Added icon
         modalListcorpLink.style.display = 'inline-flex';
         setIconDisabled(modalListcorpLink, false);
     } else if (modalListcorpLink) {
@@ -1497,21 +1497,13 @@ function showShareDetails() {
     // CommSec.com.au Link
     if (modalCommSecLink && share.shareName) {
         modalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${share.shareName}`;
-        modalCommSecLink.textContent = 'View on CommSec.com.au';
+        modalCommSecLink.innerHTML = 'View on CommSec.com.au <i class="fas fa-external-link-alt"></i>'; // Added icon
         modalCommSecLink.style.display = 'inline-flex';
         setIconDisabled(modalCommSecLink, false);
     } else if (modalCommSecLink) {
         modalCommSecLink.style.display = 'none';
         setIconDisabled(modalCommSecLink, true);
     }
-
-    if (commSecLoginMessage) {
-        commSecLoginMessage.style.display = 'block'; 
-    }
-
-    showModal(shareDetailModal);
-    logDebug('Details: Displayed details for share: ' + share.shareName + ' (ID: ' + selectedShareDocId + ')');
-}
 
 function sortShares() {
     const sortValue = currentSortOrder;
