@@ -188,6 +188,7 @@ const targetHitModalTitle = document.getElementById('targetHitModalTitle');
 const minimizeTargetHitModalBtn = document.getElementById('minimizeTargetHitModalBtn');
 const dismissAllTargetHitsBtn = document.getElementById('dismissAllTargetHitsBtn');
 const targetHitSharesList = document.getElementById('targetHitSharesList');
+const closeTargetHitModalBtn = document.getElementById('closeTargetHitModalBtn');
 const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 const splashScreen = document.getElementById('splashScreen');
@@ -4447,25 +4448,29 @@ async function initializeAppLogic() {
         });
     }
 
-    // Event listener for Minimize Target Hit Modal button
+    // Event listener for Minimize Target Hit Modal button (now just hides modal, keeps icon active)
     if (minimizeTargetHitModalBtn) {
         minimizeTargetHitModalBtn.addEventListener('click', () => {
-            logDebug('Target Hit Modal: Minimize button clicked. Hiding modal, keeping icon visible.');
-            hideModal(targetHitDetailsModal); // Just hide the modal
-            // The icon (targetHitIconBtn) remains visible because targetHitIconDismissed is not set to true
+            hideModal(targetHitDetailsModal);
         });
     }
 
-    // Event listener for Dismiss All Target Hits button
+    // Event listener for Dismiss All Target Hits button (now from its specific button)
     if (dismissAllTargetHitsBtn) {
         dismissAllTargetHitsBtn.addEventListener('click', () => {
-            logDebug('Target Hit Modal: Dismiss All button clicked. Dismissing alerts until next session.');
-            targetHitIconDismissed = true; // Set flag to true
-            localStorage.setItem('targetHitIconDismissed', 'true'); // Persist dismissal state
-            updateTargetHitBanner(); // Update banner to hide icon
-            hideModal(targetHitDetailsModal); // Hide the modal
-            showCustomAlert('Target Price Alerts dismissed until next login.', 2000, true); // Visual confirmation
-            renderWatchlist(); // Re-render watchlist to remove highlights from dismissed alerts
+            targetHitIconDismissed = true;
+            localStorage.setItem('targetHitIconDismissed', 'true');
+            updateTargetHitBanner();
+            hideModal(targetHitDetailsModal);
+            showCustomAlert('Target Price Alerts dismissed until next login.', 2000, true);
+            renderWatchlist();
+        });
+    }
+
+    // Event listener for the new Close button at the bottom of the modal
+    if (closeTargetHitModalBtn) {
+        closeTargetHitModalBtn.addEventListener('click', () => {
+            hideModal(targetHitDetailsModal);
         });
     }
 
