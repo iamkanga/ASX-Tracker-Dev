@@ -4147,7 +4147,7 @@ async function initializeAppLogic() {
     if (cashAssetFormModal) cashAssetFormModal.style.setProperty('display', 'none', 'important');
     if (cashAssetDetailModal) cashAssetDetailModal.style.setProperty('display', 'none', 'important');
     if (stockSearchModal) stockSearchModal.style.setProperty('display', 'none', 'important'); // NEW: Hide stock search modal
-    if (targetHitDetailsModal) targetHitDetailsModal.style.setProperty('display', 'none', 'important'); // Hide target hit details modal initially
+    // The targetHitDetailsModal itself is hidden by showModal/hideModal, so no explicit line needed for its close button.
 
 
     // Service Worker Registration
