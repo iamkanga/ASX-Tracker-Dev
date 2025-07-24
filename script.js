@@ -2820,16 +2820,17 @@ async function fetchLivePrices() {
         : undefined;
 
     // Determine if target is hit based on targetDirection (new field) or default to 'below' for old shares
-    const targetDirection = shareData && shareData.targetDirection ? shareData.targetDirection : 'below'; // Default to 'below' for existing shares without the field
-    
-    let isTargetHit = false;
-    if (targetPrice !== undefined) { // Only check if targetPrice is defined
-        if (targetDirection === 'above') {
-            isTargetHit = (livePrice >= targetPrice);
-        } else { // 'below' or any other unexpected value
-            isTargetHit = (livePrice <= targetPrice);
-        }
-    }
+            // Ensure shareData exists and has targetDirection, otherwise default to 'below'
+            const targetDirection = shareData && shareData.targetDirection ? shareData.targetDirection : 'below'; 
+
+            let isTargetHit = false;
+            if (targetPrice !== undefined && livePrice !== null && !isNaN(livePrice)) { // Only check if targetPrice and livePrice are valid
+                if (targetDirection === 'above') {
+                    isTargetHit = (livePrice >= targetPrice);
+                } else { // 'below' or any other unexpected value, including older shares
+                    isTargetHit = (livePrice <= targetPrice);
+                }
+            }
 
     newLivePrices[asxCode] = {
         live: livePrice,
