@@ -186,11 +186,12 @@ const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW
 const targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
 const targetHitModalTitle = document.getElementById('targetHitModalTitle');
 const targetHitSharesList = document.getElementById('targetHitSharesList');
-// This element (closeTargetHitModalHeaderBtn) is REMOVED from HTML, so we set its reference to null:
-const closeTargetHitModalHeaderBtn = null; 
-const minimizeTargetHitModalBtn = document.getElementById('minimizeTargetHitModalBtn'); // Now correctly referencing footer button
-const dismissAllTargetHitsBtn = document.getElementById('dismissAllTargetHitsBtn'); // Now correctly referencing footer button
-const closeTargetHitModalBtn = document.getElementById('closeTargetHitModalBtn'); // Now correctly referencing footer button
+// The header 'X' button is removed, so its reference is no longer needed/set to null.
+// const closeTargetHitModalHeaderBtn = document.getElementById('closeTargetHitModalHeaderBtn');
+const minimizeTargetHitModalBtn = document.getElementById('minimizeTargetHitModalBtn'); // Refers to footer button
+const dismissAllTargetHitsBtn = document.getElementById('dismissAllTargetHitsBtn'); // Refers to footer button
+// The 'Close' button at the bottom is removed, so its reference is no longer needed.
+// const closeTargetHitModalBtn = document.getElementById('closeTargetHitModalBtn');
 const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 const splashScreen = document.getElementById('splashScreen');
@@ -465,7 +466,8 @@ function addShareToTable(share) {
     const isMarketOpen = isAsxMarketOpen();
     let displayLivePrice = 'N/A';
     let displayPriceChange = '';
-    let priceClass = '';
+    let priceClass = ''; // 'positive', 'negative', 'neutral'
+    let cardHueClass = ''; // 'positive-hue', 'negative-hue' for compact view background
 
     // Logic to determine display values
     if (livePriceData) {
@@ -484,19 +486,27 @@ function addShareToTable(share) {
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
                 displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardHueClass = change > 0 ? 'positive-hue' : (change < 0 ? 'negative-hue' : '');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
                 displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardHueClass = change > 0 ? 'positive-hue' : (change < 0 ? 'negative-hue' : '');
             }
         } else {
             // Market closed and toggle is OFF, show zero change
             displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
+            cardHueClass = ''; // No hue if market closed and not showing last live price
         }
+    }
+
+    // Add hue class to the card based on price change direction (only in compact mode)
+    if (currentMobileViewMode === 'compact' && cardHueClass) {
+        card.classList.add(cardHueClass);
     }
 
     row.innerHTML = `
@@ -2808,37 +2818,43 @@ async function fetchLivePrices() {
         let isTargetHit = false;
         // Check if a targetPrice is set AND livePrice is a valid number
         if (targetPrice !== undefined && livePrice !== null && !isNaN(livePrice)) {
-            // Determine if the live price has crossed the target.
-            // A simple crossing means:
-            // 1. If live price is currently above target, and target was set below live (target < live)
-            // 2. If live price is currently below target, and target was set above live (target > live)
-            // This captures both "reached higher" and "fell to lower" targets.
-            // We assume a "hit" when the current price is *past* the target price.
-            if (livePrice >= targetPrice) {
+            // Determine if the live price has hit or crossed the target based on its relationship to currentPrice.
+            // This logic assumes `shareData.currentPrice` is the user's "reference point" for their target.
+
+            // If targetPrice is higher than the entered price: Trigger if livePrice reaches or exceeds target.
+            if (targetPrice > shareData.currentPrice && livePrice >= targetPrice) {
                 isTargetHit = true;
-            } else if (livePrice <= targetPrice) {
+            }
+            // If targetPrice is lower than the entered price: Trigger if livePrice reaches or falls below target.
+            else if (targetPrice < shareData.currentPrice && livePrice <= targetPrice) {
                 isTargetHit = true;
+            }
+            // If targetPrice is the same as entered price, and livePrice is also the same.
+            else if (targetPrice === shareData.currentPrice && livePrice === targetPrice) {
+                 isTargetHit = true;
+            }
+            // Prevent hits for targets at or below zero, unless explicitly desired differently
+            if (targetPrice <= 0 && isTargetHit) { 
+                 isTargetHit = false; 
             }
         }
 
         newLivePrices[asxCode] = {
-        live: livePrice,
-        prevClose: isNaN(prevClose) ? null : prevClose,
-        PE: isNaN(pe) ? null : pe,
-        High52: isNaN(high52) ? null : high52,
-        Low52: isNaN(low52) ? null : low52,
-        targetHit: isTargetHit,
-        // Store the fetched live and prevClose prices for use when market is closed
-        lastLivePrice: livePrice,
-        lastPrevClose: isNaN(prevClose) ? null : prevClose
-    };
-} // This is the closing brace for the outer 'if' statement (line ~1720)
-// Leave a blank line here for readability.
-else {
-    if (DEBUG_MODE) {
-        console.warn('Live Price: Skipping item due to missing ASX code or invalid price:', item);
+            live: livePrice,
+            prevClose: isNaN(prevClose) ? null : prevClose,
+            PE: isNaN(pe) ? null : pe,
+            High52: isNaN(high52) ? null : high52,
+            Low52: isNaN(low52) ? null : low52,
+            targetHit: isTargetHit,
+            // Store the fetched live and prevClose prices for use when market is closed
+            lastLivePrice: livePrice,
+            lastPrevClose: isNaN(prevClose) ? null : prevClose
+        };
+    } else {
+        if (DEBUG_MODE) {
+            console.warn('Live Price: Skipping item due to missing ASX code or invalid price:', item);
+        }
     }
-} // This is the newly added, definitive closing brace for the inner 'if (DEBUG_MODE)' block
         });
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices); 

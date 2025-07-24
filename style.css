@@ -23,6 +23,7 @@
     --asx-button-active-text: #fff;
     --success-color: #28a745;
     --danger-color: #dc3545;
+    --danger-color-rgb: 220, 53, 69; /* RGB for #dc3545 */
     --warning-color: #ffc107;
     --info-color: #17a2b8;
     --link-color: #007bff;
@@ -119,6 +120,7 @@ body.dark-theme {
     --asx-button-active-text: #ffffff; /* White text for active ASX button */
     --success-color: #2ecc71; /* Keep green for success */
     --danger-color: #e74c3c; /* Keep red for danger */
+    --danger-color-rgb: 231, 76, 60; /* RGB for #e74c3c */
     --warning-color: #f39c12; /* Keep orange for warning */
     --info-color: #3498db; /* Keep blue for info */
     --link-color: #99ccff; /* Lighter blue for links */
@@ -3973,23 +3975,64 @@ main.container {
     box-sizing: border-box; /* Ensure padding is included in element's total width */
 }
 
-/* Ensure mobile compact view stays 2 columns explicitly on mobile screens */
-@media (max-width: 768px) {
-    .mobile-share-cards.compact-view {
-        display: grid !important;
-        /* Use calc to subtract half the gap from each 1fr to prevent overflow */
-        grid-template-columns: repeat(auto-fit, minmax(calc(50% - 5px), 1fr)) !important; /* Force 2 columns, accounting for gap */
-        gap: 10px !important;
-        padding: 10px !important;
-        box-sizing: border-box !important;
-        /* Also ensure no extra margin/padding on body/html is causing overflow */
-        margin: 0 !important; /* Remove any default margins */
-        width: 100% !important; /* Ensure it takes full available width */
-    }
-    /* Ensure individual cards fill their grid column width on mobile */
-    .mobile-share-cards.compact-view .mobile-card {
-        width: auto !important; /* Let grid handle width */
-    }
+/* Compact View Card Specific Styles (Lines & Hue) */
+.mobile-share-cards.compact-view .mobile-card {
+    position: relative; /* For pseudo-elements */
+    overflow: hidden; /* Ensure lines are contained */
+}
+
+/* Green Hue for Positive Change in Compact View */
+.mobile-share-cards.compact-view .mobile-card.positive-hue {
+    background-color: rgba(var(--green-color-dark-rgb), 0.05) !important; /* Very subtle green hue */
+}
+
+/* Red Hue for Negative Change in Compact View */
+.mobile-share-cards.compact-view .mobile-card.negative-hue {
+    background-color: rgba(var(--danger-color-rgb), 0.05) !important; /* Very subtle red hue */
+}
+
+/* Vertical lines on left and right for compact view cards */
+.mobile-share-cards.compact-view .mobile-card::before,
+.mobile-share-cards.compact-view .mobile-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 3px; /* Thickness of the line */
+    height: 100%;
+    transition: background-color 0.3s ease;
+    z-index: 1; /* Above card background, below content */
+}
+
+.mobile-share-cards.compact-view .mobile-card::before {
+    left: 0;
+    background-color: var(--price-neutral-color); /* Default neutral color */
+}
+
+.mobile-share-cards.compact-view .mobile-card::after {
+    right: 0;
+    background-color: var(--price-neutral-color); /* Default neutral color */
+}
+
+/* Apply dynamic colors to the vertical lines */
+.mobile-share-cards.compact-view .mobile-card.positive-hue::before,
+.mobile-share-cards.compact-view .mobile-card.positive-hue::after {
+    background-color: var(--price-up-color); /* Green for positive change */
+}
+
+.mobile-share-cards.compact-view .mobile-card.negative-hue::before,
+.mobile-share-cards.compact-view .mobile-card.negative-hue::after {
+    background-color: var(--price-down-color); /* Red for negative change */
+}
+
+/* Full border when target is hit in compact view */
+.mobile-share-cards.compact-view .mobile-card.has-alert-border {
+    border: 2px solid var(--green-color) !important; /* Green border for target hit */
+    /* Remove individual side lines if full border is present, to prevent overlap/double border */
+}
+
+.mobile-share-cards.compact-view .mobile-card.has-alert-border::before,
+.mobile-share-cards.compact-view .mobile-card.has-alert-border::after {
+    display: none; /* Hide pseudo-elements when full border is applied */
 }
 
 /* On desktop, for compact view, force exactly four columns */
