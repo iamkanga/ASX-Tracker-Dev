@@ -65,7 +65,8 @@
     --target-alert-text: #0056b3; /* Darker blue for target hit text */
     --target-alert-border: #007bff;
     --target-banner-height: 40px; /* This variable is now effectively unused for the banner, but kept for other potential uses */
-
+    --green-color: #28a745; /* Standard green for general use */
+    --green-color-dark: #218838; /* Darker green for hover states */
     /* NEW: Alert System Colors */
     --alert-icon-bg: #dc3545; /* Red for the chat box icon */
     --alert-icon-text: #fff;
@@ -147,7 +148,8 @@ body.dark-theme {
     --target-alert-text: #ffffff; /* White text for target alert */
     --target-alert-border: #888888; /* Gray border for target alert */
     --target-banner-height: 40px;
-
+    --green-color: #2ecc71; /* Green for success in dark theme */
+    --green-color-dark: #229954; /* Darker green for hover */
     /* UPDATED: Cash & Assets Section Colors (Dark Theme) */
     --cash-section-bg: #282828; /* Dark gray */
     --cash-card-bg: #333333; /* Medium dark gray */
@@ -3538,54 +3540,56 @@ table td.live-price-cell.negative-change {
     color: var(--button-text);
 }
 
-/* Target Hit Notification Icon (bottom right) */
+/* Target Hit Notification Icon (bottom-left, fixed) */
 .target-hit-icon-btn {
     display: none; /* Hidden by default, shown by JS when shares hit target */
     position: fixed !important; /* Ensures it stays in viewport, overriding any other positions */
     bottom: 20px !important; /* Padding from bottom */
-    right: 20px !important; /* Padding from right */
-    left: auto !important; /* Ensure it's not forced to the left */
+    left: 20px !important; /* THIS IS THE CRITICAL CHANGE: Positioning to the left */
+    right: auto !important; /* Ensure it's not forced to the right */
     z-index: 9999 !important; /* Ensure it's on top of everything */
-    background-color: var(--alert-icon-bg); /* Use alert background color */
-    color: var(--alert-icon-text); /* Use alert text color */
+    background-color: var(--green-color); /* Now using our new green color variable */
+    color: var(--button-text); /* White text/icon */
     border: none;
-    border-radius: 8px; /* Slightly rounded for chat box look */
-    width: 55px; /* Size of the button */
-    height: 55px;
+    border-radius: 50%; /* Make it round as previously discussed */
+    width: 60px; /* Make it a bit larger as previously discussed */
+    height: 60px;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1.8em; /* Icon size */
+    font-size: 1.5em; /* Match suggested larger size for fixed button */
     cursor: pointer;
-    box-shadow: 0 4px 12px var(--alert-icon-shadow); /* More prominent shadow */
+    box-shadow: 0 4px 12px var(--shadow-color); /* Use general shadow variable */
     transition: transform 0.2s ease, background-color 0.2s ease;
-    animation: pulse-alert 1.5s infinite alternate; /* Subtle pulsing animation */
-    
-    /* Chat box tail */
-    position: relative; /* For positioning the pseudo-element tail */
+    animation: pulseHighlight 2s infinite alternate ease-in-out; /* Apply subtle pulse animation */
+    border: 2px solid var(--green-color-dark); /* Darker green border */
 }
 
+/* Remove the chat box tail, as it's no longer a "chat bubble" but a round alert icon */
 .target-hit-icon-btn::after {
-    content: '';
-    position: absolute;
-    bottom: -8px; /* Position below the button */
-    right: 8px; /* Align to the right side of the button */
-    width: 0;
-    height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-top: 8px solid var(--alert-icon-bg); /* Color of the tail */
-    filter: drop-shadow(0 2px 1px rgba(0,0,0,0.1)); /* Match button shadow slightly */
+    display: none; /* Hide the pseudo-element tail */
 }
-
 
 .target-hit-icon-btn:hover {
-    transform: scale(1.1);
-    background-color: var(--danger-button-hover-bg); /* Slightly darker on hover */
+    transform: translateY(-2px); /* Lift effect */
+    background-color: var(--green-color-dark); /* Darker green on hover */
 }
 
-.target-hit-icon-btn:hover::after {
-    border-top-color: var(--danger-button-hover-bg); /* Match tail color on hover */
+/* Badge on the target hit icon */
+.target-hit-icon-count {
+    position: absolute;
+    top: -5px; /* Position above the icon */
+    right: -5px; /* Position to the right of the icon */
+    background-color: var(--danger-color); /* Red badge */
+    color: white;
+    font-size: 0.7em; /* Smaller font for the count */
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 50%;
+    min-width: 20px; /* Ensure it's circular for single digits */
+    text-align: center;
+    line-height: 1; /* Center text vertically */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 .target-hit-icon-count {
@@ -3623,6 +3627,88 @@ table td.live-price-cell.negative-change {
     opacity: 0; /* Start hidden for transition */
     transform: translateY(20px); /* Slide up from bottom */
     transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+/* Target Hit Details Modal Specific Styles */
+.target-hit-details-modal .modal-content {
+    max-width: 400px; /* Adjust width for the alert list */
+    margin: auto; /* Center the modal */
+}
+
+.target-hit-shares-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Space between alert items */
+    padding: 10px;
+    max-height: 60vh; /* Allow scrolling within the list */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border-color); /* Add a border to the list container */
+    border-radius: 8px;
+    background-color: var(--background-color); /* Match overall background for list */
+}
+
+.target-hit-shares-list .no-alerts-message {
+    padding: 20px;
+    font-style: italic;
+    color: var(--ghosted-text);
+    text-align: center;
+}
+
+.target-hit-item {
+    background-color: var(--card-bg); /* Card background for each item */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.target-hit-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+
+.target-hit-item .share-name-code {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.target-hit-item .live-price-display {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: var(--text-color); /* Default color, will be overridden by positive/negative */
+}
+
+/* Ensure positive/negative colors apply to share name and price in alert item */
+.target-hit-item .share-name-code.positive,
+.target-hit-item .live-price-display.positive {
+    color: var(--price-up-color) !important;
+}
+
+.target-hit-item .share-name-code.negative,
+.target-hit-item .live-price-display.negative {
+    color: var(--price-down-color) !important;
+}
+
+.target-hit-item .share-name-code.neutral,
+.target-hit-item .live-price-display.neutral {
+    color: var(--price-neutral-color) !important;
+}
+
+.target-hit-item p {
+    margin: 0;
+    font-size: 0.9em;
+    color: var(--text-color);
+}
+
+.target-hit-item p strong {
+    color: var(--label-color);
 }
 
 .alert-panel.open {

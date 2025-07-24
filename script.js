@@ -182,6 +182,12 @@ const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
 const modalLivePriceDisplaySection = document.querySelector('.live-price-display-section'); 
 const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
 const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
+// NEW: Target Hit Details Modal Elements
+const targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
+const targetHitModalTitle = document.getElementById('targetHitModalTitle');
+const minimizeTargetHitModalBtn = document.getElementById('minimizeTargetHitModalBtn');
+const dismissAllTargetHitsBtn = document.getElementById('dismissAllTargetHitsBtn');
+const targetHitSharesList = document.getElementById('targetHitSharesList');
 const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 const splashScreen = document.getElementById('splashScreen');
@@ -348,6 +354,13 @@ function closeModals() {
         }
     }
 
+    // Close target hit details modal (no auto-save needed for this one)
+    if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
+        logDebug('Auto-Close: Target Hit Details modal is closing.');
+        // No auto-save or dirty check needed for this display modal
+    }
+    // Leave a blank line here for readability.
+
     // NEW: Auto-save logic for cash asset form modal (2.1)
     if (cashAssetFormModal && cashAssetFormModal.style.display !== 'none') {
         logDebug('Auto-Save: Cash Asset form modal is closing. Checking for unsaved changes.');
@@ -379,6 +392,7 @@ function closeModals() {
     });
     resetCalculator();
     deselectCurrentShare();
+    
     // NEW: Deselect current cash asset
     deselectCurrentCashAsset();
     if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
@@ -2809,14 +2823,12 @@ function stopLivePriceUpdates() {
 
 // NEW: Function to update the target hit notification icon
 function updateTargetHitBanner() {
-    // UPDATED: Filter shares in the CURRENTLY SELECTED WATCHLIST for target hits
+    // Collect ALL shares that have hit their target price, regardless of current watchlist view
     sharesAtTargetPrice = allSharesData.filter(share => {
-        // Check if the share belongs to the currently selected watchlists (excluding 'All Shares' for this check)
-        const isShareInCurrentView = currentSelectedWatchlistIds.includes(ALL_SHARES_ID) || currentSelectedWatchlistIds.includes(share.watchlistId);
-        
         const livePriceData = livePrices[share.shareName.toUpperCase()];
         // Ensure livePriceData exists and has targetHit property
-        return isShareInCurrentView && livePriceData && livePriceData.targetHit;
+        // The check against `currentSelectedWatchlistIds` is removed here to show ALL alerts globally
+        return livePriceData && livePriceData.targetHit;
     });
 
     if (!targetHitIconBtn || !targetHitIconCount) {
@@ -2824,18 +2836,17 @@ function updateTargetHitBanner() {
         return;
     }
 
-    // Only show if there are shares at target AND the icon hasn't been manually dismissed AND we are in a stock view
-    if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed && !currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    // Only show the icon if there are shares at target AND the icon hasn't been manually dismissed
+    // (The cash view check is removed here, as the icon should represent ALL stock alerts globally)
+    if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
         targetHitIconCount.textContent = sharesAtTargetPrice.length;
-        targetHitIconBtn.classList.remove('app-hidden'); // Show the icon
-        targetHitIconBtn.style.display = 'flex'; // Ensure it's flex for icon + counter
+        targetHitIconBtn.classList.remove('app-hidden'); // Show the icon via class
         targetHitIconCount.style.display = 'block'; // Show the count badge
-        logDebug('Target Alert: Showing icon: ' + sharesAtTargetPrice.length + ' shares hit target (watchlist-specific check).');
+        logDebug('Target Alert: Showing icon: ' + sharesAtTargetPrice.length + ' shares hit target (global check).');
     } else {
-        targetHitIconBtn.classList.add('app-hidden'); // Hide the icon
-        targetHitIconBtn.style.display = 'none'; // Ensure it's hidden
+        targetHitIconBtn.classList.add('app-hidden'); // Hide the icon via class
         targetHitIconCount.style.display = 'none'; // Hide the count badge
-        logDebug('Target Alert: No shares hit target in current view or icon is dismissed or in cash view. Hiding icon.');
+        logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
     }
 }
 
@@ -4105,6 +4116,7 @@ async function initializeAppLogic() {
     if (cashAssetFormModal) cashAssetFormModal.style.setProperty('display', 'none', 'important');
     if (cashAssetDetailModal) cashAssetDetailModal.style.setProperty('display', 'none', 'important');
     if (stockSearchModal) stockSearchModal.style.setProperty('display', 'none', 'important'); // NEW: Hide stock search modal
+    if (targetHitDetailsModal) targetHitDetailsModal.style.setProperty('display', 'none', 'important'); // Hide target hit details modal initially
 
 
     // Service Worker Registration
@@ -4435,17 +4447,57 @@ async function initializeAppLogic() {
         });
     }
 
-    // NEW: Target hit icon button listener for dismissal
-    if (targetHitIconBtn) {
-        targetHitIconBtn.addEventListener('click', (event) => {
-            logDebug('Target Alert: Icon button clicked. Dismissing icon.');
-            targetHitIconDismissed = true; // Set flag to true
-            localStorage.setItem('targetHitIconDismissed', 'true'); // Save dismissal state to localStorage
-            updateTargetHitBanner(); // Re-run to hide the icon
-            showCustomAlert('Alerts dismissed for this session.', 1500); // Optional: Provide user feedback
-            renderWatchlist(); // NEW: Re-render watchlist to remove highlighting
+    // Function to show the target hit details modal
+function showTargetHitDetailsModal() {
+    if (!targetHitDetailsModal || !targetHitSharesList || !sharesAtTargetPrice) {
+        console.error('Target Hit Modal: Required elements or data not found.');
+        showCustomAlert('Error displaying target hit details. Please try again.', 2000);
+        return;
+    }
+
+    targetHitSharesList.innerHTML = ''; // Clear previous content
+
+    if (sharesAtTargetPrice.length === 0) {
+        targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
+    } else {
+        sharesAtTargetPrice.forEach(share => {
+            const livePriceData = livePrices[share.shareName.toUpperCase()];
+            if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
+                // Skip if live price data is unavailable or invalid
+                return;
+            }
+
+            const currentLivePrice = livePriceData.live;
+            const targetPrice = share.targetPrice;
+            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative'; // Determine color based on whether it passed target up or down
+
+            const targetHitItem = document.createElement('div');
+            targetHitItem.classList.add('target-hit-item');
+            targetHitItem.dataset.shareId = share.id; // Add data attribute for potential future interaction
+
+            targetHitItem.innerHTML = `
+                <div class="target-hit-item-header">
+                    <span class="share-name-code ${priceClass}">${share.shareName}</span>
+                    <span class="live-price-display ${priceClass}">$${currentLivePrice.toFixed(2)}</span>
+                </div>
+                <p>Target: <strong>$${targetPrice !== null && !isNaN(targetPrice) ? targetPrice.toFixed(2) : 'N/A'}</strong></p>
+                <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
+            `;
+            targetHitSharesList.appendChild(targetHitItem);
         });
     }
+
+    showModal(targetHitDetailsModal);
+    logDebug('Target Hit Modal: Displayed details for ' + sharesAtTargetPrice.length + ' shares.');
+}
+
+    // NEW: Target hit icon button listener (opens the modal)
+    if (targetHitIconBtn) {
+        targetHitIconBtn.addEventListener('click', (event) => {
+            logDebug('Target Alert: Icon button clicked. Opening details modal.');
+            showTargetHitDetailsModal();
+        });
+    }}
 
     // NEW: Target hit icon button listener to open alert panel (if you decide to use it later)
     // For now, this is commented out as the user wants simple dismissal on click.
@@ -4463,11 +4515,25 @@ async function initializeAppLogic() {
     }
     */
 
-    // NEW: Close alert panel button listener (alertPanel is not in current HTML, but kept for consistency)
-    if (closeAlertPanelBtn) {
-        closeAlertPanelBtn.addEventListener('click', () => {
-            logDebug('Alert Panel: Close button clicked.');
-            // hideModal(alertPanel); // Commented out as alertPanel is not in HTML
+    // Event listener for Minimize Target Hit Modal button
+    if (minimizeTargetHitModalBtn) {
+        minimizeTargetHitModalBtn.addEventListener('click', () => {
+            logDebug('Target Hit Modal: Minimize button clicked. Hiding modal, keeping icon visible.');
+            hideModal(targetHitDetailsModal); // Just hide the modal
+            // The icon (targetHitIconBtn) remains visible because targetHitIconDismissed is not set to true
+        });
+    }
+
+    // Event listener for Dismiss All Target Hits button
+    if (dismissAllTargetHitsBtn) {
+        dismissAllTargetHitsBtn.addEventListener('click', () => {
+            logDebug('Target Hit Modal: Dismiss All button clicked. Dismissing alerts until next session.');
+            targetHitIconDismissed = true; // Set flag to true
+            localStorage.setItem('targetHitIconDismissed', 'true'); // Persist dismissal state
+            updateTargetHitBanner(); // Update banner to hide icon
+            hideModal(targetHitDetailsModal); // Hide the modal
+            showCustomAlert('Target Price Alerts dismissed until next login.', 2000, true); // Visual confirmation
+            renderWatchlist(); // Re-render watchlist to remove highlights from dismissed alerts
         });
     }
 

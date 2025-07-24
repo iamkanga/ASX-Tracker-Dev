@@ -293,9 +293,9 @@
     </main>
 
     <!-- NEW: Target Price Notification Icon (bottom right) -->
-    <button id="targetHitIconBtn" class="target-hit-icon-btn" title="Shares at Target Price">
+    <button id="targetHitIconBtn" class="icon-button target-hit-fixed-btn app-hidden">
         <i class="fas fa-bell"></i>
-        <span id="targetHitIconCount" class="target-hit-icon-count">0</span>
+        <span id="targetHitIconCount" class="badge">0</span>
     </button>
 
     <!-- Scroll-to-Top Button -->
@@ -537,6 +537,28 @@
         </div>
     </div>
 
+    <div id="targetHitDetailsModal" class="modal target-hit-details-modal">
+        <div class="modal-content">
+            <div class="modal-header-with-icon">
+                <h2 id="targetHitModalTitle">Target Price Alerts</h2>
+                <div class="modal-header-action-group">
+                    <span id="minimizeTargetHitModalBtn" class="modal-action-icon" title="Minimize">
+                        <i class="fas fa-minus-circle"></i>
+                    </span>
+                    <span id="dismissAllTargetHitsBtn" class="modal-action-icon danger" title="Dismiss All">
+                        <i class="fas fa-times-circle"></i>
+                    </span>
+                    <span class="close-button">&times;</span>
+                </div>
+            </div>
+            
+            <div class="modal-body-scrollable">
+                <div id="targetHitSharesList" class="target-hit-shares-list">
+                    <p class="no-alerts-message">No shares currently at target price.</p>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- Context Menu for Share Actions (Long Press / Right Click) -->
     <div id="shareContextMenu" class="context-menu">
         <button id="contextEditShareBtn" class="context-menu-item"><i class="fas fa-edit"></i> Edit Share</button>
