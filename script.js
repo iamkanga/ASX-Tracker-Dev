@@ -614,16 +614,57 @@ function addShareToMobileCards(share) {
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-    // Apply target-hit-alert class if target is hit and not dismissed
-    if (isTargetHit && !targetHitIconDismissed) {
-        card.classList.add('target-hit-alert');
-    }
-
     // Declare these variables once at the top of the function
     const isMarketOpen = isAsxMarketOpen();
     let displayLivePrice = 'N/A';
     let displayPriceChange = '';
     let priceClass = '';
+    let cardPriceChangeClass = ''; // NEW: For subtle background tints and vertical lines
+
+    // Logic to determine display values and card-specific classes
+    if (livePriceData) {
+        const currentLivePrice = livePriceData.live;
+        const previousClosePrice = livePriceData.prevClose;
+        const lastFetchedLive = livePriceData.lastLivePrice;
+        const lastFetchedPrevClose = livePriceData.lastPrevClose;
+
+        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
+            // Show live data if market is open, or if market is closed but toggle is ON
+            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+            }
+            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                const change = currentLivePrice - previousClosePrice;
+                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : ''); // Set class for card
+            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+            }
+        } else {
+            // Market closed and toggle is OFF, show zero change
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayPriceChange = '0.00 (0.00%)';
+            priceClass = 'neutral';
+            cardPriceChangeClass = ''; // No tint/line for neutral or market closed
+        }
+    }
+
+    // Apply card-specific price change class
+    if (cardPriceChangeClass) {
+        card.classList.add(cardPriceChangeClass);
+    }
+
+    // Apply target-hit-alert class if target is hit and not dismissed
+    if (isTargetHit && !targetHitIconDismissed) {
+        card.classList.add('target-hit-alert');
+    }
 
     // Logic to determine display values
     if (livePriceData) {
@@ -2872,6 +2913,25 @@ function updateTargetHitBanner() {
 
     // Only show the icon if there are shares at target AND the icon hasn't been manually dismissed
     // (The cash view check is removed here, as the icon should represent ALL stock alerts globally)
+    if (!targetHitIconBtn || !targetHitIconCount || !watchlistSelect || !sortSelect) {
+        console.warn('Target Alert: Target hit icon elements or dropdowns not found. Cannot update banner/highlights.');
+        return;
+    }
+
+    // Determine if any shares at target price are currently being displayed in the selected stock watchlist(s)
+    const currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
+        // If "All Shares" is selected, any target hit applies
+        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
+            return true;
+        }
+        // If a specific watchlist is selected, check if the target-hit share is in it
+        if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
+            return share.watchlistId === currentSelectedWatchlistIds[0];
+        }
+        return false; // No target hits in cash view or multiple watchlists selected (defaulting to no highlight for now)
+    });
+
+    // Update the fixed bottom-left icon
     if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
         targetHitIconCount.textContent = sharesAtTargetPrice.length;
         targetHitIconBtn.classList.remove('app-hidden'); // Show the icon via class
@@ -2881,6 +2941,17 @@ function updateTargetHitBanner() {
         targetHitIconBtn.classList.add('app-hidden'); // Hide the icon via class
         targetHitIconCount.style.display = 'none'; // Hide the count badge
         logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
+    }
+
+    // Apply/remove border to watchlist and sort dropdowns if the *current view* has target hits
+    if (currentViewHasTargetHits && !targetHitIconDismissed) {
+        watchlistSelect.classList.add('target-hit-border');
+        sortSelect.classList.add('target-hit-border');
+        logDebug('Target Alert: Watchlist and Sort dropdowns highlighted (current view has target hits).');
+    } else {
+        watchlistSelect.classList.remove('target-hit-border');
+        sortSelect.classList.remove('target-hit-border');
+        logDebug('Target Alert: Watchlist and Sort dropdowns unhighlighted.');
     }
 }
 

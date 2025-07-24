@@ -2465,15 +2465,10 @@ input:checked + .slider:before {
     color: var(--label-color);
     font-weight: 400;
 }
-.dropdown-large option:not([value=""]) {
-    color: var(--text-color);
-    font-weight: 600;
-}
-
-.dropdown-large:focus {
-    border-color: var(--button-bg);
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-    outline: none;
+/* NEW: Conditional green border for dropdowns when a target is hit */
+.dropdown-large.target-hit-border {
+    border: 2px solid var(--green-color) !important;
+    box-shadow: 0 0 8px rgba(var(--green-color-dark-rgb), 0.5); /* Subtle glow */
 }
 
 .asx-code-btn {
@@ -2657,6 +2652,88 @@ table td.live-price-cell.negative-change {
     right: 0;
     width: 100%; 
     box-sizing: border-box; 
+}
+
+.mobile-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px var(--shadow-color);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease; /* Added background-color transition for tints */
+    position: relative; /* For pseudo-elements */
+    overflow: hidden; /* Ensure pseudo-elements are contained */
+}
+
+/* NEW: Thin vertical lines for price movement */
+.mobile-card::before,
+.mobile-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 5px; /* Width of the vertical line */
+    height: 100%;
+    transition: background-color 0.3s ease, width 0.3s ease, border-width 0.3s ease;
+    z-index: 1; /* Ensure they are above the card background but below content */
+}
+
+.mobile-card::before {
+    left: 0;
+}
+
+.mobile-card::after {
+    right: 0;
+}
+
+.mobile-card.positive-change-card::before,
+.mobile-card.positive-change-card::after {
+    background-color: var(--price-up-color);
+}
+
+.mobile-card.negative-change-card::before,
+.mobile-card.negative-change-card::after {
+    background-color: var(--price-down-color);
+}
+
+/* NEW: Subtle background tints for price movement */
+.mobile-card.positive-change-card {
+    background-color: var(--live-price-positive-bg); /* Faint green tint */
+}
+
+.mobile-card.negative-change-card {
+    background-color: var(--live-price-negative-bg); /* Faint red tint */
+}
+
+/* NEW: Full border for target-hit cards (expands the vertical lines) */
+.mobile-card.target-hit-alert::before,
+.mobile-card.target-hit-alert::after {
+    width: 100%; /* Expands to full width */
+    height: 100%;
+    border-radius: 8px; /* Match card border radius */
+    border: 2px solid var(--target-alert-border); /* Full border */
+    background-color: transparent; /* No background color from lines when it's a full border */
+    z-index: 0; /* Behind the card content */
+    top: 0;
+    left: 0; /* Ensure it covers the whole card */
+    right: 0;
+    bottom: 0;
+}
+.mobile-card.target-hit-alert::after { /* Disable one pseudo-element when it's a full border */
+    display: none;
+}
+.mobile-card.target-hit-alert::before { /* Make the first pseudo-element the full border */
+    display: block;
+}
+
+/* Ensure content is readable over the tint */
+.mobile-card.positive-change-card h3,
+.mobile-card.positive-change-card p,
+.mobile-card.positive-change-card span,
+.mobile-card.negative-change-card h3,
+.mobile-card.negative-change-card p,
+.mobile-card.negative-change-card span {
+    color: var(--text-color); /* Ensure readability */
 }
 
 .mobile-card {
