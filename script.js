@@ -4502,12 +4502,7 @@ async function initializeAppLogic() {
         });
     }
 
-    // Event listener for the new Close button at the bottom of the modal
-    if (closeTargetHitModalBtn) {
-        closeTargetHitModalBtn.addEventListener('click', () => {
-            hideModal(targetHitDetailsModal);
-        });
-    }
+    // closeTargetHitModalBtn has been removed from the HTML and its functionality replaced by minimizeTargetHitModalBtn.
 
     // NEW: Clear All Alerts button listener (alertPanel is not in current HTML, but kept for consistency)
     if (clearAllAlertsBtn) {
