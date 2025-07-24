@@ -5276,11 +5276,7 @@ if (showLastLivePriceToggle) {
             }
         });
     }
-
-
-    // Call adjustMainContentPadding initially and on window load/resize
-    // Removed: window.addEventListener('load', adjustMainContentPadding); // Removed, handled by onAuthStateChanged
-    // Already added to window.addEventListener('resize') in sidebar section
+    
 }
 
 // Call adjustMainContentPadding initially and on window load/resize
