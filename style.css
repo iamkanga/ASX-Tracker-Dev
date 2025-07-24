@@ -3542,32 +3542,29 @@ table td.live-price-cell.negative-change {
 
 /* Target Hit Notification Icon (bottom-left, fixed) */
 .target-hit-icon-btn {
-    display: none; /* Hidden by default, shown by JS when shares hit target */
-    position: fixed !important; /* Ensures it stays in viewport, overriding any other positions */
-    bottom: 20px !important; /* Padding from bottom */
-    left: 20px !important; /* THIS IS THE CRITICAL CHANGE: Positioning to the left */
-    right: auto !important; /* Ensure it's not forced to the right */
-    z-index: 9999 !important; /* Ensure it's on top of everything */
-    background-color: var(--green-color); /* Now using our new green color variable */
+    position: fixed; /* Keep fixed to viewport */
+    bottom: 20px; /* Position from bottom */
+    left: 20px; /* Position from left */
+    z-index: 9999; /* Ensure it's on top of almost everything */
+    background-color: var(--green-color); /* Use the defined green color */
     color: var(--button-text); /* White text/icon */
     border: none;
-    border-radius: 50%; /* Make it round as previously discussed */
-    width: 60px; /* Make it a bit larger as previously discussed */
+    border-radius: 50%; /* Make it round */
+    width: 60px; /* Fixed size */
     height: 60px;
-    display: flex;
+    font-size: 1.5em; /* Icon size */
+    cursor: pointer;
+    box-shadow: 0 4px 12px var(--shadow-color); /* General shadow */
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    animation: pulseHighlight 2s infinite alternate ease-in-out; /* Pulsing animation */
+    border: 2px solid var(--green-color-dark); /* Darker green border */
+    display: flex; /* Crucial: Use flex to display the icon and center content */
     justify-content: center;
     align-items: center;
-    font-size: 1.5em; /* Match suggested larger size for fixed button */
-    cursor: pointer;
-    box-shadow: 0 4px 12px var(--shadow-color); /* Use general shadow variable */
-    transition: transform 0.2s ease, background-color 0.2s ease;
-    animation: pulseHighlight 2s infinite alternate ease-in-out; /* Apply subtle pulse animation */
-    border: 2px solid var(--green-color-dark); /* Darker green border */
 }
 
-/* Remove the chat box tail, as it's no longer a "chat bubble" but a round alert icon */
 .target-hit-icon-btn::after {
-    display: none; /* Hide the pseudo-element tail */
+    display: none; /* Explicitly hide the pseudo-element tail if it exists from older code */
 }
 
 .target-hit-icon-btn:hover {
