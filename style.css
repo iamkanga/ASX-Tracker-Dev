@@ -1,4 +1,4 @@
-/*  Base Styles */
+/* Base Styles */
 :root {
     /* Light Theme (Default) */
     --background-color: #eef2f3;
@@ -96,6 +96,7 @@
 
 /* Dark Theme Variables */
 body.dark-theme {
+    /* Dark Theme Variables */
     --background-color: #1a1a1a; /* Very dark gray/almost black */
     --text-color: #e0e0e0; /* Light gray for text */
     --header-bg: #282828; /* Darker gray for header */
@@ -151,11 +152,11 @@ body.dark-theme {
     --green-color: #2ecc71; /* Green for success in dark theme */
     --green-color-dark: #229954; /* Darker green for hover */
     /* UPDATED: Cash & Assets Section Colors (Dark Theme) */
-    --cash-section-bg: #282828; /* Dark gray */
-    --cash-card-bg: #333333; /* Medium dark gray */
-    --cash-border-color: #555555; /* Darker gray */
-    --cash-total-bg: #444444; /* Dark gray for total background */
-    --cash-total-text: #e0e0e0; /* Light gray for total text */
+    --cash-section-bg: #282828;
+    --cash-card-bg: #333333;
+    --cash-border-color: #555555;
+    --cash-total-bg: #444444;
+    --cash-total-text: #e0e0e0;
     --cash-button-bg: #2ecc71; /* Keep green */
     --cash-button-hover-bg: #229954; /* Keep green hover */
     --cash-primary-button-bg: #555555; /* Gray primary button */
@@ -1281,7 +1282,7 @@ body.theme-muted-magenta {
     --danger-button-bg: #dc3545;
     --danger-button-hover-bg: #c82333;
     --icon-action-color: #a86a8b;
-    --icon-action-hover-color: #987b5a;
+    --icon-action-hover-color: #985a7b;
     --icon-danger-color: #dc3545;
     --icon-danger-hover-color: #c82333;
     --calc-num-btn-bg: #d9b3c7;
@@ -1296,18 +1297,18 @@ body.theme-muted-magenta {
     --comment-title-bg: rgba(0, 0, 0, 0.05);
     --target-alert-bg: #a86a8b;
     --target-alert-text: #fff;
-    --target-alert-border: #987b5a;
+    --target-alert-border: #985a7b;
 
     /* UPDATED: Cash & Assets Section Colors (Muted Theme) */
     --cash-section-bg: #f9eef9;
     --cash-card-bg: #e7cde7;
     --cash-border-color: #cbb7a1;
-    --cash-total-bg: #987b5a;
+    --cash-total-bg: #985a7b;
     --cash-total-text: #fff;
     --cash-button-bg: #28a745;
     --cash-button-hover-bg: #218838;
     --cash-primary-button-bg: #a86a8b;
-    --cash-primary-button-hover-bg: #987b5a;
+    --cash-primary-button-hover-bg: #985a7b;
     --cash-delete-icon-color: #dc3545;
     --cash-edit-icon-color: #a86a8b;
 }
@@ -1412,7 +1413,7 @@ body.theme-muted-grey {
     --target-alert-text: #fff;
     --target-alert-border: #7a7a7a;
 
-    /* UPDATED: Cash & Assets Section Colors (Muted Theme) */
+    /* UPDATED: Cash & Assets Section Colors (Custom Theme) */
     --cash-section-bg: #f4f4f4;
     --cash-card-bg: #e0e0e0;
     --cash-border-color: #b7b7b7;
@@ -1420,10 +1421,10 @@ body.theme-muted-grey {
     --cash-total-text: #fff;
     --cash-button-bg: #28a745;
     --cash-button-hover-bg: #218838;
-    --cash-primary-button-bg: #8a8a8a;
-    --cash-primary-button-hover-bg: #7a7a7a;
+    --cash-primary-button-bg: #999999;
+    --cash-primary-button-hover-bg: #888888;
     --cash-delete-icon-color: #dc3545;
-    --cash-edit-icon-color: #8a8a8a;
+    --cash-edit-icon-color: #999999;
 }
 
 /* Subtle Themes - Adjusted for better visual distinction */
@@ -3667,9 +3668,20 @@ table td.live-price-cell.negative-change {
 }
 
 /* Target Hit Details Modal Specific Styles */
+.target-hit-details-modal {
+    background-color: rgba(0, 0, 0, 0.4); /* Dark semi-transparent overlay */
+    backdrop-filter: blur(8px); /* Frosted glass effect */
+    -webkit-backdrop-filter: blur(8px); /* Safari support */
+}
+
 .target-hit-details-modal .modal-content {
-    max-width: 400px; /* Adjust width for the alert list */
-    margin: auto; /* Center the modal */
+    background-color: rgba(255, 255, 255, 0.85); /* White semi-transparent for content, looks good on dark too */
+    max-width: 400px;
+    margin: auto;
+}
+
+body.dark-theme .target-hit-details-modal .modal-content {
+    background-color: rgba(40, 40, 40, 0.85); /* Dark semi-transparent for dark theme */
 }
 
 .target-hit-shares-list {
@@ -3785,7 +3797,7 @@ table td.live-price-cell.negative-change {
 }
 
 .alert-item {
-    background-color: var(--alert-item-bg);
+    background-color: rgba(255, 255, 255, 0.9); /* White semi-transparent for alert item */
     border: 1px solid var(--alert-panel-border);
     border-radius: 8px;
     padding: 10px;
@@ -3794,6 +3806,10 @@ table td.live-price-cell.negative-change {
     color: var(--text-color);
     font-size: 0.9em;
     position: relative;
+}
+
+body.dark-theme .alert-item {
+    background-color: rgba(51, 51, 51, 0.9); /* Dark semi-transparent for dark theme */
 }
 
 .alert-item:last-child {
