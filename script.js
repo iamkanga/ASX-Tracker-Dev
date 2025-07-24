@@ -48,6 +48,146 @@ let currentContextMenuShareId = null; // Stores the ID of the share that opened 
 let originalShareData = null; // Stores the original share data when editing for dirty state check
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
 
+// --- GLOBAL UI ELEMENT VARIABLES ---
+// These are declared globally so they can be accessed by all functions
+let appHeader = null;
+let mainContainer = null;
+let mainTitle = null;
+let addShareHeaderBtn = null;
+let newShareBtn = null;
+let standardCalcBtn = null;
+let dividendCalcBtn = null;
+let asxCodeButtonsContainer = null;
+let shareFormSection = null;
+let formCloseButton = null;
+let formTitle = null;
+let saveShareBtn = null;
+let deleteShareBtn = null;
+let shareNameInput = null;
+let currentPriceInput = null;
+let targetPriceInput = null;
+let dividendAmountInput = null;
+let frankingCreditsInput = null;
+let shareRatingSelect = null;
+let commentsFormContainer = null;
+let modalStarRating = null; 
+let addCommentSectionBtn = null;
+let shareTableBody = null;
+let mobileShareCardsContainer = null;
+let tableContainer = null;
+let loadingIndicator = null;
+let shareDetailModal = null;
+let modalShareName = null;
+let modalEnteredPrice = null;
+let modalTargetPrice = null;
+let modalDividendAmount = null;
+let modalFrankingCredits = null;
+let modalEntryDate = null;
+let modalCommentsContainer = null;
+let modalUnfrankedYieldSpan = null;
+let modalFrankedYieldSpan = null;
+let editShareFromDetailBtn = null;
+let deleteShareFromDetailBtn = null;
+let modalNewsLink = null;
+let modalMarketIndexLink = null;
+let modalFoolLink = null;
+let modalListcorpLink = null;
+let modalCommSecLink = null;
+let commSecLoginMessage = null;
+let dividendCalculatorModal = null;
+let calcCloseButton = null;
+let calcCurrentPriceInput = null;
+let calcDividendAmountInput = null;
+let calcFrankingCreditsInput = null;
+let calcUnfrankedYieldSpan = null;
+let calcFrankedYieldSpan = null;
+let investmentValueSelect = null;
+let calcEstimatedDividend = null;
+let sortSelect = null;
+let customDialogModal = null;
+let customDialogMessage = null;
+let calculatorModal = null;
+let calculatorInput = null;
+let calculatorResult = null;
+let calculatorButtons = null;
+let watchlistSelect = null;
+let themeToggleBtn = null;
+let colorThemeSelect = null;
+let revertToDefaultThemeBtn = null;
+let scrollToTopBtn = null;
+let hamburgerBtn = null;
+let appSidebar = null;
+let closeMenuBtn = null;
+let addWatchlistBtn = null;
+let editWatchlistBtn = null;
+let addWatchlistModal = null;
+let newWatchlistNameInput = null;
+let saveWatchlistBtn = null;
+let manageWatchlistModal = null;
+let editWatchlistNameInput = null;
+let saveWatchlistNameBtn = null;
+let deleteWatchlistInModalBtn = null;
+let shareContextMenu = null;
+let contextEditShareBtn = null;
+let contextDeleteShareBtn = null;
+let logoutBtn = null;
+let deleteAllUserDataBtn = null;
+let exportWatchlistBtn = null;
+let refreshLivePricesBtn = null;
+let shareWatchlistSelect = null;
+let modalLivePriceDisplaySection = null; 
+let targetHitIconBtn = null;
+let targetHitIconCount = null;
+let targetHitDetailsModal = null;
+let targetHitModalTitle = null;
+let targetHitSharesList = null;
+let closeTargetHitModalHeaderBtn = null;
+let minimizeTargetHitModalBtn = null;
+let dismissAllTargetHitsBtn = null;
+let closeTargetHitModalBtn = null;
+let toggleCompactViewBtn = null;
+let showLastLivePriceToggle = null;
+let splashScreen = null;
+let searchStockBtn = null;
+let stockSearchModal = null;
+let stockSearchTitle = null;
+let asxSearchInput = null;
+let asxSuggestions = null;
+let searchResultDisplay = null;
+let searchModalActionButtons = null;
+let searchModalCloseButton = null;
+let allAsxCodes = [];
+let splashKangarooIcon = null;
+let splashSignInBtn = null;
+let alertPanel = null;
+let alertList = null;
+let closeAlertPanelBtn = null;
+let clearAllAlertsBtn = null;
+let stockWatchlistSection = null;
+let cashAssetsSection = null;
+let cashCategoriesContainer = null;
+let addCashCategoryBtn = null;
+let saveCashBalancesBtn = null;
+let totalCashDisplay = null;
+let addCashAssetSidebarBtn = null;
+let cashAssetFormModal = null;
+let cashFormTitle = null;
+let cashAssetNameInput = null;
+let cashAssetBalanceInput = null;
+let saveCashAssetBtn = null;
+let deleteCashAssetBtn = null;
+let cashAssetFormCloseButton = null;
+let cashAssetCommentsContainer = null;
+let addCashAssetCommentBtn = null;
+let cashAssetDetailModal = null;
+let modalCashAssetName = null;
+let detailCashAssetName = null;
+let detailCashAssetBalance = null;
+let detailCashAssetLastUpdated = null;
+let editCashAssetFromDetailBtn = null;
+let deleteCashAssetFromDetailBtn = null;
+let modalCashAssetCommentsContainer = null;
+
 
 // Live Price Data
 // IMPORTANT: This URL is the exact string provided in your initial script.js file.
@@ -4181,10 +4321,148 @@ async function deleteAllUserData() {
 }
 
 async function initializeAppLogic() {
-    // DEBUG: Log when initializeAppLogic starts
     logDebug('initializeAppLogic: Firebase is ready. Starting app logic.');
 
-    // Initial modal hiding
+    // Assign UI Element References (once, globally)
+    appHeader = document.getElementById('appHeader');
+    mainContainer = document.querySelector('main.container');
+    mainTitle = document.getElementById('mainTitle');
+    addShareHeaderBtn = document.getElementById('addShareHeaderBtn');
+    newShareBtn = document.getElementById('newShareBtn');
+    standardCalcBtn = document.getElementById('standardCalcBtn');
+    dividendCalcBtn = document.getElementById('dividendCalcBtn');
+    asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
+    shareFormSection = document.getElementById('shareFormSection');
+    formCloseButton = document.querySelector('.form-close-button');
+    formTitle = document.getElementById('formTitle');
+    saveShareBtn = document.getElementById('saveShareBtn');
+    deleteShareBtn = document.getElementById('deleteShareBtn');
+    shareNameInput = document.getElementById('shareName');
+    currentPriceInput = document.getElementById('currentPrice');
+    targetPriceInput = document.getElementById('targetPrice');
+    dividendAmountInput = document.getElementById('dividendAmount');
+    frankingCreditsInput = document.getElementById('frankingCredits');
+    shareRatingSelect = document.getElementById('shareRating');
+    commentsFormContainer = document.getElementById('dynamicCommentsArea');
+    modalStarRating = document.getElementById('modalStarRating'); 
+    addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
+    shareTableBody = document.querySelector('#shareTable tbody');
+    mobileShareCardsContainer = document.getElementById('mobileShareCards');
+    tableContainer = document.querySelector('.table-container');
+    loadingIndicator = document.getElementById('loadingIndicator');
+    shareDetailModal = document.getElementById('shareDetailModal');
+    modalShareName = document.getElementById('modalShareName');
+    modalEnteredPrice = document.getElementById('modalEnteredPrice');
+    modalTargetPrice = document.getElementById('modalTargetPrice');
+    modalDividendAmount = document.getElementById('modalDividendAmount');
+    modalFrankingCredits = document.getElementById('modalFrankingCredits');
+    modalEntryDate = document.getElementById('modalEntryDate');
+    modalCommentsContainer = document.getElementById('modalCommentsContainer');
+    modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
+    modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
+    editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
+    deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
+    modalNewsLink = document.getElementById('modalNewsLink');
+    modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
+    modalFoolLink = document.getElementById('modalFoolLink');
+    modalListcorpLink = document.getElementById('modalListcorpLink');
+    modalCommSecLink = document.getElementById('modalCommSecLink');
+    commSecLoginMessage = document.getElementById('commSecLoginMessage');
+    dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
+    calcCloseButton = document.querySelector('.calc-close-button');
+    calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
+    calcDividendAmountInput = document.getElementById('calcDividendAmount');
+    calcFrankingCreditsInput = document.getElementById('calcFrankingCredits');
+    calcUnfrankedYieldSpan = document.getElementById('calcUnfrankedYield');
+    calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
+    investmentValueSelect = document.getElementById('investmentValueSelect');
+    calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
+    sortSelect = document.getElementById('sortSelect');
+    customDialogModal = document.getElementById('customDialogModal');
+    customDialogMessage = document.getElementById('customDialogMessage');
+    calculatorModal = document.getElementById('calculatorModal');
+    calculatorInput = document.getElementById('calculatorInput');
+    calculatorResult = document.getElementById('calculatorResult');
+    calculatorButtons = document.querySelector('.calculator-buttons');
+    watchlistSelect = document.getElementById('watchlistSelect');
+    themeToggleBtn = document.getElementById('themeToggleBtn');
+    colorThemeSelect = document.getElementById('colorThemeSelect');
+    revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
+    scrollToTopBtn = document.getElementById('scrollToTopBtn');
+    hamburgerBtn = document.getElementById('hamburgerBtn');
+    appSidebar = document.getElementById('appSidebar');
+    closeMenuBtn = document.getElementById('closeMenuBtn');
+    addWatchlistBtn = document.getElementById('addWatchlistBtn');
+    editWatchlistBtn = document.getElementById('editWatchlistBtn');
+    addWatchlistModal = document.getElementById('addWatchlistModal');
+    newWatchlistNameInput = document.getElementById('newWatchlistName');
+    saveWatchlistBtn = document.getElementById('saveWatchlistBtn');
+    manageWatchlistModal = document.getElementById('manageWatchlistModal');
+    editWatchlistNameInput = document.getElementById('editWatchlistName');
+    saveWatchlistNameBtn = document.getElementById('saveWatchlistNameBtn');
+    deleteWatchlistInModalBtn = document.getElementById('deleteWatchlistInModalBtn');
+    shareContextMenu = document.getElementById('shareContextMenu');
+    contextEditShareBtn = document.getElementById('contextEditShareBtn');
+    contextDeleteShareBtn = document.getElementById('contextDeleteShareBtn');
+    logoutBtn = document.getElementById('logoutBtn');
+    deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
+    exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
+    refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
+    shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
+    modalLivePriceDisplaySection = document.querySelector('.live-price-display-section'); 
+    targetHitIconBtn = document.getElementById('targetHitIconBtn');
+    targetHitIconCount = document.getElementById('targetHitIconCount');
+    targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
+    targetHitModalTitle = document.getElementById('targetHitModalTitle');
+    targetHitSharesList = document.getElementById('targetHitSharesList');
+    closeTargetHitModalHeaderBtn = null; // No header X button in HTML
+    minimizeTargetHitModalBtn = document.getElementById('minimizeTargetHitModalBtn'); // In footer
+    dismissAllTargetHitsBtn = document.getElementById('dismissAllTargetHitsBtn'); // In footer
+    closeTargetHitModalBtn = document.getElementById('closeTargetHitModalBtn'); // In footer
+    toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
+    showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
+    splashScreen = document.getElementById('splashScreen');
+    searchStockBtn = document.getElementById('searchStockBtn');
+    stockSearchModal = document.getElementById('stockSearchModal');
+    stockSearchTitle = document.getElementById('stockSearchTitle');
+    asxSearchInput = document.getElementById('asxSearchInput');
+    asxSuggestions = document.getElementById('asxSuggestions');
+    searchResultDisplay = document.getElementById('searchResultDisplay');
+    searchModalActionButtons = document.querySelector('#stockSearchModal .modal-action-buttons-footer');
+    searchModalCloseButton = document.querySelector('.search-close-button');
+    allAsxCodes = []; // This is correctly set via loadAsxCodesFromCSV in onAuthStateChanged
+    splashKangarooIcon = document.getElementById('splashKangarooIcon');
+    splashSignInBtn = document.getElementById('splashSignInBtn');
+    alertPanel = document.getElementById('alertPanel');
+    alertList = document.getElementById('alertList');
+    closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn');
+    clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn');
+    stockWatchlistSection = document.getElementById('stockWatchlistSection');
+    cashAssetsSection = document.getElementById('cashAssetsSection');
+    cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
+    addCashCategoryBtn = document.getElementById('addCashCategoryBtn');
+    saveCashBalancesBtn = document.getElementById('saveCashBalancesBtn');
+    totalCashDisplay = document.getElementById('totalCashDisplay');
+    addCashAssetSidebarBtn = document.getElementById('addCashAssetSidebarBtn');
+    cashAssetFormModal = document.getElementById('cashAssetFormModal');
+    cashFormTitle = document.getElementById('cashFormTitle');
+    cashAssetNameInput = document.getElementById('cashAssetName');
+    cashAssetBalanceInput = document.getElementById('cashAssetBalance');
+    saveCashAssetBtn = document.getElementById('saveCashAssetBtn');
+    deleteCashAssetBtn = document.getElementById('deleteCashAssetBtn');
+    cashAssetFormCloseButton = document.querySelector('.cash-form-close-button');
+    cashAssetCommentsContainer = document.getElementById('cashAssetCommentsArea');
+    addCashAssetCommentBtn = document.getElementById('addCashAssetCommentBtn');
+    cashAssetDetailModal = document.getElementById('cashAssetDetailModal');
+    modalCashAssetName = document.getElementById('modalCashAssetName');
+    detailCashAssetName = document.getElementById('detailCashAssetName');
+    detailCashAssetBalance = document.getElementById('detailCashAssetBalance');
+    detailCashAssetLastUpdated = document.getElementById('detailCashAssetLastUpdated');
+    editCashAssetFromDetailBtn = document.getElementById('editCashAssetFromDetailBtn');
+    deleteCashAssetFromDetailBtn = document.getElementById('deleteCashAssetFromDetailBtn');
+    modalCashAssetCommentsContainer = document.getElementById('modalCashAssetCommentsContainer');
+
+    // Initial modal hiding (using global refs now)
     if (shareFormSection) shareFormSection.style.setProperty('display', 'none', 'important');
     if (dividendCalculatorModal) dividendCalculatorModal.style.setProperty('display', 'none', 'important');
     if (shareDetailModal) shareDetailModal.style.setProperty('display', 'none', 'important');
@@ -4193,14 +4471,12 @@ async function initializeAppLogic() {
     if (customDialogModal) customDialogModal.style.setProperty('display', 'none', 'important');
     if (calculatorModal) calculatorModal.style.setProperty('display', 'none', 'important');
     if (shareContextMenu) shareContextMenu.style.setProperty('display', 'none', 'important');
-    if (targetHitIconBtn) targetHitIconBtn.classList.add('app-hidden'); // Ensure icon is hidden initially via class
-    if (alertPanel) alertPanel.style.display = 'none'; // NEW: Ensure alert panel is hidden initially
-    // NEW: Hide cash asset modals initially
+    if (targetHitIconBtn) targetHitIconBtn.classList.add('app-hidden');
+    if (alertPanel) alertPanel.style.display = 'none';
     if (cashAssetFormModal) cashAssetFormModal.style.setProperty('display', 'none', 'important');
     if (cashAssetDetailModal) cashAssetDetailModal.style.setProperty('display', 'none', 'important');
-    if (stockSearchModal) stockSearchModal.style.setProperty('display', 'none', 'important'); // NEW: Hide stock search modal
-    if (targetHitDetailsModal) targetHitDetailsModal.style.setProperty('display', 'none', 'important'); // Hide target hit details modal initially
-
+    if (stockSearchModal) stockSearchModal.style.setProperty('display', 'none', 'important');
+    if (targetHitDetailsModal) targetHitDetailsModal.style.setProperty('display', 'none', 'important');
 
     // Service Worker Registration
     if ('serviceWorker' in navigator) {
@@ -4635,33 +4911,41 @@ if (deleteAllUserDataBtn) {
 
     // Watchlist Select Change Listener
     if (watchlistSelect) {
-        watchlistSelect.addEventListener('change', async (event) => {
+        // Remove existing listener to prevent multiple bindings on subsequent calls
+        if (watchlistSelect._changeListener) { // Check for a stored listener
+            watchlistSelect.removeEventListener('change', watchlistSelect._changeListener);
+        }
+        const newWatchlistListener = async (event) => {
             logDebug('Watchlist Select: Change event fired. New value: ' + event.target.value);
             currentSelectedWatchlistIds = [event.target.value];
             await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
-            // Just render the watchlist. The listeners for shares/cash are already active.
             renderWatchlist();
-        });
+        };
+        watchlistSelect.addEventListener('change', newWatchlistListener);
+        watchlistSelect._changeListener = newWatchlistListener; // Store listener for future removal
     }
 
     // Sort Select Change Listener
-if (sortSelect) {
-    sortSelect.addEventListener('change', async (event) => {
-        logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
-        currentSortOrder = sortSelect.value;
-        // Determine whether to sort shares or cash assets
-        if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-            renderCashCategories(); // Re-render cash categories with new sort order
-        } else {
-            sortShares(); // Sorts allSharesData and calls renderWatchlist
+    if (sortSelect) {
+        // Remove existing listener to prevent multiple bindings on subsequent calls
+        if (sortSelect._changeListener) { // Check for a stored listener
+            sortSelect.removeEventListener('change', sortSelect._changeListener);
         }
-        await saveSortOrderPreference(currentSortOrder);
-
-        // NEW: Scroll to the top of the page after sorting/rendering
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        logDebug('Sort: Scrolled to top after sorting.');
-    });
-}
+        const newSortListener = async (event) => {
+            logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
+            currentSortOrder = sortSelect.value;
+            if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+                renderCashCategories();
+            } else {
+                sortShares();
+            }
+            await saveSortOrderPreference(currentSortOrder);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            logDebug('Sort: Scrolled to top after sorting.');
+        };
+        sortSelect.addEventListener('change', newSortListener);
+        sortSelect._changeListener = newSortListener; // Store listener for future removal
+    }
 
     // New Share Button (from sidebar) - Now contextual, handled by updateSidebarAddButtonContext
     // The event listener will be set dynamically by updateSidebarAddButtonContext()
