@@ -5560,4 +5560,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // NEW: Hide splash screen if Firebase fails to initialize
         hideSplashScreen();
     }
-});
+}); // This closes the 'onAuthStateChanged' event listener callback function.
+// Leave a blank line here for readability.
+// No content should follow here. This is the absolute end of the script.
