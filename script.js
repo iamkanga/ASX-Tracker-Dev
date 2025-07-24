@@ -549,7 +549,6 @@ function addShareToTable(share) {
     </p>
     <p><strong>Star Rating:</strong> ${share.starRating > 0 ? '⭐ ' + share.starRating : 'No Rating'}</p>
 `;
-} // This closes the addShareToMobileCards function.
 
     card.addEventListener('click', () => {
         logDebug('Mobile Card Click: Share ID: ' + share.id);
@@ -906,7 +905,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
         deleteShareBtn.classList.add('hidden');
         setIconDisabled(deleteShareBtn, false);
         logDebug('showEditFormForSelectedShare: deleteShareBtn shown and enabled.');
-    }
+    } // <--- ADD THIS CLOSING BRACE
 
     originalShareData = getCurrentFormData();
     setIconDisabled(saveShareBtn, true); // Save button disabled initially for editing
