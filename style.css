@@ -3541,29 +3541,60 @@ table td.live-price-cell.negative-change {
 }
 
 /* Target Hit Notification Icon (bottom-left, fixed) */
-/* Target Hit Notification Icon (bottom-left, fixed) */
 .target-hit-icon-btn {
-    position: fixed !important; /* Ensures it stays in viewport, overriding any other positions */
-    bottom: 20px !important; /* Padding from bottom */
-    left: 20px !important; /* Positions to the left */
-    right: auto !important; /* Ensures it's not forced to the right */
-    z-index: 9999 !important; /* Ensures it's on top of everything */
-    background-color: var(--green-color); /* Using our new green color variable */
-    color: var(--button-text); /* White text/icon */
+    position: fixed !important;
+    bottom: 20px !important;
+    left: 20px !important;
+    right: auto !important;
+    z-index: 9999 !important;
+    background-color: var(--green-color);
+    color: var(--button-text);
     border: none;
-    border-radius: 50%; /* Make it round */
-    width: 60px; /* Larger size */
+    border-radius: 50%;
+    width: 60px;
     height: 60px;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1.5em; /* Larger icon size */
+    font-size: 1.5em;
     cursor: pointer;
-    box-shadow: 0 4px 12px var(--shadow-color); /* General shadow variable */
+    box-shadow: 0 4px 12px var(--shadow-color);
     transition: transform 0.2s ease, background-color 0.2s ease;
-    animation: pulseHighlight 2s infinite alternate ease-in-out; /* Subtle pulse animation */
-    border: 2px solid var(--green-color-dark); /* Darker green border */
-    transform: translateZ(0); /* Force hardware acceleration and prevent layering issues */
+    animation: pulseHighlight 2s infinite alternate ease-in-out;
+    border: 2px solid var(--green-color-dark);
+    transform: translateZ(0);
+}
+
+/* Ensure app-hidden completely hides the button when intended */
+.target-hit-icon-btn.app-hidden {
+    display: none !important;
+}
+
+/* Remove the chat box tail, as it's no longer a "chat bubble" but a round alert icon */
+.target-hit-icon-btn::after {
+    display: none;
+}
+
+.target-hit-icon-btn:hover {
+    transform: translateY(-2px);
+    background-color: var(--green-color-dark);
+}
+
+/* Badge on the target hit icon */
+.target-hit-icon-count {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: var(--danger-color);
+    color: white;
+    font-size: 0.7em;
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 50%;
+    min-width: 20px;
+    text-align: center;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 /* Ensure app-hidden completely hides the button when intended */
