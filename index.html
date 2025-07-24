@@ -542,12 +542,7 @@
             <div class="modal-header-with-icon">
                 <h2 id="targetHitModalTitle">Target Price Alerts</h2>
                 <div class="modal-header-action-group">
-                    <span id="minimizeTargetHitModalBtn" class="modal-action-icon" title="Minimize">
-                        <i class="fas fa-minus"></i>
-                    </span>
-                    <span id="dismissAllTargetHitsBtn" class="modal-action-icon danger" title="Dismiss All Alerts">
-                        <i class="fas fa-times"></i>
-                    </span>
+                    <span id="targetHitModalCloseTopBtn" class="close-button">&times;</span>
                 </div>
             </div>
             
@@ -555,6 +550,10 @@
                 <div id="targetHitSharesList" class="target-hit-shares-list">
                     <p class="no-alerts-message">No shares currently at target price.</p>
                 </div>
+            </div>
+            <div class="modal-action-buttons-footer">
+                <button id="alertModalMinimizeBtn" class="button secondary-buttons">Minimize</button>
+                <button id="alertModalDismissAllBtn" class="button danger-button">Dismiss All</button>
             </div>
         </div>
     </div>

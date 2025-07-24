@@ -185,11 +185,14 @@ const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW
 // NEW: Target Hit Details Modal Elements
 const targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
 const targetHitModalTitle = document.getElementById('targetHitModalTitle');
-const minimizeTargetHitModalBtn = document.getElementById('minimizeTargetHitModalBtn');
-const dismissAllTargetHitsBtn = document.getElementById('dismissAllTargetHitsBtn');
+// Removed: minimizeTargetHitModalBtn, dismissAllTargetHitsBtn (now explicit buttons at bottom)
 const targetHitSharesList = document.getElementById('targetHitSharesList');
-// closeTargetHitModalBtn is removed as per user request, replaced by minimizeTargetHitModalBtn
 const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
+
+// NEW: References for the reconfigured buttons in the Target Hit Details Modal
+const targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTopBtn'); // New 'X' button at the top
+const alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn'); // New "Minimize" button at the bottom
+const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn'); // New "Dismiss All" button at the bottom
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
@@ -4483,26 +4486,35 @@ async function initializeAppLogic() {
         });
     }
 
-    // Event listener for Minimize Target Hit Modal button (now just hides modal, keeps icon active)
-    if (minimizeTargetHitModalBtn) {
-        minimizeTargetHitModalBtn.addEventListener('click', () => {
-            hideModal(targetHitDetailsModal);
+    // NEW: Event listener for the top 'X' close button in the Target Hit Details Modal
+    if (targetHitModalCloseTopBtn) {
+        targetHitModalCloseTopBtn.addEventListener('click', () => {
+            hideModal(targetHitDetailsModal); // Standard close, keeps bubble active
+            logDebug('Target Alert Modal: Top Close button clicked. Modal hidden.');
         });
     }
 
-    // Event listener for Dismiss All Target Hits button (now from its specific button)
-    if (dismissAllTargetHitsBtn) {
-        dismissAllTargetHitsBtn.addEventListener('click', () => {
-            targetHitIconDismissed = true;
-            localStorage.setItem('targetHitIconDismissed', 'true');
-            updateTargetHitBanner();
-            hideModal(targetHitDetailsModal);
-            showCustomAlert('Target Price Alerts dismissed until next login.', 2000, true);
-            renderWatchlist();
+    // NEW: Event listener for the "Minimize" button at the bottom of the modal
+    if (alertModalMinimizeBtn) {
+        alertModalMinimizeBtn.addEventListener('click', () => {
+            hideModal(targetHitDetailsModal); // Close the modal
+            // The bubble remains visible by default unless explicitly dismissed
+            logDebug('Target Alert Modal: Minimize button clicked. Modal hidden, bubble remains active.');
         });
     }
 
-    // closeTargetHitModalBtn has been removed from the HTML and its functionality replaced by minimizeTargetHitModalBtn.
+    // NEW: Event listener for the "Dismiss All" button at the bottom of the modal
+    if (alertModalDismissAllBtn) {
+        alertModalDismissAllBtn.addEventListener('click', () => {
+            targetHitIconDismissed = true; // Mark as dismissed for the session
+            localStorage.setItem('targetHitIconDismissed', 'true'); // Save dismissal preference
+            updateTargetHitBanner(); // Update the bubble (will hide it if no alerts and dismissed)
+            hideModal(targetHitDetailsModal); // Close the modal
+            showCustomAlert('Target Price Alerts dismissed until next login.', 2000, true); // User feedback
+            renderWatchlist(); // Re-render to clear any visual alert cues in list
+            logDebug('Target Alert Modal: Dismiss All button clicked. Alerts dismissed, modal and bubble hidden.');
+        });
+    }
 
     // NEW: Clear All Alerts button listener (alertPanel is not in current HTML, but kept for consistency)
     if (clearAllAlertsBtn) {
@@ -5133,10 +5145,25 @@ if (sortSelect) {
             closeMenuBtn: !!closeMenuBtn,
             sidebarOverlay: !!sidebarOverlay
         });
+        
+        // Ensure initial state is correct for desktop
+        if (window.innerWidth > 768) {
+            document.body.classList.add('sidebar-active'); // Sidebar active on desktop by default
+            sidebarOverlay.style.pointerEvents = 'none'; // Overlay non-interactive on desktop
+            appSidebar.classList.add('open'); // Keep sidebar open by default on desktop
+            logDebug('Sidebar: Desktop: Sidebar initialized as open.');
+        } else {
+            document.body.classList.remove('sidebar-active'); // No shift on mobile
+            sidebarOverlay.style.pointerEvents = 'auto'; // Overlay interactive on mobile
+            appSidebar.classList.remove('open'); // Sidebar closed by default on mobile
+            logDebug('Sidebar: Mobile: Sidebar initialized as closed.');
+        }
+
+
         hamburgerBtn.addEventListener('click', (event) => {
             logDebug('UI: Hamburger button CLICKED. Event:', event);
-            event.stopPropagation();
-            toggleAppSidebar();
+            event.stopPropagation(); // Stop click from propagating to body/window and closing immediately
+            toggleAppSidebar(); // This should correctly open/close based on current state
         });
         closeMenuBtn.addEventListener('click', () => {
             logDebug('UI: Close Menu button CLICKED.');
