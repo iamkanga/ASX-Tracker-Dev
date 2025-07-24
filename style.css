@@ -3541,30 +3541,39 @@ table td.live-price-cell.negative-change {
 }
 
 /* Target Hit Notification Icon (bottom-left, fixed) */
+/* Target Hit Notification Icon (bottom-left, fixed) */
 .target-hit-icon-btn {
-    position: fixed; /* Keep fixed to viewport */
-    bottom: 20px; /* Position from bottom */
-    left: 20px; /* Position from left */
-    z-index: 9999; /* Ensure it's on top of almost everything */
-    background-color: var(--green-color); /* Use the defined green color */
+    position: fixed !important; /* Ensures it stays in viewport, overriding any other positions */
+    bottom: 20px !important; /* Padding from bottom */
+    left: 20px !important; /* Positions to the left */
+    right: auto !important; /* Ensures it's not forced to the right */
+    z-index: 9999 !important; /* Ensures it's on top of everything */
+    background-color: var(--green-color); /* Using our new green color variable */
     color: var(--button-text); /* White text/icon */
     border: none;
     border-radius: 50%; /* Make it round */
-    width: 60px; /* Fixed size */
+    width: 60px; /* Larger size */
     height: 60px;
-    font-size: 1.5em; /* Icon size */
-    cursor: pointer;
-    box-shadow: 0 4px 12px var(--shadow-color); /* General shadow */
-    transition: transform 0.2s ease, background-color 0.2s ease;
-    animation: pulseHighlight 2s infinite alternate ease-in-out; /* Pulsing animation */
-    border: 2px solid var(--green-color-dark); /* Darker green border */
-    display: flex; /* Crucial: Use flex to display the icon and center content */
+    display: flex;
     justify-content: center;
     align-items: center;
+    font-size: 1.5em; /* Larger icon size */
+    cursor: pointer;
+    box-shadow: 0 4px 12px var(--shadow-color); /* General shadow variable */
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    animation: pulseHighlight 2s infinite alternate ease-in-out; /* Subtle pulse animation */
+    border: 2px solid var(--green-color-dark); /* Darker green border */
+    transform: translateZ(0); /* Force hardware acceleration and prevent layering issues */
 }
 
+/* Ensure app-hidden completely hides the button when intended */
+.target-hit-icon-btn.app-hidden {
+    display: none !important;
+}
+
+/* Remove the chat box tail, as it's no longer a "chat bubble" but a round alert icon */
 .target-hit-icon-btn::after {
-    display: none; /* Explicitly hide the pseudo-element tail if it exists from older code */
+    display: none; /* Hide the pseudo-element tail */
 }
 
 .target-hit-icon-btn:hover {
