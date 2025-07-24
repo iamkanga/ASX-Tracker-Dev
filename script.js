@@ -392,7 +392,7 @@ function closeModals() {
     });
     resetCalculator();
     deselectCurrentShare();
-    
+
     // NEW: Deselect current cash asset
     deselectCurrentCashAsset();
     if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
@@ -5355,7 +5355,7 @@ if (showLastLivePriceToggle) {
     // Call adjustMainContentPadding initially and on window load/resize
     // Removed: window.addEventListener('load', adjustMainContentPadding); // Removed, handled by onAuthStateChanged
     // Already added to window.addEventListener('resize') in sidebar section
-}
+} // This closing brace correctly ends the `initializeAppLogic` function here.
 
 document.addEventListener('DOMContentLoaded', function() {
     logDebug('script.js DOMContentLoaded fired.');
@@ -5375,7 +5375,7 @@ document.addEventListener('DOMContentLoaded', function() {
         logDebug('Splash Screen: Displayed on DOMContentLoaded, body overflow hidden.');
     } else {
         console.warn('Splash Screen: Splash screen element not found. App will start without it.');
-        // If splash screen isn't found, assume everything is "loaded" to proceed
+        // If splash screen2t
         window._firebaseInitialized = true;
         window._userAuthenticated = false; // Will be set by onAuthStateChanged
         window._appDataLoaded = true;
