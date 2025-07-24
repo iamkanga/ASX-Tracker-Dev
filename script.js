@@ -412,6 +412,72 @@ function showCustomAlert(message, duration = 1000) {
     logDebug('Alert: Showing alert: "' + message + '"');
 } // This closes the showCustomAlert function.
 
+// Date Formatting Helper Functions (Australian Style)
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+// --- NEWLY MOVED THEME FUNCTIONS ---
+
+async function applyTheme(themeName) {
+    const body = document.body;
+    // Remove all existing theme classes
+    body.className = body.className.split(' ').filter(c => !c.endsWith('-theme') && !c.startsWith('theme-')).join(' ');
+
+    logDebug('Theme Debug: Attempting to apply theme: ' + themeName);
+    currentActiveTheme = themeName;
+
+    if (themeName === 'system-default') {
+        body.removeAttribute('data-theme');
+        localStorage.removeItem('selectedTheme');
+        localStorage.removeItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (systemPrefersDark) {
+            body.classList.add('dark-theme');
+        }
+        logDebug('Theme Debug: Reverted to system default theme.');
+        // When reverting to system-default, ensure currentCustomThemeIndex is reset to -1
+        currentCustomThemeIndex = -1; 
+    } else if (themeName === 'light' || themeName === 'dark') {
+        body.removeAttribute('data-theme');
+        localStorage.removeItem('selectedTheme');
+        localStorage.setItem('theme', themeName);
+        if (themeName === 'dark') {
+            body.classList.add('dark-theme');
+        }
+        logDebug('Theme Debug: Applied explicit default theme: ' + themeName);
+        // When applying explicit light/dark, ensure currentCustomThemeIndex is reset to -1
+        currentCustomThemeIndex = -1; 
+    } else {
+        // For custom themes, apply the class and set data-theme attribute
+        // The class name is 'theme-' followed by the themeName (e.g., 'theme-bold-1', 'theme-muted-blue')
+        body.classList.add('theme-' + themeName.toLowerCase().replace(/\s/g, '-')); // Convert "Muted Blue" to "muted-blue" for class
+        body.setAttribute('data-theme', themeName); // Keep the full name in data-theme
+        localStorage.setItem('selectedTheme', themeName);
+        localStorage.removeItem('theme');
+        logDebug('Theme Debug: Applied custom theme: ' + themeName);
+        // When applying a custom theme, set currentCustomThemeIndex to its position
+        currentCustomThemeIndex = CUSTOM_THEMES.indexOf(themeName); 
+    }
+    
+    logDebug('Theme Debug: Body classes after applying: ' + body.className);
+    logDebug('Theme Debug: currentCustomThemeIndex after applying: ' + currentCustomThemeIndex);
+
+    if (currentUserId && db && window.firestore) {
+        const userProfileDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+        try {
+            await window.firestore.setDoc(userProfileDocRef, { lastTheme: themeName }, { merge: true });
+            logDebug('Theme: Saved theme preference to Firestore: ' + themeName);
+        } catch (error) {
+            console.error('Theme: Error saving theme preference to Firestore:', error);
+        }
+    }
+    updateThemeToggleAndSelector();
+}
+
 function updateThemeToggleAndSelector() {
     if (colorThemeSelect) {
         // Set the dropdown value to the current active theme if it's a custom theme
