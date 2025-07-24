@@ -2563,6 +2563,12 @@ table tbody tr.target-hit-alert,
     animation: pulse-alert 1.5s infinite alternate; /* Subtle pulsing animation */
 }
 
+/* Generic class for an alert border (green) */
+.has-alert-border {
+    border: 2px solid var(--green-color) !important;
+    box-shadow: 0 0 8px rgba(var(--green-color-dark-rgb), 0.5); /* Subtle glow */
+}
+
 /* Ensure text color applies to children */
 table tbody tr.target-hit-alert td,
 .mobile-card.target-hit-alert h3,

@@ -454,9 +454,9 @@ function addShareToTable(share) {
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-    // Apply target-hit-alert class if target is hit and not dismissed
+    // Apply target-hit-alert class if target is hit and not dismissed (now also adding has-alert-border for consistency)
     if (isTargetHit && !targetHitIconDismissed) {
-        row.classList.add('target-hit-alert');
+        row.classList.add('target-hit-alert', 'has-alert-border');
     }
 
     // Declare these variables once at the top of the function
@@ -611,9 +611,9 @@ function addShareToMobileCards(share) {
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-    // Apply target-hit-alert class if target is hit and not dismissed
+    // Apply target-hit-alert class if target is hit and not dismissed (now also adding has-alert-border for consistency)
     if (isTargetHit && !targetHitIconDismissed) {
-        card.classList.add('target-hit-alert');
+        card.classList.add('target-hit-alert', 'has-alert-border');
     }
 
     // Declare these variables once at the top of the function
@@ -1764,10 +1764,22 @@ function renderWatchlistSelect() {
         currentSelectedWatchlistIds = [ALL_SHARES_ID]; // Ensure currentSelectedWatchlistIds is consistent
         logDebug('UI Update: Watchlist select defaulted to All Shares as desired ID was not found.');
     }
+    // Check if any shares in the currently selected watchlist(s) have hit their target
+    const sharesInCurrentView = allSharesData.filter(share => currentSelectedWatchlistIds.includes(ALL_SHARES_ID) || currentSelectedWatchlistIds.includes(share.watchlistId));
+    const anyTargetHitsInCurrentView = sharesInCurrentView.some(share => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        return livePriceData && livePriceData.targetHit;
+    });
+
+    if (anyTargetHitsInCurrentView && !targetHitIconDismissed) {
+        watchlistSelect.classList.add('has-alert-border');
+    } else {
+        watchlistSelect.classList.remove('has-alert-border');
+    }
+
     logDebug('UI Update: Watchlist select dropdown rendered. Selected value: ' + watchlistSelect.value);
     updateMainTitle(); // Update main title based on newly selected watchlist
     updateAddHeaderButton(); // Update the plus button context (and sidebar button context)
-}
 
 function renderSortSelect() {
         if (!sortSelect) { console.error('renderSortSelect: sortSelect element not found.'); return; }
@@ -1831,6 +1843,19 @@ function renderSortSelect() {
             sortSelect.value = defaultSortValue;
             currentSortOrder = defaultSortValue;
             logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
+        }
+
+        // Check if any shares in the currently selected watchlist(s) have hit their target
+        const sharesInCurrentView = allSharesData.filter(share => currentSelectedWatchlistIds.includes(ALL_SHARES_ID) || currentSelectedWatchlistIds.includes(share.watchlistId));
+        const anyTargetHitsInCurrentView = sharesInCurrentView.some(share => {
+            const livePriceData = livePrices[share.shareName.toUpperCase()];
+            return livePriceData && livePriceData.targetHit;
+        });
+
+        if (anyTargetHitsInCurrentView && !targetHitIconDismissed) {
+            sortSelect.classList.add('has-alert-border');
+        } else {
+            sortSelect.classList.remove('has-alert-border');
         }
 
         logDebug('UI Update: Sort select rendered. Sort select disabled: ' + sortSelect.disabled);
