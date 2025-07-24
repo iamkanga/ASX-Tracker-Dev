@@ -65,8 +65,9 @@
     --target-alert-text: #0056b3; /* Darker blue for target hit text */
     --target-alert-border: #007bff;
     --target-banner-height: 40px; /* This variable is now effectively unused for the banner, but kept for other potential uses */
-    --green-color: #28a745; /* Standard green for general use */
+    ---green-color: #28a745; /* Standard green for general use */
     --green-color-dark: #218838; /* Darker green for hover states */
+    --green-color-dark-rgb: 33, 136, 56; /* RGB for #218838 for pulsing effect */
     /* NEW: Alert System Colors */
     --alert-icon-bg: #dc3545; /* Red for the chat box icon */
     --alert-icon-text: #fff;
@@ -151,6 +152,7 @@ body.dark-theme {
     --target-banner-height: 40px;
     --green-color: #2ecc71; /* Green for success in dark theme */
     --green-color-dark: #229954; /* Darker green for hover */
+    --green-color-dark-rgb: 34, 153, 84; /* RGB for #229954 for pulsing effect */
     /* UPDATED: Cash & Assets Section Colors (Dark Theme) */
     --cash-section-bg: #282828;
     --cash-card-bg: #333333;
@@ -2496,6 +2498,12 @@ input:checked + .slider:before {
     border-color: var(--asx-button-active-bg);
 }
 
+/* Conditional green border for ASX code buttons that hit target */
+.asx-code-btn.asx-target-hit-border {
+    border: 2px solid var(--green-color) !important;
+    box-shadow: 0 0 8px rgba(var(--green-color-dark-rgb), 0.5); /* Subtle glow */
+}
+
 /* Main Content Area */
 .share-list-section {
     margin-top: 20px;
@@ -2567,6 +2575,21 @@ table tbody tr.target-hit-alert td,
 @keyframes pulse-alert {
     from { opacity: 1; }
     to { opacity: 0.8; }
+}
+
+@keyframes pulseHighlight {
+    from {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(var(--green-color-dark-rgb), 0.7); /* Use RGB for pulsating shadow */
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(var(--green-color-dark-rgb), 0);
+    }
+    to {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(var(--green-color-dark-rgb), 0);
+    }
 }
 
 /* Desktop Table: ASX Code and Live Price Styling */
@@ -3542,7 +3565,7 @@ table td.live-price-cell.negative-change {
 }
 
 /* Target Hit Notification Icon (bottom-left, fixed) */
-.target-hit-icon-btn {
+.target-hit-fixed-btn {
     position: fixed !important;
     bottom: 20px !important;
     left: 20px !important;
@@ -3563,20 +3586,20 @@ table td.live-price-cell.negative-change {
     transition: transform 0.2s ease, background-color 0.2s ease;
     animation: pulseHighlight 2s infinite alternate ease-in-out;
     border: 2px solid var(--green-color-dark);
-    transform: translateZ(0);
+    transform: translateZ(0); /* Force hardware acceleration and prevent layering issues */
 }
 
 /* Ensure app-hidden completely hides the button when intended */
-.target-hit-icon-btn.app-hidden {
+.target-hit-fixed-btn.app-hidden {
     display: none !important;
 }
 
 /* Remove the chat box tail, as it's no longer a "chat bubble" but a round alert icon */
-.target-hit-icon-btn::after {
+.target-hit-fixed-btn::after {
     display: none;
 }
 
-.target-hit-icon-btn:hover {
+.target-hit-fixed-btn:hover {
     transform: translateY(-2px);
     background-color: var(--green-color-dark);
 }

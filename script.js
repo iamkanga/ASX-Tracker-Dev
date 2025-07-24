@@ -2033,9 +2033,15 @@ function renderAsxCodeButtons() {
                 buttonPriceChangeClass = 'neutral';
             }
         }
-        // Only add the class if it's not empty
+        // Apply color class based on price change
         if (buttonPriceChangeClass) {
-            button.classList.add(buttonPriceChangeClass); // Apply the color class
+            button.classList.add(buttonPriceChangeClass);
+        }
+
+        // Add target-hit-border class if this ASX code has a target hit
+        const livePriceDataForButton = livePrices[asxCode.toUpperCase()];
+        if (livePriceDataForButton && livePriceDataForButton.targetHit && !targetHitIconDismissed) {
+            button.classList.add('asx-target-hit-border');
         }
 
         asxCodeButtonsContainer.appendChild(button);
