@@ -1086,13 +1086,9 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? Number(shareToEdit.currentPrice).toFixed(2) : '';
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? Number(shareToEdit.targetPrice).toFixed(2) : '';
     
-    // NEW: Set the correct radio button for target direction
-    const targetAboveRadio = document.getElementById('targetAbove');
-    const targetBelowRadio = document.getElementById('targetBelow');
-    if (shareToEdit.targetDirection === 'below' && targetBelowRadio) {
-        targetBelowRadio.checked = true;
-    } else if (targetAboveRadio) { // Default to 'above' if not set or 'above'
-        targetAboveRadio.checked = true;
+    // Set the correct state for the target direction toggle
+    if (targetDirectionToggle) {
+        targetDirectionToggle.checked = (shareToEdit.targetDirection === 'above');
     }
 
     if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? Number(shareToEdit.dividendAmount).toFixed(3) : '';

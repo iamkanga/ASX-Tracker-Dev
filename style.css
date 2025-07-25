@@ -3142,16 +3142,89 @@ table td.live-price-cell.negative-change {
     text-align: center;
 }
 
-/* NEW: Styling for Checkbox Group */
-.form-check-group {
+/* Styling for the new target direction toggle container */
+.form-group-with-toggle {
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+    align-items: center; /* Vertically align items in the flex container */
+    gap: 10px; /* Space between elements */
+    margin-bottom: 15px; /* Standard form element spacing */
+}
+
+.form-group-with-toggle .target-price-label {
+    flex-shrink: 0; /* Prevent label from shrinking */
+    margin-right: auto; /* Pushes the toggle to the right */
+}
+
+/* Specific container for the target direction switch, without the .form-check-group styling */
+.target-direction-switch-container {
     display: flex;
     align-items: center;
-    margin-bottom: 15px; /* Space below the checkbox */
-    margin-top: 10px; /* Space above the checkbox */
-    padding: 10px;
-    background-color: var(--table-header-bg); /* Subtle background for the group */
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
+    gap: 10px;
+    /* No padding, background, or border here to keep it small */
+}
+
+/* Base switch styling - adjust size */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 30px; /* Smaller width */
+    height: 17px; /* Smaller height */
+    vertical-align: middle;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--button-bg-dark); /* Default off state */
+    transition: .4s;
+    border-radius: 17px; /* Matches new height for rounded ends */
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 13px; /* Smaller circle height */
+    width: 13px; /* Smaller circle width */
+    left: 2px; /* Smaller offset */
+    bottom: 2px; /* Smaller offset */
+    background-color: var(--text-color); /* Circle color */
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--positive-color); /* On state color */
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--positive-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(13px); /* Move smaller circle */
+}
+
+/* Ensure the label text for the toggle itself is not oversized */
+.target-direction-switch-container #targetDirectionLabel {
+    font-size: 0.85em; /* Smaller font size for clarity next to small toggle */
+    white-space: nowrap; /* Keep label on one line */
+}
+
+/* Ensure the target price input takes full width below the label/toggle */
+.form-group-with-toggle input[type="number"] {
+    width: 100%; /* Make the input span full width of its container */
+    margin-top: 5px; /* Add a little space between label/toggle and input */
 }
 
 .form-check-group input[type="checkbox"] {

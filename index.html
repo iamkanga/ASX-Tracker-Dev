@@ -340,12 +340,16 @@
                 <label for="currentPrice">Entered Price ($):</label>
                 <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
 
-                <div class="form-check-group target-direction-toggle-group">
-                    <label class="switch">
-                        <input type="checkbox" id="targetDirectionToggle">
-                        <span class="slider round"></span>
-                    </label>
-                    <label for="targetDirectionToggle" id="targetDirectionLabel">Target is above or equal to</label>
+                <div class="form-group-with-toggle">
+                    <label for="targetPrice" class="target-price-label">Target Price ($):</label>
+                    <div class="target-direction-switch-container">
+                        <label class="switch">
+                            <input type="checkbox" id="targetDirectionToggle">
+                            <span class="slider round"></span>
+                        </label>
+                        <label for="targetDirectionToggle" id="targetDirectionLabel">Target is above or equal to</label>
+                    </div>
+                    <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
                 </div>
 
                 <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
