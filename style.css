@@ -3850,6 +3850,13 @@ body:not([data-theme]):not(.dark-theme) { /* Applies to system-default light the
     transition: color 0.2s ease;
 }
 
+.external-link i { /* Explicitly style the icon within external links */
+    font-size: 0.8em; /* Make icon slightly smaller than text */
+    color: var(--link-color); /* Ensure icon color matches link text */
+    margin-left: 5px; /* Add a small space between text and icon */
+    vertical-align: middle; /* Align icon vertically with text */
+}
+
 .external-link:hover {
     color: var(--link-hover-color);
     text-decoration: underline;
