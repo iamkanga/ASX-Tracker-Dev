@@ -2344,12 +2344,12 @@ h1#mainTitle {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--secondary-button-bg); /* Off state color */
+    background-color: var(--secondary-button-bg); /* Off state color, subtle background */
     -webkit-transition: .4s;
     transition: .4s;
-    border-radius: 28px; /* Perfect pill shape, matches height */
-    border: 2px solid var(--border-color); /* Thicker border for better visibility */
-    box-sizing: border-box; /* Ensure padding/border are included in the element's total dimensions */
+    border-radius: 28px; /* Match height for perfect pill shape */
+    border: 2px solid var(--green-color); /* Constant green border */
+    box-sizing: border-box; /* Ensure border is included in width/height */
 }
 
 /* The slider handle (the circular thumb) */
@@ -2370,7 +2370,7 @@ h1#mainTitle {
 
 input:checked + .slider {
     background-color: var(--button-bg); /* On state background color */
-    border-color: var(--button-bg); /* Match border color to background when checked */
+    border-color: var(--green-color); /* Bright green border when checked */
 }
 
 input:focus + .slider {
@@ -2380,11 +2380,13 @@ input:focus + .slider {
 }
 
 input:checked + .slider:before {
-    /* Calculated translation to move handle to the rightmost position */
-    /* (total width of .switch - handle width - (left_offset * 2)) = (50px - 20px - (2px * 2)) = 26px */
-    -webkit-transform: translateX(26px) translateY(-50%);
-    -ms-transform: translateX(26px) translateY(-50%);
-    transform: translateX(26px) translateY(-50%);
+    /* Adjusted translation for perfect right alignment */
+    /* (total width of .switch - handle width - left_offset_start - right_offset_end) */
+    /* (50px - 20px - 2px - 0px_desired_right_offset) = 28px. If it was already 28px, then it needs to be slightly less for visual centering.*/
+    /* Let's try 27px for a subtle adjustment, aiming for perfect visual center */
+    -webkit-transform: translateX(27px) translateY(-50%);
+    -ms-transform: translateX(27px) translateY(-50%);
+    transform: translateX(27px) translateY(-50%);
 }
 /* The problematic duplicate .slider:before rule has been removed. */
 
