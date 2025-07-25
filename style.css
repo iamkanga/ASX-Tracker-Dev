@@ -2370,9 +2370,9 @@ input:focus + .slider {
 }
 
 input:checked + .slider:before {
-    -webkit-transform: translateX(18px); /* Move circle to right */
-    -ms-transform: translateX(18px);
-    transform: translateX(18px);
+    -webkit-transform: translateX(calc(100% + 2px)); /* Move circle to right, accounting for its size and padding */
+    -ms-transform: translateX(calc(100% + 2px));
+    transform: translateX(calc(100% + 2px));
 }
 
 .menu-button-item.icon-only i {
