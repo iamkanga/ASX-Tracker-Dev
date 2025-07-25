@@ -2322,11 +2322,11 @@ h1#mainTitle {
 .switch {
     position: relative;
     display: inline-block;
-    width: 50px; /* Increased width for the overall switch */
-    height: 28px; /* Increased height for the overall switch */
-    flex-shrink: 0; /* Prevent shrinking */
+    width: 50px; /* Overall width of the toggle */
+    height: 28px; /* Overall height of the toggle */
+    flex-shrink: 0; /* Prevent shrinking in flex containers */
     vertical-align: middle; /* Ensures vertical alignment with inline elements */
-    overflow: hidden; /* Ensure slider doesn't overflow this container */
+    overflow: hidden; /* Crucial to clip the inner circle if it slightly overflows during transition */
 }
 
 /* Hide default HTML checkbox */
@@ -2344,24 +2344,24 @@ h1#mainTitle {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--secondary-button-bg); /* Off state color, subtle background */
+    background-color: var(--secondary-button-bg); /* Off state color */
     -webkit-transition: .4s;
     transition: .4s;
-    border-radius: 28px; /* Match height for perfect pill shape */
-    border: 2px solid var(--border-color); /* Thicker border for better visual weight */
-    box-sizing: border-box; /* Ensure border is included in width/height */
+    border-radius: 28px; /* Perfect pill shape, matches height */
+    border: 2px solid var(--border-color); /* Thicker border for better visibility */
+    box-sizing: border-box; /* Ensure padding/border are included in the element's total dimensions */
 }
 
 /* The slider handle (the circular thumb) */
 .slider:before {
     position: absolute;
     content: "";
-    height: 20px; /* Adjusted handle size to fit new pill (28px height - 2*2px border = 24px inner height, so 20px is good) */
-    width: 20px; /* Match height for perfect circle */
-    left: 2px; /* Initial position for the handle (2px from left edge of track) */
+    height: 20px; /* Size of the circular handle */
+    width: 20px; /* Size of the circular handle */
+    left: 2px; /* Initial horizontal position from the left edge of the track */
     top: 50%; /* Vertically center the handle */
-    transform: translateY(-50%); /* Adjust for perfect vertical centering */
-    background-color: white; /* Solid white for the handle */
+    transform: translateY(-50%); /* Adjust for perfect vertical centering using transform */
+    background-color: white; /* Color of the handle */
     -webkit-transition: .4s;
     transition: .4s;
     border-radius: 50%; /* Make it perfectly round */
@@ -2369,20 +2369,22 @@ h1#mainTitle {
 }
 
 input:checked + .slider {
-    background-color: var(--button-bg); /* On state color */
-    border-color: var(--button-bg); /* Match border to background when checked */
+    background-color: var(--button-bg); /* On state background color */
+    border-color: var(--button-bg); /* Match border color to background when checked */
 }
 
 input:focus + .slider {
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.4); /* Larger focus ring */
+    outline: none; /* Remove default browser outline */
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.4), inset 0 0 0 1px rgba(0, 123, 255, 0.2); /* A subtle inner shadow with a softer outer glow */
+    border-color: var(--button-bg); /* Ensure border color matches button color on focus */
 }
 
 input:checked + .slider:before {
-    /* Move to the right: (track width - handle width - left offset) */
-    /* 50px (width of switch) - 20px (width of handle) - 2px (left offset) = 28px */
-    -webkit-transform: translateX(28px) translateY(-50%);
-    -ms-transform: translateX(28px) translateY(-50%);
-    transform: translateX(28px) translateY(-50%);
+    /* Calculated translation to move handle to the rightmost position */
+    /* (total width of .switch - handle width - (left_offset * 2)) = (50px - 20px - (2px * 2)) = 26px */
+    -webkit-transform: translateX(26px) translateY(-50%);
+    -ms-transform: translateX(26px) translateY(-50%);
+    transform: translateX(26px) translateY(-50%);
 }
 /* The problematic duplicate .slider:before rule has been removed. */
 
