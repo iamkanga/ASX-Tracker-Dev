@@ -2322,9 +2322,10 @@ h1#mainTitle {
 .switch {
     position: relative;
     display: inline-block;
-    width: 40px; /* Smaller width for compact sidebar */
-    height: 22px; /* Smaller height */
+    width: 40px; /* Consistent width */
+    height: 22px; /* Consistent height */
     flex-shrink: 0; /* Prevent shrinking */
+    vertical-align: middle; /* Ensures vertical alignment with inline elements */
 }
 
 /* Hide default HTML checkbox */
@@ -2346,6 +2347,8 @@ h1#mainTitle {
     -webkit-transition: .4s;
     transition: .4s;
     border-radius: 22px; /* Rounded slider */
+    border: 1px solid var(--border-color); /* Visible edge for the track */
+    box-sizing: border-box; /* Ensure border is included in width/height */
 }
 
 .slider:before {
@@ -2353,17 +2356,13 @@ h1#mainTitle {
     content: "";
     height: 18px; /* Smaller circle */
     width: 18px; /* Smaller circle */
-    left: calc(50% - 9px); /* Centered horizontally (half width of circle) */
-    top: calc(50% - 9px); /* Vertically center the circle (half its height) */
+    left: 2px; /* Initial position for the thumb on the left */
+    top: 50%; /* Vertically center */
+    transform: translateY(-50%); /* Adjust for perfect vertical centering */
     background-color: white;
     -webkit-transition: .4s;
     transition: .4s;
     border-radius: 50%;
-}
-
-/* Ensure consistent vertical centering when checked (moved to the right) */
-input:checked + .slider:before {
-    top: calc(50% - 9px); /* Explicitly set top to ensure vertical centering */
 }
 
 input:checked + .slider {
@@ -2375,12 +2374,9 @@ input:focus + .slider {
 }
 
 input:checked + .slider:before {
-    -webkit-transform: translateX(calc(100% + 2px)); /* Move circle to right, accounting for its size and padding */
-    -ms-transform: translateX(calc(100% + 2px));
-    transform: translateX(calc(100% + 2px));
-    top: calc(50% - 9px); /* Vertically center the circle (half of its height) */
-    bottom: auto; /* Remove bottom constraint */
-    /* Ensure consistent vertical centering when checked */
+    -webkit-transform: translateX(18px) translateY(-50%); /* Move to right and keep centered */
+    -ms-transform: translateX(18px) translateY(-50%);
+    transform: translateX(18px) translateY(-50%); /* Move to right and keep centered */
 }
 
 /* Add a rule for the unchecked state as well to ensure consistent vertical centering */
