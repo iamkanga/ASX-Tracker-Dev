@@ -3352,10 +3352,11 @@ input:checked + .slider:before {
 }
 
 /* Ensure child elements also do not contribute to an unwanted "box" background */
-.form-group-with-toggle .toggle-label,
+/* Removed this general rule, as it might be causing issues with background on label/switch for theme inheritance */
+/* .form-group-with-toggle .toggle-label,
 .form-group-with-toggle .switch {
-    background-color: transparent; /* Ensure their backgrounds are transparent */
-}
+    background-color: transparent;
+} */
 
 .form-group-with-toggle .target-price-label {
     flex-shrink: 0; /* Prevent label from shrinking */
