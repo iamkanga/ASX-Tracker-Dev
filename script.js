@@ -1149,13 +1149,13 @@ function getCurrentFormData() {
     }
 
     return {
-        shareName: shareNameInput.value.trim().toUpperCase(),
-        currentPrice: parseFloat(currentPriceInput.value),
-        targetPrice: parseFloat(targetPriceInput.value),
+        shareName: shareNameInput?.value?.trim().toUpperCase() || '',
+        currentPrice: parseFloat(currentPriceInput?.value),
+        targetPrice: parseFloat(targetPriceInput?.value),
         // UPDATED: Get targetDirection from the new toggle switch (checked for 'above', unchecked for 'below')
-        targetDirection: targetDirectionToggle && targetDirectionToggle.checked ? 'above' : 'below', // Default to 'below' if toggle not found or not checked
-        dividendAmount: parseFloat(dividendAmountInput.value),
-        frankingCredits: parseFloat(frankingCreditsInput.value),
+        targetDirection: targetDirectionToggle?.checked ? 'above' : 'below', // Use optional chaining
+        dividendAmount: parseFloat(dividendAmountInput?.value),
+        frankingCredits: parseFloat(frankingCreditsInput?.value),
         // Get the selected star rating as a number
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0,
         comments: comments,
@@ -3371,11 +3371,11 @@ function getCurrentCashAssetFormData() {
     }
 
     return {
-        name: cashAssetNameInput ? cashAssetNameInput.value.trim() : '',
-        balance: cashAssetBalanceInput ? parseFloat(cashAssetBalanceInput.value) : null,
+        name: cashAssetNameInput?.value?.trim() || '',
+        balance: parseFloat(cashAssetBalanceInput?.value),
         comments: comments,
         // NEW: Include the isHidden state from the checkbox
-        isHidden: hideCashAssetCheckbox ? hideCashAssetCheckbox.checked : false
+        isHidden: hideCashAssetCheckbox?.checked || false
     };
 }
 
