@@ -193,6 +193,15 @@ const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
 const targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTopBtn'); // New 'X' button at the top
 const alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn'); // New "Minimize" button at the bottom
 const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn'); // New "Dismiss All" button at the bottom
+
+// NEW: Target Direction Toggle UI Elements
+const targetDirectionToggle = document.getElementById('targetDirectionToggle'); // The checkbox for the toggle
+const targetDirectionLabel = document.getElementById('targetDirectionLabel'); // The label text next to the toggle
+
+// NEW: References for the reconfigured buttons in the Target Hit Details Modal
+const targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTopBtn'); // New 'X' button at the top
+const alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn'); // New "Minimize" button at the bottom
+const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn'); // New "Dismiss All" button at the bottom
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
@@ -1147,8 +1156,8 @@ function getCurrentFormData() {
         shareName: shareNameInput.value.trim().toUpperCase(),
         currentPrice: parseFloat(currentPriceInput.value),
         targetPrice: parseFloat(targetPriceInput.value),
-        // NEW: Get the selected target direction (above/below)
-        targetDirection: document.querySelector('input[name="targetDirection"]:checked') ? document.querySelector('input[name="targetDirection"]:checked').value : 'above', // Default to 'above' if no selection
+        // UPDATED: Get targetDirection from the new toggle switch (checked for 'above', unchecked for 'below')
+        targetDirection: targetDirectionToggle && targetDirectionToggle.checked ? 'above' : 'below', // Default to 'below' if toggle not found or not checked
         dividendAmount: parseFloat(dividendAmountInput.value),
         frankingCredits: parseFloat(frankingCreditsInput.value),
         // Get the selected star rating as a number

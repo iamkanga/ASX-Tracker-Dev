@@ -3075,16 +3075,24 @@ table td.live-price-cell.negative-change {
     margin: 0;
 }
 
-/* NEW: Styling for Checkbox Group */
-.form-check-group {
-    display: flex;
-    align-items: center;
-    margin-bottom: 15px; /* Space below the checkbox */
-    margin-top: 10px; /* Space above the checkbox */
-    padding: 10px;
-    background-color: var(--table-header-bg); /* Subtle background for the group */
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
+/* Specific styling for the target direction toggle switch group */
+.target-direction-toggle-group {
+    /* We'll use the existing .form-check-group styles as a base, just adding specific adjustments */
+    justify-content: flex-start; /* Align switch and label to the start */
+    gap: 10px; /* Space between the toggle and its label */
+    padding: 10px; /* Consistent padding */
+    margin-top: 5px; /* Slightly less margin top to be closer to target price input */
+    margin-bottom: 15px; /* Standard margin below it */
+}
+
+/* Ensure the label within this group aligns correctly with the toggle */
+.target-direction-toggle-group label {
+    margin-bottom: 0; /* Remove default label margin */
+    font-weight: 400; /* Lighter font weight for the label */
+    color: var(--text-color);
+    cursor: pointer;
+    flex-grow: 1; /* Allow label to take remaining space */
+    font-size: 1em; /* Ensure readable font size */
 }
 
 .form-check-group input[type="checkbox"] {
