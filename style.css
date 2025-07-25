@@ -2380,16 +2380,14 @@ input:focus + .slider {
 }
 
 input:checked + .slider:before {
-    /* Adjusted translation to perfectly center the handle within the pill,
-       ensuring equal spacing from both left and right borders. */
-    /* (Total width of slider - handle width - desired right offset - left initial offset) */
-    /* Based on 50px slider width, 20px handle width, and 2px initial left offset,
-       we want the handle to end 2px from the right. So, move it 50 - 20 - 2 = 28px
-       from its starting point to reach the exact right edge. If it's overshooting,
-       we need to reduce this value. Let's try 26px to pull it back slightly. */
-    -webkit-transform: translateX(26px) translateY(-50%);
-    -ms-transform: translateX(26px) translateY(-50%);
-    transform: translateX(26px) translateY(-50%);
+    /* Aggressive adjustment for precise horizontal centering when checked.
+       Calculated as (total track width - handle width - (desired_padding * 2)) / 2 + desired_padding */
+    /* For 50px track, 20px handle, 2px padding: (50 - 20 - 4) = 26. So move 26px from left edge. */
+    -webkit-transform: translateX(26px) translateY(-50%) !important; /* Force translation */
+    -ms-transform: translateX(26px) translateY(-50%) !important;
+    transform: translateX(26px) translateY(-50%) !important;
+    left: auto !important; /* Ensure 'left' doesn't interfere */
+    right: 2px !important; /* Pin to the right with 2px offset (for aggressive control) */
 }
 /* The problematic duplicate .slider:before rule has been removed. */
 
@@ -3250,10 +3248,10 @@ table td.live-price-cell.negative-change {
 }
 
 /* Ensure the target price input drops to a new line and takes full width */
-/* Adjusted margin-top for tighter spacing with the toggle row */
+/* Aggressive adjustment for tighter spacing with the toggle row */
 .form-group-with-toggle input[type="number"] {
     width: 100%; /* Input spans full width of its container */
-    margin-top: 2px; /* Reduced space by 50% from 4px to 2px */
+    margin-top: 2px !important; /* Force 2px space from previous element */
     flex-basis: 100%; /* Forces the input to start on a new line */
 }
 
