@@ -110,7 +110,8 @@
                 <!-- Show Last Live Price Toggle -->
                 <div class="menu-button-item toggle-switch-container" data-action-closes-menu="false">
                     <div class="toggle-title-row">
-                        <i class="fas fa-history"></i> <span class="toggle-description">Last Price (Market Closed)</span>
+                        <i class="fas fa-history"></i> <!-- Icon for history/last price -->
+                        <span class="toggle-description">Last Price (Market Closed)</span>
                     </div>
                     <div class="toggle-switch-row">
                         <span class="toggle-label left" id="lastPriceToggleLabelOff">Hide</span>
@@ -348,19 +349,15 @@
 
                 <div class="form-group-with-toggle">
                     <label for="targetPrice" class="target-price-label">Target Price ($):</label>
-                    <div class="target-toggle-frame">
-                        <span class="toggle-label left" id="targetDirectionLabelBelow">Below</span>
-                        <div class="target-direction-switch-container">
-                            <label class="switch">
-                                <input type="checkbox" id="targetDirectionToggle">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <span class="toggle-label right" id="targetDirectionLabelAbove">Above</span>
-                    </div>
+                    <span class="toggle-label left" id="targetDirectionLabelBelow">Below</span>
+                    <label class="switch">
+                        <input type="checkbox" id="targetDirectionToggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="toggle-label right" id="targetDirectionLabelAbove">Above</span>
                     <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
                 </div>
-
+                <hr class="form-section-separator">
                 <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
                 <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
 
@@ -746,3 +743,68 @@
     <script src="script.js"></script>
 </body>
 </html>
+```
+I have analyzed the `index.html` snippet you just provided.
+
+The snippet you provided is **not okay**. It still contains the deeply nested `div` elements (`target-toggle-frame` and `target-direction-switch-container`) that are causing the layout issues for the modal toggle.
+
+My previous instruction was to completely remove these two nested `div`s and flatten the structure. It seems that change was either not applied correctly or was reverted.
+
+The core problem remains the HTML structure for the target price toggle in `index.html`. We need to ensure it's a flat structure within `form-group-with-toggle` as I described.
+
+---
+
+Here's the correction for `index.html` again. This is the **critical structural fix** that must be applied precisely.
+
+### **`index.html` - Critical Structural Correction (Target Price Toggle)**
+
+**Locate:**
+Locate the following exact block of HTML code in your `index.html` file. This is the entire section from `<label for="currentPrice">` to `</input>` for franking credits, which contains the deeply nested elements.
+
+```html
+                <label for="currentPrice">Entered Price ($):</label>
+                <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
+
+                <div class="form-group-with-toggle">
+                    <label for="targetPrice" class="target-price-label">Target Price ($):</label>
+                    <div class="target-toggle-frame">
+                        <span class="toggle-label left" id="targetDirectionLabelBelow">Below</span>
+                        <div class="target-direction-switch-container">
+                            <label class="switch">
+                                <input type="checkbox" id="targetDirectionToggle">
+                                <span class="slider round"></span>
+                            </label>
+                            <span class="toggle-label right" id="targetDirectionLabelAbove">Above</span>
+                            <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
+                        </div>
+                        <hr class="form-section-separator">
+                        <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
+                        <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
+
+                        <label for="frankingCredits">Franking Credits (%):</label>
+                        <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
+```
+
+**Paste:**
+Replace the *entire* located block with the following corrected HTML. This flattens the structure within `form-group-with-toggle` by removing the `target-toggle-frame` and `target-direction-switch-container` divs, ensuring the labels and switch are direct siblings, followed by the input, and then the separator.
+
+```html
+                <label for="currentPrice">Entered Price ($):</label>
+                <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
+
+                <div class="form-group-with-toggle">
+                    <label for="targetPrice" class="target-price-label">Target Price ($):</label>
+                    <span class="toggle-label left" id="targetDirectionLabelBelow">Below</span>
+                    <label class="switch">
+                        <input type="checkbox" id="targetDirectionToggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="toggle-label right" id="targetDirectionLabelAbove">Above</span>
+                    <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
+                </div>
+                <hr class="form-section-separator">
+                <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
+                <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
+
+                <label for="frankingCredits">Franking Credits (%):</label>
+                <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
