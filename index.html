@@ -109,13 +109,17 @@
                 </button>
                 <!-- Show Last Live Price Toggle -->
                 <div class="menu-button-item toggle-switch-container" data-action-closes-menu="false">
-                    <span class="toggle-label left" id="lastPriceToggleLabelOff">Hide</span>
-                    <label class="switch">
-                        <input type="checkbox" id="showLastLivePriceToggle">
-                        <span class="slider round"></span>
-                    </label>
-                    <span class="toggle-label right" id="lastPriceToggleLabelOn">Show</span>
-                    <span>Last Price (Market Closed)</span>
+                    <div class="toggle-title-row">
+                        <i class="fas fa-history"></i> <span class="toggle-description">Last Price (Market Closed)</span>
+                    </div>
+                    <div class="toggle-switch-row">
+                        <span class="toggle-label left" id="lastPriceToggleLabelOff">Hide</span>
+                        <label class="switch">
+                            <input type="checkbox" id="showLastLivePriceToggle">
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="toggle-label right" id="lastPriceToggleLabelOn">Show</span>
+                    </div>
                 </div>
             </div>
         </div>

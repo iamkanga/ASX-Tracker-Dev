@@ -3075,70 +3075,213 @@ table td.live-price-cell.negative-change {
     margin: 0;
 }
 
-/* Specific styling for the target direction toggle switch group */
-.target-direction-toggle-group {
-    /* We'll use the existing .form-check-group styles as a base, just adding specific adjustments */
-    justify-content: flex-start; /* Align switch and label to the start */
-    gap: 10px; /* Space between the toggle and its label */
-    padding: 10px; /* Consistent padding */
-    margin-top: 5px; /* Slightly less margin top to be closer to target price input */
-    margin-bottom: 15px; /* Standard margin below it */
+/* Styling for the target price input group */
+.form-group-with-toggle {
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+    align-items: baseline; /* Align items at their text baselines for labels */
+    gap: 8px; /* Space between elements on the same line */
+    margin-top: 10px; /* Ensures consistent vertical spacing with the "Entered Price" group */
+    margin-bottom: 15px; /* Standard space below the entire group */
+    justify-content: space-between; /* Pushes label to left, toggle to right */
+    border: none; /* Explicitly remove any border around this group */
+    padding: 0; /* Remove any padding that could create an unwanted visual box */
 }
 
-/* Ensure the label within this group aligns correctly with the toggle */
-.target-direction-toggle-group label {
-    margin-bottom: 0; /* Remove default label margin */
-    font-weight: 400; /* Lighter font weight for the label */
-    color: var(--text-color);
+.form-group-with-toggle .target-price-label {
+    flex-shrink: 0; /* Prevent label from shrinking */
+}
+
+/* Base switch styling - make the switch itself the "pill" */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 30px; /* Smaller width */
+    height: 17px; /* Smaller height */
+    vertical-align: middle;
+    flex-shrink: 0; /* Prevent the switch from shrinking */
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* The slider is now the "track" or "pill" with visible edges */
+.slider {
+    position: absolute;
     cursor: pointer;
-    flex-grow: 1; /* Allow label to take remaining space */
-    font-size: 1em; /* Ensure readable font size */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--button-bg-dark); /* Default off state background */
+    transition: .4s;
+    border-radius: 17px; /* Pill shape */
+    border: 1px solid var(--border-color); /* Visible edge for the track */
+    box-sizing: border-box; /* Ensure border is included in width/height */
 }
 
+/* The circular thumb/button inside the slider */
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 13px; /* Smaller circle height */
+    width: 13px; /* Smaller circle width */
+    left: 1px; /* Closer to the edge */
+    bottom: 1px; /* Closer to the edge */
+    background-color: var(--text-color); /* Circle color */
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+}
+
+/* When checked, change background and move thumb */
+input:checked + .slider {
+    background-color: var(--positive-color); /* On state color */
+    border-color: var(--positive-color); /* Match border color */
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--positive-color);
+}
+
+input:checked + .slider:before {
+    transform: translateX(12px); /* Move smaller circle to the right */
+}
+
+/* Ensure the target price input drops to a new line and takes full width */
+.form-group-with-toggle input[type="number"] {
+    width: 100%; /* Input spans full width of its container */
+    margin-top: 8px; /* Add space between label/toggle line and input */
+    flex-basis: 100%; /* Forces the input to start on a new line */
+}
+
+/* Styling for the new concise toggle labels (e.g., "Below", "Above") */
+.toggle-label {
+    font-size: 0.75em; /* Smaller, concise font size */
+    color: var(--ghosted-text); /* Default muted text color */
+    white-space: nowrap; /* Prevent wrapping */
+    transition: color 0.3s ease, font-weight 0.3s ease; /* Smooth transition */
+    user-select: none; /* Prevent text selection */
+}
+
+/* Highlight the active label for target direction toggle */
+/* Selectors updated to reflect that the labels are direct siblings of the <label class="switch"> element */
+#targetDirectionToggle:checked + .slider + .toggle-label.right {
+    font-weight: bold;
+    color: var(--positive-color); /* Emphasize active 'Above' */
+}
+
+#targetDirectionToggle:not(:checked) + .slider + .toggle-label.left {
+    font-weight: bold;
+    color: var(--negative-color); /* Emphasize active 'Below' */
+}
+
+
+/* Specific styling for the sidebar toggle section */
+.menu-button-item.toggle-switch-container {
+    display: flex;
+    flex-direction: column; /* Stack items vertically: title then toggle */
+    align-items: flex-start; /* Align items to the start (left) */
+    padding: 0; /* Remove padding from the outer container */
+    border: none; /* Remove any border from the outer container */
+    background-color: transparent; /* Remove any background from the outer container */
+    gap: 5px; /* Space between title and toggle line */
+    margin-bottom: 10px;
+    margin-top: 5px;
+}
+
+/* Title for the sidebar toggle (e.g., "Last Price (Market Closed)") */
+.menu-button-item.toggle-switch-container .toggle-title-row { /* NEW selector for the title row */
+    display: flex; /* Use flex for icon and text */
+    align-items: center;
+    gap: 8px; /* Space between icon and text */
+    font-size: 0.9em; /* Smaller font for description */
+    color: var(--text-color);
+    white-space: nowrap;
+    margin-left: 0; /* Remove auto margin to align left */
+    margin-bottom: 5px; /* Space between title and toggle line */
+}
+
+/* Container for the actual toggle and its Hide/Show labels in sidebar */
+.menu-button-item.toggle-switch-container .toggle-switch-row { /* NEW selector for the new div */
+    display: flex; /* Keep them on the same line */
+    align-items: center;
+    gap: 8px; /* Space between label-switch-label */
+    margin-left: auto; /* Pushes the entire toggle row to the right */
+}
+
+/* Styling for the sidebar toggle labels (Hide/Show) */
+.menu-button-item.toggle-switch-container .toggle-label {
+    font-size: 0.75em; /* Slightly smaller for sidebar */
+    color: var(--ghosted-text);
+}
+
+/* Highlight active label for sidebar toggle */
+#showLastLivePriceToggle:checked + .slider + .toggle-label.right {
+    font-weight: bold;
+    color: var(--positive-color);
+}
+
+#showLastLivePriceToggle:not(:checked) + .slider + .toggle-label.left {
+    font-weight: bold;
+    color: var(--negative-color);
+}
+
+/* Ensure the main sidebar button item is still clickable as a whole */
+.menu-button-item.toggle-switch-container > .switch {
+    pointer-events: none; /* Prevent switch itself from stealing click from parent */
+}
+
+.menu-button-item.toggle-switch-container > .switch input {
+    pointer-events: auto; /* Re-enable input's pointer events for actual toggle */
+}
+
+/* Checkbox specific styles (from form-check-group) */
 .form-check-group input[type="checkbox"] {
-    /* Make checkbox larger */
     width: 24px;
     height: 24px;
-    min-width: 24px; /* Ensure it doesn't shrink on mobile */
-    min-height: 24px; /* Ensure it doesn't shrink on mobile */
+    min-width: 24px;
+    min-height: 24px;
     margin-right: 10px;
     cursor: pointer;
     border: 1px solid var(--input-border);
     border-radius: 4px;
-    appearance: none; /* Hide default checkbox */
+    appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
     background-color: var(--input-bg);
     transition: background-color 0.2s ease, border-color 0.2s ease;
-    flex-shrink: 0; /* Prevent the checkbox from shrinking */
+    flex-shrink: 0;
 }
 
 .form-check-group input[type="checkbox"]:checked {
-    background-color: var(--success-color); /* Green when checked */
+    background-color: var(--success-color);
     border-color: var(--success-color);
 }
 
 .form-check-group input[type="checkbox"]:focus {
     outline: none;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25); /* Focus ring */
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
 .form-check-group label {
-    margin-bottom: 0; /* Remove default label margin */
-    font-weight: 400; /* Lighter font weight for the label */
+    margin-bottom: 0;
+    font-weight: 400;
     color: var(--text-color);
     cursor: pointer;
-    flex-grow: 1; /* Allow label to take remaining space */
-    font-size: 1em; /* Ensure readable font size */
+    flex-grow: 1;
+    font-size: 1em;
 }
 
-/* Custom checkmark for the checkbox */
 .form-check-group input[type="checkbox"]:checked::before {
-    content: '\2713'; /* Unicode checkmark character */
+    content: '\2713';
     display: block;
-    color: var(--button-text); /* White checkmark */
-    font-size: 18px; /* Adjust size of checkmark */
-    line-height: 24px; /* Vertically center checkmark */
+    color: var(--button-text);
+    font-size: 18px;
+    line-height: 24px;
     text-align: center;
 }
 
