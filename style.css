@@ -3347,6 +3347,14 @@ input:checked + .slider:before {
     justify-content: space-between; /* Pushes label to left, toggle to right */
     border: none; /* Explicitly remove any border around this group */
     padding: 0; /* Remove any padding that could create an unwanted visual box */
+    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+    background-color: transparent; /* Ensure no background color creates an unwanted box */
+}
+
+/* Ensure child elements also do not contribute to an unwanted "box" background */
+.form-group-with-toggle .toggle-label,
+.form-group-with-toggle .switch {
+    background-color: transparent; /* Ensure their backgrounds are transparent */
 }
 
 .form-group-with-toggle .target-price-label {
@@ -3456,11 +3464,11 @@ input:checked + .slider:before {
 }
 
 /* Title for the sidebar toggle (e.g., "Last Price (Market Closed)") */
-.menu-button-item.toggle-switch-container .toggle-title-row { /* Targeted by its new class */
+.menu-button-item.toggle-switch-container .toggle-title-row {
     display: flex; /* Use flex for icon and text */
     align-items: center;
     gap: 8px; /* Space between icon and text */
-    font-size: 1em; /* Match size with "Search & Add Stock" and other menu-button-item texts */
+    font-size: 1em; /* Adjusted to match other menu item texts like "Search & Add Stock" */
     color: var(--text-color);
     white-space: nowrap;
     margin-left: 0;
