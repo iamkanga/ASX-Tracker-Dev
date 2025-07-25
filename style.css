@@ -2354,15 +2354,16 @@ h1#mainTitle {
 .slider:before {
     position: absolute;
     content: "";
-    height: 18px; /* Smaller circle */
-    width: 18px; /* Smaller circle */
-    left: 2px; /* Initial position for the thumb on the left */
-    top: 50%; /* Vertically center */
+    height: 18px; /* Consistent height for the round handle */
+    width: 18px; /* Consistent width for the round handle */
+    left: 2px; /* Initial position for the handle (2px from left edge of track) */
+    top: 50%; /* Vertically center the handle */
     transform: translateY(-50%); /* Adjust for perfect vertical centering */
     background-color: white;
     -webkit-transition: .4s;
     transition: .4s;
     border-radius: 50%;
+    box-sizing: border-box; /* Ensure padding/border don't affect size */
 }
 
 input:checked + .slider {
@@ -2374,16 +2375,12 @@ input:focus + .slider {
 }
 
 input:checked + .slider:before {
-    -webkit-transform: translateX(18px) translateY(-50%); /* Move to right and keep centered */
-    -ms-transform: translateX(18px) translateY(-50%);
-    transform: translateX(18px) translateY(-50%); /* Move to right and keep centered */
+    /* Move to the right: (track width - handle width - left offset) */
+    -webkit-transform: translateX(20px) translateY(-50%);
+    -ms-transform: translateX(20px) translateY(-50%);
+    transform: translateX(20px) translateY(-50%);
 }
-
-/* Add a rule for the unchecked state as well to ensure consistent vertical centering */
-.slider:before {
-    top: calc(50% - 9px); /* Vertically center the circle (half of its height) */
-    bottom: auto; /* Remove bottom constraint */
-}
+/* The problematic duplicate .slider:before rule has been removed. */
 
 .menu-button-item.icon-only i {
     font-size: 1.5em;
