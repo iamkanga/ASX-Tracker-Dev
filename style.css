@@ -3370,6 +3370,9 @@ input:checked + .slider:before {
     height: 17px; /* Smaller height */
     vertical-align: middle;
     flex-shrink: 0; /* Prevent the switch from shrinking */
+    border: none; /* Ensure no border on the main switch container */
+    background-color: transparent; /* Ensure no background on the main switch container */
+    padding: 0; /* Ensure no padding on the main switch container */
 }
 
 .switch input {
@@ -3389,7 +3392,7 @@ input:checked + .slider:before {
     background-color: var(--button-bg-dark); /* Default off state background */
     transition: .4s;
     border-radius: 17px; /* Pill shape */
-    border: 1px solid var(--border-color); /* Visible edge for the track */
+    border: 1px solid var(--border-color); /* This is the desired visible edge for the track */
     box-sizing: border-box; /* Ensure border is included in width/height */
 }
 
@@ -3469,11 +3472,16 @@ input:checked + .slider:before {
     display: flex; /* Use flex for icon and text */
     align-items: center;
     gap: 8px; /* Space between icon and text */
-    font-size: 1em; /* Adjusted to match other menu item texts like "Search & Add Stock" */
+    font-size: 1em; /* This is the correct size to match other menu-button-item texts like "Search & Add Stock" */
     color: var(--text-color);
     white-space: nowrap;
     margin-left: 0;
     margin-bottom: 5px; /* Space between title and toggle line */
+}
+
+/* Ensure icons within this title row inherit proper color */
+.menu-button-item.toggle-switch-container .toggle-title-row i {
+    color: var(--text-color); /* Explicitly set icon color to match text */
 }
 
 /* Container for the actual toggle and its Hide/Show labels in sidebar */
