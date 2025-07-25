@@ -3092,6 +3092,17 @@ table td.live-price-cell.negative-change {
     flex-shrink: 0; /* Prevent label from shrinking */
 }
 
+/* Ensure the switch itself has its border for the pill shape, but no outer container adds one */
+.form-group-with-toggle .switch .slider {
+    border: 1px solid var(--border-color); /* This is the actual pill border */
+}
+
+/* The rest of the switch and toggle-label styling remains as is */
+
+.form-group-with-toggle .target-price-label {
+    flex-shrink: 0; /* Prevent label from shrinking */
+}
+
 /* Base switch styling - make the switch itself the "pill" */
 .switch {
     position: relative;
@@ -3194,14 +3205,14 @@ input:checked + .slider:before {
 }
 
 /* Title for the sidebar toggle (e.g., "Last Price (Market Closed)") */
-.menu-button-item.toggle-switch-container .toggle-title-row { /* NEW selector for the title row */
+.menu-button-item.toggle-switch-container .toggle-title-row {
     display: flex; /* Use flex for icon and text */
     align-items: center;
     gap: 8px; /* Space between icon and text */
-    font-size: 0.9em; /* Smaller font for description */
+    font-size: 1em; /* Adjusted to match other menu item texts like "Search & Add Stock" */
     color: var(--text-color);
     white-space: nowrap;
-    margin-left: 0; /* Remove auto margin to align left */
+    margin-left: 0;
     margin-bottom: 5px; /* Space between title and toggle line */
 }
 
