@@ -1343,7 +1343,7 @@ body.theme-muted-gold {
     --icon-action-color: #a8a86a;
     --icon-action-hover-color: #98985a;
     --icon-danger-color: #dc3545;
-    --icon-danger-hover-color: #c82333;
+    --icon-danger-hover-color: #c0392b;
     --calc-num-btn-bg: #d9d9b3;
     --calc-num-btn-text: #5f5f3f;
     --calc-num-btn-hover-bg: #a8a86a;
@@ -1367,9 +1367,36 @@ body.theme-muted-gold {
     --cash-button-bg: #28a745;
     --cash-button-hover-bg: #218838;
     --cash-primary-button-bg: #a8a86a;
-    --cash-primary-button-hover-bg: #98985a;
+    --cash-primary-button-hover-bg: #987b5a;
     --cash-delete-icon-color: #dc3545;
     --cash-edit-icon-color: #a8a86a;
+}
+
+/* Specific rule for light themes to make the badge text red (corrected syntax) */
+body[data-theme^="light"] .target-hit-fixed-btn .badge,
+body[data-theme^="subtle"] .target-hit-fixed-btn .badge,
+body[data-theme^="Muted"][data-theme*="Blue"] .target-hit-fixed-btn .badge,
+body[data-theme^="Muted"][data-theme*="Brown"] .target-hit-fixed-btn .badge,
+body[data-theme^="Muted"][data-theme*="Green"] .target-hit-fixed-btn .badge,
+body[data-theme^="Muted"][data-theme*="Orange"] .target-hit-fixed-btn .badge,
+body[data-theme^="Muted"][data-theme*="Cyan"] .target-hit-fixed-btn .badge,
+body[data-theme^="Muted"][data-theme*="Gold"] .target-hit-fixed-btn .badge,
+body:not([data-theme]):not(.dark-theme) .target-hit-fixed-btn .badge { /* Applies to system-default light theme and explicit light theme */
+    color: var(--negative-color) !important; /* Force red text on light themes */
+}
+
+/* AGGRESSIVE OVERRIDE for external link icons to force visibility and correct font properties */
+.external-link i.fas {
+    display: inline-block !important;
+    visibility: visible !important;
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important; /* Use 900 for solid icons */
+    font-size: 0.8em !important; /* Adjust as needed */
+    color: var(--link-color) !important; /* Ensure color is applied */
+    margin-left: 5px !important; /* Spacing from text */
+    vertical-align: middle !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body.theme-muted-grey {
@@ -3475,20 +3502,7 @@ table td.live-price-cell.negative-change {
     color: var(--button-text); /* Default to white/light for dark backgrounds */
 }
 
-/* Specific rule for light themes to make the badge text red */
-body[data-theme^="light"],
-body[data-theme^="subtle"],
-body[data-theme^="Muted"][data-theme*="Blue"],
-body[data-theme^="Muted"][data-theme*="Brown"],
-body[data-theme^="Muted"][data-theme*="Green"],
-body[data-theme^="Muted"][data-theme*="Orange"],
-body[data-theme^="Muted"][data-theme*="Cyan"],
-body[data-theme^="Muted"][data-theme*="Gold"],
-body:not([data-theme]):not(.dark-theme) { /* Applies to system-default light theme and explicit light theme */
-    .target-hit-fixed-btn .badge {
-        color: var(--negative-color) !important; /* Force red text on light themes */
-    }
-}
+/* Placeholder for light theme badge and external link icon overrides */
 
 /* Styling for the new concise toggle labels (e.g., "Below", "Above") */
 .toggle-label {
