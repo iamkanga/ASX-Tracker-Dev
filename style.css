@@ -2380,11 +2380,16 @@ input:focus + .slider {
 }
 
 input:checked + .slider:before {
-    /* Calculated translation to move handle to ensure 2px from right edge */
-    /* (total width of .switch - handle width - right_offset) = (50px - 20px - 2px) = 28px */
-    -webkit-transform: translateX(28px) translateY(-50%);
-    -ms-transform: translateX(28px) translateY(-50%);
-    transform: translateX(28px) translateY(-50%);
+    /* Adjusted translation to perfectly center the handle within the pill,
+       ensuring equal spacing from both left and right borders. */
+    /* (Total width of slider - handle width - desired right offset - left initial offset) */
+    /* Based on 50px slider width, 20px handle width, and 2px initial left offset,
+       we want the handle to end 2px from the right. So, move it 50 - 20 - 2 = 28px
+       from its starting point to reach the exact right edge. If it's overshooting,
+       we need to reduce this value. Let's try 26px to pull it back slightly. */
+    -webkit-transform: translateX(26px) translateY(-50%);
+    -ms-transform: translateX(26px) translateY(-50%);
+    transform: translateX(26px) translateY(-50%);
 }
 /* The problematic duplicate .slider:before rule has been removed. */
 
