@@ -3182,10 +3182,6 @@ table td.live-price-cell.negative-change {
 }
 
 /* Style the labels based on the toggle state */
-#targetDirectionToggle:checked ~ .target-direction-switch-container + .toggle-label.right {
-    font-weight: bold; /* Bold when 'Above' is active */
-}
-
 /* Styling for the target price input group */
 .form-group-with-toggle {
     display: flex;
@@ -3265,6 +3261,107 @@ input:checked + .slider:before {
     width: 100%; /* Input spans full width of its container */
     margin-top: 8px; /* Add space between label/toggle line and input */
     flex-basis: 100%; /* Forces the input to start on a new line */
+}
+
+/* Styling for the new concise toggle labels (e.g., "Below", "Above") */
+.toggle-label {
+    font-size: 0.75em; /* Smaller, concise font size */
+    color: var(--ghosted-text); /* Default muted text color */
+    white-space: nowrap; /* Prevent wrapping */
+    transition: color 0.3s ease, font-weight 0.3s ease; /* Smooth transition */
+    user-select: none; /* Prevent text selection */
+}
+
+/* Highlight the active label for target direction toggle */
+/* Selectors updated to reflect that the labels are direct siblings of the <label class="switch"> element */
+#targetDirectionToggle:checked + .slider + .toggle-label.right {
+    font-weight: bold;
+    color: var(--positive-color); /* Emphasize active 'Above' */
+}
+
+#targetDirectionToggle:not(:checked) + .slider + .toggle-label.left {
+    font-weight: bold;
+    color: var(--negative-color); /* Emphasize active 'Below' */
+}
+
+
+/* Specific styling for the sidebar toggle section */
+.menu-button-item.toggle-switch-container {
+    display: flex;
+    flex-direction: column; /* Stack items vertically: title then toggle */
+    align-items: flex-start; /* Align items to the start (left) */
+    padding: 0; /* Remove padding from the outer container */
+    border: none; /* Remove any border from the outer container */
+    background-color: transparent; /* Remove any background from the outer container */
+    gap: 5px; /* Space between title and toggle line */
+    margin-bottom: 10px;
+    margin-top: 5px;
+    /* border-radius: 8px; Removed, applied to inner switch container if needed */
+}
+
+/* Title for the sidebar toggle (e.g., "Last Price (Market Closed)") */
+.menu-button-item.toggle-switch-container .toggle-description {
+    font-size: 0.9em; /* Smaller font for description */
+    color: var(--text-color);
+    white-space: nowrap;
+    margin-left: 0; /* Remove auto margin to align left */
+    margin-bottom: 5px; /* Space between title and toggle line */
+}
+
+/* Container for the actual toggle and its Hide/Show labels in sidebar */
+.menu-button-item.toggle-switch-container > .toggle-label.left,
+.menu-button-item.toggle-switch-container > .switch,
+.menu-button-item.toggle-switch-container > .toggle-label.right {
+    display: inline-flex; /* Keep them on the same line */
+    align-items: center;
+    /* Adjust spacing within this inline group */
+    gap: 8px; /* Space between label-switch-label */
+}
+
+/* Styling for the sidebar toggle labels (Hide/Show) */
+.menu-button-item.toggle-switch-container .toggle-label {
+    font-size: 0.75em; /* Slightly smaller for sidebar */
+    color: var(--ghosted-text);
+}
+
+/* Highlight active label for sidebar toggle */
+#showLastLivePriceToggle:checked + .slider + .toggle-label.right {
+    font-weight: bold;
+    color: var(--positive-color);
+}
+
+#showLastLivePriceToggle:not(:checked) + .slider + .toggle-label.left {
+    font-weight: bold;
+    color: var(--negative-color);
+}
+
+/* Ensure the main sidebar button item is still clickable as a whole */
+.menu-button-item.toggle-switch-container > .switch {
+    pointer-events: none; /* Prevent switch itself from stealing click from parent */
+}
+
+.menu-button-item.toggle-switch-container > .switch input {
+    pointer-events: auto; /* Re-enable input's pointer events for actual toggle */
+}
+
+/* NEW: Styling for the notification badge text color */
+.target-hit-fixed-btn .badge {
+    color: var(--button-text); /* Default to white/light for dark backgrounds */
+}
+
+/* Specific rule for light themes to make the badge text red */
+body[data-theme^="light"],
+body[data-theme^="subtle"],
+body[data-theme^="Muted"][data-theme*="Blue"],
+body[data-theme^="Muted"][data-theme*="Brown"],
+body[data-theme^="Muted"][data-theme*="Green"],
+body[data-theme^="Muted"][data-theme*="Orange"],
+body[data-theme^="Muted"][data-theme*="Cyan"],
+body[data-theme^="Muted"][data-theme*="Gold"],
+body:not([data-theme]):not(.dark-theme) { /* Applies to system-default light theme and explicit light theme */
+    .target-hit-fixed-btn .badge {
+        color: var(--negative-color) !important; /* Force red text on light themes */
+    }
 }
 
 /* Styling for the new concise toggle labels (e.g., "Below", "Above") */
