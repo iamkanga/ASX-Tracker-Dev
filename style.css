@@ -2370,13 +2370,13 @@ h1#mainTitle {
 
 input:checked + .slider {
     background-color: var(--button-bg); /* On state background color */
-    border-color: var(--green-color); /* Keep border green when checked */
+    border-color: var(---green-color) !important; /* Force constant green border when checked */
 }
 
 input:focus + .slider {
     outline: none; /* Remove default browser outline */
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.4), inset 0 0 0 1px rgba(0, 123, 255, 0.2); /* A subtle inner shadow with a softer outer glow */
-    border-color: var(--green-color); /* Ensure focus border remains green */
+    border-color: var(---green-color) !important; /* Ensure focus border remains green */
 }
 
 input:checked + .slider:before {
