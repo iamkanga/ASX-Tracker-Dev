@@ -3086,6 +3086,8 @@ table td.live-price-cell.negative-change {
     justify-content: space-between; /* Pushes label to left, toggle to right */
     border: none; /* Explicitly remove any border around this group */
     padding: 0; /* Remove any padding that could create an unwanted visual box */
+    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
+    background-color: transparent; /* Ensure no background color creates an unwanted box */
 }
 
 .form-group-with-toggle .target-price-label {
@@ -3265,95 +3267,6 @@ table td.live-price-cell.negative-change {
     color: var(--positive-color); /* Default 'Above' label color */
 }
 
-/* Style the labels based on the toggle state */
-/* Styling for the target price input group */
-.form-group-with-toggle {
-    display: flex;
-    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
-    align-items: baseline; /* Align items at their text baselines for labels */
-    gap: 8px; /* Space between elements on the same line */
-    margin-top: 10px; /* Ensures consistent vertical spacing with the "Entered Price" group */
-    margin-bottom: 15px; /* Standard space below the entire group */
-    justify-content: space-between; /* Pushes label to left, toggle to right */
-    border: none; /* Explicitly remove any border around this group */
-    padding: 0; /* Remove any padding that could create an unwanted visual box */
-    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
-    background-color: transparent; /* Ensure no background color creates an unwanted box */
-}
-
-/* Ensure child elements also do not contribute to an unwanted "box" background */
-/* Removed this general rule, as it might be causing issues with background on label/switch for theme inheritance */
-/* .form-group-with-toggle .toggle-label,
-.form-group-with-toggle .switch {
-    background-color: transparent;
-} */
-
-.form-group-with-toggle .target-price-label {
-    flex-shrink: 0; /* Prevent label from shrinking */
-}
-
-/* Base switch styling - make the switch itself the "pill" */
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 30px; /* Smaller width */
-    height: 17px; /* Smaller height */
-    vertical-align: middle;
-    flex-shrink: 0; /* Prevent the switch from shrinking */
-    border: none; /* Ensure no border on the main switch container */
-    background-color: transparent; /* Ensure no background on the main switch container */
-    padding: 0; /* Ensure no padding on the main switch container */
-}
-
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-/* The slider is now the "track" or "pill" with visible edges */
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--button-bg-dark); /* Default off state background */
-    transition: .4s;
-    border-radius: 17px; /* Pill shape */
-    border: 1px solid var(--border-color); /* This is the desired visible edge for the track */
-    box-sizing: border-box; /* Ensure border is included in width/height */
-}
-
-/* The circular thumb/button inside the slider */
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 13px; /* Smaller circle height */
-    width: 13px; /* Smaller circle width */
-    left: 1px; /* Closer to the edge */
-    bottom: 1px; /* Closer to the edge */
-    background-color: var(--text-color); /* Circle color */
-    transition: .4s;
-    border-radius: 50%;
-    box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
-}
-
-/* When checked, change background and move thumb */
-input:checked + .slider {
-    background-color: var(--positive-color); /* On state color */
-    border-color: var(--positive-color); /* Match border color */
-}
-
-input:focus + .slider {
-    box-shadow: 0 0 1px var(--positive-color);
-}
-
-input:checked + .slider:before {
-    transform: translateX(12px); /* Move smaller circle to the right */
-}
-
 /* Ensure the target price input drops to a new line and takes full width */
 .form-group-with-toggle input[type="number"] {
     width: 100%; /* Input spans full width of its container */
@@ -3509,7 +3422,7 @@ body:not([data-theme]):not(.dark-theme) { /* Applies to system-default light the
 /* Specific text for the description in the sidebar toggle */
 .menu-button-item.toggle-switch-container .toggle-description {
     margin-left: auto; /* Push the description text to the far right */
-    font-size: 0.85em; /* Slightly smaller font for description */
+    /* font-size: 0.85em; /* Removed to inherit font size from menu-button-item */
     color: var(--text-color);
     white-space: nowrap;
 }
