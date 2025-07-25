@@ -2375,6 +2375,13 @@ input:checked + .slider:before {
     transform: translateX(calc(100% + 2px));
     top: calc(50% - 9px); /* Vertically center the circle (half of its height) */
     bottom: auto; /* Remove bottom constraint */
+    /* Ensure consistent vertical centering when checked */
+}
+
+/* Add a rule for the unchecked state as well to ensure consistent vertical centering */
+.slider:before {
+    top: calc(50% - 9px); /* Vertically center the circle (half of its height) */
+    bottom: auto; /* Remove bottom constraint */
 }
 
 .menu-button-item.icon-only i {
@@ -3304,9 +3311,27 @@ table td.live-price-cell.negative-change {
     gap: 0; /* Remove internal gap between them, controlled by parent flex */
 }
 
-/* Ensure the toggle group pushes to the right */
-.form-group-with-toggle .toggle-label.left {
-    margin-left: auto; /* Push the toggle group to the right */
+/* Ensure the toggle group is correctly positioned horizontally relative to the label */
+.form-group-with-toggle .target-price-label {
+    margin-right: auto; /* Push the label to the left and create space */
+}
+
+/* Adjust vertical alignment of the toggle group within the form-group-with-toggle */
+.form-group-with-toggle .toggle-label.left,
+.form-group-with-toggle .switch,
+.form-group-with-toggle .toggle-label.right {
+    vertical-align: middle; /* Align middle with surrounding text */
+}
+
+/* Fine-tune vertical position of the switch and labels */
+.form-group-with-toggle .switch {
+    margin-top: -2px; /* Adjust slightly up */
+    margin-bottom: -2px; /* Adjust slightly down */
+}
+
+.form-group-with-toggle .toggle-label {
+    line-height: 1; /* Ensure consistent line height */
+    vertical-align: middle; /* Align middle with switch */
 }
 
 
@@ -3315,13 +3340,20 @@ table td.live-price-cell.negative-change {
     display: flex;
     flex-direction: column; /* Stack items vertically: title then toggle */
     align-items: flex-start; /* Align items to the start (left) */
-    padding: 0; /* Remove padding from the outer container */
-    border: none; /* Remove any border from the outer container */
-    background-color: transparent; /* Remove any background from the outer container */
+    padding: 10px 15px; /* Added padding to align with other menu items */
+    border: none;
+    background-color: var(--menu-button-bg); /* Use menu button background */
+    border-radius: 8px; /* Match menu button item styling */
     gap: 5px; /* Space between title and toggle line */
     margin-bottom: 10px;
     margin-top: 5px;
-    /* border-radius: 8px; Removed, applied to inner switch container if needed */
+    box-sizing: border-box; /* Ensure padding is included in width */
+    transition: background-color 0.2s ease, transform 0.1s ease; /* Add transition for hover effect */
+}
+
+.menu-button-item.toggle-switch-container:hover {
+    background-color: var(--menu-button-hover-bg); /* Add hover effect */
+    transform: translateY(-1px);
 }
 
 /* Title for the sidebar toggle (e.g., "Last Price (Market Closed)") */
@@ -3334,11 +3366,14 @@ table td.live-price-cell.negative-change {
     white-space: nowrap;
     margin-left: 0;
     margin-bottom: 5px; /* Space between title and toggle line */
+    width: 100%; /* Ensure it spans full width for alignment */
+    justify-content: flex-start; /* Align to the start */
 }
 
 /* Ensure icons within this title row inherit proper color */
 .menu-button-item.toggle-switch-container .toggle-title-row i {
     color: var(--text-color); /* Explicitly set icon color to match text */
+    flex-shrink: 0; /* Prevent icon from shrinking */
 }
 
 /* Container for the actual toggle and its Hide/Show labels in sidebar */
@@ -3347,8 +3382,8 @@ table td.live-price-cell.negative-change {
 .menu-button-item.toggle-switch-container > .toggle-label.right {
     display: inline-flex; /* Keep them on the same line */
     align-items: center;
-    /* Adjust spacing within this inline group */
-    gap: 8px; /* Space between label-switch-label */
+    gap: 8px; /* Adjusted spacing within this inline group */
+    margin-left: auto; /* Push the toggle row to the right within its container */
 }
 
 /* Styling for the sidebar toggle labels (Hide/Show) */
