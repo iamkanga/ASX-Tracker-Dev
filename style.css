@@ -2373,6 +2373,8 @@ input:checked + .slider:before {
     -webkit-transform: translateX(calc(100% + 2px)); /* Move circle to right, accounting for its size and padding */
     -ms-transform: translateX(calc(100% + 2px));
     transform: translateX(calc(100% + 2px));
+    top: calc(50% - 9px); /* Vertically center the circle (half of its height) */
+    bottom: auto; /* Remove bottom constraint */
 }
 
 .menu-button-item.icon-only i {
@@ -3260,14 +3262,14 @@ table td.live-price-cell.negative-change {
 }
 
 /* Ensure the target price input drops to a new line and takes full width */
+/* Adjusted margin-top for tighter spacing with the toggle row */
 .form-group-with-toggle input[type="number"] {
     width: 100%; /* Input spans full width of its container */
-    margin-top: 8px; /* Add space between label/toggle line and input */
+    margin-top: 4px; /* Reduced space between label/toggle line and input */
     flex-basis: 100%; /* Forces the input to start on a new line */
 }
 
 /* Highlight the active label for target direction toggle */
-/* Selectors updated to reflect that the labels are direct siblings of the <label class="switch"> element */
 #targetDirectionToggle:checked + .slider + .toggle-label.right {
     font-weight: bold;
     color: var(--text-color); /* Use primary text color when active */
@@ -3282,15 +3284,29 @@ table td.live-price-cell.negative-change {
 .form-group-with-toggle {
     display: flex;
     flex-wrap: wrap; /* Allow items to wrap on smaller screens */
-    align-items: baseline; /* Align items at their text baselines for labels */
+    align-items: center; /* Align items vertically in the center of the row */
     gap: 4px; /* Reduced gap for tighter spacing */
     margin-top: 10px; /* Ensures consistent vertical spacing */
     margin-bottom: 15px; /* Standard space below the entire group */
-    justify-content: flex-start; /* Align all items to the start (left) */
+    justify-content: space-between; /* Pushes first item (label) to left, toggle group to right */
     border: none;
     padding: 0;
     box-sizing: border-box;
     background-color: transparent;
+}
+
+/* New rule to group the Below label, toggle, and Above label together */
+.form-group-with-toggle .toggle-label.left,
+.form-group-with-toggle .switch,
+.form-group-with-toggle .toggle-label.right {
+    display: inline-flex; /* Ensure these stay on one line */
+    align-items: center;
+    gap: 0; /* Remove internal gap between them, controlled by parent flex */
+}
+
+/* Ensure the toggle group pushes to the right */
+.form-group-with-toggle .toggle-label.left {
+    margin-left: auto; /* Push the toggle group to the right */
 }
 
 
