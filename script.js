@@ -198,10 +198,6 @@ const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn
 const targetDirectionToggle = document.getElementById('targetDirectionToggle'); // The checkbox for the toggle
 const targetDirectionLabel = document.getElementById('targetDirectionLabel'); // The label text next to the toggle
 
-// NEW: References for the reconfigured buttons in the Target Hit Details Modal
-const targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTopBtn'); // New 'X' button at the top
-const alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn'); // New "Minimize" button at the bottom
-const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn'); // New "Dismiss All" button at the bottom
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
