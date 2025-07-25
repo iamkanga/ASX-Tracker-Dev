@@ -3850,11 +3850,18 @@ body:not([data-theme]):not(.dark-theme) { /* Applies to system-default light the
     transition: color 0.2s ease;
 }
 
-.external-link i { /* Explicitly style the icon within external links */
-    font-size: 0.8em; /* Make icon slightly smaller than text */
-    color: var(--link-color); /* Ensure icon color matches link text */
-    margin-left: 5px; /* Add a small space between text and icon */
-    vertical-align: middle; /* Align icon vertically with text */
+/* Force visibility and styling of Font Awesome icons within external links */
+.external-link i.fas.fa-external-link-alt { 
+    display: inline-block !important; /* Ensure it's not hidden by 'display: none' */
+    visibility: visible !important; /* Ensure it's not hidden by 'visibility: hidden' */
+    font-family: "Font Awesome 6 Free" !important; /* Ensure correct font family is applied */
+    font-weight: 900 !important; /* Ensure correct font weight for solid icons */
+    font-size: 0.8em !important; /* Maintain desired size */
+    color: var(--link-color) !important; /* Ensure color */
+    margin-left: 5px !important; /* Maintain spacing */
+    vertical-align: middle !important; /* Maintain alignment */
+    -webkit-font-smoothing: antialiased; /* For better rendering */
+    -moz-osx-font-smoothing: grayscale; /* For better rendering */
 }
 
 .external-link:hover {
