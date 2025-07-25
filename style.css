@@ -3253,7 +3253,7 @@ table td.live-price-cell.negative-change {
 /* Adjusted margin-top for tighter spacing with the toggle row */
 .form-group-with-toggle input[type="number"] {
     width: 100%; /* Input spans full width of its container */
-    margin-top: 4px; /* Reduced space between label/toggle line and input */
+    margin-top: 2px; /* Reduced space by 50% from 4px to 2px */
     flex-basis: 100%; /* Forces the input to start on a new line */
 }
 
