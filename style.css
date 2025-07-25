@@ -2354,11 +2354,16 @@ h1#mainTitle {
     height: 18px; /* Smaller circle */
     width: 18px; /* Smaller circle */
     left: calc(50% - 9px); /* Centered horizontally (half width of circle) */
-    bottom: 2px; /* Adjusted position */
+    top: calc(50% - 9px); /* Vertically center the circle (half its height) */
     background-color: white;
     -webkit-transition: .4s;
     transition: .4s;
     border-radius: 50%;
+}
+
+/* Ensure consistent vertical centering when checked (moved to the right) */
+input:checked + .slider:before {
+    top: calc(50% - 9px); /* Explicitly set top to ensure vertical centering */
 }
 
 input:checked + .slider {
@@ -3291,7 +3296,7 @@ table td.live-price-cell.negative-change {
 .form-group-with-toggle {
     display: flex;
     flex-wrap: wrap; /* Allow items to wrap on smaller screens */
-    align-items: center; /* Align items vertically in the center of the row */
+    align-items: center; /* Vertically align all items in the center of the row */
     gap: 4px; /* Reduced gap for tighter spacing */
     margin-top: 10px; /* Ensures consistent vertical spacing */
     margin-bottom: 15px; /* Standard space below the entire group */
@@ -3300,6 +3305,7 @@ table td.live-price-cell.negative-change {
     padding: 0;
     box-sizing: border-box;
     background-color: transparent;
+    min-height: 24px; /* Ensure minimum height for consistent alignment */
 }
 
 /* New rule to group the Below label, toggle, and Above label together */
@@ -3307,31 +3313,29 @@ table td.live-price-cell.negative-change {
 .form-group-with-toggle .switch,
 .form-group-with-toggle .toggle-label.right {
     display: inline-flex; /* Ensure these stay on one line */
-    align-items: center;
+    align-items: center; /* Vertically align items within this inline flex */
     gap: 0; /* Remove internal gap between them, controlled by parent flex */
 }
 
-/* Ensure the toggle group is correctly positioned horizontally relative to the label */
+/* Ensure the target price label is correctly positioned horizontally */
 .form-group-with-toggle .target-price-label {
-    margin-right: auto; /* Push the label to the left and create space */
+    margin-right: auto; /* Push the label to the left and create space for the toggle group */
+    line-height: 1; /* Ensure consistent line height */
 }
 
-/* Adjust vertical alignment of the toggle group within the form-group-with-toggle */
-.form-group-with-toggle .toggle-label.left,
-.form-group-with-toggle .switch,
-.form-group-with-toggle .toggle-label.right {
-    vertical-align: middle; /* Align middle with surrounding text */
-}
-
-/* Fine-tune vertical position of the switch and labels */
+/* Fine-tune vertical position of the switch and labels within their group */
 .form-group-with-toggle .switch {
-    margin-top: -2px; /* Adjust slightly up */
-    margin-bottom: -2px; /* Adjust slightly down */
+    vertical-align: middle; /* Ensure vertical alignment */
 }
 
 .form-group-with-toggle .toggle-label {
     line-height: 1; /* Ensure consistent line height */
-    vertical-align: middle; /* Align middle with switch */
+    vertical-align: middle; /* Ensure vertical alignment */
+}
+
+/* Adjust the input field's top margin to bring it closer to the label/toggle row */
+.form-group-with-toggle input[type="number"] {
+    margin-top: 4px; /* Keep consistent margin-top, no further reduction */
 }
 
 
@@ -3399,7 +3403,87 @@ table td.live-price-cell.negative-change {
 }
 
 #showLastLivePriceToggle:not(:checked) + .slider + .toggle-label.left {
+ /* Specific styling for the sidebar toggle section */
+.menu-button-item.toggle-switch-container {
+    display: flex;
+    flex-direction: column; /* Stack items vertically: title then toggle */
+    align-items: flex-start; /* Align items to the start (left) */
+    padding: 10px 15px; /* Added padding to align with other menu items */
+    border: none;
+    background-color: var(--menu-button-bg); /* Use menu button background */
+    border-radius: 8px; /* Match menu button item styling */
+    gap: 5px; /* Space between title and toggle line */
+    margin-bottom: 10px;
+    margin-top: 5px;
+    box-sizing: border-box; /* Ensure padding is included in width */
+    transition: background-color 0.2s ease, transform 0.1s ease; /* Add transition for hover effect */
+}
+
+.menu-button-item.toggle-switch-container:hover {
+    background-color: var(--menu-button-hover-bg); /* Add hover effect */
+    transform: translateY(-1px);
+}
+
+/* Title for the sidebar toggle (e.g., "Last Price (Market Closed)") */
+.menu-button-item.toggle-switch-container .toggle-title-row {
+    display: flex; /* Use flex for icon and text */
+    align-items: center;
+    gap: 8px; /* Space between icon and text */
+    font-size: 1em; /* This is the correct size to match other menu-button-item texts like "Search & Add Stock" */
+    color: var(--text-color);
+    white-space: nowrap;
+    margin-left: 0;
+    margin-bottom: 5px; /* Space between title and toggle line */
+    width: 100%; /* Ensure it spans full width for alignment */
+    justify-content: flex-start; /* Align to the start */
+}
+
+/* Ensure icons within this title row inherit proper color */
+.menu-button-item.toggle-switch-container .toggle-title-row i {
+    color: var(--text-color); /* Explicitly set icon color to match text */
+    flex-shrink: 0; /* Prevent icon from shrinking */
+}
+
+/* Container for the actual toggle and its Hide/Show labels in sidebar */
+.menu-button-item.toggle-switch-container > .toggle-label.left,
+.menu-button-item.toggle-switch-container > .switch,
+.menu-button-item.toggle-switch-container > .toggle-label.right {
+    display: inline-flex; /* Keep them on the same line */
+    align-items: center;
+    gap: 8px; /* Adjusted spacing within this inline group */
+    margin-left: auto; /* Push the toggle row to the right within its container */
+}
+
+/* Styling for the sidebar toggle labels (Hide/Show) */
+.menu-button-item.toggle-switch-container .toggle-label {
+    font-size: 0.75em; /* Slightly smaller for sidebar */
+    color: var(--ghosted-text);
+}
+
+/* Highlight active label for sidebar toggle */
+#showLastLivePriceToggle:checked + .slider + .toggle-label.right {
     font-weight: bold;
+    color: var(--positive-color);
+}
+
+#showLastLivePriceToggle:not(:checked) + .slider + .toggle-label.left {
+    font-weight: bold;
+    color: var(--negative-color);
+}
+
+/* Ensure the main sidebar button item is still clickable as a whole */
+.menu-button-item.toggle-switch-container > .switch {
+    pointer-events: none; /* Prevent switch itself from stealing click from parent */
+}
+
+.menu-button-item.toggle-switch-container > .switch input {
+    pointer-events: auto; /* Re-enable input's pointer events for actual toggle */
+}
+
+/* NEW: Styling for the notification badge text color */
+.target-hit-fixed-btn .badge {
+    color: var(--button-text); /* Default to white/light for dark backgrounds */
+}   font-weight: bold;
     color: var(--negative-color);
 }
 
