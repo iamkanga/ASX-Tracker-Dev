@@ -4,15 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Share Watchlist</title>
-    <!-- favicon -->
-    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="icon" href="favicon.jpg" type="image/jpg">
 
-    <!-- Linking to your separate style.css file -->
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- PWA Manifest Link -->
     <link rel="manifest" href="./manifest.json">
     <style>
         /* Basic spinner animation for loading overlay */
@@ -32,34 +28,27 @@
     </style>
 </head>
 <body>
-    <!--  Splash Screen Container -->
     <div id="splashScreen" class="splash-screen">
         <img id="splashKangarooIcon" src="Kangaicon.jpg" alt="Kangaroo App Icon" class="splash-icon">
-        <!-- The sign-in button on the splash screen -->
         <button id="splashSignInBtn" class="google-auth-btn">Google Sign In</button>
     </div>
 
     <header id="appHeader" class="app-hidden">
         <div class="header-top-row">
-            <!-- Hamburger/Sidebar Toggle Button -->
             <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left">
                 <i class="fas fa-bars"></i>
             </button>
             <h1 id="mainTitle">Share Watchlist</h1>
-            <!-- Add Share button on the main screen -->
             <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right">
                 <i class="fas fa-plus"></i>
             </button>
         </div>
 
-        <!-- Watchlist and Sort controls -->
         <div class="watchlist-controls-row">
             <div class="watchlist-group">
                 <select id="watchlistSelect" class="dropdown-large">
                     <option value="" disabled selected>Watch List</option>
-                    <!-- Options populated by JS -->
-                    <option value="cashBank">Cash & Assets</option> <!-- UPDATED: Option for Cash & Assets -->
-                </select>
+                    <option value="cashBank">Cash & Assets</option> </select>
             </div>
 
             <div class="sort-group">
@@ -79,39 +68,31 @@
             </div>
         </div>
         
-        <!-- ASX Code buttons container -->
         <div id="asxCodeButtonsContainer" class="asx-code-buttons-container">
-            <!-- ASX code buttons will be dynamically added here -->
-        </div>
+            </div>
     </header>
 
-    <!-- Mobile Menu / Desktop Sidebar Content -->
     <nav id="appSidebar" class="app-sidebar">
         <button id="closeMenuBtn" class="close-menu-btn">X</button>
         
         <div class="menu-section">
             <h3>Share Actions</h3>
             <div class="menu-buttons-group">
-                <!-- Compact View Toggle Button -->
                 <button id="toggleCompactViewBtn" class="menu-button-item" data-action-closes-menu="false">
                     <i class="fas fa-th-large"></i> <span>Toggle Compact View</span>
                 </button>
-                <!-- Refresh Live Prices Button -->
                 <button id="refreshLivePricesBtn" class="menu-button-item" data-action-closes-menu="false">
                     <i class="fas fa-sync-alt"></i> <span>Refresh Live Prices</span>
                 </button>
-                <!-- Add New Share -->
                 <button id="newShareBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-plus-circle"></i> <span>Add New Share</span>
                 </button>
                 <button id="searchStockBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-search-plus"></i> <span>Search & Add Stock</span>
                 </button>
-                <!-- Show Last Live Price Toggle -->
                 <div class="menu-button-item toggle-switch-container" data-action-closes-menu="false">
                     <div class="toggle-title-row">
-                        <i class="fas fa-history"></i> <!-- Icon for history/last price -->
-                        <span class="toggle-description">Last Price (Market Closed)</span>
+                        <i class="fas fa-history"></i> <span class="toggle-description">Last Price (Market Closed)</span>
                     </div>
                     <div class="toggle-switch-row">
                         <span class="toggle-label left" id="lastPriceToggleLabelOff">Hide</span>
@@ -128,11 +109,9 @@
         <div class="menu-section">
             <h3>Watchlists</h3>
             <div class="menu-buttons-group">
-                <!-- Add Watchlist -->
                 <button id="addWatchlistBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-list-ul"></i> <span>Add Watchlist</span>
                 </button>
-                <!-- Edit Current Watchlist -->
                 <button id="editWatchlistBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-edit"></i> <span>Edit Current Watchlist</span>
                 </button>
@@ -142,22 +121,18 @@
         <div class="menu-section">
             <h3>Calculators</h3>
             <div class="menu-buttons-group">
-                <!-- Standard Calculator -->
                 <button id="standardCalcBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-calculator"></i> <span>Standard</span>
                 </button>
-                <!-- Dividend Calculator -->
                 <button id="dividendCalcBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-money-bill-wave"></i> <span>Dividend</span>
                 </button>
             </div>
         </div>
 
-        <!-- Data Actions section -->
         <div class="menu-section">
             <h3>Theme</h3>
             <div class="menu-buttons-group">
-                <!-- Theme Selector Dropdown -->
                 <label for="colorThemeSelect" class="theme-select-label">Choose Color Theme:</label>
                 <select id="colorThemeSelect" class="dropdown-large menu-dropdown" data-action-closes-menu="false">
                     <option value="none" selected>No Custom Theme</option>
@@ -199,19 +174,16 @@
                     </optgroup>
                 </select>
 
-                <!-- Theme Toggle Button -->
                 <button id="themeToggleBtn" class="menu-button-item" data-action-closes-menu="false">
                     <i class="fas fa-palette"></i> <span>Theme Toggle</span>
                 </button>
                 
-                <!-- Revert to Default Theme Button -->
                 <button id="revertToDefaultThemeBtn" class="menu-button-item secondary-buttons" data-action-closes-menu="false">
                     <i class="fas fa-sun"></i><i class="fas fa-moon"></i> <span>Default Theme</span>
                 </button>
             </div>
         </div>
         
-        <!-- Data Actions section -->
         <div class="menu-section">
             <h3>Data Actions</h3>
             <div class="menu-buttons-group">
@@ -221,7 +193,6 @@
             </div>
         </div>
 
-        <!-- Data Management Section -->
         <div class="menu-section data-management-section">
             <h3>Data Management</h3>
             <div class="menu-buttons-group">
@@ -231,7 +202,6 @@
             </div>
         </div>
 
-        <!-- Logout Button Section -->
         <div class="menu-section logout-section">
             <h3>Account</h3>
             <div class="menu-buttons-group">
@@ -242,11 +212,9 @@
         </div>
     </nav>
 
-    <!-- Sidebar overlay for desktop to handle clicks outside -->
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
     <main class="container app-hidden">
-        <!-- Message for Firebase initialization errors -->
         <div id="firebaseInitError" class="error-message" style="display: none;">
             <p><strong>Error:</strong> Firebase failed to initialize.</p>
             <p>This is usually due to missing or incorrect Firebase configuration. Please ensure your <code>firebaseConfig</code> in <code>index.html</code> is correctly set up from your Firebase project settings.</p>
@@ -258,7 +226,6 @@
             <p>Loading data...</p>
         </div>
 
-        <!-- Stock Watchlist Section (Initially visible) -->
         <div id="stockWatchlistSection" class="share-list-section">
             <div class="table-container">
                 <table id="shareTable">
@@ -273,63 +240,49 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Share rows will be dynamically added here -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
             <div id="mobileShareCards" class="mobile-share-cards">
-                <!-- Mobile share cards will be dynamically added here -->
-            </div>
+                </div>
         </div>
 
-        <!-- NEW: Cash & Assets Section (Initially hidden) -->
         <div id="cashAssetsSection" class="cash-assets-section app-hidden">
             <h2>Cash & Assets Balances</h2>
             <div id="cashCategoriesContainer" class="cash-categories-container">
-                <!-- Cash categories and their input fields will be dynamically added here by script.js -->
                 <p class="empty-message">No cash categories added yet. Click "Add Category" to get started!</p>
             </div>
             <div class="cash-actions">
-                <!-- Removed: <button id="addCashCategoryBtn" class="button">Add Category</button> -->
-                <!-- Removed: <button id="saveCashBalancesBtn" class="button primary-button">Save Balances</button> -->
-            </div>
+                </div>
             <div class="total-cash-display">
                 <h3>Total Cash: <span id="totalCashDisplay">$0.00</span></h3>
             </div>
         </div>
     </main>
 
-    <!-- NEW: Target Price Notification Icon (bottom right) -->
     <button id="targetHitIconBtn" class="icon-button target-hit-fixed-btn app-hidden">
         <i class="fas fa-bell"></i>
         <span id="targetHitIconCount" class="badge">0</span>
     </button>
 
-    <!-- Scroll-to-Top Button -->
     <button id="scrollToTopBtn" title="Go to top"><i class="fas fa-arrow-up"></i></button>
 
-    <!-- Modals -->
-    <!-- Share Form Modal -->
     <div id="shareFormSection" class="modal">
         <div class="modal-content add-share-modal-content">
             <div class="modal-header-with-icon">
                 <h2 id="formTitle">Add New Share</h2>
                 <div class="modal-header-action-group">
-                    <!-- Delete Icon -->
                     <span id="deleteShareBtn" class="modal-action-icon danger hidden" title="Delete"><i class="fas fa-trash-alt"></i></span>
-                    <!-- Save Icon -->
                     <span id="saveShareBtn" class="modal-action-icon" title="Save Share"><i class="fas fa-save"></i></span>
                     <span class="close-button form-close-button">&times;</span>
                 </div>
             </div>
             
             <div class="modal-body-scrollable">
-                <!-- Watchlist selection dropdown for shares -->
                 <label for="shareWatchlistSelect">Assign to Watchlist:</label>
                 <select id="shareWatchlistSelect" class="dropdown-large" required>
                     <option value="" disabled selected>Select a Watchlist</option>
-                    <!-- Options will be dynamically populated by script.js -->
-                </select>
+                    </select>
 
                 <label for="shareRating">Star Rating:</label>
                 <select id="shareRating" class="dropdown-large">
@@ -347,41 +300,48 @@
                 <label for="currentPrice">Entered Price ($):</label>
                 <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
 
+                <div class="form-group-with-toggle">
+                    <label for="targetPrice" class="target-price-label">Target Price ($):</label>
+                    <span class="toggle-label left" id="targetDirectionLabelBelow">Below</span>
+                    <label class="switch">
+                        <input type="checkbox" id="targetDirectionToggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span class="toggle-label right" id="targetDirectionLabelAbove">Above</span>
+                    <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
+                </div>
+                
+                <hr class="form-section-separator">
+                <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
+                <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
+
                 <label for="frankingCredits">Franking Credits (%):</label>
                 <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
 
-                <!-- Comments section container -->
                 <div class="comments-form-container">
                     <h3>Comments <span id="addCommentSectionBtn" class="add-section-icon"><i class="fas fa-plus"></i></span></h3>
                     
-                    <!-- This is the container for dynamically added comment sections -->
                     <div id="dynamicCommentsArea">
-                        <!-- Dynamically added comment sections will go here -->
-                    </div>
+                        </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Share Details Modal -->
     <div id="shareDetailModal" class="modal">
         <div class="modal-content">
             <div class="modal-header-with-icon">
                 <h2 id="modalShareName">Share Details</h2>
                 <div class="modal-header-action-group">
-                    <!-- Delete Share icon -->
                     <span id="deleteShareFromDetailBtn" class="modal-action-icon danger" title="Delete Share"><i class="fas fa-trash-alt"></i></span>
-                    <!-- Edit Share icon -->
                     <span id="editShareFromDetailBtn" class="modal-action-icon" title="Edit Share"><i class="fas fa-edit"></i></span>
                     <span class="close-button">&times;</span>
                 </div>
             </div>
             
             <div class="modal-body-scrollable">
-                <!-- Dedicated Live Price Section -->
                 <div class="live-price-display-section">
-                    <!-- Content (52-week high/low, live price, P/E) dynamically added by script.js -->
-                </div>
+                    </div>
 
                 <p><strong>Entered Price:</strong> <span id="modalEnteredPrice"></span></p>
                 <p><strong>Target Price:</strong> <span id="modalTargetPrice"></span></p>
@@ -394,8 +354,7 @@
 
                 <div id="modalCommentsContainer" class="modal-comments-sections">
                     <h3>Comments</h3>
-                    <!-- Comments will be displayed here -->
-                </div>
+                    </div>
 
                 <div class="external-links-section">
                     <h3>External Links</h3>
@@ -420,7 +379,6 @@
         </div>
     </div>
 
-    <!-- Add Watchlist Modal -->
     <div id="addWatchlistModal" class="modal">
         <div class="modal-content">
             <div class="modal-header-with-icon">
@@ -435,7 +393,6 @@
         </div>
     </div>
 
-    <!-- Manage Watchlist Modal -->
     <div id="manageWatchlistModal" class="modal">
         <div class="modal-content">
             <div class="modal-header-with-icon">
@@ -451,7 +408,6 @@
         </div>
     </div>
 
-    <!-- Dividend Calculator Modal -->
     <div id="dividendCalculatorModal" class="modal">
         <div class="modal-content calculator-modal-content">
             <span class="close-button calc-close-button">&times;</span>
@@ -486,7 +442,6 @@
         </div>
     </div>
 
-    <!-- Standard Calculator Modal -->
     <div id="calculatorModal" class="modal">
         <div class="modal-content calculator-modal-content">
             <span class="close-button">&times;</span>
@@ -496,30 +451,25 @@
                 <div id="calculatorResult" class="calculator-result">0</div>
             </div>
             <div class="calculator-buttons">
-                <!-- Row 1: C, %, ÷ -->
                 <button class="calc-btn clear" data-action="clear">C</button>
                 <button class="calc-btn operator" data-action="percentage">%</button>
                 <button class="calc-btn operator" data-action="divide">÷</button>
                 
-                <!-- Row 2: 7, 8, 9, × -->
                 <button class="calc-btn" data-value="7">7</button>
                 <button class="calc-btn" data-value="8">8</button>
                 <button class="calc-btn" data-value="9">9</button>
                 <button class="calc-btn operator" data-action="multiply">×</button>
                 
-                <!-- Row 3: 4, 5, 6, - -->
                 <button class="calc-btn" data-value="4">4</button>
                 <button class="calc-btn" data-value="5">5</button>
                 <button class="calc-btn" data-value="6">6</button>
                 <button class="calc-btn operator" data-action="subtract">-</button>
                 
-                <!-- Row 4: 1, 2, 3, + -->
                 <button class="calc-btn" data-value="1">1</button>
                 <button class="calc-btn" data-value="2">2</button>
                 <button class="calc-btn" data-value="3">3</button>
                 <button class="calc-btn operator" data-action="add">+</button>
                 
-                <!-- Row 5: 0 (span 2), ., = (span 1) -->
                 <button class="calc-btn zero" data-value="0">0</button>
                 <button class="calc-btn" data-value=".">.</button>
                 <button class="calc-btn equals" data-action="calculate">=</button>
@@ -527,7 +477,6 @@
         </div>
     </div>
 
-    <!-- Custom Dialog Modal for Alerts/Confirms -->
     <div id="customDialogModal" class="modal">
         <div class="modal-content">
             <p id="customDialogMessage"></p>
@@ -555,13 +504,11 @@
             </div>
         </div>
     </div>
-    <!-- Context Menu for Share Actions (Long Press / Right Click) -->
     <div id="shareContextMenu" class="context-menu">
         <button id="contextEditShareBtn" class="context-menu-item"><i class="fas fa-edit"></i> Edit Share</button>
         <button id="contextDeleteShareBtn" class="context-menu-item danger-button"><i class="fas fa-trash-alt"></i> Delete Share</button>
     </div>
 
-    <!-- NEW: Add/Edit Cash Asset Modal (2.1) -->
     <div id="cashAssetFormModal" class="modal">
         <div class="modal-content">
             <div class="modal-header-with-icon">
@@ -579,17 +526,13 @@
                 <label for="cashAssetBalance">Balance ($):</label>
                 <input type="number" id="cashAssetBalance" step="0.01" placeholder="e.g., 10000.00" required>
                 
-                <!-- Comments section container for Cash Assets -->
                 <div class="comments-form-container">
                     <h3>Comments <span id="addCashAssetCommentBtn" class="add-section-icon"><i class="fas fa-plus"></i></span></h3>
                     
-                    <!-- This is the container for dynamically added comment sections for Cash Assets -->
                     <div id="cashAssetCommentsArea">
-                        <!-- Dynamically added comment sections will go here -->
-                    </div>
+                        </div>
                 </div>
 
-                <!-- NEW: Hide Asset Checkbox -->
                 <div class="form-check-group">
                     <input type="checkbox" id="hideCashAssetCheckbox">
                     <label for="hideCashAssetCheckbox">Temporarily hide this asset and exclude from total</label>
@@ -623,7 +566,6 @@
                 </div>
         </div>
     </div>
-    <!-- NEW: Cash Asset Details Modal (2.2) -->
     <div id="cashAssetDetailModal" class="modal">
         <div class="modal-content">
             <div class="modal-header-with-icon">
@@ -638,17 +580,14 @@
                 <p><strong>Asset Name:</strong> <span id="detailCashAssetName"></span></p>
                 <p><strong>Balance:</strong> <span id="detailCashAssetBalance"></span></p>
                 <p><strong>Last Updated:</strong> <span id="detailCashAssetLastUpdated"></span></p>
-                <!-- NEW: Comments container for Cash Asset Details Modal -->
                 <div id="modalCashAssetCommentsContainer" class="modal-comments-sections">
                     <h3>Comments</h3>
-                    <!-- Comments will be displayed here -->
-                </div>
+                    </div>
             </div>
         </div>
     </div>
 
 
-    <!-- Firebase and main script loading -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -725,72 +664,6 @@
             console.log("index.html script module loaded and DOMContentLoaded fired.");
         }); 
     </script>
-    <!-- Linking to your separate script.js file -->
     <script src="script.js"></script>
 </body>
 </html>
-```
-I have analyzed the `index.html` snippet you just provided.
-
-The snippet you provided is **not okay**. It still contains the deeply nested `div` elements (`target-toggle-frame` and `target-direction-switch-container`) that are causing the layout issues for the modal toggle.
-
-My previous instruction was to completely remove these two nested `div`s and flatten the structure. It seems that change was either not applied correctly or was reverted.
-
-The core problem remains the HTML structure for the target price toggle in `index.html`. We need to ensure it's a flat structure within `form-group-with-toggle` as I described.
-
----
-
-Here's the correction for `index.html` again. This is the **critical structural fix** that must be applied precisely.
-
-### **`index.html` - Critical Structural Correction (Target Price Toggle)**
-
-**Locate:**
-Locate the following exact block of HTML code in your `index.html` file. This is the entire section from `<label for="currentPrice">` to `</input>` for franking credits, which contains the deeply nested elements.
-
-```html
-                <label for="currentPrice">Entered Price ($):</label>
-                <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
-
-                <div class="form-group-with-toggle">
-                    <label for="targetPrice" class="target-price-label">Target Price ($):</label>
-                    <div class="target-toggle-frame">
-                        <span class="toggle-label left" id="targetDirectionLabelBelow">Below</span>
-                        <div class="target-direction-switch-container">
-                            <label class="switch">
-                                <input type="checkbox" id="targetDirectionToggle">
-                                <span class="slider round"></span>
-                            </label>
-                            <span class="toggle-label right" id="targetDirectionLabelAbove">Above</span>
-                            <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
-                        </div>
-                        <hr class="form-section-separator">
-                        <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
-                        <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
-
-                        <label for="frankingCredits">Franking Credits (%):</label>
-                        <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
-```
-
-**Paste:**
-Replace the *entire* located block with the following corrected HTML. This flattens the structure within `form-group-with-toggle` by removing the `target-toggle-frame` and `target-direction-switch-container` divs, ensuring the labels and switch are direct siblings, followed by the input, and then the separator.
-
-```html
-                <label for="currentPrice">Entered Price ($):</label>
-                <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
-
-                <div class="form-group-with-toggle">
-                    <label for="targetPrice" class="target-price-label">Target Price ($):</label>
-                    <span class="toggle-label left" id="targetDirectionLabelBelow">Below</span>
-                    <label class="switch">
-                        <input type="checkbox" id="targetDirectionToggle">
-                        <span class="slider round"></span>
-                    </label>
-                    <span class="toggle-label right" id="targetDirectionLabelAbove">Above</span>
-                    <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
-                </div>
-                <hr class="form-section-separator">
-                <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
-                <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
-
-                <label for="frankingCredits">Franking Credits (%):</label>
-                <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
