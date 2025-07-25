@@ -2380,14 +2380,12 @@ input:focus + .slider {
 }
 
 input:checked + .slider:before {
-    /* Aggressive adjustment for precise horizontal centering when checked.
-       Calculated as (total track width - handle width - (desired_padding * 2)) / 2 + desired_padding */
-    /* For 50px track, 20px handle, 2px padding: (50 - 20 - 4) = 26. So move 26px from left edge. */
-    -webkit-transform: translateX(26px) translateY(-50%) !important; /* Force translation */
+    /* Fine-tuned translation for perfect centering and visibility.
+       This value (26px) aims for a consistent 2px spacing from both left and right edges of the 50px track. */
+    -webkit-transform: translateX(26px) translateY(-50%) !important;
     -ms-transform: translateX(26px) translateY(-50%) !important;
     transform: translateX(26px) translateY(-50%) !important;
-    left: auto !important; /* Ensure 'left' doesn't interfere */
-    right: 2px !important; /* Pin to the right with 2px offset (for aggressive control) */
+    /* Removed 'left: auto !important;' and 'right: 2px !important;' as they can conflict with translateX. */
 }
 /* The problematic duplicate .slider:before rule has been removed. */
 
@@ -3095,15 +3093,17 @@ table td.live-price-cell.negative-change {
 .form-group-with-toggle {
     display: flex;
     flex-wrap: wrap; /* Allow items to wrap on smaller screens */
-    align-items: baseline; /* Align items at their text baselines for labels */
-    gap: 8px; /* Space between elements on the same line */
-    margin-top: 10px; /* Ensures consistent vertical spacing with the "Entered Price" group */
+    align-items: center; /* Changed from baseline to center for better vertical alignment within the row */
+    gap: 4px; /* Halved the horizontal gap for tighter spacing */
+    row-gap: 2px; /* Explicitly control vertical gap between wrapped items */
+    margin-top: 10px; /* Ensures consistent vertical spacing */
     margin-bottom: 15px; /* Standard space below the entire group */
     justify-content: space-between; /* Pushes label to left, toggle to right */
-    border: none; /* Explicitly remove any border around this group */
-    padding: 0; /* Remove any padding that could create an unwanted visual box */
-    box-sizing: border-box; /* Ensure padding and border are included in the element's total width and height */
-    background-color: transparent; /* Ensure no background color creates an unwanted box */
+    border: none;
+    padding: 0;
+    box-sizing: border-box;
+    background-color: transparent;
+    min-height: 24px; /* Ensure minimum height for consistent alignment */
 }
 
 .form-group-with-toggle .target-price-label {
@@ -3248,10 +3248,10 @@ table td.live-price-cell.negative-change {
 }
 
 /* Ensure the target price input drops to a new line and takes full width */
-/* Aggressive adjustment for tighter spacing with the toggle row */
+/* Fine-tuning margin-top after adjusting parent's gap */
 .form-group-with-toggle input[type="number"] {
     width: 100%; /* Input spans full width of its container */
-    margin-top: 2px !important; /* Force 2px space from previous element */
+    margin-top: 0px !important; /* Remove top margin from the input itself */
     flex-basis: 100%; /* Forces the input to start on a new line */
 }
 
