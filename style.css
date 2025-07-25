@@ -2318,14 +2318,15 @@ h1#mainTitle {
     font-weight: 400; /* Match other menu items */
 }
 
-/* The switch - the box around the slider */
+/* The switch - the box around the slider (container for the entire toggle) */
 .switch {
     position: relative;
     display: inline-block;
-    width: 40px; /* Consistent width */
-    height: 22px; /* Consistent height */
+    width: 50px; /* Increased width for the overall switch */
+    height: 28px; /* Increased height for the overall switch */
     flex-shrink: 0; /* Prevent shrinking */
     vertical-align: middle; /* Ensures vertical alignment with inline elements */
+    overflow: hidden; /* Ensure slider doesn't overflow this container */
 }
 
 /* Hide default HTML checkbox */
@@ -2335,7 +2336,7 @@ h1#mainTitle {
     height: 0;
 }
 
-/* The slider */
+/* The slider (the pill-shaped track) */
 .slider {
     position: absolute;
     cursor: pointer;
@@ -2343,42 +2344,45 @@ h1#mainTitle {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: var(--secondary-button-bg); /* Off state color */
+    background-color: var(--secondary-button-bg); /* Off state color, subtle background */
     -webkit-transition: .4s;
     transition: .4s;
-    border-radius: 22px; /* Rounded slider */
-    border: 1px solid var(--border-color); /* Visible edge for the track */
+    border-radius: 28px; /* Match height for perfect pill shape */
+    border: 2px solid var(--border-color); /* Thicker border for better visual weight */
     box-sizing: border-box; /* Ensure border is included in width/height */
 }
 
+/* The slider handle (the circular thumb) */
 .slider:before {
     position: absolute;
     content: "";
-    height: 18px; /* Consistent height for the round handle */
-    width: 18px; /* Consistent width for the round handle */
+    height: 20px; /* Adjusted handle size to fit new pill (28px height - 2*2px border = 24px inner height, so 20px is good) */
+    width: 20px; /* Match height for perfect circle */
     left: 2px; /* Initial position for the handle (2px from left edge of track) */
     top: 50%; /* Vertically center the handle */
     transform: translateY(-50%); /* Adjust for perfect vertical centering */
-    background-color: white;
+    background-color: white; /* Solid white for the handle */
     -webkit-transition: .4s;
     transition: .4s;
-    border-radius: 50%;
-    box-sizing: border-box; /* Ensure padding/border don't affect size */
+    border-radius: 50%; /* Make it perfectly round */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3); /* Subtle shadow for depth */
 }
 
 input:checked + .slider {
     background-color: var(--button-bg); /* On state color */
+    border-color: var(--button-bg); /* Match border to background when checked */
 }
 
 input:focus + .slider {
-    box-shadow: 0 0 1px var(--button-bg);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.4); /* Larger focus ring */
 }
 
 input:checked + .slider:before {
     /* Move to the right: (track width - handle width - left offset) */
-    -webkit-transform: translateX(20px) translateY(-50%);
-    -ms-transform: translateX(20px) translateY(-50%);
-    transform: translateX(20px) translateY(-50%);
+    /* 50px (width of switch) - 20px (width of handle) - 2px (left offset) = 28px */
+    -webkit-transform: translateX(28px) translateY(-50%);
+    -ms-transform: translateX(28px) translateY(-50%);
+    transform: translateX(28px) translateY(-50%);
 }
 /* The problematic duplicate .slider:before rule has been removed. */
 
@@ -3082,7 +3086,7 @@ table td.live-price-cell.negative-change {
     margin: 0;
 }
 
-/* Styling for the target price input group */
+/* Specific styling for the target price input group */
 .form-group-with-toggle {
     display: flex;
     flex-wrap: wrap; /* Allow items to wrap on smaller screens */
@@ -3112,36 +3116,8 @@ table td.live-price-cell.negative-change {
     flex-shrink: 0; /* Prevent label from shrinking */
 }
 
-/* Base switch styling - make the switch itself the "pill" */
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 30px; /* Smaller width */
-    height: 17px; /* Smaller height */
-    vertical-align: middle;
-    flex-shrink: 0; /* Prevent the switch from shrinking */
-}
-
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-/* The slider is now the "track" or "pill" with visible edges */
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--button-bg-dark); /* Default off state background */
-    transition: .4s;
-    border-radius: 17px; /* Pill shape */
-    border: 1px solid var(--border-color); /* Visible edge for the track */
-    box-sizing: border-box; /* Ensure border is included in width/height */
-}
+/* REMOVED: This conflicting .switch rule */
+/* The general .switch rule above (with 50px width, 28px height) will now apply everywhere */
 
 /* Title for the sidebar toggle (e.g., "Last Price (Market Closed)") */
 .menu-button-item.toggle-switch-container .toggle-title-row {
