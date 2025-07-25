@@ -2348,7 +2348,7 @@ h1#mainTitle {
     -webkit-transition: .4s;
     transition: .4s;
     border-radius: 28px; /* Match height for perfect pill shape */
-    border: 2px solid var(--green-color); /* Always green border */
+    border: 2px solid var(---green-color) !important; /* Force constant green border */
     box-sizing: border-box; /* Ensure border is included in width/height */
 }
 
