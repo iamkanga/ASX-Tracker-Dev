@@ -2348,7 +2348,7 @@ h1#mainTitle {
     -webkit-transition: .4s;
     transition: .4s;
     border-radius: 28px; /* Match height for perfect pill shape */
-    border: 2px solid var(--green-color); /* Constant green border */
+    border: 2px solid var(--green-color); /* Always green border */
     box-sizing: border-box; /* Ensure border is included in width/height */
 }
 
@@ -2356,12 +2356,12 @@ h1#mainTitle {
 .slider:before {
     position: absolute;
     content: "";
-    height: 20px; /* Size of the circular handle */
-    width: 20px; /* Size of the circular handle */
-    left: 2px; /* Initial horizontal position from the left edge of the track */
+    height: 20px; /* Adjusted handle size to fit new pill */
+    width: 20px; /* Match height for perfect circle */
+    left: 2px; /* Initial position for the handle (2px from left edge of track) */
     top: 50%; /* Vertically center the handle */
-    transform: translateY(-50%); /* Adjust for perfect vertical centering using transform */
-    background-color: white; /* Color of the handle */
+    transform: translateY(-50%); /* Adjust for perfect vertical centering */
+    background-color: white; /* Solid white for the handle */
     -webkit-transition: .4s;
     transition: .4s;
     border-radius: 50%; /* Make it perfectly round */
@@ -2370,23 +2370,21 @@ h1#mainTitle {
 
 input:checked + .slider {
     background-color: var(--button-bg); /* On state background color */
-    border-color: var(--green-color); /* Bright green border when checked */
+    border-color: var(--green-color); /* Keep border green when checked */
 }
 
 input:focus + .slider {
     outline: none; /* Remove default browser outline */
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.4), inset 0 0 0 1px rgba(0, 123, 255, 0.2); /* A subtle inner shadow with a softer outer glow */
-    border-color: var(--button-bg); /* Ensure border color matches button color on focus */
+    border-color: var(--green-color); /* Ensure focus border remains green */
 }
 
 input:checked + .slider:before {
-    /* Adjusted translation for perfect right alignment */
-    /* (total width of .switch - handle width - left_offset_start - right_offset_end) */
-    /* (50px - 20px - 2px - 0px_desired_right_offset) = 28px. If it was already 28px, then it needs to be slightly less for visual centering.*/
-    /* Let's try 27px for a subtle adjustment, aiming for perfect visual center */
-    -webkit-transform: translateX(27px) translateY(-50%);
-    -ms-transform: translateX(27px) translateY(-50%);
-    transform: translateX(27px) translateY(-50%);
+    /* Calculated translation to move handle to ensure 2px from right edge */
+    /* (total width of .switch - handle width - right_offset) = (50px - 20px - 2px) = 28px */
+    -webkit-transform: translateX(28px) translateY(-50%);
+    -ms-transform: translateX(28px) translateY(-50%);
+    transform: translateX(28px) translateY(-50%);
 }
 /* The problematic duplicate .slider:before rule has been removed. */
 
