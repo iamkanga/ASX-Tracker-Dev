@@ -4751,21 +4751,18 @@ async function initializeAppLogic() {
     // NEW: Add event listener for the hideCashAssetCheckbox for dirty state checking
     if (hideCashAssetCheckbox) hideCashAssetCheckbox.addEventListener('change', checkCashAssetFormDirtyState);
 
-    formInputs.forEach((input, index) => {
-        if (input) {
-            input.addEventListener('keydown', function(event) {
+    formInputs.forEach((inputElement, index) => { // Renamed 'input' to 'inputElement' for clarity
+        if (inputElement) {
+            inputElement.addEventListener('keydown', function(event) { // 'this' refers to 'inputElement'
                 if (event.key === 'Enter') {
                     event.preventDefault();
-                    const nextInput = formInputs[index + 1];
 
-                    // Only call select() if the input has the method (i.e., it's a text/number input)
-                    if (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') {
-                        this.select(); // Use 'this' to refer to the current input element
-                    }
-
-                    // If current input is the last one, try to add a comment or save
-                    if (index === formInputs.length - 1) {
-                        if (addCommentSectionBtn && addCommentSectionBtn.offsetParent !== null && !addCommentSectionBtn.classList.contains('is-disabled-icon')) {
+                    // Case 1: If it's a SELECT element (e.g., shareRatingSelect)
+                    if (this.tagName === 'SELECT') {
+                        const nextElement = formInputs[index + 1];
+                        if (nextElement) {
+                            nextElement.focus();
+                        } else if (addCommentSectionBtn && addCommentSectionBtn.offsetParent !== null && !addCommentSectionBtn.classList.contains('is-disabled-icon')) {
                             addCommentSectionBtn.click();
                             const newCommentTitleInput = commentsFormContainer.lastElementChild?.querySelector('.comment-title-input');
                             if (newCommentTitleInput) {
@@ -4774,31 +4771,37 @@ async function initializeAppLogic() {
                         } else if (saveShareBtn && !saveShareBtn.classList.contains('is-disabled-icon')) {
                             saveShareBtn.click();
                         }
-                    } else if (nextInput) {
-                        // For the dropdown, explicitly move focus to the next input element after it
-                        if (input === shareRatingSelect) {
-                            // Find the element *after* shareRatingSelect in the formInputs array
-                            const nextElementAfterRating = formInputs[index + 1];
-                            if (nextElementAfterRating) {
-                                nextElementAfterRating.focus();
-                            } else if (addCommentSectionBtn && addCommentSectionBtn.offsetParent !== null && !addCommentSectionBtn.classList.contains('is-disabled-icon')) {
-                                // If no more inputs after rating, try to add comment section
-                                addCommentSectionBtn.click();
-                                const newCommentTitleInput = commentsFormContainer.lastElementChild?.querySelector('.comment-title-input');
-                                if (newCommentTitleInput) {
-                                    newCommentTitleInput.focus();
-                                }
-                            } else if (saveShareBtn && !saveShareBtn.classList.contains('is-disabled-icon')) {
-                                saveShareBtn.click();
+                        return; // Stop processing after handling SELECT
+                    }
+
+                    // Case 2: If it's an INPUT or TEXTAREA element
+                    if (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') {
+                        this.select(); // Select the text content
+                        const nextElement = formInputs[index + 1];
+                        if (nextElement) {
+                            nextElement.focus();
+                        } else if (addCommentSectionBtn && addCommentSectionBtn.offsetParent !== null && !addCommentSectionBtn.classList.contains('is-disabled-icon')) {
+                            addCommentSectionBtn.click();
+                            const newCommentTitleInput = commentsFormContainer.lastElementChild?.querySelector('.comment-title-input');
+                            if (newCommentTitleInput) {
+                                newCommentTitleInput.focus();
                             }
-                        } else {
-                            nextInput.focus();
+                        } else if (saveShareBtn && !saveShareBtn.classList.contains('is-disabled-icon')) {
+                            saveShareBtn.click();
                         }
+                        return; // Stop processing after handling INPUT/TEXTAREA
+                    }
+
+                    // Fallback for any other element type (shouldn't happen with formInputs array)
+                    // Or if no specific action was taken, try to focus next general element
+                    const nextElement = formInputs[index + 1];
+                    if (nextElement) {
+                        nextElement.focus();
                     }
                 }
             });
         }
-    });
+    });;
 
     // Add Comment Section Button for Shares
     if (addCommentSectionBtn) {
