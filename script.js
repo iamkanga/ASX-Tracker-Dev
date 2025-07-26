@@ -1506,12 +1506,10 @@ function checkFormDirtyState() {
 
     let canSave = isShareNameValid;
 
-    // Additional condition for new shares when in "All Shares" view
-    if (!selectedShareDocId && currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
+    // For NEW shares, always require a watchlist to be explicitly selected in the dropdown.
+    // This applies whether in "All Shares" view or a specific watchlist view where the dropdown defaults to blank.
+    if (!selectedShareDocId) { // Only for new shares
         canSave = canSave && isWatchlistSelected;
-        if (!isWatchlistSelected) {
-            logDebug('Dirty State: New share from All Shares: Watchlist not selected, save disabled.');
-        }
     }
 
     if (selectedShareDocId && originalShareData) {
@@ -1615,8 +1613,20 @@ async function saveShareData(isSilent = false) {
             await window.firestore.updateDoc(shareDocRef, shareData);
             if (!isSilent) showCustomAlert('Share \'' + shareName + '\' updated successfully!', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' (ID: ' + selectedShareDocId + ') updated.');
-            originalShareData = getCurrentFormData(); // Update original data after successful save
-            setIconDisabled(saveShareBtn, true); // Disable save button after saving
+        originalShareData = getCurrentFormData(); // Update original data after successful save
+        setIconDisabled(saveShareBtn, true); // Disable save button after saving
+        // NEW: Explicitly hide the share form modal immediately and deselect the share
+        if (!isSilent && shareFormSection) {
+            shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
+            shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
+        }
+        deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
+            // NEW: Explicitly hide the share form modal immediately and deselect the share
+            if (!isSilent && shareFormSection) {
+                shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
+                shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
+            }
+            deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
             // NEW: Trigger a fresh fetch of live prices and re-render to reflect new target hit status
             await fetchLivePrices(); // This will also trigger renderWatchlist and updateTargetHitBanner
             if (!isSilent) showCustomAlert('Share \'' + shareName + '\' updated. Updating live prices...', 1500);
@@ -1635,8 +1645,20 @@ async function saveShareData(isSilent = false) {
             selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
             if (!isSilent) showCustomAlert('Share \'' + shareName + '\' added successfully!', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' added with ID: ' + newDocRef.id);
-            originalShareData = getCurrentFormData(); // Update original data after successful save
-            setIconDisabled(saveShareBtn, true); // Disable save button after saving
+        originalShareData = getCurrentFormData(); // Update original data after successful save
+        setIconDisabled(saveShareBtn, true); // Disable save button after saving
+        // NEW: Explicitly hide the share form modal immediately and deselect the share
+        if (!isSilent && shareFormSection) {
+            shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
+            shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
+        }
+        deselectCurrentShare(); // Deselect newly added share BEFORE fetching live prices
+            // NEW: Explicitly hide the share form modal immediately and deselect the share
+            if (!isSilent && shareFormSection) {
+                shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
+                shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
+            }
+            deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
             // NEW: Trigger a fresh fetch of live prices and re-render to reflect new target hit status
             await fetchLivePrices(); // This will also trigger renderWatchlist and updateTargetHitBanner
             if (!isSilent) showCustomAlert('Share \'' + shareName + '\' added. Updating live prices...', 1500);
