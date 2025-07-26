@@ -462,9 +462,11 @@ function addShareToTable(share) {
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-    // Apply target-hit-alert class if target is hit and not dismissed
+    // Apply target-hit-alert class if target is hit AND not dismissed
     if (isTargetHit && !targetHitIconDismissed) {
         row.classList.add('target-hit-alert');
+    } else {
+        row.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
     }
 
     // Declare these variables once at the top of the function
@@ -666,9 +668,11 @@ function addShareToMobileCards(share) {
         card.classList.add(cardPriceChangeClass);
     }
 
-    // Apply target-hit-alert class if target is hit and not dismissed
+    // Apply target-hit-alert class if target is hit AND not dismissed
     if (isTargetHit && !targetHitIconDismissed) {
         card.classList.add('target-hit-alert');
+    } else {
+        card.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
     }
 
     // Logic to determine display values
@@ -1349,9 +1353,10 @@ function showShareDetails() {
     const livePriceDataForModalTitle = livePrices[share.shareName.toUpperCase()];
     const isTargetHitForModalTitle = livePriceDataForModalTitle ? livePriceDataForModalTitle.targetHit : false;
 
-    // Apply modal-share-name, price change class, and target-hit-alert class if applicable
+    // Apply modal-share-name, price change class.
     let modalTitleClasses = 'modal-share-name ' + modalShareNamePriceChangeClass;
-    if (isTargetHitForModalTitle) {
+    // Apply target-hit-alert class if target is hit AND not dismissed
+    if (isTargetHitForModalTitle && !targetHitIconDismissed) {
         modalTitleClasses += ' target-hit-alert';
     }
     modalShareName.className = modalTitleClasses; // Apply all classes
@@ -2095,10 +2100,12 @@ function renderAsxCodeButtons() {
             button.classList.add(buttonPriceChangeClass);
         }
 
-        // Add target-hit-border class if this ASX code has a target hit
+        // Add target-hit-border class if this ASX code has a target hit AND not dismissed
         const livePriceDataForButton = livePrices[asxCode.toUpperCase()];
         if (livePriceDataForButton && livePriceDataForButton.targetHit && !targetHitIconDismissed) {
-            button.classList.add('asx-target-hit-border');
+            button.classList.add('target-hit-alert'); // Use 'target-hit-alert' for consistency with modal/cards
+        } else {
+            button.classList.remove('target-hit-alert'); // Ensure class is removed
         }
 
         asxCodeButtonsContainer.appendChild(button);
@@ -2218,7 +2225,8 @@ async function displayStockDetailsInSearchModal(asxCode) {
         const isTargetHitForSearchModal = correspondingShareInWatchlist && livePriceDataForSearchModal ? livePriceDataForSearchModal.targetHit : false;
 
         let searchModalTitleClasses = priceClass;
-        if (isTargetHitForSearchModal) {
+        // Apply target-hit-alert class if target is hit AND not dismissed
+        if (isTargetHitForSearchModal && !targetHitIconDismissed) {
             searchModalTitleClasses += ' target-hit-alert';
         }
 
@@ -4625,11 +4633,12 @@ async function initializeAppLogic() {
         alertModalDismissAllBtn.addEventListener('click', () => {
             targetHitIconDismissed = true; // Mark as dismissed for the session
             localStorage.setItem('targetHitIconDismissed', 'true'); // Save dismissal preference
+            // No need to explicitly hide the bubble here, updateTargetHitBanner will handle it.
             updateTargetHitBanner(); // Update the bubble (will hide it if no alerts and dismissed)
             hideModal(targetHitDetailsModal); // Close the modal
-            showCustomAlert('Target Price Alerts dismissed until next login.', 2000, true); // User feedback
-            renderWatchlist(); // Re-render to clear any visual alert cues in list
-            logDebug('Target Alert Modal: Dismiss All button clicked. Alerts dismissed, modal and bubble hidden.');
+            showCustomAlert('Target Price Alerts dismissed until next login.', 2000); // User feedback
+            renderWatchlist(); // Re-render the watchlist to remove all borders/highlights
+            logDebug('Target Alert Modal: Dismiss All button clicked. Alerts dismissed, modal and bubble hidden. Watchlist re-rendered.');
         });
     }
 
