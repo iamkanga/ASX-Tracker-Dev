@@ -2584,8 +2584,12 @@ table tbody tr.target-hit-alert td,
 
 /* Animation for pulsing alert */
 @keyframes pulse-alert {
-    from { opacity: 1; }
-    to { opacity: 0.8; }
+    from { 
+        box-shadow: 0 0 8px rgba(var(--green-color-dark-rgb), 0.5); /* Keep initial box-shadow */
+    }
+    to { 
+        box-shadow: 0 0 12px rgba(var(--green-color-dark-rgb), 0.8); /* Slightly expand box-shadow for pulse */
+    }
 }
 
 @keyframes pulseHighlight {
