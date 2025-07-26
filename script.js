@@ -1288,8 +1288,8 @@ async function saveShareData(isSilent = false) {
         shareName: shareName,
         currentPrice: isNaN(currentPrice) ? null : currentPrice,
         targetPrice: isNaN(targetPrice) ? null : targetPrice,
-        // NEW: Save the selected target direction
-        targetDirection: document.querySelector('input[name="targetDirection"]:checked') ? document.querySelector('input[name="targetDirection"]:checked').value : 'above', // Default to 'above' if no selection
+        // UPDATED: Save the selected target direction from the toggle switch
+        targetDirection: targetDirectionToggle.checked ? 'above' : 'below', // 'above' if checked, 'below' if unchecked
         dividendAmount: isNaN(dividendAmount) ? null : dividendAmount,
         frankingCredits: isNaN(frankingCredits) ? null : frankingCredits,
         comments: comments,
