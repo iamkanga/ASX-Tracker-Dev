@@ -5622,6 +5622,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Load data and then hide splash screen
                 await loadUserWatchlistsAndSettings(); // This now sets _appDataLoaded and calls hideSplashScreenIfReady
                 await fetchLivePrices(); // Ensure live prices are fetched after settings and current watchlist are loaded
+                // After fetching live prices, re-sort and re-render the watchlist to apply percentage change.
+                sortShares(); // This will also call renderWatchlist()
+                
                 // NEW: Load ASX codes for autocomplete
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
