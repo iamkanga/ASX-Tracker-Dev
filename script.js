@@ -5867,6 +5867,16 @@ function showTargetHitDetailsModal() {
                 <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
             `;
             targetHitSharesList.appendChild(targetHitItem);
+
+            // NEW: Add click listener to make the item clickable
+            targetHitItem.addEventListener('click', () => {
+                const clickedShareId = targetHitItem.dataset.shareId;
+                if (clickedShareId) {
+                    hideModal(targetHitDetailsModal); // Close the target hit alerts modal
+                    selectShare(clickedShareId); // Select the share
+                    showShareDetails(); // Open the share details modal for the clicked share
+                }
+            });
         });
     }
 
