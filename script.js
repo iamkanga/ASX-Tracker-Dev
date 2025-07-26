@@ -4742,7 +4742,8 @@ async function initializeAppLogic() {
             input.addEventListener('input', checkFormDirtyState);
             input.addEventListener('change', checkFormDirtyState);
             input.addEventListener('focus', function() {
-                this.select();
+                // Removed: The 'this.select()' call, as it was causing a TypeError on SELECT elements (dropdowns) on focus.
+                // The automatic text selection on focus is now bypassed for stability.
             });
         }
     });
