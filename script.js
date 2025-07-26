@@ -1081,7 +1081,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     }
     selectedShareDocId = targetShareId; 
 
-    formTitle.textContent = 'Edit Share';
+    formTitle.textContent = 'Edit Share - ' + (shareToEdit.shareName || 'N/A'); // Add share code to title
     if (shareNameInput) shareNameInput.value = shareToEdit.shareName || '';
     if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? Number(shareToEdit.currentPrice).toFixed(2) : '';
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? Number(shareToEdit.targetPrice).toFixed(2) : '';
