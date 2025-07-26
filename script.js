@@ -2240,12 +2240,13 @@ function renderWatchlist() {
             mainTitle.textContent = 'Share Watchlist';
         }
 
+        // Show stock-specific UI elements
         sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.remove('app-hidden');
         toggleCompactViewBtn.classList.remove('app-hidden');
         targetHitIconBtn.classList.remove('app-hidden');
         exportWatchlistBtn.classList.remove('app-hidden');
-        startLivePriceUpdates();
+        // startLivePriceUpdates(); // Removed this line to prevent multiple intervals
         updateAddHeaderButton();
 
         const isMobileView = window.innerWidth <= 768;
@@ -5965,15 +5966,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Load data and then hide splash screen
                 await loadUserWatchlistsAndSettings(); // This now sets _appDataLoaded and calls hideSplashScreenIfReady
-                await fetchLivePrices(); // Ensure live prices are fetched after settings and current watchlist are loaded
+                
+                // Ensure live prices are fetched once on login and interval started for stock watchlists.
+                // This call is placed before sortShares/renderWatchlist to ensure initial data.
+                // The interval will be started if the current view is a stock watchlist.
+                // We do NOT call startLivePriceUpdates() from renderWatchlist anymore to prevent multiple intervals.
+                fetchLivePrices(); // Initial fetch
+                startLivePriceUpdates(); // Start interval immediately after first fetch on login
+
                 // After fetching live prices, re-sort and re-render the watchlist to apply percentage change.
-                sortShares(); // This will also call renderWatchlist()
+                sortShares(); // This will also call renderWatchlist(), which now *only* renders.
                 
                 // NEW: Load ASX codes for autocomplete
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
-
-                // Removed: startLivePriceUpdates(); // This is now called by renderWatchlist based on selected type
             } // This closing brace correctly ends the `if (user)` block
 
             else {
