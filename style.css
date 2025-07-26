@@ -3025,9 +3025,9 @@ table td.live-price-cell.negative-change {
     color: var(--ghosted-text);
     font-size: 0.85em;
     opacity: 0.8;
-    margin-top: 5px;
-    margin-bottom: 5px;
-    display: block; 
+    margin-top: 0; /* Remove top margin */
+    margin-bottom: 0; /* Remove bottom margin */
+    display: inline; /* Change to inline display */
 }
 
 .commsec-message {
