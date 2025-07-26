@@ -1815,8 +1815,8 @@ function showShareDetails() {
     
     // Determine the target notification message based on share.targetDirection
     let targetNotificationMessage = '';
-    // Only show message if a target price is set and it's not an empty string (meaning a numeric value, even 0, was entered)
-    if (displayTargetPrice !== '') { 
+    // Condition should check if a numeric targetPrice exists, including 0
+    if (share.targetPrice !== null && !isNaN(Number(share.targetPrice))) { 
         if (share.targetDirection === 'above') {
             targetNotificationMessage = '(Alert will trigger if >= Target)'; // Option 8
         } else { // Default or 'below'
