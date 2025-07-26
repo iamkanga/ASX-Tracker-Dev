@@ -1476,7 +1476,20 @@ function showShareDetails() {
     }
 
     modalEnteredPrice.textContent = (enteredPriceNum !== null && !isNaN(enteredPriceNum)) ? '$' + enteredPriceNum.toFixed(2) : 'N/A';
-    modalTargetPrice.textContent = (share.targetPrice !== null && !isNaN(Number(share.targetPrice))) ? '$' + Number(share.targetPrice).toFixed(2) : 'N/A';
+    
+    const displayTargetPrice = (share.targetPrice !== null && !isNaN(Number(share.targetPrice))) ? '$' + Number(share.targetPrice).toFixed(2) : 'N/A';
+    
+    // Determine the target notification message based on share.targetDirection
+    let targetNotificationMessage = '';
+    if (share.targetPrice !== null && !isNaN(Number(share.targetPrice))) { // Only show message if a target price is set
+        if (share.targetDirection === 'above') {
+            targetNotificationMessage = '(Alert will trigger if >= Target)'; // Option 8
+        } else { // Default or 'below'
+            targetNotificationMessage = '(Alert will trigger if <= Target)'; // Option 7
+        }
+    }
+
+    modalTargetPrice.innerHTML = `${displayTargetPrice} <span class="ghosted-text">${targetNotificationMessage}</span>`;
 
     // Ensure dividendAmount and frankingCredits are numbers before formatting
     const displayDividendAmount = Number(share.dividendAmount);
@@ -4386,14 +4399,9 @@ async function initializeAppLogic() {
         }
     });
 
-    // NEW: Add event listeners for target direction radio buttons
-    const targetAboveRadio = document.getElementById('targetAbove');
-    const targetBelowRadio = document.getElementById('targetBelow');
-    if (targetAboveRadio) {
-        targetAboveRadio.addEventListener('change', checkFormDirtyState);
-    }
-    if (targetBelowRadio) {
-        targetBelowRadio.addEventListener('change', checkFormDirtyState);
+    // NEW: Add event listeners for target direction radio buttons (now a single toggle checkbox)
+    if (targetDirectionToggle) {
+        targetDirectionToggle.addEventListener('change', checkFormDirtyState);
     }
 
     // NEW: Add event listeners for cash asset form inputs for dirty state checking (2.1)
