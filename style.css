@@ -2566,10 +2566,11 @@ table tbody tr:not(.selected):hover {
 /* NEW: Target hit alert styling for table rows and mobile cards */
 table tbody tr.target-hit-alert,
 .mobile-card.target-hit-alert {
-    background-color: var(--target-alert-bg); /* Use the new alert background color */
-    border-color: var(--target-alert-border); /* Use the new alert border color */
-    color: var(--target-alert-text); /* Ensure text is readable on alert background */
+    border: 2px solid var(--target-alert-border) !important; /* Force a full 2px border */
+    box-shadow: 0 0 8px rgba(var(--green-color-dark-rgb), 0.5); /* Subtle glow for emphasis */
     animation: pulse-alert 1.5s infinite alternate; /* Subtle pulsing animation */
+    /* Keep the subtle background from the alert theme, but ensure border is dominant */
+    background-color: var(--target-alert-bg); 
 }
 
 /* Ensure text color applies to children */
@@ -2599,6 +2600,19 @@ table tbody tr.target-hit-alert td,
         transform: scale(1);
         box-shadow: 0 0 0 0 rgba(var(--green-color-dark-rgb), 0);
     }
+}
+
+/* Override price change specific visual cues when target-hit-alert is active on mobile cards */
+.mobile-card.target-hit-alert.positive-change-card::before,
+.mobile-card.target-hit-alert.negative-change-card::before,
+.mobile-card.target-hit-alert.positive-change-card::after,
+.mobile-card.target-hit-alert.negative-change-card::after {
+    display: none !important; /* Hide vertical lines when target is hit */
+}
+
+.mobile-card.target-hit-alert.positive-change-card,
+.mobile-card.target-hit-alert.negative-change-card {
+    background-color: var(--target-alert-bg) !important; /* Force alert background, override tints */
 }
 
 /* Desktop Table: ASX Code and Live Price Styling */
@@ -2680,7 +2694,7 @@ table td.live-price-cell.negative-change {
     overflow: hidden; /* Ensure pseudo-elements are contained */
 }
 
-/* NEW: Thin vertical lines for price movement */
+/* General rules for thin vertical lines (keep them for non-target-hit cards) */
 .mobile-card::before,
 .mobile-card::after {
     content: '';
@@ -2710,7 +2724,7 @@ table td.live-price-cell.negative-change {
     background-color: var(--price-down-color);
 }
 
-/* NEW: Subtle background tints for price movement */
+/* Subtle background tints for price movement */
 .mobile-card.positive-change-card {
     background-color: var(--live-price-positive-bg); /* Faint green tint */
 }
@@ -2719,25 +2733,45 @@ table td.live-price-cell.negative-change {
     background-color: var(--live-price-negative-bg); /* Faint red tint */
 }
 
-/* NEW: Full border for target-hit cards (expands the vertical lines) */
+/* Remove previous specific target-hit pseudo-element styling as it's now handled by the main border */
 .mobile-card.target-hit-alert::before,
 .mobile-card.target-hit-alert::after {
-    width: 100%; /* Expands to full width */
-    height: 100%;
-    border-radius: 8px; /* Match card border radius */
-    border: 2px solid var(--target-alert-border); /* Full border */
-    background-color: transparent; /* No background color from lines when it's a full border */
-    z-index: 0; /* Behind the card content */
-    top: 0;
-    left: 0; /* Ensure it covers the whole card */
-    right: 0;
-    bottom: 0;
+    display: none; /* Hide these when the main border is applied to the card */
 }
-.mobile-card.target-hit-alert::after { /* Disable one pseudo-element when it's a full border */
-    display: none;
+
+/* NEW: Full border for modal headers when ASX code has hit target */
+/* This applies to both share detail modal and search result display (h3) */
+.modal-header-with-icon h2.modal-share-name.target-hit-alert,
+#searchResultDisplay h3.target-hit-alert { /* Applying to the h3 in search results too */
+    border: 2px solid var(--target-alert-border) !important;
+    padding: 5px 10px; /* Add some padding to make the border visible around the text */
+    border-radius: 8px; /* Rounded corners for the border */
+    animation: pulse-alert 1.5s infinite alternate; /* Apply pulsing animation */
+    box-shadow: 0 0 8px rgba(var(--green-color-dark-rgb), 0.5); /* Subtle glow */
+    background-color: var(--target-alert-bg); /* Add a subtle background color matching the alert */
+    color: var(--target-alert-text) !important; /* Ensure text color is readable */
 }
-.mobile-card.target-hit-alert::before { /* Make the first pseudo-element the full border */
-    display: block;
+/* Ensure the price change colors are overridden when target-hit-alert is active on modal titles */
+.modal-header-with-icon h2.modal-share-name.target-hit-alert.positive,
+.modal-header-with-icon h2.modal-share-name.target-hit-alert.negative,
+.modal-header-with-icon h2.modal-share-name.target-hit-alert.neutral,
+#searchResultDisplay h3.target-hit-alert.positive,
+#searchResultDisplay h3.target-hit-alert.negative,
+#searchResultDisplay h3.target-hit-alert.neutral {
+    color: var(--target-alert-text) !important; /* Force text color to alert text */
+}
+
+/* NEW: Full border for ASX code buttons when target is hit */
+.asx-code-btn.target-hit-alert { /* New class for target hit on buttons */
+    border: 2px solid var(--target-alert-border) !important;
+    animation: pulse-alert 1.5s infinite alternate;
+    box-shadow: 0 0 8px rgba(var(--green-color-dark-rgb), 0.5);
+}
+/* Ensure price colors are overridden on ASX buttons when target-hit-alert is active */
+.asx-code-btn.target-hit-alert.positive,
+.asx-code-btn.target-hit-alert.negative,
+.asx-code-btn.target-hit-alert.neutral {
+    color: var(--target-alert-text) !important; /* Force text color to alert text */
 }
 
 /* Ensure content is readable over the tint */

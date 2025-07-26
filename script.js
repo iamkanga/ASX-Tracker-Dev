@@ -1371,7 +1371,16 @@ function showShareDetails() {
         }
     }
     modalShareName.textContent = share.shareName || 'N/A';
-    modalShareName.className = 'modal-share-name ' + modalShareNamePriceChangeClass; // Apply class to modalShareName
+    // Get live price data for this share to check target hit status
+    const livePriceDataForModalTitle = livePrices[share.shareName.toUpperCase()];
+    const isTargetHitForModalTitle = livePriceDataForModalTitle ? livePriceDataForModalTitle.targetHit : false;
+
+    // Apply modal-share-name, price change class, and target-hit-alert class if applicable
+    let modalTitleClasses = 'modal-share-name ' + modalShareNamePriceChangeClass;
+    if (isTargetHitForModalTitle) {
+        modalTitleClasses += ' target-hit-alert';
+    }
+    modalShareName.className = modalTitleClasses; // Apply all classes
 
     const enteredPriceNum = Number(share.currentPrice);
 
@@ -2229,10 +2238,20 @@ async function displayStockDetailsInSearchModal(asxCode) {
             }
         }
 
+        // Check if the currently displayed stock from search has hit its target (if it's in our allSharesData)
+        const correspondingShareInWatchlist = allSharesData.find(s => s.shareName.toUpperCase() === asxCode.toUpperCase());
+        const livePriceDataForSearchModal = livePrices[asxCode.toUpperCase()];
+        const isTargetHitForSearchModal = correspondingShareInWatchlist && livePriceDataForSearchModal ? livePriceDataForSearchModal.targetHit : false;
+
+        let searchModalTitleClasses = priceClass;
+        if (isTargetHitForSearchModal) {
+            searchModalTitleClasses += ' target-hit-alert';
+        }
+
         // Construct the display HTML
         searchResultDisplay.innerHTML = `
             <div class="text-center mb-4">
-                <h3 class="${priceClass}">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
+                <h3 class="${searchModalTitleClasses}">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
                 <span class="text-sm text-gray-500">${stockData.CompanyName ? '' : '(Company Name N/A)'}</span>
             </div>
             <div class="live-price-display-section">
