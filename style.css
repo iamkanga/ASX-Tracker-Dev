@@ -2502,6 +2502,14 @@ input:checked + .slider:before {
     background-color: var(--asx-button-hover-bg) !important; /* Force hover background color */
 }
 
+/* Ensure no flickering and consistent hover background when hovering target-hit ASX buttons */
+.asx-code-btn.target-hit-alert:hover {
+    animation-play-state: paused; /* Pause animation on hover */
+    background-color: var(--asx-button-hover-bg) !important; /* Force hover background color */
+    border-color: var(--green-color) !important; /* Keep green border */
+    box-shadow: 0 0 12px rgba(var(--green-color-dark-rgb), 0.8) !important; /* Keep active shadow */
+}
+
 .asx-code-btn.active {
     background-color: var(--asx-button-active-bg);
     color: var(--asx-button-active-text);
