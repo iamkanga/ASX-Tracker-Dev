@@ -2294,106 +2294,49 @@ function renderWatchlist() {
                 card.remove();
             }
         });
-        existingAsxButtons.forEach(button => {
-            if (!newAsxCodes.has(button.dataset.asxCode)) {
-                button.remove();
-            }
-        });
+        // Clear existing rows and cards before re-rendering in sorted order
+        // This ensures the order is always correct based on the sorted `sharesToRender` array
+        if (shareTableBody) {
+            shareTableBody.innerHTML = '';
+        }
+        if (mobileShareCardsContainer) {
+            mobileShareCardsContainer.innerHTML = '';
+        }
 
-        // Track currently rendered share IDs to efficiently remove old ones
-        const currentRenderedShareIds = new Set();
-
-        // Add/Update shares
-        sharesToRender.forEach((share) => {
-            currentRenderedShareIds.add(share.id);
-            // Update or add to table
-            if (tableContainer && tableContainer.style.display !== 'none') {
-                updateOrCreateShareTableRow(share);
-            }
-            // Update or add to mobile cards
-            if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
-                updateOrCreateShareMobileCard(share);
-            }
-        });
-
-        // Remove shares that are no longer in the filtered list (from previous render cycle)
-        // For table rows:
-        Array.from(shareTableBody.children).forEach(row => {
-            if (row.dataset.docId && !currentRenderedShareIds.has(row.dataset.docId)) {
-                row.remove();
-            }
-        });
-        // For mobile cards:
-        Array.from(mobileShareCardsContainer.children).forEach(card => {
-            if (card.dataset.docId && !currentRenderedShareIds.has(card.dataset.docId)) {
-                card.remove();
-            }
-        });
-
-        // Add/Update ASX Code Buttons
-        renderAsxCodeButtons(); // This function will now update existing or add new ones based on current shares
-
-        if (sharesToRender.length === 0) {
+        // Re-add shares to the UI in their sorted order
+        if (sharesToRender.length > 0) {
+            sharesToRender.forEach(share => {
+                if (tableContainer && tableContainer.style.display !== 'none') {
+                    addShareToTable(share); // Using add functions to ensure new row/card is created in order
+                }
+                if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
+                    addShareToMobileCards(share); // Using add functions to ensure new row/card is created in order
+                }
+            });
+        } else {
+            // Handle empty message if no shares to render in current view
             const emptyWatchlistMessage = document.createElement('p');
             emptyWatchlistMessage.textContent = 'No shares found for the selected watchlists. Add a new share to get started!';
             emptyWatchlistMessage.style.textAlign = 'center';
             emptyWatchlistMessage.style.padding = '20px';
             emptyWatchlistMessage.style.color = 'var(--ghosted-text)';
             
-            // Append message only if no items were added
-            if (tableContainer && tableContainer.style.display !== 'none' && shareTableBody.children.length === 0) {
+            if (tableContainer && tableContainer.style.display !== 'none') {
                 const td = document.createElement('td');
                 td.colSpan = 6;
                 td.appendChild(emptyWatchlistMessage);
                 const tr = document.createElement('tr');
+                tr.classList.add('empty-message-row'); // Add class to easily target for removal later
                 tr.appendChild(td);
                 shareTableBody.appendChild(tr);
             }
-            if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none' && mobileShareCardsContainer.children.length === 0) {
+            if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
                 mobileShareCardsContainer.appendChild(emptyWatchlistMessage.cloneNode(true));
             }
         }
-        // --- End Optimized DOM Update for Shares ---
-
-        if (selectedShareDocId) {
-            const stillExists = sharesToRender.some(share => share.id === selectedShareDocId);
-            if (stillExists) {
-                selectShare(selectedShareDocId);
-            } else {
-                deselectCurrentShare();
-            }
-        }
-        logDebug('Render: Stock watchlist rendering complete.');
-        updateTargetHitBanner(); // Update notification banner
-
-        // --- Core Fix for Desktop Compact View (placement adjusted to be after DOM update) ---
-        if (isMobileView) {
-            if (tableContainer) tableContainer.style.display = 'none';
-            if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'flex';
-            if (mobileShareCardsContainer && currentMobileViewMode === 'compact') {
-                mobileShareCardsContainer.classList.add('compact-view');
-            } else if (mobileShareCardsContainer) {
-                mobileShareCardsContainer.classList.remove('compact-view');
-            }
-            if (asxCodeButtonsContainer) asxCodeButtonsContainer.style.display = 'flex';
-        } else { // Desktop view
-            if (currentMobileViewMode === 'compact') {
-                if (tableContainer) tableContainer.style.display = 'none';
-                if (mobileShareCardsContainer) {
-                    mobileShareCardsContainer.style.display = 'grid';
-                    mobileShareCardsContainer.classList.add('compact-view');
-                }
-                if (asxCodeButtonsContainer) asxCodeButtonsContainer.style.display = 'none';
-            } else {
-                if (tableContainer) tableContainer.style.display = 'block';
-                if (mobileShareCardsContainer) {
-                    mobileShareCardsContainer.style.display = 'none';
-                    mobileShareCardsContainer.classList.remove('compact-view');
-                }
-                if (asxCodeButtonsContainer) asxCodeButtonsContainer.style.display = 'flex';
-            }
-        }
-        // --- End Core Fix ---
+        
+        // Re-render ASX Code Buttons separately
+        renderAsxCodeButtons();
 
     } else {
         // Cash & Assets section Logic
