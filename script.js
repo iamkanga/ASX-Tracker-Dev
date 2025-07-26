@@ -331,7 +331,7 @@ function closeModals() {
             const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
             const needsWatchlistSelection = currentSelectedWatchlistIds.includes(ALL_SHARES_ID);
             
-            if (isShareNameValid && (!needsWatchlistSelection || isWatchlistSelected)) { 
+            if (isShareNameValid && isWatchlistSelected) { // Always require watchlist selection for new shares
                 logDebug('Auto-Save: New share detected with valid name and watchlist. Attempting silent save.');
                 saveShareData(true); // true indicates silent save
             } else {
@@ -1523,6 +1523,8 @@ function checkFormDirtyState() {
     } else if (!selectedShareDocId) {
         // For new shares, enable if name is valid and (if from All Shares) watchlist is selected
         // No additional 'isDirty' check needed for new shares beyond initial validity
+        // Note: The previous logic for new shares here was redundant with the general 'if (!selectedShareDocId)' block above.
+        // Keeping this else-if structure for clarity in differentiating new vs. existing shares in logs/logic.
     }
 
     setIconDisabled(saveShareBtn, !canSave);
@@ -5137,9 +5139,10 @@ if (sortSelect) {
                 try {
                     const shareDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
                     await window.firestore.deleteDoc(shareDocRef);
-                    showCustomAlert('Share deleted successfully!', 1500);
+                    // showCustomAlert('Share deleted successfully!', 1500); // Removed as per previous request
                     logDebug('Firestore: Share (ID: ' + selectedShareDocId + ') deleted.');
                     closeModals();
+                    updateTargetHitBanner(); // NEW: Update banner after deletion
                 } catch (error) {
                     console.error('Firestore: Error deleting share:', error);
                     showCustomAlert('Error deleting share: ' + error.message);
@@ -5173,9 +5176,10 @@ if (sortSelect) {
                 try {
                     const shareDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
                     await window.firestore.deleteDoc(shareDocRef);
-                    showCustomAlert('Share deleted successfully!', 1500);
+                    // showCustomAlert('Share deleted successfully!', 1500); // Removed as per previous request
                     logDebug('Firestore: Share (ID: ' + selectedShareDocId + ') deleted.');
                     closeModals();
+                    updateTargetHitBanner(); // NEW: Update banner after deletion
                 } catch (error) {
                     console.error('Firestore: Error deleting share:', error);
                     showCustomAlert('Error deleting share: ' + error.message);
