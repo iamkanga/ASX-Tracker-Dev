@@ -5203,7 +5203,7 @@ if (sortSelect) {
                 try {
                     const shareDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', shareToDeleteId);
                     await window.firestore.deleteDoc(shareDocRef);
-                    showCustomAlert('Share deleted successfully!', 1500);
+                    // showCustomAlert('Share deleted successfully!', 1500); // Removed as per user request
                     logDebug('Firestore: Share (ID: ' + shareToDeleteId + ') deleted.');
                 } catch (error) {
                     console.error('Firestore: Error deleting share:', error);
