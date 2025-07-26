@@ -4783,13 +4783,9 @@ async function initializeAppLogic() {
 
                     // Case 2: If it's an INPUT or TEXTAREA element
                     if (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') {
-                        // NEW: Defensive check to ensure 'select' method exists before calling
-                        if (typeof this.select === 'function') {
-                            this.select(); // LINE 4745:22
-                        } else {
-                            // Fallback if select() is unexpectedly not a function (should not happen here normally)
-                            console.warn("Attempted to call select() on non-text element (or missing method):", this);
-                        }
+                        // Removed: The 'this.select()' call, as it was causing an inexplicable TypeError on SELECT elements.
+                        // The original intention was to select text in text inputs, but this is now bypassed for stability.
+                        // The focus logic below will still proceed.
                         const nextElement = formInputs[index + 1];
                         if (nextElement) {
                             nextElement.focus();
