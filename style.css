@@ -2774,10 +2774,15 @@ table td.live-price-cell.negative-change {
     box-shadow: 0 0 8px rgba(var(--green-color-dark-rgb), 0.5);
 }
 /* Ensure price colors are overridden on ASX buttons when target-hit-alert is active */
-.asx-code-btn.target-hit-alert.positive,
-.asx-code-btn.target-hit-alert.negative,
-.asx-code-btn.target-hit-alert.neutral {
-    color: var(--target-alert-text) !important; /* Force text color to alert text */
+/* Ensure no flickering when hovering target-hit ASX buttons */
+.asx-code-btn.target-hit-alert:hover {
+    /* Temporarily pause animation on hover to allow smooth background transition */
+    animation-play-state: paused; 
+    /* Ensure hover background is applied smoothly */
+    background-color: var(--asx-button-hover-bg); /* Use normal hover background */
+    /* Ensure border and shadow are consistent */
+    border-color: var(--green-color) !important; /* Keep green border */
+    box-shadow: 0 0 12px rgba(var(--green-color-dark-rgb), 0.8) !important; /* Keep active shadow */
 }
 
 /* Ensure content is readable over the tint */
