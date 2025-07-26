@@ -2869,6 +2869,10 @@ async function fetchLivePrices() {
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices); 
         
+        // IMPORTANT: Re-render the watchlist immediately after live prices are updated
+        // to reflect changes in target hit status (borders, etc.).
+        renderWatchlist(); // This will trigger a full re-render of cards/table/buttons
+
         // renderWatchlist is called from the onSnapshot for shares, which will then trigger this.
         // We need to ensure adjustMainContentPadding is called here as well, as per user's instruction.
         adjustMainContentPadding(); 
