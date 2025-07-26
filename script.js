@@ -4513,11 +4513,21 @@ async function initializeAppLogic() {
 
     // Global click listener to close modals/context menu if clicked outside
     window.addEventListener('click', (event) => {
+        // Check if the click is outside the targetHitDetailsModal
+        if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none' && !targetHitDetailsModal.contains(event.target) && event.target !== targetHitIconBtn) {
+            logDebug('Global Click: Clicked outside targetHitDetailsModal. Minimizing it.');
+            if (alertModalMinimizeBtn) {
+                alertModalMinimizeBtn.click(); // Programmatically click the minimize button
+            }
+            return; // Exit early if targetHitDetailsModal was handled
+        }
+
         if (event.target === shareDetailModal || event.target === dividendCalculatorModal ||
             event.target === shareFormSection || event.target === customDialogModal ||
             event.target === calculatorModal || event.target === addWatchlistModal ||
             event.target === manageWatchlistModal || event.target === alertPanel ||
-            event.target === cashAssetFormModal || event.target === cashAssetDetailModal) { // NEW: Include cash asset modals here
+            event.target === cashAssetFormModal || event.target === cashAssetDetailModal ||
+            event.target === stockSearchModal) { // Include stockSearchModal for general closing
             closeModals();
         }
 
