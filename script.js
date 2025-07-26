@@ -804,6 +804,320 @@ function addShareToMobileCards(share) {
     mobileShareCardsContainer.appendChild(card);
     logDebug('Mobile Cards: Added share ' + share.shareName + ' to mobile cards.');
 }
+/**
+ * Updates an existing share row in the table or creates a new one if it doesn't exist.
+ * @param {object} share The share object.
+ */
+function updateOrCreateShareTableRow(share) {
+    if (!shareTableBody) {
+        console.error('updateOrCreateShareTableRow: shareTableBody element not found.');
+        return;
+    }
+
+    let row = shareTableBody.querySelector(`tr[data-doc-id="${share.id}"]`);
+
+    if (!row) {
+        row = document.createElement('tr');
+        row.dataset.docId = share.id;
+        // Add event listeners only once when the row is created
+        row.addEventListener('click', () => {
+            logDebug('Table Row Click: Share ID: ' + share.id);
+            selectShare(share.id);
+            showShareDetails();
+        });
+
+        let touchStartTime = 0;
+        row.addEventListener('touchstart', (e) => {
+            touchStartTime = Date.now();
+            selectedElementForTap = row;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+
+            longPressTimer = setTimeout(() => {
+                if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
+                    selectShare(share.id);
+                    showContextMenu(e, share.id);
+                    e.preventDefault();
+                }
+            }, LONG_PRESS_THRESHOLD);
+        }, { passive: false });
+
+        row.addEventListener('touchmove', (e) => {
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
+            if (dist > TOUCH_MOVE_THRESHOLD) {
+                clearTimeout(longPressTimer);
+                touchStartTime = 0;
+            }
+        });
+
+        row.addEventListener('touchend', () => {
+            clearTimeout(longPressTimer);
+            if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === row) {
+                // Short tap handled by click event
+            }
+            touchStartTime = 0;
+            selectedElementForTap = null;
+        });
+
+        row.addEventListener('contextmenu', (e) => {
+            if (window.innerWidth > 768) {
+                e.preventDefault();
+                selectShare(share.id);
+                showContextMenu(e, share.id);
+            }
+        });
+
+        shareTableBody.appendChild(row); // Append new rows at the end, sorting will reorder virtually
+        logDebug('Table: Created new row for share ' + share.shareName + '.');
+    }
+
+    // Always update the content and classes for existing (or newly created) rows
+    const livePriceData = livePrices[share.shareName.toUpperCase()];
+    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
+
+    // Apply target-hit-alert class if target is hit AND not dismissed
+    if (isTargetHit && !targetHitIconDismissed) {
+        row.classList.add('target-hit-alert');
+    } else {
+        row.classList.remove('target-hit-alert');
+    }
+
+    const isMarketOpen = isAsxMarketOpen();
+    let displayLivePrice = 'N/A';
+    let displayPriceChange = '';
+    let priceClass = '';
+
+    if (livePriceData) {
+        const currentLivePrice = livePriceData.live;
+        const previousClosePrice = livePriceData.prevClose;
+        const lastFetchedLive = livePriceData.lastLivePrice;
+        const lastFetchedPrevClose = livePriceData.lastPrevClose;
+
+        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
+            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+            }
+            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                const change = currentLivePrice - previousClosePrice;
+                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+            }
+        } else {
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayPriceChange = '0.00 (0.00%)';
+            priceClass = 'neutral';
+        }
+    }
+
+    const dividendAmount = Number(share.dividendAmount) || 0;
+    const frankingCredits = Number(share.frankingCredits) || 0;
+    const enteredPrice = Number(share.currentPrice) || 0;
+    const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
+                            ? parseFloat(displayLivePrice.substring(1))
+                            : (enteredPrice > 0 ? enteredPrice : 0);
+
+    const yieldDisplay = (() => {
+        if (priceForYield === 0) return 'N/A';
+        const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
+        const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
+        if (frankingCredits > 0 && frankedYield > 0) {
+            return frankedYield.toFixed(2) + '% (F)';
+        } else if (unfrankedYield > 0) {
+            return unfrankedYield.toFixed(2) + '% (U)';
+        }
+        return 'N/A';
+    })();
+
+    row.innerHTML = `
+        <td><span class="share-code-display ${priceClass}">${share.shareName || ''}</span></td>
+        <td class="live-price-cell">
+            <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
+            <span class="price-change ${priceClass}">${displayPriceChange}</span>
+        </td>
+        <td>${Number(share.currentPrice) !== null && !isNaN(Number(share.currentPrice)) ? '$' + Number(share.currentPrice).toFixed(2) : 'N/A'}</td>
+        <td>${Number(share.targetPrice) !== null && !isNaN(Number(share.targetPrice)) ? '$' + Number(share.targetPrice).toFixed(2) : 'N/A'}</td>
+        <td>${yieldDisplay}</td>
+        <td class="star-rating-cell">
+            ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
+        </td>
+    `;
+
+    logDebug('Table: Updated/Created row for share ' + share.shareName + '.');
+}
+
+/**
+ * Updates an existing share card or creates a new one if it doesn't exist.
+ * @param {object} share The share object.
+ */
+function updateOrCreateShareMobileCard(share) {
+    if (!mobileShareCardsContainer) {
+        console.error('updateOrCreateShareMobileCard: mobileShareCardsContainer element not found.');
+        return;
+    }
+
+    let card = mobileShareCardsContainer.querySelector(`div[data-doc-id="${share.id}"]`);
+
+    if (!card) {
+        card = document.createElement('div');
+        card.classList.add('mobile-card');
+        card.dataset.docId = share.id;
+        // Add event listeners only once when the card is created
+        card.addEventListener('click', () => {
+            logDebug('Mobile Card Click: Share ID: ' + share.id);
+            selectShare(share.id);
+            showShareDetails();
+        });
+
+        let touchStartTime = 0;
+        card.addEventListener('touchstart', (e) => {
+            touchStartTime = Date.now();
+            selectedElementForTap = card;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+
+            longPressTimer = setTimeout(() => {
+                if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
+                    selectShare(share.id);
+                    showContextMenu(e, share.id);
+                    e.preventDefault();
+                }
+            }, LONG_PRESS_THRESHOLD);
+        }, { passive: false });
+
+        card.addEventListener('touchmove', (e) => {
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
+            if (dist > TOUCH_MOVE_THRESHOLD) {
+                clearTimeout(longPressTimer);
+                touchStartTime = 0;
+            }
+        });
+
+        card.addEventListener('touchend', () => {
+            clearTimeout(longPressTimer);
+            if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === card) {
+                // Short tap handled by click event
+            }
+            touchStartTime = 0;
+            selectedElementForTap = null;
+        });
+
+        mobileShareCardsContainer.appendChild(card); // Append new cards at the end, sorting will reorder virtually
+        logDebug('Mobile Cards: Created new card for share ' + share.shareName + '.');
+    }
+
+    // Always update the content and classes for existing (or newly created) cards
+    const livePriceData = livePrices[share.shareName.toUpperCase()];
+    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
+
+    // Apply target-hit-alert class if target is hit AND not dismissed
+    if (isTargetHit && !targetHitIconDismissed) {
+        card.classList.add('target-hit-alert');
+    } else {
+        card.classList.remove('target-hit-alert');
+    }
+
+    const isMarketOpen = isAsxMarketOpen();
+    let displayLivePrice = 'N/A';
+    let displayPriceChange = '';
+    let priceClass = '';
+    let cardPriceChangeClass = '';
+
+    if (livePriceData) {
+        const currentLivePrice = livePriceData.live;
+        const previousClosePrice = livePriceData.prevClose;
+        const lastFetchedLive = livePriceData.lastLivePrice;
+        const lastFetchedPrevClose = livePriceData.lastPrevClose;
+
+        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
+            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+            }
+            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                const change = currentLivePrice - previousClosePrice;
+                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+            }
+        } else {
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayPriceChange = '0.00 (0.00%)';
+            priceClass = 'neutral';
+            cardPriceChangeClass = '';
+        }
+    }
+
+    // Apply card-specific price change class
+    // Remove previous price change classes before adding current one
+    card.classList.remove('positive-change-card', 'negative-change-card');
+    if (cardPriceChangeClass) {
+        card.classList.add(cardPriceChangeClass);
+    }
+
+    const dividendAmount = Number(share.dividendAmount) || 0;
+    const frankingCredits = Number(share.frankingCredits) || 0;
+    const enteredPrice = Number(share.currentPrice) || 0;
+    const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
+                            ? parseFloat(displayLivePrice.substring(1))
+                            : (enteredPrice > 0 ? enteredPrice : 0);
+
+    const yieldDisplay = (() => {
+        if (priceForYield === 0) return 'N/A';
+        const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
+        const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
+        if (frankingCredits > 0 && frankedYield > 0) {
+            return frankedYield.toFixed(2) + '% (Franked)';
+        } else if (unfrankedYield > 0) {
+            return unfrankedYield.toFixed(2) + '% (Unfranked)';
+        }
+        return 'N/A';
+    })();
+
+
+    card.innerHTML = `
+        <h3 class="${priceClass}">${share.shareName || ''}</h3>
+        <div class="live-price-display-section">
+            <div class="fifty-two-week-row">
+                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A'}</span>
+                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? '$' + livePriceData.High52.toFixed(2) : 'N/A'}</span>
+            </div>
+            <div class="live-price-main-row">
+                <span class="live-price-large ${priceClass}">${displayLivePrice}</span>
+                <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
+            </div>
+            <div class="pe-ratio-row">
+                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
+            </div>
+        </div>
+        <p><strong>Entered Price:</strong> $${Number(share.currentPrice) !== null && !isNaN(Number(share.currentPrice)) ? Number(share.currentPrice).toFixed(2) : 'N/A'}</p>
+        <p><strong>Target Price:</strong> $${Number(share.targetPrice) !== null && !isNaN(Number(share.targetPrice)) ? Number(share.targetPrice).toFixed(2) : 'N/A'}</p>
+        <p><strong>Dividend Yield:</strong> ${yieldDisplay}</p>
+        <p><strong>Star Rating:</strong> ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</p>
+    `;
+
+    // Re-apply selected class if it was previously selected
+    if (selectedShareDocId === share.id) {
+        card.classList.add('selected');
+    }
+
+    logDebug('Mobile Cards: Updated/Created card for share ' + share.shareName + '.');
+}
 
 function updateMainButtonsState(enable) {
     logDebug('UI State: Setting main buttons state to: ' + (enable ? 'ENABLED' : 'DISABLED'));
@@ -1900,41 +2214,22 @@ function renderSortSelect() {
 
 /**
  * Renders the watchlist based on the currentSelectedWatchlistIds. (1)
- */
-/**
- * Renders the watchlist based on the currentSelectedWatchlistIds. (1)
+ * Optimized to update existing elements rather than recreating them, reducing flickering.
  */
 function renderWatchlist() {
     logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + currentSelectedWatchlistIds[0]);
-    
+
     const selectedWatchlistId = currentSelectedWatchlistIds[0];
 
     // Hide both sections initially
     stockWatchlistSection.classList.add('app-hidden');
-    cashAssetsSection.classList.add('app-hidden'); // UPDATED ID
-    
-    // Clear previous content
-    clearShareListUI(); // Clears stock table and mobile cards
-    if (cashCategoriesContainer) cashCategoriesContainer.innerHTML = ''; // Clear cash categories
+    cashAssetsSection.classList.add('app-hidden');
 
-    // Update sort dropdown options based on selected watchlist type
-    renderSortSelect();
-
-    if (selectedWatchlistId === CASH_BANK_WATCHLIST_ID) {
-        // Show Cash & Assets section (1)
-        cashAssetsSection.classList.remove('app-hidden');
-        mainTitle.textContent = 'Cash & Assets';
-        renderCashCategories();
-        sortSelect.classList.remove('app-hidden');
-        refreshLivePricesBtn.classList.add('app-hidden');
-        toggleCompactViewBtn.classList.add('app-hidden');
-        asxCodeButtonsContainer.classList.add('app-hidden');
-        targetHitIconBtn.classList.add('app-hidden');
-        exportWatchlistBtn.classList.add('app-hidden');
-        stopLivePriceUpdates();
-        updateAddHeaderButton();
-    } else {
-        // Show Stock Watchlist section
+    // Clear previous content (only for elements that will be conditionally displayed)
+    // We will now manage individual row/card updates, so don't clear the whole tbody/container yet.
+    // However, for switching between stock/cash, we might still need to clear.
+    if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
+        // Stock Watchlist Logic
         stockWatchlistSection.classList.remove('app-hidden');
         const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
         if (selectedWatchlistId === ALL_SHARES_ID) {
@@ -1945,7 +2240,6 @@ function renderWatchlist() {
             mainTitle.textContent = 'Share Watchlist';
         }
 
-        // Show stock-specific UI elements
         sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.remove('app-hidden');
         toggleCompactViewBtn.classList.remove('app-hidden');
@@ -1954,42 +2248,9 @@ function renderWatchlist() {
         startLivePriceUpdates();
         updateAddHeaderButton();
 
-        // --- Core Fix for Desktop Compact View ---
-        const isMobileView = window.innerWidth <= 768; // Define what constitutes "mobile"
-
-        if (isMobileView) {
-            // On actual mobile devices, always hide table and show mobile cards
-            if (tableContainer) tableContainer.style.display = 'none';
-            if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'flex';
-            if (mobileShareCardsContainer && currentMobileViewMode === 'compact') {
-                mobileShareCardsContainer.classList.add('compact-view');
-            } else if (mobileShareCardsContainer) {
-                mobileShareCardsContainer.classList.remove('compact-view');
-            }
-            // ASX buttons are hidden on mobile compact via CSS, but ensure JS doesn't override
-            if (asxCodeButtonsContainer) asxCodeButtonsContainer.style.display = 'flex'; // Default to flex, CSS will hide if compact
-        } else { // Desktop view
-            if (currentMobileViewMode === 'compact') {
-                // On desktop, if compact mode is active, hide table and show mobile cards
-                if (tableContainer) tableContainer.style.display = 'none';
-                if (mobileShareCardsContainer) {
-                    mobileShareCardsContainer.style.display = 'grid'; // Use grid for desktop compact for better layout
-                    mobileShareCardsContainer.classList.add('compact-view');
-                }
-                if (asxCodeButtonsContainer) asxCodeButtonsContainer.style.display = 'none'; // Hide ASX buttons in desktop compact
-            } else {
-                // On desktop, if default mode, show table and hide mobile cards
-                if (tableContainer) tableContainer.style.display = 'block'; // Or 'table' if it was a table element directly
-                if (mobileShareCardsContainer) {
-                    mobileShareCardsContainer.style.display = 'none';
-                    mobileShareCardsContainer.classList.remove('compact-view');
-                }
-                if (asxCodeButtonsContainer) asxCodeButtonsContainer.style.display = 'flex'; // Show ASX buttons in desktop default
-            }
-        }
-        // --- End Core Fix ---
-
+        const isMobileView = window.innerWidth <= 768;
         let sharesToRender = [];
+
         if (selectedWatchlistId === ALL_SHARES_ID) {
             sharesToRender = [...allSharesData];
             logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
@@ -2000,36 +2261,67 @@ function renderWatchlist() {
             logDebug('Render: No specific stock watchlists selected or multiple selected, showing empty state.');
         }
 
+        // --- Optimized DOM Update for Shares ---
+        const existingTableRows = Array.from(shareTableBody.children);
+        const existingMobileCards = Array.from(mobileShareCardsContainer.children);
+        const existingAsxButtons = Array.from(asxCodeButtonsContainer.children);
+
+        const newShareIds = new Set(sharesToRender.map(s => s.id));
+        const newAsxCodes = new Set(sharesToRender.map(s => s.shareName.trim().toUpperCase()));
+
+        // Remove old rows/cards/buttons that are no longer in the filtered list
+        existingTableRows.forEach(row => {
+            if (!newShareIds.has(row.dataset.docId)) {
+                row.remove();
+            }
+        });
+        existingMobileCards.forEach(card => {
+            if (!newShareIds.has(card.dataset.docId)) {
+                card.remove();
+            }
+        });
+        existingAsxButtons.forEach(button => {
+            if (!newAsxCodes.has(button.dataset.asxCode)) {
+                button.remove();
+            }
+        });
+
+        // Add/Update shares
+        sharesToRender.forEach((share) => {
+            // Update or add to table
+            if (tableContainer && tableContainer.style.display !== 'none') {
+                updateOrCreateShareTableRow(share);
+            }
+            // Update or add to mobile cards
+            if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
+                updateOrCreateShareMobileCard(share);
+            }
+        });
+
+        // Add/Update ASX Code Buttons
+        renderAsxCodeButtons(); // This function will now update existing or add new ones based on current shares
+
         if (sharesToRender.length === 0) {
             const emptyWatchlistMessage = document.createElement('p');
             emptyWatchlistMessage.textContent = 'No shares found for the selected watchlists. Add a new share to get started!';
             emptyWatchlistMessage.style.textAlign = 'center';
             emptyWatchlistMessage.style.padding = '20px';
             emptyWatchlistMessage.style.color = 'var(--ghosted-text)';
-            const td = document.createElement('td');
-            td.colSpan = 6; // Updated colspan to 6 for the new Rating column
-            td.appendChild(emptyWatchlistMessage);
-            const tr = document.createElement('tr');
-            tr.appendChild(td);
-            // Only append to table if table is visible, otherwise to mobile cards
-            if (tableContainer && tableContainer.style.display !== 'none') {
+            
+            // Append message only if no items were added
+            if (tableContainer && tableContainer.style.display !== 'none' && shareTableBody.children.length === 0) {
+                const td = document.createElement('td');
+                td.colSpan = 6;
+                td.appendChild(emptyWatchlistMessage);
+                const tr = document.createElement('tr');
+                tr.appendChild(td);
                 shareTableBody.appendChild(tr);
             }
-            if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
+            if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none' && mobileShareCardsContainer.children.length === 0) {
                 mobileShareCardsContainer.appendChild(emptyWatchlistMessage.cloneNode(true));
             }
         }
-
-        sharesToRender.forEach((share) => {
-            // Only add to table if table is visible
-            if (tableContainer && tableContainer.style.display !== 'none') {
-                addShareToTable(share);
-            }
-            // Only add to mobile cards if mobile cards are visible
-            if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
-                addShareToMobileCards(share); 
-            }
-        });
+        // --- End Optimized DOM Update for Shares ---
 
         if (selectedShareDocId) {
             const stillExists = sharesToRender.some(share => share.id === selectedShareDocId);
@@ -2040,9 +2332,56 @@ function renderWatchlist() {
             }
         }
         logDebug('Render: Stock watchlist rendering complete.');
-        updateTargetHitBanner();
-        renderAsxCodeButtons();
+        updateTargetHitBanner(); // Update notification banner
+
+        // --- Core Fix for Desktop Compact View (placement adjusted to be after DOM update) ---
+        if (isMobileView) {
+            if (tableContainer) tableContainer.style.display = 'none';
+            if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'flex';
+            if (mobileShareCardsContainer && currentMobileViewMode === 'compact') {
+                mobileShareCardsContainer.classList.add('compact-view');
+            } else if (mobileShareCardsContainer) {
+                mobileShareCardsContainer.classList.remove('compact-view');
+            }
+            if (asxCodeButtonsContainer) asxCodeButtonsContainer.style.display = 'flex';
+        } else { // Desktop view
+            if (currentMobileViewMode === 'compact') {
+                if (tableContainer) tableContainer.style.display = 'none';
+                if (mobileShareCardsContainer) {
+                    mobileShareCardsContainer.style.display = 'grid';
+                    mobileShareCardsContainer.classList.add('compact-view');
+                }
+                if (asxCodeButtonsContainer) asxCodeButtonsContainer.style.display = 'none';
+            } else {
+                if (tableContainer) tableContainer.style.display = 'block';
+                if (mobileShareCardsContainer) {
+                    mobileShareCardsContainer.style.display = 'none';
+                    mobileShareCardsContainer.classList.remove('compact-view');
+                }
+                if (asxCodeButtonsContainer) asxCodeButtonsContainer.style.display = 'flex';
+            }
+        }
+        // --- End Core Fix ---
+
+    } else {
+        // Cash & Assets section Logic
+        cashAssetsSection.classList.remove('app-hidden');
+        mainTitle.textContent = 'Cash & Assets';
+        renderCashCategories();
+        sortSelect.classList.remove('app-hidden');
+        refreshLivePricesBtn.classList.add('app-hidden');
+        toggleCompactViewBtn.classList.add('app-hidden');
+        asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
+        targetHitIconBtn.classList.add('app-hidden'); // Ensure hidden in cash view
+        exportWatchlistBtn.classList.add('app-hidden');
+        stopLivePriceUpdates();
+        updateAddHeaderButton();
+        // Ensure stock-specific containers are hidden when showing cash assets
+        if (tableContainer) tableContainer.style.display = 'none';
+        if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
     }
+    // Update sort dropdown options based on selected watchlist type
+    renderSortSelect(); // Moved here to ensure it updates for both stock and cash views
     adjustMainContentPadding();
 }
 
