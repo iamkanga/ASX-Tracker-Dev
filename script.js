@@ -1613,6 +1613,9 @@ async function saveShareData(isSilent = false) {
             logDebug('Firestore: Share \'' + shareName + '\' (ID: ' + selectedShareDocId + ') updated.');
             originalShareData = getCurrentFormData(); // Update original data after successful save
             setIconDisabled(saveShareBtn, true); // Disable save button after saving
+            // NEW: Trigger a fresh fetch of live prices and re-render to reflect new target hit status
+            await fetchLivePrices(); // This will also trigger renderWatchlist and updateTargetHitBanner
+            if (!isSilent) showCustomAlert('Share \'' + shareName + '\' updated. Updating live prices...', 1500);
         } catch (error) {
             console.error('Firestore: Error updating share:', error);
             if (!isSilent) showCustomAlert('Error updating share: ' + error.message);
@@ -1630,6 +1633,9 @@ async function saveShareData(isSilent = false) {
             logDebug('Firestore: Share \'' + shareName + '\' added with ID: ' + newDocRef.id);
             originalShareData = getCurrentFormData(); // Update original data after successful save
             setIconDisabled(saveShareBtn, true); // Disable save button after saving
+            // NEW: Trigger a fresh fetch of live prices and re-render to reflect new target hit status
+            await fetchLivePrices(); // This will also trigger renderWatchlist and updateTargetHitBanner
+            if (!isSilent) showCustomAlert('Share \'' + shareName + '\' added. Updating live prices...', 1500);
         } catch (error) {
             console.error('Firestore: Error adding share:', error);
             if (!isSilent) showCustomAlert('Error adding share: ' + error.message);
