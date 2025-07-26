@@ -513,13 +513,13 @@ function addShareToTable(share) {
             <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
             <span class="price-change ${priceClass}">${displayPriceChange}</span>
         </td>
-        <td>${Number(share.currentPrice) !== null && !isNaN(Number(share.currentPrice)) ? '$' + Number(share.currentPrice).toFixed(2) : 'N/A'}</td>
-        <td>${Number(share.targetPrice) !== null && !isNaN(Number(share.targetPrice)) ? '$' + Number(share.targetPrice).toFixed(2) : 'N/A'}</td>
+        <td>${Number(share.currentPrice) !== null && !isNaN(Number(share.currentPrice)) ? '$' + Number(share.currentPrice).toFixed(2) : ''}</td>
+        <td>${Number(share.targetPrice) !== null && !isNaN(Number(share.targetPrice)) ? '$' + Number(share.targetPrice).toFixed(2) : ''}</td>
     <td>
         ${
             // Determine the effective yield for display in the table
             // Prioritize franked yield if franking credits are present and yield is valid, otherwise use unfranked yield
-            // Default to N/A if no valid yield can be calculated
+            // Default to empty string if no valid yield can be calculated or if calculated yield is 0
             (() => {
                 const dividendAmount = Number(share.dividendAmount) || 0;
                 const frankingCredits = Number(share.frankingCredits) || 0;
@@ -531,7 +531,8 @@ function addShareToTable(share) {
                                     ? parseFloat(displayLivePrice.substring(1))
                                     : (enteredPrice > 0 ? enteredPrice : 0);
 
-                if (priceForYield === 0) return 'N/A'; // Cannot calculate yield if price is zero
+                // If price for yield is 0, or if both dividend and franking are 0, return empty string
+                if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
 
                 const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
                 const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
@@ -541,7 +542,7 @@ function addShareToTable(share) {
                 } else if (unfrankedYield > 0) {
                     return unfrankedYield.toFixed(2) + '% (U)'; // Display unfranked yield with (U)
                 }
-                return 'N/A'; // No valid yield
+                return ''; // No valid yield or yield is 0, display empty string
             })()
         }
     </td>
@@ -722,14 +723,14 @@ function addShareToMobileCards(share) {
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
             </div>
         </div>
-        <p><strong>Entered Price:</strong> $${Number(share.currentPrice) !== null && !isNaN(Number(share.currentPrice)) ? Number(share.currentPrice).toFixed(2) : 'N/A'}</p>
-        <p><strong>Target Price:</strong> $${Number(share.targetPrice) !== null && !isNaN(Number(share.targetPrice)) ? Number(share.targetPrice).toFixed(2) : 'N/A'}</p>
+        <p><strong>Entered Price:</strong> ${Number(share.currentPrice) !== null && !isNaN(Number(share.currentPrice)) ? '$' + Number(share.currentPrice).toFixed(2) : ''}</p>
+        <p><strong>Target Price:</strong> ${Number(share.targetPrice) !== null && !isNaN(Number(share.targetPrice)) ? '$' + Number(share.targetPrice).toFixed(2) : ''}</p>
         <p>
         <strong>Dividend Yield:</strong>
         ${
             // Determine the effective yield for display in mobile cards
             // Prioritize franked yield if franking credits are present and yield is valid, otherwise use unfranked yield
-            // Default to N/A if no valid yield can be calculated
+            // Default to empty string if no valid yield can be calculated or if calculated yield is 0
             (() => {
                 const dividendAmount = Number(share.dividendAmount) || 0;
                 const frankingCredits = Number(share.frankingCredits) || 0;
@@ -741,7 +742,8 @@ function addShareToMobileCards(share) {
                                     ? parseFloat(displayLivePrice.substring(1))
                                     : (enteredPrice > 0 ? enteredPrice : 0);
 
-                if (priceForYield === 0) return 'N/A'; // Cannot calculate yield if price is zero
+                // If price for yield is 0, or if both dividend and franking are 0, return empty string
+                if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
 
                 const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
                 const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
@@ -751,7 +753,7 @@ function addShareToMobileCards(share) {
                 } else if (unfrankedYield > 0) {
                     return unfrankedYield.toFixed(2) + '% (Unfranked)'; // Display unfranked yield with (Unfranked)
                 }
-                return 'N/A'; // No valid yield
+                return ''; // No valid yield or yield is 0, display empty string
             })()
         }
     </p>
@@ -925,7 +927,8 @@ function updateOrCreateShareTableRow(share) {
                             : (enteredPrice > 0 ? enteredPrice : 0);
 
     const yieldDisplay = (() => {
-        if (priceForYield === 0) return 'N/A';
+        // If price for yield is 0, or if both dividend and franking are 0, return empty string
+        if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
         const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
         const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
         if (frankingCredits > 0 && frankedYield > 0) {
@@ -933,7 +936,7 @@ function updateOrCreateShareTableRow(share) {
         } else if (unfrankedYield > 0) {
             return unfrankedYield.toFixed(2) + '% (U)';
         }
-        return 'N/A';
+        return ''; // No valid yield or yield is 0, display empty string
     })();
 
     row.innerHTML = `
@@ -942,8 +945,8 @@ function updateOrCreateShareTableRow(share) {
             <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
             <span class="price-change ${priceClass}">${displayPriceChange}</span>
         </td>
-        <td>${Number(share.currentPrice) !== null && !isNaN(Number(share.currentPrice)) ? '$' + Number(share.currentPrice).toFixed(2) : 'N/A'}</td>
-        <td>${Number(share.targetPrice) !== null && !isNaN(Number(share.targetPrice)) ? '$' + Number(share.targetPrice).toFixed(2) : 'N/A'}</td>
+        <td>${Number(share.currentPrice) !== null && !isNaN(Number(share.currentPrice)) ? '$' + Number(share.currentPrice).toFixed(2) : ''}</td>
+        <td>${Number(share.targetPrice) !== null && !isNaN(Number(share.targetPrice)) ? '$' + Number(share.targetPrice).toFixed(2) : ''}</td>
         <td>${yieldDisplay}</td>
         <td class="star-rating-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
@@ -1078,7 +1081,8 @@ function updateOrCreateShareMobileCard(share) {
                             : (enteredPrice > 0 ? enteredPrice : 0);
 
     const yieldDisplay = (() => {
-        if (priceForYield === 0) return 'N/A';
+        // If price for yield is 0, or if both dividend and franking are 0, return empty string
+        if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
         const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
         const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
         if (frankingCredits > 0 && frankedYield > 0) {
@@ -1086,7 +1090,7 @@ function updateOrCreateShareMobileCard(share) {
         } else if (unfrankedYield > 0) {
             return unfrankedYield.toFixed(2) + '% (Unfranked)';
         }
-        return 'N/A';
+        return ''; // No valid yield or yield is 0, display empty string
     })();
 
 
@@ -1105,8 +1109,8 @@ function updateOrCreateShareMobileCard(share) {
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
             </div>
         </div>
-        <p><strong>Entered Price:</strong> $${Number(share.currentPrice) !== null && !isNaN(Number(share.currentPrice)) ? Number(share.currentPrice).toFixed(2) : 'N/A'}</p>
-        <p><strong>Target Price:</strong> $${Number(share.targetPrice) !== null && !isNaN(Number(share.targetPrice)) ? Number(share.targetPrice).toFixed(2) : 'N/A'}</p>
+        <p><strong>Entered Price:</strong> ${Number(share.currentPrice) !== null && !isNaN(Number(share.currentPrice)) ? '$' + Number(share.currentPrice).toFixed(2) : ''}</p>
+        <p><strong>Target Price:</strong> ${Number(share.targetPrice) !== null && !isNaN(Number(share.targetPrice)) ? '$' + Number(share.targetPrice).toFixed(2) : ''}</p>
         <p><strong>Dividend Yield:</strong> ${yieldDisplay}</p>
         <p><strong>Star Rating:</strong> ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</p>
     `;
@@ -1783,13 +1787,14 @@ function showShareDetails() {
         modalLivePriceDisplaySection.appendChild(peRow);
     }
 
-    modalEnteredPrice.textContent = (enteredPriceNum !== null && !isNaN(enteredPriceNum)) ? '$' + enteredPriceNum.toFixed(2) : 'N/A';
+    modalEnteredPrice.textContent = (enteredPriceNum !== null && !isNaN(enteredPriceNum)) ? '$' + enteredPriceNum.toFixed(2) : '';
     
-    const displayTargetPrice = (share.targetPrice !== null && !isNaN(Number(share.targetPrice))) ? '$' + Number(share.targetPrice).toFixed(2) : 'N/A';
+    const displayTargetPrice = (share.targetPrice !== null && !isNaN(Number(share.targetPrice))) ? '$' + Number(share.targetPrice).toFixed(2) : '';
     
     // Determine the target notification message based on share.targetDirection
     let targetNotificationMessage = '';
-    if (share.targetPrice !== null && !isNaN(Number(share.targetPrice))) { // Only show message if a target price is set
+    // Only show message if a target price is set and it's not an empty string (meaning a numeric value, even 0, was entered)
+    if (displayTargetPrice !== '') { 
         if (share.targetDirection === 'above') {
             targetNotificationMessage = '(Alert will trigger if >= Target)'; // Option 8
         } else { // Default or 'below'
@@ -1803,15 +1808,17 @@ function showShareDetails() {
     const displayDividendAmount = Number(share.dividendAmount);
     const displayFrankingCredits = Number(share.frankingCredits);
 
-    modalDividendAmount.textContent = (displayDividendAmount !== null && !isNaN(displayDividendAmount)) ? '$' + displayDividendAmount.toFixed(3) : 'N/A';
-    modalFrankingCredits.textContent = (displayFrankingCredits !== null && !isNaN(displayFrankingCredits)) ? displayFrankingCredits.toFixed(1) + '%' : 'N/A';
+    modalDividendAmount.textContent = (displayDividendAmount !== null && !isNaN(displayDividendAmount)) ? '$' + displayDividendAmount.toFixed(3) : '';
+    modalFrankingCredits.textContent = (displayFrankingCredits !== null && !isNaN(displayFrankingCredits)) ? displayFrankingCredits.toFixed(1) + '%' : '';
 
     const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
     const unfrankedYield = calculateUnfrankedYield(displayDividendAmount, priceForYield); 
-    modalUnfrankedYieldSpan.textContent = unfrankedYield !== null && !isNaN(unfrankedYield) ? unfrankedYield.toFixed(2) + '%' : '0.00%';
+    // Display unfranked yield only if it's not null/NaN AND not 0
+    modalUnfrankedYieldSpan.textContent = unfrankedYield !== null && !isNaN(unfrankedYield) && unfrankedYield !== 0 ? unfrankedYield.toFixed(2) + '%' : '';
 
     const frankedYield = calculateFrankedYield(displayDividendAmount, priceForYield, displayFrankingCredits);
-    modalFrankedYieldSpan.textContent = frankedYield !== null && !isNaN(frankedYield) ? frankedYield.toFixed(2) + '%' : '0.00%';
+    // Display franked yield only if it's not null/NaN AND not 0
+    modalFrankedYieldSpan.textContent = frankedYield !== null && !isNaN(frankedYield) && frankedYield !== 0 ? frankedYield.toFixed(2) + '%' : '';
 
     // Populate Entry Date after Franked Yield
     modalEntryDate.textContent = formatDate(share.entryDate) || 'N/A';
