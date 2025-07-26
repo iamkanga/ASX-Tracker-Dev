@@ -1005,36 +1005,10 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
     let disableDropdown = false; // Variable to control if dropdown should be disabled
 
     if (isNewShare) {
-        const defaultWatchlistForNewShare = userWatchlists.find(wl => wl.id === getDefaultWatchlistId(currentUserId));
-
-        // Priority 1: If currently viewing a specific stock watchlist, pre-select and disable
-        if (currentSelectedWatchlistIds.length === 1 && 
-            currentSelectedWatchlistIds[0] !== ALL_SHARES_ID &&
-            currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID &&
-            stockWatchlists.some(wl => wl.id === currentSelectedWatchlistIds[0])) { 
-
-            selectedOptionId = currentSelectedWatchlistIds[0];
-            disableDropdown = true;
-            logDebug('Share Form: New share: Pre-selected and disabled to current view: ' + selectedOptionId);
-        } 
-        // Priority 2: If a default watchlist exists AND it's a stock watchlist, pre-select it (and keep enabled)
-        else if (defaultWatchlistForNewShare && stockWatchlists.some(wl => wl.id === defaultWatchlistForNewShare.id)) { 
-            selectedOptionId = defaultWatchlistForNewShare.id;
-            disableDropdown = false; // Keep enabled for user to change
-            logDebug('Share Form: New share: Pre-selected default watchlist: ' + selectedOptionId);
-        } 
-        // Priority 3: If no specific view or default, but other stock watchlists exist, select the first one
-        else if (stockWatchlists.length > 0) {
-            selectedOptionId = stockWatchlists[0].id;
-            disableDropdown = false;
-            logDebug('Share Form: New share: No specific view or default, pre-selected first available: ' + selectedOptionId);
-        } 
-        // Priority 4: No stock watchlists at all, leave on placeholder
-        else {
-            selectedOptionId = ''; // Keep placeholder selected
-            disableDropdown = false;
-            logDebug('Share Form: New share: User must select a watchlist (no stock watchlists available).');
-        }
+        // For new shares, always default to the blank placeholder and keep the dropdown enabled.
+        selectedOptionId = ''; // Forces selection of the disabled placeholder option
+        disableDropdown = false; // Always allow user to select a watchlist
+        logDebug('Share Form: New share: Watchlist selector forced to blank placeholder, enabled for user selection.');
     } else { // Editing an existing share
         if (currentShareWatchlistId && stockWatchlists.some(wl => wl.id === currentShareWatchlistId)) {
             selectedOptionId = currentShareWatchlistId;
