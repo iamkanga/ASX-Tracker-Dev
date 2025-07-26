@@ -2499,7 +2499,7 @@ input:checked + .slider:before {
 }
 
 .asx-code-btn:hover {
-    background-color: var(--asx-button-hover-bg);
+    background-color: var(--asx-button-hover-bg) !important; /* Force hover background color */
 }
 
 .asx-code-btn.active {
@@ -2561,7 +2561,7 @@ table tbody tr.selected {
 }
 
 table tbody tr:not(.selected):hover {
-    background-color: var(--table-row-hover-bg);
+    background-color: var(--table-row-hover-bg) !important; /* Force hover background color */
 }
 
 /* NEW: Target hit alert styling for table rows and mobile cards */
@@ -2807,7 +2807,7 @@ table td.live-price-cell.negative-change {
 }
 
 .mobile-card:not(.selected):hover {
-    background-color: var(--table-row-hover-bg);
+    background-color: var(--table-row-hover-bg) !important; /* Force hover background color */
 }
 
 /* Mobile Card: ASX Code (h3) and Live Price Styling */
