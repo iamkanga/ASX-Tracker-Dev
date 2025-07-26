@@ -2286,8 +2286,12 @@ function renderWatchlist() {
             }
         });
 
+        // Track currently rendered share IDs to efficiently remove old ones
+        const currentRenderedShareIds = new Set();
+
         // Add/Update shares
         sharesToRender.forEach((share) => {
+            currentRenderedShareIds.add(share.id);
             // Update or add to table
             if (tableContainer && tableContainer.style.display !== 'none') {
                 updateOrCreateShareTableRow(share);
@@ -2295,6 +2299,20 @@ function renderWatchlist() {
             // Update or add to mobile cards
             if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
                 updateOrCreateShareMobileCard(share);
+            }
+        });
+
+        // Remove shares that are no longer in the filtered list (from previous render cycle)
+        // For table rows:
+        Array.from(shareTableBody.children).forEach(row => {
+            if (row.dataset.docId && !currentRenderedShareIds.has(row.dataset.docId)) {
+                row.remove();
+            }
+        });
+        // For mobile cards:
+        Array.from(mobileShareCardsContainer.children).forEach(card => {
+            if (card.dataset.docId && !currentRenderedShareIds.has(card.dataset.docId)) {
+                card.remove();
             }
         });
 
