@@ -4513,28 +4513,42 @@ async function initializeAppLogic() {
 
     // Global click listener to close modals/context menu if clicked outside
     window.addEventListener('click', (event) => {
-        // Check if the click is outside the targetHitDetailsModal
-        if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none' && !targetHitDetailsModal.contains(event.target) && event.target !== targetHitIconBtn) {
-            logDebug('Global Click: Clicked outside targetHitDetailsModal. Minimizing it.');
-            if (alertModalMinimizeBtn) {
-                alertModalMinimizeBtn.click(); // Programmatically click the minimize button
-            }
-            return; // Exit early if targetHitDetailsModal was handled
+        // Handle targetHitDetailsModal minimization first
+        // If the target hit modal is open, and the click is outside it AND not on the target hit icon button itself, minimize it.
+        // Also, prevent minimization if the click target is within the modal-action-buttons-footer, as those buttons handle their own actions.
+        if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none' && 
+            !targetHitDetailsModal.contains(event.target) && 
+            event.target !== targetHitIconBtn && 
+            event.target.closest('.modal-action-buttons-footer') === null) { // Added check for modal footer buttons
+            
+            logDebug('Global Click: Clicked outside targetHitDetailsModal (but not on icon/buttons). Minimizing it.');
+            // Directly hide the modal. The minimize button itself already calls hideModal().
+            hideModal(targetHitDetailsModal); 
+            // The targetHitIconDismissed flag should NOT be set to true here.
+            // It should only be set when the "Dismiss All" button is clicked.
+            return; // Exit to prevent other modal closing logic from running
         }
 
+        // General modal closing logic (for other modals)
         if (event.target === shareDetailModal || event.target === dividendCalculatorModal ||
             event.target === shareFormSection || event.target === customDialogModal ||
             event.target === calculatorModal || event.target === addWatchlistModal ||
             event.target === manageWatchlistModal || event.target === alertPanel ||
             event.target === cashAssetFormModal || event.target === cashAssetDetailModal ||
-            event.target === stockSearchModal) { // Include stockSearchModal for general closing
+            event.target === stockSearchModal) {
             closeModals();
         }
 
+        // Context menu closing logic
         if (contextMenuOpen && shareContextMenu && !shareContextMenu.contains(event.target)) {
             hideContextMenu();
         }
     });
+
+    // The targetHitIconBtn listener should be placed within `initializeAppLogic` 
+    // to ensure it's initialized correctly and only once.
+    // So, no changes are needed for the `targetHitIconBtn` listener in this specific block of code.
+    // It will be handled by the existing `initializeAppLogic` function as intended.
 
     // Google Auth Button (Sign In/Out) - This button is removed from index.html.
     // Its functionality is now handled by splashSignInBtn.
