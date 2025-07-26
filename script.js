@@ -4801,7 +4801,7 @@ async function initializeAppLogic() {
                 }
             });
         }
-    });;
+    });
 
     // Add Comment Section Button for Shares
     if (addCommentSectionBtn) {
