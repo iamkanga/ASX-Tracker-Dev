@@ -513,9 +513,9 @@ function addShareToTable(share) {
             <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
             <span class="price-change ${priceClass}">${displayPriceChange}</span>
         </td>
-        <td>${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
-        <td>${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
-    <td>
+        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
+        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
+    <td class="numeric-data-cell">
         ${
             // Determine the effective yield for display in the table
             // Prioritize franked yield if franking credits are present and yield is valid, otherwise use unfranked yield
@@ -546,7 +546,7 @@ function addShareToTable(share) {
             })()
         }
     </td>
-    <td class="star-rating-cell">
+    <td class="star-rating-cell numeric-data-cell">
         ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
     </td>
 `;
@@ -723,41 +723,43 @@ function addShareToMobileCards(share) {
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
             </div>
         </div>
-        <p><strong>Entered Price:</strong> ${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</p>
-        <p><strong>Target Price:</strong> ${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</p>
-        <p>
-        <strong>Dividend Yield:</strong>
-        ${
-            // Determine the effective yield for display in mobile cards
-            // Prioritize franked yield if franking credits are present and yield is valid, otherwise use unfranked yield
-            // Default to empty string if no valid yield can be calculated or if calculated yield is 0
-            (() => {
-                const dividendAmount = Number(share.dividendAmount) || 0;
-                const frankingCredits = Number(share.frankingCredits) || 0;
-                const enteredPrice = Number(share.currentPrice) || 0; // Fallback for entered price if live not available
+        <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</span></p>
+        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</span></p>
+        <p class="data-row">
+            <span class="label-text">Dividend Yield:</span>
+            <span class="data-value">
+            ${
+                // Determine the effective yield for display in mobile cards
+                // Prioritize franked yield if franking credits are present and yield is valid, otherwise use unfranked yield
+                // Default to empty string if no valid yield can be calculated or if calculated yield is 0
+                (() => {
+                    const dividendAmount = Number(share.dividendAmount) || 0;
+                    const frankingCredits = Number(share.frankingCredits) || 0;
+                    const enteredPrice = Number(share.currentPrice) || 0; // Fallback for entered price if live not available
 
-                // Use the price that is actually displayed for yield calculation if possible
-                // If displayLivePrice is 'N/A', use enteredPrice from share object
-                const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
-                                    ? parseFloat(displayLivePrice.substring(1))
-                                    : (enteredPrice > 0 ? enteredPrice : 0);
+                    // Use the price that is actually displayed for yield calculation if possible
+                    // If displayLivePrice is 'N/A', use enteredPrice from share object
+                    const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
+                                        ? parseFloat(displayLivePrice.substring(1))
+                                        : (enteredPrice > 0 ? enteredPrice : 0);
 
-                // If price for yield is 0, or if both dividend and franking are 0, return empty string
-                if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
+                    // If price for yield is 0, or if both dividend and franking are 0, return empty string
+                    if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
 
-                const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
-                const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
+                    const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
+                    const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
 
-                if (frankingCredits > 0 && frankedYield > 0) {
-                    return frankedYield.toFixed(2) + '% (Franked)'; // Display franked yield with (Franked)
-                } else if (unfrankedYield > 0) {
-                    return unfrankedYield.toFixed(2) + '% (Unfranked)'; // Display unfranked yield with (Unfranked)
-                }
-                return ''; // No valid yield or yield is 0, display empty string
-            })()
-        }
-    </p>
-    <p><strong>Star Rating:</strong> ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</p>
+                    if (frankingCredits > 0 && frankedYield > 0) {
+                        return frankedYield.toFixed(2) + '% (Franked)'; // Display franked yield with (Franked)
+                    } else if (unfrankedYield > 0) {
+                        return unfrankedYield.toFixed(2) + '% (Unfranked)'; // Display unfranked yield with (Unfranked)
+                    }
+                    return ''; // No valid yield or yield is 0, display empty string
+                })()
+            }
+            </span>
+        </p>
+        <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
 `;
 
     card.addEventListener('click', () => {
@@ -945,10 +947,10 @@ function updateOrCreateShareTableRow(share) {
             <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
             <span class="price-change ${priceClass}">${displayPriceChange}</span>
         </td>
-        <td>${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
-        <td>${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
-        <td>${yieldDisplay}</td>
-        <td class="star-rating-cell">
+        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
+        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
+        <td class="numeric-data-cell">${yieldDisplay}</td>
+        <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
         </td>
     `;
@@ -1109,10 +1111,10 @@ function updateOrCreateShareMobileCard(share) {
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
             </div>
         </div>
-        <p><strong>Entered Price:</strong> ${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</p>
-        <p><strong>Target Price:</strong> ${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</p>
-        <p><strong>Dividend Yield:</strong> ${yieldDisplay}</p>
-        <p><strong>Star Rating:</strong> ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</p>
+        <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</span></p>
+        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</span></p>
+        <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
+        <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
     `;
 
     // Re-apply selected class if it was previously selected

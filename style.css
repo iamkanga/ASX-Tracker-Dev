@@ -2029,8 +2029,71 @@ body.theme-subtle-10 { /* Subtle Stone */
 
 
 /* General Body and Layout */
-.star-rating-cell {
-    white-space: nowrap; /* Prevent rating from wrapping */
+/* NEW: Visual distinction for user-entered data */
+
+/* For Desktop Table Cells with Numeric User Data */
+.numeric-data-cell {
+    text-align: right;
+    font-weight: 600; /* Bolder */
+    font-size: 1.05em; /* Slightly larger */
+}
+
+/* For emphasized Share Code in table */
+table td .share-code-display { /* This class exists, just ensure its emphasis */
+    font-weight: 700; /* Make it bold */
+    font-size: 1.2em; /* Keep existing larger size */
+}
+
+/* For Mobile Card Data Rows */
+.mobile-card p.data-row {
+    display: flex;
+    justify-content: space-between; /* Aligns label left, value right */
+    align-items: baseline; /* Aligns text baselines */
+    margin: 5px 0; /* Consistent vertical spacing */
+}
+
+.mobile-card p.data-row .label-text {
+    font-weight: 600; /* For labels like "Entered Price:" */
+    color: var(--label-color); /* Use label color */
+    flex-shrink: 0; /* Prevent label from shrinking */
+    margin-right: 10px; /* Small space between label and value */
+}
+
+.mobile-card p.data-row .data-value {
+    font-weight: 700; /* Bolder for data */
+    font-size: 1.05em; /* Slightly larger */
+    color: var(--text-color); /* Main text color */
+    text-align: right;
+    flex-grow: 1; /* Allows value to take up remaining space */
+    white-space: nowrap; /* Prevent data from wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Add ellipsis if text is too long */
+}
+
+/* For Share Detail Modal Data Elements */
+#shareDetailModal p { /* Target all paragraphs in the modal body for flex display */
+    display: flex;
+    justify-content: space-between; /* Aligns label left, value right */
+    align-items: baseline; /* Aligns content nicely */
+    margin: 10px 0; /* Consistent vertical spacing */
+    font-size: 0.95em; /* Base font size for modal details */
+}
+
+#shareDetailModal p strong { /* For labels within paragraphs (e.g., "Entered Price:") */
+    font-weight: 600;
+    color: var(--label-color);
+    flex-shrink: 0;
+    margin-right: 10px; /* Space between label and value */
+}
+
+/* Target specific span elements that hold data values in the detail modal */
+#shareDetailModal span[id^="modal"], /* Selects all spans with IDs starting with "modal" */
+#detailCashAssetBalance { /* Also apply to cash asset balance in its detail modal */
+    font-weight: 700; /* Bolder for data */
+    font-size: 1.1em; /* Noticeably larger */
+    color: var(--text-color); /* Main text color */
+    text-align: right;
+    flex-grow: 1; /* Allows value to take up remaining space */
 }
 html {
     height: 100%; /* Ensure html takes full height */
