@@ -4783,7 +4783,13 @@ async function initializeAppLogic() {
 
                     // Case 2: If it's an INPUT or TEXTAREA element
                     if (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') {
-                        this.select(); // Select the text content
+                        // NEW: Defensive check to ensure 'select' method exists before calling
+                        if (typeof this.select === 'function') {
+                            this.select(); // LINE 4745:22
+                        } else {
+                            // Fallback if select() is unexpectedly not a function (should not happen here normally)
+                            console.warn("Attempted to call select() on non-text element (or missing method):", this);
+                        }
                         const nextElement = formInputs[index + 1];
                         if (nextElement) {
                             nextElement.focus();
