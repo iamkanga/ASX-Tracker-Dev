@@ -544,7 +544,7 @@ function addShareToTable(share) {
         }
     </td>
     <td class="star-rating-cell">
-        ${share.starRating > 0 ? '⭐ ' + share.starRating : 'N/A'}
+        ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
     </td>
 `;
 
@@ -751,7 +751,7 @@ function addShareToMobileCards(share) {
             })()
         }
     </p>
-    <p><strong>Star Rating:</strong> ${share.starRating > 0 ? '⭐ ' + share.starRating : 'No Rating'}</p>
+    <p><strong>Star Rating:</strong> ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</p>
 `;
 
     card.addEventListener('click', () => {
@@ -1516,7 +1516,7 @@ function showShareDetails() {
 
     // Populate Entry Date after Franked Yield
     modalEntryDate.textContent = formatDate(share.entryDate) || 'N/A';
-    modalStarRating.textContent = share.starRating > 0 ? '⭐ ' + share.starRating : 'No Rating';
+    modalStarRating.textContent = share.starRating > 0 ? '⭐ ' + share.starRating : '';
 
     if (modalCommentsContainer) {
         modalCommentsContainer.innerHTML = '';
