@@ -2494,7 +2494,8 @@ input:checked + .slider:before {
     cursor: pointer;
     font-size: 0.9em;
     font-weight: 600;
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    /* Streamline transition properties to avoid conflicts */
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .asx-code-btn:hover {
@@ -2550,7 +2551,7 @@ table th {
 }
 
 table tbody tr {
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; /* Added for smoother alert border changes */
     cursor: pointer;
 }
 
@@ -2689,7 +2690,8 @@ table td.live-price-cell.negative-change {
     padding: 15px;
     box-shadow: 0 2px 5px var(--shadow-color);
     cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease; /* Added background-color transition for tints */
+    /* Streamline and ensure relevant transitions are covered for all properties that change */
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     position: relative; /* For pseudo-elements */
     overflow: hidden; /* Ensure pseudo-elements are contained */
 }
