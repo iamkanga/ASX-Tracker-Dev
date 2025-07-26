@@ -1088,7 +1088,9 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     
     // Set the correct state for the target direction toggle
     if (targetDirectionToggle) {
-        targetDirectionToggle.checked = (shareToEdit.targetDirection === 'above');
+        // Ensure targetDirection defaults to 'below' if not explicitly set (e.g., for older shares)
+        const savedTargetDirection = shareToEdit.targetDirection || 'below'; 
+        targetDirectionToggle.checked = (savedTargetDirection === 'above');
     }
 
     if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? Number(shareToEdit.dividendAmount).toFixed(3) : '';
