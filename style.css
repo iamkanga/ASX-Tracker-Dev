@@ -2499,15 +2499,18 @@ input:checked + .slider:before {
 }
 
 .asx-code-btn:hover {
-    background-color: var(--asx-button-hover-bg) !important; /* Force hover background color */
+    background-color: var(--asx-button-hover-bg) !important; /* Force hover background color for all states */
 }
 
-/* Ensure no flickering and consistent hover background when hovering target-hit ASX buttons */
+/* Specific hover behavior for target-hit ASX buttons to prevent flicker */
 .asx-code-btn.target-hit-alert:hover {
-    animation-play-state: paused; /* Pause animation on hover */
-    background-color: var(--asx-button-hover-bg) !important; /* Force hover background color */
+    animation-play-state: paused; /* Temporarily pause the pulsing animation */
+    /* Only transition background-color on hover to avoid conflicting with border/shadow set by alert */
+    background-color: var(--asx-button-hover-bg) !important; /* Keep background hover effect */
+    /* Ensure border and shadow remain visually consistent with the alert state while hovered */
     border-color: var(--green-color) !important; /* Keep green border */
-    box-shadow: 0 0 12px rgba(var(--green-color-dark-rgb), 0.8) !important; /* Keep active shadow */
+    box-shadow: 0 0 12px rgba(var(--green-color-dark-rgb), 0.8) !important; /* Keep the 'to' state of the pulse shadow */
+    transform: none !important; /* Explicitly prevent transform to avoid layout thrashing */
 }
 
 .asx-code-btn.active {

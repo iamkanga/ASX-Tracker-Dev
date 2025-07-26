@@ -3141,10 +3141,10 @@ async function loadUserWatchlistsAndSettings() {
  * Updates the `livePrices` global object.
  */
 async function fetchLivePrices() {
-    // console.log('Live Price: Attempting to fetch live prices...'); // Commented out to reduce console output
+    console.log('Live Price: Attempting to fetch live prices...');
     // Only fetch live prices if a stock-related watchlist is selected
     if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-        // console.log('Live Price: Skipping live price fetch because "Cash & Assets" is selected.'); // Commented out
+        console.log('Live Price: Skipping live price fetch because "Cash & Assets" is selected.');
         window._livePricesLoaded = true; // Mark as loaded even if skipped for splash screen
         hideSplashScreenIfReady();
         return;
@@ -3156,7 +3156,7 @@ async function fetchLivePrices() {
             throw new Error('HTTP error! status: ' + response.status);
         }
         const data = await response.json();
-        // console.log('Live Price: Raw data received:', data); // Commented out 
+        console.log('Live Price: Raw data received:', data); 
 
         const newLivePrices = {};
         data.forEach(item => {
@@ -3206,7 +3206,7 @@ async function fetchLivePrices() {
 }
         });
         livePrices = newLivePrices;
-        // console.log('Live Price: Live prices updated:', livePrices); // Commented out
+        console.log('Live Price: Live prices updated:', livePrices);
         
         // IMPORTANT: Re-render the watchlist immediately after live prices are updated
         // to reflect changes in target hit status (borders, etc.).
@@ -3240,7 +3240,7 @@ function startLivePriceUpdates() {
     if (!currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
         fetchLivePrices(); 
         livePriceFetchInterval = setInterval(fetchLivePrices, LIVE_PRICE_FETCH_INTERVAL_MS);
-        // logDebug('Live Price: Started live price updates every ' + (LIVE_PRICE_FETCH_INTERVAL_MS / 1000 / 60) + ' minutes.'); // Commented out
+        logDebug('Live Price: Started live price updates every ' + (LIVE_PRICE_FETCH_INTERVAL_MS / 1000 / 60) + ' minutes.');
     } else {
         logDebug('Live Price: Not starting live price updates because "Cash & Assets" is selected.'); // UPDATED TEXT
     }
