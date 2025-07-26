@@ -1826,7 +1826,10 @@ function showShareDetails() {
         }
     }
 
-    modalTargetPrice.innerHTML = `${displayTargetPrice} <span class="ghosted-text">${targetNotificationMessage}</span>`;
+    modalTargetPrice.innerHTML = `
+        ${targetNotificationMessage ? `<span class="ghosted-text">${targetNotificationMessage}</span>` : ''}
+        ${targetNotificationMessage && displayTargetPrice ? ' ' : ''} ${displayTargetPrice}
+    `.trim(); // Trim to remove potential leading/trailing whitespace if parts are empty
 
     // Ensure dividendAmount and frankingCredits are numbers before formatting
     const displayDividendAmount = Number(share.dividendAmount);
