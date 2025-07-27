@@ -1962,14 +1962,11 @@ function showShareDetails() {
     }
 
     // CommSec.com.au Link
-    if (modalCommSecLink && share.shareName) {
-        modalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${share.shareName}`;
+    if (modalCommSecLink) {
+        modalCommSecLink.href = 'https://www2.commsec.com.au/secure/login';
         modalCommSecLink.innerHTML = 'View on CommSec.com.au <i class="fas fa-external-link-alt"></i>';
         modalCommSecLink.style.display = 'inline-flex';
         setIconDisabled(modalCommSecLink, false);
-    } else if (modalCommSecLink) {
-        modalCommSecLink.style.display = 'none';
-        setIconDisabled(modalCommSecLink, true);
     }
 
     if (modalCommSecLink && commSecLoginMessage) {
