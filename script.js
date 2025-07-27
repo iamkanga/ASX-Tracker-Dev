@@ -3187,7 +3187,6 @@ async function loadUserWatchlistsAndSettings() {
         // Apply saved sort order or default
         if (currentUserId && savedSortOrder && Array.from(sortSelect.options).some(option => option.value === savedSortOrder)) {
             sortSelect.value = savedSortOrder;
-            currentSortOrder = savedSortOrder;
             logDebug('Sort: Applied saved sort order: ' + currentSortOrder);
         } else {
             // Set to default sort for the current view type
@@ -3195,7 +3194,6 @@ async function loadUserWatchlistsAndSettings() {
             if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
                 defaultSortValue = 'name-asc';
             }
-            sortSelect.value = defaultSortValue; 
             currentSortOrder = defaultSortValue;
             logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
         }
@@ -3218,22 +3216,21 @@ async function loadUserWatchlistsAndSettings() {
         }
         updateThemeToggleAndSelector();
 
-        updateMainButtonsState(true);
-        // Apply saved 'show last live price' preference
-    if (typeof savedShowLastLivePricePreference === 'boolean') {
-        showLastLivePriceOnClosedMarket = savedShowLastLivePricePreference;
-        if (showLastLivePriceToggle) {
-            showLastLivePriceToggle.checked = showLastLivePriceOnClosedMarket;
+        // Apply saved 'show last live price' preference to the new checkboxes
+        if (typeof savedShowLastLivePricePreference === 'boolean') {
+            showLastLivePriceOnClosedMarket = savedShowLastLivePricePreference;
+            const hideCheckbox = document.getElementById('sidebarHideCheckbox');
+            const showCheckbox = document.getElementById('sidebarShowCheckbox');
+            if (hideCheckbox && showCheckbox) {
+                showCheckbox.checked = showLastLivePriceOnClosedMarket;
+                hideCheckbox.checked = !showLastLivePriceOnClosedMarket;
+            }
+            logDebug('Toggle: Applied saved "Show Last Live Price" preference: ' + showLastLivePriceOnClosedMarket);
+        } else {
+            // Default to true (Show) if not set
+            showLastLivePriceOnClosedMarket = true;
+            logDebug('Toggle: No saved "Show Last Live Price" preference, defaulting to true (Show).');
         }
-        logDebug('Toggle: Applied saved "Show Last Live Price" preference: ' + showLastLivePriceOnClosedMarket);
-    } else {
-        // Default to false if not set
-        showLastLivePriceOnClosedMarket = false;
-        if (showLastLivePriceToggle) {
-            showLastLivePriceToggle.checked = false;
-        }
-        logDebug('Toggle: No saved "Show Last Live Price" preference, defaulting to false.');
-    } 
 
         const migratedSomething = await migrateOldSharesToWatchlist();
         if (!migratedSomething) {
