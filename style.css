@@ -2359,6 +2359,19 @@ h1#mainTitle {
     justify-content: flex-start; 
 }
 
+/* NEW: Override for the checkbox toggle container to stack vertically */
+.menu-button-item.checkbox-switch-container {
+    flex-direction: column;
+    align-items: flex-start; /* Align children (title row, checkbox row) to the left */
+    gap: 8px; /* Add some space between the title and the checkboxes */
+    cursor: default; /* It's a container, not a single button */
+}
+
+.menu-button-item.checkbox-switch-container:hover {
+    background-color: var(--menu-button-bg); /* Disable hover effect for the container */
+    transform: none;
+}
+
 .menu-button-item:hover {
     background-color: var(--menu-button-hover-bg);
     transform: translateY(-1px);
