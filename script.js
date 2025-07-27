@@ -1972,8 +1972,12 @@ function showShareDetails() {
         setIconDisabled(modalCommSecLink, true);
     }
 
-    if (commSecLoginMessage) {
-        commSecLoginMessage.style.display = 'block'; 
+    if (modalCommSecLink && commSecLoginMessage) {
+        // Only style the login message for visual proximity, do not move its DOM position
+        commSecLoginMessage.style.display = 'block';
+        commSecLoginMessage.style.fontSize = '75%';
+        commSecLoginMessage.style.marginTop = '2px';
+        commSecLoginMessage.style.marginBottom = '0';
     }
 
     showModal(shareDetailModal);
