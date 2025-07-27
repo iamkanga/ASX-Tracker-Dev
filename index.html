@@ -319,16 +319,7 @@
                     </select>
 
                 <!-- Modal Toggle Switch -->
-                <div class="form-group-with-toggle">
-          <div class="toggle-switch modal-toggle" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            <span class="toggle-switch-label small-label" id="modalToggleLeft">Below</span>
-            <input type="checkbox" id="modalTargetToggle" class="toggle-switch-input">
-            <span class="toggle-switch-slider"></span>
-            <span class="toggle-switch-label small-label" id="modalToggleRight">Above</span>
-            <label for="targetPrice" class="target-price-label" style="margin-left: 12px;">Target Price ($):</label>
-            <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50" style="width: 100px; margin-left: 8px;">
-          </div>
-                </div>
+
 
                 <label for="shareRating">Star Rating:</label>
                 <select id="shareRating" class="dropdown-large">
@@ -345,6 +336,17 @@
 
                 <label for="currentPrice">Entered Price ($):</label>
                 <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
+
+                <div class="form-group-with-toggle" style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <label for="targetPrice" class="target-price-label" style="margin-right: 8px;">Target Price ($):</label>
+                    <div class="toggle-switch modal-toggle" style="margin-right: 8px;">
+                        <span class="toggle-switch-label small-label" id="modalToggleLeft">Below</span>
+                        <input type="checkbox" id="modalTargetToggle" class="toggle-switch-input">
+                        <span class="toggle-switch-slider"></span>
+                        <span class="toggle-switch-label small-label" id="modalToggleRight">Above</span>
+                    </div>
+                    <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50" style="width: 100px;">
+                </div>
 
                 <div class="form-group-with-toggle">
                     <label for="targetPrice" class="target-price-label">Target Price ($):</label>
