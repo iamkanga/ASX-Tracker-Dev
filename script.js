@@ -523,6 +523,13 @@ function addShareToTable(share) {
     const row = document.createElement('tr');
     row.dataset.docId = share.id;
 
+    // Add click listener to open share details modal
+    row.addEventListener('click', () => {
+        logDebug('Table Row Click: Share ID: ' + share.id);
+        selectShare(share.id);
+        showShareDetails();
+    });
+
     // Check if target price is hit for this share
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
@@ -1777,7 +1784,7 @@ function showShareDetails() {
 
         // 2. Add Live Price and Change (Dynamically create these elements now)
         const currentModalLivePriceLarge = document.createElement('h2');
-        currentModalLivePriceLarge.classList.add('modal-share-name', priceChangeClass); // Match title size, apply color
+        currentModalLivePriceLarge.classList.add('live-price-large', priceChangeClass); // Use a dedicated class for the large price, apply color
         const currentModalPriceChangeLarge = document.createElement('span');
         currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass); // Apply color class
 
