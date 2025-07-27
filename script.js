@@ -4868,11 +4868,23 @@ async function initializeAppLogic() {
         }
     });
 
-    // NEW: Add event listeners for target direction radio buttons (now a single toggle checkbox)
-    if (targetDirectionToggle) {
-        targetDirectionToggle.addEventListener('change', checkFormDirtyState);
-    }
+    // NEW: Add event listeners for target direction checkboxes to make them mutually exclusive
+    if (targetAboveCheckbox && targetBelowCheckbox) {
+        targetAboveCheckbox.addEventListener('change', () => {
+            if (targetAboveCheckbox.checked) {
+                targetBelowCheckbox.checked = false;
+            }
+            checkFormDirtyState();
+        });
 
+        targetBelowCheckbox.addEventListener('change', () => {
+            if (targetBelowCheckbox.checked) {
+                targetAboveCheckbox.checked = false;
+            }
+            checkFormDirtyState();
+        });
+    }
+    
     // NEW: Add event listeners for cash asset form inputs for dirty state checking (2.1)
     if (cashAssetNameInput) cashAssetNameInput.addEventListener('input', checkCashAssetFormDirtyState);
     if (cashAssetBalanceInput) cashAssetBalanceInput.addEventListener('input', checkCashAssetFormDirtyState);
