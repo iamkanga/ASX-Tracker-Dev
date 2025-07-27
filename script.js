@@ -443,71 +443,6 @@ function formatDate(dateString) {
     return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-/**
- * A centralized helper function to compute all display-related data for a share.
- * This avoids duplicating complex logic in multiple rendering functions.
- * @param {object} share The share object.
- * @returns {object} An object containing calculated values for display.
- */
-function getShareDisplayData(share) {
-    const livePriceData = livePrices[share.shareName.toUpperCase()];
-    const isMarketOpen = isAsxMarketOpen();
-
-    let displayLivePrice = 'N/A';
-    let displayPriceChange = '';
-    let priceClass = '';
-    let cardPriceChangeClass = '';
-    let yieldDisplayTable = '';
-    let yieldDisplayMobile = '';
-    let peRatio = 'N/A';
-    let high52Week = 'N/A';
-    let low52Week = 'N/A';
-
-    if (livePriceData) {
-        const currentLivePrice = livePriceData.live;
-        const previousClosePrice = livePriceData.prevClose;
-        const lastFetchedLive = livePriceData.lastLivePrice;
-        const lastFetchedPrevClose = livePriceData.lastPrevClose;
-
-        peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A';
-        high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? '$' + livePriceData.High52.toFixed(2) : 'N/A';
-        low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A';
-
-        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
-            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
-            }
-            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
-                const change = currentLivePrice - previousClosePrice;
-                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
-            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                const change = lastFetchedLive - lastFetchedPrevClose;
-                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
-            }
-        } else {
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
-            displayPriceChange = '0.00 (0.00%)';
-            priceClass = 'neutral';
-            cardPriceChangeClass = '';
-        }
-    }
-
-    return {
-        displayLivePrice,
-        displayPriceChange,
-        priceClass,
-        cardPriceChangeClass,
-        peRatio,
-        high52Week,
-        low52Week
-    };
-}
 // --- UI State Management Functions ---
 
 /**
@@ -523,13 +458,6 @@ function addShareToTable(share) {
     const row = document.createElement('tr');
     row.dataset.docId = share.id;
 
-    // Add click listener to open share details modal
-    row.addEventListener('click', () => {
-        logDebug('Table Row Click: Share ID: ' + share.id);
-        selectShare(share.id);
-        showShareDetails();
-    });
-
     // Check if target price is hit for this share
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
@@ -541,35 +469,80 @@ function addShareToTable(share) {
         row.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
     }
 
-    // Use the new helper function to get all display data
-    const displayData = getShareDisplayData(share);
+    // Declare these variables once at the top of the function
+    const isMarketOpen = isAsxMarketOpen();
+    let displayLivePrice = 'N/A';
+    let displayPriceChange = '';
+    let priceClass = '';
+
+    // Logic to determine display values
+    if (livePriceData) {
+        const currentLivePrice = livePriceData.live;
+        const previousClosePrice = livePriceData.prevClose;
+        const lastFetchedLive = livePriceData.lastLivePrice;
+        const lastFetchedPrevClose = livePriceData.lastPrevClose;
+
+        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
+            // Show live data if market is open, or if market is closed but toggle is ON
+            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+            }
+            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                const change = currentLivePrice - previousClosePrice;
+                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+            }
+        } else {
+            // Market closed and toggle is OFF, show zero change
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayPriceChange = '0.00 (0.00%)';
+            priceClass = 'neutral';
+        }
+    }
 
     row.innerHTML = `
-        <td><span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span></td>
+        <td><span class="share-code-display ${priceClass}">${share.shareName || ''}</span></td>
         <td class="live-price-cell">
-            <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
-            <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
+            <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
+            <span class="price-change ${priceClass}">${displayPriceChange}</span>
         </td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
     <td class="numeric-data-cell">
         ${
+            // Determine the effective yield for display in the table
+            // Prioritize franked yield if franking credits are present and yield is valid, otherwise use unfranked yield
+            // Default to empty string if no valid yield can be calculated or if calculated yield is 0
             (() => {
                 const dividendAmount = Number(share.dividendAmount) || 0;
                 const frankingCredits = Number(share.frankingCredits) || 0;
-                const enteredPrice = Number(share.currentPrice) || 0;
-                const priceForYield = (displayData.displayLivePrice !== 'N/A' && displayData.displayLivePrice.startsWith('$'))
-                                    ? parseFloat(displayData.displayLivePrice.substring(1))
+                const enteredPrice = Number(share.currentPrice) || 0; // Fallback for entered price if live not available
+
+                // Use the price that is actually displayed for yield calculation if possible
+                // If displayLivePrice is 'N/A', use enteredPrice from share object
+                const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
+                                    ? parseFloat(displayLivePrice.substring(1))
                                     : (enteredPrice > 0 ? enteredPrice : 0);
+
+                // If price for yield is 0, or if both dividend and franking are 0, return empty string
                 if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
+
                 const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
                 const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
+
                 if (frankingCredits > 0 && frankedYield > 0) {
                     return frankedYield.toFixed(2) + '% (F)'; // Display franked yield with (F)
                 } else if (unfrankedYield > 0) {
                     return unfrankedYield.toFixed(2) + '% (U)'; // Display unfranked yield with (U)
                 }
-                return '';
+                return ''; // No valid yield or yield is 0, display empty string
             })()
         }
     </td>
@@ -577,6 +550,12 @@ function addShareToTable(share) {
         ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
     </td>
 `;
+
+    row.addEventListener('click', () => {
+        logDebug('Table Row Click: Share ID: ' + share.id);
+        selectShare(share.id);
+        showShareDetails();
+    });
 
     // Add long press / context menu for desktop
     let touchStartTime = 0;
@@ -1161,6 +1140,7 @@ function updateMainButtonsState(enable) {
     if (revertToDefaultThemeBtn) revertToDefaultThemeBtn.disabled = !enable;
     // sortSelect and watchlistSelect disabled state is managed by render functions
     if (refreshLivePricesBtn) refreshLivePricesBtn.disabled = !enable;
+    if (toggleCompactViewBtn) toggleCompactViewBtn.disabled = !enable; // NEW: Disable compact view toggle
     
     // NEW: Disable/enable buttons specific to cash section
     // addCashCategoryBtn and saveCashBalancesBtn are removed from HTML/functionality is moved
@@ -1168,20 +1148,6 @@ function updateMainButtonsState(enable) {
 
     logDebug('UI State: Sort Select Disabled: ' + (sortSelect ? sortSelect.disabled : 'N/A'));
     logDebug('UI State: Watchlist Select Disabled: ' + (watchlistSelect ? watchlistSelect.disabled : 'N/A'));
-}
-
-/**
- * Enables or disables the 'Toggle Compact View' button based on screen width.
- * This feature is only intended for mobile views (<= 768px).
- */
-function updateCompactViewButtonState() {
-    if (!toggleCompactViewBtn) {
-        return; // Exit if the button doesn't exist
-    }
-    // Always enable the button, regardless of screen width
-    toggleCompactViewBtn.disabled = false;
-    toggleCompactViewBtn.title = "Toggle between default and compact card view.";
-    logDebug(`UI State: Compact view button enabled for all screen widths.`);
 }
 
 function showModal(modalElement) {
@@ -1783,12 +1749,12 @@ function showShareDetails() {
         const fiftyTwoWeekRow = document.createElement('div');
         fiftyTwoWeekRow.classList.add('fifty-two-week-row'); // New class for styling
 
-        const lowSpan = document.createElement('h3');
+        const lowSpan = document.createElement('span');
         lowSpan.classList.add('fifty-two-week-value', 'low'); // New classes
         lowSpan.textContent = 'Low: ' + (low52Week !== undefined && low52Week !== null && !isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A');
         fiftyTwoWeekRow.appendChild(lowSpan);
 
-        const highSpan = document.createElement('h3');
+        const highSpan = document.createElement('span');
         highSpan.classList.add('fifty-two-week-value', 'high'); // New classes
         highSpan.textContent = 'High: ' + (high52Week !== undefined && high52Week !== null && !isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A');
         fiftyTwoWeekRow.appendChild(highSpan);
@@ -1796,8 +1762,8 @@ function showShareDetails() {
         modalLivePriceDisplaySection.appendChild(fiftyTwoWeekRow);
 
         // 2. Add Live Price and Change (Dynamically create these elements now)
-        const currentModalLivePriceLarge = document.createElement('h2');
-        currentModalLivePriceLarge.classList.add('modal-share-name', priceChangeClass); // Match title size, apply color
+        const currentModalLivePriceLarge = document.createElement('span');
+        currentModalLivePriceLarge.classList.add('live-price-large', priceChangeClass); // Apply color class
         const currentModalPriceChangeLarge = document.createElement('span');
         currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass); // Apply color class
 
@@ -1840,7 +1806,7 @@ function showShareDetails() {
         // 3. Add P/E Ratio below live price
         const peRow = document.createElement('div');
         peRow.classList.add('pe-ratio-row'); // New class for styling
-        const peSpan = document.createElement('h3');
+        const peSpan = document.createElement('span');
         peSpan.classList.add('pe-ratio-value'); // New class
         peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A');
         peRow.appendChild(peSpan);
@@ -1919,7 +1885,7 @@ function showShareDetails() {
     if (modalNewsLink && share.shareName) {
         const newsUrl = 'https://news.google.com/search?q=' + encodeURIComponent(share.shareName) + '%20ASX&hl=en-AU&gl=AU&ceid=AU%3Aen';
         modalNewsLink.href = newsUrl;
-        modalNewsLink.innerHTML = 'View ' + share.shareName.toUpperCase() + ' News <i class="fas fa-external-link-alt"></i>';
+        modalNewsLink.textContent = 'View ' + share.shareName.toUpperCase() + ' News';
         modalNewsLink.style.display = 'inline-flex';
         setIconDisabled(modalNewsLink, false);
     } else if (modalNewsLink) {
@@ -1930,7 +1896,7 @@ function showShareDetails() {
     if (modalMarketIndexLink && share.shareName) {
         const marketIndexUrl = 'https://www.marketindex.com.au/asx/' + share.shareName.toLowerCase();
         modalMarketIndexLink.href = marketIndexUrl;
-        modalMarketIndexLink.innerHTML = 'View ' + share.shareName.toUpperCase() + ' on MarketIndex.com.au <i class="fas fa-external-link-alt"></i>';
+        modalMarketIndexLink.textContent = 'View ' + share.shareName.toUpperCase() + ' on MarketIndex.com.au';
         modalMarketIndexLink.style.display = 'inline-flex';
         setIconDisabled(modalMarketIndexLink, false);
     } else if (modalMarketIndexLink) {
@@ -1941,7 +1907,7 @@ function showShareDetails() {
     // Fool.com.au Link
     if (modalFoolLink && share.shareName) {
         modalFoolLink.href = `https://www.fool.com.au/quote/${share.shareName}/`;
-        modalFoolLink.innerHTML = 'View on Fool.com.au <i class="fas fa-external-link-alt"></i>';
+        modalFoolLink.textContent = 'View on Fool.com.au';
         modalFoolLink.style.display = 'inline-flex';
         setIconDisabled(modalFoolLink, false);
     } else if (modalFoolLink) {
@@ -1953,7 +1919,7 @@ function showShareDetails() {
     if (modalListcorpLink && share.shareName) {
         const listcorpUrl = `https://www.listcorp.com/asx/${share.shareName.toLowerCase()}`;
         modalListcorpLink.href = listcorpUrl;
-        modalListcorpLink.innerHTML = `View on Listcorp.com <i class="fas fa-external-link-alt"></i>`;
+        modalListcorpLink.textContent = `View on Listcorp.com`;
         modalListcorpLink.style.display = 'inline-flex';
         setIconDisabled(modalListcorpLink, false);
     } else if (modalListcorpLink) {
@@ -1962,26 +1928,18 @@ function showShareDetails() {
     }
 
     // CommSec.com.au Link
-    if (modalCommSecLink) {
-        modalCommSecLink.href = 'https://www2.commsec.com.au/secure/login';
-        modalCommSecLink.innerHTML = 'View on CommSec.com.au <i class="fas fa-external-link-alt"></i>';
+    if (modalCommSecLink && share.shareName) {
+        modalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${share.shareName}`;
+        modalCommSecLink.textContent = 'View on CommSec.com.au';
         modalCommSecLink.style.display = 'inline-flex';
         setIconDisabled(modalCommSecLink, false);
+    } else if (modalCommSecLink) {
+        modalCommSecLink.style.display = 'none';
+        setIconDisabled(modalCommSecLink, true);
     }
 
-    if (modalCommSecLink && commSecLoginMessage) {
-        // Move the login message directly after the CommSec link in the DOM, inside the same parent
-        if (modalCommSecLink.parentNode && modalCommSecLink.nextSibling !== commSecLoginMessage) {
-            modalCommSecLink.parentNode.insertBefore(commSecLoginMessage, modalCommSecLink.nextSibling);
-        }
-        // Style the login message for subtle, flush display
-        commSecLoginMessage.style.display = 'block';
-        commSecLoginMessage.style.fontSize = '75%';
-        commSecLoginMessage.style.fontWeight = 'normal';
-        commSecLoginMessage.style.color = 'var(--label-color, #888)';
-        commSecLoginMessage.style.marginTop = '2px';
-        commSecLoginMessage.style.marginBottom = '0';
-        commSecLoginMessage.style.padding = '0';
+    if (commSecLoginMessage) {
+        commSecLoginMessage.style.display = 'block'; 
     }
 
     showModal(shareDetailModal);
@@ -2303,35 +2261,6 @@ function renderSortSelect() {
 function renderWatchlist() {
     logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + currentSelectedWatchlistIds[0]);
 
-    // --- Compact View Display Logic ---
-    const isCompactView = currentMobileViewMode === 'compact';
-    const isMobileView = window.innerWidth <= 768;
-    if (isCompactView) {
-        // Compact view: show card container as grid, hide table
-        if (mobileShareCardsContainer) {
-            mobileShareCardsContainer.style.display = 'grid';
-        }
-        if (tableContainer) {
-            tableContainer.style.display = 'none';
-        }
-    } else if (isMobileView) {
-        // Mobile, not compact: show card container as flex, hide table
-        if (mobileShareCardsContainer) {
-            mobileShareCardsContainer.style.display = 'flex';
-        }
-        if (tableContainer) {
-            tableContainer.style.display = 'none';
-        }
-    } else {
-        // Desktop: show table, hide card container
-        if (mobileShareCardsContainer) {
-            mobileShareCardsContainer.style.display = 'none';
-        }
-        if (tableContainer) {
-            tableContainer.style.display = '';
-        }
-    }
-
     const selectedWatchlistId = currentSelectedWatchlistIds[0];
 
     // Hide both sections initially
@@ -2357,6 +2286,7 @@ function renderWatchlist() {
         sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.remove('app-hidden');
         toggleCompactViewBtn.classList.remove('app-hidden');
+        targetHitIconBtn.classList.remove('app-hidden');
         exportWatchlistBtn.classList.remove('app-hidden');
         // startLivePriceUpdates(); // Removed this line to prevent multiple intervals
         updateAddHeaderButton();
@@ -2651,15 +2581,15 @@ async function displayStockDetailsInSearchModal(asxCode) {
             </div>
             <div class="live-price-display-section">
                 <div class="fifty-two-week-row">
-                    <h3 class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A'}</h3>
-                    <h3 class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A'}</h3>
+                    <span class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A'}</span>
+                    <span class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A'}</span>
                 </div>
                 <div class="live-price-main-row">
-                    <h2 class="modal-share-name ${priceClass}">${displayPrice}</h2>
+                    <span class="live-price-large ${priceClass}">${displayPrice}</span>
                     <span class="price-change-large ${priceClass}">${priceChangeText}</span>
                 </div>
                 <div class="pe-ratio-row">
-                    <h3 class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A'}</h3>
+                    <span class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A'}</span>
                 </div>
             </div>
             <div class="external-links-section">
@@ -5104,10 +5034,7 @@ async function initializeAppLogic() {
                     }
                     if (splashSignInBtn) {
                         splashSignInBtn.disabled = false; // Enable sign-in button
-                        const buttonTextSpan = splashSignInBtn.querySelector('span');
-                        if (buttonTextSpan) {
-                            buttonTextSpan.textContent = 'Sign in with Google'; // Reset only the text, not the icon
-                        }
+                        splashSignInBtn.textContent = 'Google Sign In'; // Reset button text
                     }
                     // Hide main app content
                     if (mainContainer) {
@@ -5760,23 +5687,13 @@ if (sortSelect) {
             }
             // NEW: Recalculate header height on resize
             adjustMainContentPadding();
-
-            // NEW: Update the compact view button state on resize
-            updateCompactViewButtonState();
         });
 
         const menuButtons = appSidebar.querySelectorAll('.menu-button-item');
         menuButtons.forEach(button => {
             button.addEventListener('click', (event) => {
-                const clickedButton = event.currentTarget;
-                logDebug('Sidebar Menu Item Click: Button \'' + clickedButton.textContent.trim() + '\' clicked.');
-
-                // Handle specific action for the toggle compact view button
-                if (clickedButton.id === 'toggleCompactViewBtn') {
-                    toggleMobileViewMode();
-                }
-
-                const closesMenu = clickedButton.dataset.actionClosesMenu !== 'false';
+                logDebug('Sidebar Menu Item Click: Button \'' + event.currentTarget.textContent.trim() + '\' clicked.');
+                const closesMenu = event.currentTarget.dataset.actionClosesMenu !== 'false';
                 if (closesMenu) {
                     toggleAppSidebar(false);
                 }
@@ -5802,6 +5719,17 @@ if (sortSelect) {
             fetchLivePrices();
             showCustomAlert('Refreshing live prices...', 1000);
             toggleAppSidebar(false); // NEW: Close sidebar on refresh
+        });
+    }
+
+    // NEW: Toggle Compact View Button Listener
+    if (toggleCompactViewBtn) {
+        // DEBUG: Log that the event listener is being attached
+        logDebug('DEBUG: Attaching click listener to toggleCompactViewBtn.');
+        toggleCompactViewBtn.addEventListener('click', () => {
+            logDebug('UI: Toggle Compact View button clicked.');
+            toggleMobileViewMode();
+            toggleAppSidebar(false); // Close sidebar after action
         });
     }
 
@@ -5902,9 +5830,6 @@ if (showLastLivePriceToggle) {
     // Call adjustMainContentPadding initially and on window load/resize
     // Removed: window.addEventListener('load', adjustMainContentPadding); // Removed, handled by onAuthStateChanged
     // Already added to window.addEventListener('resize') in sidebar section
-
-    // NEW: Set initial state for the compact view button
-    updateCompactViewButtonState();
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
 
@@ -6095,10 +6020,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     if (splashSignInBtn) {
                         splashSignInBtn.disabled = false; // Enable sign-in button
-                        const buttonTextSpan = splashSignInBtn.querySelector('span');
-                        if (buttonTextSpan) {
-                            buttonTextSpan.textContent = 'Sign in with Google'; // Reset only the text, not the icon
-                        }
+                        splashSignInBtn.textContent = 'Google Sign In'; // Reset button text
                     }
                     // Hide main app content
                     if (mainContainer) {
