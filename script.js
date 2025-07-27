@@ -5695,8 +5695,15 @@ if (sortSelect) {
         const menuButtons = appSidebar.querySelectorAll('.menu-button-item');
         menuButtons.forEach(button => {
             button.addEventListener('click', (event) => {
-                logDebug('Sidebar Menu Item Click: Button \'' + event.currentTarget.textContent.trim() + '\' clicked.');
-                const closesMenu = event.currentTarget.dataset.actionClosesMenu !== 'false';
+                const clickedButton = event.currentTarget;
+                logDebug('Sidebar Menu Item Click: Button \'' + clickedButton.textContent.trim() + '\' clicked.');
+
+                // Handle specific action for the toggle compact view button
+                if (clickedButton.id === 'toggleCompactViewBtn') {
+                    toggleMobileViewMode();
+                }
+
+                const closesMenu = clickedButton.dataset.actionClosesMenu !== 'false';
                 if (closesMenu) {
                     toggleAppSidebar(false);
                 }
