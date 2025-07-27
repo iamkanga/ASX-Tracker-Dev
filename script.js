@@ -1,3 +1,56 @@
+// --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
+document.addEventListener('DOMContentLoaded', function () {
+    const hideCheckbox = document.getElementById('sidebarHideCheckbox');
+    const showCheckbox = document.getElementById('sidebarShowCheckbox');
+
+    function setShowLastLivePricePreference(value) {
+        showLastLivePriceOnClosedMarket = value;
+        window.showLastLivePriceOnClosedMarket = value;
+        // Persist to Firestore if available
+        if (window.firebaseAuth && window.firebaseAuth.currentUser && window.firestoreDb && window.firestore && window.getFirebaseAppId) {
+            const currentUserId = window.firebaseAuth.currentUser.uid;
+            const currentAppId = window.getFirebaseAppId();
+            const userProfileDocRef = window.firestore.doc(window.firestoreDb, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+            window.firestore.setDoc(userProfileDocRef, { showLastLivePriceOnClosedMarket: value }, { merge: true })
+                .then(() => {
+                    if (window.logDebug) window.logDebug('Sidebar Checkbox: Saved "Show Last Live Price" preference to Firestore: ' + value);
+                })
+                .catch((error) => {
+                    if (window.showCustomAlert) window.showCustomAlert('Error saving preference: ' + error.message);
+                });
+        }
+        // Update UI immediately
+        if (window.renderWatchlist) window.renderWatchlist();
+        if (window.showCustomAlert) window.showCustomAlert('Last Price Display set to: ' + (value ? 'On (Market Closed)' : 'Off (Market Closed)'), 1500);
+        if (window.toggleAppSidebar) window.toggleAppSidebar(false);
+    }
+
+    function updateCheckboxes(source) {
+        if (source === hideCheckbox && hideCheckbox.checked) {
+            showCheckbox.checked = false;
+            setShowLastLivePricePreference(false);
+        } else if (source === showCheckbox && showCheckbox.checked) {
+            hideCheckbox.checked = false;
+            setShowLastLivePricePreference(true);
+        }
+        // Prevent both from being unchecked: always one selected
+        if (!hideCheckbox.checked && !showCheckbox.checked) {
+            showCheckbox.checked = true;
+            setShowLastLivePricePreference(true);
+        }
+    }
+
+    if (hideCheckbox && showCheckbox) {
+        hideCheckbox.addEventListener('change', function () {
+            updateCheckboxes(hideCheckbox);
+        });
+        showCheckbox.addEventListener('change', function () {
+            updateCheckboxes(showCheckbox);
+        });
+        // Initial state: ensure only one is checked
+        updateCheckboxes(showCheckbox.checked ? showCheckbox : hideCheckbox);
+    }
+});
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
 // via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
