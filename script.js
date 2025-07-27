@@ -443,6 +443,71 @@ function formatDate(dateString) {
     return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+/**
+ * A centralized helper function to compute all display-related data for a share.
+ * This avoids duplicating complex logic in multiple rendering functions.
+ * @param {object} share The share object.
+ * @returns {object} An object containing calculated values for display.
+ */
+function getShareDisplayData(share) {
+    const livePriceData = livePrices[share.shareName.toUpperCase()];
+    const isMarketOpen = isAsxMarketOpen();
+
+    let displayLivePrice = 'N/A';
+    let displayPriceChange = '';
+    let priceClass = '';
+    let cardPriceChangeClass = '';
+    let yieldDisplayTable = '';
+    let yieldDisplayMobile = '';
+    let peRatio = 'N/A';
+    let high52Week = 'N/A';
+    let low52Week = 'N/A';
+
+    if (livePriceData) {
+        const currentLivePrice = livePriceData.live;
+        const previousClosePrice = livePriceData.prevClose;
+        const lastFetchedLive = livePriceData.lastLivePrice;
+        const lastFetchedPrevClose = livePriceData.lastPrevClose;
+
+        peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A';
+        high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? '$' + livePriceData.High52.toFixed(2) : 'N/A';
+        low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A';
+
+        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
+            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+            }
+            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                const change = currentLivePrice - previousClosePrice;
+                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+            }
+        } else {
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayPriceChange = '0.00 (0.00%)';
+            priceClass = 'neutral';
+            cardPriceChangeClass = '';
+        }
+    }
+
+    return {
+        displayLivePrice,
+        displayPriceChange,
+        priceClass,
+        cardPriceChangeClass,
+        peRatio,
+        high52Week,
+        low52Week
+    };
+}
 // --- UI State Management Functions ---
 
 /**
@@ -469,80 +534,35 @@ function addShareToTable(share) {
         row.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
     }
 
-    // Declare these variables once at the top of the function
-    const isMarketOpen = isAsxMarketOpen();
-    let displayLivePrice = 'N/A';
-    let displayPriceChange = '';
-    let priceClass = '';
-
-    // Logic to determine display values
-    if (livePriceData) {
-        const currentLivePrice = livePriceData.live;
-        const previousClosePrice = livePriceData.prevClose;
-        const lastFetchedLive = livePriceData.lastLivePrice;
-        const lastFetchedPrevClose = livePriceData.lastPrevClose;
-
-        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
-            // Show live data if market is open, or if market is closed but toggle is ON
-            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
-            }
-            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
-                const change = currentLivePrice - previousClosePrice;
-                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
-                const change = lastFetchedLive - lastFetchedPrevClose;
-                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-            }
-        } else {
-            // Market closed and toggle is OFF, show zero change
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
-            displayPriceChange = '0.00 (0.00%)';
-            priceClass = 'neutral';
-        }
-    }
+    // Use the new helper function to get all display data
+    const displayData = getShareDisplayData(share);
 
     row.innerHTML = `
-        <td><span class="share-code-display ${priceClass}">${share.shareName || ''}</span></td>
+        <td><span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span></td>
         <td class="live-price-cell">
-            <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
-            <span class="price-change ${priceClass}">${displayPriceChange}</span>
+            <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
+            <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
     <td class="numeric-data-cell">
         ${
-            // Determine the effective yield for display in the table
-            // Prioritize franked yield if franking credits are present and yield is valid, otherwise use unfranked yield
-            // Default to empty string if no valid yield can be calculated or if calculated yield is 0
             (() => {
                 const dividendAmount = Number(share.dividendAmount) || 0;
                 const frankingCredits = Number(share.frankingCredits) || 0;
-                const enteredPrice = Number(share.currentPrice) || 0; // Fallback for entered price if live not available
-
-                // Use the price that is actually displayed for yield calculation if possible
-                // If displayLivePrice is 'N/A', use enteredPrice from share object
-                const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
+                const enteredPrice = Number(share.currentPrice) || 0;
+                const priceForYield = (displayData.displayLivePrice !== 'N/A' && displayData.displayLivePrice.startsWith('$'))
                                     ? parseFloat(displayLivePrice.substring(1))
                                     : (enteredPrice > 0 ? enteredPrice : 0);
-
-                // If price for yield is 0, or if both dividend and franking are 0, return empty string
                 if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
-
                 const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
                 const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
-
                 if (frankingCredits > 0 && frankedYield > 0) {
                     return frankedYield.toFixed(2) + '% (F)'; // Display franked yield with (F)
                 } else if (unfrankedYield > 0) {
                     return unfrankedYield.toFixed(2) + '% (U)'; // Display unfranked yield with (U)
                 }
-                return ''; // No valid yield or yield is 0, display empty string
+                return '';
             })()
         }
     </td>
@@ -550,12 +570,6 @@ function addShareToTable(share) {
         ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
     </td>
 `;
-
-    row.addEventListener('click', () => {
-        logDebug('Table Row Click: Share ID: ' + share.id);
-        selectShare(share.id);
-        showShareDetails();
-    });
 
     // Add long press / context menu for desktop
     let touchStartTime = 0;
@@ -1749,12 +1763,12 @@ function showShareDetails() {
         const fiftyTwoWeekRow = document.createElement('div');
         fiftyTwoWeekRow.classList.add('fifty-two-week-row'); // New class for styling
 
-        const lowSpan = document.createElement('h3');
+        const lowSpan = document.createElement('p');
         lowSpan.classList.add('fifty-two-week-value', 'low'); // New classes
         lowSpan.textContent = 'Low: ' + (low52Week !== undefined && low52Week !== null && !isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A');
         fiftyTwoWeekRow.appendChild(lowSpan);
 
-        const highSpan = document.createElement('h3');
+        const highSpan = document.createElement('p');
         highSpan.classList.add('fifty-two-week-value', 'high'); // New classes
         highSpan.textContent = 'High: ' + (high52Week !== undefined && high52Week !== null && !isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A');
         fiftyTwoWeekRow.appendChild(highSpan);
@@ -1806,7 +1820,7 @@ function showShareDetails() {
         // 3. Add P/E Ratio below live price
         const peRow = document.createElement('div');
         peRow.classList.add('pe-ratio-row'); // New class for styling
-        const peSpan = document.createElement('h3');
+        const peSpan = document.createElement('p');
         peSpan.classList.add('pe-ratio-value'); // New class
         peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A');
         peRow.appendChild(peSpan);
@@ -2580,15 +2594,15 @@ async function displayStockDetailsInSearchModal(asxCode) {
             </div>
             <div class="live-price-display-section">
                 <div class="fifty-two-week-row">
-                    <h3 class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A'}</h3>
-                    <h3 class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A'}</h3>
+                    <p class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A'}</p>
+                    <p class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A'}</p>
                 </div>
                 <div class="live-price-main-row">
                     <h2 class="live-price-large ${priceClass}">${displayPrice}</h2>
                     <span class="price-change-large ${priceClass}">${priceChangeText}</span>
                 </div>
                 <div class="pe-ratio-row">
-                    <h3 class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A'}</h3>
+                    <p class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A'}</p>
                 </div>
             </div>
             <div class="external-links-section">
