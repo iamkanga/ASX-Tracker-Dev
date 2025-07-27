@@ -124,18 +124,18 @@
                 <button id="searchStockBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-search-plus"></i> <span>Search & Add Stock</span>
                 </button>
-                <div class="menu-button-item toggle-switch-container" data-action-closes-menu="false">
-                    <div class="toggle-title-row">
-                        <i class="fas fa-history"></i> <span class="toggle-description">Last Price (Market Closed)</span>
-                    </div>
-                    <div class="toggle-switch-row">
-                        <span class="toggle-label left" id="lastPriceToggleLabelOff">Hide</span>
-                        <label class="switch">
-                            <input type="checkbox" id="showLastLivePriceToggle">
-                            <span class="slider round"></span>
-                        </label>
-                        <span class="toggle-label right" id="lastPriceToggleLabelOn">Show</span>
-                    </div>
+                <!-- Sidebar Toggle Switch -->
+                <div class="menu-button-item toggle-switch-container">
+                  <div class="toggle-title-row">
+                    <i class="fas fa-bolt"></i>
+                    <span>Live Price Display</span>
+                  </div>
+                  <div class="toggle-switch sidebar-toggle">
+                    <span class="toggle-switch-label" id="sidebarToggleLeft">Hide</span>
+                    <input type="checkbox" id="sidebarLiveToggle" class="toggle-switch-input">
+                    <span class="toggle-switch-slider"></span>
+                    <span class="toggle-switch-label" id="sidebarToggleRight">Show</span>
+                  </div>
                 </div>
             </div>
         </div>
@@ -317,6 +317,17 @@
                 <select id="shareWatchlistSelect" class="dropdown-large" required>
                     <option value="" disabled selected>Select a Watchlist</option>
                     </select>
+
+                <!-- Modal Toggle Switch -->
+                <div class="form-group-with-toggle">
+                  <label for="modalTargetToggle">Target Direction</label>
+                  <div class="toggle-switch modal-toggle">
+                    <span class="toggle-switch-label" id="modalToggleLeft">Below</span>
+                    <input type="checkbox" id="modalTargetToggle" class="toggle-switch-input">
+                    <span class="toggle-switch-slider"></span>
+                    <span class="toggle-switch-label" id="modalToggleRight">Above</span>
+                  </div>
+                </div>
 
                 <label for="shareRating">Star Rating:</label>
                 <select id="shareRating" class="dropdown-large">
