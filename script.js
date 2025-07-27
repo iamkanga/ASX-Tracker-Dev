@@ -247,10 +247,9 @@ const targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTo
 const alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn'); // New "Minimize" button at the bottom
 const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn'); // New "Dismiss All" button at the bottom
 
-// NEW: Target Direction Toggle UI Elements
-const targetDirectionToggle = document.getElementById('targetDirectionToggle'); // The checkbox for the toggle
-const targetDirectionLabel = document.getElementById('targetDirectionLabel'); // The label text next to the toggle
-
+// NEW: Target Direction Checkbox UI Elements
+const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
+const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
@@ -1471,11 +1470,12 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? Number(shareToEdit.currentPrice).toFixed(2) : '';
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? Number(shareToEdit.targetPrice).toFixed(2) : '';
     
-    // Set the correct state for the target direction toggle
-    if (targetDirectionToggle) {
-        // Ensure targetDirection defaults to 'below' if not explicitly set (e.g., for older shares)
-        const savedTargetDirection = shareToEdit.targetDirection || 'below'; 
-        targetDirectionToggle.checked = (savedTargetDirection === 'above');
+    // Set the correct state for the new target direction checkboxes
+    if (targetAboveCheckbox && targetBelowCheckbox) {
+        // Default to 'below' if not set
+        const savedTargetDirection = shareToEdit.targetDirection || 'below';
+        targetAboveCheckbox.checked = (savedTargetDirection === 'above');
+        targetBelowCheckbox.checked = (savedTargetDirection === 'below');
     }
 
     if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? Number(shareToEdit.dividendAmount).toFixed(3) : '';
@@ -1535,8 +1535,8 @@ function getCurrentFormData() {
         shareName: shareNameInput?.value?.trim().toUpperCase() || '',
         currentPrice: parseFloat(currentPriceInput?.value),
         targetPrice: parseFloat(targetPriceInput?.value),
-        // UPDATED: Get targetDirection from the new toggle switch (checked for 'above', unchecked for 'below')
-        targetDirection: targetDirectionToggle?.checked ? 'above' : 'below', // Use optional chaining
+        // UPDATED: Get targetDirection from the new checkboxes
+        targetDirection: targetAboveCheckbox?.checked ? 'above' : 'below',
         dividendAmount: parseFloat(dividendAmountInput?.value),
         frankingCredits: parseFloat(frankingCreditsInput?.value),
         // Get the selected star rating as a number
@@ -1675,8 +1675,8 @@ async function saveShareData(isSilent = false) {
         shareName: shareName,
         currentPrice: isNaN(currentPrice) ? null : currentPrice,
         targetPrice: isNaN(targetPrice) ? null : targetPrice,
-        // UPDATED: Save the selected target direction from the toggle switch
-        targetDirection: targetDirectionToggle.checked ? 'above' : 'below', // 'above' if checked, 'below' if unchecked
+        // UPDATED: Save the selected target direction from the new checkboxes
+        targetDirection: targetAboveCheckbox.checked ? 'above' : 'below',
         dividendAmount: isNaN(dividendAmount) ? null : dividendAmount,
         frankingCredits: isNaN(frankingCredits) ? null : frankingCredits,
         comments: comments,
