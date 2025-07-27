@@ -128,13 +128,13 @@
                 <div class="menu-button-item toggle-switch-container">
                   <div class="toggle-title-row">
                     <i class="fas fa-bolt"></i>
-                    <span>Live Price Display</span>
+                    <span>Market closed: show live display</span>
                   </div>
                   <div class="toggle-switch sidebar-toggle">
-                    <span class="toggle-switch-label" id="sidebarToggleLeft">Hide</span>
+                    <span class="toggle-switch-label small-label" id="sidebarToggleLeft">Hide</span>
                     <input type="checkbox" id="sidebarLiveToggle" class="toggle-switch-input">
                     <span class="toggle-switch-slider"></span>
-                    <span class="toggle-switch-label" id="sidebarToggleRight">Show</span>
+                    <span class="toggle-switch-label small-label" id="sidebarToggleRight">Show</span>
                   </div>
                 </div>
             </div>
@@ -320,13 +320,14 @@
 
                 <!-- Modal Toggle Switch -->
                 <div class="form-group-with-toggle">
-                  <label for="modalTargetToggle">Target Direction</label>
-                  <div class="toggle-switch modal-toggle">
-                    <span class="toggle-switch-label" id="modalToggleLeft">Below</span>
-                    <input type="checkbox" id="modalTargetToggle" class="toggle-switch-input">
-                    <span class="toggle-switch-slider"></span>
-                    <span class="toggle-switch-label" id="modalToggleRight">Above</span>
-                  </div>
+          <div class="toggle-switch modal-toggle" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span class="toggle-switch-label small-label" id="modalToggleLeft">Below</span>
+            <input type="checkbox" id="modalTargetToggle" class="toggle-switch-input">
+            <span class="toggle-switch-slider"></span>
+            <span class="toggle-switch-label small-label" id="modalToggleRight">Above</span>
+            <label for="targetPrice" class="target-price-label" style="margin-left: 12px;">Target Price ($):</label>
+            <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50" style="width: 100px; margin-left: 8px;">
+          </div>
                 </div>
 
                 <label for="shareRating">Star Rating:</label>

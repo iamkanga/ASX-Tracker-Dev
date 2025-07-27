@@ -10,17 +10,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const sidebarToggle = document.getElementById('sidebarLiveToggle');
     if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent sidebar from closing
+        });
         sidebarToggle.addEventListener('change', function() {
             if (sidebarToggle.checked) {
                 if (sidebarLeft) sidebarLeft.style.color = '#888';
                 if (sidebarRight) sidebarRight.style.color = '#2ecc40';
                 sidebarToggle.parentElement.querySelector('.toggle-switch-slider').style.background = '#2ecc40';
-                // Show live price display logic here
+                // TODO: Show live price display logic here
             } else {
                 if (sidebarLeft) sidebarLeft.style.color = '#ff4136';
                 if (sidebarRight) sidebarRight.style.color = '#888';
                 sidebarToggle.parentElement.querySelector('.toggle-switch-slider').style.background = '#ff4136';
-                // Hide live price display logic here
+                // TODO: Hide live price display logic here
             }
         });
         // Initial state
@@ -36,12 +39,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (modalLeft) modalLeft.style.color = '#888';
                 if (modalRight) modalRight.style.color = '#2ecc40';
                 modalToggle.parentElement.querySelector('.toggle-switch-slider').style.background = '#2ecc40';
-                // Set target direction to 'above' logic here
+                // Set target direction to 'above' in the form
+                if (window.targetDirectionToggle) window.targetDirectionToggle.checked = true;
             } else {
                 if (modalLeft) modalLeft.style.color = '#ff4136';
                 if (modalRight) modalRight.style.color = '#888';
                 modalToggle.parentElement.querySelector('.toggle-switch-slider').style.background = '#ff4136';
-                // Set target direction to 'below' logic here
+                // Set target direction to 'below' in the form
+                if (window.targetDirectionToggle) window.targetDirectionToggle.checked = false;
             }
         });
         // Initial state

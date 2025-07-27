@@ -10,6 +10,10 @@
   min-width: 48px;
   text-align: center;
 }
+.toggle-switch-label.small-label {
+  font-size: 0.5rem;
+  min-width: 24px;
+}
 .toggle-switch-input {
   display: none;
 }
