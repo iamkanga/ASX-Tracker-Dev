@@ -3626,6 +3626,28 @@ table td.live-price-cell.negative-change {
     pointer-events: auto; /* Re-enable input's pointer events for actual toggle */
 }
 
+/* NEW: 2x2 Checkbox Grid for Target Direction in Share Form */
+.target-checkbox-grid {
+    display: flex;
+    flex-direction: column; /* Stack the rows vertically */
+    gap: 8px; /* Space between the rows */
+    margin-left: auto; /* Push the grid to the right */
+}
+
+.target-checkbox-row {
+    display: flex;
+    gap: 20px; /* Space between checkboxes in a row */
+    justify-content: flex-end; /* Align checkboxes to the right */
+}
+
+/* Re-using existing checkbox label style, but ensuring alignment and size */
+.target-checkbox-row .checkbox-label {
+    margin-bottom: 0; /* Override any default margins */
+    min-width: 80px; /* Give them a consistent width */
+    justify-content: flex-start; /* Align checkbox and text to the left within the label */
+}
+
+
 /* NEW: Styling for the new checkbox-based toggle in the sidebar */
 .checkbox-switch-row {
     display: flex;
