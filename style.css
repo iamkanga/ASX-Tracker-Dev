@@ -3459,13 +3459,13 @@ table td.live-price-cell.negative-change {
 /* Specific styling for the sidebar toggle section */
 .menu-button-item.toggle-switch-container {
     display: flex;
-    flex-direction: column; /* Stack items vertically: title then toggle */
-    align-items: flex-start; /* Align items to the start (left) */
+    flex-direction: row; /* Arrange items on a single line */
+    align-items: center; /* Vertically center the items */
+    justify-content: space-between; /* Push title and checkboxes apart */
     padding: 10px 15px; /* Added padding to align with other menu items */
     border: none;
     background-color: var(--menu-button-bg); /* Use menu button background */
     border-radius: 8px; /* Match menu button item styling */
-    gap: 5px; /* Space between title and toggle line */
     margin-bottom: 10px;
     margin-top: 5px;
     box-sizing: border-box; /* Ensure padding is included in width */
@@ -3486,8 +3486,6 @@ table td.live-price-cell.negative-change {
     color: var(--text-color);
     white-space: nowrap;
     margin-left: 0;
-    margin-bottom: 5px; /* Space between title and toggle line */
-    width: 100%; /* Ensure it spans full width for alignment */
     justify-content: flex-start; /* Align to the start */
 }
 
@@ -3618,9 +3616,6 @@ table td.live-price-cell.negative-change {
     display: flex;
     align-items: center;
     gap: 15px; /* Space between "Hide" and "Show" labels */
-    width: 100%;
-    justify-content: flex-start; /* Align to the left */
-    margin-top: 5px; /* Space above the checkboxes */
 }
 
 .checkbox-label {
