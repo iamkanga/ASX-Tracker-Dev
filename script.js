@@ -5732,17 +5732,6 @@ if (sortSelect) {
         });
     }
 
-    // NEW: Toggle Compact View Button Listener
-    if (toggleCompactViewBtn) {
-        // DEBUG: Log that the event listener is being attached
-        logDebug('DEBUG: Attaching click listener to toggleCompactViewBtn.');
-        toggleCompactViewBtn.addEventListener('click', () => {
-            logDebug('UI: Toggle Compact View button clicked.');
-            toggleMobileViewMode();
-            toggleAppSidebar(false); // Close sidebar after action
-        });
-    }
-
     // NEW: Search Stock Button Listener
     if (searchStockBtn) {
         searchStockBtn.addEventListener('click', () => {
