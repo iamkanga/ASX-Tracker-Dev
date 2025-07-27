@@ -1973,11 +1973,18 @@ function showShareDetails() {
     }
 
     if (modalCommSecLink && commSecLoginMessage) {
-        // Only style the login message for visual proximity, do not move its DOM position
+        // Move the login message directly after the CommSec link in the DOM, inside the same parent
+        if (modalCommSecLink.parentNode && modalCommSecLink.nextSibling !== commSecLoginMessage) {
+            modalCommSecLink.parentNode.insertBefore(commSecLoginMessage, modalCommSecLink.nextSibling);
+        }
+        // Style the login message for subtle, flush display
         commSecLoginMessage.style.display = 'block';
         commSecLoginMessage.style.fontSize = '75%';
+        commSecLoginMessage.style.fontWeight = 'normal';
+        commSecLoginMessage.style.color = 'var(--label-color, #888)';
         commSecLoginMessage.style.marginTop = '2px';
         commSecLoginMessage.style.marginBottom = '0';
+        commSecLoginMessage.style.padding = '0';
     }
 
     showModal(shareDetailModal);
