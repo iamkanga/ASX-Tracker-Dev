@@ -1,3 +1,10 @@
+.modal-share-name {
+    font-size: 2.7em !important; /* 1.8em * 1.5 = 2.7em */
+    font-weight: 700;
+}
+#modalCommSecLink {
+    margin-bottom: 0 !important;
+}
 /* Base Styles */
 :root {
     /* Light Theme (Default) */
@@ -2760,6 +2767,18 @@ table td.live-price-cell.negative-change {
     width: 100%; 
     box-sizing: border-box; 
 }
+/* --- Compact View Card Grid for Watchlist --- */
+.mobile-share-cards.compact-view {
+    display: grid;
+    grid-gap: 16px;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns for mobile */
+}
+
+@media (min-width: 769px) {
+    .mobile-share-cards.compact-view {
+        grid-template-columns: repeat(4, 1fr); /* 4 columns for desktop */
+    }
+}
 
 .mobile-card {
     background-color: var(--card-bg);
@@ -3150,10 +3169,15 @@ table td.live-price-cell.negative-change {
 }
 
 .commsec-message {
-    font-size: 0.75em; 
-    margin-top: 0; 
-    margin-bottom: 0; 
-    line-height: 1.2; 
+    display: block;
+    font-size: 0.75em;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 1;
+    position: static;
+    text-align: left;
 }
 
 .modal-body-scrollable {
@@ -3934,6 +3958,9 @@ table td.live-price-cell.negative-change {
     margin-top: 25px;
     border-top: 1px solid var(--border-color);
     padding-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
 .external-links-section h3 {
@@ -4178,26 +4205,28 @@ table td.live-price-cell.negative-change {
 /* Target Hit Notification Icon (bottom-left, fixed) */
 .target-hit-fixed-btn {
     position: fixed !important;
-    bottom: 20px !important;
-    left: 20px !important;
-    right: auto !important;
-    z-index: 9999 !important;
-    background-color: var(--green-color);
-    color: var(--button-text);
+    bottom: 20px !important; /* Place the button at the bottom of the page */
+    left: 20px !important; /* Place the button at the right of the page */
+    z-index: 9999 !important; /* Make sure it does not overlap */
+    background-color: transparent; /* Use a transparent background for the image */
     border: none;
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 1.5em;
+    border-radius: 50%; /* Keep this to make the pulsing shadow circular */
+    width: 60px; /* Adjust size as needed */
+    height: 60px; /* Adjust size as needed */
+    padding: 0; /* Remove padding to let image fill the button */
     cursor: pointer;
-    box-shadow: 0 4px 12px var(--shadow-color);
-    transition: transform 0.2s ease, background-color 0.2s ease;
+    /* The animation applies its own box-shadow, so we remove the default one */
+    box-shadow: none;
+    transition: transform 0.2s ease;
     animation: pulseHighlight 2s infinite alternate ease-in-out;
-    border: 2px solid var(--green-color-dark);
     transform: translateZ(0); /* Force hardware acceleration and prevent layering issues */
+}
+
+/* NEW: Style for the image inside the notification button */
+.target-hit-fixed-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Ensures the image fits without being distorted */
 }
 
 /* Ensure app-hidden completely hides the button when intended */
@@ -4211,73 +4240,31 @@ table td.live-price-cell.negative-change {
 }
 
 .target-hit-fixed-btn:hover {
-    transform: translateY(-2px);
-    background-color: var(--green-color-dark);
+    transform: translateY(-2px); /* Lift effect */
+    /* No background color change on hover for a transparent button */
 }
 
 /* Badge on the target hit icon */
-.target-hit-icon-count {
+#targetHitIconCount {
     position: absolute;
     top: -5px;
     right: -5px;
     background-color: var(--danger-color);
-    color: white;
+    color: var(--button-text); /* Use a theme-aware variable for text color */
     font-size: 0.7em;
     font-weight: 700;
     padding: 3px 6px;
     border-radius: 50%;
     min-width: 20px;
+    min-height: 20px; /* Ensure it's a circle */
     text-align: center;
     line-height: 1;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-/* Ensure app-hidden completely hides the button when intended */
-.target-hit-icon-btn.app-hidden {
-    display: none !important;
-}
-
-/* Remove the chat box tail, as it's no longer a "chat bubble" but a round alert icon */
-.target-hit-icon-btn::after {
-    display: none; /* Hide the pseudo-element tail */
-}
-
-.target-hit-icon-btn:hover {
-    transform: translateY(-2px); /* Lift effect */
-    background-color: var(--green-color-dark); /* Darker green on hover */
-}
-
-/* Badge on the target hit icon */
-.target-hit-icon-count {
-    position: absolute;
-    top: -5px; /* Position above the icon */
-    right: -5px; /* Position to the right of the icon */
-    background-color: var(--danger-color); /* Red badge */
-    color: white;
-    font-size: 0.7em; /* Smaller font for the count */
-    font-weight: 700;
-    padding: 3px 6px;
-    border-radius: 50%;
-    min-width: 20px; /* Ensure it's circular for single digits */
-    text-align: center;
-    line-height: 1; /* Center text vertically */
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-.target-hit-icon-count {
-    position: absolute;
-    top: -5px; /* Position above the icon */
-    right: -5px; /* Position to the right of the icon */
-    background-color: var(--danger-color); /* Red badge */
-    color: white;
-    font-size: 0.7em; /* Smaller font for the count */
-    font-weight: 700;
-    padding: 3px 6px;
-    border-radius: 50%;
-    min-width: 20px; /* Ensure it's circular for single digits */
-    text-align: center;
-    line-height: 1; /* Center text vertically */
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    border: 2px solid var(--background-color); /* This creates a "cutout" effect against the icon */
+    display: flex; /* Use flexbox to perfectly center the number */
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
 }
 
 /* Alert Panel Styles */
