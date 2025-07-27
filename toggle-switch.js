@@ -2,7 +2,7 @@
 // Sidebar: Hide (left/red), Show (right/green)
 // Modal: Below (left/red), Above (right/green)
 document.addEventListener('DOMContentLoaded', function() {
-    // Sidebar toggle switch logic (unchanged)
+    // Sidebar toggle switch logic
     const sidebarToggle = document.getElementById('sidebarLiveToggle');
     const sidebarLeft = document.getElementById('sidebarToggleLeft');
     const sidebarRight = document.getElementById('sidebarToggleRight');
@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
         sidebarToggle.dispatchEvent(new Event('change'));
     }
 
-    // NEW modal toggle switch logic
+    // New modal toggle switch logic
     const targetDirectionToggle = document.getElementById('targetDirectionToggle');
     const targetDirectionLabel = document.getElementById('targetDirectionLabel');
     if (targetDirectionToggle && targetDirectionLabel) {
@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 targetDirectionToggle.parentElement.querySelector('.slider').style.background = '#ff4136';
             }
         });
-        // Initial state
         targetDirectionToggle.dispatchEvent(new Event('change'));
     }
 document.addEventListener('DOMContentLoaded', function() {
