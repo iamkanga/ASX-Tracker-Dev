@@ -552,7 +552,7 @@ function addShareToTable(share) {
                 const frankingCredits = Number(share.frankingCredits) || 0;
                 const enteredPrice = Number(share.currentPrice) || 0;
                 const priceForYield = (displayData.displayLivePrice !== 'N/A' && displayData.displayLivePrice.startsWith('$'))
-                                    ? parseFloat(displayLivePrice.substring(1))
+                                    ? parseFloat(displayData.displayLivePrice.substring(1))
                                     : (enteredPrice > 0 ? enteredPrice : 0);
                 if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
                 const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
