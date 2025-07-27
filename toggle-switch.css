@@ -1,3 +1,20 @@
+/* Target Price Modal Checkbox Grid Styles */
+.target-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 8px 18px;
+  margin-left: 16px;
+  align-items: center;
+}
+.target-checkbox-row {
+  display: contents;
+}
+.target-checkbox-grid .checkbox-label {
+  min-width: 60px;
+  justify-content: flex-start;
+  font-size: 15px;
+}
 /* Modern Checkbox Styles for Sidebar */
 .checkbox-switch-container {
   margin-top: 8px;

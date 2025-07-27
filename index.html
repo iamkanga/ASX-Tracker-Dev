@@ -338,7 +338,28 @@
 
                 <div class="form-group-with-toggle">
                     <label for="targetPrice" class="target-price-label">Target Price ($):</label>
-                    <!-- Toggle switch removed. Checkbox logic will be added next. -->
+                    <div class="target-checkbox-grid">
+                        <div class="target-checkbox-row">
+                            <label class="checkbox-label" for="targetBuyCheckbox">
+                                <input type="checkbox" id="targetBuyCheckbox" class="modern-checkbox">
+                                Buy
+                            </label>
+                            <label class="checkbox-label" for="targetAboveCheckbox">
+                                <input type="checkbox" id="targetAboveCheckbox" class="modern-checkbox">
+                                Above
+                            </label>
+                        </div>
+                        <div class="target-checkbox-row">
+                            <label class="checkbox-label" for="targetSellCheckbox">
+                                <input type="checkbox" id="targetSellCheckbox" class="modern-checkbox">
+                                Sell
+                            </label>
+                            <label class="checkbox-label" for="targetBelowCheckbox">
+                                <input type="checkbox" id="targetBelowCheckbox" class="modern-checkbox">
+                                Below
+                            </label>
+                        </div>
+                    </div>
                     <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
                 </div>
                 
