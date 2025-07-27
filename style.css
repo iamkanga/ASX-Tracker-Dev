@@ -2760,6 +2760,18 @@ table td.live-price-cell.negative-change {
     width: 100%; 
     box-sizing: border-box; 
 }
+/* --- Compact View Card Grid for Watchlist --- */
+.mobile-share-cards.compact-view {
+    display: grid;
+    grid-gap: 16px;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns for mobile */
+}
+
+@media (min-width: 769px) {
+    .mobile-share-cards.compact-view {
+        grid-template-columns: repeat(4, 1fr); /* 4 columns for desktop */
+    }
+}
 
 .mobile-card {
     background-color: var(--card-bg);

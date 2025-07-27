@@ -1178,17 +1178,10 @@ function updateCompactViewButtonState() {
     if (!toggleCompactViewBtn) {
         return; // Exit if the button doesn't exist
     }
-
-    const isDesktop = window.innerWidth > 768;
-    toggleCompactViewBtn.disabled = isDesktop;
-
-    // Add a helpful title to explain why it's disabled on desktop
-    if (isDesktop) {
-        toggleCompactViewBtn.title = "Compact view is only available on mobile screens.";
-    } else {
-        toggleCompactViewBtn.title = "Toggle between default and compact card view.";
-    }
-    logDebug(`UI State: Compact view button ${isDesktop ? 'disabled' : 'enabled'} for current screen width.`);
+    // Always enable the button, regardless of screen width
+    toggleCompactViewBtn.disabled = false;
+    toggleCompactViewBtn.title = "Toggle between default and compact card view.";
+    logDebug(`UI State: Compact view button enabled for all screen widths.`);
 }
 
 function showModal(modalElement) {
