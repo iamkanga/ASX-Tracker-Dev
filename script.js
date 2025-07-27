@@ -1171,6 +1171,27 @@ function updateMainButtonsState(enable) {
     logDebug('UI State: Watchlist Select Disabled: ' + (watchlistSelect ? watchlistSelect.disabled : 'N/A'));
 }
 
+/**
+ * Enables or disables the 'Toggle Compact View' button based on screen width.
+ * This feature is only intended for mobile views (<= 768px).
+ */
+function updateCompactViewButtonState() {
+    if (!toggleCompactViewBtn) {
+        return; // Exit if the button doesn't exist
+    }
+
+    const isDesktop = window.innerWidth > 768;
+    toggleCompactViewBtn.disabled = isDesktop;
+
+    // Add a helpful title to explain why it's disabled on desktop
+    if (isDesktop) {
+        toggleCompactViewBtn.title = "Compact view is only available on mobile screens.";
+    } else {
+        toggleCompactViewBtn.title = "Toggle between default and compact card view.";
+    }
+    logDebug(`UI State: Compact view button ${isDesktop ? 'disabled' : 'enabled'} for current screen width.`);
+}
+
 function showModal(modalElement) {
     if (modalElement) {
         modalElement.style.setProperty('display', 'flex', 'important');
@@ -5710,6 +5731,9 @@ if (sortSelect) {
             }
             // NEW: Recalculate header height on resize
             adjustMainContentPadding();
+
+            // NEW: Update the compact view button state on resize
+            updateCompactViewButtonState();
         });
 
         const menuButtons = appSidebar.querySelectorAll('.menu-button-item');
@@ -5849,6 +5873,9 @@ if (showLastLivePriceToggle) {
     // Call adjustMainContentPadding initially and on window load/resize
     // Removed: window.addEventListener('load', adjustMainContentPadding); // Removed, handled by onAuthStateChanged
     // Already added to window.addEventListener('resize') in sidebar section
+
+    // NEW: Set initial state for the compact view button
+    updateCompactViewButtonState();
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
 
