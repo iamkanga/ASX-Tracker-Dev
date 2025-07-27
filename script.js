@@ -1749,12 +1749,12 @@ function showShareDetails() {
         const fiftyTwoWeekRow = document.createElement('div');
         fiftyTwoWeekRow.classList.add('fifty-two-week-row'); // New class for styling
 
-        const lowSpan = document.createElement('span');
+        const lowSpan = document.createElement('p');
         lowSpan.classList.add('fifty-two-week-value', 'low'); // New classes
         lowSpan.textContent = 'Low: ' + (low52Week !== undefined && low52Week !== null && !isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A');
         fiftyTwoWeekRow.appendChild(lowSpan);
 
-        const highSpan = document.createElement('span');
+        const highSpan = document.createElement('p');
         highSpan.classList.add('fifty-two-week-value', 'high'); // New classes
         highSpan.textContent = 'High: ' + (high52Week !== undefined && high52Week !== null && !isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A');
         fiftyTwoWeekRow.appendChild(highSpan);
@@ -1762,7 +1762,7 @@ function showShareDetails() {
         modalLivePriceDisplaySection.appendChild(fiftyTwoWeekRow);
 
         // 2. Add Live Price and Change (Dynamically create these elements now)
-        const currentModalLivePriceLarge = document.createElement('span');
+        const currentModalLivePriceLarge = document.createElement('h2
         currentModalLivePriceLarge.classList.add('live-price-large', priceChangeClass); // Apply color class
         const currentModalPriceChangeLarge = document.createElement('span');
         currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass); // Apply color class
