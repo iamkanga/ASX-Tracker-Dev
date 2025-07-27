@@ -46,7 +46,7 @@ input:checked + .slider {
 }
 
 input:checked + .slider:before {
-  transform: translateX(24px);
+  transform: translateX(22px);
 }
 
 /* Fix center alignment for toggle switch row */
