@@ -4218,68 +4218,26 @@ table td.live-price-cell.negative-change {
 }
 
 /* Badge on the target hit icon */
-.target-hit-icon-count {
+#targetHitIconCount {
     position: absolute;
     top: -5px;
     right: -5px;
     background-color: var(--danger-color);
-    color: white;
+    color: var(--button-text); /* Use a theme-aware variable for text color */
     font-size: 0.7em;
     font-weight: 700;
     padding: 3px 6px;
     border-radius: 50%;
     min-width: 20px;
+    min-height: 20px; /* Ensure it's a circle */
     text-align: center;
     line-height: 1;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-/* Ensure app-hidden completely hides the button when intended */
-.target-hit-icon-btn.app-hidden {
-    display: none !important;
-}
-
-/* Remove the chat box tail, as it's no longer a "chat bubble" but a round alert icon */
-.target-hit-icon-btn::after {
-    display: none; /* Hide the pseudo-element tail */
-}
-
-.target-hit-icon-btn:hover {
-    transform: translateY(-2px); /* Lift effect */
-    background-color: var(--green-color-dark); /* Darker green on hover */
-}
-
-/* Badge on the target hit icon */
-.target-hit-icon-count {
-    position: absolute;
-    top: -5px; /* Position above the icon */
-    right: -5px; /* Position to the right of the icon */
-    background-color: var(--danger-color); /* Red badge */
-    color: white;
-    font-size: 0.7em; /* Smaller font for the count */
-    font-weight: 700;
-    padding: 3px 6px;
-    border-radius: 50%;
-    min-width: 20px; /* Ensure it's circular for single digits */
-    text-align: center;
-    line-height: 1; /* Center text vertically */
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-.target-hit-icon-count {
-    position: absolute;
-    top: -5px; /* Position above the icon */
-    right: -5px; /* Position to the right of the icon */
-    background-color: var(--danger-color); /* Red badge */
-    color: white;
-    font-size: 0.7em; /* Smaller font for the count */
-    font-weight: 700;
-    padding: 3px 6px;
-    border-radius: 50%;
-    min-width: 20px; /* Ensure it's circular for single digits */
-    text-align: center;
-    line-height: 1; /* Center text vertically */
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    border: 2px solid var(--background-color); /* This creates a "cutout" effect against the icon */
+    display: flex; /* Use flexbox to perfectly center the number */
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
 }
 
 /* Alert Panel Styles */
