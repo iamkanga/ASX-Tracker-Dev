@@ -38,6 +38,10 @@
             cursor: pointer;
             transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Slightly stronger shadow for contrast */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px; /* Adds space between the icon and the text */
         }
 
         .google-auth-btn:hover {
@@ -49,7 +53,10 @@
 <body>
     <div id="splashScreen" class="splash-screen">
         <img id="splashKangarooIcon" src="Kangaicon.jpg" alt="Kangaroo App Icon" class="splash-icon">
-        <button id="splashSignInBtn" class="google-auth-btn">Google Sign In</button>
+        <button id="splashSignInBtn" class="google-auth-btn">
+            <i class="fab fa-google"></i>
+            <span>Google Sign In</span>
+        </button>
     </div>
 
     <header id="appHeader" class="app-hidden">
