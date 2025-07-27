@@ -3613,6 +3613,58 @@ table td.live-price-cell.negative-change {
     pointer-events: auto; /* Re-enable input's pointer events for actual toggle */
 }
 
+/* NEW: Styling for the new checkbox-based toggle in the sidebar */
+.checkbox-switch-row {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Space between "Hide" and "Show" labels */
+    width: 100%;
+    justify-content: flex-start; /* Align to the left */
+    margin-top: 5px; /* Space above the checkboxes */
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between checkbox and its text */
+    cursor: pointer;
+    font-size: 0.95em;
+    color: var(--sidebar-text);
+    user-select: none; /* Prevent text selection on click */
+}
+
+.modern-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--input-border);
+    border-radius: 4px;
+    background-color: var(--input-bg);
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    flex-shrink: 0; /* Prevent checkbox from shrinking */
+}
+
+.modern-checkbox:checked {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.modern-checkbox:checked::before {
+    content: '\2713'; /* Checkmark character */
+    color: var(--button-text);
+    font-size: 14px;
+    font-weight: bold;
+    /* Centering the checkmark inside the box */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
 /* NEW: Styling for the notification badge text color */
 .target-hit-fixed-btn .badge {
     color: var(--button-text); /* Default to white/light for dark backgrounds */
