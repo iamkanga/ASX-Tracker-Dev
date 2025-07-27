@@ -1763,12 +1763,12 @@ function showShareDetails() {
         const fiftyTwoWeekRow = document.createElement('div');
         fiftyTwoWeekRow.classList.add('fifty-two-week-row'); // New class for styling
 
-        const lowSpan = document.createElement('p');
+        const lowSpan = document.createElement('h3');
         lowSpan.classList.add('fifty-two-week-value', 'low'); // New classes
         lowSpan.textContent = 'Low: ' + (low52Week !== undefined && low52Week !== null && !isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A');
         fiftyTwoWeekRow.appendChild(lowSpan);
 
-        const highSpan = document.createElement('p');
+        const highSpan = document.createElement('h3');
         highSpan.classList.add('fifty-two-week-value', 'high'); // New classes
         highSpan.textContent = 'High: ' + (high52Week !== undefined && high52Week !== null && !isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A');
         fiftyTwoWeekRow.appendChild(highSpan);
@@ -1777,7 +1777,7 @@ function showShareDetails() {
 
         // 2. Add Live Price and Change (Dynamically create these elements now)
         const currentModalLivePriceLarge = document.createElement('h2');
-        currentModalLivePriceLarge.classList.add('live-price-large', priceChangeClass); // Apply color class
+        currentModalLivePriceLarge.classList.add('live-price-large', 'modal-share-name', priceChangeClass); // Apply color class and match title size
         const currentModalPriceChangeLarge = document.createElement('span');
         currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass); // Apply color class
 
@@ -1820,7 +1820,7 @@ function showShareDetails() {
         // 3. Add P/E Ratio below live price
         const peRow = document.createElement('div');
         peRow.classList.add('pe-ratio-row'); // New class for styling
-        const peSpan = document.createElement('p');
+        const peSpan = document.createElement('h3');
         peSpan.classList.add('pe-ratio-value'); // New class
         peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A');
         peRow.appendChild(peSpan);
@@ -2594,15 +2594,15 @@ async function displayStockDetailsInSearchModal(asxCode) {
             </div>
             <div class="live-price-display-section">
                 <div class="fifty-two-week-row">
-                    <p class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A'}</p>
-                    <p class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A'}</p>
+                    <h3 class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A'}</h3>
+                    <h3 class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A'}</h3>
                 </div>
                 <div class="live-price-main-row">
-                    <h2 class="live-price-large ${priceClass}">${displayPrice}</h2>
+                    <h2 class="live-price-large modal-share-name ${priceClass}">${displayPrice}</h2>
                     <span class="price-change-large ${priceClass}">${priceChangeText}</span>
                 </div>
                 <div class="pe-ratio-row">
-                    <p class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A'}</p>
+                    <h3 class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A'}</h3>
                 </div>
             </div>
             <div class="external-links-section">
