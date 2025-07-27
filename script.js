@@ -5036,7 +5036,7 @@ async function initializeAppLogic() {
                         splashSignInBtn.disabled = false; // Enable sign-in button
                         const buttonTextSpan = splashSignInBtn.querySelector('span');
                         if (buttonTextSpan) {
-                            buttonTextSpan.textContent = 'Google Sign In'; // Reset only the text, not the icon
+                            buttonTextSpan.textContent = 'Sign in with Google'; // Reset only the text, not the icon
                         }
                     }
                     // Hide main app content
@@ -6025,7 +6025,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         splashSignInBtn.disabled = false; // Enable sign-in button
                         const buttonTextSpan = splashSignInBtn.querySelector('span');
                         if (buttonTextSpan) {
-                            buttonTextSpan.textContent = 'Google Sign In'; // Reset only the text, not the icon
+                            buttonTextSpan.textContent = 'Sign in with Google'; // Reset only the text, not the icon
                         }
                     }
                     // Hide main app content
