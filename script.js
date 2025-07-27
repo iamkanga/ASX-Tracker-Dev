@@ -1805,7 +1805,7 @@ function showShareDetails() {
 
         // 2. Add Live Price and Change (Dynamically create these elements now)
         const currentModalLivePriceLarge = document.createElement('h2');
-        currentModalLivePriceLarge.classList.add('live-price-large', priceChangeClass); // Use a dedicated class for the large price, apply color
+        currentModalLivePriceLarge.classList.add('modal-share-name', priceChangeClass); // Match title size, apply color
         const currentModalPriceChangeLarge = document.createElement('span');
         currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass); // Apply color class
 
