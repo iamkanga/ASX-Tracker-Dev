@@ -2295,6 +2295,26 @@ function renderSortSelect() {
 function renderWatchlist() {
     logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + currentSelectedWatchlistIds[0]);
 
+    // --- Compact View Display Logic ---
+    const isCompactView = currentMobileViewMode === 'compact';
+    if (isCompactView) {
+        // Show card container as grid (CSS handles columns)
+        if (mobileShareCardsContainer) {
+            mobileShareCardsContainer.style.display = 'grid';
+        }
+        if (tableContainer) {
+            tableContainer.style.display = 'none';
+        }
+    } else {
+        // Show table, hide card container
+        if (mobileShareCardsContainer) {
+            mobileShareCardsContainer.style.display = 'none';
+        }
+        if (tableContainer) {
+            tableContainer.style.display = '';
+        }
+    }
+
     const selectedWatchlistId = currentSelectedWatchlistIds[0];
 
     // Hide both sections initially
