@@ -335,13 +335,14 @@
                 <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
 
                 <div class="form-group-with-toggle">
-                    <!-- TOGGLE SWITCH PLACEHOLDER: Modal Target Direction Toggle Switch removed here -->
-                <span class="toggle-label left" id="targetDirectionLabelBelow">Below</span>
-                <label class="switch">
-                    <input type="checkbox" id="targetDirectionToggle">
-                    <span class="slider round"></span>
-                </label>
-                <span class="toggle-label right" id="targetDirectionLabelAbove">Above</span>
+                    <div class="modal-toggle-switch-group">
+                      <label class="toggle-label left" for="targetDirectionToggle">Below</label>
+                      <div class="modern-switch">
+                        <input type="checkbox" id="targetDirectionToggle" class="modern-switch-input">
+                        <span class="modern-switch-slider"></span>
+                      </div>
+                      <label class="toggle-label right" for="targetDirectionToggle">Above</label>
+                    </div>
                     <label for="targetPrice" class="target-price-label">Target Price ($):</label>
                     <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
                 </div>
