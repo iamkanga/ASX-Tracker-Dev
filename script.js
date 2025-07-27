@@ -2286,7 +2286,6 @@ function renderWatchlist() {
         sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.remove('app-hidden');
         toggleCompactViewBtn.classList.remove('app-hidden');
-        targetHitIconBtn.classList.remove('app-hidden');
         exportWatchlistBtn.classList.remove('app-hidden');
         // startLivePriceUpdates(); // Removed this line to prevent multiple intervals
         updateAddHeaderButton();
