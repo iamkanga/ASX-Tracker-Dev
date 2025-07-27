@@ -2308,16 +2308,25 @@ function renderWatchlist() {
 
     // --- Compact View Display Logic ---
     const isCompactView = currentMobileViewMode === 'compact';
+    const isMobileView = window.innerWidth <= 768;
     if (isCompactView) {
-        // Show card container as grid (CSS handles columns)
+        // Compact view: show card container as grid, hide table
         if (mobileShareCardsContainer) {
             mobileShareCardsContainer.style.display = 'grid';
         }
         if (tableContainer) {
             tableContainer.style.display = 'none';
         }
+    } else if (isMobileView) {
+        // Mobile, not compact: show card container as flex, hide table
+        if (mobileShareCardsContainer) {
+            mobileShareCardsContainer.style.display = 'flex';
+        }
+        if (tableContainer) {
+            tableContainer.style.display = 'none';
+        }
     } else {
-        // Show table, hide card container
+        // Desktop: show table, hide card container
         if (mobileShareCardsContainer) {
             mobileShareCardsContainer.style.display = 'none';
         }
