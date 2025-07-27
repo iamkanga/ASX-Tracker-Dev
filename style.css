@@ -3951,6 +3951,9 @@ table td.live-price-cell.negative-change {
     margin-top: 25px;
     border-top: 1px solid var(--border-color);
     padding-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
 .external-links-section h3 {
