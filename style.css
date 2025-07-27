@@ -4178,26 +4178,28 @@ table td.live-price-cell.negative-change {
 /* Target Hit Notification Icon (bottom-left, fixed) */
 .target-hit-fixed-btn {
     position: fixed !important;
-    bottom: 20px !important;
-    left: 20px !important;
-    right: auto !important;
-    z-index: 9999 !important;
-    background-color: var(--green-color);
-    color: var(--button-text);
+    bottom: 20px !important; /* Place the button at the bottom of the page */
+    left: 20px !important; /* Place the button at the right of the page */
+    z-index: 9999 !important; /* Make sure it does not overlap */
+    background-color: transparent; /* Use a transparent background for the image */
     border: none;
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 1.5em;
+    border-radius: 50%; /* Keep this to make the pulsing shadow circular */
+    width: 60px; /* Adjust size as needed */
+    height: 60px; /* Adjust size as needed */
+    padding: 0; /* Remove padding to let image fill the button */
     cursor: pointer;
-    box-shadow: 0 4px 12px var(--shadow-color);
-    transition: transform 0.2s ease, background-color 0.2s ease;
+    /* The animation applies its own box-shadow, so we remove the default one */
+    box-shadow: none;
+    transition: transform 0.2s ease;
     animation: pulseHighlight 2s infinite alternate ease-in-out;
-    border: 2px solid var(--green-color-dark);
     transform: translateZ(0); /* Force hardware acceleration and prevent layering issues */
+}
+
+/* NEW: Style for the image inside the notification button */
+.target-hit-fixed-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Ensures the image fits without being distorted */
 }
 
 /* Ensure app-hidden completely hides the button when intended */
@@ -4211,8 +4213,8 @@ table td.live-price-cell.negative-change {
 }
 
 .target-hit-fixed-btn:hover {
-    transform: translateY(-2px);
-    background-color: var(--green-color-dark);
+    transform: translateY(-2px); /* Lift effect */
+    /* No background color change on hover for a transparent button */
 }
 
 /* Badge on the target hit icon */
