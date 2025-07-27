@@ -1762,7 +1762,7 @@ function showShareDetails() {
         modalLivePriceDisplaySection.appendChild(fiftyTwoWeekRow);
 
         // 2. Add Live Price and Change (Dynamically create these elements now)
-        const currentModalLivePriceLarge = document.createElement('h2
+        const currentModalLivePriceLarge = document.createElement('h2');
         currentModalLivePriceLarge.classList.add('live-price-large', priceChangeClass); // Apply color class
         const currentModalPriceChangeLarge = document.createElement('span');
         currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass); // Apply color class
@@ -1806,7 +1806,7 @@ function showShareDetails() {
         // 3. Add P/E Ratio below live price
         const peRow = document.createElement('div');
         peRow.classList.add('pe-ratio-row'); // New class for styling
-        const peSpan = document.createElement('span');
+        const peSpan = document.createElement('p');
         peSpan.classList.add('pe-ratio-value'); // New class
         peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A');
         peRow.appendChild(peSpan);
@@ -2580,15 +2580,15 @@ async function displayStockDetailsInSearchModal(asxCode) {
             </div>
             <div class="live-price-display-section">
                 <div class="fifty-two-week-row">
-                    <span class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A'}</span>
-                    <span class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A'}</span>
+                    <p class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A'}</p>
+                    <p class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A'}</p>
                 </div>
                 <div class="live-price-main-row">
-                    <span class="live-price-large ${priceClass}">${displayPrice}</span>
+                    <h2 class="live-price-large ${priceClass}">${displayPrice}</h2>
                     <span class="price-change-large ${priceClass}">${priceChangeText}</span>
                 </div>
                 <div class="pe-ratio-row">
-                    <span class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A'}</span>
+                    <p class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A'}</p>
                 </div>
             </div>
             <div class="external-links-section">
