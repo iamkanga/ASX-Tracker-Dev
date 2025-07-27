@@ -3707,7 +3707,6 @@ table td.live-price-cell.negative-change {
 
 /* Specific text for the description in the sidebar toggle */
 .menu-button-item.toggle-switch-container .toggle-description {
-    margin-left: auto; /* Push the description text to the far right */
     /* font-size: 0.85em; /* Removed to inherit font size from menu-button-item */
     color: var(--text-color);
     white-space: nowrap;
