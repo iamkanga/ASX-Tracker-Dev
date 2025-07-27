@@ -2,52 +2,52 @@
 // Sidebar: Hide (left/red), Show (right/green)
 // Modal: Below (left/red), Above (right/green)
 document.addEventListener('DOMContentLoaded', function() {
+    // Define toggle label elements
+    const sidebarLeft = document.getElementById('sidebarToggleLeft');
+    const sidebarRight = document.getElementById('sidebarToggleRight');
+    const modalLeft = document.getElementById('modalToggleLeft');
+    const modalRight = document.getElementById('modalToggleRight');
+
     const sidebarToggle = document.getElementById('sidebarLiveToggle');
     if (sidebarToggle) {
         sidebarToggle.addEventListener('change', function() {
             if (sidebarToggle.checked) {
-                sidebarLeft.style.color = '#888';
-                sidebarRight.style.color = '#2ecc40';
+                if (sidebarLeft) sidebarLeft.style.color = '#888';
+                if (sidebarRight) sidebarRight.style.color = '#2ecc40';
                 sidebarToggle.parentElement.querySelector('.toggle-switch-slider').style.background = '#2ecc40';
                 // Show live price display logic here
             } else {
-                sidebarLeft.style.color = '#ff4136';
-                sidebarRight.style.color = '#888';
+                if (sidebarLeft) sidebarLeft.style.color = '#ff4136';
+                if (sidebarRight) sidebarRight.style.color = '#888';
                 sidebarToggle.parentElement.querySelector('.toggle-switch-slider').style.background = '#ff4136';
                 // Hide live price display logic here
             }
         });
+        // Initial state
+        sidebarToggle.dispatchEvent(new Event('change'));
     } else {
         console.warn('Sidebar toggle switch element not found.');
-    }
-
-    // Initial state
-    if (sidebarToggle) {
-        sidebarToggle.dispatchEvent(new Event('change'));
     }
 
     const modalToggle = document.getElementById('modalTargetToggle');
     if (modalToggle) {
         modalToggle.addEventListener('change', function() {
             if (modalToggle.checked) {
-                modalLeft.style.color = '#888';
-                modalRight.style.color = '#2ecc40';
+                if (modalLeft) modalLeft.style.color = '#888';
+                if (modalRight) modalRight.style.color = '#2ecc40';
                 modalToggle.parentElement.querySelector('.toggle-switch-slider').style.background = '#2ecc40';
                 // Set target direction to 'above' logic here
             } else {
-                modalLeft.style.color = '#ff4136';
-                modalRight.style.color = '#888';
+                if (modalLeft) modalLeft.style.color = '#ff4136';
+                if (modalRight) modalRight.style.color = '#888';
                 modalToggle.parentElement.querySelector('.toggle-switch-slider').style.background = '#ff4136';
                 // Set target direction to 'below' logic here
             }
         });
+        // Initial state
+        modalToggle.dispatchEvent(new Event('change'));
     } else {
         console.warn('Modal toggle switch element not found.');
-    }
-
-    // Initial state
-    if (modalToggle) {
-        modalToggle.dispatchEvent(new Event('change'));
     }
 });
 document.addEventListener('DOMContentLoaded', function() {
