@@ -1777,7 +1777,7 @@ function showShareDetails() {
 
         // 2. Add Live Price and Change (Dynamically create these elements now)
         const currentModalLivePriceLarge = document.createElement('h2');
-        currentModalLivePriceLarge.classList.add('live-price-large', 'modal-share-name', priceChangeClass); // Apply color class and match title size
+        currentModalLivePriceLarge.classList.add('modal-share-name', priceChangeClass); // Match title size, apply color
         const currentModalPriceChangeLarge = document.createElement('span');
         currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass); // Apply color class
 
@@ -2598,7 +2598,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
                     <h3 class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A'}</h3>
                 </div>
                 <div class="live-price-main-row">
-                    <h2 class="live-price-large modal-share-name ${priceClass}">${displayPrice}</h2>
+                    <h2 class="modal-share-name ${priceClass}">${displayPrice}</h2>
                     <span class="price-change-large ${priceClass}">${priceChangeText}</span>
                 </div>
                 <div class="pe-ratio-row">
