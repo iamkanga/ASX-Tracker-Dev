@@ -1,3 +1,22 @@
+    // --- PATCH: INTEGRATE isShareAtTarget into actual watchlist rendering ---
+    // If you have a function like renderWatchlist() or renderShareRow(), ensure you use:
+    // Example:
+    // function renderShareRow(share) {
+    //   const highlight = isShareAtTarget(share);
+    //   const row = document.createElement('div');
+    //   row.id = `share-row-${share.id}`;
+    //   row.className = highlight ? 'target-hit' : '';
+    //   // ...render other share details...
+    //   return row;
+    // }
+    //
+    // In renderWatchlist():
+    // allSharesData.forEach(share => {
+    //   const row = renderShareRow(share);
+    //   watchlistContainer.appendChild(row);
+    // });
+    //
+    // This ensures only the correct share entry gets the green border.
     // --- PATCH: Ensure watchlist highlights only the correct share entry (by unique ID) ---
     // This function should be called when rendering each share row/card in the watchlist
     function isShareAtTarget(share) {
