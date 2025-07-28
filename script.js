@@ -602,9 +602,8 @@ function addShareToTable(share) {
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
-    <td class="numeric-data-cell">
+        <td class="numeric-data-cell">
         ${
             (() => {
                 const dividendAmount = Number(share.dividendAmount) || 0;
@@ -625,7 +624,8 @@ function addShareToTable(share) {
             })()
         }
     </td>
-    <td class="star-rating-cell numeric-data-cell">
+        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
+        <td class="star-rating-cell numeric-data-cell">
         ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
     </td>
 `;
@@ -1020,9 +1020,9 @@ function updateOrCreateShareTableRow(share) {
             <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
             <span class="price-change ${priceClass}">${displayPriceChange}</span>
         </td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
         <td class="numeric-data-cell">${yieldDisplay}</td>
+        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
         </td>
