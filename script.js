@@ -293,7 +293,23 @@ const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn
 
 // NEW: Target Direction Checkbox UI Elements
 const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
+const targetBuyCheckbox = document.getElementById('targetBuyCheckbox');
+const targetSellCheckbox = document.getElementById('targetSellCheckbox');
+const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
 const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
+    // --- Mutual Exclusivity for Buy/Sell Checkboxes ---
+    if (targetBuyCheckbox && targetSellCheckbox) {
+        targetBuyCheckbox.addEventListener('change', function () {
+            if (targetBuyCheckbox.checked) {
+                targetSellCheckbox.checked = false;
+            }
+        });
+        targetSellCheckbox.addEventListener('change', function () {
+            if (targetSellCheckbox.checked) {
+                targetBuyCheckbox.checked = false;
+            }
+        });
+    }
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
