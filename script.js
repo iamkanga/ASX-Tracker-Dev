@@ -3487,6 +3487,9 @@ function stopLivePriceUpdates() {
 }
 
 // NEW: Function to update the target hit notification icon
+// Declare targetHitSharesList at the top-level scope to ensure it is initialized before use
+let targetHitSharesList = [];
+
 function updateTargetHitBanner() {
     // Collect ALL shares that have hit their target price, regardless of current watchlist view
     // ...existing code...
