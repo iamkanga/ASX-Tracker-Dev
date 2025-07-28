@@ -3546,22 +3546,7 @@ function updateTargetHitBanner() {
         logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
     }
     // Apply/remove border to watchlist and sort dropdowns if the *current view* has target hits
-    let currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
-        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) return true;
-        if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
-            return share.watchlistId === currentSelectedWatchlistIds[0];
-        }
-        return false;
-    });
-    if (currentViewHasTargetHits && !targetHitIconDismissed) {
-        watchlistSelect.classList.add('target-hit-border');
-        sortSelect.classList.add('target-hit-border');
-        logDebug('Target Alert: Watchlist and Sort dropdowns highlighted (current view has target hits).');
-    } else {
-        watchlistSelect.classList.remove('target-hit-border');
-        sortSelect.classList.remove('target-hit-border');
-        logDebug('Target Alert: Watchlist and Sort dropdowns unhighlighted.');
-    }
+// Notification bubble and dropdown highlight logic removed. No target hit banner or bubble will be shown.
 }
 
 // NEW: Function to render alerts in the alert panel (currently empty, but planned for future)
