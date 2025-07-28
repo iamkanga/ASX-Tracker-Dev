@@ -3467,12 +3467,7 @@ function stopLivePriceUpdates() {
 // NEW: Function to update the target hit notification icon
 function updateTargetHitBanner() {
     // Collect ALL shares that have hit their target price, regardless of current watchlist view
-    sharesAtTargetPrice = allSharesData.filter(share => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        // Ensure livePriceData exists and has targetHit property
-        // The check against `currentSelectedWatchlistIds` is removed here to show ALL alerts globally
-        return livePriceData && livePriceData.targetHit;
-    });
+    // ...existing code...
 
     if (!targetHitIconBtn || !targetHitIconCount) {
         console.warn('Target Alert: Target hit icon elements not found. Cannot update icon.');
