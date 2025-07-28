@@ -164,19 +164,19 @@ let savedSortOrder = null; // GLOBAL: Stores the sort order loaded from user set
 let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
 // --- BUG FIX: Add missing getSharesAtTargetPrice function ---
 function getSharesAtTargetPrice(targetPrice, direction, buyOrSell) {
-    // Returns shares at the target price, matching direction and buy/sell
+    // Returns shares at the target price, matching direction and buy/sell, per unique entry
     if (!Array.isArray(window.allSharesData)) return [];
     return window.allSharesData.filter(share => {
         if (typeof share.targetPrice !== 'number' || typeof share.livePrice !== 'number') return false;
-        // Direction: 'above' or 'below', buyOrSell: 'buy' or 'sell'
-        if (direction === 'above' && buyOrSell === 'buy') {
-            return share.livePrice >= targetPrice && share.targetBuy;
-        } else if (direction === 'below' && buyOrSell === 'buy') {
-            return share.livePrice <= targetPrice && share.targetBuy;
-        } else if (direction === 'above' && buyOrSell === 'sell') {
-            return share.livePrice >= targetPrice && share.targetSell;
-        } else if (direction === 'below' && buyOrSell === 'sell') {
-            return share.livePrice <= targetPrice && share.targetSell;
+        // Each entry is checked independently
+        if (share.targetDirection === 'above' && share.targetBuy) {
+            return share.livePrice >= share.targetPrice;
+        } else if (share.targetDirection === 'below' && share.targetBuy) {
+            return share.livePrice <= share.targetPrice;
+        } else if (share.targetDirection === 'above' && share.targetSell) {
+            return share.livePrice >= share.targetPrice;
+        } else if (share.targetDirection === 'below' && share.targetSell) {
+            return share.livePrice <= share.targetPrice;
         }
         return false;
     });
@@ -680,15 +680,25 @@ function addShareToTable(share) {
         showShareDetails();
     });
 
-    // Check if target price is hit for this share
+    // Check if target price is hit for this share entry
     const livePriceData = livePrices[share.shareName.toUpperCase()];
-    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
-
+    let isTargetHit = false;
+    if (livePriceData && typeof share.targetPrice === 'number' && typeof livePriceData.live === 'number') {
+        if (share.targetDirection === 'above' && share.targetBuy) {
+            isTargetHit = livePriceData.live >= share.targetPrice;
+        } else if (share.targetDirection === 'below' && share.targetBuy) {
+            isTargetHit = livePriceData.live <= share.targetPrice;
+        } else if (share.targetDirection === 'above' && share.targetSell) {
+            isTargetHit = livePriceData.live >= share.targetPrice;
+        } else if (share.targetDirection === 'below' && share.targetSell) {
+            isTargetHit = livePriceData.live <= share.targetPrice;
+        }
+    }
     // Apply target-hit-alert class if target is hit AND not dismissed
     if (isTargetHit && !targetHitIconDismissed) {
         row.classList.add('target-hit-alert');
     } else {
-        row.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
+        row.classList.remove('target-hit-alert');
     }
 
     // Use the new helper function to get all display data
@@ -789,9 +799,20 @@ function addShareToMobileCards(share) {
     card.classList.add('mobile-card');
     card.dataset.docId = share.id;
 
-    // Check if target price is hit for this share
+    // Check if target price is hit for this share entry
     const livePriceData = livePrices[share.shareName.toUpperCase()];
-    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
+    let isTargetHit = false;
+    if (livePriceData && typeof share.targetPrice === 'number' && typeof livePriceData.live === 'number') {
+        if (share.targetDirection === 'above' && share.targetBuy) {
+            isTargetHit = livePriceData.live >= share.targetPrice;
+        } else if (share.targetDirection === 'below' && share.targetBuy) {
+            isTargetHit = livePriceData.live <= share.targetPrice;
+        } else if (share.targetDirection === 'above' && share.targetSell) {
+            isTargetHit = livePriceData.live >= share.targetPrice;
+        } else if (share.targetDirection === 'below' && share.targetSell) {
+            isTargetHit = livePriceData.live <= share.targetPrice;
+        }
+    }
 
     // Declare these variables once at the top of the function
     const isMarketOpen = isAsxMarketOpen();
@@ -844,7 +865,7 @@ function addShareToMobileCards(share) {
     if (isTargetHit && !targetHitIconDismissed) {
         card.classList.add('target-hit-alert');
     } else {
-        card.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
+        card.classList.remove('target-hit-alert');
     }
 
     // Logic to determine display values
