@@ -6110,48 +6110,30 @@ function showTargetHitDetailsModal() {
         return;
     }
 
-    targetHitSharesList.innerHTML = ''; // Clear previous content
-
+    targetHitSharesList.innerHTML = '';
     if (sharesAtTargetPrice.length === 0) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
     } else {
         sharesAtTargetPrice.forEach(share => {
             const livePriceData = livePrices[share.shareName.toUpperCase()];
             if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
-                // Skip if live price data is unavailable or invalid
                 return;
             }
-
             const currentLivePrice = livePriceData.live;
             const targetPrice = share.targetPrice;
-            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative'; // Determine color based on whether it passed target up or down
-
+            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative';
             const targetHitItem = document.createElement('div');
             targetHitItem.classList.add('target-hit-item');
-            targetHitItem.dataset.shareId = share.id; // Add data attribute for potential future interaction
-
             targetHitItem.innerHTML = `
                 <div class="target-hit-item-header">
                     <span class="share-name-code ${priceClass}">${share.shareName}</span>
                     <span class="live-price-display ${priceClass}">$${currentLivePrice.toFixed(2)}</span>
                 </div>
                 <p>Target: <strong>$${targetPrice !== null && !isNaN(targetPrice) ? targetPrice.toFixed(2) : 'N/A'}</strong></p>
-                <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
             `;
             targetHitSharesList.appendChild(targetHitItem);
-
-            // NEW: Add click listener to make the item clickable
-            targetHitItem.addEventListener('click', () => {
-                const clickedShareId = targetHitItem.dataset.shareId;
-                if (clickedShareId) {
-                    hideModal(targetHitDetailsModal); // Close the target hit alerts modal
-                    selectShare(clickedShareId); // Select the share
-                    showShareDetails(); // Open the share details modal for the clicked share
-                }
-            });
         });
     }
-
     showModal(targetHitDetailsModal);
     logDebug('Target Hit Modal: Displayed details for ' + sharesAtTargetPrice.length + ' shares.');
 }
