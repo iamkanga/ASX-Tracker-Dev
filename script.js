@@ -3483,6 +3483,7 @@ function stopLivePriceUpdates() {
         livePriceFetchInterval = null;
         logDebug('Live Price: Stopped live price updates.');
     }
+    // TEST EDIT: This comment was added by GitHub Copilot to confirm Source Control workflow.
 }
 
 // NEW: Function to update the target hit notification icon
