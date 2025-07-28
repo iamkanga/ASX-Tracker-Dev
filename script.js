@@ -168,75 +168,74 @@ let livePriceFetchInterval = null; // To hold the interval ID for live price upd
 const LIVE_PRICE_FETCH_INTERVAL_MS = 5 * 60 * 1000; // Fetch every 5 minutes
 
 // Theme related variables
-const CUSTOM_THEMES = [
-    'bold-1', 'bold-2', 'bold-3', 'bold-4', 'bold-5', 'bold-6', 'bold-7', 'bold-8', 'bold-9', 'bold-10',
-    'subtle-1', 'subtle-2', 'subtle-3', 'subtle-4', 'subtle-5', 'subtle-6', 'subtle-7', 'subtle-8', 'subtle-9', 'subtle-10',
-    'Muted Blue', 'Muted Brown', 'Muted Pink', 'Muted Green', 'Muted Purple', 'Muted Orange', 'Muted Cyan', 'Muted Magenta', 'Muted Gold', 'Muted Grey'
-];
-let currentCustomThemeIndex = -1; // To track the current theme in the cycle
-let currentActiveTheme = 'system-default'; // Tracks the currently applied theme string
-let savedSortOrder = null; // GLOBAL: Stores the sort order loaded from user settings
-let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
+    // Per-entry logic: count all shares (entries) that have hit their target
+    const sharesAtTargetPrice = allSharesData.filter(share => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        if (!livePriceData || share.targetPrice == null || isNaN(Number(share.targetPrice))) return false;
+        const live = Number(livePriceData.live);
+        const target = Number(share.targetPrice);
+        if (share.targetDirection === 'above') {
+            return live >= target;
+        } else {
+            return live <= target;
+        }
+    });
 
-let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
-let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
+    // Update the alerts modal content with shares at target price
+    if (typeof targetHitSharesList !== 'undefined' && targetHitSharesList) {
+        if (sharesAtTargetPrice.length > 0) {
+            targetHitSharesList.innerHTML = '';
+            sharesAtTargetPrice.forEach(share => {
+                const div = document.createElement('div');
+                div.className = 'target-hit-alert-row';
+                div.innerHTML = `<strong>${share.shareName}</strong> hit target price: $${Number(share.targetPrice).toFixed(2)} (Live: $${Number(livePrices[share.shareName.toUpperCase()].live).toFixed(2)})`;
+                targetHitSharesList.appendChild(div);
+            });
+        } else {
+            targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
+        }
+    }
 
-// NEW: Global variable to store shares that have hit their target price
-let sharesAtTargetPrice = [];
+    // Notification icon, count, and highlight logic
+    if (!targetHitIconBtn || !targetHitIconCount) {
+        console.warn('Target Alert: Target hit icon elements not found. Cannot update icon.');
+        return;
+    }
 
-// NEW: Global variable to track the current mobile view mode ('default' or 'compact')
-let currentMobileViewMode = 'default'; 
+    // Only show the icon if there are shares at target AND the icon hasn't been manually dismissed
+    // (The cash view check is removed here, as the icon should represent ALL stock alerts globally)
+    if (!targetHitIconBtn || !targetHitIconCount || !watchlistSelect || !sortSelect) {
+        console.warn('Target Alert: Target hit icon elements or dropdowns not found. Cannot update banner/highlights.');
+        return;
+    }
 
-// NEW: Global variable to track if the target hit icon is dismissed for the current session
-let targetHitIconDismissed = false;
-let showLastLivePriceOnClosedMarket = false; // New global variable for the toggle state
-
-// Tracks if share detail modal was opened from alerts
-let wasShareDetailOpenedFromTargetAlerts = false;
-
-// NEW: Global variable to store cash categories data
-let userCashCategories = [];
-let selectedCashAssetDocId = null; // NEW: To track which cash asset is selected for editing/details
-let originalCashAssetData = null; // NEW: To store original cash asset data for dirty state check
-// NEW: Global variable to store visibility state of cash assets (temporary, not persisted)
-// This will now be managed directly by the 'isHidden' property on the cash asset object itself.
-let cashAssetVisibility = {}; // This object will still track the *current session's* visibility.
-// NEW: Reference for the hide/show checkbox in the cash asset form modal
-const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
-
-
-// --- UI Element References ---
-const appHeader = document.getElementById('appHeader'); // Reference to the main header
-const mainContainer = document.querySelector('main.container'); // Reference to the main content container
-const mainTitle = document.getElementById('mainTitle');
-const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
-const newShareBtn = document.getElementById('newShareBtn');
-const standardCalcBtn = document.getElementById('standardCalcBtn');
-const dividendCalcBtn = document.getElementById('dividendCalcBtn');
-const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
-const shareFormSection = document.getElementById('shareFormSection');
-const formCloseButton = document.querySelector('.form-close-button');
-const formTitle = document.getElementById('formTitle');
-const saveShareBtn = document.getElementById('saveShareBtn');
-const deleteShareBtn = document.getElementById('deleteShareBtn');
-const shareNameInput = document.getElementById('shareName');
-const currentPriceInput = document.getElementById('currentPrice');
-const targetPriceInput = document.getElementById('targetPrice');
-const dividendAmountInput = document.getElementById('dividendAmount');
-const frankingCreditsInput = document.getElementById('frankingCredits');
-const shareRatingSelect = document.getElementById('shareRating');
-const commentsFormContainer = document.getElementById('dynamicCommentsArea');
-const modalStarRating = document.getElementById('modalStarRating'); 
-const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
-const shareTableBody = document.querySelector('#shareTable tbody');
-const mobileShareCardsContainer = document.getElementById('mobileShareCards');
-const tableContainer = document.querySelector('.table-container');
-const loadingIndicator = document.getElementById('loadingIndicator');
-const shareDetailModal = document.getElementById('shareDetailModal');
-const modalShareName = document.getElementById('modalShareName');
-const modalEnteredPrice = document.getElementById('modalEnteredPrice');
-const modalTargetPrice = document.getElementById('modalTargetPrice');
-const modalDividendAmount = document.getElementById('modalDividendAmount');
+    if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
+        targetHitIconCount.textContent = sharesAtTargetPrice.length;
+        targetHitIconBtn.classList.remove('app-hidden');
+        targetHitIconCount.style.display = 'block';
+        logDebug('Target Alert: Showing icon: ' + sharesAtTargetPrice.length + ' shares hit target (per entry).');
+    } else {
+        targetHitIconBtn.classList.add('app-hidden');
+        targetHitIconCount.style.display = 'none';
+        logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
+    }
+    // Apply/remove border to watchlist and sort dropdowns if the *current view* has target hits
+    let currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
+        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) return true;
+        if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
+            return share.watchlistId === currentSelectedWatchlistIds[0];
+        }
+        return false;
+    });
+    if (currentViewHasTargetHits && !targetHitIconDismissed) {
+        watchlistSelect.classList.add('target-hit-border');
+        sortSelect.classList.add('target-hit-border');
+        logDebug('Target Alert: Watchlist and Sort dropdowns highlighted (current view has target hits).');
+    } else {
+        watchlistSelect.classList.remove('target-hit-border');
+        sortSelect.classList.remove('target-hit-border');
+        logDebug('Target Alert: Watchlist and Sort dropdowns unhighlighted.');
+    }
 const modalFrankingCredits = document.getElementById('modalFrankingCredits');
 const modalEntryDate = document.getElementById('modalEntryDate');
 const modalCommentsContainer = document.getElementById('modalCommentsContainer');
@@ -3492,6 +3491,7 @@ function stopLivePriceUpdates() {
 
 function updateTargetHitBanner() {
     // Collect ALL shares that have hit their target price, regardless of current watchlist view
+    // ...existing code...
     // ...existing code...
     // Update the alerts modal content with shares at target price
     if (typeof targetHitSharesList !== 'undefined' && targetHitSharesList) {
