@@ -3486,39 +3486,32 @@ function updateTargetHitBanner() {
         return;
     }
 
-    // ...existing code...
-
-    // Update the fixed bottom-left icon
-    // Per-entry logic: count all shares (entries) that have hit their target
-    const sharesAtTargetPrice = allSharesData.filter(share => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        if (!livePriceData || share.targetPrice == null || isNaN(Number(share.targetPrice))) return false;
-        const live = Number(livePriceData.live);
-        const target = Number(share.targetPrice);
-        if (share.targetDirection === 'above') {
-            return live >= target;
-        } else {
-            return live <= target;
+    // Determine if any shares at target price are currently being displayed in the selected stock watchlist(s)
+    const currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
+        // If "All Shares" is selected, any target hit applies
+        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
+            return true;
         }
-    });
-    if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
-        targetHitIconCount.textContent = sharesAtTargetPrice.length;
-        targetHitIconBtn.classList.remove('app-hidden');
-        targetHitIconCount.style.display = 'block';
-        logDebug('Target Alert: Showing icon: ' + sharesAtTargetPrice.length + ' shares hit target (per entry).');
-    } else {
-        targetHitIconBtn.classList.add('app-hidden');
-        targetHitIconCount.style.display = 'none';
-        logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
-    }
-    // Apply/remove border to watchlist and sort dropdowns if the *current view* has target hits
-    let currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
-        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) return true;
+        // If a specific watchlist is selected, check if the target-hit share is in it
         if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
             return share.watchlistId === currentSelectedWatchlistIds[0];
         }
-        return false;
+        return false; // No target hits in cash view or multiple watchlists selected (defaulting to no highlight for now)
     });
+
+    // Update the fixed bottom-left icon
+    if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
+        targetHitIconCount.textContent = sharesAtTargetPrice.length;
+        targetHitIconBtn.classList.remove('app-hidden'); // Show the icon via class
+        targetHitIconCount.style.display = 'block'; // Show the count badge
+        logDebug('Target Alert: Showing icon: ' + sharesAtTargetPrice.length + ' shares hit target (global check).');
+    } else {
+        targetHitIconBtn.classList.add('app-hidden'); // Hide the icon via class
+        targetHitIconCount.style.display = 'none'; // Hide the count badge
+        logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
+    }
+
+    // Apply/remove border to watchlist and sort dropdowns if the *current view* has target hits
     if (currentViewHasTargetHits && !targetHitIconDismissed) {
         watchlistSelect.classList.add('target-hit-border');
         sortSelect.classList.add('target-hit-border');
