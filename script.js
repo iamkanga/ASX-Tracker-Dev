@@ -142,6 +142,9 @@ let currentMobileViewMode = 'default';
 let targetHitIconDismissed = false;
 let showLastLivePriceOnClosedMarket = false; // New global variable for the toggle state
 
+// Track if share detail modal was opened from Target Price Alerts modal
+let openedFromTargetAlertsModal = false;
+
 // NEW: Global variable to store cash categories data
 let userCashCategories = [];
 let selectedCashAssetDocId = null; // NEW: To track which cash asset is selected for editing/details
