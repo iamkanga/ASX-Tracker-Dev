@@ -1,44 +1,3 @@
-    // --- PATCH: INTEGRATE isShareAtTarget into actual watchlist rendering ---
-    // If you have a function like renderWatchlist() or renderShareRow(), ensure you use:
-    // Example:
-    // function renderShareRow(share) {
-    //   const highlight = isShareAtTarget(share);
-    //   const row = document.createElement('div');
-    //   row.id = `share-row-${share.id}`;
-    //   row.className = highlight ? 'target-hit' : '';
-    //   // ...render other share details...
-    //   return row;
-    // }
-    //
-    // In renderWatchlist():
-    // allSharesData.forEach(share => {
-    //   const row = renderShareRow(share);
-    //   watchlistContainer.appendChild(row);
-    // });
-    //
-    // This ensures only the correct share entry gets the green border.
-    // --- PATCH: Ensure watchlist highlights only the correct share entry (by unique ID) ---
-    // This function should be called when rendering each share row/card in the watchlist
-    function isShareAtTarget(share) {
-        if (!share || !share.targetPrice || !livePrices || typeof livePrices[share.code] !== 'number') return false;
-        const price = livePrices[share.code];
-        // Above target
-        if (share.targetAbove && price >= share.targetPrice) return true;
-        // Below target
-        if (share.targetBelow && price <= share.targetPrice) return true;
-        // If neither checkbox is checked, do not highlight
-        return false;
-    }
-
-    // Example usage in your watchlist rendering (pseudo-code):
-    // allSharesData.forEach(share => {
-    //   const highlight = isShareAtTarget(share);
-    //   // When rendering, use share.id for DOM element and apply green border only if highlight is true
-    //   // e.g., <div id={`share-row-${share.id}`} className={highlight ? 'target-hit' : ''}>...</div>
-    // });
-
-    // If you have a renderWatchlist function, update it to use isShareAtTarget(share) for each entry
-    // ...existing code...
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
@@ -695,12 +654,15 @@ function addShareToTable(share) {
         showShareDetails();
     });
 
-    // Use isShareAtTarget for correct highlighting
-    const isTargetHit = isShareAtTarget(share);
+    // Check if target price is hit for this share
+    const livePriceData = livePrices[share.shareName.toUpperCase()];
+    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
+
+    // Apply target-hit-alert class if target is hit AND not dismissed
     if (isTargetHit && !targetHitIconDismissed) {
         row.classList.add('target-hit-alert');
     } else {
-        row.classList.remove('target-hit-alert');
+        row.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
     }
 
     // Use the new helper function to get all display data
@@ -801,14 +763,16 @@ function addShareToMobileCards(share) {
     card.classList.add('mobile-card');
     card.dataset.docId = share.id;
 
-    // Use isShareAtTarget for correct highlighting
+    // Check if target price is hit for this share
     const livePriceData = livePrices[share.shareName.toUpperCase()];
-    const isTargetHit = isShareAtTarget(share);
+    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
+
+    // Declare these variables once at the top of the function
     const isMarketOpen = isAsxMarketOpen();
     let displayLivePrice = 'N/A';
     let displayPriceChange = '';
     let priceClass = '';
-    let cardPriceChangeClass = '';
+    let cardPriceChangeClass = ''; // NEW: For subtle background tints and vertical lines
 
     // Logic to determine display values and card-specific classes
     if (livePriceData) {
@@ -854,7 +818,7 @@ function addShareToMobileCards(share) {
     if (isTargetHit && !targetHitIconDismissed) {
         card.classList.add('target-hit-alert');
     } else {
-        card.classList.remove('target-hit-alert');
+        card.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
     }
 
     // Logic to determine display values
@@ -2534,8 +2498,6 @@ function renderWatchlist() {
 
         const isMobileView = window.innerWidth <= 768;
         let sharesToRender = [];
-
-        // Shares should already be sorted before calling renderWatchlist
 
         if (selectedWatchlistId === ALL_SHARES_ID) {
             sharesToRender = [...allSharesData];
