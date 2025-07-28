@@ -3556,7 +3556,7 @@ table td.live-price-cell.negative-change {
 .menu-button-item.checkbox-switch-container .toggle-title-row { /* Targeted the correct container class */
     display: flex; /* Use flex for icon and text */
     align-items: center;
-    gap: 8px; /* Space between icon and text */
+    gap: 10px; /* Space between icon and text */
     font-size: 1em; /* This is the correct size to match other menu-button-item texts like "Search & Add Stock" */
     color: var(--text-color);
     white-space: nowrap; /* Forces text to stay on one line */

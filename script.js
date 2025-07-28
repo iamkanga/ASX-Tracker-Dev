@@ -1205,7 +1205,8 @@ function updateMainButtonsState(enable) {
     if (dividendCalcBtn) dividendCalcBtn.disabled = !enable;
     if (exportWatchlistBtn) exportWatchlistBtn.disabled = !enable;
     if (addWatchlistBtn) addWatchlistBtn.disabled = !enable;
-    if (editWatchlistBtn) editWatchlistBtn.disabled = !enable || userWatchlists.length === 0; 
+    const actualWatchlists = userWatchlists.filter(wl => wl.id !== ALL_SHARES_ID && wl.id !== CASH_BANK_WATCHLIST_ID);
+    if (editWatchlistBtn) editWatchlistBtn.disabled = !enable || actualWatchlists.length === 0;
     // addShareHeaderBtn is now contextual, its disabled state is managed by updateAddHeaderButton
     if (logoutBtn) setIconDisabled(logoutBtn, !enable); 
     if (themeToggleBtn) themeToggleBtn.disabled = !enable;
