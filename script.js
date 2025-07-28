@@ -471,6 +471,15 @@ function closeModals() {
     // NEW: Close the alert panel if open (alertPanel is not in current HTML, but kept for consistency)
     if (alertPanel) hideModal(alertPanel);
     logDebug('Modal: All modals closed.');
+
+    // Restore Target Price Alerts modal if share detail was opened from it
+    if (wasShareDetailOpenedFromTargetAlerts) {
+        logDebug('Restoring Target Price Alerts modal after closing share detail modal.');
+        if (targetHitDetailsModal) {
+            showModal(targetHitDetailsModal);
+        }
+        wasShareDetailOpenedFromTargetAlerts = false;
+    }
 }
 
 // Custom Dialog (Alert) Function
