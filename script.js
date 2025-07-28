@@ -2535,8 +2535,7 @@ function renderWatchlist() {
         const isMobileView = window.innerWidth <= 768;
         let sharesToRender = [];
 
-        // Always sort before rendering
-        sortShares();
+        // Shares should already be sorted before calling renderWatchlist
 
         if (selectedWatchlistId === ALL_SHARES_ID) {
             sharesToRender = [...allSharesData];
