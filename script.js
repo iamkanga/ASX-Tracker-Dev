@@ -50,6 +50,13 @@ document.addEventListener('DOMContentLoaded', function () {
         // Initial state: ensure only one is checked
         updateCheckboxes(showCheckbox.checked ? showCheckbox : hideCheckbox);
     }
+
+    // Ensure Edit Current Watchlist button updates when selection changes
+    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+        watchlistSelect.addEventListener('change', function () {
+            updateMainButtonsState(true);
+        });
+    }
 });
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
