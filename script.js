@@ -142,9 +142,7 @@ let currentMobileViewMode = 'default';
 let targetHitIconDismissed = false;
 let showLastLivePriceOnClosedMarket = false; // New global variable for the toggle state
 
-// Track if share detail modal was opened from Target Price Alerts modal
-// [Copilot: No-op change for commit visibility]
-// [Copilot: File touched at 2025-07-28 for update visibility]
+// Tracks if share detail modal was opened from alerts
 let openedFromTargetAlertsModal = false;
 
 // NEW: Global variable to store cash categories data
