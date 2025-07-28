@@ -1207,9 +1207,12 @@ function updateMainButtonsState(enable) {
     if (addWatchlistBtn) addWatchlistBtn.disabled = !enable;
     if (editWatchlistBtn) {
         const selectedValue = watchlistSelect ? watchlistSelect.value : '';
+        // Enable button if there's a selected watchlist and it's not ALL_SHARES or CASH_BANK
         const isAnEditableWatchlistSelected = selectedValue && selectedValue !== ALL_SHARES_ID && selectedValue !== CASH_BANK_WATCHLIST_ID;
-        // Only disable if not logged in or a non-editable watchlist is selected
+        // Only disable if not logged in or if no editable watchlist is selected
         editWatchlistBtn.disabled = !enable || !isAnEditableWatchlistSelected;
+        logDebug('Edit Watchlist Button State: ' + (editWatchlistBtn.disabled ? 'disabled' : 'enabled') + 
+                ' (enable=' + enable + ', selectedValue=' + selectedValue + ')');
     }
     // addShareHeaderBtn is now contextual, its disabled state is managed by updateAddHeaderButton
     if (logoutBtn) setIconDisabled(logoutBtn, !enable); 
