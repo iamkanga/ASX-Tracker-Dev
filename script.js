@@ -245,6 +245,13 @@ const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
 const investmentValueSelect = document.getElementById('investmentValueSelect');
 const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
 const sortSelect = document.getElementById('sortSelect');
+// Ensure sortSelect triggers updateTargetHitBanner and renderWatchlist on change
+if (typeof sortSelect !== 'undefined' && sortSelect) {
+    sortSelect.addEventListener('change', function () {
+        renderWatchlist();
+        updateTargetHitBanner();
+    });
+}
 const customDialogModal = document.getElementById('customDialogModal');
 const customDialogMessage = document.getElementById('customDialogMessage');
 const calculatorModal = document.getElementById('calculatorModal');
