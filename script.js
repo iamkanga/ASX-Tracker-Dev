@@ -91,6 +91,11 @@ document.addEventListener('DOMContentLoaded', function () {
             updateMainButtonsState(true);
         });
     }
+
+    // Ensure target price notification bubble is updated on load
+    if (typeof updateTargetHitBanner === 'function') {
+        updateTargetHitBanner();
+    }
 });
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
