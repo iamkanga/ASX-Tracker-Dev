@@ -6067,7 +6067,7 @@ if (sortSelect) {
     // Example: When editing or deleting, always use share.id
     // (Update showEditFormForSelectedShare, deleteShareData, etc.)
 // --- PATCH: Ensure green border is applied to shares at target price in watchlist ---
-// ...existing code...
+// ...existing code before any recent watchlist rendering or sort changes...
 
     // --- STEP 3: Update UI event listeners to use unique IDs ---
     // For context menus, modals, and buttons, pass share.id instead of code/name
