@@ -2040,9 +2040,14 @@ body.theme-subtle-10 { /* Subtle Stone */
 
 /* For Desktop Table Cells with Numeric User Data */
 .numeric-data-cell {
-    text-align: center;
+    text-align: left; /* Align user-entered data to the left */
     font-weight: 600; /* Bolder */
     font-size: 1.05em; /* Slightly larger */
+}
+
+/* Center-align only the star rating column */
+.star-rating-cell {
+    text-align: center;
 }
 
 /* For emphasized Share Code in table */
