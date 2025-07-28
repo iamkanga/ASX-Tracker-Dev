@@ -1,3 +1,25 @@
+    // --- PATCH: Ensure watchlist highlights only the correct share entry (by unique ID) ---
+    // This function should be called when rendering each share row/card in the watchlist
+    function isShareAtTarget(share) {
+        if (!share || !share.targetPrice || !livePrices || typeof livePrices[share.code] !== 'number') return false;
+        const price = livePrices[share.code];
+        // Above target
+        if (share.targetAbove && price >= share.targetPrice) return true;
+        // Below target
+        if (share.targetBelow && price <= share.targetPrice) return true;
+        // If neither checkbox is checked, do not highlight
+        return false;
+    }
+
+    // Example usage in your watchlist rendering (pseudo-code):
+    // allSharesData.forEach(share => {
+    //   const highlight = isShareAtTarget(share);
+    //   // When rendering, use share.id for DOM element and apply green border only if highlight is true
+    //   // e.g., <div id={`share-row-${share.id}`} className={highlight ? 'target-hit' : ''}>...</div>
+    // });
+
+    // If you have a renderWatchlist function, update it to use isShareAtTarget(share) for each entry
+    // ...existing code...
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
