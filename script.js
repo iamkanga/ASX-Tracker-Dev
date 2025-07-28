@@ -1,3 +1,22 @@
+// DEBUG: Log input and output for every call
+function isShareAtTarget(share) {
+    const price = livePrices && livePrices[share.code];
+    const atTarget = share.targetPrice && price !== undefined && (
+        (share.targetAbove && price >= share.targetPrice) ||
+        (share.targetBelow && price <= share.targetPrice)
+    );
+    console.log('isShareAtTarget:', {
+        code: share.code,
+        name: share.name,
+        id: share.id,
+        targetPrice: share.targetPrice,
+        targetAbove: share.targetAbove,
+        targetBelow: share.targetBelow,
+        livePrice: price,
+        result: !!atTarget
+    });
+    return !!atTarget;
+}
     // --- PATCH: INTEGRATE isShareAtTarget into actual watchlist rendering ---
     // If you have a function like renderWatchlist() or renderShareRow(), ensure you use:
     // Example:
