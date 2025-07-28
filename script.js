@@ -589,6 +589,10 @@ function addShareToTable(share) {
     row.addEventListener('click', () => {
         logDebug('Table Row Click: Share ID: ' + share.id);
         selectShare(share.id);
+        // If this row is inside the Target Price Alerts modal, set the restoration flag
+        if (row.closest('#targetHitSharesList')) {
+            openedFromTargetAlertsModal = true;
+        }
         showShareDetails();
     });
 
