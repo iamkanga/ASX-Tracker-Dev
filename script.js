@@ -3523,18 +3523,7 @@ function updateTargetHitBanner() {
     // ...existing code...
 
     // Update the fixed bottom-left icon
-    // Per-entry logic: count all shares (entries) that have hit their target
-    const sharesAtTargetPrice = allSharesData.filter(share => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        if (!livePriceData || share.targetPrice == null || isNaN(Number(share.targetPrice))) return false;
-        const live = Number(livePriceData.live);
-        const target = Number(share.targetPrice);
-        if (share.targetDirection === 'above') {
-            return live >= target;
-        } else {
-            return live <= target;
-        }
-    });
+    // ...existing code...
     if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
         targetHitIconCount.textContent = sharesAtTargetPrice.length;
         targetHitIconBtn.classList.remove('app-hidden');
