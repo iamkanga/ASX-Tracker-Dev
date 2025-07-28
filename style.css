@@ -3652,6 +3652,10 @@ table td.live-price-cell.negative-change {
     margin-bottom: 0; /* Override any default margins */
     min-width: 80px; /* Give them a consistent width */
     justify-content: flex-start; /* Align checkbox and text to the left within the label */
+    display: flex;
+    align-items: center;
+    vertical-align: middle;
+    line-height: 1.2;
 }
 
 
@@ -4671,6 +4675,20 @@ main.container {
     /* Ensure individual cards fill their grid column width on mobile */
     .mobile-share-cards.compact-view .mobile-card {
         width: auto !important; /* Let grid handle width */
+    }
+    /* Ensure target price checkbox labels are perfectly centered with checkbox on mobile */
+    .target-checkbox-row .checkbox-label {
+        align-items: center !important;
+        display: flex !important;
+        line-height: 1.2 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        height: 24px !important;
+    }
+    .target-checkbox-row .modern-checkbox {
+        vertical-align: middle !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
     }
 }
 
