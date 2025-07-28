@@ -6047,6 +6047,26 @@ if (sortSelect) {
 
     // Example: When editing or deleting, always use share.id
     // (Update showEditFormForSelectedShare, deleteShareData, etc.)
+// --- PATCH: Ensure green border is applied to shares at target price in watchlist ---
+function renderWatchlist() {
+    // ...existing code to get shares to display...
+    const watchlistContainer = document.getElementById('watchlistContainer');
+    if (!watchlistContainer) return;
+    watchlistContainer.innerHTML = '';
+    if (!Array.isArray(allSharesData)) return;
+    allSharesData.forEach(share => {
+        const shareRow = document.createElement('div');
+        shareRow.className = 'watchlist-row';
+        // Check if share is at target price
+        if (typeof isShareAtTarget === 'function' && isShareAtTarget(share)) {
+            shareRow.classList.add('target-hit-border');
+        }
+        // ...populate shareRow with share info...
+        watchlistContainer.appendChild(shareRow);
+    });
+}
+// Ensure CSS for .target-hit-border exists in style.css:
+// .target-hit-border { border: 2px solid #2ecc40 !important; border-radius: 6px; }
 
     // --- STEP 3: Update UI event listeners to use unique IDs ---
     // For context menus, modals, and buttons, pass share.id instead of code/name
