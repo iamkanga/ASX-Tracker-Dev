@@ -162,6 +162,25 @@ let currentCustomThemeIndex = -1; // To track the current theme in the cycle
 let currentActiveTheme = 'system-default'; // Tracks the currently applied theme string
 let savedSortOrder = null; // GLOBAL: Stores the sort order loaded from user settings
 let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
+// --- BUG FIX: Add missing getSharesAtTargetPrice function ---
+function getSharesAtTargetPrice(targetPrice, direction, buyOrSell) {
+    // Returns shares at the target price, matching direction and buy/sell
+    if (!Array.isArray(window.allSharesData)) return [];
+    return window.allSharesData.filter(share => {
+        if (typeof share.targetPrice !== 'number' || typeof share.livePrice !== 'number') return false;
+        // Direction: 'above' or 'below', buyOrSell: 'buy' or 'sell'
+        if (direction === 'above' && buyOrSell === 'buy') {
+            return share.livePrice >= targetPrice && share.targetBuy;
+        } else if (direction === 'below' && buyOrSell === 'buy') {
+            return share.livePrice <= targetPrice && share.targetBuy;
+        } else if (direction === 'above' && buyOrSell === 'sell') {
+            return share.livePrice >= targetPrice && share.targetSell;
+        } else if (direction === 'below' && buyOrSell === 'sell') {
+            return share.livePrice <= targetPrice && share.targetSell;
+        }
+        return false;
+    });
+}
 
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
