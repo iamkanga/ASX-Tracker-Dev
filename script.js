@@ -20,8 +20,11 @@
     // --- PATCH: Ensure watchlist highlights only the correct share entry (by unique ID) ---
     // This function should be called when rendering each share row/card in the watchlist
     function isShareAtTarget(share) {
-        if (!share || !share.targetPrice || !livePrices || typeof livePrices[share.code] !== 'number') return false;
-        const price = livePrices[share.code];
+        if (!share || !share.targetPrice || !livePrices) return false;
+        // Use share.shareName.toUpperCase() for livePrices lookup to match rendering logic
+        const codeKey = share.shareName ? share.shareName.toUpperCase() : share.code;
+        if (typeof livePrices[codeKey] !== 'object' || typeof livePrices[codeKey].live !== 'number') return false;
+        const price = livePrices[codeKey].live;
         // Above target
         if (share.targetAbove && price >= share.targetPrice) return true;
         // Below target
