@@ -295,7 +295,6 @@ const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn
 const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
 const targetBuyCheckbox = document.getElementById('targetBuyCheckbox');
 const targetSellCheckbox = document.getElementById('targetSellCheckbox');
-const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
 const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
     // --- Mutual Exclusivity for Buy/Sell Checkboxes ---
     if (targetBuyCheckbox && targetSellCheckbox) {
