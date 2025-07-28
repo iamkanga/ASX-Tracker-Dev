@@ -6062,25 +6062,33 @@ function showTargetHitDetailsModal() {
 
             const targetHitItem = document.createElement('div');
             targetHitItem.classList.add('target-hit-item');
-            targetHitItem.dataset.shareId = share.id; // Add data attribute for potential future interaction
+            targetHitItem.dataset.shareId = share.id;
+
+            // Only show the icon/border if this share has hit its target
+            let targetHitIconHtml = '';
+            let targetHitBorderClass = '';
+            if (currentLivePrice >= targetPrice && targetPrice > 0) {
+                targetHitIconHtml = `<span class="target-hit-icon" title="Target Hit">&#x2714;</span>`; // checkmark icon
+                targetHitBorderClass = 'target-hit-border';
+            }
 
             targetHitItem.innerHTML = `
-                <div class="target-hit-item-header">
+                <div class="target-hit-item-header ${targetHitBorderClass}">
                     <span class="share-name-code ${priceClass}">${share.shareName}</span>
                     <span class="live-price-display ${priceClass}">$${currentLivePrice.toFixed(2)}</span>
+                    ${targetHitIconHtml}
                 </div>
                 <p>Target: <strong>$${targetPrice !== null && !isNaN(targetPrice) ? targetPrice.toFixed(2) : 'N/A'}</strong></p>
                 <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
             `;
             targetHitSharesList.appendChild(targetHitItem);
 
-            // NEW: Add click listener to make the item clickable
             targetHitItem.addEventListener('click', () => {
                 const clickedShareId = targetHitItem.dataset.shareId;
                 if (clickedShareId) {
-                    hideModal(targetHitDetailsModal); // Close the target hit alerts modal
-                    selectShare(clickedShareId); // Select the share
-                    showShareDetails(); // Open the share details modal for the clicked share
+                    hideModal(targetHitDetailsModal);
+                    selectShare(clickedShareId);
+                    showShareDetails();
                 }
             });
         });
