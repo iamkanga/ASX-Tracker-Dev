@@ -3487,8 +3487,7 @@ function stopLivePriceUpdates() {
 }
 
 // NEW: Function to update the target hit notification icon
-// Declare targetHitSharesList at the top-level scope to ensure it is initialized before use
-let targetHitSharesList = [];
+// ...existing code...
 
 function updateTargetHitBanner() {
     // Collect ALL shares that have hit their target price, regardless of current watchlist view
@@ -3510,7 +3509,7 @@ function updateTargetHitBanner() {
 
     // Update the fixed bottom-left icon
     // Per-entry logic: count all shares (entries) that have hit their target
-    const sharesAtTargetPrice = allSharesData.filter(share => {
+    sharesAtTargetPrice = allSharesData.filter(share => {
         const livePriceData = livePrices[share.shareName.toUpperCase()];
         if (!livePriceData || share.targetPrice == null || isNaN(Number(share.targetPrice))) return false;
         const live = Number(livePriceData.live);
