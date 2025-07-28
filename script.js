@@ -695,15 +695,12 @@ function addShareToTable(share) {
         showShareDetails();
     });
 
-    // Check if target price is hit for this share
-    const livePriceData = livePrices[share.shareName.toUpperCase()];
-    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
-
-    // Apply target-hit-alert class if target is hit AND not dismissed
+    // Use isShareAtTarget for correct highlighting
+    const isTargetHit = isShareAtTarget(share);
     if (isTargetHit && !targetHitIconDismissed) {
         row.classList.add('target-hit-alert');
     } else {
-        row.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
+        row.classList.remove('target-hit-alert');
     }
 
     // Use the new helper function to get all display data
@@ -804,16 +801,14 @@ function addShareToMobileCards(share) {
     card.classList.add('mobile-card');
     card.dataset.docId = share.id;
 
-    // Check if target price is hit for this share
+    // Use isShareAtTarget for correct highlighting
     const livePriceData = livePrices[share.shareName.toUpperCase()];
-    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
-
-    // Declare these variables once at the top of the function
+    const isTargetHit = isShareAtTarget(share);
     const isMarketOpen = isAsxMarketOpen();
     let displayLivePrice = 'N/A';
     let displayPriceChange = '';
     let priceClass = '';
-    let cardPriceChangeClass = ''; // NEW: For subtle background tints and vertical lines
+    let cardPriceChangeClass = '';
 
     // Logic to determine display values and card-specific classes
     if (livePriceData) {
@@ -859,7 +854,7 @@ function addShareToMobileCards(share) {
     if (isTargetHit && !targetHitIconDismissed) {
         card.classList.add('target-hit-alert');
     } else {
-        card.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
+        card.classList.remove('target-hit-alert');
     }
 
     // Logic to determine display values
