@@ -2521,49 +2521,49 @@ function renderWatchlist() {
         }
 
         // Re-add shares to the UI in their sorted order
-        if (sharesToRender.length > 0) {
-            sharesToRender.forEach(share => {
-                if (tableContainer && tableContainer.style.display !== 'none') {
-                    addShareToTable(share); // Using add functions to ensure new row/card is created in order
-                }
-                if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
-                    addShareToMobileCards(share); // Using add functions to ensure new row/card is created in order
-                }
-            });
-        } else {
-            // Handle empty message if no shares to render in current view
-            const emptyWatchlistMessage = document.createElement('p');
-            emptyWatchlistMessage.textContent = 'No shares found for the selected watchlists. Add a new share to get started!';
-            emptyWatchlistMessage.style.textAlign = 'center';
-            emptyWatchlistMessage.style.padding = '20px';
-            emptyWatchlistMessage.style.color = 'var(--ghosted-text)';
-            
-            if (tableContainer && tableContainer.style.display !== 'none') {
-                const td = document.createElement('td');
-                td.colSpan = 6;
-                td.appendChild(emptyWatchlistMessage);
-                const tr = document.createElement('tr');
-                tr.classList.add('empty-message-row'); // Add class to easily target for removal later
-                tr.appendChild(td);
-                shareTableBody.appendChild(tr);
-            }
-            if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
-                mobileShareCardsContainer.appendChild(emptyWatchlistMessage.cloneNode(true));
-            }
-        }
-        
-        // Re-render ASX Code Buttons separately
-        renderAsxCodeButtons();
+    // Filter sharesAtTargetPrice to only those that have actually hit their target
+    const filteredShares = sharesAtTargetPrice.filter(share => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) return false;
+        const currentLivePrice = livePriceData.live;
+        const targetPrice = share.targetPrice;
+        return currentLivePrice >= targetPrice && targetPrice > 0;
+    });
 
+    if (filteredShares.length === 0) {
+        targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
     } else {
-        // Cash & Assets section Logic
-        cashAssetsSection.classList.remove('app-hidden');
-        mainTitle.textContent = 'Cash & Assets';
-        renderCashCategories();
-        sortSelect.classList.remove('app-hidden');
-        refreshLivePricesBtn.classList.add('app-hidden');
-        toggleCompactViewBtn.classList.add('app-hidden');
-        asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
+        filteredShares.forEach(share => {
+            const livePriceData = livePrices[share.shareName.toUpperCase()];
+            const currentLivePrice = livePriceData.live;
+            const targetPrice = share.targetPrice;
+            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative';
+
+            const targetHitItem = document.createElement('div');
+            targetHitItem.classList.add('target-hit-item');
+            targetHitItem.dataset.shareId = share.id;
+
+            // Always show the icon/border for filtered shares
+            const targetHitIconHtml = `<span class="target-hit-icon" title="Target Hit">&#x2714;</span>`;
+            const targetHitBorderClass = 'target-hit-border';
+
+            targetHitItem.innerHTML = `
+                <div class="target-hit-item-header ${targetHitBorderClass}">
+                    <span class="share-name-code ${priceClass}">${share.shareName}</span>
+                    <span class="live-price-display ${priceClass}">$${currentLivePrice.toFixed(2)}</span>
+                    ${targetHitIconHtml}
+                </div>
+                <p>Target: <strong>$${targetPrice !== null && !isNaN(targetPrice) ? targetPrice.toFixed(2) : 'N/A'}</strong></p>
+                <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
+            `;
+            targetHitSharesList.appendChild(targetHitItem);
+
+            targetHitItem.addEventListener('click', () => {
+                const clickedShareId = targetHitItem.dataset.shareId;
+                if (clickedShareId) {…}
+            });
+        });
+    }
         targetHitIconBtn.classList.add('app-hidden'); // Ensure hidden in cash view
         exportWatchlistBtn.classList.add('app-hidden');
         stopLivePriceUpdates();
