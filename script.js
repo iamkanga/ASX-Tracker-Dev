@@ -1205,8 +1205,13 @@ function updateMainButtonsState(enable) {
     if (dividendCalcBtn) dividendCalcBtn.disabled = !enable;
     if (exportWatchlistBtn) exportWatchlistBtn.disabled = !enable;
     if (addWatchlistBtn) addWatchlistBtn.disabled = !enable;
-    const actualWatchlists = userWatchlists.filter(wl => wl.id !== ALL_SHARES_ID && wl.id !== CASH_BANK_WATCHLIST_ID);
-    if (editWatchlistBtn) editWatchlistBtn.disabled = !enable || actualWatchlists.length === 0;
+    if (editWatchlistBtn) {
+        const actualWatchlists = userWatchlists.filter(wl => wl.id !== ALL_SHARES_ID && wl.id !== CASH_BANK_WATCHLIST_ID);
+        const selectedValue = watchlistSelect ? watchlistSelect.value : '';
+        const isAnEditableWatchlistSelected = selectedValue && selectedValue !== ALL_SHARES_ID && selectedValue !== CASH_BANK_WATCHLIST_ID;
+        // Disable if not logged in, no editable watchlists exist, or a non-editable one is selected.
+        editWatchlistBtn.disabled = !enable || actualWatchlists.length === 0 || !isAnEditableWatchlistSelected;
+    }
     // addShareHeaderBtn is now contextual, its disabled state is managed by updateAddHeaderButton
     if (logoutBtn) setIconDisabled(logoutBtn, !enable); 
     if (themeToggleBtn) themeToggleBtn.disabled = !enable;
@@ -2510,6 +2515,7 @@ function renderWatchlist() {
     }
     // Update sort dropdown options based on selected watchlist type
     renderSortSelect(); // Moved here to ensure it updates for both stock and cash views
+    updateMainButtonsState(!!currentUserId); // Ensure button states (like Edit Watchlist) are correct for the current view
     adjustMainContentPadding();
 }
 
