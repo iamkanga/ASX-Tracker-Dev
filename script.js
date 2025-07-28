@@ -6059,6 +6059,14 @@ if (showLastLivePriceToggle) {
 
     // NEW: Set initial state for the compact view button
     updateCompactViewButtonState();
+    // Ensure sort order is respected on load and target hit banner is updated
+    if (sortSelect && sortSelect.value) {
+        currentSortOrder = sortSelect.value;
+        sortShares();
+    } else {
+        renderWatchlist();
+    }
+    updateTargetHitBanner();
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
 
