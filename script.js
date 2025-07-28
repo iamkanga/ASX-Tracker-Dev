@@ -2482,10 +2482,6 @@ function renderSortSelect() {
  */
 function renderWatchlist() {
     logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + currentSelectedWatchlistIds[0]);
-    console.log('[renderWatchlist] livePrices:', livePrices);
-    console.log('[renderWatchlist] allSharesData:', allSharesData);
-    console.log('[addShareToTable] share:', share);
-    console.log('[addShareToMobileCards] share:', share);
 
     // --- Compact View Display Logic ---
     const isCompactView = currentMobileViewMode === 'compact';
