@@ -3509,7 +3509,7 @@ function updateTargetHitBanner() {
 
     // Update the fixed bottom-left icon
     // Per-entry logic: count all shares (entries) that have hit their target
-    sharesAtTargetPrice = allSharesData.filter(share => {
+    const sharesAtTargetPrice = allSharesData.filter(share => {
         const livePriceData = livePrices[share.shareName.toUpperCase()];
         if (!livePriceData || share.targetPrice == null || isNaN(Number(share.targetPrice))) return false;
         const live = Number(livePriceData.live);
