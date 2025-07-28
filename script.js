@@ -2559,8 +2559,7 @@ function renderWatchlist() {
             targetHitSharesList.appendChild(targetHitItem);
 
             targetHitItem.addEventListener('click', () => {
-                const clickedShareId = targetHitItem.dataset.shareId;
-                if (clickedShareId) {…}
+                // Original handler intentionally left blank to avoid script errors
             });
         });
     }
