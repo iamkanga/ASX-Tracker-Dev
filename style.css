@@ -2367,6 +2367,13 @@ h1#mainTitle {
     cursor: default; /* It's a container, not a single button */
 }
 
+/* Ensure icon/text spacing in Last Price ASX Closed matches other sidebar items */
+.toggle-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .menu-button-item.checkbox-switch-container:hover {
     background-color: var(--menu-button-bg); /* Disable hover effect for the container */
     transform: none;
