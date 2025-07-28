@@ -2560,7 +2560,11 @@ function renderWatchlist() {
 
             targetHitItem.addEventListener('click', () => {
                 const clickedShareId = targetHitItem.dataset.shareId;
-                if (clickedShareId) {…}
+                if (clickedShareId) {
+                    hideModal(targetHitDetailsModal);
+                    selectShare(clickedShareId);
+                    showShareDetails();
+                }
             });
         });
     }
