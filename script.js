@@ -144,6 +144,7 @@ let showLastLivePriceOnClosedMarket = false; // New global variable for the togg
 
 // Track if share detail modal was opened from Target Price Alerts modal
 // [Copilot: No-op change for commit visibility]
+// [Copilot: File touched at 2025-07-28 for update visibility]
 let openedFromTargetAlertsModal = false;
 
 // NEW: Global variable to store cash categories data
