@@ -6,17 +6,27 @@ function pushAppState(stateObj = {}, title = '', url = '') {
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
-    // Example: Close modal if open, otherwise go back in app UI
-    if (window.shareDetailModal && shareDetailModal.style.display !== 'none') {
-        if (window.hideModal) hideModal(shareDetailModal);
-        return;
+    // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
+    const modals = [
+        window.shareDetailModal,
+        window.targetHitDetailsModal,
+        window.cashAssetFormModal,
+        window.cashAssetDetailModal,
+        window.customDialogModal,
+        window.calculatorModal,
+        window.dividendCalculatorModal,
+        window.addWatchlistModal,
+        window.manageWatchlistModal,
+        window.stockSearchModal,
+        window.alertPanel
+    ];
+    for (const modal of modals) {
+        if (modal && modal.style.display !== 'none') {
+            if (window.hideModal) hideModal(modal);
+            return;
+        }
     }
-    if (window.targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
-        if (window.hideModal) hideModal(targetHitDetailsModal);
-        return;
-    }
-    // Add more modal/view checks as needed
-    // If no modals/views are open, allow default browser back (exit app)
+    // If no modals are open, allow default browser back (exit app)
 });
 // ...existing code...
 
