@@ -1,3 +1,25 @@
+// --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
+// Push a new state when opening a modal or navigating to a new in-app view
+function pushAppState(stateObj = {}, title = '', url = '') {
+    history.pushState(stateObj, title, url);
+}
+
+// Listen for the back button (popstate event)
+window.addEventListener('popstate', function(event) {
+    // Example: Close modal if open, otherwise go back in app UI
+    if (window.shareDetailModal && shareDetailModal.style.display !== 'none') {
+        if (window.hideModal) hideModal(shareDetailModal);
+        return;
+    }
+    if (window.targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
+        if (window.hideModal) hideModal(targetHitDetailsModal);
+        return;
+    }
+    // Add more modal/view checks as needed
+    // If no modals/views are open, allow default browser back (exit app)
+});
+// ...existing code...
+
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
 document.addEventListener('DOMContentLoaded', function () {
     const hideCheckbox = document.getElementById('sidebarHideCheckbox');
