@@ -168,6 +168,23 @@ let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for
 
 // NEW: Global variable to store shares that have hit their target price
 // Removed global sharesAtTargetPrice; always compute per-entry when needed
+/**
+ * Returns all share entries whose target price is currently hit (per-entry logic).
+ * Used for notification bubble and modal population.
+ */
+function getSharesAtTargetPrice() {
+    return allSharesData.filter(share => {
+        const livePriceData = livePrices[share.shareName?.toUpperCase()];
+        if (!livePriceData) return false;
+        // Per-entry logic: check direction and target
+        if (share.targetDirection === 'above') {
+            return livePriceData.live >= share.targetPrice;
+        } else if (share.targetDirection === 'below') {
+            return livePriceData.live <= share.targetPrice;
+        }
+        return false;
+    });
+}
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 let currentMobileViewMode = 'default'; 
