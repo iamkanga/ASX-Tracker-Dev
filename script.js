@@ -7,10 +7,12 @@ function pushAppState(stateObj = {}, title = '', url = '') {
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
     // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
+    // List all modals that should be closed by the back button, including Edit/Add modals
     const modals = [
         window.shareDetailModal,
         window.targetHitDetailsModal,
-        window.cashAssetFormModal,
+        window.shareFormSection, // Add/Edit Share modal
+        window.cashAssetFormModal, // Add/Edit Cash Asset modal
         window.cashAssetDetailModal,
         window.customDialogModal,
         window.calculatorModal,
