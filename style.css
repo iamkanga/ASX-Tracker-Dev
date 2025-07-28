@@ -3620,6 +3620,8 @@ table td.live-price-cell.negative-change {
 /* NEW: Styling for the notification badge text color */
 .target-hit-fixed-btn .badge {
     color: var(--button-text); /* Default to white/light for dark backgrounds */
+}   font-weight: bold;
+    color: var(--negative-color);
 }
 
 /* Ensure the main sidebar button item is still clickable as a whole */

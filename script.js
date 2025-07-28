@@ -168,23 +168,6 @@ let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for
 
 // NEW: Global variable to store shares that have hit their target price
 // Removed global sharesAtTargetPrice; always compute per-entry when needed
-/**
- * Returns all share entries whose target price is currently hit (per-entry logic).
- * Used for notification bubble and modal population.
- */
-function getSharesAtTargetPrice() {
-    return allSharesData.filter(share => {
-        const livePriceData = livePrices[share.shareName?.toUpperCase()];
-        if (!livePriceData) return false;
-        // Per-entry logic: check direction and target
-        if (share.targetDirection === 'above') {
-            return livePriceData.live >= share.targetPrice;
-        } else if (share.targetDirection === 'below') {
-            return livePriceData.live <= share.targetPrice;
-        }
-        return false;
-    });
-}
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 let currentMobileViewMode = 'default'; 
@@ -3595,24 +3578,14 @@ function hideSplashScreen() {
         if (mainContainer) {
             mainContainer.classList.remove('app-hidden');
         }
-        if (appHeader) {
+        if (appHeader) { // Assuming header is part of the main app content that needs to be revealed
             appHeader.classList.remove('app-hidden');
         }
-        // Ensure sidebar is closed
-        if (appSidebar) {
-            appSidebar.classList.remove('open');
-        }
-        // Hide sidebar overlay if present
-        if (sidebarOverlay) {
-            sidebarOverlay.classList.remove('open');
-        }
-        // Show Google sign-in button if present
-        if (splashSignInBtn) {
-            splashSignInBtn.style.display = '';
-        }
         // Temporarily remove overflow hidden from body
-        document.body.style.overflow = '';
-        logDebug('Splash Screen: Hiding and resetting UI state.');
+        document.body.style.overflow = ''; 
+
+        // REMOVED: splashScreen.addEventListener('transitionend', () => { if (splashScreen.parentNode) { splashScreen.parentNode.removeChild(splashScreen); } }, { once: true });
+        logDebug('Splash Screen: Hiding.');
     }
 }
 
