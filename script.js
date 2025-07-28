@@ -6046,24 +6046,24 @@ function showTargetHitDetailsModal() {
 
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-    // Filter shares to only those that have individually hit their target price
-    // Filter and deduplicate shares that hit their target price
-    const seen = new Set();
-    const sharesToDisplay = sharesAtTargetPrice.filter(share => {
+    // Build a list of shares that hit their target price, no duplicates, handle same code in different watchlists
+    const sharesToDisplay = [];
+    const seenIds = new Set();
+    for (const share of sharesAtTargetPrice) {
         const livePriceData = livePrices[share.shareName.toUpperCase()];
-        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) return false;
+        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) continue;
         const currentLivePrice = livePriceData.live;
         const targetPrice = share.targetPrice;
-        // Only show if target hit and targetPrice is valid
         if (currentLivePrice >= targetPrice && targetPrice > 0) {
-            // Use a composite key of share.id (unique per watchlist)
-            if (!seen.has(share.id)) {
-                seen.add(share.id);
-                return true;
+            // Use share.id (unique per watchlist)
+            if (!seenIds.has(share.id)) {
+                seenIds.add(share.id);
+                sharesToDisplay.push(share);
             }
         }
-        return false;
-    });
+    }
+
+    logDebug('Target Hit Modal: Shares to display:', sharesToDisplay.map(s => ({id: s.id, name: s.shareName, wl: s.watchlistId, price: livePrices[s.shareName.toUpperCase()]?.live, target: s.targetPrice})));
 
     if (sharesToDisplay.length === 0) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
