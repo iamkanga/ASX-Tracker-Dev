@@ -6060,6 +6060,7 @@ function renderWatchlist() {
         // Check if share is at target price
         if (typeof isShareAtTarget === 'function' && isShareAtTarget(share)) {
             shareRow.classList.add('target-hit-border');
+            console.log('GREEN BORDER:', share.code, share.name, share.id);
         }
         // ...populate shareRow with share info...
         watchlistContainer.appendChild(shareRow);

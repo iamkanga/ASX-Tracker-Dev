@@ -1,3 +1,8 @@
+.target-hit-border {
+  border: 2px solid #2ecc40 !important;
+  border-radius: 6px;
+  background: #eaffea !important;
+}
 /* Green border for shares at target price */
 .target-hit-border {
   border: 2px solid #2ecc40 !important;
