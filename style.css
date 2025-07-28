@@ -1,13 +1,3 @@
-.target-hit-border {
-  border: 2px solid #2ecc40 !important;
-  border-radius: 6px;
-  background: #eaffea !important;
-}
-/* Green border for shares at target price */
-.target-hit-border {
-  border: 2px solid #2ecc40 !important;
-  border-radius: 6px;
-}
 .modal-share-name {
     font-size: 2.7em !important; /* 1.8em * 1.5 = 2.7em */
     font-weight: 700;
