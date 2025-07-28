@@ -95,6 +95,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // Ensure target price notification bubble is updated on load
     if (typeof updateTargetHitBanner === 'function') {
         updateTargetHitBanner();
+        // Remove app-hidden if there are hits
+        if (targetHitIconBtn && targetHitIconCount) {
+            const sharesAtTargetPrice = typeof getSharesAtTargetPrice === 'function' ? getSharesAtTargetPrice() : [];
+            if (sharesAtTargetPrice.length > 0) {
+                targetHitIconBtn.classList.remove('app-hidden');
+                targetHitIconCount.style.display = 'block';
+            }
+        }
     }
 });
 //  This script interacts with Firebase Firestore for data storage.
