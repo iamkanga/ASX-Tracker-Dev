@@ -1210,7 +1210,7 @@ function updateMainButtonsState(enable) {
         const selectedValue = watchlistSelect ? watchlistSelect.value : '';
         const isAnEditableWatchlistSelected = selectedValue && selectedValue !== ALL_SHARES_ID && selectedValue !== CASH_BANK_WATCHLIST_ID;
         // Disable if not logged in, no editable watchlists exist, or a non-editable one is selected.
-        editWatchlistBtn.disabled = !enable || actualWatchlists.length === 0 || !isAnEditableWatchlistSelected;
+        editWatchlistBtn.disabled = !enable || !isAnEditableWatchlistSelected;
     }
     // addShareHeaderBtn is now contextual, its disabled state is managed by updateAddHeaderButton
     if (logoutBtn) setIconDisabled(logoutBtn, !enable); 
