@@ -32,6 +32,72 @@ window.addEventListener('popstate', function(event) {
 });
 // ...existing code...
 
+// --- UI Update for Target Price Bubble and Green Highlight ---
+function updateTargetPriceUI() {
+    // Notification bubble logic
+    if (targetHitIconBtn && targetHitIconCount) {
+        let sharesAtTargetPrice = [];
+        if (typeof getSharesAtTargetPrice === 'function') {
+            sharesAtTargetPrice = getSharesAtTargetPrice();
+        } else if (Array.isArray(window.allSharesData)) {
+            sharesAtTargetPrice = window.allSharesData.filter(share => {
+                if (typeof share.targetPrice !== 'number' || typeof share.livePrice !== 'number') return false;
+                if (share.targetDirection === 'above' && share.targetBuy) {
+                    return share.livePrice >= share.targetPrice;
+                } else if (share.targetDirection === 'below' && share.targetBuy) {
+                    return share.livePrice <= share.targetPrice;
+                } else if (share.targetDirection === 'above' && share.targetSell) {
+                    return share.livePrice >= share.targetPrice;
+                } else if (share.targetDirection === 'below' && share.targetSell) {
+                    return share.livePrice <= share.targetPrice;
+                }
+                return false;
+            });
+        }
+        if (sharesAtTargetPrice.length > 0) {
+            targetHitIconBtn.classList.remove('app-hidden');
+            targetHitIconCount.style.display = 'block';
+            targetHitIconCount.textContent = sharesAtTargetPrice.length;
+        } else {
+            targetHitIconBtn.classList.add('app-hidden');
+            targetHitIconCount.style.display = 'none';
+        }
+    }
+    // Green highlight for table rows and mobile cards
+    if (Array.isArray(window.allSharesData)) {
+        window.allSharesData.forEach(share => {
+            const row = document.querySelector(`#shareTable tbody tr[data-doc-id="${share.id}"]`);
+            const card = document.querySelector(`#mobileShareCards div[data-doc-id="${share.id}"]`);
+            let isTargetHit = false;
+            if (typeof share.targetPrice === 'number' && typeof share.livePrice === 'number') {
+                if (share.targetDirection === 'above' && share.targetBuy) {
+                    isTargetHit = share.livePrice >= share.targetPrice;
+                } else if (share.targetDirection === 'below' && share.targetBuy) {
+                    isTargetHit = share.livePrice <= share.targetPrice;
+                } else if (share.targetDirection === 'above' && share.targetSell) {
+                    isTargetHit = share.livePrice >= share.targetPrice;
+                } else if (share.targetDirection === 'below' && share.targetSell) {
+                    isTargetHit = share.livePrice <= share.targetPrice;
+                }
+            }
+            if (row) {
+                if (isTargetHit) {
+                    row.classList.add('target-hit-alert');
+                } else {
+                    row.classList.remove('target-hit-alert');
+                }
+            }
+            if (card) {
+                if (isTargetHit) {
+                    card.classList.add('target-hit-alert');
+                } else {
+                    card.classList.remove('target-hit-alert');
+                }
+            }
+        });
+    }
+}
+
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
 document.addEventListener('DOMContentLoaded', function () {
     const hideCheckbox = document.getElementById('sidebarHideCheckbox');
