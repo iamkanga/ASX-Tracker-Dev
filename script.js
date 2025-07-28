@@ -32,72 +32,6 @@ window.addEventListener('popstate', function(event) {
 });
 // ...existing code...
 
-// --- UI Update for Target Price Bubble and Green Highlight ---
-function updateTargetPriceUI() {
-    // Notification bubble logic
-    if (targetHitIconBtn && targetHitIconCount) {
-        let sharesAtTargetPrice = [];
-        if (typeof getSharesAtTargetPrice === 'function') {
-            sharesAtTargetPrice = getSharesAtTargetPrice();
-        } else if (Array.isArray(window.allSharesData)) {
-            sharesAtTargetPrice = window.allSharesData.filter(share => {
-                if (typeof share.targetPrice !== 'number' || typeof share.livePrice !== 'number') return false;
-                if (share.targetDirection === 'above' && share.targetBuy) {
-                    return share.livePrice >= share.targetPrice;
-                } else if (share.targetDirection === 'below' && share.targetBuy) {
-                    return share.livePrice <= share.targetPrice;
-                } else if (share.targetDirection === 'above' && share.targetSell) {
-                    return share.livePrice >= share.targetPrice;
-                } else if (share.targetDirection === 'below' && share.targetSell) {
-                    return share.livePrice <= share.targetPrice;
-                }
-                return false;
-            });
-        }
-        if (sharesAtTargetPrice.length > 0) {
-            targetHitIconBtn.classList.remove('app-hidden');
-            targetHitIconCount.style.display = 'block';
-            targetHitIconCount.textContent = sharesAtTargetPrice.length;
-        } else {
-            targetHitIconBtn.classList.add('app-hidden');
-            targetHitIconCount.style.display = 'none';
-        }
-    }
-    // Green highlight for table rows and mobile cards
-    if (Array.isArray(window.allSharesData)) {
-        window.allSharesData.forEach(share => {
-            const row = document.querySelector(`#shareTable tbody tr[data-doc-id="${share.id}"]`);
-            const card = document.querySelector(`#mobileShareCards div[data-doc-id="${share.id}"]`);
-            let isTargetHit = false;
-            if (typeof share.targetPrice === 'number' && typeof share.livePrice === 'number') {
-                if (share.targetDirection === 'above' && share.targetBuy) {
-                    isTargetHit = share.livePrice >= share.targetPrice;
-                } else if (share.targetDirection === 'below' && share.targetBuy) {
-                    isTargetHit = share.livePrice <= share.targetPrice;
-                } else if (share.targetDirection === 'above' && share.targetSell) {
-                    isTargetHit = share.livePrice >= share.targetPrice;
-                } else if (share.targetDirection === 'below' && share.targetSell) {
-                    isTargetHit = share.livePrice <= share.targetPrice;
-                }
-            }
-            if (row) {
-                if (isTargetHit) {
-                    row.classList.add('target-hit-alert');
-                } else {
-                    row.classList.remove('target-hit-alert');
-                }
-            }
-            if (card) {
-                if (isTargetHit) {
-                    card.classList.add('target-hit-alert');
-                } else {
-                    card.classList.remove('target-hit-alert');
-                }
-            }
-        });
-    }
-}
-
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
 document.addEventListener('DOMContentLoaded', function () {
     const hideCheckbox = document.getElementById('sidebarHideCheckbox');
@@ -156,14 +90,6 @@ document.addEventListener('DOMContentLoaded', function () {
         watchlistSelect.addEventListener('change', function () {
             updateMainButtonsState(true);
         });
-    }
-
-    // Ensure target price notification bubble and green highlight are updated on load
-    if (typeof updateTargetHitBanner === 'function') {
-        updateTargetHitBanner();
-    }
-    if (typeof updateTargetPriceUI === 'function') {
-        updateTargetPriceUI();
     }
 });
 //  This script interacts with Firebase Firestore for data storage.
@@ -236,31 +162,12 @@ let currentCustomThemeIndex = -1; // To track the current theme in the cycle
 let currentActiveTheme = 'system-default'; // Tracks the currently applied theme string
 let savedSortOrder = null; // GLOBAL: Stores the sort order loaded from user settings
 let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
-// --- BUG FIX: Add missing getSharesAtTargetPrice function ---
-function getSharesAtTargetPrice(targetPrice, direction, buyOrSell) {
-    // Returns shares at the target price, matching direction and buy/sell, per unique entry
-    if (!Array.isArray(window.allSharesData)) return [];
-    return window.allSharesData.filter(share => {
-        if (typeof share.targetPrice !== 'number' || typeof share.livePrice !== 'number') return false;
-        // Each entry is checked independently
-        if (share.targetDirection === 'above' && share.targetBuy) {
-            return share.livePrice >= share.targetPrice;
-        } else if (share.targetDirection === 'below' && share.targetBuy) {
-            return share.livePrice <= share.targetPrice;
-        } else if (share.targetDirection === 'above' && share.targetSell) {
-            return share.livePrice >= share.targetPrice;
-        } else if (share.targetDirection === 'below' && share.targetSell) {
-            return share.livePrice <= share.targetPrice;
-        }
-        return false;
-    });
-}
 
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
 
 // NEW: Global variable to store shares that have hit their target price
-// Removed global sharesAtTargetPrice; always compute per-entry when needed
+let sharesAtTargetPrice = [];
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 let currentMobileViewMode = 'default'; 
@@ -754,25 +661,15 @@ function addShareToTable(share) {
         showShareDetails();
     });
 
-    // Check if target price is hit for this share entry
+    // Check if target price is hit for this share
     const livePriceData = livePrices[share.shareName.toUpperCase()];
-    let isTargetHit = false;
-    if (livePriceData && typeof share.targetPrice === 'number' && typeof livePriceData.live === 'number') {
-        if (share.targetDirection === 'above' && share.targetBuy) {
-            isTargetHit = livePriceData.live >= share.targetPrice;
-        } else if (share.targetDirection === 'below' && share.targetBuy) {
-            isTargetHit = livePriceData.live <= share.targetPrice;
-        } else if (share.targetDirection === 'above' && share.targetSell) {
-            isTargetHit = livePriceData.live >= share.targetPrice;
-        } else if (share.targetDirection === 'below' && share.targetSell) {
-            isTargetHit = livePriceData.live <= share.targetPrice;
-        }
-    }
+    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
+
     // Apply target-hit-alert class if target is hit AND not dismissed
     if (isTargetHit && !targetHitIconDismissed) {
         row.classList.add('target-hit-alert');
     } else {
-        row.classList.remove('target-hit-alert');
+        row.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
     }
 
     // Use the new helper function to get all display data
@@ -873,20 +770,9 @@ function addShareToMobileCards(share) {
     card.classList.add('mobile-card');
     card.dataset.docId = share.id;
 
-    // Check if target price is hit for this share entry
+    // Check if target price is hit for this share
     const livePriceData = livePrices[share.shareName.toUpperCase()];
-    let isTargetHit = false;
-    if (livePriceData && typeof share.targetPrice === 'number' && typeof livePriceData.live === 'number') {
-        if (share.targetDirection === 'above' && share.targetBuy) {
-            isTargetHit = livePriceData.live >= share.targetPrice;
-        } else if (share.targetDirection === 'below' && share.targetBuy) {
-            isTargetHit = livePriceData.live <= share.targetPrice;
-        } else if (share.targetDirection === 'above' && share.targetSell) {
-            isTargetHit = livePriceData.live >= share.targetPrice;
-        } else if (share.targetDirection === 'below' && share.targetSell) {
-            isTargetHit = livePriceData.live <= share.targetPrice;
-        }
-    }
+    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
     // Declare these variables once at the top of the function
     const isMarketOpen = isAsxMarketOpen();
@@ -939,7 +825,7 @@ function addShareToMobileCards(share) {
     if (isTargetHit && !targetHitIconDismissed) {
         card.classList.add('target-hit-alert');
     } else {
-        card.classList.remove('target-hit-alert');
+        card.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
     }
 
     // Logic to determine display values
@@ -3606,7 +3492,17 @@ function updateTargetHitBanner() {
 
     // Update the fixed bottom-left icon
     // Per-entry logic: count all shares (entries) that have hit their target
-    const sharesAtTargetPrice = getSharesAtTargetPrice();
+    const sharesAtTargetPrice = allSharesData.filter(share => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        if (!livePriceData || share.targetPrice == null || isNaN(Number(share.targetPrice))) return false;
+        const live = Number(livePriceData.live);
+        const target = Number(share.targetPrice);
+        if (share.targetDirection === 'above') {
+            return live >= target;
+        } else {
+            return live <= target;
+        }
+    });
     if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
         targetHitIconCount.textContent = sharesAtTargetPrice.length;
         targetHitIconBtn.classList.remove('app-hidden');
@@ -6176,27 +6072,32 @@ if (showLastLivePriceToggle) {
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal() {
-    if (!targetHitDetailsModal || !targetHitSharesList) {
+    if (!targetHitDetailsModal || !targetHitSharesList || !sharesAtTargetPrice) {
         console.error('Target Hit Modal: Required elements or data not found.');
         showCustomAlert('Error displaying target hit details. Please try again.', 2000);
         return;
     }
-    targetHitSharesList.innerHTML = '';
-    const sharesAtTargetPrice = getSharesAtTargetPrice();
+
+    targetHitSharesList.innerHTML = ''; // Clear previous content
+
     if (sharesAtTargetPrice.length === 0) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
     } else {
         sharesAtTargetPrice.forEach(share => {
             const livePriceData = livePrices[share.shareName.toUpperCase()];
             if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
+                // Skip if live price data is unavailable or invalid
                 return;
             }
+
             const currentLivePrice = livePriceData.live;
             const targetPrice = share.targetPrice;
-            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative';
+            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative'; // Determine color based on whether it passed target up or down
+
             const targetHitItem = document.createElement('div');
             targetHitItem.classList.add('target-hit-item');
-            targetHitItem.dataset.shareId = share.id;
+            targetHitItem.dataset.shareId = share.id; // Add data attribute for potential future interaction
+
             targetHitItem.innerHTML = `
                 <div class="target-hit-item-header">
                     <span class="share-name-code ${priceClass}">${share.shareName}</span>
@@ -6206,16 +6107,19 @@ function showTargetHitDetailsModal() {
                 <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
             `;
             targetHitSharesList.appendChild(targetHitItem);
+
+            // NEW: Add click listener to make the item clickable
             targetHitItem.addEventListener('click', () => {
                 const clickedShareId = targetHitItem.dataset.shareId;
                 if (clickedShareId) {
-                    hideModal(targetHitDetailsModal);
-                    selectShare(clickedShareId);
-                    showShareDetails();
+                    hideModal(targetHitDetailsModal); // Close the target hit alerts modal
+                    selectShare(clickedShareId); // Select the share
+                    showShareDetails(); // Open the share details modal for the clicked share
                 }
             });
         });
     }
+
     showModal(targetHitDetailsModal);
     logDebug('Target Hit Modal: Displayed details for ' + sharesAtTargetPrice.length + ' shares.');
 }
