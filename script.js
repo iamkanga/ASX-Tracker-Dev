@@ -6044,6 +6044,12 @@ if (targetHitIconBtn) {
 document.addEventListener('DOMContentLoaded', function() {
     logDebug('script.js DOMContentLoaded fired.');
 
+    // Ensure Edit Current Watchlist button updates when watchlist selection changes
+    if (watchlistSelect) {
+        watchlistSelect.addEventListener('change', function() {
+            updateMainButtonsState(true);
+        });
+    }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
     window._userAuthenticated = false;
