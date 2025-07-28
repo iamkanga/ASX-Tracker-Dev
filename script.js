@@ -3595,14 +3595,24 @@ function hideSplashScreen() {
         if (mainContainer) {
             mainContainer.classList.remove('app-hidden');
         }
-        if (appHeader) { // Assuming header is part of the main app content that needs to be revealed
+        if (appHeader) {
             appHeader.classList.remove('app-hidden');
         }
+        // Ensure sidebar is closed
+        if (appSidebar) {
+            appSidebar.classList.remove('open');
+        }
+        // Hide sidebar overlay if present
+        if (sidebarOverlay) {
+            sidebarOverlay.classList.remove('open');
+        }
+        // Show Google sign-in button if present
+        if (splashSignInBtn) {
+            splashSignInBtn.style.display = '';
+        }
         // Temporarily remove overflow hidden from body
-        document.body.style.overflow = ''; 
-
-        // REMOVED: splashScreen.addEventListener('transitionend', () => { if (splashScreen.parentNode) { splashScreen.parentNode.removeChild(splashScreen); } }, { once: true });
-        logDebug('Splash Screen: Hiding.');
+        document.body.style.overflow = '';
+        logDebug('Splash Screen: Hiding and resetting UI state.');
     }
 }
 
