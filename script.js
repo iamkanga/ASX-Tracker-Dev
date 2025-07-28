@@ -31,6 +31,21 @@ window.addEventListener('popstate', function(event) {
     // If no modals are open, allow default browser back (exit app)
 });
 // ...existing code...
+    // Update the alerts modal content with shares at target price
+    // COMMENTED OUT: This block referenced 'targetHitSharesList' before its declaration, causing ReferenceError.
+    // if (typeof targetHitSharesList !== 'undefined' && targetHitSharesList) {
+    //     if (sharesAtTargetPrice.length > 0) {
+    //         targetHitSharesList.innerHTML = '';
+    //         sharesAtTargetPrice.forEach(share => {
+    //             const div = document.createElement('div');
+    //             div.className = 'target-hit-alert-row';
+    //             div.innerHTML = `<strong>${share.shareName}</strong> hit target price: $${Number(share.targetPrice).toFixed(2)} (Live: $${Number(livePrices[share.shareName.toUpperCase()].live).toFixed(2)})`;
+    //             targetHitSharesList.appendChild(div);
+    //         });
+    //     } else {
+    //         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
+    //     }
+    // }
 
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
 document.addEventListener('DOMContentLoaded', function () {
@@ -245,6 +260,13 @@ const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
 const investmentValueSelect = document.getElementById('investmentValueSelect');
 const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
 const sortSelect = document.getElementById('sortSelect');
+// Ensure sortSelect triggers updateTargetHitBanner and renderWatchlist on change
+if (typeof sortSelect !== 'undefined' && sortSelect) {
+    sortSelect.addEventListener('change', function () {
+        renderWatchlist();
+        updateTargetHitBanner();
+    });
+}
 const customDialogModal = document.getElementById('customDialogModal');
 const customDialogMessage = document.getElementById('customDialogMessage');
 const calculatorModal = document.getElementById('calculatorModal');
@@ -3462,17 +3484,29 @@ function stopLivePriceUpdates() {
         livePriceFetchInterval = null;
         logDebug('Live Price: Stopped live price updates.');
     }
+    // TEST EDIT: This comment was added by GitHub Copilot to confirm Source Control workflow.
 }
 
 // NEW: Function to update the target hit notification icon
+// ...existing code...
+
 function updateTargetHitBanner() {
     // Collect ALL shares that have hit their target price, regardless of current watchlist view
-    sharesAtTargetPrice = allSharesData.filter(share => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        // Ensure livePriceData exists and has targetHit property
-        // The check against `currentSelectedWatchlistIds` is removed here to show ALL alerts globally
-        return livePriceData && livePriceData.targetHit;
-    });
+    // ...existing code...
+    // Update the alerts modal content with shares at target price
+    if (typeof targetHitSharesList !== 'undefined' && targetHitSharesList) {
+        if (sharesAtTargetPrice.length > 0) {
+            targetHitSharesList.innerHTML = '';
+            sharesAtTargetPrice.forEach(share => {
+                const div = document.createElement('div');
+                div.className = 'target-hit-alert-row';
+                div.innerHTML = `<strong>${share.shareName}</strong> hit target price: $${Number(share.targetPrice).toFixed(2)} (Live: $${Number(livePrices[share.shareName.toUpperCase()].live).toFixed(2)})`;
+                targetHitSharesList.appendChild(div);
+            });
+        } else {
+            targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
+        }
+    }
 
     if (!targetHitIconBtn || !targetHitIconCount) {
         console.warn('Target Alert: Target hit icon elements not found. Cannot update icon.');
@@ -3486,32 +3520,39 @@ function updateTargetHitBanner() {
         return;
     }
 
-    // Determine if any shares at target price are currently being displayed in the selected stock watchlist(s)
-    const currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
-        // If "All Shares" is selected, any target hit applies
-        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
-            return true;
+    // ...existing code...
+
+    // Update the fixed bottom-left icon
+    // Per-entry logic: count all shares (entries) that have hit their target
+    const sharesAtTargetPrice = allSharesData.filter(share => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        if (!livePriceData || share.targetPrice == null || isNaN(Number(share.targetPrice))) return false;
+        const live = Number(livePriceData.live);
+        const target = Number(share.targetPrice);
+        if (share.targetDirection === 'above') {
+            return live >= target;
+        } else {
+            return live <= target;
         }
-        // If a specific watchlist is selected, check if the target-hit share is in it
+    });
+    if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
+        targetHitIconCount.textContent = sharesAtTargetPrice.length;
+        targetHitIconBtn.classList.remove('app-hidden');
+        targetHitIconCount.style.display = 'block';
+        logDebug('Target Alert: Showing icon: ' + sharesAtTargetPrice.length + ' shares hit target (per entry).');
+    } else {
+        targetHitIconBtn.classList.add('app-hidden');
+        targetHitIconCount.style.display = 'none';
+        logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
+    }
+    // Apply/remove border to watchlist and sort dropdowns if the *current view* has target hits
+    let currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
+        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) return true;
         if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
             return share.watchlistId === currentSelectedWatchlistIds[0];
         }
-        return false; // No target hits in cash view or multiple watchlists selected (defaulting to no highlight for now)
+        return false;
     });
-
-    // Update the fixed bottom-left icon
-    if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
-        targetHitIconCount.textContent = sharesAtTargetPrice.length;
-        targetHitIconBtn.classList.remove('app-hidden'); // Show the icon via class
-        targetHitIconCount.style.display = 'block'; // Show the count badge
-        logDebug('Target Alert: Showing icon: ' + sharesAtTargetPrice.length + ' shares hit target (global check).');
-    } else {
-        targetHitIconBtn.classList.add('app-hidden'); // Hide the icon via class
-        targetHitIconCount.style.display = 'none'; // Hide the count badge
-        logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
-    }
-
-    // Apply/remove border to watchlist and sort dropdowns if the *current view* has target hits
     if (currentViewHasTargetHits && !targetHitIconDismissed) {
         watchlistSelect.classList.add('target-hit-border');
         sortSelect.classList.add('target-hit-border');
@@ -5966,38 +6007,6 @@ if (sortSelect) {
             toggleAppSidebar(false); // Close sidebar
         });
     }
-
-    // --- STEP 1: Update allSharesData to ensure each share has a unique ID ---
-    // This should already be the case if loaded from Firestore, but ensure fallback for legacy data:
-    if (Array.isArray(allSharesData)) {
-        allSharesData.forEach(share => {
-            if (!share.id) {
-                // Generate a temporary unique ID if missing (should be replaced by Firestore docId on save)
-                share.id = 'share_' + Math.random().toString(36).substr(2, 9);
-            }
-        });
-    }
-
-    // --- STEP 2: Update selection, alerts, and modal logic to use unique IDs ---
-    // Example: When populating target price alerts, use share.id
-    // (You may need to update renderAlertsInPanel, updateTargetHitBanner, and modal population logic)
-
-    // Example patch for updateTargetHitBanner (pseudo-code, actual function may be elsewhere):
-    // sharesAtTargetPrice = allSharesData.filter(share => share.targetPrice && livePrices[share.code] &&
-    //     ((share.targetAbove && livePrices[share.code] >= share.targetPrice) ||
-    //      (share.targetBelow && livePrices[share.code] <= share.targetPrice))
-    // );
-    // // When rendering, use share.id for keys, highlights, and actions
-    // sharesAtTargetPrice.forEach(share => {
-    //     // Use share.id for DOM element IDs, event listeners, etc.
-    // });
-
-    // Example: When editing or deleting, always use share.id
-    // (Update showEditFormForSelectedShare, deleteShareData, etc.)
-
-    // --- STEP 3: Update UI event listeners to use unique IDs ---
-    // For context menus, modals, and buttons, pass share.id instead of code/name
-    // ...existing code...
     
     // NEW: Show Last Live Price Toggle Listener
 if (showLastLivePriceToggle) {
@@ -6082,6 +6091,14 @@ if (showLastLivePriceToggle) {
 
     // NEW: Set initial state for the compact view button
     updateCompactViewButtonState();
+    // Ensure sort order is respected on load and target hit banner is updated
+    if (sortSelect && sortSelect.value) {
+        currentSortOrder = sortSelect.value;
+        sortShares();
+    } else {
+        renderWatchlist();
+    }
+    updateTargetHitBanner();
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
 
