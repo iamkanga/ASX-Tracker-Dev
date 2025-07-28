@@ -5966,6 +5966,38 @@ if (sortSelect) {
             toggleAppSidebar(false); // Close sidebar
         });
     }
+
+    // --- STEP 1: Update allSharesData to ensure each share has a unique ID ---
+    // This should already be the case if loaded from Firestore, but ensure fallback for legacy data:
+    if (Array.isArray(allSharesData)) {
+        allSharesData.forEach(share => {
+            if (!share.id) {
+                // Generate a temporary unique ID if missing (should be replaced by Firestore docId on save)
+                share.id = 'share_' + Math.random().toString(36).substr(2, 9);
+            }
+        });
+    }
+
+    // --- STEP 2: Update selection, alerts, and modal logic to use unique IDs ---
+    // Example: When populating target price alerts, use share.id
+    // (You may need to update renderAlertsInPanel, updateTargetHitBanner, and modal population logic)
+
+    // Example patch for updateTargetHitBanner (pseudo-code, actual function may be elsewhere):
+    // sharesAtTargetPrice = allSharesData.filter(share => share.targetPrice && livePrices[share.code] &&
+    //     ((share.targetAbove && livePrices[share.code] >= share.targetPrice) ||
+    //      (share.targetBelow && livePrices[share.code] <= share.targetPrice))
+    // );
+    // // When rendering, use share.id for keys, highlights, and actions
+    // sharesAtTargetPrice.forEach(share => {
+    //     // Use share.id for DOM element IDs, event listeners, etc.
+    // });
+
+    // Example: When editing or deleting, always use share.id
+    // (Update showEditFormForSelectedShare, deleteShareData, etc.)
+
+    // --- STEP 3: Update UI event listeners to use unique IDs ---
+    // For context menus, modals, and buttons, pass share.id instead of code/name
+    // ...existing code...
     
     // NEW: Show Last Live Price Toggle Listener
 if (showLastLivePriceToggle) {
