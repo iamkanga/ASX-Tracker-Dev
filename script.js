@@ -2488,8 +2488,6 @@ function renderWatchlist() {
         logDebug('renderWatchlist: No shares to render.');
         return;
     }
-    console.log('[addShareToTable] share:', share);
-    console.log('[addShareToMobileCards] share:', share);
 
     // --- Compact View Display Logic ---
     const isCompactView = currentMobileViewMode === 'compact';
