@@ -143,7 +143,7 @@ let targetHitIconDismissed = false;
 let showLastLivePriceOnClosedMarket = false; // New global variable for the toggle state
 
 // Tracks if share detail modal was opened from alerts
-let openedFromTargetAlertsModal = false;
+let wasShareDetailOpenedFromTargetAlerts = false;
 
 // NEW: Global variable to store cash categories data
 let userCashCategories = [];
@@ -591,7 +591,7 @@ function addShareToTable(share) {
         selectShare(share.id);
         // If this row is inside the Target Price Alerts modal, set the restoration flag
         if (row.closest('#targetHitSharesList')) {
-            openedFromTargetAlertsModal = true;
+            wasShareDetailOpenedFromTargetAlerts = true;
         }
         showShareDetails();
     });
