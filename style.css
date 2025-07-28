@@ -2040,7 +2040,7 @@ body.theme-subtle-10 { /* Subtle Stone */
 
 /* For Desktop Table Cells with Numeric User Data */
 .numeric-data-cell {
-    text-align: right;
+    text-align: center;
     font-weight: 600; /* Bolder */
     font-size: 1.05em; /* Slightly larger */
 }
