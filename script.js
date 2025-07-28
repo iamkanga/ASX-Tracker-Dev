@@ -6047,22 +6047,23 @@ function showTargetHitDetailsModal() {
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
     // Filter shares to only those that have individually hit their target price
-    const filteredShares = sharesAtTargetPrice.filter(share => {
+    // Build a map to ensure only unique share entries (by id), but allow all that hit target
+    const uniqueTargetHitShares = new Map();
+    sharesAtTargetPrice.forEach(share => {
         const livePriceData = livePrices[share.shareName.toUpperCase()];
-        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) return false;
+        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) return;
         const currentLivePrice = livePriceData.live;
         const targetPrice = share.targetPrice;
-        return currentLivePrice >= targetPrice && targetPrice > 0;
+        if (currentLivePrice >= targetPrice && targetPrice > 0) {
+            uniqueTargetHitShares.set(share.id, share);
+        }
     });
 
-    if (filteredShares.length === 0) {
+    const sharesToDisplay = Array.from(uniqueTargetHitShares.values());
+    if (sharesToDisplay.length === 0) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
     } else {
-        // Avoid duplicates by using share.id as unique
-        const uniqueShareIds = new Set();
-        filteredShares.forEach(share => {
-            if (uniqueShareIds.has(share.id)) return;
-            uniqueShareIds.add(share.id);
+        sharesToDisplay.forEach(share => {
             const livePriceData = livePrices[share.shareName.toUpperCase()];
             const currentLivePrice = livePriceData.live;
             const targetPrice = share.targetPrice;
