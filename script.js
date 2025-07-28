@@ -2484,10 +2484,6 @@ function renderWatchlist() {
     logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + currentSelectedWatchlistIds[0]);
     console.log('[renderWatchlist] livePrices:', livePrices);
     console.log('[renderWatchlist] allSharesData:', allSharesData);
-    if (!Array.isArray(allSharesData) || allSharesData.length === 0) {
-        logDebug('renderWatchlist: No shares to render.');
-        return;
-    }
     console.log('[addShareToTable] share:', share);
     console.log('[addShareToMobileCards] share:', share);
 
