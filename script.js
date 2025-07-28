@@ -1,22 +1,3 @@
-// DEBUG: Log input and output for every call
-function isShareAtTarget(share) {
-    const price = livePrices && livePrices[share.code];
-    const atTarget = share.targetPrice && price !== undefined && (
-        (share.targetAbove && price >= share.targetPrice) ||
-        (share.targetBelow && price <= share.targetPrice)
-    );
-    console.log('isShareAtTarget:', {
-        code: share.code,
-        name: share.name,
-        id: share.id,
-        targetPrice: share.targetPrice,
-        targetAbove: share.targetAbove,
-        targetBelow: share.targetBelow,
-        livePrice: price,
-        result: !!atTarget
-    });
-    return !!atTarget;
-}
     // --- PATCH: INTEGRATE isShareAtTarget into actual watchlist rendering ---
     // If you have a function like renderWatchlist() or renderShareRow(), ensure you use:
     // Example:
@@ -2507,6 +2488,8 @@ function renderWatchlist() {
         logDebug('renderWatchlist: No shares to render.');
         return;
     }
+    console.log('[addShareToTable] share:', share);
+    console.log('[addShareToMobileCards] share:', share);
 
     // --- Compact View Display Logic ---
     const isCompactView = currentMobileViewMode === 'compact';
@@ -6066,8 +6049,6 @@ if (sortSelect) {
 
     // Example: When editing or deleting, always use share.id
     // (Update showEditFormForSelectedShare, deleteShareData, etc.)
-// --- PATCH: Ensure green border is applied to shares at target price in watchlist ---
-// ...existing code before any recent watchlist rendering or sort changes...
 
     // --- STEP 3: Update UI event listeners to use unique IDs ---
     // For context menus, modals, and buttons, pass share.id instead of code/name
