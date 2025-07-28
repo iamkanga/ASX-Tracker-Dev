@@ -32,19 +32,20 @@ window.addEventListener('popstate', function(event) {
 });
 // ...existing code...
     // Update the alerts modal content with shares at target price
-    if (typeof targetHitSharesList !== 'undefined' && targetHitSharesList) {
-        if (sharesAtTargetPrice.length > 0) {
-            targetHitSharesList.innerHTML = '';
-            sharesAtTargetPrice.forEach(share => {
-                const div = document.createElement('div');
-                div.className = 'target-hit-alert-row';
-                div.innerHTML = `<strong>${share.shareName}</strong> hit target price: $${Number(share.targetPrice).toFixed(2)} (Live: $${Number(livePrices[share.shareName.toUpperCase()].live).toFixed(2)})`;
-                targetHitSharesList.appendChild(div);
-            });
-        } else {
-            targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
-        }
-    }
+    // COMMENTED OUT: This block referenced 'targetHitSharesList' before its declaration, causing ReferenceError.
+    // if (typeof targetHitSharesList !== 'undefined' && targetHitSharesList) {
+    //     if (sharesAtTargetPrice.length > 0) {
+    //         targetHitSharesList.innerHTML = '';
+    //         sharesAtTargetPrice.forEach(share => {
+    //             const div = document.createElement('div');
+    //             div.className = 'target-hit-alert-row';
+    //             div.innerHTML = `<strong>${share.shareName}</strong> hit target price: $${Number(share.targetPrice).toFixed(2)} (Live: $${Number(livePrices[share.shareName.toUpperCase()].live).toFixed(2)})`;
+    //             targetHitSharesList.appendChild(div);
+    //         });
+    //     } else {
+    //         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
+    //     }
+    // }
 
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
 document.addEventListener('DOMContentLoaded', function () {
