@@ -3493,6 +3493,20 @@ function stopLivePriceUpdates() {
 function updateTargetHitBanner() {
     // Collect ALL shares that have hit their target price, regardless of current watchlist view
     // ...existing code...
+    // Update the alerts modal content with shares at target price
+    if (typeof targetHitSharesList !== 'undefined' && targetHitSharesList) {
+        if (sharesAtTargetPrice.length > 0) {
+            targetHitSharesList.innerHTML = '';
+            sharesAtTargetPrice.forEach(share => {
+                const div = document.createElement('div');
+                div.className = 'target-hit-alert-row';
+                div.innerHTML = `<strong>${share.shareName}</strong> hit target price: $${Number(share.targetPrice).toFixed(2)} (Live: $${Number(livePrices[share.shareName.toUpperCase()].live).toFixed(2)})`;
+                targetHitSharesList.appendChild(div);
+            });
+        } else {
+            targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
+        }
+    }
 
     if (!targetHitIconBtn || !targetHitIconCount) {
         console.warn('Target Alert: Target hit icon elements not found. Cannot update icon.');
