@@ -6047,19 +6047,24 @@ function showTargetHitDetailsModal() {
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
     // Filter shares to only those that have individually hit their target price
-    // Build a map to ensure only unique share entries (by id), but allow all that hit target
-    const uniqueTargetHitShares = new Map();
-    sharesAtTargetPrice.forEach(share => {
+    // Filter and deduplicate shares that hit their target price
+    const seen = new Set();
+    const sharesToDisplay = sharesAtTargetPrice.filter(share => {
         const livePriceData = livePrices[share.shareName.toUpperCase()];
-        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) return;
+        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) return false;
         const currentLivePrice = livePriceData.live;
         const targetPrice = share.targetPrice;
+        // Only show if target hit and targetPrice is valid
         if (currentLivePrice >= targetPrice && targetPrice > 0) {
-            uniqueTargetHitShares.set(share.id, share);
+            // Use a composite key of share.id (unique per watchlist)
+            if (!seen.has(share.id)) {
+                seen.add(share.id);
+                return true;
+            }
         }
+        return false;
     });
 
-    const sharesToDisplay = Array.from(uniqueTargetHitShares.values());
     if (sharesToDisplay.length === 0) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
     } else {
