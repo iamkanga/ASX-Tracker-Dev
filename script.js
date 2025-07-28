@@ -155,6 +155,20 @@ const LIVE_PRICE_FETCH_INTERVAL_MS = 5 * 60 * 1000; // Fetch every 5 minutes
 // Theme related variables
 const CUSTOM_THEMES = [
     'bold-1', 'bold-2', 'bold-3', 'bold-4', 'bold-5', 'bold-6', 'bold-7', 'bold-8', 'bold-9', 'bold-10',
+        // Update alerts modal content
+        if (typeof targetHitSharesList !== 'undefined' && targetHitSharesList) {
+            if (sharesAtTargetPrice.length > 0) {
+                targetHitSharesList.innerHTML = '';
+                sharesAtTargetPrice.forEach(share => {
+                    const div = document.createElement('div');
+                    div.className = 'target-hit-alert-row';
+                    div.innerHTML = `<strong>${share.shareName}</strong> hit target price: $${share.targetPrice.toFixed(2)} (Live: $${share.livePrice.toFixed(2)})`;
+                    targetHitSharesList.appendChild(div);
+                });
+            } else {
+                targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
+            }
+        }
     'subtle-1', 'subtle-2', 'subtle-3', 'subtle-4', 'subtle-5', 'subtle-6', 'subtle-7', 'subtle-8', 'subtle-9', 'subtle-10',
     'Muted Blue', 'Muted Brown', 'Muted Pink', 'Muted Green', 'Muted Purple', 'Muted Orange', 'Muted Cyan', 'Muted Magenta', 'Muted Gold', 'Muted Grey'
 ];
