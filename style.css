@@ -3663,7 +3663,7 @@ table td.live-price-cell.negative-change {
 .checkbox-switch-row {
     display: flex;
     align-items: center;
-    gap: 15px; /* Space between "Hide" and "Show" labels */
+    gap: 15px; /* Space between "Hide"  and "Show" labels */
 }
 
 .checkbox-label {
