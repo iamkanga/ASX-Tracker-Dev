@@ -2045,11 +2045,6 @@ body.theme-subtle-10 { /* Subtle Stone */
     font-size: 1.05em; /* Slightly larger */
 }
 
-/* Center-align only the star rating column */
-.star-rating-cell {
-    text-align: center;
-}
-
 /* For emphasized Share Code in table */
 table td .share-code-display { /* This class exists, just ensure its emphasis */
     font-weight: 700; /* Make it bold */
