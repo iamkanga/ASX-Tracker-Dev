@@ -167,7 +167,7 @@ let unsubscribeShares = null; // Holds the unsubscribe function for the Firestor
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
 
 // NEW: Global variable to store shares that have hit their target price
-let sharesAtTargetPrice = [];
+// Removed global sharesAtTargetPrice; always compute per-entry when needed
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 let currentMobileViewMode = 'default'; 
@@ -3492,17 +3492,7 @@ function updateTargetHitBanner() {
 
     // Update the fixed bottom-left icon
     // Per-entry logic: count all shares (entries) that have hit their target
-    const sharesAtTargetPrice = allSharesData.filter(share => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        if (!livePriceData || share.targetPrice == null || isNaN(Number(share.targetPrice))) return false;
-        const live = Number(livePriceData.live);
-        const target = Number(share.targetPrice);
-        if (share.targetDirection === 'above') {
-            return live >= target;
-        } else {
-            return live <= target;
-        }
-    });
+    const sharesAtTargetPrice = getSharesAtTargetPrice();
     if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
         targetHitIconCount.textContent = sharesAtTargetPrice.length;
         targetHitIconBtn.classList.remove('app-hidden');
@@ -6072,32 +6062,27 @@ if (showLastLivePriceToggle) {
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal() {
-    if (!targetHitDetailsModal || !targetHitSharesList || !sharesAtTargetPrice) {
+    if (!targetHitDetailsModal || !targetHitSharesList) {
         console.error('Target Hit Modal: Required elements or data not found.');
         showCustomAlert('Error displaying target hit details. Please try again.', 2000);
         return;
     }
-
-    targetHitSharesList.innerHTML = ''; // Clear previous content
-
+    targetHitSharesList.innerHTML = '';
+    const sharesAtTargetPrice = getSharesAtTargetPrice();
     if (sharesAtTargetPrice.length === 0) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
     } else {
         sharesAtTargetPrice.forEach(share => {
             const livePriceData = livePrices[share.shareName.toUpperCase()];
             if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
-                // Skip if live price data is unavailable or invalid
                 return;
             }
-
             const currentLivePrice = livePriceData.live;
             const targetPrice = share.targetPrice;
-            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative'; // Determine color based on whether it passed target up or down
-
+            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative';
             const targetHitItem = document.createElement('div');
             targetHitItem.classList.add('target-hit-item');
-            targetHitItem.dataset.shareId = share.id; // Add data attribute for potential future interaction
-
+            targetHitItem.dataset.shareId = share.id;
             targetHitItem.innerHTML = `
                 <div class="target-hit-item-header">
                     <span class="share-name-code ${priceClass}">${share.shareName}</span>
@@ -6107,19 +6092,16 @@ function showTargetHitDetailsModal() {
                 <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
             `;
             targetHitSharesList.appendChild(targetHitItem);
-
-            // NEW: Add click listener to make the item clickable
             targetHitItem.addEventListener('click', () => {
                 const clickedShareId = targetHitItem.dataset.shareId;
                 if (clickedShareId) {
-                    hideModal(targetHitDetailsModal); // Close the target hit alerts modal
-                    selectShare(clickedShareId); // Select the share
-                    showShareDetails(); // Open the share details modal for the clicked share
+                    hideModal(targetHitDetailsModal);
+                    selectShare(clickedShareId);
+                    showShareDetails();
                 }
             });
         });
     }
-
     showModal(targetHitDetailsModal);
     logDebug('Target Hit Modal: Displayed details for ' + sharesAtTargetPrice.length + ' shares.');
 }
