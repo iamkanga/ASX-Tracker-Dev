@@ -4739,7 +4739,7 @@ main.container {
     white-space: nowrap;
     margin-left: 0; /* Remove margin from main price */
     margin-top: 2px; /* Small space below price */
-    display: none; /* Hide the price change in compact view as requested */
+    display: inline-block; /* Ensure price change is visible in compact view */
 }
 
 /* Ensure the share name (h3) is concise and always visible */
