@@ -6052,7 +6052,8 @@ function showTargetHitDetailsModal() {
 
 
 
-    // Build a list of shares that hit their target price, deduplicate by code+watchlist+targetPrice, with enhanced debug
+
+    // Only display shares that have actually hit their target
     const sharesToDisplay = [];
     const seenKey = new Set();
     // Use allSharesData if available, otherwise sharesAtTargetPrice
@@ -6067,14 +6068,11 @@ function showTargetHitDetailsModal() {
         const currentLivePrice = livePriceData.live;
         const targetPrice = share.targetPrice;
         const key = share.shareName?.toUpperCase() + '|' + share.watchlistId + '|' + targetPrice;
-        const priceDiff = currentLivePrice - targetPrice;
-        const direction = currentLivePrice >= targetPrice ? 'above' : 'below';
-        logDebug(`Target Modal: Checking share ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId}, Target: ${targetPrice}) - Live: ${currentLivePrice}, Diff: ${priceDiff}, Direction: ${direction}`);
         if (currentLivePrice >= targetPrice && targetPrice > 0) {
             if (!seenKey.has(key)) {
                 seenKey.add(key);
-                logDebug(`Target Modal: Adding share to display: ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId}, Target: ${targetPrice})`);
                 sharesToDisplay.push({ ...share, hitTarget: true });
+                logDebug(`Target Modal: Adding share to display: ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId}, Target: ${targetPrice})`);
             } else {
                 logDebug(`Target Modal: Duplicate key, not adding: ${key}`);
             }
@@ -6092,10 +6090,9 @@ function showTargetHitDetailsModal() {
             const livePriceData = livePrices[share.shareName.toUpperCase()];
             const currentLivePrice = livePriceData.live;
             const targetPrice = share.targetPrice;
-            const priceClass = share.hitTarget ? 'positive' : 'negative';
+            const priceClass = 'positive'; // Only positive, since only hitTarget shares are shown
             const targetHitItem = document.createElement('div');
             targetHitItem.classList.add('target-hit-item', 'target-hit-border');
-            if (share.hitTarget) targetHitItem.classList.add('target-hit-border');
             targetHitItem.dataset.shareId = share.id;
             targetHitItem.innerHTML = `
                 <div class="target-hit-item-header target-hit-border">
