@@ -6046,6 +6046,10 @@ function showTargetHitDetailsModal() {
 
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
+    // Debug: log all sharesAtTargetPrice and livePrices
+    logDebug('Target Hit Modal: sharesAtTargetPrice:', sharesAtTargetPrice);
+    logDebug('Target Hit Modal: livePrices:', livePrices);
+
     // Build a list of shares that hit their target price, no duplicates, handle same code in different watchlists
     const sharesToDisplay = [];
     const seenIds = new Set();
@@ -6059,6 +6063,23 @@ function showTargetHitDetailsModal() {
             if (!seenIds.has(share.id)) {
                 seenIds.add(share.id);
                 sharesToDisplay.push(share);
+            }
+        }
+    }
+
+    // Fallback: If no shares found, try allSharesData if available
+    if (sharesToDisplay.length === 0 && typeof allSharesData !== 'undefined' && Array.isArray(allSharesData)) {
+        logDebug('Target Hit Modal: Fallback to allSharesData');
+        for (const share of allSharesData) {
+            const livePriceData = livePrices[share.shareName.toUpperCase()];
+            if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) continue;
+            const currentLivePrice = livePriceData.live;
+            const targetPrice = share.targetPrice;
+            if (currentLivePrice >= targetPrice && targetPrice > 0) {
+                if (!seenIds.has(share.id)) {
+                    seenIds.add(share.id);
+                    sharesToDisplay.push(share);
+                }
             }
         }
     }
