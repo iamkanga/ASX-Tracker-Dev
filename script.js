@@ -6052,65 +6052,38 @@ function showTargetHitDetailsModal() {
 
 
 
-    // Build a list of shares that hit their target price, deduplicate by code+watchlist, with detailed debug
+    // Build a list of shares that hit their target price, deduplicate by code+watchlist+targetPrice, with enhanced debug
     const sharesToDisplay = [];
     const seenKey = new Set();
-    for (const share of sharesAtTargetPrice) {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
+    // Use allSharesData if available, otherwise sharesAtTargetPrice
+    const sourceShares = Array.isArray(allSharesData) ? allSharesData : sharesAtTargetPrice;
+    logDebug('Target Hit Modal: Source shares for modal:', sourceShares);
+    for (const share of sourceShares) {
+        const livePriceData = livePrices[share.shareName?.toUpperCase()];
         if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
             logDebug('Target Modal: Skipping share due to missing live price:', share);
             continue;
         }
         const currentLivePrice = livePriceData.live;
         const targetPrice = share.targetPrice;
-        const key = share.shareName.toUpperCase() + '|' + share.watchlistId;
+        const key = share.shareName?.toUpperCase() + '|' + share.watchlistId + '|' + targetPrice;
         const priceDiff = currentLivePrice - targetPrice;
         const direction = currentLivePrice >= targetPrice ? 'above' : 'below';
-        logDebug(`Target Modal: Checking share ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId}) - Live: ${currentLivePrice}, Target: ${targetPrice}, Diff: ${priceDiff}, Direction: ${direction}`);
+        logDebug(`Target Modal: Checking share ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId}, Target: ${targetPrice}) - Live: ${currentLivePrice}, Diff: ${priceDiff}, Direction: ${direction}`);
         if (currentLivePrice >= targetPrice && targetPrice > 0) {
             if (!seenKey.has(key)) {
                 seenKey.add(key);
-                logDebug(`Target Modal: Adding share to display: ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId})`);
+                logDebug(`Target Modal: Adding share to display: ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId}, Target: ${targetPrice})`);
                 sharesToDisplay.push({ ...share, hitTarget: true });
             } else {
                 logDebug(`Target Modal: Duplicate key, not adding: ${key}`);
             }
         } else {
-            logDebug(`Target Modal: Not at target, not adding: ${share.shareName} (ID: ${share.id})`);
+            logDebug(`Target Modal: Not at target, not adding: ${share.shareName} (ID: ${share.id}, Target: ${targetPrice})`);
         }
     }
 
-    // Fallback: If no shares found, try allSharesData if available
-    if (sharesToDisplay.length === 0 && typeof allSharesData !== 'undefined' && Array.isArray(allSharesData)) {
-        logDebug('Target Hit Modal: Fallback to allSharesData');
-        for (const share of allSharesData) {
-            const livePriceData = livePrices[share.shareName.toUpperCase()];
-            if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
-                logDebug('Target Modal (Fallback): Skipping share due to missing live price:', share);
-                continue;
-            }
-            const currentLivePrice = livePriceData.live;
-            const targetPrice = share.targetPrice;
-            const key = share.shareName.toUpperCase() + '|' + share.watchlistId;
-            const priceDiff = currentLivePrice - targetPrice;
-            const direction = currentLivePrice >= targetPrice ? 'above' : 'below';
-            logDebug(`Target Modal (Fallback): Checking share ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId}) - Live: ${currentLivePrice}, Target: ${targetPrice}, Diff: ${priceDiff}, Direction: ${direction}`);
-            if (currentLivePrice >= targetPrice && targetPrice > 0) {
-                if (!seenKey.has(key)) {
-                    seenKey.add(key);
-                    logDebug(`Target Modal (Fallback): Adding share to display: ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId})`);
-                    sharesToDisplay.push({ ...share, hitTarget: true });
-                } else {
-                    logDebug(`Target Modal (Fallback): Duplicate key, not adding: ${key}`);
-                }
-            } else {
-                logDebug(`Target Modal (Fallback): Not at target, not adding: ${share.shareName} (ID: ${share.id})`);
-            }
-        }
-    }
-
-
-    logDebug('Target Hit Modal: Shares to display:', sharesToDisplay.map(s => ({id: s.id, name: s.shareName, wl: s.watchlistId, price: livePrices[s.shareName.toUpperCase()]?.live, target: s.targetPrice, hitTarget: s.hitTarget})));
+    logDebug('Target Hit Modal: Shares to display:', sharesToDisplay.map(s => ({id: s.id, name: s.shareName, wl: s.watchlistId, price: livePrices[s.shareName?.toUpperCase()]?.live, target: s.targetPrice, hitTarget: s.hitTarget})));
 
     if (sharesToDisplay.length === 0) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
