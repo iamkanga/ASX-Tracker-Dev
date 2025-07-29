@@ -28,7 +28,7 @@
     --asx-button-text: #333;
     --asx-button-active-bg: #007bff;
     --asx-button-active-text: #fff;
-    --success-color: #28a745;
+    --success-color: #008000;
     --danger-color: #FF0000;
     --warning-color: #ffc107;
     --info-color: #17a2b8;
@@ -61,8 +61,8 @@
     --calc-num-btn-bg: #f0f0f0;
     --calc-num-btn-text: #333;
     --calc-num-btn-hover-bg: #e0e0e0;
-    --price-up-color: #28a745;
-    --price-down-color: #dc3545;
+    --price-up-color: #008000;
+    --price-down-color: #FF0000;
     --price-neutral-color: #6c757d;
     --live-price-section-bg: rgba(0, 123, 255, 0.05); /* Subtle blue tint */
     --live-price-positive-bg: rgba(40, 167, 69, 0.1); /* Faint green */
@@ -72,9 +72,9 @@
     --target-alert-text: #0056b3; /* Darker blue for target hit text */
     --target-alert-border: #007bff;
     --target-banner-height: 40px; /* This variable is now effectively unused for the banner, but kept for other potential uses */
-    ---green-color: #28a745; /* Standard green for general use */
-    --green-color-dark: #218838; /* Darker green for hover states */
-    --green-color-dark-rgb: 33, 136, 56; /* RGB for #218838 for pulsing effect */
+    ---green-color: #008000; /* Standard green for general use */
+    --green-color-dark: #006400; /* Darker green for hover states */
+    --green-color-dark-rgb: 0, 100, 0; /* RGB for #006400 for pulsing effect */
     /* NEW: Alert System Colors */
     --alert-icon-bg: #dc3545; /* Red for the chat box icon */
     --alert-icon-text: #fff;
@@ -124,7 +124,7 @@ body.dark-theme {
     --asx-button-hover-bg: #5a5a5a; /* Lighter gray for ASX button hover */
     --asx-button-active-bg: #888888; /* Even lighter gray for active ASX button */
     --asx-button-active-text: #ffffff; /* White text for active ASX button */
-    --success-color: #2ecc71; /* Keep green for success */
+    --success-color: #32CD
     --danger-color: #FF0000; /* Keep red for danger */
     --warning-color: #f39c12; /* Keep orange for warning */
     --info-color: #3498db; /* Keep blue for info */
