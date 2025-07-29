@@ -1446,6 +1446,11 @@ function clearForm() {
     if (commentsFormContainer) { // This now refers to #dynamicCommentsArea
         commentsFormContainer.innerHTML = ''; // Clears ONLY the dynamically added comments
     }
+    // NEW: Also clear the live price display when clearing the form
+    if (addShareLivePriceDisplay) {
+        addShareLivePriceDisplay.style.display = 'none';
+        addShareLivePriceDisplay.innerHTML = '';
+    }
     selectedShareDocId = null;
     originalShareData = null; // IMPORTANT: Reset original data to prevent auto-save of cancelled edits
     if (deleteShareBtn) {
