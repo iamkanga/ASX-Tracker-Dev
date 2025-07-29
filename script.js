@@ -7,6 +7,32 @@ function pushAppState(stateObj = {}, title = '', url = '') {
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
+    // NEW: First, check if the sidebar is open and close it.
+    // This should be the first check, as the sidebar can be open on top of the main view.
+    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
+        if (window.toggleAppSidebar) {
+            window.toggleAppSidebar(false); // Explicitly close the sidebar
+        }
+        return; // Exit after handling the sidebar
+    }
+
+    // NEW: Second, check for the custom context menu and close it.
+    // This is a lightweight overlay that should be dismissed before any main modals.
+    if (window.shareContextMenu && window.shareContextMenu.style.display !== 'none') {
+        if (window.hideContextMenu) {
+            window.hideContextMenu();
+        }
+        return; // Exit after handling the context menu
+    }
+
+    // NEW: Third, check if search suggestions are open within the search modal.
+    // This allows the user to go "back" from the suggestions without closing the search modal.
+    if (window.stockSearchModal && window.stockSearchModal.style.display !== 'none' &&
+        window.asxSuggestions && window.asxSuggestions.classList.contains('active')) {
+        window.asxSuggestions.classList.remove('active');
+        return; // Exit after hiding suggestions, keeping the modal open.
+    }
+
     // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
     const modals = [
         window.shareFormSection,
@@ -28,7 +54,7 @@ window.addEventListener('popstate', function(event) {
             return; // Exit after handling the first open modal
         }
     }
-    // If no modals are open, allow default browser back (exit app)
+    // If no modals, sidebar, or other UI states are open, allow default browser back (exit app)
 });
 // ...existing code...
 
@@ -4345,6 +4371,9 @@ async function migrateOldSharesToWatchlist() {
 }
 
 function showContextMenu(event, shareId) {
+    // NEW: Push a history state so the back button can close the context menu.
+    pushAppState({ contextMenu: true }, '', '#contextmenu');
+
     if (!shareContextMenu) return;
     
     currentContextMenuShareId = shareId;
@@ -4394,6 +4423,12 @@ function toggleAppSidebar(forceState = null) {
     const isOpen = appSidebar.classList.contains('open');
 
     if (forceState === true || (forceState === null && !isOpen)) {
+        // On mobile, opening the sidebar is a navigation event that should be caught by the back button.
+        if (!isDesktop) {
+            // Push a new history state for the sidebar opening
+            pushAppState({ sidebarOpen: true }, '', '#sidebar');
+        }
+
         appSidebar.classList.add('open');
         sidebarOverlay.classList.add('open');
         // Reset sidebar scroll position to top when opening
@@ -4841,6 +4876,9 @@ async function initializeAppLogic() {
             currentSuggestions = allAsxCodes.filter(stock => 
                 stock.code.includes(query) || stock.name.toUpperCase().includes(query)
             ).slice(0, 10); // Limit to top 10 suggestions
+            if (currentSuggestions.length > 0 && !asxSuggestions.classList.contains('active')) {
+                pushAppState({ searchSuggestions: true }, '', '#search');
+            }
 
             if (currentSuggestions.length > 0) {
                 currentSuggestions.forEach((stock, index) => {
