@@ -6046,46 +6046,61 @@ function showTargetHitDetailsModal() {
 
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-    // Debug: log all sharesAtTargetPrice and livePrices
+
+    // Enhanced debug logging for diagnosis
     logDebug('Target Hit Modal: sharesAtTargetPrice:', sharesAtTargetPrice);
+    logDebug('Target Hit Modal: allSharesData:', allSharesData);
     logDebug('Target Hit Modal: livePrices:', livePrices);
-
-
-
 
     // Only display shares that have actually hit their target, and only one per code|watchlist|targetPrice
     const sharesToDisplay = [];
     const groupedShares = {};
     const sourceShares = Array.isArray(allSharesData) ? allSharesData : sharesAtTargetPrice;
     logDebug('Target Hit Modal: Source shares for modal:', sourceShares);
-    for (const share of sourceShares) {
+    sourceShares.forEach((share, idx) => {
         const livePriceData = livePrices[share.shareName?.toUpperCase()];
+        logDebug(`[${idx}] Checking share:`, {
+            id: share.id,
+            name: share.shareName,
+            wl: share.watchlistId,
+            target: share.targetPrice,
+            live: livePriceData ? livePriceData.live : null
+        });
         if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
-            logDebug('Target Modal: Skipping share due to missing live price:', share);
-            continue;
+            logDebug(`[${idx}] Skipping share due to missing live price`, share);
+            return;
         }
         const currentLivePrice = livePriceData.live;
         const targetPrice = share.targetPrice;
         const key = share.shareName?.toUpperCase() + '|' + share.watchlistId + '|' + targetPrice;
-        // Group all shares by key
         if (!groupedShares[key]) groupedShares[key] = [];
         groupedShares[key].push({ ...share, currentLivePrice });
-    }
+        logDebug(`[${idx}] Grouping key: ${key} | Group size: ${groupedShares[key].length}`);
+    });
+
+    // Log all groups and their contents
+    Object.entries(groupedShares).forEach(([key, group], i) => {
+        logDebug(`Group [${i}] Key: ${key} | Entries:`, group.map(s => ({id: s.id, name: s.shareName, wl: s.watchlistId, target: s.targetPrice, live: s.currentLivePrice})));
+    });
 
     // For each group, only add the entry that has hit its target
-    for (const key in groupedShares) {
-        const group = groupedShares[key];
-        // Find the first entry in the group that has hit its target
+    Object.entries(groupedShares).forEach(([key, group], i) => {
         const hitEntry = group.find(s => s.currentLivePrice >= s.targetPrice && s.targetPrice > 0);
         if (hitEntry) {
             sharesToDisplay.push({ ...hitEntry, hitTarget: true });
-            logDebug(`Target Modal: Adding share to display: ${hitEntry.shareName} (ID: ${hitEntry.id}, WL: ${hitEntry.watchlistId}, Target: ${hitEntry.targetPrice})`);
+            logDebug(`Group [${i}] Key: ${key} | Hit entry:`, {
+                id: hitEntry.id,
+                name: hitEntry.shareName,
+                wl: hitEntry.watchlistId,
+                target: hitEntry.targetPrice,
+                live: hitEntry.currentLivePrice
+            });
         } else {
-            logDebug(`Target Modal: No hit entry for key: ${key}, not adding any.`);
+            logDebug(`Group [${i}] Key: ${key} | No hit entry, not adding any.`);
         }
-    }
+    });
 
-    logDebug('Target Hit Modal: Shares to display:', sharesToDisplay.map(s => ({id: s.id, name: s.shareName, wl: s.watchlistId, price: livePrices[s.shareName?.toUpperCase()]?.live, target: s.targetPrice, hitTarget: s.hitTarget})));
+    logDebug('Target Hit Modal: Final shares to display:', sharesToDisplay.map(s => ({id: s.id, name: s.shareName, wl: s.watchlistId, price: s.currentLivePrice, target: s.targetPrice, hitTarget: s.hitTarget})));
 
     if (sharesToDisplay.length === 0) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
