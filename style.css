@@ -29,7 +29,7 @@
     --asx-button-active-bg: #007bff;
     --asx-button-active-text: #fff;
     --success-color: #28a745;
-    --danger-color: #dc3545;
+    --danger-color: #FF0000;
     --warning-color: #ffc107;
     --info-color: #17a2b8;
     --link-color: #007bff;
@@ -43,8 +43,8 @@
     --menu-button-active-text: #fff;
     --placeholder-text: #6c757d;
     --ghosted-text: #888;
-    --danger-button-bg: #dc3545;
-    --danger-button-hover-bg: #c82333;
+    --danger-button-bg: #FF0000;
+    --danger-button-hover-bg: #FF0000;
     --secondary-button-bg: #6c757d;
     --secondary-button-hover-bg: #545b62;
     --google-auth-btn-bg: #FFFFFF;
@@ -56,8 +56,8 @@
     --close-sidebar-btn-color: #666;
     --icon-action-color: #007bff;
     --icon-action-hover-color: #0056b3;
-    --icon-danger-color: #dc3545;
-    --icon-danger-hover-color: #c82333;
+    --icon-danger-color: #FF0000;
+    --icon-danger-hover-color: #FF0000;
     --calc-num-btn-bg: #f0f0f0;
     --calc-num-btn-text: #333;
     --calc-num-btn-hover-bg: #e0e0e0;
@@ -125,7 +125,7 @@ body.dark-theme {
     --asx-button-active-bg: #888888; /* Even lighter gray for active ASX button */
     --asx-button-active-text: #ffffff; /* White text for active ASX button */
     --success-color: #2ecc71; /* Keep green for success */
-    --danger-color: #e74c3c; /* Keep red for danger */
+    --danger-color: #FF0000; /* Keep red for danger */
     --warning-color: #f39c12; /* Keep orange for warning */
     --info-color: #3498db; /* Keep blue for info */
     --link-color: #99ccff; /* Lighter blue for links */
@@ -137,12 +137,12 @@ body.dark-theme {
     --menu-button-hover-bg: #444444; /* Dark gray for menu button hover */
     --placeholder-text: #aaaaaa;
     --ghosted-text: #888888; /* Medium gray for ghosted text */
-    --danger-button-bg: #e74c3c;
-    --danger-button-hover-bg: #c0392b;
+    --danger-button-bg: #FF0000;
+    --danger-button-hover-bg: #FF0000;
     --icon-action-color: #cccccc; /* Light gray for action icons */
     --icon-action-hover-color: #ffffff; /* White for action icon hover */
-    --icon-danger-color: #e74c3c;
-    --icon-danger-hover-color: #c0392b;
+    --icon-danger-color: #FF0000;
+    --icon-danger-hover-color: #FF0000;
     --calc-num-btn-bg: #555555; /* Gray for calculator number buttons */
     --calc-num-btn-text: #e0e0e0;
     --calc-num-btn-hover-bg: #6a6a6a;
@@ -199,12 +199,12 @@ body.theme-bold-1 { /* Ocean Blue */
     --menu-button-hover-bg: #0a475a;
     --placeholder-text: #8ecae6;
     --ghosted-text: #a8dadc;
-    --danger-button-bg: #e63946;
-    --danger-button-hover-bg: #c0392b;
+    --danger-button-bg: #FF0000;
+    --danger-button-hover-bg: #FF0000;
     --icon-action-color: #00b4d8;
     --icon-action-hover-color: #0096c7;
-    --icon-danger-color: #e63946;
-    --icon-danger-hover-color: #c0392b;
+    --icon-danger-color: #FF0000;
+    --icon-danger-hover-color: #FF0000;
     --calc-num-btn-bg: #007f8c;
     --calc-num-btn-text: #e0f2f7;
     --calc-num-btn-hover-bg: #0096c7;
@@ -268,12 +268,12 @@ body.theme-bold-2 { /* Forest Green */
     --menu-button-hover-bg: #4a754a;
     --placeholder-text: #c0d8b6;
     --ghosted-text: #d4e3c9;
-    --danger-button-bg: #e74c3c;
-    --danger-button-hover-bg: #c0392b;
+    --danger-button-bg: #FF0000;
+    --danger-button-hover-bg: #FF0000;
     --icon-action-color: #a7c957;
     --icon-action-hover-color: #8ba84a;
-    --icon-danger-color: #e74c3c;
-    --icon-danger-hover-color: #c0392b;
+    --icon-danger-color: #FF0000;
+    --icon-danger-hover-color: #FF0000;
     --calc-num-btn-bg: #5a855a;
     --calc-num-btn-text: #e6ffe6;
     --calc-num-btn-hover-bg: #6a9955;
@@ -337,8 +337,8 @@ body.theme-bold-3 { /* Sunset Orange */
     --menu-button-hover-bg: #f4a261;
     --placeholder-text: #ffe5b4;
     --ghosted-text: #ffd790;
-    --danger-button-bg: #e63946;
-    --danger-button-hover-bg: #c0392b;
+    --danger-button-bg: #FF0000;
+    --danger-button-hover-bg: #FF0000;
     --icon-action-color: #ffc300;
     --icon-action-hover-color: #e0ac00;
     --icon-danger-color: #e63946;
