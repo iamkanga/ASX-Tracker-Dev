@@ -6050,19 +6050,21 @@ function showTargetHitDetailsModal() {
     logDebug('Target Hit Modal: sharesAtTargetPrice:', sharesAtTargetPrice);
     logDebug('Target Hit Modal: livePrices:', livePrices);
 
-    // Build a list of shares that hit their target price, no duplicates, handle same code in different watchlists
+
+    // Build a list of shares that hit their target price, deduplicate by code+watchlist
     const sharesToDisplay = [];
-    const seenIds = new Set();
+    const seenKey = new Set();
     for (const share of sharesAtTargetPrice) {
         const livePriceData = livePrices[share.shareName.toUpperCase()];
         if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) continue;
         const currentLivePrice = livePriceData.live;
         const targetPrice = share.targetPrice;
+        // Key is code+watchlistId to allow same code in different watchlists
+        const key = share.shareName.toUpperCase() + '|' + share.watchlistId;
         if (currentLivePrice >= targetPrice && targetPrice > 0) {
-            // Use share.id (unique per watchlist)
-            if (!seenIds.has(share.id)) {
-                seenIds.add(share.id);
-                sharesToDisplay.push(share);
+            if (!seenKey.has(key)) {
+                seenKey.add(key);
+                sharesToDisplay.push({ ...share, hitTarget: true });
             }
         }
     }
@@ -6075,16 +6077,18 @@ function showTargetHitDetailsModal() {
             if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) continue;
             const currentLivePrice = livePriceData.live;
             const targetPrice = share.targetPrice;
+            const key = share.shareName.toUpperCase() + '|' + share.watchlistId;
             if (currentLivePrice >= targetPrice && targetPrice > 0) {
-                if (!seenIds.has(share.id)) {
-                    seenIds.add(share.id);
-                    sharesToDisplay.push(share);
+                if (!seenKey.has(key)) {
+                    seenKey.add(key);
+                    sharesToDisplay.push({ ...share, hitTarget: true });
                 }
             }
         }
     }
 
-    logDebug('Target Hit Modal: Shares to display:', sharesToDisplay.map(s => ({id: s.id, name: s.shareName, wl: s.watchlistId, price: livePrices[s.shareName.toUpperCase()]?.live, target: s.targetPrice})));
+
+    logDebug('Target Hit Modal: Shares to display:', sharesToDisplay.map(s => ({id: s.id, name: s.shareName, wl: s.watchlistId, price: livePrices[s.shareName.toUpperCase()]?.live, target: s.targetPrice, hitTarget: s.hitTarget})));
 
     if (sharesToDisplay.length === 0) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
@@ -6093,9 +6097,10 @@ function showTargetHitDetailsModal() {
             const livePriceData = livePrices[share.shareName.toUpperCase()];
             const currentLivePrice = livePriceData.live;
             const targetPrice = share.targetPrice;
-            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative';
+            const priceClass = share.hitTarget ? 'positive' : 'negative';
             const targetHitItem = document.createElement('div');
             targetHitItem.classList.add('target-hit-item', 'target-hit-border');
+            if (share.hitTarget) targetHitItem.classList.add('target-hit-border');
             targetHitItem.dataset.shareId = share.id;
             targetHitItem.innerHTML = `
                 <div class="target-hit-item-header target-hit-border">
