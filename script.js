@@ -1449,10 +1449,6 @@ function clearForm() {
     // NEW: Also clear the live price display when clearing the form
     if (addShareLivePriceDisplay) {
         addShareLivePriceDisplay.style.display = 'none';
-        addShareLivePriceDisplay.
-    // NEW: Also clear the live price display when clearing the form
-    if (addShareLivePriceDisplay) {
-        addShareLivePriceDisplay.style.display = 'none';
         addShareLivePriceDisplay.innerHTML = '';
     }
     selectedShareDocId = null;
