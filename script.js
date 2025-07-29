@@ -6229,8 +6229,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // This call is placed before sortShares/renderWatchlist to ensure initial data.
                 // The interval will be started if the current view is a stock watchlist.
                 // We do NOT call startLivePriceUpdates() from renderWatchlist anymore to prevent multiple intervals.
-                fetchLivePrices(); // Initial fetch
-                startLivePriceUpdates(); // Start interval immediately after first fetch on login
+                startLivePriceUpdates(); // This function includes an initial fetch, so no need to call fetchLivePrices() separately.
 
                 // After fetching live prices, re-sort and re-render the watchlist to apply percentage change.
                 sortShares(); // This will also call renderWatchlist(), which now *only* renders.
