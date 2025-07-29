@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // from the <script type="module"> block in index.html.
 
 // --- GLOBAL VARIABLES ---
-const DEBUG_MODE = false; // Set to 'false' to disable most console.log messages in production
+const DEBUG_MODE = true; // Set to 'true' to enable debug console.log messages
 
 // Custom logging function to control verbosity
 function logDebug(message, ...optionalParams) {
