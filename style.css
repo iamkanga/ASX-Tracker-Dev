@@ -4739,7 +4739,7 @@ main.container {
     white-space: nowrap;
     margin-left: 0; /* Remove margin from main price */
     margin-top: 2px; /* Small space below price */
-    line-height: 1;
+    display: none; /* Hide the price change in compact view as requested */
 }
 
 /* Ensure the share name (h3) is concise and always visible */
@@ -4761,6 +4761,12 @@ main.container {
 
 /* Apply color classes directly to the text elements in compact view */
 /* These rules are already correctly defined and will apply due to !important */
+
+/* NEW: Override text color in compact view to be neutral and always readable */
+.mobile-share-cards.compact-view .mobile-card h3,
+.mobile-share-cards.compact-view .mobile-card .live-price-large {
+    color: var(--text-color) !important; /* Use the theme's main text color, overriding positive/negative colors */
+}
 
 
 /* Keep the target hit alert styling on the card itself */
