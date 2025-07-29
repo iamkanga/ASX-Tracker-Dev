@@ -6051,21 +6051,32 @@ function showTargetHitDetailsModal() {
     logDebug('Target Hit Modal: livePrices:', livePrices);
 
 
-    // Build a list of shares that hit their target price, deduplicate by code+watchlist
+
+    // Build a list of shares that hit their target price, deduplicate by code+watchlist, with detailed debug
     const sharesToDisplay = [];
     const seenKey = new Set();
     for (const share of sharesAtTargetPrice) {
         const livePriceData = livePrices[share.shareName.toUpperCase()];
-        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) continue;
+        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
+            logDebug('Target Modal: Skipping share due to missing live price:', share);
+            continue;
+        }
         const currentLivePrice = livePriceData.live;
         const targetPrice = share.targetPrice;
-        // Key is code+watchlistId to allow same code in different watchlists
         const key = share.shareName.toUpperCase() + '|' + share.watchlistId;
+        const priceDiff = currentLivePrice - targetPrice;
+        const direction = currentLivePrice >= targetPrice ? 'above' : 'below';
+        logDebug(`Target Modal: Checking share ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId}) - Live: ${currentLivePrice}, Target: ${targetPrice}, Diff: ${priceDiff}, Direction: ${direction}`);
         if (currentLivePrice >= targetPrice && targetPrice > 0) {
             if (!seenKey.has(key)) {
                 seenKey.add(key);
+                logDebug(`Target Modal: Adding share to display: ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId})`);
                 sharesToDisplay.push({ ...share, hitTarget: true });
+            } else {
+                logDebug(`Target Modal: Duplicate key, not adding: ${key}`);
             }
+        } else {
+            logDebug(`Target Modal: Not at target, not adding: ${share.shareName} (ID: ${share.id})`);
         }
     }
 
@@ -6074,15 +6085,26 @@ function showTargetHitDetailsModal() {
         logDebug('Target Hit Modal: Fallback to allSharesData');
         for (const share of allSharesData) {
             const livePriceData = livePrices[share.shareName.toUpperCase()];
-            if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) continue;
+            if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
+                logDebug('Target Modal (Fallback): Skipping share due to missing live price:', share);
+                continue;
+            }
             const currentLivePrice = livePriceData.live;
             const targetPrice = share.targetPrice;
             const key = share.shareName.toUpperCase() + '|' + share.watchlistId;
+            const priceDiff = currentLivePrice - targetPrice;
+            const direction = currentLivePrice >= targetPrice ? 'above' : 'below';
+            logDebug(`Target Modal (Fallback): Checking share ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId}) - Live: ${currentLivePrice}, Target: ${targetPrice}, Diff: ${priceDiff}, Direction: ${direction}`);
             if (currentLivePrice >= targetPrice && targetPrice > 0) {
                 if (!seenKey.has(key)) {
                     seenKey.add(key);
+                    logDebug(`Target Modal (Fallback): Adding share to display: ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId})`);
                     sharesToDisplay.push({ ...share, hitTarget: true });
+                } else {
+                    logDebug(`Target Modal (Fallback): Duplicate key, not adding: ${key}`);
                 }
+            } else {
+                logDebug(`Target Modal (Fallback): Not at target, not adding: ${share.shareName} (ID: ${share.id})`);
             }
         }
     }
