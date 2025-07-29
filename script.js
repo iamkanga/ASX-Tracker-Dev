@@ -182,6 +182,17 @@ let sharesAtTargetPrice = [];
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 let currentMobileViewMode = 'default'; 
 
+// Helper to ensure compact mode class is always applied
+function applyCompactViewMode() {
+    if (mobileShareCardsContainer) {
+        if (currentMobileViewMode === 'compact') {
+            mobileShareCardsContainer.classList.add('compact-view');
+        } else {
+            mobileShareCardsContainer.classList.remove('compact-view');
+        }
+    }
+}
+
 // NEW: Global variable to track if the target hit icon is dismissed for the current session
 let targetHitIconDismissed = false;
 let showLastLivePriceOnClosedMarket = false; // New global variable for the toggle state
