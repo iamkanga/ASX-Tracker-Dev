@@ -214,6 +214,7 @@ const formCloseButton = document.querySelector('.form-close-button');
 const formTitle = document.getElementById('formTitle');
 const saveShareBtn = document.getElementById('saveShareBtn');
 const deleteShareBtn = document.getElementById('deleteShareBtn');
+const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
 const shareNameInput = document.getElementById('shareName');
 const currentPriceInput = document.getElementById('currentPrice');
 const targetPriceInput = document.getElementById('targetPrice');
@@ -4835,6 +4836,18 @@ async function initializeAppLogic() {
         shareNameInput.addEventListener('input', function() { 
             this.value = this.value.toUpperCase(); 
             checkFormDirtyState();
+        });
+        // NEW: Add blur event listener for live data fetching
+        shareNameInput.addEventListener('blur', async () => {
+            // Only fetch if we are in the "Add New Share" modal (not editing)
+            if (shareFormSection.style.display !== 'none' && !selectedShareDocId) {
+                const asxCode = shareNameInput.value.trim().toUpperCase();
+                if (asxCode) {
+                    await fetchAndDisplayLiveDataForForm(asxCode);
+                } else if (addShareLivePriceDisplay) {
+                    addShareLivePriceDisplay.style.display = 'none';
+                }
+            }
         });
     }
 
