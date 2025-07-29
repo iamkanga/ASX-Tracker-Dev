@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // from the <script type="module"> block in index.html.
 
 // --- GLOBAL VARIABLES ---
-const DEBUG_MODE = true; // Set to 'true' to enable debug console.log messages
+const DEBUG_MODE = false; // Set to 'false' to disable most console.log messages in production
 
 // Custom logging function to control verbosity
 function logDebug(message, ...optionalParams) {
@@ -3450,22 +3450,11 @@ function stopLivePriceUpdates() {
 // NEW: Function to update the target hit notification icon
 function updateTargetHitBanner() {
     // Collect ALL shares that have hit their target price, regardless of current watchlist view
-    // Deduplicate and count shares that have actually hit their target (same logic as modal and borders)
-    const groupedShares = {};
-    const sourceShares = Array.isArray(allSharesData) ? allSharesData : sharesAtTargetPrice;
-    let sharesAtTargetPrice = [];
-    sourceShares.forEach((share) => {
-        const livePriceData = livePrices[share.shareName?.toUpperCase()];
-        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) return;
-        const currentLivePrice = livePriceData.live;
-        const targetPrice = share.targetPrice;
-        if (currentLivePrice >= targetPrice && targetPrice > 0) {
-            const key = share.shareName?.toUpperCase() + '|' + share.watchlistId + '|' + targetPrice;
-            if (!groupedShares[key]) {
-                groupedShares[key] = true;
-                sharesAtTargetPrice.push(share);
-            }
-        }
+    sharesAtTargetPrice = allSharesData.filter(share => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        // Ensure livePriceData exists and has targetHit property
+        // The check against `currentSelectedWatchlistIds` is removed here to show ALL alerts globally
+        return livePriceData && livePriceData.targetHit;
     });
 
     if (!targetHitIconBtn || !targetHitIconCount) {
@@ -3474,6 +3463,7 @@ function updateTargetHitBanner() {
     }
 
     // Only show the icon if there are shares at target AND the icon hasn't been manually dismissed
+    // (The cash view check is removed here, as the icon should represent ALL stock alerts globally)
     if (!targetHitIconBtn || !targetHitIconCount || !watchlistSelect || !sortSelect) {
         console.warn('Target Alert: Target hit icon elements or dropdowns not found. Cannot update banner/highlights.');
         return;
@@ -3481,24 +3471,26 @@ function updateTargetHitBanner() {
 
     // Determine if any shares at target price are currently being displayed in the selected stock watchlist(s)
     const currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
+        // If "All Shares" is selected, any target hit applies
         if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
             return true;
         }
+        // If a specific watchlist is selected, check if the target-hit share is in it
         if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
             return share.watchlistId === currentSelectedWatchlistIds[0];
         }
-        return false;
+        return false; // No target hits in cash view or multiple watchlists selected (defaulting to no highlight for now)
     });
 
     // Update the fixed bottom-left icon
     if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
         targetHitIconCount.textContent = sharesAtTargetPrice.length;
-        targetHitIconBtn.classList.remove('app-hidden');
-        targetHitIconCount.style.display = 'block';
+        targetHitIconBtn.classList.remove('app-hidden'); // Show the icon via class
+        targetHitIconCount.style.display = 'block'; // Show the count badge
         logDebug('Target Alert: Showing icon: ' + sharesAtTargetPrice.length + ' shares hit target (global check).');
     } else {
-        targetHitIconBtn.classList.add('app-hidden');
-        targetHitIconCount.style.display = 'none';
+        targetHitIconBtn.classList.add('app-hidden'); // Hide the icon via class
+        targetHitIconCount.style.display = 'none'; // Hide the count badge
         logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
     }
 
@@ -6054,80 +6046,41 @@ function showTargetHitDetailsModal() {
 
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-
-    // Enhanced debug logging for diagnosis
-    logDebug('Target Hit Modal: sharesAtTargetPrice:', sharesAtTargetPrice);
-    logDebug('Target Hit Modal: allSharesData:', allSharesData);
-    logDebug('Target Hit Modal: livePrices:', livePrices);
-
-    // Only display shares that are actually rendered with a border in the watchlist (i.e., hit target and deduplicated)
-    const sharesToDisplay = [];
-    const groupedShares = {};
-    const sourceShares = Array.isArray(allSharesData) ? allSharesData : sharesAtTargetPrice;
-    logDebug('Target Hit Modal: Source shares for modal:', sourceShares);
-    sourceShares.forEach((share, idx) => {
-        const livePriceData = livePrices[share.shareName?.toUpperCase()];
-        logDebug(`[${idx}] Checking share:`, {
-            id: share.id,
-            name: share.shareName,
-            wl: share.watchlistId,
-            target: share.targetPrice,
-            live: livePriceData ? livePriceData.live : null
-        });
-        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
-            logDebug(`[${idx}] Skipping share due to missing live price`, share);
-            return;
-        }
-        const currentLivePrice = livePriceData.live;
-        const targetPrice = share.targetPrice;
-        // Only consider shares that have hit their target and would be rendered with a border
-        if (currentLivePrice >= targetPrice && targetPrice > 0) {
-            const key = share.shareName?.toUpperCase() + '|' + share.watchlistId + '|' + targetPrice;
-            if (!groupedShares[key]) {
-                groupedShares[key] = { ...share, currentLivePrice };
-                sharesToDisplay.push({ ...share, currentLivePrice, hitTarget: true });
-                logDebug(`[${idx}] Added to sharesToDisplay:`, {
-                    id: share.id,
-                    name: share.shareName,
-                    wl: share.watchlistId,
-                    target: share.targetPrice,
-                    live: currentLivePrice
-                });
-            } else {
-                logDebug(`[${idx}] Duplicate key, not adding: ${key}`);
-            }
-        }
-    });
-
-    logDebug('Target Hit Modal: Final shares to display:', sharesToDisplay.map(s => ({id: s.id, name: s.shareName, wl: s.watchlistId, price: s.currentLivePrice, target: s.targetPrice, hitTarget: s.hitTarget})));
-
-    if (sharesToDisplay.length === 0) {
+    if (sharesAtTargetPrice.length === 0) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
     } else {
-        sharesToDisplay.forEach(share => {
+        sharesAtTargetPrice.forEach(share => {
             const livePriceData = livePrices[share.shareName.toUpperCase()];
+            if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
+                // Skip if live price data is unavailable or invalid
+                return;
+            }
+
             const currentLivePrice = livePriceData.live;
             const targetPrice = share.targetPrice;
-            const priceClass = 'positive'; // Only positive, since only hitTarget shares are shown
+            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative'; // Determine color based on whether it passed target up or down
+
             const targetHitItem = document.createElement('div');
-            targetHitItem.classList.add('target-hit-item', 'target-hit-border');
-            targetHitItem.dataset.shareId = share.id;
+            targetHitItem.classList.add('target-hit-item');
+            targetHitItem.dataset.shareId = share.id; // Add data attribute for potential future interaction
+
             targetHitItem.innerHTML = `
-                <div class="target-hit-item-header target-hit-border">
+                <div class="target-hit-item-header">
                     <span class="share-name-code ${priceClass}">${share.shareName}</span>
                     <span class="live-price-display ${priceClass}">$${currentLivePrice.toFixed(2)}</span>
-                    <span class="target-hit-icon" title="Target Hit">&#x2714;</span>
                 </div>
                 <p>Target: <strong>$${targetPrice !== null && !isNaN(targetPrice) ? targetPrice.toFixed(2) : 'N/A'}</strong></p>
                 <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
             `;
             targetHitSharesList.appendChild(targetHitItem);
+
+            // NEW: Add click listener to make the item clickable
             targetHitItem.addEventListener('click', () => {
                 const clickedShareId = targetHitItem.dataset.shareId;
                 if (clickedShareId) {
-                    hideModal(targetHitDetailsModal);
-                    selectShare(clickedShareId);
-                    showShareDetails();
+                    hideModal(targetHitDetailsModal); // Close the target hit alerts modal
+                    selectShare(clickedShareId); // Select the share
+                    showShareDetails(); // Open the share details modal for the clicked share
                 }
             });
         });
