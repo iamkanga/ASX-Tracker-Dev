@@ -5507,6 +5507,9 @@ if (sortSelect) {
 
             logDebug('Edit Watchlist Button Click: Watchlist to edit ID: ' + watchlistToEditId + ', Name: ' + watchlistToEditName);
 
+            // Ensure currentEditingWatchlistId is set for modal actions (delete/save)
+            currentEditingWatchlistId = watchlistToEditId;
+
             editWatchlistNameInput.value = watchlistToEditName;
             // Keep at least one real watchlist + Cash & Assets
             const actualWatchlists = userWatchlists.filter(wl => wl.id !== ALL_SHARES_ID && wl.id !== CASH_BANK_WATCHLIST_ID);
