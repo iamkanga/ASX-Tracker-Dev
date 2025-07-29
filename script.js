@@ -5556,6 +5556,13 @@ if (sortSelect) {
 
             let watchlistToDeleteId = currentEditingWatchlistId; // Use the stored ID
 
+            // Guard clause: check for null/undefined/empty ID
+            if (!watchlistToDeleteId) {
+                showCustomAlert('Error: Cannot delete watchlist. ID is missing or invalid.', 2000);
+                console.error('DeleteWatchlist: watchlistToDeleteId is null/undefined/empty:', watchlistToDeleteId);
+                return;
+            }
+
             // Prevent deleting "All Shares" or "Cash & Assets"
             if (watchlistToDeleteId === ALL_SHARES_ID || watchlistToDeleteId === CASH_BANK_WATCHLIST_ID) {
                 showCustomAlert('Cannot delete this special watchlist.', 2000);
@@ -5582,13 +5589,13 @@ if (sortSelect) {
                     batch.delete(shareRef);
                 });
                 await batch.commit();
-                logDebug('Firestore: Deleted ' + querySnapshot.docs.length + ' shares from watchlist \'' + watchlistToDeleteName + '\'.');
+                logDebug('Firestore: Deleted ' + querySnapshot.docs.length + ' shares from watchlist \'" + watchlistToDeleteName + "\'.');
 
                 const watchlistDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists', watchlistToDeleteId);
                 await window.firestore.deleteDoc(watchlistDocRef);
-                logDebug('Firestore: Watchlist \'' + watchlistToDeleteName + '\' (ID: ' + watchlistToDeleteId + ') deleted.');
+                logDebug('Firestore: Watchlist \'" + watchlistToDeleteName + "\' (ID: ' + watchlistToDeleteId + ') deleted.');
 
-                showCustomAlert('Watchlist \'' + watchlistToDeleteName + '\' and its shares deleted successfully!', 2000);
+                showCustomAlert('Watchlist \'" + watchlistToDeleteName + "\' and its shares deleted successfully!', 2000);
                 closeModals();
 
                 // After deleting a watchlist, switch the current view to "All Shares"
