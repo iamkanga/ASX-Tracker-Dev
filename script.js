@@ -9,6 +9,7 @@ function pushAppState(stateObj = {}, title = '', url = '') {
 window.addEventListener('popstate', function(event) {
     // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
     const modals = [
+        window.shareFormSection,
         window.shareDetailModal,
         window.targetHitDetailsModal,
         window.cashAssetFormModal,
@@ -23,8 +24,8 @@ window.addEventListener('popstate', function(event) {
     ];
     for (const modal of modals) {
         if (modal && modal.style.display !== 'none') {
-            if (window.hideModal) hideModal(modal);
-            return;
+            if (window.closeModals) closeModals();
+            return; // Exit after handling the first open modal
         }
     }
     // If no modals are open, allow default browser back (exit app)
