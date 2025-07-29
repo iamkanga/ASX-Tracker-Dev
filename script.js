@@ -3450,11 +3450,22 @@ function stopLivePriceUpdates() {
 // NEW: Function to update the target hit notification icon
 function updateTargetHitBanner() {
     // Collect ALL shares that have hit their target price, regardless of current watchlist view
-    sharesAtTargetPrice = allSharesData.filter(share => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        // Ensure livePriceData exists and has targetHit property
-        // The check against `currentSelectedWatchlistIds` is removed here to show ALL alerts globally
-        return livePriceData && livePriceData.targetHit;
+    // Deduplicate and count shares that have actually hit their target (same logic as modal and borders)
+    const groupedShares = {};
+    const sourceShares = Array.isArray(allSharesData) ? allSharesData : sharesAtTargetPrice;
+    let sharesAtTargetPrice = [];
+    sourceShares.forEach((share) => {
+        const livePriceData = livePrices[share.shareName?.toUpperCase()];
+        if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) return;
+        const currentLivePrice = livePriceData.live;
+        const targetPrice = share.targetPrice;
+        if (currentLivePrice >= targetPrice && targetPrice > 0) {
+            const key = share.shareName?.toUpperCase() + '|' + share.watchlistId + '|' + targetPrice;
+            if (!groupedShares[key]) {
+                groupedShares[key] = true;
+                sharesAtTargetPrice.push(share);
+            }
+        }
     });
 
     if (!targetHitIconBtn || !targetHitIconCount) {
@@ -3463,7 +3474,6 @@ function updateTargetHitBanner() {
     }
 
     // Only show the icon if there are shares at target AND the icon hasn't been manually dismissed
-    // (The cash view check is removed here, as the icon should represent ALL stock alerts globally)
     if (!targetHitIconBtn || !targetHitIconCount || !watchlistSelect || !sortSelect) {
         console.warn('Target Alert: Target hit icon elements or dropdowns not found. Cannot update banner/highlights.');
         return;
@@ -3471,26 +3481,24 @@ function updateTargetHitBanner() {
 
     // Determine if any shares at target price are currently being displayed in the selected stock watchlist(s)
     const currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
-        // If "All Shares" is selected, any target hit applies
         if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
             return true;
         }
-        // If a specific watchlist is selected, check if the target-hit share is in it
         if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
             return share.watchlistId === currentSelectedWatchlistIds[0];
         }
-        return false; // No target hits in cash view or multiple watchlists selected (defaulting to no highlight for now)
+        return false;
     });
 
     // Update the fixed bottom-left icon
     if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
         targetHitIconCount.textContent = sharesAtTargetPrice.length;
-        targetHitIconBtn.classList.remove('app-hidden'); // Show the icon via class
-        targetHitIconCount.style.display = 'block'; // Show the count badge
+        targetHitIconBtn.classList.remove('app-hidden');
+        targetHitIconCount.style.display = 'block';
         logDebug('Target Alert: Showing icon: ' + sharesAtTargetPrice.length + ' shares hit target (global check).');
     } else {
-        targetHitIconBtn.classList.add('app-hidden'); // Hide the icon via class
-        targetHitIconCount.style.display = 'none'; // Hide the count badge
+        targetHitIconBtn.classList.add('app-hidden');
+        targetHitIconCount.style.display = 'none';
         logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
     }
 
