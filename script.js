@@ -6053,10 +6053,9 @@ function showTargetHitDetailsModal() {
 
 
 
-    // Only display shares that have actually hit their target
+    // Only display shares that have actually hit their target, and only one per code|watchlist|targetPrice
     const sharesToDisplay = [];
-    const seenKey = new Set();
-    // Use allSharesData if available, otherwise sharesAtTargetPrice
+    const groupedShares = {};
     const sourceShares = Array.isArray(allSharesData) ? allSharesData : sharesAtTargetPrice;
     logDebug('Target Hit Modal: Source shares for modal:', sourceShares);
     for (const share of sourceShares) {
@@ -6068,16 +6067,21 @@ function showTargetHitDetailsModal() {
         const currentLivePrice = livePriceData.live;
         const targetPrice = share.targetPrice;
         const key = share.shareName?.toUpperCase() + '|' + share.watchlistId + '|' + targetPrice;
-        if (currentLivePrice >= targetPrice && targetPrice > 0) {
-            if (!seenKey.has(key)) {
-                seenKey.add(key);
-                sharesToDisplay.push({ ...share, hitTarget: true });
-                logDebug(`Target Modal: Adding share to display: ${share.shareName} (ID: ${share.id}, WL: ${share.watchlistId}, Target: ${targetPrice})`);
-            } else {
-                logDebug(`Target Modal: Duplicate key, not adding: ${key}`);
-            }
+        // Group all shares by key
+        if (!groupedShares[key]) groupedShares[key] = [];
+        groupedShares[key].push({ ...share, currentLivePrice });
+    }
+
+    // For each group, only add the entry that has hit its target
+    for (const key in groupedShares) {
+        const group = groupedShares[key];
+        // Find the first entry in the group that has hit its target
+        const hitEntry = group.find(s => s.currentLivePrice >= s.targetPrice && s.targetPrice > 0);
+        if (hitEntry) {
+            sharesToDisplay.push({ ...hitEntry, hitTarget: true });
+            logDebug(`Target Modal: Adding share to display: ${hitEntry.shareName} (ID: ${hitEntry.id}, WL: ${hitEntry.watchlistId}, Target: ${hitEntry.targetPrice})`);
         } else {
-            logDebug(`Target Modal: Not at target, not adding: ${share.shareName} (ID: ${share.id}, Target: ${targetPrice})`);
+            logDebug(`Target Modal: No hit entry for key: ${key}, not adding any.`);
         }
     }
 
