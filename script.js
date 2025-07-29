@@ -1,3 +1,4 @@
+// Copilot update: 2025-07-29 - change for sync test
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
