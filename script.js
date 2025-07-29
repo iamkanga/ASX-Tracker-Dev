@@ -16,23 +16,6 @@ window.addEventListener('popstate', function(event) {
         return; // Exit after handling the sidebar
     }
 
-    // NEW: Second, check for the custom context menu and close it.
-    // This is a lightweight overlay that should be dismissed before any main modals.
-    if (window.shareContextMenu && window.shareContextMenu.style.display !== 'none') {
-        if (window.hideContextMenu) {
-            window.hideContextMenu();
-        }
-        return; // Exit after handling the context menu
-    }
-
-    // NEW: Third, check if search suggestions are open within the search modal.
-    // This allows the user to go "back" from the suggestions without closing the search modal.
-    if (window.stockSearchModal && window.stockSearchModal.style.display !== 'none' &&
-        window.asxSuggestions && window.asxSuggestions.classList.contains('active')) {
-        window.asxSuggestions.classList.remove('active');
-        return; // Exit after hiding suggestions, keeping the modal open.
-    }
-
     // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
     const modals = [
         window.shareFormSection,
@@ -54,7 +37,7 @@ window.addEventListener('popstate', function(event) {
             return; // Exit after handling the first open modal
         }
     }
-    // If no modals, sidebar, or other UI states are open, allow default browser back (exit app)
+    // If no modals or sidebar are open, allow default browser back (exit app)
 });
 // ...existing code...
 
@@ -167,6 +150,7 @@ let contextMenuOpen = false; // To track if the custom context menu is open
 let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
 let originalShareData = null; // Stores the original share data when editing for dirty state check
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
+let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 
 
 // Live Price Data
@@ -4371,9 +4355,6 @@ async function migrateOldSharesToWatchlist() {
 }
 
 function showContextMenu(event, shareId) {
-    // NEW: Push a history state so the back button can close the context menu.
-    pushAppState({ contextMenu: true }, '', '#contextmenu');
-
     if (!shareContextMenu) return;
     
     currentContextMenuShareId = shareId;
@@ -4676,6 +4657,9 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             const watchlistDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists', watchlistId);
             await window.firestore.updateDoc(watchlistDocRef, { name: newName });
             if (!isSilent) showCustomAlert('Watchlist renamed to \'' + newName + '\'!', 1500);
+            // --- IMPORTANT FIX: Reload all settings to refresh UI after renaming ---
+            await loadUserWatchlistsAndSettings();
+            // --- END IMPORTANT FIX ---
             logDebug('Firestore: Watchlist (ID: ' + watchlistId + ') renamed to \'' + newName + '\'.');
         } else { // Adding new watchlist
             const watchlistsColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists');
@@ -4876,9 +4860,6 @@ async function initializeAppLogic() {
             currentSuggestions = allAsxCodes.filter(stock => 
                 stock.code.includes(query) || stock.name.toUpperCase().includes(query)
             ).slice(0, 10); // Limit to top 10 suggestions
-            if (currentSuggestions.length > 0 && !asxSuggestions.classList.contains('active')) {
-                pushAppState({ searchSuggestions: true }, '', '#search');
-            }
 
             if (currentSuggestions.length > 0) {
                 currentSuggestions.forEach((stock, index) => {
@@ -5559,7 +5540,7 @@ if (sortSelect) {
                 return;
             }
             const newName = editWatchlistNameInput.value.trim();
-            const watchlistToEditId = watchlistSelect.value;
+            const watchlistToEditId = currentEditingWatchlistId; // Use the stored ID
             await saveWatchlistChanges(false, newName, watchlistToEditId); // false indicates not silent
         });
     }
@@ -5573,7 +5554,7 @@ if (sortSelect) {
                 return;
             }
 
-            let watchlistToDeleteId = watchlistSelect.value;
+            let watchlistToDeleteId = currentEditingWatchlistId; // Use the stored ID
 
             // Prevent deleting "All Shares" or "Cash & Assets"
             if (watchlistToDeleteId === ALL_SHARES_ID || watchlistToDeleteId === CASH_BANK_WATCHLIST_ID) {
