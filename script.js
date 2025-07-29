@@ -6060,7 +6060,7 @@ function showTargetHitDetailsModal() {
     logDebug('Target Hit Modal: allSharesData:', allSharesData);
     logDebug('Target Hit Modal: livePrices:', livePrices);
 
-    // Only display shares that have actually hit their target, and only one per code|watchlist|targetPrice
+    // Only display shares that are actually rendered with a border in the watchlist (i.e., hit target and deduplicated)
     const sharesToDisplay = [];
     const groupedShares = {};
     const sourceShares = Array.isArray(allSharesData) ? allSharesData : sharesAtTargetPrice;
@@ -6080,31 +6080,22 @@ function showTargetHitDetailsModal() {
         }
         const currentLivePrice = livePriceData.live;
         const targetPrice = share.targetPrice;
-        const key = share.shareName?.toUpperCase() + '|' + share.watchlistId + '|' + targetPrice;
-        if (!groupedShares[key]) groupedShares[key] = [];
-        groupedShares[key].push({ ...share, currentLivePrice });
-        logDebug(`[${idx}] Grouping key: ${key} | Group size: ${groupedShares[key].length}`);
-    });
-
-    // Log all groups and their contents
-    Object.entries(groupedShares).forEach(([key, group], i) => {
-        logDebug(`Group [${i}] Key: ${key} | Entries:`, group.map(s => ({id: s.id, name: s.shareName, wl: s.watchlistId, target: s.targetPrice, live: s.currentLivePrice})));
-    });
-
-    // For each group, only add the entry that has hit its target
-    Object.entries(groupedShares).forEach(([key, group], i) => {
-        const hitEntry = group.find(s => s.currentLivePrice >= s.targetPrice && s.targetPrice > 0);
-        if (hitEntry) {
-            sharesToDisplay.push({ ...hitEntry, hitTarget: true });
-            logDebug(`Group [${i}] Key: ${key} | Hit entry:`, {
-                id: hitEntry.id,
-                name: hitEntry.shareName,
-                wl: hitEntry.watchlistId,
-                target: hitEntry.targetPrice,
-                live: hitEntry.currentLivePrice
-            });
-        } else {
-            logDebug(`Group [${i}] Key: ${key} | No hit entry, not adding any.`);
+        // Only consider shares that have hit their target and would be rendered with a border
+        if (currentLivePrice >= targetPrice && targetPrice > 0) {
+            const key = share.shareName?.toUpperCase() + '|' + share.watchlistId + '|' + targetPrice;
+            if (!groupedShares[key]) {
+                groupedShares[key] = { ...share, currentLivePrice };
+                sharesToDisplay.push({ ...share, currentLivePrice, hitTarget: true });
+                logDebug(`[${idx}] Added to sharesToDisplay:`, {
+                    id: share.id,
+                    name: share.shareName,
+                    wl: share.watchlistId,
+                    target: share.targetPrice,
+                    live: currentLivePrice
+                });
+            } else {
+                logDebug(`[${idx}] Duplicate key, not adding: ${key}`);
+            }
         }
     });
 
