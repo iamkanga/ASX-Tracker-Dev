@@ -2108,12 +2108,17 @@ function showShareDetails() {
         setIconDisabled(modalListcorpLink, true);
     }
 
-    // CommSec.com.au Link
-    if (modalCommSecLink) {
-        modalCommSecLink.href = 'https://www2.commsec.com.au/secure/login';
-        modalCommSecLink.innerHTML = 'View on CommSec.com.au <i class="fas fa-external-link-alt"></i>';
+    // CommSec.com.au Link (DYNAMIC)
+    if (modalCommSecLink && share.shareName) {
+        // Use the required URL format: https://www2.commsec.com.au/quotes/summary?stockCode=AMP&exchangeCode=ASX
+        const commsecUrl = `https://www2.commsec.com.au/quotes/summary?stockCode=${encodeURIComponent(share.shareName)}&exchangeCode=ASX`;
+        modalCommSecLink.href = commsecUrl;
+        modalCommSecLink.textContent = 'View on CommSec.com.au';
         modalCommSecLink.style.display = 'inline-flex';
         setIconDisabled(modalCommSecLink, false);
+    } else if (modalCommSecLink) {
+        modalCommSecLink.style.display = 'none';
+        setIconDisabled(modalCommSecLink, true);
     }
 
     if (modalCommSecLink && commSecLoginMessage) {
