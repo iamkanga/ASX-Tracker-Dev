@@ -1967,14 +1967,18 @@ function showShareDetails() {
     // Find the company name from the pre-loaded ASX codes list
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     let companyName = companyInfo ? companyInfo.name : '';
-    if (!companyName) {
-        companyName = '(Company name not found)';
-        modalShareName.innerHTML = `<span style='font-weight:600;'>${share.shareName || 'N/A'}</span> <span style='font-size:1rem;color:#bbb;font-style:italic;'>${companyName}</span>`;
-    } else {
-        modalShareName.innerHTML = `<span style='font-weight:600;'>${share.shareName}</span> <span style='font-size:1rem;color:#888;'>${companyName}</span>`;
+    if (modalShareName) {
+        if (!companyName) {
+            companyName = '(Company name not found)';
+            modalShareName.innerHTML = `<span style='font-weight:600;'>${share.shareName || 'N/A'}</span> <span style='font-size:1rem;color:#bbb;font-style:italic;'>${companyName}</span>`;
+        } else {
+            modalShareName.innerHTML = `<span style='font-weight:600;'>${share.shareName}</span> <span style='font-size:1rem;color:#888;'>${companyName}</span>`;
+        }
     }
-    modalCompanyName.textContent = '';
-    modalCompanyName.style.display = 'none';
+    if (modalCompanyName) {
+        modalCompanyName.textContent = '';
+        modalCompanyName.style.display = 'none';
+    }
 
     // Get live price data for this share to check target hit status
     const livePriceDataForModalTitle = livePrices[share.shareName.toUpperCase()];
@@ -6353,12 +6357,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 startLivePriceUpdates(); // This function includes an initial fetch, so no need to call fetchLivePrices() separately.
 
                 // After fetching live prices, re-sort and re-render the watchlist to apply percentage change.
-        // After fetching live prices, apply the current sort order and re-render
-        if (typeof currentSortOrder !== 'undefined' && currentSortOrder && currentSortOrder.startsWith('percentageChange')) {
-            sortSharesByPercentageChange(currentSortOrder);
-            renderWatchlist();
+        // After fetching live prices, always apply the current sort order and re-render
+        if (typeof currentSortOrder !== 'undefined' && currentSortOrder) {
+            if (currentSortOrder.startsWith('percentageChange')) {
+                sortSharesByPercentageChange(currentSortOrder);
+                renderWatchlist();
+            } else {
+                sortShares(); // This will also call renderWatchlist(), which now *only* renders.
+            }
         } else {
-            sortShares(); // This will also call renderWatchlist(), which now *only* renders.
+            sortShares();
         }
                 
                 // NEW: Load ASX codes for autocomplete
