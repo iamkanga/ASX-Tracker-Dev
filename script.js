@@ -2001,12 +2001,8 @@ function showShareDetails() {
     // Set ASX code in modal title
     modalShareName.textContent = share.shareName || 'N/A';
 
-    // Find and display the company name from the pre-loaded ASX codes list
-    const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
-    // AGGRESSIVE FIX: Force update of company name in modal
+    // --- AGGRESSIVE FIX: Forcefully find and inject the company name into the modal title ---
     if (modalCompanyName) {
-        modalCompanyName.textContent = companyInfo ? companyInfo.name : '';
-        // Ensure it's visible by setting display style
         modalCompanyName.style.display = 'block';
     }
 
