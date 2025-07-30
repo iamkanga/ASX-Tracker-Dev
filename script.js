@@ -1974,12 +1974,12 @@ function showShareDetails() {
         // Try fallback if modal not yet in DOM
         modalHeader = document.getElementById('shareDetailModal');
     }
-    // Display ASX code in large text and company name underneath in smaller text
+    // Force ASX code and company name to display stacked vertically
     if (modalShareName) {
         if (!companyName) {
             companyName = '(Company name not found)';
         }
-        modalShareName.innerHTML = `<div style='font-weight:600;font-size:1.5rem;'>${share.shareName || 'N/A'}</div><div style='font-size:1rem;color:#888;margin-top:2px;'>${companyName}</div>`;
+        modalShareName.innerHTML = `<div class='modal-asx-code' style='font-weight:700;font-size:2rem;line-height:1.1;'>${share.shareName || 'N/A'}</div><div class='modal-company-name' style='font-size:1rem;color:#888;margin-top:4px;'>${companyName}</div>`;
         modalShareName.style.display = 'block';
     }
     // Fallback: If still not visible, force update after modal is shown
@@ -6373,13 +6373,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 startLivePriceUpdates();
 
-                // Guarantee percentage change sort is applied after live prices are fetched on app open
-                setTimeout(() => {
+                // Aggressively guarantee percentage change sort is applied after live prices are fetched on app open
+                const forceSortInterval = setInterval(() => {
                     if (typeof currentSortOrder !== 'undefined' && currentSortOrder && typeof sortSharesByPercentageChange === 'function' && currentSortOrder.startsWith('percentageChange')) {
                         sortSharesByPercentageChange(currentSortOrder);
                         renderWatchlist();
+                        clearInterval(forceSortInterval);
                     }
-                }, 200);
+                }, 100);
 
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
