@@ -1968,7 +1968,15 @@ function showShareDetails() {
 
     // Find the company name from the pre-loaded ASX codes list
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
-    const companyName = companyInfo ? companyInfo.name : '';
+    let companyName = companyInfo ? companyInfo.name : '';
+    if (!companyName) {
+        companyName = '(Company name not found)';
+        modalCompanyName.style.color = '#bbb';
+        modalCompanyName.style.fontStyle = 'italic';
+    } else {
+        modalCompanyName.style.color = '#888';
+        modalCompanyName.style.fontStyle = 'normal';
+    }
     modalCompanyName.textContent = companyName;
 
     // Get live price data for this share to check target hit status
