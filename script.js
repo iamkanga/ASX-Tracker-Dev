@@ -388,6 +388,21 @@ const cashFormInputs = [
 
 // --- GLOBAL HELPER FUNCTIONS ---
 
+// Helper to format decimals as entered by user, up to 3 places, no trailing zeros
+function formatUserDecimal(value, maxDecimals = 3) {
+    if (value === null || isNaN(value)) return '';
+    // Convert to string, preserve user input decimals
+    let str = value.toString();
+    if (!str.includes('.')) return value.toString();
+    // Only show up to maxDecimals, but trim trailing zeros
+    let [intPart, decPart] = str.split('.');
+    decPart = decPart.slice(0, maxDecimals);
+    // Remove trailing zeros
+    decPart = decPart.replace(/0+$/, '');
+    if (decPart.length === 0) return intPart;
+    return intPart + '.' + decPart;
+}
+
 /**
  * Dynamically adjusts the top padding of the main content area
  * to prevent it from being hidden by the fixed header.
@@ -1589,8 +1604,8 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
 
     formTitle.textContent = 'Edit Share - ' + (shareToEdit.shareName || 'N/A'); // Add share code to title
     if (shareNameInput) shareNameInput.value = shareToEdit.shareName || '';
-    if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? Number(shareToEdit.currentPrice).toFixed(3) : '';
-    if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? Number(shareToEdit.targetPrice).toFixed(3) : '';
+    if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? formatUserDecimal(shareToEdit.currentPrice) : '';
+    if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimal(shareToEdit.targetPrice) : '';
     
     // Set the correct state for the new target direction checkboxes
     if (targetAboveCheckbox && targetBelowCheckbox) {
@@ -1600,7 +1615,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
         targetBelowCheckbox.checked = (savedTargetDirection === 'below');
     }
 
-    if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? Number(shareToEdit.dividendAmount).toFixed(3) : '';
+    if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? formatUserDecimal(shareToEdit.dividendAmount) : '';
     if (frankingCreditsInput) frankingCreditsInput.value = Number(shareToEdit.frankingCredits) !== null && !isNaN(Number(shareToEdit.frankingCredits)) ? Number(shareToEdit.frankingCredits).toFixed(1) : '';
 
     // Set the star rating dropdown
