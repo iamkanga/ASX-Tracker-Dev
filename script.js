@@ -2003,7 +2003,16 @@ function showShareDetails() {
 
     // --- AGGRESSIVE FIX: Forcefully find and inject the company name into the modal title ---
     if (modalCompanyName) {
-        modalCompanyName.style.display = 'block';
+        const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
+        if (companyInfo) {
+            modalCompanyName.textContent = companyInfo.name;
+            logDebug(`Company Name: Found and set name for ${share.shareName}: ${companyInfo.name}`);
+        } else {
+            modalCompanyName.textContent = ''; // Clear if not found
+            logDebug(`Company Name: Could not find company name for ${share.shareName}`);
+        }
+        // Force visibility
+        modalCompanyName.style.setProperty('display', 'block', 'important');
     }
 
     // Get live price data for this share to check target hit status
