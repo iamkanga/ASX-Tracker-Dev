@@ -6337,72 +6337,53 @@ document.addEventListener('DOMContentLoaded', function() {
         appHeader.classList.add('app-hidden');
     }
 
-
     if (window.firestoreDb && window.firebaseAuth && window.getFirebaseAppId && window.firestore && window.authFunctions) {
         db = window.firestoreDb;
         auth = window.firebaseAuth;
         currentAppId = window.getFirebaseAppId();
         window._firebaseInitialized = true; // Mark Firebase as initialized
         logDebug('Firebase Ready: DB, Auth, and AppId assigned from window. Setting up auth state listener.');
-        
+
         window.authFunctions.onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
                 logDebug('AuthState: User email: ' + user.email);
-                // Always set the main title to "ASX Tracker" regardless of user email
-            mainTitle.textContent = 'ASX Tracker';
-            logDebug('AuthState: Main title set to ASX Tracker.');
+                mainTitle.textContent = 'ASX Tracker';
+                logDebug('AuthState: Main title set to ASX Tracker.');
                 updateMainButtonsState(true);
                 window._userAuthenticated = true; // Mark user as authenticated
-                
-                // Show main app content and header here
+
                 if (mainContainer) {
                     mainContainer.classList.remove('app-hidden');
                 }
                 if (appHeader) {
                     appHeader.classList.remove('app-hidden');
                 }
-                // Adjust padding immediately after showing header
                 adjustMainContentPadding();
 
-                // Start pulsing animation on icon after successful sign-in
                 if (splashKangarooIcon) {
                     splashKangarooIcon.classList.add('pulsing');
                     logDebug('Splash Screen: Started pulsing animation after sign-in.');
                 }
-                
-                // Load dismissal state from localStorage on login
+
                 targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
 
-                // Load data and then hide splash screen
-                await loadUserWatchlistsAndSettings(); // This now sets _appDataLoaded and calls hideSplashScreenIfReady
-                
-                // Ensure live prices are fetched once on login and interval started for stock watchlists.
-                // This call is placed before sortShares/renderWatchlist to ensure initial data.
-                // The interval will be started if the current view is a stock watchlist.
-                // We do NOT call startLivePriceUpdates() from renderWatchlist anymore to prevent multiple intervals.
-                startLivePriceUpdates(); // This function includes an initial fetch, so no need to call fetchLivePrices() separately.
+                await loadUserWatchlistsAndSettings();
 
-                // After fetching live prices, re-sort and re-render the watchlist to apply percentage change.
-        // After fetching live prices, always apply the current sort order and re-render
-        setTimeout(() => {
-            if (typeof currentSortOrder !== 'undefined' && currentSortOrder) {
-                if (typeof sortSharesByPercentageChange === 'function' && currentSortOrder.startsWith('percentageChange')) {
-                    sortSharesByPercentageChange(currentSortOrder);
-                    renderWatchlist();
-                } else if (typeof sortShares === 'function') {
-                    sortShares(); // This will also call renderWatchlist(), which now *only* renders.
-                }
-            } else if (typeof sortShares === 'function') {
-                sortShares();
-            }
-        }, 100);
-                
-                // NEW: Load ASX codes for autocomplete
+                startLivePriceUpdates();
+
+                // Guarantee percentage change sort is applied after live prices are fetched on app open
+                setTimeout(() => {
+                    if (typeof currentSortOrder !== 'undefined' && currentSortOrder && typeof sortSharesByPercentageChange === 'function' && currentSortOrder.startsWith('percentageChange')) {
+                        sortSharesByPercentageChange(currentSortOrder);
+                        renderWatchlist();
+                    }
+                }, 200);
+
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
-            } // This closing brace correctly ends the `if (user)` block
+            }
 
             else {
                 currentUserId = null;
