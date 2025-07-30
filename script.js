@@ -66,16 +66,28 @@ function sortSharesByPercentageChange(shares) {
 function onLivePricesUpdated() {
     // AGGRESSIVE FIX: Always resort regardless of current sort order to ensure data consistency
     if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
-        logDebug('Force resorting shares by percentage change after live prices update');
+        logDebug('AGGRESSIVE SORT: Force resorting shares by percentage change after live prices update');
         // Re-sort shares and re-render
         let sortedShares = sortSharesByPercentageChange(allSharesData);
         if (currentSortOrder === 'percentageChange-asc') sortedShares.reverse();
+        
+        // AGGRESSIVE: Force the allSharesData to the sorted order
+        allSharesData.length = 0; // Clear the array
+        allSharesData.push(...sortedShares); // Re-populate with sorted data
         
         // Force re-render after sorting
         renderWatchlist();
     } else {
         // Still render to update UI with new prices
         renderWatchlist();
+    }
+}
+
+// AGGRESSIVE FIX: Force apply current sort order after data loads
+function forceApplyCurrentSort() {
+    if (currentSortOrder && currentSortOrder !== '') {
+        logDebug('AGGRESSIVE SORT: Force applying current sort order: ' + currentSortOrder);
+        sortShares();
     }
 }
 
@@ -734,8 +746,15 @@ function addShareToTable(share) {
     // Use the new helper function to get all display data
     const displayData = getShareDisplayData(share);
 
+    // AGGRESSIVE FIX: Get company name from ASX codes for display in table
+    const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
+    const companyName = companyInfo ? companyInfo.name : '';
+
     row.innerHTML = `
-        <td><span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span></td>
+        <td>
+            <span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>
+            ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
+        </td>
         <td class="live-price-cell">
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
@@ -919,8 +938,13 @@ function addShareToMobileCards(share) {
         }
     }
 
+    // AGGRESSIVE FIX: Get company name from ASX codes for display
+    const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
+    const companyName = companyInfo ? companyInfo.name : '';
+
     card.innerHTML = `
         <h3 class="${priceClass}">${share.shareName || ''}</h3>
+        ${companyName ? `<p class="modal-company-name-display" style="margin-top: -8px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
         <div class="live-price-display-section">
             <div class="fifty-two-week-row">
                 <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A'}</span>
@@ -2249,15 +2273,18 @@ function showShareDetails() {
 
 function sortShares() {
     const sortValue = currentSortOrder;
+    logDebug('AGGRESSIVE DEBUG: sortShares called with currentSortOrder: ' + sortValue);
     if (!sortValue || sortValue === '') {
         logDebug('Sort: Sort placeholder selected, no explicit sorting applied.');
         renderWatchlist(); 
         return;
     }
     const [field, order] = sortValue.split('-');
+    logDebug('AGGRESSIVE DEBUG: Sorting by field: ' + field + ', order: ' + order);
     allSharesData.sort((a, b) => {
         // Handle sorting by percentage change
         if (field === 'percentageChange') {
+            logDebug('AGGRESSIVE DEBUG: Percentage change sorting detected');
             const livePriceDataA = livePrices[a.shareName.toUpperCase()];
             const livePriceA = livePriceDataA ? livePriceDataA.live : undefined;
             const prevCloseA = livePriceDataA ? livePriceDataA.prevClose : undefined;
@@ -3394,6 +3421,8 @@ async function loadUserWatchlistsAndSettings() {
         // Apply saved sort order or default
         if (currentUserId && savedSortOrder && Array.from(sortSelect.options).some(option => option.value === savedSortOrder)) {
             sortSelect.value = savedSortOrder;
+            // AGGRESSIVE FIX: Ensure currentSortOrder is updated to match the saved sort
+            currentSortOrder = savedSortOrder;
             logDebug('Sort: Applied saved sort order: ' + currentSortOrder);
         } else {
             // Set to default sort for the current view type
@@ -3541,6 +3570,9 @@ async function fetchLivePrices() {
         
         // AGGRESSIVE FIX: Explicitly call onLivePricesUpdated to ensure proper sorting
         onLivePricesUpdated();
+        
+        // AGGRESSIVE FIX: Force apply current sort order after live prices load
+        forceApplyCurrentSort();
         
         // After fetching new prices, always re-sort and re-render the watchlist.
         // This ensures all data, including percentage changes, is correctly displayed.
@@ -3766,6 +3798,9 @@ async function loadShares() {
 
             allSharesData = fetchedShares;
             logDebug('Shares: Shares data updated from snapshot. Total shares: ' + allSharesData.length);
+            
+            // AGGRESSIVE FIX: Force apply current sort order after data loads
+            forceApplyCurrentSort();
             
             sortShares(); // Sorts allSharesData and calls renderWatchlist
             renderAsxCodeButtons(); // Re-renders ASX buttons based on allSharesData
@@ -5452,6 +5487,13 @@ if (sortSelect) {
     sortSelect.addEventListener('change', async (event) => {
         logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
         currentSortOrder = sortSelect.value;
+        
+        // AGGRESSIVE FIX: Force apply sort immediately for percentage change sorts
+        if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
+            logDebug('AGGRESSIVE SORT: Percentage change sort selected, forcing immediate application');
+            forceApplyCurrentSort();
+        }
+        
         // Determine whether to sort shares or cash assets
         if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
             renderCashCategories(); // Re-render cash categories with new sort order
