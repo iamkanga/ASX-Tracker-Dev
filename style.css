@@ -3114,7 +3114,7 @@ table td.live-price-cell.negative-change {
     flex-wrap: nowrap; /* Prevent wrapping on small screens */
 }
 
-/* ASX Code prominence and alignment */
+/* ASX Code  prominence and alignment */
 #modalShareName, #modalCashAssetName, #formTitle { /* Apply to all modal titles */
     margin: 0;
     padding: 0;
