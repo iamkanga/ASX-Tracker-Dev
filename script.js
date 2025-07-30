@@ -251,7 +251,6 @@ const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer
 const shareFormSection = document.getElementById('shareFormSection');
 const formCloseButton = document.querySelector('.form-close-button');
 const formTitle = document.getElementById('formTitle');
-const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
 const saveShareBtn = document.getElementById('saveShareBtn');
 const deleteShareBtn = document.getElementById('deleteShareBtn');
 const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
@@ -1534,8 +1533,6 @@ function clearForm() {
     if (commentsFormContainer) { // This now refers to #dynamicCommentsArea
         commentsFormContainer.innerHTML = ''; // Clears ONLY the dynamically added comments
     }
-    formTitle.textContent = 'Add New Share'; // Reset title
-    if (formCompanyName) formCompanyName.textContent = ''; // Clear company name
     // NEW: Also clear the live price display when clearing the form
     if (addShareLivePriceDisplay) {
         addShareLivePriceDisplay.style.display = 'none';
@@ -1638,13 +1635,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     }
     selectedShareDocId = targetShareId; 
 
-    // Set the modal title to the share code and the subtitle to the company name
-    formTitle.textContent = shareToEdit.shareName || 'N/A';
-    const companyInfo = allAsxCodes.find(c => c.code === shareToEdit.shareName.toUpperCase());
-    if (formCompanyName) {
-        formCompanyName.textContent = companyInfo ? companyInfo.name : '';
-    }
-
+    formTitle.textContent = 'Edit Share - ' + (shareToEdit.shareName || 'N/A'); // Add share code to title
     if (shareNameInput) shareNameInput.value = shareToEdit.shareName || '';
     if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? formatUserDecimalStrict(shareToEdit.currentPrice) : '';
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimalStrict(shareToEdit.targetPrice) : '';
@@ -4952,22 +4943,14 @@ async function initializeAppLogic() {
         });
         // NEW: Add blur event listener for live data fetching
         shareNameInput.addEventListener('blur', async () => {
-            // Only act if we are in the "Add New Share" modal (not editing)
+            // Only fetch if we are in the "Add New Share" modal (not editing)
             if (shareFormSection.style.display !== 'none' && !selectedShareDocId) {
                 const asxCode = shareNameInput.value.trim().toUpperCase();
                 if (asxCode) {
-                    // Find and display company name
-                    const companyInfo = allAsxCodes.find(c => c.code === asxCode);
-                    if (formCompanyName) {
-                        formCompanyName.textContent = companyInfo ? companyInfo.name : 'Company not found';
-                    }
-
-                    // The live price fetching logic can remain here if needed in the future
+                    // fetchAndDisplayLiveDataForForm(asxCode) was called here, but the function is missing.
+                    // To prevent errors, this call is now removed. If you need live data, use an existing function or add a new one.
                 } else if (addShareLivePriceDisplay) {
                     addShareLivePriceDisplay.style.display = 'none';
-                    if (formCompanyName) {
-                        formCompanyName.textContent = ''; // Clear company name if ASX code is cleared
-                    }
                 }
             }
         });
