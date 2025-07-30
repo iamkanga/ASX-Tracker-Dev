@@ -251,7 +251,6 @@ const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer
 const shareFormSection = document.getElementById('shareFormSection');
 const formCloseButton = document.querySelector('.form-close-button');
 const formTitle = document.getElementById('formTitle');
-const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
 const saveShareBtn = document.getElementById('saveShareBtn');
 const deleteShareBtn = document.getElementById('deleteShareBtn');
 const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
@@ -1534,8 +1533,6 @@ function clearForm() {
     if (commentsFormContainer) { // This now refers to #dynamicCommentsArea
         commentsFormContainer.innerHTML = ''; // Clears ONLY the dynamically added comments
     }
-    formTitle.textContent = 'Add New Share'; // Reset title
-    if (formCompanyName) formCompanyName.textContent = ''; // Clear company name
     // NEW: Also clear the live price display when clearing the form
     if (addShareLivePriceDisplay) {
         addShareLivePriceDisplay.style.display = 'none';
@@ -1638,13 +1635,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     }
     selectedShareDocId = targetShareId; 
 
-    // Set the modal title to the share code and the subtitle to the company name
-    formTitle.textContent = shareToEdit.shareName || 'N/A';
-    const companyInfo = allAsxCodes.find(c => c.code === shareToEdit.shareName.toUpperCase());
-    if (formCompanyName) {
-        formCompanyName.textContent = companyInfo ? companyInfo.name : '';
-    }
-
+    formTitle.textContent = 'Edit Share - ' + (shareToEdit.shareName || 'N/A'); // Add share code to title
     if (shareNameInput) shareNameInput.value = shareToEdit.shareName || '';
     if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? formatUserDecimalStrict(shareToEdit.currentPrice) : '';
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimalStrict(shareToEdit.targetPrice) : '';
