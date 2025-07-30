@@ -40,6 +40,12 @@ window.addEventListener('popstate', function(event) {
     // If no modals or sidebar are open, allow default browser back (exit app)
 });
 // ...existing code...
+// --- (Aggressive Enforcement Patch Removed) ---
+// The previous patch has been removed as the root cause of the UI issues,
+// a syntax error in index.html, has been corrected. The standard application
+// logic should now function as intended.
+// --- END REMOVED PATCH ---
+
 // [Copilot Update] Triggering source control detection - 2025-07-30
 // [Copilot Update] Forcing source control commit - 2025-07-30
 
