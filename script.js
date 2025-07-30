@@ -3523,19 +3523,13 @@ async function fetchLivePrices() {
         });
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices);
-        
-        // IMPORTANT: Re-render the watchlist immediately after live prices are updated
-        // to reflect changes in target hit status (borders, etc.).
-        renderWatchlist(); // This will trigger a full re-render of cards/table/buttons
-
-        // renderWatchlist is called from the onSnapshot for shares, which will then trigger this.
+        // Always re-sort and re-render if sorting by percentage change
+        onLivePricesUpdated();
         // We need to ensure adjustMainContentPadding is called here as well, as per user's instruction.
         adjustMainContentPadding(); 
-        
         // NEW: Indicate that live prices are loaded for splash screen
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
-        
         updateTargetHitBanner(); // Explicitly update banner after prices are fresh
     } catch (error) {
         console.error('Live Price: Error fetching live prices:', error);
