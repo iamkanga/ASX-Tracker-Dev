@@ -1964,20 +1964,17 @@ function showShareDetails() {
             modalShareNamePriceChangeClass = 'neutral';
         }
     }
-    modalShareName.textContent = share.shareName || 'N/A';
-
     // Find the company name from the pre-loaded ASX codes list
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     let companyName = companyInfo ? companyInfo.name : '';
     if (!companyName) {
         companyName = '(Company name not found)';
-        modalCompanyName.style.color = '#bbb';
-        modalCompanyName.style.fontStyle = 'italic';
+        modalShareName.innerHTML = `<span style='font-weight:600;'>${share.shareName || 'N/A'}</span> <span style='font-size:1rem;color:#bbb;font-style:italic;'>${companyName}</span>`;
     } else {
-        modalCompanyName.style.color = '#888';
-        modalCompanyName.style.fontStyle = 'normal';
+        modalShareName.innerHTML = `<span style='font-weight:600;'>${share.shareName}</span> <span style='font-size:1rem;color:#888;'>${companyName}</span>`;
     }
-    modalCompanyName.textContent = companyName;
+    modalCompanyName.textContent = '';
+    modalCompanyName.style.display = 'none';
 
     // Get live price data for this share to check target hit status
     const livePriceDataForModalTitle = livePrices[share.shareName.toUpperCase()];
@@ -6356,7 +6353,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 startLivePriceUpdates(); // This function includes an initial fetch, so no need to call fetchLivePrices() separately.
 
                 // After fetching live prices, re-sort and re-render the watchlist to apply percentage change.
-                sortShares(); // This will also call renderWatchlist(), which now *only* renders.
+        // After fetching live prices, apply the current sort order and re-render
+        if (typeof currentSortOrder !== 'undefined' && currentSortOrder && currentSortOrder.startsWith('percentageChange')) {
+            sortSharesByPercentageChange(currentSortOrder);
+            renderWatchlist();
+        } else {
+            sortShares(); // This will also call renderWatchlist(), which now *only* renders.
+        }
                 
                 // NEW: Load ASX codes for autocomplete
                 allAsxCodes = await loadAsxCodesFromCSV();
