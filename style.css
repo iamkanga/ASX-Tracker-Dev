@@ -3130,6 +3130,26 @@ table td.live-price-cell.negative-change {
     height: 40px; /* Match the height of the action icons for vertical alignment */
 }
 
+/* NEW: Container for the modal title (ASX Code + Company Name) */
+.modal-title-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center the code and name */
+    flex-grow: 1; /* Allow it to take up space */
+    text-align: center;
+    margin: 0 10px; /* Add some margin to not touch the icons */
+}
+
+.modal-company-name-display {
+    font-size: 1.1em; /* Smaller than the code */
+    font-weight: 400; /* Normal weight */
+    color: var(--ghosted-text); /* Muted color */
+    margin: 0; /* Remove default paragraph margins */
+    padding: 0;
+    line-height: 1.2;
+    margin-top: 4px; /* Add a little space below the ASX code */
+}
+
 /* New group for action buttons and close button */
 .modal-header-action-group {
     display: flex;

@@ -269,6 +269,7 @@ const tableContainer = document.querySelector('.table-container');
 const loadingIndicator = document.getElementById('loadingIndicator');
 const shareDetailModal = document.getElementById('shareDetailModal');
 const modalShareName = document.getElementById('modalShareName');
+const modalCompanyName = document.getElementById('modalCompanyName');
 const modalEnteredPrice = document.getElementById('modalEnteredPrice');
 const modalTargetPrice = document.getElementById('modalTargetPrice');
 const modalDividendAmount = document.getElementById('modalDividendAmount');
@@ -1955,6 +1956,12 @@ function showShareDetails() {
         }
     }
     modalShareName.textContent = share.shareName || 'N/A';
+
+    // Find the company name from the pre-loaded ASX codes list
+    const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
+    const companyName = companyInfo ? companyInfo.name : '';
+    modalCompanyName.textContent = companyName;
+
     // Get live price data for this share to check target hit status
     const livePriceDataForModalTitle = livePrices[share.shareName.toUpperCase()];
     const isTargetHitForModalTitle = livePriceDataForModalTitle ? livePriceDataForModalTitle.targetHit : false;
