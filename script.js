@@ -1974,15 +1974,13 @@ function showShareDetails() {
         // Try fallback if modal not yet in DOM
         modalHeader = document.getElementById('shareDetailModal');
     }
-    if (modalShareName && modalHeader) {
-        modalHeader.style.display = 'flex';
-        modalShareName.style.display = 'inline-block';
+    // Display ASX code in large text and company name underneath in smaller text
+    if (modalShareName) {
         if (!companyName) {
             companyName = '(Company name not found)';
-            modalShareName.innerHTML = `<span style='font-weight:600;'>${share.shareName || 'N/A'}</span> <span style='font-size:1rem;color:#bbb;font-style:italic;'>${companyName}</span>`;
-        } else {
-            modalShareName.innerHTML = `<span style='font-weight:600;'>${share.shareName}</span> <span style='font-size:1rem;color:#888;'>${companyName}</span>`;
         }
+        modalShareName.innerHTML = `<div style='font-weight:600;font-size:1.5rem;'>${share.shareName || 'N/A'}</div><div style='font-size:1rem;color:#888;margin-top:2px;'>${companyName}</div>`;
+        modalShareName.style.display = 'block';
     }
     // Fallback: If still not visible, force update after modal is shown
     setTimeout(() => {
@@ -6388,16 +6386,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // After fetching live prices, re-sort and re-render the watchlist to apply percentage change.
         // After fetching live prices, always apply the current sort order and re-render
-        if (typeof currentSortOrder !== 'undefined' && currentSortOrder) {
-            if (currentSortOrder.startsWith('percentageChange')) {
-                sortSharesByPercentageChange(currentSortOrder);
-                renderWatchlist();
-            } else {
-                sortShares(); // This will also call renderWatchlist(), which now *only* renders.
+        setTimeout(() => {
+            if (typeof currentSortOrder !== 'undefined' && currentSortOrder) {
+                if (typeof sortSharesByPercentageChange === 'function' && currentSortOrder.startsWith('percentageChange')) {
+                    sortSharesByPercentageChange(currentSortOrder);
+                    renderWatchlist();
+                } else if (typeof sortShares === 'function') {
+                    sortShares(); // This will also call renderWatchlist(), which now *only* renders.
+                }
+            } else if (typeof sortShares === 'function') {
+                sortShares();
             }
-        } else {
-            sortShares();
-        }
+        }, 100);
                 
                 // NEW: Load ASX codes for autocomplete
                 allAsxCodes = await loadAsxCodesFromCSV();
