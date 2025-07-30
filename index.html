@@ -48,21 +48,6 @@
             background-color: #756f68; /* A slightly darker shade for hover effect. */
             box-shadow: 0 4px 8px rgba(0,0,0,0.25);
         }
-
-        .splash-screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-end;
-            min-height: 100vh;
-            padding-bottom: 10vh;
-        }
-        @media (min-width: 769px) {
-            .splash-screen {
-                justify-content: center;
-                padding-bottom: 0;
-            }
-        }
     </style>
 </head>
 <body>
@@ -643,9 +628,7 @@
     <div id="cashAssetDetailModal" class="modal">
         <div class="modal-content">
             <div class="modal-header-with-icon">
-                <div class="modal-title-container">
-                    <h2 id="modalShareName">Share Details</h2>
-                    <p id="modalCompanyName
+                <h2 id="modalCashAssetName">Cash Asset Details</h2>
                 <div class="modal-header-action-group">
                     <span id="deleteCashAssetFromDetailBtn" class="modal-action-icon danger" title="Delete Cash Asset"><i class="fas fa-trash-alt"></i></span>
                     <span id="editCashAssetFromDetailBtn" class="modal-action-icon" title="Edit Cash Asset"><i class="fas fa-edit"></i></span>
