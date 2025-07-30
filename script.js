@@ -1994,9 +1994,10 @@ function showShareDetails() {
         modalLivePriceDisplaySection.appendChild(peRow);
     }
 
-    modalEnteredPrice.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(enteredPriceNum);
-    
-    const displayTargetPrice = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice));
+    // Allow display of prices with up to 3 decimal places
+    modalEnteredPrice.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(3) : '')(enteredPriceNum);
+
+    const displayTargetPrice = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(3) : '')(Number(share.targetPrice));
     
     // Determine the target notification message based on share.targetDirection
     let targetNotificationMessage = '';
