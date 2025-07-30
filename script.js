@@ -2013,6 +2013,8 @@ function showShareDetails() {
         }
         // Force visibility
         modalCompanyName.style.setProperty('display', 'block', 'important');
+    } else {
+        console.error('modalCompanyName element not found in DOM. Company name cannot be displayed in modal.');
     }
 
     // Get live price data for this share to check target hit status
