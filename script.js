@@ -719,6 +719,10 @@ function addShareToTable(share) {
         // If this row is inside the Target Price Alerts modal, set the restoration flag
         if (row.closest('#targetHitSharesList')) {
             wasShareDetailOpenedFromTargetAlerts = true;
+            // Hide the target price alerts modal before showing share details
+            if (targetHitDetailsModal) {
+                targetHitDetailsModal.style.setProperty('display', 'none', 'important');
+            }
         }
         showShareDetails();
     });
