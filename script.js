@@ -40,6 +40,7 @@ window.addEventListener('popstate', function(event) {
     // If no modals or sidebar are open, allow default browser back (exit app)
 });
 // ...existing code...
+// [Copilot Update] Triggering source control detection - 2025-07-30
 
 // Helper: Sort shares by percentage change
 function sortSharesByPercentageChange(shares) {
