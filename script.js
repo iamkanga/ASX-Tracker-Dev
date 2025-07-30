@@ -1964,34 +1964,12 @@ function showShareDetails() {
             modalShareNamePriceChangeClass = 'neutral';
         }
     }
-    // Find the company name from the pre-loaded ASX codes list
+    modalShareName.textContent = share.shareName || 'N/A';
+
+    // Find and display the company name from the pre-loaded ASX codes list
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
-    let companyName = companyInfo ? companyInfo.name : '';
-    // Ensure modalShareName is referenced and visible before updating
-    // Force modal title bar update and visibility
-    let modalHeader = document.querySelector('#shareDetailModal .modal-header-with-icon');
-    if (!modalHeader) {
-        // Try fallback if modal not yet in DOM
-        modalHeader = document.getElementById('shareDetailModal');
-    }
-    // Force ASX code and company name to display stacked vertically
-    if (modalShareName) {
-        if (!companyName) {
-            companyName = '(Company name not found)';
-        }
-        modalShareName.innerHTML = `<div class='modal-asx-code' style='font-weight:700;font-size:2rem;line-height:1.1;'>${share.shareName || 'N/A'}</div><div class='modal-company-name' style='font-size:1rem;color:#888;margin-top:4px;'>${companyName}</div>`;
-        modalShareName.style.display = 'block';
-    }
-    // Fallback: If still not visible, force update after modal is shown
-    setTimeout(() => {
-        if (modalShareName && modalHeader) {
-            modalHeader.style.display = 'flex';
-            modalShareName.style.display = 'inline-block';
-        }
-    }, 100);
     if (modalCompanyName) {
-        modalCompanyName.textContent = '';
-        modalCompanyName.style.display = 'none';
+        modalCompanyName.textContent = companyInfo ? companyInfo.name : '';
     }
 
     // Get live price data for this share to check target hit status
@@ -3546,24 +3524,9 @@ async function fetchLivePrices() {
         });
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices);
-        // Guarantee dynamic sort/render for percentage change sort
-        if (typeof currentSortOrder !== 'undefined' && currentSortOrder) {
-            if (typeof sortSharesByPercentageChange === 'function' && currentSortOrder.startsWith('percentageChange')) {
-                sortSharesByPercentageChange(currentSortOrder);
-                renderWatchlist();
-            } else if (typeof sortShares === 'function') {
-                sortShares(); // This will also call renderWatchlist(), which now *only* renders.
-            }
-        } else if (typeof sortShares === 'function') {
-            sortShares();
-        }
-        // Force UI refresh for percentage change sort
-        setTimeout(() => {
-            if (typeof currentSortOrder !== 'undefined' && currentSortOrder && typeof sortSharesByPercentageChange === 'function' && currentSortOrder.startsWith('percentageChange')) {
-                sortSharesByPercentageChange(currentSortOrder);
-                renderWatchlist();
-            }
-        }, 100);
+        // After fetching new prices, always re-sort and re-render the watchlist.
+        // This ensures all data, including percentage changes, is correctly displayed.
+        sortShares();
         adjustMainContentPadding(); 
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
@@ -3585,8 +3548,7 @@ function startLivePriceUpdates() {
     }
     // Only start fetching if not in cash view
     if (!currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-        fetchLivePrices(); 
-        livePriceFetchInterval = setInterval(fetchLivePrices, LIVE_PRICE_FETCH_INTERVAL_MS);
+        livePriceFetchInterval = setInterval(fetchLivePrices, LIVE_PRICE_FETCH_INTERVAL_MS); // Only set the interval
         logDebug('Live Price: Started live price updates every ' + (LIVE_PRICE_FETCH_INTERVAL_MS / 1000 / 60) + ' minutes.');
     } else {
         logDebug('Live Price: Not starting live price updates because "Cash & Assets" is selected.'); // UPDATED TEXT
@@ -6369,18 +6331,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
 
+                // Load user data, then do an initial fetch of live prices before setting the update interval.
+                // This ensures the initial view is correctly sorted by percentage change if selected.
                 await loadUserWatchlistsAndSettings();
-
+                await fetchLivePrices();
                 startLivePriceUpdates();
-
-                // Aggressively guarantee percentage change sort is applied after live prices are fetched on app open
-                const forceSortInterval = setInterval(() => {
-                    if (typeof currentSortOrder !== 'undefined' && currentSortOrder && typeof sortSharesByPercentageChange === 'function' && currentSortOrder.startsWith('percentageChange')) {
-                        sortSharesByPercentageChange(currentSortOrder);
-                        renderWatchlist();
-                        clearInterval(forceSortInterval);
-                    }
-                }, 100);
 
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
