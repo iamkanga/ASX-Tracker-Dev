@@ -388,19 +388,23 @@ const cashFormInputs = [
 
 // --- GLOBAL HELPER FUNCTIONS ---
 
-// Helper to format decimals as entered by user, up to 3 places, no trailing zeros
-function formatUserDecimal(value, maxDecimals = 3) {
+// Helper to format decimals: always show 2 decimals, show 3 only if user entered it
+function formatUserDecimalStrict(value) {
     if (value === null || isNaN(value)) return '';
-    // Convert to string, preserve user input decimals
     let str = value.toString();
-    if (!str.includes('.')) return value.toString();
-    // Only show up to maxDecimals, but trim trailing zeros
+    if (!str.includes('.')) return value.toFixed(2); // No decimals entered
     let [intPart, decPart] = str.split('.');
-    decPart = decPart.slice(0, maxDecimals);
-    // Remove trailing zeros
-    decPart = decPart.replace(/0+$/, '');
-    if (decPart.length === 0) return intPart;
-    return intPart + '.' + decPart;
+    if (decPart.length === 3) {
+        // User entered 3 decimals
+        return intPart + '.' + decPart;
+    } else if (decPart.length === 2) {
+        return intPart + '.' + decPart;
+    } else if (decPart.length === 1) {
+        return intPart + '.' + decPart.padEnd(2, '0');
+    } else {
+        // More than 3 decimals, round to 3
+        return Number(value).toFixed(3);
+    }
 }
 
 /**
@@ -1604,8 +1608,8 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
 
     formTitle.textContent = 'Edit Share - ' + (shareToEdit.shareName || 'N/A'); // Add share code to title
     if (shareNameInput) shareNameInput.value = shareToEdit.shareName || '';
-    if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? formatUserDecimal(shareToEdit.currentPrice) : '';
-    if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimal(shareToEdit.targetPrice) : '';
+    if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? formatUserDecimalStrict(shareToEdit.currentPrice) : '';
+    if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimalStrict(shareToEdit.targetPrice) : '';
     
     // Set the correct state for the new target direction checkboxes
     if (targetAboveCheckbox && targetBelowCheckbox) {
@@ -1615,7 +1619,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
         targetBelowCheckbox.checked = (savedTargetDirection === 'below');
     }
 
-    if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? formatUserDecimal(shareToEdit.dividendAmount) : '';
+    if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? formatUserDecimalStrict(shareToEdit.dividendAmount) : '';
     if (frankingCreditsInput) frankingCreditsInput.value = Number(shareToEdit.frankingCredits) !== null && !isNaN(Number(shareToEdit.frankingCredits)) ? Number(shareToEdit.frankingCredits).toFixed(1) : '';
 
     // Set the star rating dropdown
