@@ -4743,9 +4743,11 @@ main.container {
 
 /* NEW: Override for the main price/change row in compact view */
 .mobile-share-cards.compact-view .mobile-card .live-price-main-row {
-    flex-direction: column; /* Stack price and change vertically */
-    align-items: center;    /* Center them horizontally */
-    gap: 2px;               /* Add a small gap between price and change */
+    flex-direction: column; /* This stacks the price and change vertically */
+    align-items: center;    /* This centers them horizontally */
+    justify-content: center; /* This centers them vertically if there's extra space */
+    gap: 2px;               /* A small gap between the price and the change text */
+    text-align: center;     /* Ensures text inside is centered if it wraps */
 }
 
 /* Adjust font sizes for compact live price and change */
@@ -4760,7 +4762,6 @@ main.container {
     white-space: nowrap;
     margin-left: 0; /* Remove margin from main price */
     margin-top: 0; /* Use gap for spacing instead of margin */
-    display: inline-block; /* Ensure price change is visible in compact view */
 }
 
 /* Ensure the share name (h3) is concise and always visible */
