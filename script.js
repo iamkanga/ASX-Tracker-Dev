@@ -1967,7 +1967,11 @@ function showShareDetails() {
     // Find the company name from the pre-loaded ASX codes list
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     let companyName = companyInfo ? companyInfo.name : '';
-    if (modalShareName) {
+    // Ensure modalShareName is referenced and visible before updating
+    const modalHeader = document.querySelector('#shareDetailModal .modal-header-with-icon');
+    if (modalShareName && modalHeader) {
+        modalHeader.style.display = 'flex';
+        modalShareName.style.display = 'inline-block';
         if (!companyName) {
             companyName = '(Company name not found)';
             modalShareName.innerHTML = `<span style='font-weight:600;'>${share.shareName || 'N/A'}</span> <span style='font-size:1rem;color:#bbb;font-style:italic;'>${companyName}</span>`;
@@ -3532,11 +3536,18 @@ async function fetchLivePrices() {
         });
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices);
-        // Always re-sort and re-render if sorting by percentage change
-        onLivePricesUpdated();
-        // We need to ensure adjustMainContentPadding is called here as well, as per user's instruction.
+        // Always apply current sort order and re-render after live prices update
+        if (typeof currentSortOrder !== 'undefined' && currentSortOrder) {
+            if (typeof sortSharesByPercentageChange === 'function' && currentSortOrder.startsWith('percentageChange')) {
+                sortSharesByPercentageChange(currentSortOrder);
+                renderWatchlist();
+            } else if (typeof sortShares === 'function') {
+                sortShares(); // This will also call renderWatchlist(), which now *only* renders.
+            }
+        } else if (typeof sortShares === 'function') {
+            sortShares();
+        }
         adjustMainContentPadding(); 
-        // NEW: Indicate that live prices are loaded for splash screen
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
         updateTargetHitBanner(); // Explicitly update banner after prices are fresh
