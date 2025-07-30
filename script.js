@@ -1968,7 +1968,12 @@ function showShareDetails() {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     let companyName = companyInfo ? companyInfo.name : '';
     // Ensure modalShareName is referenced and visible before updating
-    const modalHeader = document.querySelector('#shareDetailModal .modal-header-with-icon');
+    // Force modal title bar update and visibility
+    let modalHeader = document.querySelector('#shareDetailModal .modal-header-with-icon');
+    if (!modalHeader) {
+        // Try fallback if modal not yet in DOM
+        modalHeader = document.getElementById('shareDetailModal');
+    }
     if (modalShareName && modalHeader) {
         modalHeader.style.display = 'flex';
         modalShareName.style.display = 'inline-block';
@@ -1979,6 +1984,13 @@ function showShareDetails() {
             modalShareName.innerHTML = `<span style='font-weight:600;'>${share.shareName}</span> <span style='font-size:1rem;color:#888;'>${companyName}</span>`;
         }
     }
+    // Fallback: If still not visible, force update after modal is shown
+    setTimeout(() => {
+        if (modalShareName && modalHeader) {
+            modalHeader.style.display = 'flex';
+            modalShareName.style.display = 'inline-block';
+        }
+    }, 100);
     if (modalCompanyName) {
         modalCompanyName.textContent = '';
         modalCompanyName.style.display = 'none';
@@ -3536,7 +3548,7 @@ async function fetchLivePrices() {
         });
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices);
-        // Always apply current sort order and re-render after live prices update
+        // Guarantee dynamic sort/render for percentage change sort
         if (typeof currentSortOrder !== 'undefined' && currentSortOrder) {
             if (typeof sortSharesByPercentageChange === 'function' && currentSortOrder.startsWith('percentageChange')) {
                 sortSharesByPercentageChange(currentSortOrder);
@@ -3547,6 +3559,13 @@ async function fetchLivePrices() {
         } else if (typeof sortShares === 'function') {
             sortShares();
         }
+        // Force UI refresh for percentage change sort
+        setTimeout(() => {
+            if (typeof currentSortOrder !== 'undefined' && currentSortOrder && typeof sortSharesByPercentageChange === 'function' && currentSortOrder.startsWith('percentageChange')) {
+                sortSharesByPercentageChange(currentSortOrder);
+                renderWatchlist();
+            }
+        }, 100);
         adjustMainContentPadding(); 
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
