@@ -41,6 +41,32 @@ window.addEventListener('popstate', function(event) {
 });
 // ...existing code...
 
+// Helper: Sort shares by percentage change
+function sortSharesByPercentageChange(shares) {
+    return shares.slice().sort((a, b) => {
+        const liveA = livePrices[a.shareName?.toUpperCase()]?.live;
+        const prevA = livePrices[a.shareName?.toUpperCase()]?.prevClose;
+        const liveB = livePrices[b.shareName?.toUpperCase()]?.live;
+        const prevB = livePrices[b.shareName?.toUpperCase()]?.prevClose;
+        const pctA = (prevA && liveA) ? ((liveA - prevA) / prevA) : 0;
+        const pctB = (prevB && liveB) ? ((liveB - prevB) / prevB) : 0;
+        return pctB - pctA; // Descending
+    });
+}
+
+// PATCH: After live prices update, re-sort and re-render if sort order is percentage change
+function onLivePricesUpdated() {
+    if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
+        // Re-sort shares and re-render
+        let sortedShares = sortSharesByPercentageChange(allSharesData);
+        if (currentSortOrder === 'percentageChange-asc') sortedShares.reverse();
+        // If you have a dedicated render function, use it here. Otherwise, call renderWatchlist.
+        renderWatchlist();
+    } else {
+        renderWatchlist();
+    }
+}
+
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
 document.addEventListener('DOMContentLoaded', function () {
     const hideCheckbox = document.getElementById('sidebarHideCheckbox');
