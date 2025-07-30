@@ -3115,19 +3115,13 @@ table td.live-price-cell.negative-change {
 }
 
 /* ASX Code prominence and alignment */
-#modalShareName, #modalCashAssetName { /* Targeted directly for higher specificity */
+#modalShareName, #modalCashAssetName, #formTitle { /* Apply to all modal titles */
     margin: 0;
-    flex-grow: 1;
-    text-align: center;
-    font-size: 2.2em; /* Set to match live price display for all sizes */
+    padding: 0;
+    font-size: 2.2em;
     font-weight: 800; /* Made bolder */
-    flex-shrink: 1; /* Allow title to shrink if buttons need space */
-    min-width: 0; /* Allow title to shrink below its content size */
-    line-height: 1; /* Ensure vertical alignment by removing extra line height */
-    display: flex; /* Use flex to center text within its own space */
-    align-items: center; /* Vertically center the text */
-    justify-content: center; /* Horizontally center the text */
-    height: 40px; /* Match the height of the action icons for vertical alignment */
+    line-height: 1.1; /* Adjust line height for better spacing */
+    /* Removed flex properties and fixed height to allow natural flow in the container */
 }
 
 /* NEW: Container for the modal title (ASX Code + Company Name) */
