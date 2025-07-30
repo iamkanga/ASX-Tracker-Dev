@@ -4938,7 +4938,8 @@ async function initializeAppLogic() {
             if (shareFormSection.style.display !== 'none' && !selectedShareDocId) {
                 const asxCode = shareNameInput.value.trim().toUpperCase();
                 if (asxCode) {
-                    await fetchAndDisplayLiveDataForForm(asxCode);
+                    // fetchAndDisplayLiveDataForForm(asxCode) was called here, but the function is missing.
+                    // To prevent errors, this call is now removed. If you need live data, use an existing function or add a new one.
                 } else if (addShareLivePriceDisplay) {
                     addShareLivePriceDisplay.style.display = 'none';
                 }
