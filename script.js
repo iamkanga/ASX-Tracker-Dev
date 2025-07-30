@@ -62,15 +62,19 @@ function sortSharesByPercentageChange(shares) {
     });
 }
 
-// PATCH: After live prices update, re-sort and re-render if sort order is percentage change
+// AGGRESSIVE FIX: After live prices update, forcefully re-sort and re-render if sort order is percentage change
 function onLivePricesUpdated() {
+    // AGGRESSIVE FIX: Always resort regardless of current sort order to ensure data consistency
     if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
+        logDebug('Force resorting shares by percentage change after live prices update');
         // Re-sort shares and re-render
         let sortedShares = sortSharesByPercentageChange(allSharesData);
         if (currentSortOrder === 'percentageChange-asc') sortedShares.reverse();
-        // If you have a dedicated render function, use it here. Otherwise, call renderWatchlist.
+        
+        // Force re-render after sorting
         renderWatchlist();
     } else {
+        // Still render to update UI with new prices
         renderWatchlist();
     }
 }
@@ -1970,12 +1974,16 @@ function showShareDetails() {
             modalShareNamePriceChangeClass = 'neutral';
         }
     }
+    // Set ASX code in modal title
     modalShareName.textContent = share.shareName || 'N/A';
 
     // Find and display the company name from the pre-loaded ASX codes list
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
+    // AGGRESSIVE FIX: Force update of company name in modal
     if (modalCompanyName) {
         modalCompanyName.textContent = companyInfo ? companyInfo.name : '';
+        // Ensure it's visible by setting display style
+        modalCompanyName.style.display = 'block';
     }
 
     // Get live price data for this share to check target hit status
@@ -3530,6 +3538,10 @@ async function fetchLivePrices() {
         });
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices);
+        
+        // AGGRESSIVE FIX: Explicitly call onLivePricesUpdated to ensure proper sorting
+        onLivePricesUpdated();
+        
         // After fetching new prices, always re-sort and re-render the watchlist.
         // This ensures all data, including percentage changes, is correctly displayed.
         sortShares();
