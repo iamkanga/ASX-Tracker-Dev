@@ -76,48 +76,57 @@ function onLivePricesUpdated() {
         allSharesData.push(...sortedShares); // Re-populate with sorted data
         
         // Force re-render after sorting
-    card.innerHTML = `
-        <h3 class="${priceClass}" style="text-align: left;">${share.shareName || ''}</h3>
-        ${companyName ? `<p class="modal-company-name-display" style="margin-top: -8px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400; text-align: left;">${companyName}</p>` : ''}
-        <div class="live-price-display-section">
-            <div class="fifty-two-week-row">
-                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A'}</span>
-                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? '$' + livePriceData.High52.toFixed(2) : 'N/A'}</span>
-            </div>
-            <div class="live-price-main-row" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <span class="live-price-large ${priceClass}" style="text-align: center; width: 100%;">${displayLivePrice}</span>
-                <span class="price-change-large ${priceClass}" style="text-align: center; width: 100%; margin-top: 2px;">${displayPriceChange}</span>
-            </div>
-            <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
-            </div>
-        </div>
-        <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</span></p>
-        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</span></p>
-        <p class="data-row">
-            <span class="label-text">Dividend Yield:</span>
-            <span class="data-value">
-            ${(() => {
-                const dividendAmount = Number(share.dividendAmount) || 0;
-                const frankingCredits = Number(share.frankingCredits) || 0;
-                const enteredPrice = Number(share.currentPrice) || 0; // Fallback for entered price if live not available
-                const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
-                                    ? parseFloat(displayLivePrice.substring(1))
-                                    : (enteredPrice > 0 ? enteredPrice : 0);
-                if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
-                const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
-                const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
-                if (frankingCredits > 0 && frankedYield > 0) {
-                    return frankedYield.toFixed(2) + '% (Franked)';
-                } else if (unfrankedYield > 0) {
-                    return unfrankedYield.toFixed(2) + '% (Unfranked)';
-                }
-                return '';
-            })()}
-            </span>
-        </p>
-        <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
-`;
+        renderWatchlist();
+    } else {
+        // Still render to update UI with new prices
+        renderWatchlist();
+    }
+}
+
+// AGGRESSIVE FIX: Force apply current sort order after data loads
+function forceApplyCurrentSort() {
+    if (currentSortOrder && currentSortOrder !== '') {
+        logDebug('AGGRESSIVE SORT: Force applying current sort order: ' + currentSortOrder);
+        sortShares();
+    }
+}
+
+// --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
+document.addEventListener('DOMContentLoaded', function () {
+    const hideCheckbox = document.getElementById('sidebarHideCheckbox');
+    const showCheckbox = document.getElementById('sidebarShowCheckbox');
+
+    function setShowLastLivePricePreference(value) {
+        showLastLivePriceOnClosedMarket = value;
+        window.showLastLivePriceOnClosedMarket = value;
+        // Persist to Firestore if available
+        if (window.firebaseAuth && window.firebaseAuth.currentUser && window.firestoreDb && window.firestore && window.getFirebaseAppId) {
+            const currentUserId = window.firebaseAuth.currentUser.uid;
+            const currentAppId = window.getFirebaseAppId();
+            const userProfileDocRef = window.firestore.doc(window.firestoreDb, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+            window.firestore.setDoc(userProfileDocRef, { showLastLivePriceOnClosedMarket: value }, { merge: true })
+                .then(() => {
+                    if (window.logDebug) window.logDebug('Sidebar Checkbox: Saved "Show Last Live Price" preference to Firestore: ' + value);
+                })
+                .catch((error) => {
+                    if (window.showCustomAlert) window.showCustomAlert('Error saving preference: ' + error.message);
+                });
+        }
+        // Update UI immediately
+        if (window.renderWatchlist) window.renderWatchlist();
+        if (window.showCustomAlert) window.showCustomAlert('Last Price Display set to: ' + (value ? 'On (Market Closed)' : 'Off (Market Closed)'), 1500);
+        if (window.toggleAppSidebar) window.toggleAppSidebar(false);
+    }
+
+    function updateCheckboxes(source) {
+        if (source === hideCheckbox && hideCheckbox.checked) {
+            showCheckbox.checked = false;
+            setShowLastLivePricePreference(false);
+        } else if (source === showCheckbox && showCheckbox.checked) {
+            hideCheckbox.checked = false;
+            setShowLastLivePricePreference(true);
+        }
+        // Prevent both from being unchecked: always one selected
         if (!hideCheckbox.checked && !showCheckbox.checked) {
             showCheckbox.checked = true;
             setShowLastLivePricePreference(true);
@@ -2004,8 +2013,6 @@ function showShareDetails() {
         }
         // Force visibility
         modalCompanyName.style.setProperty('display', 'block', 'important');
-    } else {
-        console.error('modalCompanyName element not found in DOM. Company name cannot be displayed in modal.');
     }
 
     // Get live price data for this share to check target hit status
