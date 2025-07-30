@@ -1435,6 +1435,11 @@ function hideModal(modalElement) {
     if (modalElement) {
         modalElement.style.setProperty('display', 'none', 'important');
         logDebug('Modal: Hiding modal: ' + modalElement.id);
+        // Restore alerts modal if closing share details modal and it was opened from alerts
+        if (modalElement.id === 'shareDetailModal' && wasShareDetailOpenedFromTargetAlerts && targetHitDetailsModal) {
+            showModal(targetHitDetailsModal);
+            wasShareDetailOpenedFromTargetAlerts = false;
+        }
     }
 }
 
