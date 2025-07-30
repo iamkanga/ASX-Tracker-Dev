@@ -421,32 +421,18 @@ const cashFormInputs = [
 function formatUserDecimalStrict(value) {
     if (value === null || isNaN(value)) return '';
     let str = value.toString();
-    if (!str.includes('.')) return Number(value).toFixed(2); // No decimals entered
+    if (!str.includes('.')) return value.toFixed(2); // No decimals entered
     let [intPart, decPart] = str.split('.');
     if (decPart.length === 3) {
-        // Only show three decimals if the third is non-zero
-        if (decPart[2] !== '0') {
-            return intPart + '.' + decPart;
-        } else {
-            // If third decimal is zero, show only two
-            return intPart + '.' + decPart.slice(0,2);
-        }
+        // User entered 3 decimals
+        return intPart + '.' + decPart;
     } else if (decPart.length === 2) {
         return intPart + '.' + decPart;
     } else if (decPart.length === 1) {
         return intPart + '.' + decPart.padEnd(2, '0');
-    } else if (decPart.length > 3) {
-        // More than 3 decimals, round to 3, but only show third if non-zero
-        let rounded = Number(value).toFixed(3);
-        let [ri, rd] = rounded.split('.');
-        if (rd[2] !== '0') {
-            return ri + '.' + rd;
-        } else {
-            return ri + '.' + rd.slice(0,2);
-        }
     } else {
-        // No decimals
-        return Number(value).toFixed(2);
+        // More than 3 decimals, round to 3
+        return Number(value).toFixed(3);
     }
 }
 
@@ -719,10 +705,6 @@ function addShareToTable(share) {
         // If this row is inside the Target Price Alerts modal, set the restoration flag
         if (row.closest('#targetHitSharesList')) {
             wasShareDetailOpenedFromTargetAlerts = true;
-            // Hide the target price alerts modal before showing share details
-            if (targetHitDetailsModal) {
-                targetHitDetailsModal.style.setProperty('display', 'none', 'important');
-            }
         }
         showShareDetails();
     });
@@ -747,7 +729,7 @@ function addShareToTable(share) {
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatUserDecimalStrict(val) : '')(Number(share.targetPrice))}</td>
+        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
         <td class="numeric-data-cell">
         ${
             (() => {
@@ -769,7 +751,7 @@ function addShareToTable(share) {
             })()
         }
     </td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatUserDecimalStrict(val) : '')(Number(share.currentPrice))}</td>
+        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
         <td class="star-rating-cell numeric-data-cell">
         ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
     </td>
@@ -1435,11 +1417,6 @@ function hideModal(modalElement) {
     if (modalElement) {
         modalElement.style.setProperty('display', 'none', 'important');
         logDebug('Modal: Hiding modal: ' + modalElement.id);
-        // Restore alerts modal if closing share details modal and it was opened from alerts
-        if (modalElement.id === 'shareDetailModal' && wasShareDetailOpenedFromTargetAlerts && targetHitDetailsModal) {
-            showModal(targetHitDetailsModal);
-            wasShareDetailOpenedFromTargetAlerts = false;
-        }
     }
 }
 
@@ -2100,9 +2077,9 @@ function showShareDetails() {
     }
 
     // Allow display of prices with up to 3 decimal places
-    modalEnteredPrice.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatUserDecimalStrict(val) : '')(enteredPriceNum);
+    modalEnteredPrice.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(3) : '')(enteredPriceNum);
 
-    const displayTargetPrice = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatUserDecimalStrict(val) : '')(Number(share.targetPrice));
+    const displayTargetPrice = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(3) : '')(Number(share.targetPrice));
     
     // Determine the target notification message based on share.targetDirection
     let targetNotificationMessage = '';
@@ -2124,7 +2101,7 @@ function showShareDetails() {
     const displayDividendAmount = Number(share.dividendAmount);
     const displayFrankingCredits = Number(share.frankingCredits);
 
-    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatUserDecimalStrict(val) : '')(displayDividendAmount);
+    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(3) : '')(displayDividendAmount);
     modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? val.toFixed(1) + '%' : '')(displayFrankingCredits);
 
     const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
