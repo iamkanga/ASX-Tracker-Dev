@@ -4829,7 +4829,7 @@ main.container {
 /* Adjust the sign-in button on the splash screen */
 #splashScreen .google-auth-btn {
     position: absolute; /* Position relative to splash screen */
-    bottom: 8vh; /* Adjusted to move it higher, experiment with 5vh-10vh */
+    bottom: 20vh; /* Move button lower, but not at the bottom */
     width: auto; /* Let content dictate width */
     max-width: 80%; /* Ensure it doesn't overflow on small screens */
     padding: 12px 30px; /* Generous padding */
