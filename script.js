@@ -6304,7 +6304,9 @@ function showTargetHitDetailsModal() {
                 if (clickedShareId) {
                     // Set the flag to true so the back button knows to return here
                     wasShareDetailOpenedFromTargetAlerts = true;
-                    // Do NOT hide the modal. Let the back button handle it.
+                    // FIX: Hide the current (alerts) modal before showing the share detail modal.
+                    // The `closeModals()` function will restore the alerts modal when the share detail modal is closed.
+                    hideModal(targetHitDetailsModal);
                     selectShare(clickedShareId); // Select the share
                     showShareDetails(); // Open the share details modal for the clicked share
                 }
