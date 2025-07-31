@@ -1182,23 +1182,9 @@ function updateOrCreateShareTableRow(share) {
             <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
             <span class="price-change ${priceClass}">${displayPriceChange}</span>
         </td>
-        <td class="numeric-data-cell">${(val => {
-            if (val !== null && !isNaN(val) && val !== 0) {
-                let str = val.toFixed(3);
-                str = str.replace(/\.0{1,3}$/,'').replace(/(\.[0-9]*[1-9])0+$/,'$1');
-                return '$' + str;
-            }
-            return '';
-        })(Number(share.targetPrice))}</td>
+        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
         <td class="numeric-data-cell">${yieldDisplay}</td>
-        <td class="numeric-data-cell">${(val => {
-            if (val !== null && !isNaN(val) && val !== 0) {
-                let str = val.toFixed(3);
-                str = str.replace(/\.0{1,3}$/,'').replace(/(\.[0-9]*[1-9])0+$/,'$1');
-                return '$' + str;
-            }
-            return '';
-        })(Number(share.currentPrice))}</td>
+        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
         </td>
@@ -1360,22 +1346,8 @@ function updateOrCreateShareMobileCard(share) {
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
             </div>
         </div>
-        <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => {
-            if (val !== null && !isNaN(val) && val !== 0) {
-                let str = val.toFixed(3);
-                str = str.replace(/\.0{1,3}$/,'').replace(/(\.[0-9]*[1-9])0+$/,'$1');
-                return '$' + str;
-            }
-            return '';
-        })(Number(share.currentPrice))}</span></p>
-        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => {
-            if (val !== null && !isNaN(val) && val !== 0) {
-                let str = val.toFixed(3);
-                str = str.replace(/\.0{1,3}$/,'').replace(/(\.[0-9]*[1-9])0+$/,'$1');
-                return '$' + str;
-            }
-            return '';
-        })(Number(share.targetPrice))}</span></p>
+        <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</span></p>
+        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</span></p>
         <p class="data-row"><span class="label-text">Show Live Price:</span><span class="data-value">${yieldDisplay}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
     `;
@@ -2154,7 +2126,7 @@ function showShareDetails() {
     const displayDividendAmount = Number(share.dividendAmount);
     const displayFrankingCredits = Number(share.frankingCredits);
 
-    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(3) : '')(displayDividendAmount);
+    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(displayDividendAmount);
     modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? val.toFixed(1) + '%' : '')(displayFrankingCredits);
 
     const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
