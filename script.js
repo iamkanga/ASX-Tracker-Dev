@@ -2613,30 +2613,32 @@ function renderWatchlist() {
 
     const selectedWatchlistId = currentSelectedWatchlistIds[0];
 
-    // Hide both sections initially
-    stockWatchlistSection.classList.add('app-hidden');
-    cashAssetsSection.classList.add('app-hidden');
+    // Hide both sections initially (with null checks)
+    if (stockWatchlistSection) stockWatchlistSection.classList.add('app-hidden');
+    if (cashAssetsSection) cashAssetsSection.classList.add('app-hidden');
 
     // Clear previous content (only for elements that will be conditionally displayed)
     // We will now manage individual row/card updates, so don't clear the whole tbody/container yet.
     // However, for switching between stock/cash, we might still need to clear.
     if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
         // Stock Watchlist Logic
-        stockWatchlistSection.classList.remove('app-hidden');
+        if (stockWatchlistSection) stockWatchlistSection.classList.remove('app-hidden');
         const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
-        if (selectedWatchlistId === ALL_SHARES_ID) {
-            mainTitle.textContent = 'All Shares';
-        } else if (selectedWatchlist) {
-            mainTitle.textContent = selectedWatchlist.name;
-        } else {
-            mainTitle.textContent = 'Share Watchlist';
+        if (mainTitle) {
+            if (selectedWatchlistId === ALL_SHARES_ID) {
+                mainTitle.textContent = 'All Shares';
+            } else if (selectedWatchlist) {
+                mainTitle.textContent = selectedWatchlist.name;
+            } else {
+                mainTitle.textContent = 'Share Watchlist';
+            }
         }
 
-        // Show stock-specific UI elements
-        sortSelect.classList.remove('app-hidden');
-        refreshLivePricesBtn.classList.remove('app-hidden');
-        toggleCompactViewBtn.classList.remove('app-hidden');
-        exportWatchlistBtn.classList.remove('app-hidden');
+        // Show stock-specific UI elements (with null checks)
+        if (sortSelect) sortSelect.classList.remove('app-hidden');
+        if (refreshLivePricesBtn) refreshLivePricesBtn.classList.remove('app-hidden');
+        if (toggleCompactViewBtn) toggleCompactViewBtn.classList.remove('app-hidden');
+        if (exportWatchlistBtn) exportWatchlistBtn.classList.remove('app-hidden');
         // startLivePriceUpdates(); // Removed this line to prevent multiple intervals
         updateAddHeaderButton();
 
