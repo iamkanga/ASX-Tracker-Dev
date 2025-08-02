@@ -2203,18 +2203,61 @@ h1#mainTitle {
 /* Watchlist and Sort controls */
 
 .watchlist-controls-row {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 15px;
+}
+
+.dropdowns-center-row {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
     gap: 15px;
-    padding: 10px 15px;
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
+    margin: 0 auto;
+    width: fit-content;
+    max-width: 100%;
+}
+
+.dropdowns-center-row .watchlist-group,
+.dropdowns-center-row .sort-group {
+    flex: 0 1 220px;
+    min-width: 120px;
+    max-width: 220px;
+    margin: 0 5px;
+}
+
+.dropdown-large {
     width: 100%;
+    font-size: 1em;
+    padding: 8px 12px;
     box-sizing: border-box;
-    margin-top: 0;
+}
+
+@media (max-width: 768px) {
+    .dropdowns-center-row {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 10px;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+    }
+    .dropdowns-center-row .watchlist-group,
+    .dropdowns-center-row .sort-group {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 100%;
+        margin: 0 2px;
+    }
+    .dropdown-large {
+        font-size: 0.95em;
+        padding: 6px 8px;
+    }
 }
 
 .watchlist-controls-row .watchlist-group,
