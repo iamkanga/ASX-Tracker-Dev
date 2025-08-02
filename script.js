@@ -62,42 +62,39 @@ function sortSharesByPercentageChange(shares) {
     });
 }
 
-/**
- * After live prices update, re-sort and re-render if sort order is percentage change.
- * Ensures data consistency and UI update.
- */
+// AGGRESSIVE FIX: After live prices update, forcefully re-sort and re-render if sort order is percentage change
 function onLivePricesUpdated() {
+    // AGGRESSIVE FIX: Always resort regardless of current sort order to ensure data consistency
     if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
-        logDebug('Force resorting shares by percentage change after live prices update');
-        const sortedShares = sortSharesByPercentageChange(allSharesData);
+        logDebug('AGGRESSIVE SORT: Force resorting shares by percentage change after live prices update');
+        // Re-sort shares and re-render
+        let sortedShares = sortSharesByPercentageChange(allSharesData);
         if (currentSortOrder === 'percentageChange-asc') sortedShares.reverse();
-        allSharesData.length = 0;
-        allSharesData.push(...sortedShares);
+        
+        // AGGRESSIVE: Force the allSharesData to the sorted order
+        allSharesData.length = 0; // Clear the array
+        allSharesData.push(...sortedShares); // Re-populate with sorted data
+        
+        // Force re-render after sorting
         renderWatchlist();
     } else {
+        // Still render to update UI with new prices
         renderWatchlist();
     }
 }
 
-/**
- * Force apply current sort order after data loads.
- */
+// AGGRESSIVE FIX: Force apply current sort order after data loads
 function forceApplyCurrentSort() {
     if (currentSortOrder && currentSortOrder !== '') {
-        logDebug('Force applying current sort order: ' + currentSortOrder);
+        logDebug('AGGRESSIVE SORT: Force applying current sort order: ' + currentSortOrder);
         sortShares();
     }
 }
 
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
-/**
- * Setup sidebar checkbox logic for last price display and watchlist select.
- * Ensures event listeners are only attached if elements exist.
- */
 document.addEventListener('DOMContentLoaded', function () {
     const hideCheckbox = document.getElementById('sidebarHideCheckbox');
     const showCheckbox = document.getElementById('sidebarShowCheckbox');
-    const watchlistSelect = document.getElementById('watchlistSelect');
 
     function setShowLastLivePricePreference(value) {
         showLastLivePriceOnClosedMarket = value;
@@ -148,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Ensure Edit Current Watchlist button updates when selection changes
-    if (watchlistSelect) {
+    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
         watchlistSelect.addEventListener('change', function () {
             updateMainButtonsState(true);
         });
@@ -2463,8 +2460,8 @@ function renderWatchlistSelect() {
     // Store the currently selected value before clearing
     const currentSelectedValue = watchlistSelect.value;
     
-    // Set the initial placeholder text to "Watch List" (no 'selected' attribute, so it doesn't show as a label)
-    watchlistSelect.innerHTML = '<option value="" disabled hidden>Watch List</option>';
+    // Set the initial placeholder text to "Watch List"
+    watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>';
 
     const allSharesOption = document.createElement('option');
     allSharesOption.value = ALL_SHARES_ID;
@@ -2515,8 +2512,8 @@ function renderSortSelect() {
         // Store the currently selected value before clearing
         const currentSelectedSortValue = sortSelect.value;
 
-        // Set the initial placeholder text to "Sort List" (no 'selected' attribute, so it doesn't show as a label)
-        sortSelect.innerHTML = '<option value="" disabled hidden>Sort List</option>';
+        // Set the initial placeholder text to "Sort List"
+        sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
 
         const stockOptions = [
             { value: 'entryDate-desc', text: 'Date Added (Newest)' },
@@ -2656,9 +2653,9 @@ function renderWatchlist() {
         }
 
         // --- Optimized DOM Update for Shares ---
-        const existingTableRows = shareTableBody ? Array.from(shareTableBody.children) : [];
-        const existingMobileCards = mobileShareCardsContainer ? Array.from(mobileShareCardsContainer.children) : [];
-        const existingAsxButtons = asxCodeButtonsContainer ? Array.from(asxCodeButtonsContainer.children) : [];
+        const existingTableRows = Array.from(shareTableBody.children);
+        const existingMobileCards = Array.from(mobileShareCardsContainer.children);
+        const existingAsxButtons = Array.from(asxCodeButtonsContainer.children);
 
         const newShareIds = new Set(sharesToRender.map(s => s.id));
         const newAsxCodes = new Set(sharesToRender.map(s => s.shareName.trim().toUpperCase()));
@@ -2715,18 +2712,8 @@ function renderWatchlist() {
             }
         }
         
-        // Re-render ASX Code Buttons separately, only if container exists
-        if (asxCodeButtonsContainer) {
-            // Always show the ASX code buttons container in stock view
-            asxCodeButtonsContainer.classList.remove('app-hidden');
-            asxCodeButtonsContainer.style.display = '';
-            renderAsxCodeButtons();
-        } else {
-            // Defensive: do not call, and hide if present
-            if (typeof logDebug === 'function') {
-                logDebug('renderWatchlist: asxCodeButtonsContainer element not found, skipping renderAsxCodeButtons.');
-            }
-        }
+        // Re-render ASX Code Buttons separately
+        renderAsxCodeButtons();
 
     } else {
         // Cash & Assets section Logic
@@ -2736,10 +2723,7 @@ function renderWatchlist() {
         sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
         toggleCompactViewBtn.classList.add('app-hidden');
-        if (asxCodeButtonsContainer) {
-            asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
-            asxCodeButtonsContainer.style.display = 'none';
-        }
+        asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
         targetHitIconBtn.classList.add('app-hidden'); // Ensure hidden in cash view
         exportWatchlistBtn.classList.add('app-hidden');
         stopLivePriceUpdates();
@@ -2755,14 +2739,7 @@ function renderWatchlist() {
 }
 
 function renderAsxCodeButtons() {
-    if (!asxCodeButtonsContainer) {
-        if (typeof logDebug === 'function') {
-            logDebug('renderAsxCodeButtons: asxCodeButtonsContainer element not found.');
-        } else {
-            console.error('renderAsxCodeButtons: asxCodeButtonsContainer element not found.');
-        }
-        return;
-    }
+    if (!asxCodeButtonsContainer) { console.error('renderAsxCodeButtons: asxCodeButtonsContainer element not found.'); return; }
     asxCodeButtonsContainer.innerHTML = '';
     const uniqueAsxCodes = new Set();
     

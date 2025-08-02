@@ -83,11 +83,11 @@
 
     <header id="appHeader" class="app-hidden">
         <div class="header-top-row">
-            <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Open menu">
+            <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left">
                 <i class="fas fa-bars"></i>
             </button>
             <h1 id="mainTitle">Share Watchlist</h1>
-            <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right" aria-label="Add share">
+            <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right">
                 <i class="fas fa-plus"></i>
             </button>
         </div>
@@ -95,15 +95,13 @@
         <div class="watchlist-controls-row">
             <div class="dropdowns-center-row">
                 <div class="watchlist-group">
-                    <label for="watchlistSelect" class="visually-hidden">Select Watchlist</label>
-                    <select id="watchlistSelect" class="dropdown-large" aria-label="Select Watchlist">
+                    <select id="watchlistSelect" class="dropdown-large">
                         <option value="" disabled selected>Watch List</option>
                         <option value="cashBank">Cash & Assets</option> 
                     </select>
                 </div>
                 <div class="sort-group">
-                    <label for="sortSelect" class="visually-hidden">Sort List</label>
-                    <select id="sortSelect" class="dropdown-large" aria-label="Sort List">
+                    <select id="sortSelect" class="dropdown-large">
                         <option value="" disabled selected>Sort List</option>
                         <option value="entryDate-desc">Date Added (Newest)</option>
                         <option value="entryDate-asc">Date Added (Oldest)</option>
@@ -125,7 +123,8 @@
             </div>
         </div>
         
-        <!-- asxCodeButtonsContainer removed if not used -->
+        <div id="asxCodeButtonsContainer" class="asx-code-buttons-container">
+            </div>
     </header>
 
     <nav id="appSidebar" class="app-sidebar">
