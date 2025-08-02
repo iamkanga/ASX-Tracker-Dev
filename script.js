@@ -5,6 +5,7 @@ function pushAppState(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
 }
 
+// Copilot: whitespace touch for source control
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
     // NEW: First, check if the sidebar is open and close it.
