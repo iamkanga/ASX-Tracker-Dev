@@ -1595,7 +1595,14 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         return;
     }
 
-    shareWatchlistSelect.innerHTML = '<option value="" disabled selected>Select a Watchlist</option>'; // Always start with placeholder
+
+    // Defensive: Only allow <option> tags in innerHTML
+    let placeholderOption = '<option value="" disabled selected>Select a Watchlist</option>';
+    if (placeholderOption.includes('<select') || placeholderOption.includes('</select')) {
+        console.warn('populateShareWatchlistSelect: Placeholder option contains <select>!');
+        placeholderOption = placeholderOption.replace(/<select[^>]*>|<\/select>/gi, '');
+    }
+    shareWatchlistSelect.innerHTML = placeholderOption;
 
     // Filter out the "Cash & Assets" option from the share watchlist dropdown
     const stockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
