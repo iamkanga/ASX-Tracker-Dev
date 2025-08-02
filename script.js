@@ -2718,6 +2718,11 @@ function renderWatchlist() {
         // Re-render ASX Code Buttons separately, only if container exists
         if (asxCodeButtonsContainer) {
             renderAsxCodeButtons();
+        } else {
+            // Defensive: do not call, and hide if present
+            if (typeof logDebug === 'function') {
+                logDebug('renderWatchlist: asxCodeButtonsContainer element not found, skipping renderAsxCodeButtons.');
+            }
         }
 
     } else {
@@ -2744,7 +2749,14 @@ function renderWatchlist() {
 }
 
 function renderAsxCodeButtons() {
-    if (!asxCodeButtonsContainer) { console.error('renderAsxCodeButtons: asxCodeButtonsContainer element not found.'); return; }
+    if (!asxCodeButtonsContainer) {
+        if (typeof logDebug === 'function') {
+            logDebug('renderAsxCodeButtons: asxCodeButtonsContainer element not found.');
+        } else {
+            console.error('renderAsxCodeButtons: asxCodeButtonsContainer element not found.');
+        }
+        return;
+    }
     asxCodeButtonsContainer.innerHTML = '';
     const uniqueAsxCodes = new Set();
     
