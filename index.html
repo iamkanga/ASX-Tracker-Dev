@@ -97,14 +97,14 @@
                 <div class="watchlist-group">
                     <label for="watchlistSelect" class="visually-hidden">Select Watchlist</label>
                     <select id="watchlistSelect" class="dropdown-large" aria-label="Select Watchlist">
-                        <option value="" disabled selected>Watch List</option>
+                        <option value="" disabled hidden>Watch List</option>
                         <option value="cashBank">Cash & Assets</option> 
                     </select>
                 </div>
                 <div class="sort-group">
                     <label for="sortSelect" class="visually-hidden">Sort List</label>
                     <select id="sortSelect" class="dropdown-large" aria-label="Sort List">
-                        <option value="" disabled selected>Sort List</option>
+                        <option value="" disabled hidden>Sort List</option>
                         <option value="entryDate-desc">Date Added (Newest)</option>
                         <option value="entryDate-asc">Date Added (Oldest)</option>
                         <option value="shareName-asc">Code (A-Z)</option>
@@ -123,6 +123,8 @@
                     <i class="fas fa-chevron-down"></i>
                 </button>
             </div>
+            <!-- ASX Code Buttons Container: Ensure present for JS rendering -->
+            <div id="asxCodeButtonsContainer" class="asx-code-buttons-container"></div>
         </div>
         
         <!-- asxCodeButtonsContainer removed if not used -->
