@@ -2162,12 +2162,42 @@ main.container {
 /* Header Top Row (now part of the fixed header) */
 .header-top-row {
     display: flex;
-    justify-content: space-between; /* Space out title and button group */
     align-items: center;
-    gap: 15px;
-    width: 100%; 
+    width: 100%;
     box-sizing: border-box;
-    padding: 0; /* No individual padding, handled by parent header */
+    padding: 0;
+    gap: 0;
+    position: relative;
+}
+
+/* Ensure hamburger, title, and add button are always in correct order and position */
+.header-action-btn-left {
+    order: 1;
+    margin-right: auto;
+}
+h1#mainTitle {
+    order: 2;
+    flex: 0 1 auto;
+    margin: 0 auto;
+    left: 0;
+    right: 0;
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    pointer-events: none;
+    z-index: 1;
+}
+.header-action-btn-right {
+    order: 3;
+    margin-left: auto;
+}
+
+/* Ensure buttons are clickable above the title */
+.header-action-btn-left, .header-action-btn-right {
+    z-index: 2;
+    position: relative;
+    pointer-events: auto;
+}
 }
 
 /* Watchlist and Sort controls */
