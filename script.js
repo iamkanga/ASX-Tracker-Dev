@@ -262,6 +262,7 @@ const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 
 
 // --- UI Element References ---
+// Copilot: No-op change to trigger source control detection
 const appHeader = document.getElementById('appHeader'); // Reference to the main header
 const mainContainer = document.querySelector('main.container'); // Reference to the main content container
 const mainTitle = document.getElementById('mainTitle');
