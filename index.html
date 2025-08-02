@@ -95,14 +95,12 @@
         <div class="watchlist-controls-row">
             <div class="dropdowns-center-row">
                 <div class="watchlist-group">
-                    <label for="watchlistSelect" class="visually-hidden">Select Watchlist</label>
                     <select id="watchlistSelect" class="dropdown-large" aria-label="Select Watchlist">
                         <option value="" disabled selected>Watch List</option>
                         <option value="cashBank">Cash & Assets</option>
                     </select>
                 </div>
                 <div class="sort-group">
-                    <label for="sortSelect" class="visually-hidden">Sort List</label>
                     <select id="sortSelect" class="dropdown-large" aria-label="Sort List">
                         <option value="" disabled selected>Sort List</option>
                         <option value="entryDate-desc">Date Added (Newest)</option>
@@ -117,31 +115,36 @@
                         <option value="starRating-asc">Star Rating (Low-High)</option>
                     </select>
                 </div>
-            </div>
-            <div class="toggle-asx-buttons-group">
-                <button id="toggleAsxButtonsBtn" class="header-action-btn" title="Toggle ASX Code Buttons">
-                    <i class="fas fa-chevron-down"></i>
-                </button>
+                <div class="toggle-asx-buttons-group">
+                    <button id="toggleAsxButtonsBtn" class="header-action-btn" title="Toggle ASX Code Buttons">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
             </div>
             <div id="asxCodeButtonsContainer" class="asx-code-buttons-container"></div>
     <style>
-        /* Remove custom centering and text-align for selects, restore left alignment */
         .dropdowns-center-row {
             display: flex;
             flex-direction: row;
             align-items: center;
             gap: 12px;
-            margin-bottom: 8px;
+            margin-bottom: 0;
+            width: 100%;
+            box-sizing: border-box;
         }
         .watchlist-group, .sort-group {
             display: flex;
             flex-direction: column;
+            width: 100%;
+            box-sizing: border-box;
         }
         .dropdown-large {
             min-width: 120px;
             max-width: 180px;
             font-size: 1rem;
             padding: 6px 10px;
+            width: 100%;
+            box-sizing: border-box;
         }
         .toggle-asx-buttons-group {
             display: flex;
@@ -152,21 +155,48 @@
             flex-wrap: wrap;
             justify-content: center;
             gap: 6px;
-            margin: 0 auto 8px auto;
+            margin: 8px auto 0 auto;
             max-width: 700px;
-            padding: 0 8px;
+            padding: 0 8px 8px 8px;
+            border-top: none !important;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .asx-code-buttons-container:empty {
+            margin-top: 0;
+        }
+        /* Remove any border or line above the code buttons */
+        .asx-code-buttons-container, .asx-code-buttons-container > * {
+            border-top: none !important;
         }
         @media (max-width: 768px) {
             .dropdowns-center-row {
                 flex-direction: column;
                 gap: 8px;
                 align-items: stretch;
+                margin-bottom: 0;
+                width: 100%;
+            }
+            .watchlist-group, .sort-group {
+                width: 100%;
             }
             .dropdown-large {
                 min-width: 0;
                 max-width: 100vw;
-                font-size: 0.98rem;
-                padding: 5px 6px;
+                font-size: 1rem;
+                padding: 12px 10px;
+                width: 100%;
+            }
+            .toggle-asx-buttons-group {
+                width: 100%;
+                justify-content: flex-end;
+                margin-top: 4px;
+            }
+            .asx-code-buttons-container {
+                margin-top: 8px;
+                margin-bottom: 0;
+                padding: 0 8px 8px 8px;
+                width: 100%;
             }
         }
     </style>
