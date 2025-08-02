@@ -11,6 +11,24 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
     <style>
+        /* Green border for notification/target-hit state on top dropdowns */
+        .dropdown-large.target-hit, .dropdown-large.notification-active {
+            border: 2px solid #2ecc40 !important; /* Bright green */
+            box-shadow: 0 0 0 2px #b6f5c1;
+        }
+        /* Centralize controls row on all screens */
+        .watchlist-controls-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin: 0 auto 8px auto;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .controls-flex-row {
+            margin: 0 auto;
+        }
         /* Modal dropdowns should be full width */
         .modal-content .dropdown-large {
             display: block;
