@@ -2217,6 +2217,29 @@ h1#mainTitle {
     margin-top: 0;
 }
 
+.watchlist-controls-row .watchlist-group,
+.watchlist-controls-row .sort-group {
+    flex: 0 1 220px;
+    min-width: 120px;
+    max-width: 220px;
+    margin: 0 5px;
+}
+
+.watchlist-controls-row {
+    justify-content: center;
+}
+
+@media (min-width: 769px) {
+  .watchlist-controls-row {
+    justify-content: center;
+  }
+  .watchlist-group,
+  .sort-group {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
 .watchlist-group,
 .sort-group {
     flex: 0 1 220px;
