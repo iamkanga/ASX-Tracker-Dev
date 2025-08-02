@@ -2201,18 +2201,90 @@ h1#mainTitle {
 }
 
 /* Watchlist and Sort controls */
+
 .watchlist-controls-row {
     display: flex;
+    flex-direction: row;
     flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
     gap: 15px;
-    padding: 10px 15px; /* Added horizontal padding for consistency */
+    padding: 10px 15px;
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     width: 100%;
     box-sizing: border-box;
-    margin-top: 0; /* No top margin here, gap handled by parent header's gap */
+    margin-top: 0;
+}
+
+.watchlist-group,
+.sort-group {
+    flex: 0 1 220px;
+    min-width: 120px;
+    max-width: 220px;
+    margin: 0 5px;
+}
+
+.dropdown-large {
+    width: 100%;
+    font-size: 1em;
+    padding: 8px 12px;
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .watchlist-controls-row {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 10px;
+        padding: 10px 8px;
+    }
+    .watchlist-group,
+    .sort-group {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 100%;
+        margin: 0 2px;
+    }
+    .dropdown-large {
+        font-size: 0.95em;
+        padding: 6px 8px;
+    }
+    .header-top-row {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0;
+        gap: 0;
+        position: relative;
+    }
+    .header-action-btn-left {
+        order: 1;
+        margin-right: auto;
+        position: relative;
+        left: 0;
+        z-index: 2;
+    }
+    h1#mainTitle {
+        order: 2;
+        flex: 0 1 auto;
+        margin: 0 auto;
+        left: 0;
+        right: 0;
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        pointer-events: none;
+        z-index: 1;
+    }
+    .header-action-btn-right {
+        order: 3;
+        margin-left: auto;
+        position: relative;
+        right: 0;
+        z-index: 2;
+    }
 }
 
 /* ASX Code Buttons */
