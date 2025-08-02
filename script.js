@@ -2463,8 +2463,8 @@ function renderWatchlistSelect() {
     // Store the currently selected value before clearing
     const currentSelectedValue = watchlistSelect.value;
     
-    // Set the initial placeholder text to "Watch List"
-    watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>';
+    // Set the initial placeholder text to "Watch List" (no 'selected' attribute, so it doesn't show as a label)
+    watchlistSelect.innerHTML = '<option value="" disabled hidden>Watch List</option>';
 
     const allSharesOption = document.createElement('option');
     allSharesOption.value = ALL_SHARES_ID;
@@ -2515,8 +2515,8 @@ function renderSortSelect() {
         // Store the currently selected value before clearing
         const currentSelectedSortValue = sortSelect.value;
 
-        // Set the initial placeholder text to "Sort List"
-        sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
+        // Set the initial placeholder text to "Sort List" (no 'selected' attribute, so it doesn't show as a label)
+        sortSelect.innerHTML = '<option value="" disabled hidden>Sort List</option>';
 
         const stockOptions = [
             { value: 'entryDate-desc', text: 'Date Added (Newest)' },
@@ -2717,6 +2717,9 @@ function renderWatchlist() {
         
         // Re-render ASX Code Buttons separately, only if container exists
         if (asxCodeButtonsContainer) {
+            // Always show the ASX code buttons container in stock view
+            asxCodeButtonsContainer.classList.remove('app-hidden');
+            asxCodeButtonsContainer.style.display = '';
             renderAsxCodeButtons();
         } else {
             // Defensive: do not call, and hide if present
@@ -2733,7 +2736,10 @@ function renderWatchlist() {
         sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
         toggleCompactViewBtn.classList.add('app-hidden');
-        asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
+        if (asxCodeButtonsContainer) {
+            asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
+            asxCodeButtonsContainer.style.display = 'none';
+        }
         targetHitIconBtn.classList.add('app-hidden'); // Ensure hidden in cash view
         exportWatchlistBtn.classList.add('app-hidden');
         stopLivePriceUpdates();
