@@ -5336,11 +5336,15 @@ main.container {
 
     .watchlist-group,
     .sort-group {
-        flex-basis: 50%; /* Each takes half the width */
-        max-width: calc(50% - 5px); /* Account for half the gap */
+        flex: 1 1 auto; /* Allow dropdowns to grow and shrink to fit */
         min-width: 120px; /* Ensure a reasonable minimum width for dropdowns */
     }
     
+    /* NEW: Ensure the toggle button group doesn't grow, keeping its fixed width */
+    .toggle-asx-buttons-group {
+        flex: 0 0 auto;
+    }
+
     /* 3.3: Ensure watchlist select is centered within its group */
     .watchlist-group {
         display: flex;
