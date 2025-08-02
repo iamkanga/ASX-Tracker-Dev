@@ -49,6 +49,7 @@ window.addEventListener('popstate', function(event) {
 
 // [Copilot Update] Triggering source control detection - 2025-07-30
 // [Copilot Update] Forcing source control commit - 2025-07-30
+// [Copilot Update] Whitespace touch for source control - 2025-08-02
 
 // Helper: Sort shares by percentage change
 function sortSharesByPercentageChange(shares) {
