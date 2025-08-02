@@ -1604,13 +1604,24 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
     }
     shareWatchlistSelect.innerHTML = placeholderOption;
 
+
+    // Helper to escape HTML special characters
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     // Filter out the "Cash & Assets" option from the share watchlist dropdown
     const stockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
 
     stockWatchlists.forEach(watchlist => {
         const option = document.createElement('option');
-        option.value = watchlist.id;
-        option.textContent = watchlist.name;
+        option.value = escapeHtml(watchlist.id);
+        option.textContent = escapeHtml(watchlist.name);
         shareWatchlistSelect.appendChild(option);
     });
 
