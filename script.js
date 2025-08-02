@@ -286,7 +286,20 @@ const dividendAmountInput = document.getElementById('dividendAmount');
 const frankingCreditsInput = document.getElementById('frankingCredits');
 const shareRatingSelect = document.getElementById('shareRating');
 const commentsFormContainer = document.getElementById('dynamicCommentsArea');
-const modalStarRating = document.getElementById('modalStarRating'); 
+const modalStarRating = document.getElementById('modalStarRating');
+
+// --- ASX Code Toggle Button Functionality ---
+if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
+  toggleAsxButtonsBtn.addEventListener('click', function () {
+    asxCodeButtonsContainer.classList.toggle('expanded');
+    // Optionally, toggle the arrow direction
+    const icon = toggleAsxButtonsBtn.querySelector('i');
+    if (icon) {
+      icon.classList.toggle('fa-chevron-down');
+      icon.classList.toggle('fa-chevron-up');
+    }
+  });
+}
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
 const shareTableBody = document.querySelector('#shareTable tbody');
 const mobileShareCardsContainer = document.getElementById('mobileShareCards');

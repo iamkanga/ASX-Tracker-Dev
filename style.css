@@ -1,3 +1,8 @@
+@media (min-width: 769px) {
+  .toggle-asx-buttons-group {
+    display: none !important;
+  }
+}
 .modal-share-name {
     font-size: 2.7em !important; /* 1.8em * 1.5 = 2.7em */
     font-weight: 700;
