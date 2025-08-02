@@ -93,38 +93,89 @@
         </div>
 
         <div class="watchlist-controls-row">
-            <div class="dropdowns-center-row">
-                <div class="watchlist-group">
-                    <label for="watchlistSelect" class="visually-hidden">Select Watchlist</label>
-                    <select id="watchlistSelect" class="dropdown-large" aria-label="Select Watchlist">
-                        <option value="" disabled hidden>Watch List</option>
-                        <option value="cashBank">Cash & Assets</option> 
-                    </select>
-                </div>
-                <div class="sort-group">
-                    <label for="sortSelect" class="visually-hidden">Sort List</label>
-                    <select id="sortSelect" class="dropdown-large" aria-label="Sort List">
-                        <option value="" disabled hidden>Sort List</option>
-                        <option value="entryDate-desc">Date Added (Newest)</option>
-                        <option value="entryDate-asc">Date Added (Oldest)</option>
-                        <option value="shareName-asc">Code (A-Z)</option>
-                        <option value="shareName-desc">Code (Z-A)</option>
-                        <option value="dividendAmount-desc">Dividend (High-Low)</option>
-                        <option value="dividendAmount-asc">Dividend (Low-High)</option>
-                        <option value="percentageChange-desc">Percentage Change (High-Low)</option>
-                        <option value="percentageChange-asc">Percentage Change (Low-High)</option>
-                        <option value="starRating-desc">Star Rating (High-Low)</option>
-                        <option value="starRating-asc">Star Rating (Low-High)</option>
-                    </select>
-                </div>
-            </div>
-            <div class="toggle-asx-buttons-group">
-                <button id="toggleAsxButtonsBtn" class="header-action-btn" title="Toggle ASX Code Buttons">
+            <div class="controls-flex-row">
+                <select id="watchlistSelect" class="dropdown-large" aria-label="Select Watchlist">
+                    <option value="" disabled hidden></option>
+                    <option value="cashBank">Cash & Assets</option>
+                </select>
+                <select id="sortSelect" class="dropdown-large" aria-label="Sort List">
+                    <option value="" disabled hidden></option>
+                    <option value="entryDate-desc">Date Added (Newest)</option>
+                    <option value="entryDate-asc">Date Added (Oldest)</option>
+                    <option value="shareName-asc">Code (A-Z)</option>
+                    <option value="shareName-desc">Code (Z-A)</option>
+                    <option value="dividendAmount-desc">Dividend (High-Low)</option>
+                    <option value="dividendAmount-asc">Dividend (Low-High)</option>
+                    <option value="percentageChange-desc">Percentage Change (High-Low)</option>
+                    <option value="percentageChange-asc">Percentage Change (Low-High)</option>
+                    <option value="starRating-desc">Star Rating (High-Low)</option>
+                    <option value="starRating-asc">Star Rating (Low-High)</option>
+                </select>
+                <button id="toggleAsxButtonsBtn" class="header-action-btn asx-toggle-btn" title="Toggle ASX Code Buttons" aria-label="Toggle ASX Code Buttons">
                     <i class="fas fa-chevron-down"></i>
                 </button>
             </div>
-            <!-- ASX Code Buttons Container: Ensure present for JS rendering -->
             <div id="asxCodeButtonsContainer" class="asx-code-buttons-container"></div>
+        /* --- Responsive Controls Row for Watchlist/Sort/ASX Toggle --- */
+        .controls-flex-row {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 0 auto 8px auto;
+            width: 100%;
+            max-width: 600px;
+        }
+        .controls-flex-row select.dropdown-large {
+            min-width: 120px;
+            max-width: 180px;
+            font-size: 1rem;
+            padding: 6px 10px;
+        }
+        .asx-toggle-btn {
+            font-size: 1.2rem;
+            padding: 6px 10px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--primary-text, #222);
+            display: flex;
+            align-items: center;
+        }
+        .asx-code-buttons-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
+            margin: 0 auto 8px auto;
+            max-width: 700px;
+            padding: 0 8px;
+        }
+        @media (max-width: 768px) {
+            .controls-flex-row {
+                flex-direction: row;
+                gap: 6px;
+                max-width: 100vw;
+                width: 100vw;
+                padding: 0 2vw;
+            }
+            .controls-flex-row select.dropdown-large {
+                min-width: 0;
+                max-width: 48vw;
+                font-size: 0.98rem;
+                padding: 5px 6px;
+            }
+            .asx-toggle-btn {
+                font-size: 1.1rem;
+                padding: 5px 6px;
+            }
+            .asx-code-buttons-container {
+                max-width: 100vw;
+                padding: 0 2vw;
+                gap: 4px;
+            }
+        }
         </div>
         
         <!-- asxCodeButtonsContainer removed if not used -->
