@@ -2184,16 +2184,17 @@ main.container {
 .asx-code-buttons-container {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: center; /* This will be overridden on mobile */
     gap: 8px;
-    padding: 10px 15px; /* Added horizontal padding for consistency */
     width: 100%;
     box-sizing: border-box;
-    margin-top: 0; /* No top margin here, gap handled by parent header's gap */
-    min-height: 0; /* Ensure it can shrink, but also allow it to grow */
-    overflow: visible; /* Explicitly allow content to be visible even if it wraps multiple lines */
-    align-items: flex-start; /* Align items to the start of the cross axis (top) */
-    align-content: flex-start; /* Align wrapped lines to the start of the cross axis (top) */
+    /* Default collapsed state for mobile-first approach */
+    transition: max-height 0.4s ease-in-out, padding 0.4s ease-in-out, opacity 0.3s ease-in-out, border-width 0.1s ease-in-out;
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 15px; /* Keep horizontal padding, but vertical is 0 */
+    opacity: 0;
+    border-top: none; /* Hide border when collapsed */
 }
 
 /* NEW: Hide ASX code buttons when compact view is active */
@@ -2201,6 +2202,16 @@ main.container {
 .mobile-share-cards.compact-view + #asxCodeButtonsContainer {
     display: none; 
 }
+
+/* Expanded state for the container */
+.asx-code-buttons-container.expanded {
+    max-height: 500px; /* A large enough value to accommodate all buttons */
+    padding: 10px 15px;
+    opacity: 1;
+    border-top: 1px solid var(--border-color); /* Show border when expanded */
+}
+
+/* New
 
 h1#mainTitle {
     margin: 0;
@@ -4723,6 +4734,14 @@ main.container {
     /* Ensure individual cards fill their grid column width */
     .mobile-share-cards.compact-view .mobile-card {
         width: auto !important;
+    }
+
+    /* Restore the ASX code buttons container on desktop */
+    .asx-code-buttons-container {
+        max-height: 500px;
+        opacity: 1;
+        padding: 10px 15px;
+        border-top: 1px solid var(--border-color);
     }
 }
 
