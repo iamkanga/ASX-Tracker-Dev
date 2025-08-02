@@ -2214,50 +2214,58 @@ h1#mainTitle {
 .dropdowns-center-row {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
-    gap: 15px;
+    gap: 1.5rem;
+    width: 100%;
     margin: 0 auto;
-    width: fit-content;
-    max-width: 100%;
+    flex-wrap: wrap;
 }
 
 .dropdowns-center-row .watchlist-group,
-.dropdowns-center-row .sort-group {
-    flex: 0 1 220px;
+    .dropdowns-center-row .sort-group {
+    display: flex;
+    align-items: center;
+    flex: 0 1 200px;
     min-width: 120px;
-    max-width: 220px;
-    margin: 0 5px;
+    max-width: 200px;
+    margin: 0 0.5em;
 }
 
 .dropdown-large {
+    min-width: 120px;
+    max-width: 200px;
     width: 100%;
-    font-size: 1em;
-    padding: 8px 12px;
+    padding: 0.5em 2em 0.5em 1em;
+    font-size: 1rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #fff;
+    margin: 0 0.5em;
     box-sizing: border-box;
 }
 
 @media (max-width: 768px) {
-    .dropdowns-center-row {
-        flex-direction: row;
-        flex-wrap: nowrap;
-        gap: 10px;
-        width: 100%;
-        max-width: 100%;
-        margin: 0;
-    }
-    .dropdowns-center-row .watchlist-group,
-    .dropdowns-center-row .sort-group {
-        flex: 1 1 0;
-        min-width: 0;
-        max-width: 100%;
-        margin: 0 2px;
-    }
-    .dropdown-large {
-        font-size: 0.95em;
-        padding: 6px 8px;
-    }
+  .dropdowns-center-row {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+  .dropdowns-center-row .watchlist-group,
+  .dropdowns-center-row .sort-group {
+    min-width: 100px;
+    max-width: 100%;
+    width: 100%;
+    margin: 0.25em 0;
+  }
+  .dropdown-large {
+    min-width: 100px;
+    max-width: 100%;
+    width: 100%;
+    margin: 0.25em 0;
+    font-size: 0.95em;
+    padding: 6px 8px;
+  }
 }
 
 .watchlist-controls-row .watchlist-group,
@@ -3430,8 +3438,8 @@ table td.live-price-cell.negative-change {
 .modal-content input[type="text"],
 .modal-content input[type="number"],
 .modal-content textarea,
-.calc-input-group input[type="number"],
-.calc-input-group select {
+calc-input-group input[type="number"],
+calc-input-group select {
     width: calc(100% - 22px);
     padding: 10px;
     margin-bottom: 15px;
@@ -3441,6 +3449,7 @@ table td.live-price-cell.negative-change {
     color: var(--text-color);
     font-size: 1em;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    appearance: textfield;
     -moz-appearance: textfield; /* Firefox */
 }
 
@@ -3523,7 +3532,6 @@ table td.live-price-cell.negative-change {
 }
 
 /* Ensure the main sidebar button item is still clickable as a whole */
-. /* Copilot update: 2025-07-29 - change for sync test */
 .menu-button-item.toggle-switch-container > .switch {
     pointer-events: none; /* Prevent switch itself from stealing click from parent */
 }
@@ -4296,9 +4304,6 @@ table td.live-price-cell.negative-change {
 }
 
 /* Calculator Modals */
-.calculator-modal-content {
-    /* Specific styles for calculator modals if needed */
-}
 .calc-input-group {
     margin-bottom: 15px;
 }
@@ -4843,9 +4848,6 @@ body.dark-theme .alert-item {
 
 
 /* Adjust main content padding - only for header height now */
-main.container {
-    /* No CSS rule here, padding-top set by JS based on header height only */
-}
 
 /* --- NEW: Compact Mobile View Specific Styles --- */
 /* Default for mobile compact view: two columns */
@@ -5486,16 +5488,7 @@ main.container {
         width: 100%;
     }
 
-    /* Adjust main content padding to account for fixed header */
-    main.container {
-        /* Calculated height of the fixed header on mobile */
-        /* These will be handled dynamically by JS to be more precise */
-    }
 
-    /* Adjust main content padding to account for fixed header and banner */
-    body.target-banner-active main.container {
-        /* No CSS rule here, padding-top set by JS */
-    }
 
 
     .watchlist-controls-row {
