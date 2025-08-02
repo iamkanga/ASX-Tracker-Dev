@@ -5,7 +5,6 @@ function pushAppState(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
 }
 
-// Copilot: whitespace touch for source control
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
     // NEW: First, check if the sidebar is open and close it.
@@ -49,7 +48,6 @@ window.addEventListener('popstate', function(event) {
 
 // [Copilot Update] Triggering source control detection - 2025-07-30
 // [Copilot Update] Forcing source control commit - 2025-07-30
-// [Copilot Update] Whitespace touch for source control - 2025-08-02
 
 // Helper: Sort shares by percentage change
 function sortSharesByPercentageChange(shares) {
@@ -1595,33 +1593,15 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         return;
     }
 
-
-    // Defensive: Only allow <option> tags in innerHTML
-    let placeholderOption = '<option value="" disabled selected>Select a Watchlist</option>';
-    if (placeholderOption.includes('<select') || placeholderOption.includes('</select')) {
-        console.warn('populateShareWatchlistSelect: Placeholder option contains <select>!');
-        placeholderOption = placeholderOption.replace(/<select[^>]*>|<\/select>/gi, '');
-    }
-    shareWatchlistSelect.innerHTML = placeholderOption;
-
-
-    // Helper to escape HTML special characters
-    function escapeHtml(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
+    shareWatchlistSelect.innerHTML = '<option value="" disabled selected>Select a Watchlist</option>'; // Always start with placeholder
 
     // Filter out the "Cash & Assets" option from the share watchlist dropdown
     const stockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
 
     stockWatchlists.forEach(watchlist => {
         const option = document.createElement('option');
-        option.value = escapeHtml(watchlist.id);
-        option.textContent = escapeHtml(watchlist.name);
+        option.value = watchlist.id;
+        option.textContent = watchlist.name;
         shareWatchlistSelect.appendChild(option);
     });
 
@@ -2632,32 +2612,30 @@ function renderWatchlist() {
 
     const selectedWatchlistId = currentSelectedWatchlistIds[0];
 
-    // Hide both sections initially (with null checks)
-    if (stockWatchlistSection) stockWatchlistSection.classList.add('app-hidden');
-    if (cashAssetsSection) cashAssetsSection.classList.add('app-hidden');
+    // Hide both sections initially
+    stockWatchlistSection.classList.add('app-hidden');
+    cashAssetsSection.classList.add('app-hidden');
 
     // Clear previous content (only for elements that will be conditionally displayed)
     // We will now manage individual row/card updates, so don't clear the whole tbody/container yet.
     // However, for switching between stock/cash, we might still need to clear.
     if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
         // Stock Watchlist Logic
-        if (stockWatchlistSection) stockWatchlistSection.classList.remove('app-hidden');
+        stockWatchlistSection.classList.remove('app-hidden');
         const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
-        if (mainTitle) {
-            if (selectedWatchlistId === ALL_SHARES_ID) {
-                mainTitle.textContent = 'All Shares';
-            } else if (selectedWatchlist) {
-                mainTitle.textContent = selectedWatchlist.name;
-            } else {
-                mainTitle.textContent = 'Share Watchlist';
-            }
+        if (selectedWatchlistId === ALL_SHARES_ID) {
+            mainTitle.textContent = 'All Shares';
+        } else if (selectedWatchlist) {
+            mainTitle.textContent = selectedWatchlist.name;
+        } else {
+            mainTitle.textContent = 'Share Watchlist';
         }
 
-        // Show stock-specific UI elements (with null checks)
-        if (sortSelect) sortSelect.classList.remove('app-hidden');
-        if (refreshLivePricesBtn) refreshLivePricesBtn.classList.remove('app-hidden');
-        if (toggleCompactViewBtn) toggleCompactViewBtn.classList.remove('app-hidden');
-        if (exportWatchlistBtn) exportWatchlistBtn.classList.remove('app-hidden');
+        // Show stock-specific UI elements
+        sortSelect.classList.remove('app-hidden');
+        refreshLivePricesBtn.classList.remove('app-hidden');
+        toggleCompactViewBtn.classList.remove('app-hidden');
+        exportWatchlistBtn.classList.remove('app-hidden');
         // startLivePriceUpdates(); // Removed this line to prevent multiple intervals
         updateAddHeaderButton();
 
