@@ -1,3 +1,25 @@
+/* [Copilot Update] Source control helper (style.css)
+   This comment and the function below are placeholders for automating source control actions (e.g., git add/commit)
+   and for tracking how many times files have been made available to source control from style.css.
+   Usage: Call makeFilesAvailableToSourceControlCSS() after major changes if you want to automate this. */
+
+@layer copilot-source-control {
+  :root {
+    --source-control-make-available-count: 0;
+  }
+}
+
+/* Helper function for source control in style.css (for documentation only, not executable in CSS) */
+/*
+let sourceControlMakeAvailableCountCSS = 0;
+function makeFilesAvailableToSourceControlCSS() {
+    sourceControlMakeAvailableCountCSS++;
+    // To actually add to git, run: git init; git add .; git commit -m "Initial commit"
+    // This is a placeholder for future automation or extension integration.
+    alert('CSS files are ready for source control. (Count: ' + sourceControlMakeAvailableCountCSS + ')');
+}
+*/
+/* End Copilot source control helper (style.css) */
 .controls-flex-row.no-gap {
     display: flex;
     flex-direction: row;

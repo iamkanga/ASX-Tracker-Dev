@@ -46,8 +46,24 @@ window.addEventListener('popstate', function(event) {
 // logic should now function as intended.
 // --- END REMOVED PATCH ---
 
-// [Copilot Update] Triggering source control detection - 2025-07-30
-// [Copilot Update] Forcing source control commit - 2025-07-30
+
+// [Copilot Update] Source control helper
+// This function is a placeholder for automating source control actions (e.g., git add/commit)
+// and for tracking how many times files have been made available to source control.
+// Usage: Call makeFilesAvailableToSourceControl() after major changes if you want to automate this.
+let sourceControlMakeAvailableCount = 0;
+function makeFilesAvailableToSourceControl() {
+    // This is a placeholder for future automation (e.g., via backend or extension)
+    // Instructs the user to use git or triggers a VS Code command if available
+    sourceControlMakeAvailableCount++;
+    if (window && window.showCustomAlert) {
+        window.showCustomAlert('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')', 2000);
+    } else {
+        console.log('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')');
+    }
+    // To actually add to git, run: git init; git add .; git commit -m "Initial commit"
+}
+// End Copilot source control helper
 
 // Helper: Sort shares by percentage change
 function sortSharesByPercentageChange(shares) {
