@@ -62,39 +62,42 @@ function sortSharesByPercentageChange(shares) {
     });
 }
 
-// AGGRESSIVE FIX: After live prices update, forcefully re-sort and re-render if sort order is percentage change
+/**
+ * After live prices update, re-sort and re-render if sort order is percentage change.
+ * Ensures data consistency and UI update.
+ */
 function onLivePricesUpdated() {
-    // AGGRESSIVE FIX: Always resort regardless of current sort order to ensure data consistency
     if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
-        logDebug('AGGRESSIVE SORT: Force resorting shares by percentage change after live prices update');
-        // Re-sort shares and re-render
-        let sortedShares = sortSharesByPercentageChange(allSharesData);
+        logDebug('Force resorting shares by percentage change after live prices update');
+        const sortedShares = sortSharesByPercentageChange(allSharesData);
         if (currentSortOrder === 'percentageChange-asc') sortedShares.reverse();
-        
-        // AGGRESSIVE: Force the allSharesData to the sorted order
-        allSharesData.length = 0; // Clear the array
-        allSharesData.push(...sortedShares); // Re-populate with sorted data
-        
-        // Force re-render after sorting
+        allSharesData.length = 0;
+        allSharesData.push(...sortedShares);
         renderWatchlist();
     } else {
-        // Still render to update UI with new prices
         renderWatchlist();
     }
 }
 
-// AGGRESSIVE FIX: Force apply current sort order after data loads
+/**
+ * Force apply current sort order after data loads.
+ */
 function forceApplyCurrentSort() {
     if (currentSortOrder && currentSortOrder !== '') {
-        logDebug('AGGRESSIVE SORT: Force applying current sort order: ' + currentSortOrder);
+        logDebug('Force applying current sort order: ' + currentSortOrder);
         sortShares();
     }
 }
 
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
+/**
+ * Setup sidebar checkbox logic for last price display and watchlist select.
+ * Ensures event listeners are only attached if elements exist.
+ */
 document.addEventListener('DOMContentLoaded', function () {
     const hideCheckbox = document.getElementById('sidebarHideCheckbox');
     const showCheckbox = document.getElementById('sidebarShowCheckbox');
+    const watchlistSelect = document.getElementById('watchlistSelect');
 
     function setShowLastLivePricePreference(value) {
         showLastLivePriceOnClosedMarket = value;
@@ -145,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Ensure Edit Current Watchlist button updates when selection changes
-    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+    if (watchlistSelect) {
         watchlistSelect.addEventListener('change', function () {
             updateMainButtonsState(true);
         });
