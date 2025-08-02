@@ -2656,8 +2656,8 @@ function renderWatchlist() {
         }
 
         // --- Optimized DOM Update for Shares ---
-        const existingTableRows = Array.from(shareTableBody.children);
-        const existingMobileCards = Array.from(mobileShareCardsContainer.children);
+        const existingTableRows = shareTableBody ? Array.from(shareTableBody.children) : [];
+        const existingMobileCards = mobileShareCardsContainer ? Array.from(mobileShareCardsContainer.children) : [];
         const existingAsxButtons = asxCodeButtonsContainer ? Array.from(asxCodeButtonsContainer.children) : [];
 
         const newShareIds = new Set(sharesToRender.map(s => s.id));
@@ -2715,8 +2715,10 @@ function renderWatchlist() {
             }
         }
         
-        // Re-render ASX Code Buttons separately
-        renderAsxCodeButtons();
+        // Re-render ASX Code Buttons separately, only if container exists
+        if (asxCodeButtonsContainer) {
+            renderAsxCodeButtons();
+        }
 
     } else {
         // Cash & Assets section Logic
