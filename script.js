@@ -2658,7 +2658,7 @@ function renderWatchlist() {
         // --- Optimized DOM Update for Shares ---
         const existingTableRows = Array.from(shareTableBody.children);
         const existingMobileCards = Array.from(mobileShareCardsContainer.children);
-        const existingAsxButtons = Array.from(asxCodeButtonsContainer.children);
+        const existingAsxButtons = asxCodeButtonsContainer ? Array.from(asxCodeButtonsContainer.children) : [];
 
         const newShareIds = new Set(sharesToRender.map(s => s.id));
         const newAsxCodes = new Set(sharesToRender.map(s => s.shareName.trim().toUpperCase()));
