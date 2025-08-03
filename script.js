@@ -39,7 +39,9 @@ window.addEventListener('popstate', function(event) {
         }
     }
     // If no modals or sidebar are open, allow default browser back (exit app)
-});
+// ...existing code for the rest of your app...
+// End of DOMContentLoaded
+// (No extra closing brace here)
 // Render asset allocation bar chart in dashboard
 function renderAssetAllocationChart() {
     const chartDiv = document.getElementById('dashboardAssetAllocationChart');
