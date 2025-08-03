@@ -265,6 +265,24 @@ function showPortfolioDashboard() {
 
     // --- Asset Allocation Widget Logic ---
     renderDashboardAssetAllocationChart();
+
+    // --- Performance Chart Widget Logic ---
+    renderDashboardPerformanceChart();
+}
+
+/**
+ * Renders a placeholder for the Performance Over Time chart in the dashboard.
+ * This is a stub for future integration with real performance data.
+ */
+function renderDashboardPerformanceChart() {
+    const chartContainer = document.getElementById('dashboardPerformanceChart');
+    if (!chartContainer) return;
+    // Placeholder: show a message and a simple structure for future chart
+    chartContainer.innerHTML = `
+        <div style="width:100%; max-width:400px; margin:auto; text-align:center; padding:32px 0;">
+            <span style="color:#aaa; font-size:1.1rem;">Performance chart coming soon.<br>Historical portfolio value tracking will appear here.</span>
+        </div>
+    `;
 }
 
 /**
