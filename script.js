@@ -69,14 +69,7 @@ function renderAssetAllocationChart() {
     chartDiv.innerHTML = barsHtml;
 }
 
-// Patch showPortfolioDashboard to also render asset allocation
-const origShowPortfolioDashboard2 = window.showPortfolioDashboard;
-function showPortfolioDashboard() {
-    if (origShowPortfolioDashboard2) origShowPortfolioDashboard2();
-    renderPortfolioHoldingsList();
-    renderAssetAllocationChart();
-}
-window.showPortfolioDashboard = showPortfolioDashboard;
+
 
 // Patch addPortfolioHolding to update allocation chart
 const origAddPortfolioHolding = window.addPortfolioHolding || addPortfolioHolding;
@@ -701,11 +694,16 @@ function updatePortfolioSummaryWidget() {
 }
 window.updatePortfolioSummaryWidget = updatePortfolioSummaryWidget;
 
-// Render holdings list when dashboard is shown
-const origShowPortfolioDashboard = window.showPortfolioDashboard || showPortfolioDashboard;
+
+// Single, non-recursive showPortfolioDashboard definition
 function showPortfolioDashboard() {
-    origShowPortfolioDashboard && origShowPortfolioDashboard();
+    if (portfolioDashboardSection) portfolioDashboardSection.style.display = '';
+    if (appHeader) appHeader.classList.add('app-hidden');
+    mainSections.forEach(s => s && (s.style.display = 'none'));
     renderPortfolioHoldingsList();
+    if (typeof renderAssetAllocationChart === 'function') renderAssetAllocationChart();
+    if (typeof renderPerformanceChart === 'function') renderPerformanceChart();
+    if (typeof updatePortfolioSummaryWidget === 'function') updatePortfolioSummaryWidget();
 }
 window.showPortfolioDashboard = showPortfolioDashboard;
 
