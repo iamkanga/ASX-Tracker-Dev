@@ -565,6 +565,22 @@ const mainTitle = document.getElementById('mainTitle');
 const portfolioDashboardBtn = document.getElementById('portfolioDashboardBtn');
 const dashboardBackBtn = document.getElementById('dashboardBackBtn');
 // --- Portfolio Dashboard Button Logic ---
+const portfolioDashboardSection = document.getElementById('portfolioDashboard');
+const mainSections = document.querySelectorAll('main.container, #stockWatchlistSection, #cashAssetsSection');
+function showPortfolioDashboard() {
+    if (portfolioDashboardSection) portfolioDashboardSection.style.display = '';
+    if (appHeader) appHeader.classList.add('app-hidden');
+    mainSections.forEach(s => s && (s.style.display = 'none'));
+    renderPortfolioHoldingsList();
+    renderAssetAllocationChart && renderAssetAllocationChart();
+    renderPerformanceChart && renderPerformanceChart();
+    updatePortfolioSummaryWidget && updatePortfolioSummaryWidget();
+}
+function hidePortfolioDashboard() {
+    if (portfolioDashboardSection) portfolioDashboardSection.style.display = 'none';
+    if (appHeader) appHeader.classList.remove('app-hidden');
+    mainSections.forEach(s => s && (s.style.display = ''));
+}
 if (portfolioDashboardBtn) {
     portfolioDashboardBtn.addEventListener('click', function () {
         showPortfolioDashboard();
