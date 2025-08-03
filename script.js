@@ -231,14 +231,6 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('[Portfolio] Add Holding modal hidden');
     }
 
-    // Attach event listeners
-        }
-        // Update UI immediately
-        if (window.renderWatchlist) window.renderWatchlist();
-        if (window.showCustomAlert) window.showCustomAlert('Last Price Display set to: ' + (value ? 'On (Market Closed)' : 'Off (Market Closed)'), 1500);
-        if (window.toggleAppSidebar) window.toggleAppSidebar(false);
-    }
-
     function updateCheckboxes(source) {
         if (source === hideCheckbox && hideCheckbox.checked) {
             showCheckbox.checked = false;
