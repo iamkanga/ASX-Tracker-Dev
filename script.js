@@ -242,7 +242,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (portfolioDashboardBtn) {
         portfolioDashboardBtn.addEventListener('click', function() {
             showPortfolioDashboard();
-        });
     }
     if (addPortfolioHoldingBtn) {
         addPortfolioHoldingBtn.addEventListener('click', function() {
