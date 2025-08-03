@@ -30,9 +30,13 @@ function makeFilesAvailableToSourceControlCSS() {
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
-  max-width: 600px;
-  margin: 0 auto;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0;
+  margin-bottom: 0.5em;
   flex-wrap: nowrap;
+  position: relative;
 }
 .controls-flex-row.no-gap > * {
   flex: 1 1 0;
@@ -67,9 +71,12 @@ function makeFilesAvailableToSourceControlCSS() {
     align-items: stretch;
     gap: 0.25rem;
     width: 100%;
-    max-width: 100vw;
+    max-width: 98vw;
+    margin-left: auto;
+    margin-right: auto;
     flex-wrap: nowrap !important;
     padding: 0 2vw;
+    position: relative;
   }
   .controls-flex-row.no-gap > * {
     flex: 1 1 0;
