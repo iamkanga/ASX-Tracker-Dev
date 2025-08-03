@@ -478,6 +478,111 @@ const dashboardAddPortfolioBtn = document.getElementById('dashboardAddPortfolioB
 const portfolioHoldingModal = document.getElementById('portfolioHoldingModal');
 const portfolioModalCloseButton = document.querySelector('.portfolio-modal-close-button');
 
+// Portfolio Holding Modal Form Elements
+const savePortfolioHoldingBtn = document.getElementById('savePortfolioHoldingBtn');
+const portfolioAsxCodeInput = document.getElementById('portfolioAsxCode');
+const portfolioQuantityInput = document.getElementById('portfolioQuantity');
+const portfolioPurchasePriceInput = document.getElementById('portfolioPurchasePrice');
+const portfolioTotalCostInput = document.getElementById('portfolioTotalCost');
+const portfolioPurchaseDateInput = document.getElementById('portfolioPurchaseDate');
+const portfolioNotesInput = document.getElementById('portfolioNotes');
+
+// In-memory portfolio holdings array
+let portfolioHoldings = [];
+
+function clearPortfolioHoldingForm() {
+    if (portfolioAsxCodeInput) portfolioAsxCodeInput.value = '';
+    if (portfolioQuantityInput) portfolioQuantityInput.value = '';
+    if (portfolioPurchasePriceInput) portfolioPurchasePriceInput.value = '';
+    if (portfolioTotalCostInput) portfolioTotalCostInput.value = '';
+    if (portfolioPurchaseDateInput) portfolioPurchaseDateInput.value = '';
+    if (portfolioNotesInput) portfolioNotesInput.value = '';
+}
+
+function getPortfolioHoldingFormData() {
+    return {
+        asxCode: (portfolioAsxCodeInput?.value || '').toUpperCase().trim(),
+        quantity: Number(portfolioQuantityInput?.value) || 0,
+        purchasePrice: Number(portfolioPurchasePriceInput?.value) || 0,
+        totalCost: Number(portfolioTotalCostInput?.value) || 0,
+        purchaseDate: portfolioPurchaseDateInput?.value || '',
+        notes: portfolioNotesInput?.value || ''
+    };
+}
+
+function addPortfolioHolding() {
+    const data = getPortfolioHoldingFormData();
+    if (!data.asxCode || data.quantity <= 0 || data.purchasePrice <= 0) {
+        showCustomAlert && showCustomAlert('Please enter ASX code, quantity, and purchase price.');
+        return;
+    }
+    // Auto-calculate total cost if not entered
+    if (!data.totalCost || data.totalCost === 0) {
+        data.totalCost = data.quantity * data.purchasePrice;
+    }
+    portfolioHoldings.push(data);
+    hidePortfolioHoldingModal();
+    clearPortfolioHoldingForm();
+    renderPortfolioHoldingsList();
+    updatePortfolioSummaryWidget();
+}
+
+if (savePortfolioHoldingBtn) {
+    savePortfolioHoldingBtn.addEventListener('click', addPortfolioHolding);
+}
+
+// Render holdings list in dashboard
+function renderPortfolioHoldingsList() {
+    let container = document.getElementById('dashboardPortfolioHoldingsList');
+    if (!container) {
+        // Create container if not present
+        const widget = document.querySelector('.portfolio-summary-widget');
+        if (!widget) return;
+        container = document.createElement('div');
+        container.id = 'dashboardPortfolioHoldingsList';
+        container.style.marginTop = '18px';
+        widget.appendChild(container);
+    }
+    if (portfolioHoldings.length === 0) {
+        container.innerHTML = '<p class="ghosted-text">No portfolio holdings added yet.</p>';
+        return;
+    }
+    let html = '<table class="dashboard-holdings-table"><thead><tr><th>Code</th><th>Qty</th><th>Price</th><th>Total</th><th>Date</th></tr></thead><tbody>';
+    for (const h of portfolioHoldings) {
+        html += `<tr><td>${h.asxCode}</td><td>${h.quantity}</td><td>$${h.purchasePrice.toFixed(2)}</td><td>$${h.totalCost.toFixed(2)}</td><td>${h.purchaseDate || ''}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+// Patch updatePortfolioSummaryWidget to use portfolioHoldings
+const origUpdatePortfolioSummaryWidget = window.updatePortfolioSummaryWidget || updatePortfolioSummaryWidget;
+function updatePortfolioSummaryWidget() {
+    // Use portfolioHoldings if present, else fallback to original
+    let totalValue = 0, totalCost = 0;
+    for (const h of portfolioHoldings) {
+        totalValue += h.quantity * h.purchasePrice;
+        totalCost += h.totalCost;
+    }
+    const gain = totalValue - totalCost;
+    const yieldPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
+    const totalValueEl = document.getElementById('dashboardTotalValue');
+    const totalGainEl = document.getElementById('dashboardTotalGain');
+    const totalYieldEl = document.getElementById('dashboardTotalYield');
+    if (totalValueEl) totalValueEl.textContent = '$' + totalValue.toFixed(2);
+    if (totalGainEl) totalGainEl.textContent = '$' + gain.toFixed(2);
+    if (totalYieldEl) totalYieldEl.textContent = yieldPct.toFixed(2) + '%';
+}
+window.updatePortfolioSummaryWidget = updatePortfolioSummaryWidget;
+
+// Render holdings list when dashboard is shown
+const origShowPortfolioDashboard = window.showPortfolioDashboard || showPortfolioDashboard;
+function showPortfolioDashboard() {
+    origShowPortfolioDashboard && origShowPortfolioDashboard();
+    renderPortfolioHoldingsList();
+}
+window.showPortfolioDashboard = showPortfolioDashboard;
+
 function showPortfolioHoldingModal() {
     if (portfolioHoldingModal) {
         portfolioHoldingModal.style.display = 'block';
