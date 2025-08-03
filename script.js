@@ -232,59 +232,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Attach event listeners
-    if (portfolioDashboardBtn) {
-        portfolioDashboardBtn.addEventListener('click', function() {
-            showPortfolioDashboard();
-        });
-    }
-    if (addPortfolioHoldingBtn) {
-        addPortfolioHoldingBtn.addEventListener('click', function() {
-            showPortfolioHoldingModal();
-        });
-    }
-    if (dashboardBackBtn) {
-        dashboardBackBtn.addEventListener('click', function() {
-            hidePortfolioDashboard();
-        });
-    }
-    if (dashboardAddPortfolioBtn) {
-        dashboardAddPortfolioBtn.addEventListener('click', function() {
-            showPortfolioHoldingModal();
-        });
-    }
-    if (closePortfolioModalBtns) {
-        closePortfolioModalBtns.forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                hidePortfolioHoldingModal();
-            });
-        });
-    }
-
-    // Hide modal on outside click
-    if (portfolioHoldingModal) {
-        portfolioHoldingModal.addEventListener('click', function(e) {
-            if (e.target === portfolioHoldingModal) {
-                hidePortfolioHoldingModal();
-            }
-        });
-    }
-
-    // --- End Portfolio Dashboard & Modal Logic ---
-
-    // ...existing code for the rest of your app...
-
-    function setShowLastLivePricePreference(value) {
-        showLastLivePriceOnClosedMarket = value;
-        window.showLastLivePriceOnClosedMarket = value;
-        // Persist to Firestore if available
-        if (window.firebaseAuth && window.firebaseAuth.currentUser && window.firestoreDb && window.firestore && window.getFirebaseAppId) {
-            const currentUserId = window.firebaseAuth.currentUser.uid;
-            const currentAppId = window.getFirebaseAppId();
-            const userProfileDocRef = window.firestore.doc(window.firestoreDb, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-            window.firestore.setDoc(userProfileDocRef, { showLastLivePriceOnClosedMarket: value }, { merge: true })
-                .then(() => {
-                    if (window.logDebug) window.logDebug('Sidebar Checkbox: Saved "Show Last Live Price" preference to Firestore: ' + value);
-                });
         }
         // Update UI immediately
         if (window.renderWatchlist) window.renderWatchlist();
@@ -7003,4 +6950,4 @@ document.addEventListener('DOMContentLoaded', function() {
         hideSplashScreen();
     }
 }
-    }
+// End of script.js
