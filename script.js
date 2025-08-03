@@ -14,7 +14,6 @@ window.addEventListener('popstate', function(event) {
             window.toggleAppSidebar(false); // Explicitly close the sidebar
         }
         return; // Exit after handling the sidebar
-    }
 
     // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
     const modals = [
@@ -7000,4 +6999,6 @@ document.addEventListener('DOMContentLoaded', function() {
         adjustMainContentPadding();
         // NEW: Hide splash screen if Firebase fails to initialize
         hideSplashScreen();
+    }
+}
     }
