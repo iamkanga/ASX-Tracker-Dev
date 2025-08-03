@@ -561,25 +561,19 @@ const mainSections = document.querySelectorAll('main.container');
 
 
 function showPortfolioDashboard() {
-    // Hide main app sections
+    // Always hide main app and header
     if (mainContainer) mainContainer.classList.add('app-hidden');
-    if (stockWatchlistSection) stockWatchlistSection.style.display = 'none';
-    if (cashAssetsSection) cashAssetsSection.style.display = 'none';
-    // Show dashboard
-    if (portfolioDashboardSection) portfolioDashboardSection.style.display = '';
     if (appHeader) appHeader.classList.add('app-hidden');
+    if (portfolioDashboardSection) portfolioDashboardSection.style.display = '';
     renderPortfolioHoldingsList();
     if (typeof renderAssetAllocationChart === 'function') renderAssetAllocationChart();
     if (typeof renderPerformanceChart === 'function') renderPerformanceChart();
     if (typeof updatePortfolioSummaryWidget === 'function') updatePortfolioSummaryWidget();
 }
 function hidePortfolioDashboard() {
-    // Hide dashboard
+    // Always show main app and header
     if (portfolioDashboardSection) portfolioDashboardSection.style.display = 'none';
-    // Show main app sections
     if (mainContainer) mainContainer.classList.remove('app-hidden');
-    if (stockWatchlistSection) stockWatchlistSection.style.display = '';
-    if (cashAssetsSection) cashAssetsSection.style.display = '';
     if (appHeader) appHeader.classList.remove('app-hidden');
 }
 if (portfolioDashboardBtn) {
