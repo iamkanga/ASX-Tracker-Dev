@@ -559,19 +559,28 @@ const dashboardBackBtn = document.getElementById('dashboardBackBtn');
 const portfolioDashboardSection = document.getElementById('portfolioDashboard');
 const mainSections = document.querySelectorAll('main.container');
 
+
 function showPortfolioDashboard() {
+    // Hide main app sections
+    if (mainContainer) mainContainer.classList.add('app-hidden');
+    if (stockWatchlistSection) stockWatchlistSection.style.display = 'none';
+    if (cashAssetsSection) cashAssetsSection.style.display = 'none';
+    // Show dashboard
     if (portfolioDashboardSection) portfolioDashboardSection.style.display = '';
     if (appHeader) appHeader.classList.add('app-hidden');
-    mainSections.forEach(s => s && (s.style.display = 'none'));
     renderPortfolioHoldingsList();
     if (typeof renderAssetAllocationChart === 'function') renderAssetAllocationChart();
     if (typeof renderPerformanceChart === 'function') renderPerformanceChart();
     if (typeof updatePortfolioSummaryWidget === 'function') updatePortfolioSummaryWidget();
 }
 function hidePortfolioDashboard() {
+    // Hide dashboard
     if (portfolioDashboardSection) portfolioDashboardSection.style.display = 'none';
+    // Show main app sections
+    if (mainContainer) mainContainer.classList.remove('app-hidden');
+    if (stockWatchlistSection) stockWatchlistSection.style.display = '';
+    if (cashAssetsSection) cashAssetsSection.style.display = '';
     if (appHeader) appHeader.classList.remove('app-hidden');
-    mainSections.forEach(s => s && (s.style.display = ''));
 }
 if (portfolioDashboardBtn) {
     portfolioDashboardBtn.addEventListener('click', function () {
@@ -713,7 +722,7 @@ function hidePortfolioHoldingModal() {
 }
 if (addPortfolioHoldingBtn) {
     addPortfolioHoldingBtn.addEventListener('click', function () {
-        hideContextMenu && hideContextMenu();
+        if (typeof hideContextMenu === 'function') hideContextMenu();
         if (window.toggleAppSidebar) window.toggleAppSidebar(false);
         showPortfolioHoldingModal();
     });
@@ -874,8 +883,7 @@ const closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn'); // NEW
 const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: Reference to clear all alerts button (not in current HTML, but kept for consistency)
 
 // NEW: Cash & Assets UI Elements (1)
-const stockWatchlistSection = document.getElementById('stockWatchlistSection');
-const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
+
 const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
 const addCashCategoryBtn = document.getElementById('addCashCategoryBtn'); // This will be removed or repurposed
 const saveCashBalancesBtn = document.getElementById('saveCashBalancesBtn'); // This will be removed or repurposed
