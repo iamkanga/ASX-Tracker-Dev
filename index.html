@@ -933,6 +933,32 @@
                 </div>
             </section>
 
+            <!-- Portfolio Holdings Widget -->
+            <section class="dashboard-widget portfolio-holdings-widget">
+                <h3>Portfolio Holdings</h3>
+                <div id="dashboardPortfolioHoldingsListContainer">
+                    <table id="dashboardPortfolioHoldingsList" class="portfolio-holdings-table" style="width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr>
+                                <th>ASX Code</th>
+                                <th>Quantity</th>
+                                <th>Purchase Price</th>
+                                <th>Total Cost</th>
+                                <th>Current Price</th>
+                                <th>Market Value</th>
+                                <th>Gain/Loss</th>
+                                <th>Purchase Date</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Holdings will be rendered here by script.js -->
+                        </tbody>
+                    </table>
+                    <p id="dashboardNoHoldingsMsg" class="ghosted-text" style="display:none;">No holdings added yet. Click "Add Holding" to get started.</p>
+                </div>
+            </section>
+
             <!-- Asset Allocation Widget -->
             <section class="dashboard-widget asset-allocation-widget">
                 <h3>Asset Allocation</h3>
