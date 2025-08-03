@@ -770,7 +770,6 @@ if (addPortfolioHoldingBtn) {
     });
 }
 // ...existing code...
-});
 if (dashboardAddPortfolioBtn) {
     dashboardAddPortfolioBtn.addEventListener('click', function () {
         showPortfolioHoldingModal();
@@ -786,7 +785,6 @@ document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && portfolioHoldingModal && portfolioHoldingModal.style.display === 'block') {
         hidePortfolioHoldingModal();
     }
-});
 const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
 const newShareBtn = document.getElementById('newShareBtn');
 const standardCalcBtn = document.getElementById('standardCalcBtn');
@@ -3325,6 +3323,8 @@ function renderAsxCodeButtons() {
             logDebug('ASX Button Click: Button for ' + asxCode + ' clicked.');
             const clickedCode = event.target.dataset.asxCode;
             scrollToShare(clickedCode);
+        });
+    });
     logDebug('UI: Rendered ' + sortedAsxCodes.length + ' code buttons.');
     // NEW: Adjust padding after rendering buttons, as their presence affects header height
     adjustMainContentPadding();
@@ -6823,6 +6823,7 @@ function showTargetHitDetailsModal() {
     logDebug('Target Hit Modal: Displayed details for ' + sharesAtTargetPrice.length + ' shares.');
 }
 
+
 // NEW: Target hit icon button listener (opens the modal) - moved to global scope
 if (targetHitIconBtn) {
     targetHitIconBtn.addEventListener('click', (event) => {
@@ -7000,4 +7001,3 @@ document.addEventListener('DOMContentLoaded', function() {
         // NEW: Hide splash screen if Firebase fails to initialize
         hideSplashScreen();
     }
-});
