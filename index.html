@@ -147,6 +147,10 @@
             <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right">
                 <i class="fas fa-plus"></i>
             </button>
+            <button id="portfolioDashboardBtn" class="dashboard-header-btn" title="Portfolio Dashboard">
+                <span class="dashboard-icon" aria-hidden="true">📊</span>
+                <span class="dashboard-label">Dashboard</span>
+            </button>
         </div>
 
         <div class="watchlist-controls-row">
@@ -802,6 +806,17 @@
         }); 
     </script>
     <script src="script.js"></script>
+    <!-- Portfolio Dashboard Section (hidden by default, modular) -->
+    <section id="portfolioDashboard" style="display: none;">
+        <div class="dashboard-header">
+            <button id="dashboardBackBtn" class="dashboard-back-btn" title="Back to App">← Back</button>
+            <h2>Portfolio Dashboard</h2>
+        </div>
+        <div class="dashboard-content">
+            <!-- Dashboard content will go here. Modular, safe, and non-breaking. -->
+            <p style="color: var(--ghosted-text);">Welcome to your Portfolio Dashboard! (Modular placeholder)</p>
+        </div>
+    </section>
 </body>
 <!-- Copilot update: 2025-07-29 - change for sync test -->
 </html>
