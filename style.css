@@ -20,36 +20,65 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 */
 /* End Copilot source control helper (style.css) */
+
+/* --- Modern Responsive Controls Row & Dropdowns --- */
 .controls-flex-row.no-gap {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    width: 100%;
-    flex-wrap: nowrap;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+.controls-flex-row.no-gap > * {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .dropdown-large {
-    font-size: 1.1rem;
-    padding: 7px 8px;
-    margin-bottom: 0;
-    box-sizing: border-box;
-    min-width: 120px;
-    max-width: 220px;
-    flex-shrink: 1;
-    border-radius: 0;
-    border: 1px solid #ccc;
+  font-size: 1.08rem;
+  padding: 7px 10px;
+  margin-bottom: 0;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  border-radius: 0;
+  border: 1px solid #ccc;
+  background: #fff;
+  transition: border-color 0.2s;
 }
 .dropdown-large.left-rounded {
-    border-top-left-radius: 6px;
-    border-bottom-left-radius: 6px;
-    border-right: none;
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+  border-right: none;
 }
 .dropdown-large.right-rounded {
-    border-top-right-radius: 6px;
-    border-bottom-right-radius: 6px;
-    margin-left: 0;
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+  margin-left: 0;
 }
+@media (max-width: 600px) {
+  .controls-flex-row.no-gap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .controls-flex-row.no-gap > * {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .dropdown-large {
+    font-size: 1rem;
+    padding: 6px 8px;
+    margin-bottom: 0;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+/* --- End Modern Responsive Controls Row & Dropdowns --- */
 @media (min-width: 769px) {
   .toggle-asx-buttons-group {
     display: none !important;
