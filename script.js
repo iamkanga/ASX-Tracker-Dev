@@ -1,4 +1,5 @@
 // Copilot update: 2025-07-29 - change for sync test
+document.addEventListener('DOMContentLoaded', function() {
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
@@ -544,6 +545,7 @@ function hidePortfolioDashboard() {
 }
 if (portfolioDashboardBtn) {
     portfolioDashboardBtn.addEventListener('click', function () {
+        console.log('Portfolio Dashboard button clicked');
         showPortfolioDashboard();
     });
 }
@@ -682,6 +684,7 @@ function hidePortfolioHoldingModal() {
 }
 if (addPortfolioHoldingBtn) {
     addPortfolioHoldingBtn.addEventListener('click', function () {
+        console.log('Add Portfolio Holding button clicked');
         if (typeof hideContextMenu === 'function') hideContextMenu();
         if (window.toggleAppSidebar) window.toggleAppSidebar(false);
         showPortfolioHoldingModal();
@@ -691,6 +694,8 @@ if (addPortfolioHoldingBtn) {
         }
     });
 }
+// ...existing code...
+});
 if (dashboardAddPortfolioBtn) {
     dashboardAddPortfolioBtn.addEventListener('click', function () {
         showPortfolioHoldingModal();
