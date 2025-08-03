@@ -35,7 +35,6 @@ window.addEventListener('popstate', function(event) {
             if (window.closeModals) closeModals();
             return; // Exit after handling the first open modal
         }
-    }
     // If no modals or sidebar are open, allow default browser back (exit app)
 // ...existing code for the rest of your app...
 // End of DOMContentLoaded
@@ -47,7 +46,6 @@ function renderAssetAllocationChart() {
     if (!portfolioHoldings || portfolioHoldings.length === 0) {
         chartDiv.innerHTML = '<p class="ghosted-text">Asset allocation chart will appear here.</p>';
         return;
-    }
     // Calculate allocation by ASX code
     const allocation = {};
     let totalValue = 0;
