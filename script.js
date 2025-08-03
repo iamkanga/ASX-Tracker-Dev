@@ -259,6 +259,73 @@ function showPortfolioDashboard() {
     // Hide main app content (main container, etc.)
     if (mainContainer) mainContainer.style.display = 'none';
     if (appHeader) appHeader.classList.add('dashboard-active');
+
+    // --- Portfolio Summary Widget Logic ---
+    updatePortfolioSummaryWidget();
+}
+
+/**
+ * Updates the Portfolio Summary widget in the dashboard with real data.
+ * Calculates total value, total gain/loss, and overall yield.
+ */
+function updatePortfolioSummaryWidget() {
+    const totalValueEl = document.getElementById('dashboardTotalValue');
+    const totalGainEl = document.getElementById('dashboardTotalGain');
+    const totalYieldEl = document.getElementById('dashboardTotalYield');
+
+    let totalValue = 0;
+    let totalCost = 0;
+    let totalGain = 0;
+    let totalDividends = 0;
+    let totalYield = 0;
+
+    // --- Shares ---
+    allSharesData.forEach(share => {
+        // Only include shares with a valid quantity
+        const quantity = Number(share.quantity);
+        if (!quantity || isNaN(quantity) || quantity <= 0) return;
+
+        // Use live price if available, else fallback to entered price
+        const livePriceObj = livePrices[share.shareName?.toUpperCase()];
+        const livePrice = livePriceObj && typeof livePriceObj.live === 'number' && !isNaN(livePriceObj.live) ? livePriceObj.live : null;
+        const price = (livePrice !== null && livePrice > 0) ? livePrice : (Number(share.currentPrice) > 0 ? Number(share.currentPrice) : 0);
+        if (!price) return;
+
+        const costBasis = Number(share.costBasis) || Number(share.currentPrice) || 0;
+        const invested = costBasis * quantity;
+        const marketValue = price * quantity;
+        totalValue += marketValue;
+        totalCost += invested;
+        totalGain += (marketValue - invested);
+
+        // Dividends (annualized, if available)
+        const dividendAmount = Number(share.dividendAmount) || 0;
+        totalDividends += dividendAmount * quantity;
+    });
+
+    // --- Cash & Assets ---
+    userCashCategories.forEach(category => {
+        if (!category.isHidden && typeof category.balance === 'number' && !isNaN(category.balance)) {
+            totalValue += category.balance;
+        }
+    });
+
+    // --- Yield Calculation ---
+    // Overall yield = (totalDividends / totalValue) * 100, if totalValue > 0
+    if (totalValue > 0 && totalDividends > 0) {
+        totalYield = (totalDividends / totalValue) * 100;
+    } else {
+        totalYield = 0;
+    }
+
+    // --- Update UI ---
+    if (totalValueEl) totalValueEl.textContent = '$' + totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (totalGainEl) {
+        const sign = totalGain > 0 ? '+' : (totalGain < 0 ? '-' : '');
+        totalGainEl.textContent = sign + '$' + Math.abs(totalGain).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        totalGainEl.style.color = totalGain > 0 ? '#2e7d32' : (totalGain < 0 ? '#c62828' : '#555');
+    }
+    if (totalYieldEl) totalYieldEl.textContent = totalYield.toFixed(2) + '%';
 }
 
 /**
