@@ -333,21 +333,7 @@ let isDashboardActive = false; // Tracks if the dashboard view is active
  * All dashboard logic is modular and does not affect existing app state.
  */
 function showPortfolioDashboard() {
-    isDashboardActive = true;
-    const dashboardSection = document.getElementById('portfolioDashboard');
-    if (dashboardSection) dashboardSection.style.display = 'block';
-    // Hide main app content (main container, etc.)
-    if (mainContainer) mainContainer.style.display = 'none';
-    if (appHeader) appHeader.classList.add('dashboard-active');
-
-    // --- Portfolio Summary Widget Logic ---
-    updatePortfolioSummaryWidget();
-
-    // --- Asset Allocation Widget Logic ---
-    renderDashboardAssetAllocationChart();
-
-    // --- Performance Chart Widget Logic ---
-    renderDashboardPerformanceChart();
+    // (Removed: duplicate/old dashboard logic)
 }
 
 /**
@@ -484,11 +470,7 @@ function updatePortfolioSummaryWidget() {
  * Hides the Portfolio Dashboard and restores main app content.
  */
 function hidePortfolioDashboard() {
-    isDashboardActive = false;
-    const dashboardSection = document.getElementById('portfolioDashboard');
-    if (dashboardSection) dashboardSection.style.display = 'none';
-    if (mainContainer) mainContainer.style.display = '';
-    if (appHeader) appHeader.classList.remove('dashboard-active');
+    // (Removed: duplicate/old dashboard logic)
 }
 
 // Optionally, expose a toggle for future use
