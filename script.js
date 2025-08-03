@@ -472,6 +472,48 @@ if (dashboardBackBtn) {
         hidePortfolioDashboard();
     });
 }
+// --- Portfolio Holding Modal Logic ---
+const addPortfolioHoldingBtn = document.getElementById('addPortfolioHoldingBtn');
+const dashboardAddPortfolioBtn = document.getElementById('dashboardAddPortfolioBtn');
+const portfolioHoldingModal = document.getElementById('portfolioHoldingModal');
+const portfolioModalCloseButton = document.querySelector('.portfolio-modal-close-button');
+
+function showPortfolioHoldingModal() {
+    if (portfolioHoldingModal) {
+        portfolioHoldingModal.style.display = 'block';
+        document.body.classList.add('modal-open');
+        // Optionally, clear form fields here
+    }
+}
+function hidePortfolioHoldingModal() {
+    if (portfolioHoldingModal) {
+        portfolioHoldingModal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
+}
+if (addPortfolioHoldingBtn) {
+    addPortfolioHoldingBtn.addEventListener('click', function () {
+        hideContextMenu && hideContextMenu();
+        if (window.toggleAppSidebar) window.toggleAppSidebar(false);
+        showPortfolioHoldingModal();
+    });
+}
+if (dashboardAddPortfolioBtn) {
+    dashboardAddPortfolioBtn.addEventListener('click', function () {
+        showPortfolioHoldingModal();
+    });
+}
+if (portfolioModalCloseButton) {
+    portfolioModalCloseButton.addEventListener('click', function () {
+        hidePortfolioHoldingModal();
+    });
+}
+// Optional: ESC key closes modal
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && portfolioHoldingModal && portfolioHoldingModal.style.display === 'block') {
+        hidePortfolioHoldingModal();
+    }
+});
 const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
 const newShareBtn = document.getElementById('newShareBtn');
 const standardCalcBtn = document.getElementById('standardCalcBtn');
