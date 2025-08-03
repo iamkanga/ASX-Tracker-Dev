@@ -551,23 +551,22 @@ const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 
 
 // --- UI Element References ---
-// Copilot: No-op change to trigger source control detection
-const appHeader = document.getElementById('appHeader'); // Reference to the main header
-const mainContainer = document.querySelector('main.container'); // Reference to the main content container
+const appHeader = document.getElementById('appHeader');
+const mainContainer = document.querySelector('main.container');
 const mainTitle = document.getElementById('mainTitle');
 const portfolioDashboardBtn = document.getElementById('portfolioDashboardBtn');
 const dashboardBackBtn = document.getElementById('dashboardBackBtn');
-// --- Portfolio Dashboard Button Logic ---
 const portfolioDashboardSection = document.getElementById('portfolioDashboard');
-const mainSections = document.querySelectorAll('main.container, #stockWatchlistSection, #cashAssetsSection');
+const mainSections = document.querySelectorAll('main.container');
+
 function showPortfolioDashboard() {
     if (portfolioDashboardSection) portfolioDashboardSection.style.display = '';
     if (appHeader) appHeader.classList.add('app-hidden');
     mainSections.forEach(s => s && (s.style.display = 'none'));
     renderPortfolioHoldingsList();
-    renderAssetAllocationChart && renderAssetAllocationChart();
-    renderPerformanceChart && renderPerformanceChart();
-    updatePortfolioSummaryWidget && updatePortfolioSummaryWidget();
+    if (typeof renderAssetAllocationChart === 'function') renderAssetAllocationChart();
+    if (typeof renderPerformanceChart === 'function') renderPerformanceChart();
+    if (typeof updatePortfolioSummaryWidget === 'function') updatePortfolioSummaryWidget();
 }
 function hidePortfolioDashboard() {
     if (portfolioDashboardSection) portfolioDashboardSection.style.display = 'none';
@@ -695,16 +694,8 @@ function updatePortfolioSummaryWidget() {
 window.updatePortfolioSummaryWidget = updatePortfolioSummaryWidget;
 
 
-// Single, non-recursive showPortfolioDashboard definition
-function showPortfolioDashboard() {
-    if (portfolioDashboardSection) portfolioDashboardSection.style.display = '';
-    if (appHeader) appHeader.classList.add('app-hidden');
-    mainSections.forEach(s => s && (s.style.display = 'none'));
-    renderPortfolioHoldingsList();
-    if (typeof renderAssetAllocationChart === 'function') renderAssetAllocationChart();
-    if (typeof renderPerformanceChart === 'function') renderPerformanceChart();
-    if (typeof updatePortfolioSummaryWidget === 'function') updatePortfolioSummaryWidget();
-}
+
+// Expose for debugging if needed
 window.showPortfolioDashboard = showPortfolioDashboard;
 
 function showPortfolioHoldingModal() {
