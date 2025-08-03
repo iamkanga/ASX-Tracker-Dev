@@ -812,8 +812,31 @@
             <h2>Portfolio Dashboard</h2>
         </div>
         <div class="dashboard-content">
-            <!-- Dashboard content will go here. Modular, safe, and non-breaking. -->
-            <p style="color: var(--ghosted-text);">Welcome to your Portfolio Dashboard! (Modular placeholder)</p>
+            <!-- Portfolio Summary Widget -->
+            <section class="dashboard-widget portfolio-summary-widget">
+                <h3>Portfolio Summary</h3>
+                <div class="portfolio-summary-stats">
+                    <div><strong>Total Value:</strong> <span id="dashboardTotalValue">$0.00</span></div>
+                    <div><strong>Total Gain/Loss:</strong> <span id="dashboardTotalGain">$0.00</span></div>
+                    <div><strong>Overall Yield:</strong> <span id="dashboardTotalYield">0.00%</span></div>
+                </div>
+            </section>
+
+            <!-- Asset Allocation Widget -->
+            <section class="dashboard-widget asset-allocation-widget">
+                <h3>Asset Allocation</h3>
+                <div id="dashboardAssetAllocationChart" class="dashboard-chart-placeholder">
+                    <p class="ghosted-text">Asset allocation chart will appear here.</p>
+                </div>
+            </section>
+
+            <!-- Performance Chart Widget -->
+            <section class="dashboard-widget performance-chart-widget">
+                <h3>Performance Over Time</h3>
+                <div id="dashboardPerformanceChart" class="dashboard-chart-placeholder">
+                    <p class="ghosted-text">Performance chart will appear here.</p>
+                </div>
+            </section>
         </div>
     </section>
 </body>
