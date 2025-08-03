@@ -320,6 +320,19 @@ const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 const appHeader = document.getElementById('appHeader'); // Reference to the main header
 const mainContainer = document.querySelector('main.container'); // Reference to the main content container
 const mainTitle = document.getElementById('mainTitle');
+const portfolioDashboardBtn = document.getElementById('portfolioDashboardBtn');
+const dashboardBackBtn = document.getElementById('dashboardBackBtn');
+// --- Portfolio Dashboard Button Logic ---
+if (portfolioDashboardBtn) {
+    portfolioDashboardBtn.addEventListener('click', function () {
+        showPortfolioDashboard();
+    });
+}
+if (dashboardBackBtn) {
+    dashboardBackBtn.addEventListener('click', function () {
+        hidePortfolioDashboard();
+    });
+}
 const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
 const newShareBtn = document.getElementById('newShareBtn');
 const standardCalcBtn = document.getElementById('standardCalcBtn');

@@ -1,3 +1,72 @@
+/* --- Portfolio Dashboard Styles --- */
+#portfolioDashboard {
+  background: var(--background, #fff);
+  min-height: 100vh;
+  padding: 24px 0 48px 0;
+  z-index: 100;
+  position: relative;
+}
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 16px 16px;
+  border-bottom: 1px solid var(--border, #e0e0e0);
+}
+.dashboard-header h2 {
+  margin: 0;
+  font-size: 1.5em;
+  font-weight: 600;
+}
+#dashboardBackBtn {
+  font-size: 1em;
+  padding: 6px 16px;
+  border-radius: 6px;
+  background: var(--button-bg, #f5f5f5);
+  border: 1px solid var(--border, #e0e0e0);
+  color: var(--text, #333);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#dashboardBackBtn:hover {
+  background: var(--button-hover, #e0e0e0);
+}
+.dashboard-content {
+  padding: 24px 16px;
+}
+#portfolioDashboardBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1em;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--button-bg, #f5f5f5);
+  border: 1px solid var(--border, #e0e0e0);
+  color: var(--text, #333);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#portfolioDashboardBtn:hover {
+  background: var(--button-hover, #e0e0e0);
+}
+@media (max-width: 600px) {
+  #portfolioDashboard {
+    padding: 12px 0 32px 0;
+  }
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 0 8px 12px 8px;
+  }
+  .dashboard-content {
+    padding: 12px 8px;
+  }
+  #portfolioDashboardBtn span.hide-on-mobile {
+    display: none;
+  }
+}
 /* [Copilot Update] Source control helper (style.css)
    This comment and the function below are placeholders for automating source control actions (e.g., git add/commit)
    and for tracking how many times files have been made available to source control from style.css.
