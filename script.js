@@ -39,6 +39,52 @@ window.addEventListener('popstate', function(event) {
     }
     // If no modals or sidebar are open, allow default browser back (exit app)
 });
+// Render asset allocation bar chart in dashboard
+function renderAssetAllocationChart() {
+    const chartDiv = document.getElementById('dashboardAssetAllocationChart');
+    if (!chartDiv) return;
+    if (!portfolioHoldings || portfolioHoldings.length === 0) {
+        chartDiv.innerHTML = '<p class="ghosted-text">Asset allocation chart will appear here.</p>';
+        return;
+    }
+    // Calculate allocation by ASX code
+    const allocation = {};
+    let totalValue = 0;
+    portfolioHoldings.forEach(h => {
+        const value = h.quantity * (typeof h.purchasePrice === 'number' ? h.purchasePrice : 0);
+        allocation[h.asxCode] = (allocation[h.asxCode] || 0) + value;
+        totalValue += value;
+    });
+    // Build bar chart HTML
+    let barsHtml = '<div style="display:flex;align-items:flex-end;height:120px;width:100%;gap:8px;">';
+    Object.entries(allocation).forEach(([code, value]) => {
+        const pct = totalValue > 0 ? (value / totalValue) * 100 : 0;
+        barsHtml += `<div title="${code}: $${value.toFixed(2)} (${pct.toFixed(1)}%)" style="flex:1;display:flex;flex-direction:column;align-items:center;">
+            <div style="background:#4a90e2;width:32px;height:${Math.max(10, pct)}px;border-radius:6px 6px 0 0;"></div>
+            <span style="font-size:0.95em;margin-top:4px;">${code}</span>
+            <span style="font-size:0.85em;color:#888;">${pct.toFixed(1)}%</span>
+        </div>`;
+    });
+    barsHtml += '</div>';
+    chartDiv.innerHTML = barsHtml;
+}
+
+// Patch showPortfolioDashboard to also render asset allocation
+const origShowPortfolioDashboard2 = window.showPortfolioDashboard;
+function showPortfolioDashboard() {
+    if (origShowPortfolioDashboard2) origShowPortfolioDashboard2();
+    renderPortfolioHoldingsList();
+    renderAssetAllocationChart();
+}
+window.showPortfolioDashboard = showPortfolioDashboard;
+
+// Patch addPortfolioHolding to update allocation chart
+const origAddPortfolioHolding = window.addPortfolioHolding || addPortfolioHolding;
+function addPortfolioHolding() {
+    if (origAddPortfolioHolding) origAddPortfolioHolding();
+    renderAssetAllocationChart();
+}
+window.addPortfolioHolding = addPortfolioHolding;
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
 // The previous patch has been removed as the root cause of the UI issues,
