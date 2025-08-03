@@ -189,9 +189,96 @@ function forceApplyCurrentSort() {
 }
 
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
-document.addEventListener('DOMContentLoaded', function () {
-    const hideCheckbox = document.getElementById('sidebarHideCheckbox');
-    const showCheckbox = document.getElementById('sidebarShowCheckbox');
+
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Portfolio Dashboard & Modal Logic ---
+    const portfolioDashboard = document.getElementById('portfolioDashboard');
+    const portfolioDashboardBtn = document.getElementById('portfolioDashboardBtn');
+    const addPortfolioHoldingBtn = document.getElementById('addPortfolioHoldingBtn');
+    const dashboardBackBtn = document.getElementById('dashboardBackBtn');
+    const dashboardAddPortfolioBtn = document.getElementById('dashboardAddPortfolioBtn');
+    const portfolioHoldingModal = document.getElementById('portfolioHoldingModal');
+    const savePortfolioHoldingBtn = document.getElementById('savePortfolioHoldingBtn');
+    const closePortfolioModalBtns = document.querySelectorAll('.portfolio-modal-close-button');
+    const appHeader = document.getElementById('appHeader');
+    const mainContainer = document.querySelector('main.container');
+    // Show main app/header on load
+    if (appHeader) appHeader.style.display = '';
+    if (mainContainer) mainContainer.style.display = '';
+    if (portfolioDashboard) portfolioDashboard.style.display = 'none';
+    if (portfolioHoldingModal) portfolioHoldingModal.style.display = 'none';
+
+    // Show Portfolio Dashboard
+    function showPortfolioDashboard() {
+        if (portfolioDashboard) portfolioDashboard.style.display = '';
+        if (appHeader) appHeader.style.display = 'none';
+        if (mainContainer) mainContainer.style.display = 'none';
+        if (portfolioHoldingModal) portfolioHoldingModal.style.display = 'none';
+        console.log('[Portfolio] Dashboard shown');
+    }
+    // Hide Portfolio Dashboard
+    function hidePortfolioDashboard() {
+        if (portfolioDashboard) portfolioDashboard.style.display = 'none';
+        if (appHeader) appHeader.style.display = '';
+        if (mainContainer) mainContainer.style.display = '';
+        if (portfolioHoldingModal) portfolioHoldingModal.style.display = 'none';
+        console.log('[Portfolio] Dashboard hidden, main app shown');
+    }
+    // Show Add Portfolio Holding Modal
+    function showPortfolioHoldingModal() {
+        if (portfolioHoldingModal) portfolioHoldingModal.style.display = '';
+        if (portfolioDashboard) portfolioDashboard.style.display = '';
+        console.log('[Portfolio] Add Holding modal shown');
+    }
+    // Hide Add Portfolio Holding Modal
+    function hidePortfolioHoldingModal() {
+        if (portfolioHoldingModal) portfolioHoldingModal.style.display = 'none';
+        if (portfolioDashboard) portfolioDashboard.style.display = '';
+        console.log('[Portfolio] Add Holding modal hidden');
+    }
+
+    // Attach event listeners
+    if (portfolioDashboardBtn) {
+        portfolioDashboardBtn.addEventListener('click', function() {
+            showPortfolioDashboard();
+        });
+    }
+    if (addPortfolioHoldingBtn) {
+        addPortfolioHoldingBtn.addEventListener('click', function() {
+            showPortfolioHoldingModal();
+        });
+    }
+    if (dashboardBackBtn) {
+        dashboardBackBtn.addEventListener('click', function() {
+            hidePortfolioDashboard();
+        });
+    }
+    if (dashboardAddPortfolioBtn) {
+        dashboardAddPortfolioBtn.addEventListener('click', function() {
+            showPortfolioHoldingModal();
+        });
+    }
+    if (closePortfolioModalBtns) {
+        closePortfolioModalBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                hidePortfolioHoldingModal();
+            });
+        });
+    }
+
+    // Hide modal on outside click
+    if (portfolioHoldingModal) {
+        portfolioHoldingModal.addEventListener('click', function(e) {
+            if (e.target === portfolioHoldingModal) {
+                hidePortfolioHoldingModal();
+            }
+        });
+    }
+
+    // --- End Portfolio Dashboard & Modal Logic ---
+
+    // ...existing code for the rest of your app...
+});
 
     function setShowLastLivePricePreference(value) {
         showLastLivePriceOnClosedMarket = value;
