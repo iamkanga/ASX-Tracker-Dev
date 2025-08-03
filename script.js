@@ -533,26 +533,33 @@ if (savePortfolioHoldingBtn) {
 
 // Render holdings list in dashboard
 function renderPortfolioHoldingsList() {
-    let container = document.getElementById('dashboardPortfolioHoldingsList');
-    if (!container) {
-        // Create container if not present
-        const widget = document.querySelector('.portfolio-summary-widget');
-        if (!widget) return;
-        container = document.createElement('div');
-        container.id = 'dashboardPortfolioHoldingsList';
-        container.style.marginTop = '18px';
-        widget.appendChild(container);
-    }
-    if (portfolioHoldings.length === 0) {
-        container.innerHTML = '<p class="ghosted-text">No portfolio holdings added yet.</p>';
+    const table = document.getElementById('dashboardPortfolioHoldingsList');
+    const noHoldingsMsg = document.getElementById('dashboardNoHoldingsMsg');
+    if (!table || !noHoldingsMsg) return;
+    const tbody = table.querySelector('tbody');
+    tbody.innerHTML = '';
+    if (!portfolioHoldings || portfolioHoldings.length === 0) {
+        noHoldingsMsg.style.display = '';
+        table.style.display = 'none';
         return;
     }
-    let html = '<table class="dashboard-holdings-table"><thead><tr><th>Code</th><th>Qty</th><th>Price</th><th>Total</th><th>Date</th></tr></thead><tbody>';
-    for (const h of portfolioHoldings) {
-        html += `<tr><td>${h.asxCode}</td><td>${h.quantity}</td><td>$${h.purchasePrice.toFixed(2)}</td><td>$${h.totalCost.toFixed(2)}</td><td>${h.purchaseDate || ''}</td></tr>`;
-    }
-    html += '</tbody></table>';
-    container.innerHTML = html;
+    noHoldingsMsg.style.display = 'none';
+    table.style.display = '';
+    portfolioHoldings.forEach(holding => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${holding.asxCode}</td>
+            <td>${holding.quantity}</td>
+            <td>${formatCurrency(holding.purchasePrice)}</td>
+            <td>${formatCurrency(holding.totalCost)}</td>
+            <td>${getLivePriceDisplay(holding.asxCode)}</td>
+            <td>${formatCurrency(getMarketValue(holding))}</td>
+            <td>${formatCurrency(getGainLoss(holding))}</td>
+            <td>${holding.purchaseDate || ''}</td>
+            <td>${holding.notes || ''}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
 // Patch updatePortfolioSummaryWidget to use portfolioHoldings
