@@ -1,10 +1,10 @@
+}
 // Copilot update: 2025-07-29 - change for sync test
 document.addEventListener('DOMContentLoaded', function() {
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
-}
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
@@ -266,7 +266,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 hidePortfolioHoldingModal();
             });
         });
-    }
 
     // Hide modal on outside click
     if (portfolioHoldingModal) {
@@ -280,7 +279,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- End Portfolio Dashboard & Modal Logic ---
 
     // ...existing code for the rest of your app...
-});
 
     function setShowLastLivePricePreference(value) {
         showLastLivePriceOnClosedMarket = value;
@@ -293,9 +291,6 @@ document.addEventListener('DOMContentLoaded', function() {
             window.firestore.setDoc(userProfileDocRef, { showLastLivePriceOnClosedMarket: value }, { merge: true })
                 .then(() => {
                     if (window.logDebug) window.logDebug('Sidebar Checkbox: Saved "Show Last Live Price" preference to Firestore: ' + value);
-                })
-                .catch((error) => {
-                    if (window.showCustomAlert) window.showCustomAlert('Error saving preference: ' + error.message);
                 });
         }
         // Update UI immediately
@@ -3339,8 +3334,6 @@ function renderAsxCodeButtons() {
             logDebug('ASX Button Click: Button for ' + asxCode + ' clicked.');
             const clickedCode = event.target.dataset.asxCode;
             scrollToShare(clickedCode);
-        });
-    });
     logDebug('UI: Rendered ' + sortedAsxCodes.length + ' code buttons.');
     // NEW: Adjust padding after rendering buttons, as their presence affects header height
     adjustMainContentPadding();
