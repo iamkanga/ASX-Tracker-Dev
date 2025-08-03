@@ -149,12 +149,7 @@
             </button>
         </div>
         <!-- Move Dashboard button below the top row for better layout -->
-        <div class="dashboard-header-btn-row">
-            <button id="portfolioDashboardBtn" class="dashboard-header-btn" title="Portfolio Dashboard">
-                <span class="dashboard-icon" aria-hidden="true">📊</span>
-                <span class="dashboard-label">Dashboard</span>
-            </button>
-        </div>
+        <!-- Dashboard button removed from header; will be placed in sidebar -->
         </div>
 
         <div class="watchlist-controls-row">
@@ -194,6 +189,9 @@
         <div class="menu-section">
             <h3>Share Actions</h3>
             <div class="menu-buttons-group">
+                <button id="portfolioDashboardBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <span class="dashboard-icon" aria-hidden="true">📊</span> <span>Portfolio Dashboard</span>
+                </button>
                 <button id="toggleCompactViewBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-th-large"></i> <span>Toggle Compact View</span>
                 </button>
