@@ -548,7 +548,7 @@ function showPortfolioDashboard() {
     // Always hide main app and header
     if (mainContainer) mainContainer.classList.add('app-hidden');
     if (appHeader) appHeader.classList.add('app-hidden');
-    if (portfolioDashboardSection) portfolioDashboardSection.style.display = '';
+    if (portfolioDashboardSection) portfolioDashboardSection.style.display = 'block';
     renderPortfolioHoldingsList();
     if (typeof renderAssetAllocationChart === 'function') renderAssetAllocationChart();
     if (typeof renderPerformanceChart === 'function') renderPerformanceChart();
@@ -703,6 +703,10 @@ if (addPortfolioHoldingBtn) {
         if (typeof hideContextMenu === 'function') hideContextMenu();
         if (window.toggleAppSidebar) window.toggleAppSidebar(false);
         showPortfolioHoldingModal();
+        // Also ensure dashboard is hidden if opened from sidebar
+        if (portfolioDashboardSection && portfolioDashboardSection.style.display !== 'none') {
+            hidePortfolioDashboard();
+        }
     });
 }
 if (dashboardAddPortfolioBtn) {
