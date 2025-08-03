@@ -262,6 +262,60 @@ function showPortfolioDashboard() {
 
     // --- Portfolio Summary Widget Logic ---
     updatePortfolioSummaryWidget();
+
+    // --- Asset Allocation Widget Logic ---
+    renderDashboardAssetAllocationChart();
+}
+
+/**
+ * Renders a simple asset allocation bar chart in the dashboard.
+ * Shows allocation between shares and cash/assets.
+ */
+function renderDashboardAssetAllocationChart() {
+    const chartContainer = document.getElementById('dashboardAssetAllocationChart');
+    if (!chartContainer) return;
+
+    // Calculate total value for shares and cash/assets
+    let sharesValue = 0;
+    let cashValue = 0;
+
+    allSharesData.forEach(share => {
+        const quantity = Number(share.quantity);
+        if (!quantity || isNaN(quantity) || quantity <= 0) return;
+        const livePriceObj = livePrices[share.shareName?.toUpperCase()];
+        const livePrice = livePriceObj && typeof livePriceObj.live === 'number' && !isNaN(livePriceObj.live) ? livePriceObj.live : null;
+        const price = (livePrice !== null && livePrice > 0) ? livePrice : (Number(share.currentPrice) > 0 ? Number(share.currentPrice) : 0);
+        if (!price) return;
+        sharesValue += price * quantity;
+    });
+
+    userCashCategories.forEach(category => {
+        if (!category.isHidden && typeof category.balance === 'number' && !isNaN(category.balance)) {
+            cashValue += category.balance;
+        }
+    });
+
+    const total = sharesValue + cashValue;
+    const sharesPct = total > 0 ? (sharesValue / total) * 100 : 0;
+    const cashPct = total > 0 ? (cashValue / total) * 100 : 0;
+
+    // Render a simple horizontal bar chart
+    chartContainer.innerHTML = `
+        <div style="width:100%; max-width:400px; margin:auto;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span style="width:16px; height:16px; background:#1976d2; border-radius:3px; display:inline-block;"></span>
+                <span>Shares: <strong>${sharesPct.toFixed(1)}%</strong> ($${sharesValue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})})</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span style="width:16px; height:16px; background:#43a047; border-radius:3px; display:inline-block;"></span>
+                <span>Cash & Assets: <strong>${cashPct.toFixed(1)}%</strong> ($${cashValue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})})</span>
+            </div>
+            <div style="height:28px; background:#eee; border-radius:6px; overflow:hidden; display:flex;">
+                <div style="width:${sharesPct}%; background:#1976d2; transition:width 0.5s;"></div>
+                <div style="width:${cashPct}%; background:#43a047; transition:width 0.5s;"></div>
+            </div>
+        </div>
+    `;
 }
 
 /**
