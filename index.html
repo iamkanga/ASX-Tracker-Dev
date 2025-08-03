@@ -291,6 +291,9 @@
         <div class="menu-section">
             <h3>Share Actions</h3>
             <div class="menu-buttons-group">
+                <button id="addPortfolioHoldingBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-briefcase"></i> <span>Add Portfolio Holding</span>
+                </button>
                 <button id="portfolioDashboardBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-chart-bar"></i> <span>Portfolio Dashboard</span>
                 </button>
@@ -915,6 +918,9 @@
         <div class="dashboard-header">
             <button id="dashboardBackBtn" class="dashboard-back-btn" title="Back to App">← Back</button>
             <h2>Portfolio Dashboard</h2>
+            <button id="dashboardAddPortfolioBtn" class="dashboard-back-btn" title="Add Portfolio Holding" style="margin-left:auto;">
+                <i class="fas fa-briefcase"></i> Add Holding
+            </button>
         </div>
         <div class="dashboard-content">
             <!-- Portfolio Summary Widget -->
@@ -944,6 +950,40 @@
             </section>
         </div>
     </section>
+
+    <!-- Add Portfolio Holding Modal -->
+    <div id="portfolioHoldingModal" class="modal">
+        <div class="modal-content add-portfolio-modal-content">
+            <div class="modal-header-with-icon">
+                <div class="modal-title-container">
+                    <h2>Add Portfolio Holding</h2>
+                </div>
+                <div class="modal-header-action-group">
+                    <span id="savePortfolioHoldingBtn" class="modal-action-icon" title="Save Holding"><i class="fas fa-save"></i></span>
+                    <span class="close-button portfolio-modal-close-button">&times;</span>
+                </div>
+            </div>
+            <div class="modal-body-scrollable">
+                <label for="portfolioAsxCode">ASX Code:</label>
+                <input type="text" id="portfolioAsxCode" placeholder="e.g., BHP" required>
+
+                <label for="portfolioQuantity">Quantity:</label>
+                <input type="number" id="portfolioQuantity" step="1" min="1" placeholder="e.g., 100" required>
+
+                <label for="portfolioPurchasePrice">Purchase Price (per share):</label>
+                <input type="number" id="portfolioPurchasePrice" step="0.01" min="0" placeholder="e.g., 25.50" required>
+
+                <label for="portfolioTotalCost">Total Cost ($):</label>
+                <input type="number" id="portfolioTotalCost" step="0.01" min="0" placeholder="Auto-calculated or enter manually">
+
+                <label for="portfolioPurchaseDate">Purchase Date:</label>
+                <input type="date" id="portfolioPurchaseDate">
+
+                <label for="portfolioNotes">Notes:</label>
+                <textarea id="portfolioNotes" rows="2" placeholder="Optional notes..."></textarea>
+            </div>
+        </div>
+    </div>
 </body>
 <!-- Copilot update: 2025-07-29 - change for sync test -->
 </html>
