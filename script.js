@@ -85,6 +85,63 @@ function addPortfolioHolding() {
     renderAssetAllocationChart();
 }
 window.addPortfolioHolding = addPortfolioHolding;
+// Render performance over time chart in dashboard
+function renderPerformanceChart() {
+    const chartDiv = document.getElementById('dashboardPerformanceChart');
+    if (!chartDiv) return;
+    if (!portfolioHoldings || portfolioHoldings.length === 0) {
+        chartDiv.innerHTML = '<p class="ghosted-text">Performance chart will appear here.</p>';
+        return;
+    }
+    // Aggregate value by date
+    const dateMap = {};
+    portfolioHoldings.forEach(h => {
+        if (!h.purchaseDate) return;
+        const date = h.purchaseDate;
+        const value = h.quantity * (typeof h.purchasePrice === 'number' ? h.purchasePrice : 0);
+        dateMap[date] = (dateMap[date] || 0) + value;
+    });
+    const dates = Object.keys(dateMap).sort();
+    if (dates.length === 0) {
+        chartDiv.innerHTML = '<p class="ghosted-text">Performance chart will appear here.</p>';
+        return;
+    }
+    // Build points for line chart
+    const maxVal = Math.max(...dates.map(d => dateMap[d]));
+    const minVal = Math.min(...dates.map(d => dateMap[d]));
+    const chartHeight = 100;
+    const chartWidth = 320;
+    const yScale = v => chartHeight - ((v - minVal) / (maxVal - minVal || 1)) * chartHeight;
+    const xStep = dates.length > 1 ? chartWidth / (dates.length - 1) : chartWidth;
+    let points = dates.map((d, i) => `${i * xStep},${yScale(dateMap[d])}`).join(' ');
+    // SVG line chart
+    chartDiv.innerHTML = `
+        <svg width="100%" height="${chartHeight + 30}" viewBox="0 0 ${chartWidth} ${chartHeight + 30}">
+            <polyline fill="none" stroke="#4a90e2" stroke-width="3" points="${points}" />
+            ${dates.map((d, i) => `<circle cx="${i * xStep}" cy="${yScale(dateMap[d])}" r="4" fill="#4a90e2"><title>${d}: $${dateMap[d].toFixed(2)}</title></circle>`).join('')}
+            ${dates.map((d, i) => `<text x="${i * xStep}" y="${chartHeight + 18}" font-size="10" text-anchor="middle" fill="#888">${d.slice(5)}</text>`).join('')}
+        </svg>
+    `;
+}
+
+// Patch showPortfolioDashboard to also render performance chart
+const origShowPortfolioDashboard3 = window.showPortfolioDashboard;
+function showPortfolioDashboard() {
+    if (origShowPortfolioDashboard3) origShowPortfolioDashboard3();
+    renderPortfolioHoldingsList();
+    renderAssetAllocationChart();
+    renderPerformanceChart();
+}
+window.showPortfolioDashboard = showPortfolioDashboard;
+
+// Patch addPortfolioHolding to update performance chart
+const origAddPortfolioHolding2 = window.addPortfolioHolding || addPortfolioHolding;
+function addPortfolioHolding() {
+    if (origAddPortfolioHolding2) origAddPortfolioHolding2();
+    renderAssetAllocationChart();
+    renderPerformanceChart();
+}
+window.addPortfolioHolding = addPortfolioHolding;
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
 // The previous patch has been removed as the root cause of the UI issues,
