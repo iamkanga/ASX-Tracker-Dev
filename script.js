@@ -1,4 +1,3 @@
-}
 // Copilot update: 2025-07-29 - change for sync test
 document.addEventListener('DOMContentLoaded', function() {
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
