@@ -118,23 +118,7 @@ function renderPerformanceChart() {
 }
 
 // Patch showPortfolioDashboard to also render performance chart
-const origShowPortfolioDashboard3 = window.showPortfolioDashboard;
-function showPortfolioDashboard() {
-    if (origShowPortfolioDashboard3) origShowPortfolioDashboard3();
-    renderPortfolioHoldingsList();
-    renderAssetAllocationChart();
-    renderPerformanceChart();
-}
-window.showPortfolioDashboard = showPortfolioDashboard;
-
-// Patch addPortfolioHolding to update performance chart
-const origAddPortfolioHolding2 = window.addPortfolioHolding || addPortfolioHolding;
-function addPortfolioHolding() {
-    if (origAddPortfolioHolding2) origAddPortfolioHolding2();
-    renderAssetAllocationChart();
-    renderPerformanceChart();
-}
-window.addPortfolioHolding = addPortfolioHolding;
+// Removed recursive/patching definitions of showPortfolioDashboard and addPortfolioHolding.
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
 // The previous patch has been removed as the root cause of the UI issues,
