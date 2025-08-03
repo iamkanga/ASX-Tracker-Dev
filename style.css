@@ -22,6 +22,7 @@ function makeFilesAvailableToSourceControlCSS() {
 /* End Copilot source control helper (style.css) */
 
 /* --- Modern Responsive Controls Row & Dropdowns --- */
+/* Modern, balanced controls row: equal width, responsive, all on one line */
 .controls-flex-row.no-gap {
   display: flex;
   flex-direction: row;
@@ -29,6 +30,8 @@ function makeFilesAvailableToSourceControlCSS() {
   justify-content: center;
   gap: 0.5rem;
   width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
   flex-wrap: nowrap;
 }
 .controls-flex-row.no-gap > * {
@@ -41,8 +44,8 @@ function makeFilesAvailableToSourceControlCSS() {
   margin-bottom: 0;
   box-sizing: border-box;
   width: 100%;
-  min-width: 0;
-  max-width: 100%;
+  min-width: 70px;
+  max-width: 220px;
   border-radius: 0;
   border: 1px solid #ccc;
   background: #fff;
@@ -60,22 +63,36 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 @media (max-width: 600px) {
   .controls-flex-row.no-gap {
-    flex-direction: column;
+    flex-direction: row !important;
     align-items: stretch;
-    gap: 0.5rem;
+    gap: 0.25rem;
+    width: 100%;
+    max-width: 100vw;
+    flex-wrap: nowrap !important;
+    padding: 0 2vw;
   }
   .controls-flex-row.no-gap > * {
-    width: 100%;
+    flex: 1 1 0;
     min-width: 0;
-    max-width: 100%;
+    max-width: none;
+    width: 1%;
   }
   .dropdown-large {
-    font-size: 1rem;
-    padding: 6px 8px;
+    font-size: 0.98rem;
+    padding: 5px 4px;
     margin-bottom: 0;
+    min-width: 48px;
+    max-width: none;
     width: 100%;
-    min-width: 0;
-    max-width: 100%;
+  }
+  .toggle-asx-buttons-group {
+    flex: 0 0 38px;
+    min-width: 38px;
+    max-width: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: 0.25rem;
   }
 }
 /* --- End Modern Responsive Controls Row & Dropdowns --- */
