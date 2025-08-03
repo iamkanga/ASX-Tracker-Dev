@@ -194,15 +194,7 @@ function forceApplyCurrentSort() {
 document.addEventListener('DOMContentLoaded', function() {
     // --- Portfolio Dashboard & Modal Logic ---
     const portfolioDashboard = document.getElementById('portfolioDashboard');
-    const portfolioDashboardBtn = document.getElementById('portfolioDashboardBtn');
-    const addPortfolioHoldingBtn = document.getElementById('addPortfolioHoldingBtn');
-    const dashboardBackBtn = document.getElementById('dashboardBackBtn');
-    const dashboardAddPortfolioBtn = document.getElementById('dashboardAddPortfolioBtn');
-    const portfolioHoldingModal = document.getElementById('portfolioHoldingModal');
-    const savePortfolioHoldingBtn = document.getElementById('savePortfolioHoldingBtn');
-    const closePortfolioModalBtns = document.querySelectorAll('.portfolio-modal-close-button');
-    const appHeader = document.getElementById('appHeader');
-    const mainContainer = document.querySelector('main.container');
+    // (DOM element variables already declared elsewhere, do not redeclare here)
     // Show main app/header on load
     if (appHeader) appHeader.style.display = '';
     if (mainContainer) mainContainer.style.display = '';
@@ -242,6 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (portfolioDashboardBtn) {
         portfolioDashboardBtn.addEventListener('click', function() {
             showPortfolioDashboard();
+        });
     }
     if (addPortfolioHoldingBtn) {
         addPortfolioHoldingBtn.addEventListener('click', function() {
@@ -264,6 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 hidePortfolioHoldingModal();
             });
         });
+    }
 
     // Hide modal on outside click
     if (portfolioHoldingModal) {
@@ -329,7 +323,6 @@ document.addEventListener('DOMContentLoaded', function() {
             updateMainButtonsState(true);
         });
     }
-});
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
 // via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
