@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
+}
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
@@ -14,6 +15,7 @@ window.addEventListener('popstate', function(event) {
             window.toggleAppSidebar(false); // Explicitly close the sidebar
         }
         return; // Exit after handling the sidebar
+    }
 
     // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
     const modals = [
@@ -35,7 +37,9 @@ window.addEventListener('popstate', function(event) {
             if (window.closeModals) closeModals();
             return; // Exit after handling the first open modal
         }
+    }
     // If no modals or sidebar are open, allow default browser back (exit app)
+});
 // ...existing code for the rest of your app...
 // End of DOMContentLoaded
 // (No extra closing brace here)
@@ -46,6 +50,7 @@ function renderAssetAllocationChart() {
     if (!portfolioHoldings || portfolioHoldings.length === 0) {
         chartDiv.innerHTML = '<p class="ghosted-text">Asset allocation chart will appear here.</p>';
         return;
+    }
     // Calculate allocation by ASX code
     const allocation = {};
     let totalValue = 0;
@@ -84,7 +89,6 @@ function renderPerformanceChart() {
     if (!portfolioHoldings || portfolioHoldings.length === 0) {
         chartDiv.innerHTML = '<p class="ghosted-text">Performance chart will appear here.</p>';
         return;
-    }
     // Aggregate value by date
     const dateMap = {};
     portfolioHoldings.forEach(h => {
