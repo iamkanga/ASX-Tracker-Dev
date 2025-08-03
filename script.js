@@ -245,6 +245,44 @@ let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for
 // NEW: Global variable to store shares that have hit their target price
 let sharesAtTargetPrice = [];
 
+// --- PORTFOLIO DASHBOARD STATE ---
+let isDashboardActive = false; // Tracks if the dashboard view is active
+
+/**
+ * Shows the Portfolio Dashboard and hides main app content.
+ * All dashboard logic is modular and does not affect existing app state.
+ */
+function showPortfolioDashboard() {
+    isDashboardActive = true;
+    const dashboardSection = document.getElementById('portfolioDashboard');
+    if (dashboardSection) dashboardSection.style.display = 'block';
+    // Hide main app content (main container, etc.)
+    if (mainContainer) mainContainer.style.display = 'none';
+    if (appHeader) appHeader.classList.add('dashboard-active');
+}
+
+/**
+ * Hides the Portfolio Dashboard and restores main app content.
+ */
+function hidePortfolioDashboard() {
+    isDashboardActive = false;
+    const dashboardSection = document.getElementById('portfolioDashboard');
+    if (dashboardSection) dashboardSection.style.display = 'none';
+    if (mainContainer) mainContainer.style.display = '';
+    if (appHeader) appHeader.classList.remove('dashboard-active');
+}
+
+// Optionally, expose a toggle for future use
+function togglePortfolioDashboard(forceState) {
+    if (typeof forceState === 'boolean') {
+        if (forceState) showPortfolioDashboard();
+        else hidePortfolioDashboard();
+    } else {
+        if (isDashboardActive) hidePortfolioDashboard();
+        else showPortfolioDashboard();
+    }
+}
+
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 let currentMobileViewMode = 'default'; 
 
