@@ -910,6 +910,9 @@
 
         document.addEventListener('DOMContentLoaded', async function() {
             console.log("index.html script module loaded and DOMContentLoaded fired.");
+            // Hide splash screen on load so app is always accessible
+            const splash = document.getElementById('splashScreen');
+            if (splash) splash.style.display = 'none';
         }); 
     </script>
     <script src="script.js"></script>
