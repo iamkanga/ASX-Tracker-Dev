@@ -1,10 +1,12 @@
 // Copilot update: 2025-07-29 - change for sync test
-document.addEventListener('DOMContentLoaded', function() {
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
-// End of script.js
+}
+
+// Listen for the back button (popstate event)
+window.addEventListener('popstate', function(event) {
     // NEW: First, check if the sidebar is open and close it.
     // This should be the first check, as the sidebar can be open on top of the main view.
     if (window.appSidebar && window.appSidebar.classList.contains('open')) {
@@ -36,87 +38,7 @@ function pushAppState(stateObj = {}, title = '', url = '') {
         }
     }
     // If no modals or sidebar are open, allow default browser back (exit app)
-}
-// ...existing code for the rest of your app...
-// Render asset allocation bar chart in dashboard
-function renderAssetAllocationChart() {
-    const chartDiv = document.getElementById('dashboardAssetAllocationChart');
-    if (!chartDiv) return;
-    if (!portfolioHoldings || portfolioHoldings.length === 0) {
-        chartDiv.innerHTML = '<p class="ghosted-text">Asset allocation chart will appear here.</p>';
-        return;
-    }
-    // Calculate allocation by ASX code
-    const allocation = {};
-    let totalValue = 0;
-    portfolioHoldings.forEach(h => {
-        const value = h.quantity * (typeof h.purchasePrice === 'number' ? h.purchasePrice : 0);
-        allocation[h.asxCode] = (allocation[h.asxCode] || 0) + value;
-        totalValue += value;
-    });
-    // Build bar chart HTML
-    let barsHtml = '<div style="display:flex;align-items:flex-end;height:120px;width:100%;gap:8px;">';
-    Object.entries(allocation).forEach(([code, value]) => {
-        const pct = totalValue > 0 ? (value / totalValue) * 100 : 0;
-        barsHtml += `<div title="${code}: $${value.toFixed(2)} (${pct.toFixed(1)}%)" style="flex:1;display:flex;flex-direction:column;align-items:center;">
-            <div style="background:#4a90e2;width:32px;height:${Math.max(10, pct)}px;border-radius:6px 6px 0 0;"></div>
-            <span style="font-size:0.95em;margin-top:4px;">${code}</span>
-            <span style="font-size:0.85em;color:#888;">${pct.toFixed(1)}%</span>
-        </div>`;
-    });
-    barsHtml += '</div>';
-    chartDiv.innerHTML = barsHtml;
-}
-
-
-
-// Patch addPortfolioHolding to update allocation chart
-const origAddPortfolioHolding = window.addPortfolioHolding || addPortfolioHolding;
-function addPortfolioHolding() {
-    if (origAddPortfolioHolding) origAddPortfolioHolding();
-    renderAssetAllocationChart();
-}
-window.addPortfolioHolding = addPortfolioHolding;
-// Render performance over time chart in dashboard
-function renderPerformanceChart() {
-    const chartDiv = document.getElementById('dashboardPerformanceChart');
-    if (!chartDiv) return;
-    if (!portfolioHoldings || portfolioHoldings.length === 0) {
-        chartDiv.innerHTML = '<p class="ghosted-text">Performance chart will appear here.</p>';
-        return;
-    // Aggregate value by date
-    const dateMap = {};
-    portfolioHoldings.forEach(h => {
-        if (!h.purchaseDate) return;
-        const date = h.purchaseDate;
-        const value = h.quantity * (typeof h.purchasePrice === 'number' ? h.purchasePrice : 0);
-        dateMap[date] = (dateMap[date] || 0) + value;
-    });
-    const dates = Object.keys(dateMap).sort();
-    if (dates.length === 0) {
-        chartDiv.innerHTML = '<p class="ghosted-text">Performance chart will appear here.</p>';
-        return;
-    }
-    // Build points for line chart
-    const maxVal = Math.max(...dates.map(d => dateMap[d]));
-    const minVal = Math.min(...dates.map(d => dateMap[d]));
-    const chartHeight = 100;
-    const chartWidth = 320;
-    const yScale = v => chartHeight - ((v - minVal) / (maxVal - minVal || 1)) * chartHeight;
-    const xStep = dates.length > 1 ? chartWidth / (dates.length - 1) : chartWidth;
-    let points = dates.map((d, i) => `${i * xStep},${yScale(dateMap[d])}`).join(' ');
-    // SVG line chart
-    chartDiv.innerHTML = `
-        <svg width="100%" height="${chartHeight + 30}" viewBox="0 0 ${chartWidth} ${chartHeight + 30}">
-            <polyline fill="none" stroke="#4a90e2" stroke-width="3" points="${points}" />
-            ${dates.map((d, i) => `<circle cx="${i * xStep}" cy="${yScale(dateMap[d])}" r="4" fill="#4a90e2"><title>${d}: $${dateMap[d].toFixed(2)}</title></circle>`).join('')}
-            ${dates.map((d, i) => `<text x="${i * xStep}" y="${chartHeight + 18}" font-size="10" text-anchor="middle" fill="#888">${d.slice(5)}</text>`).join('')}
-        </svg>
-    `;
-}
-
-// Patch showPortfolioDashboard to also render performance chart
-// Removed recursive/patching definitions of showPortfolioDashboard and addPortfolioHolding.
+});
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
 // The previous patch has been removed as the root cause of the UI issues,
@@ -186,7 +108,115 @@ function forceApplyCurrentSort() {
 }
 
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
+document.addEventListener('DOMContentLoaded', function () {
+    const hideCheckbox = document.getElementById('sidebarHideCheckbox');
+    const showCheckbox = document.getElementById('sidebarShowCheckbox');
 
+    function setShowLastLivePricePreference(value) {
+        showLastLivePriceOnClosedMarket = value;
+        window.showLastLivePriceOnClosedMarket = value;
+        // Persist to Firestore if available
+        if (window.firebaseAuth && window.firebaseAuth.currentUser && window.firestoreDb && window.firestore && window.getFirebaseAppId) {
+            const currentUserId = window.firebaseAuth.currentUser.uid;
+            const currentAppId = window.getFirebaseAppId();
+            const userProfileDocRef = window.firestore.doc(window.firestoreDb, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+            window.firestore.setDoc(userProfileDocRef, { showLastLivePriceOnClosedMarket: value }, { merge: true })
+                .then(() => {
+                    if (window.logDebug) window.logDebug('Sidebar Checkbox: Saved "Show Last Live Price" preference to Firestore: ' + value);
+                })
+                .catch((error) => {
+                    if (window.showCustomAlert) window.showCustomAlert('Error saving preference: ' + error.message);
+                });
+        }
+        // Update UI immediately
+        if (window.renderWatchlist) window.renderWatchlist();
+        if (window.showCustomAlert) window.showCustomAlert('Last Price Display set to: ' + (value ? 'On (Market Closed)' : 'Off (Market Closed)'), 1500);
+        if (window.toggleAppSidebar) window.toggleAppSidebar(false);
+    }
+
+    function updateCheckboxes(source) {
+        if (source === hideCheckbox && hideCheckbox.checked) {
+            showCheckbox.checked = false;
+            setShowLastLivePricePreference(false);
+        } else if (source === showCheckbox && showCheckbox.checked) {
+            hideCheckbox.checked = false;
+            setShowLastLivePricePreference(true);
+        }
+        // Prevent both from being unchecked: always one selected
+        if (!hideCheckbox.checked && !showCheckbox.checked) {
+            showCheckbox.checked = true;
+            setShowLastLivePricePreference(true);
+        }
+    }
+
+    if (hideCheckbox && showCheckbox) {
+        hideCheckbox.addEventListener('change', function () {
+            updateCheckboxes(hideCheckbox);
+        });
+        showCheckbox.addEventListener('change', function () {
+            updateCheckboxes(showCheckbox);
+        });
+        // Initial state: ensure only one is checked
+        updateCheckboxes(showCheckbox.checked ? showCheckbox : hideCheckbox);
+    }
+
+    // Ensure Edit Current Watchlist button updates when selection changes
+    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+        watchlistSelect.addEventListener('change', function () {
+            updateMainButtonsState(true);
+        });
+    }
+});
+//  This script interacts with Firebase Firestore for data storage.
+// Firebase app, db, auth instances, and userId are made globally available
+// via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
+// from the <script type="module"> block in index.html.
+
+// --- GLOBAL VARIABLES ---
+const DEBUG_MODE = false; // Set to 'false' to disable most console.log messages in production
+
+// Custom logging function to control verbosity
+function logDebug(message, ...optionalParams) {
+    if (DEBUG_MODE) {
+        // This line MUST call the native console.log, NOT logDebug itself.
+        console.log(message, ...optionalParams); 
+    }
+}
+// --- END DEBUG LOGGING SETUP ---
+
+let db;
+let auth = null;
+let currentUserId = null;
+let currentAppId;
+let selectedShareDocId = null;
+let allSharesData = []; // Kept in sync by the onSnapshot listener
+let currentDialogCallback = null;
+let autoDismissTimeout = null;
+let lastTapTime = 0;
+let tapTimeout;
+let selectedElementForTap = null;
+let longPressTimer;
+const LONG_PRESS_THRESHOLD = 500; // Time in ms for long press detection
+let touchStartX = 0;
+let touchStartY = 0;
+const TOUCH_MOVE_THRESHOLD = 10; // Pixels for touch movement to cancel long press
+const KANGA_EMAIL = 'iamkanga@gmail.com';
+let currentCalculatorInput = '';
+let operator = null;
+let previousCalculatorInput = '';
+let resultDisplayed = false;
+const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
+const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
+let userWatchlists = []; // Stores all watchlists for the user
+let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
+const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
+const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
+let currentSortOrder = 'entryDate-desc'; // Default sort order
+let contextMenuOpen = false; // To track if the custom context menu is open
+let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
+let originalShareData = null; // Stores the original share data when editing for dirty state check
+let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
+let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 
 
 // Live Price Data
@@ -214,165 +244,6 @@ let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for
 
 // NEW: Global variable to store shares that have hit their target price
 let sharesAtTargetPrice = [];
-
-// --- PORTFOLIO DASHBOARD STATE ---
-let isDashboardActive = false; // Tracks if the dashboard view is active
-
-/**
- * Shows the Portfolio Dashboard and hides main app content.
- * All dashboard logic is modular and does not affect existing app state.
- */
-function showPortfolioDashboard() {
-    // (Removed: duplicate/old dashboard logic)
-}
-
-/**
- * Renders a placeholder for the Performance Over Time chart in the dashboard.
- * This is a stub for future integration with real performance data.
- */
-function renderDashboardPerformanceChart() {
-    const chartContainer = document.getElementById('dashboardPerformanceChart');
-    if (!chartContainer) return;
-    // Placeholder: show a message and a simple structure for future chart
-    chartContainer.innerHTML = `
-        <div style="width:100%; max-width:400px; margin:auto; text-align:center; padding:32px 0;">
-            <span style="color:#aaa; font-size:1.1rem;">Performance chart coming soon.<br>Historical portfolio value tracking will appear here.</span>
-        </div>
-    `;
-}
-
-/**
- * Renders a simple asset allocation bar chart in the dashboard.
- * Shows allocation between shares and cash/assets.
- */
-function renderDashboardAssetAllocationChart() {
-    const chartContainer = document.getElementById('dashboardAssetAllocationChart');
-    if (!chartContainer) return;
-
-    // Calculate total value for shares and cash/assets
-    let sharesValue = 0;
-    let cashValue = 0;
-
-    allSharesData.forEach(share => {
-        const quantity = Number(share.quantity);
-        if (!quantity || isNaN(quantity) || quantity <= 0) return;
-        const livePriceObj = livePrices[share.shareName?.toUpperCase()];
-        const livePrice = livePriceObj && typeof livePriceObj.live === 'number' && !isNaN(livePriceObj.live) ? livePriceObj.live : null;
-        const price = (livePrice !== null && livePrice > 0) ? livePrice : (Number(share.currentPrice) > 0 ? Number(share.currentPrice) : 0);
-        if (!price) return;
-        sharesValue += price * quantity;
-    });
-
-    userCashCategories.forEach(category => {
-        if (!category.isHidden && typeof category.balance === 'number' && !isNaN(category.balance)) {
-            cashValue += category.balance;
-        }
-    });
-
-    const total = sharesValue + cashValue;
-    const sharesPct = total > 0 ? (sharesValue / total) * 100 : 0;
-    const cashPct = total > 0 ? (cashValue / total) * 100 : 0;
-
-    // Render a simple horizontal bar chart
-    chartContainer.innerHTML = `
-        <div style="width:100%; max-width:400px; margin:auto;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                <span style="width:16px; height:16px; background:#1976d2; border-radius:3px; display:inline-block;"></span>
-                <span>Shares: <strong>${sharesPct.toFixed(1)}%</strong> ($${sharesValue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})})</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                <span style="width:16px; height:16px; background:#43a047; border-radius:3px; display:inline-block;"></span>
-                <span>Cash & Assets: <strong>${cashPct.toFixed(1)}%</strong> ($${cashValue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})})</span>
-            </div>
-            <div style="height:28px; background:#eee; border-radius:6px; overflow:hidden; display:flex;">
-                <div style="width:${sharesPct}%; background:#1976d2; transition:width 0.5s;"></div>
-                <div style="width:${cashPct}%; background:#43a047; transition:width 0.5s;"></div>
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Updates the Portfolio Summary widget in the dashboard with real data.
- * Calculates total value, total gain/loss, and overall yield.
- */
-function updatePortfolioSummaryWidget() {
-    const totalValueEl = document.getElementById('dashboardTotalValue');
-    const totalGainEl = document.getElementById('dashboardTotalGain');
-    const totalYieldEl = document.getElementById('dashboardTotalYield');
-
-    let totalValue = 0;
-    let totalCost = 0;
-    let totalGain = 0;
-    let totalDividends = 0;
-    let totalYield = 0;
-
-    // --- Shares ---
-    allSharesData.forEach(share => {
-        // Only include shares with a valid quantity
-        const quantity = Number(share.quantity);
-        if (!quantity || isNaN(quantity) || quantity <= 0) return;
-
-        // Use live price if available, else fallback to entered price
-        const livePriceObj = livePrices[share.shareName?.toUpperCase()];
-        const livePrice = livePriceObj && typeof livePriceObj.live === 'number' && !isNaN(livePriceObj.live) ? livePriceObj.live : null;
-        const price = (livePrice !== null && livePrice > 0) ? livePrice : (Number(share.currentPrice) > 0 ? Number(share.currentPrice) : 0);
-        if (!price) return;
-
-        const costBasis = Number(share.costBasis) || Number(share.currentPrice) || 0;
-        const invested = costBasis * quantity;
-        const marketValue = price * quantity;
-        totalValue += marketValue;
-        totalCost += invested;
-        totalGain += (marketValue - invested);
-
-        // Dividends (annualized, if available)
-        const dividendAmount = Number(share.dividendAmount) || 0;
-        totalDividends += dividendAmount * quantity;
-    });
-
-    // --- Cash & Assets ---
-    userCashCategories.forEach(category => {
-        if (!category.isHidden && typeof category.balance === 'number' && !isNaN(category.balance)) {
-            totalValue += category.balance;
-        }
-    });
-
-    // --- Yield Calculation ---
-    // Overall yield = (totalDividends / totalValue) * 100, if totalValue > 0
-    if (totalValue > 0 && totalDividends > 0) {
-        totalYield = (totalDividends / totalValue) * 100;
-    } else {
-        totalYield = 0;
-    }
-
-    // --- Update UI ---
-    if (totalValueEl) totalValueEl.textContent = '$' + totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    if (totalGainEl) {
-        const sign = totalGain > 0 ? '+' : (totalGain < 0 ? '-' : '');
-        totalGainEl.textContent = sign + '$' + Math.abs(totalGain).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        totalGainEl.style.color = totalGain > 0 ? '#2e7d32' : (totalGain < 0 ? '#c62828' : '#555');
-    }
-    if (totalYieldEl) totalYieldEl.textContent = totalYield.toFixed(2) + '%';
-}
-
-/**
- * Hides the Portfolio Dashboard and restores main app content.
- */
-function hidePortfolioDashboard() {
-    // (Removed: duplicate/old dashboard logic)
-}
-
-// Optionally, expose a toggle for future use
-function togglePortfolioDashboard(forceState) {
-    if (typeof forceState === 'boolean') {
-        if (forceState) showPortfolioDashboard();
-        else hidePortfolioDashboard();
-    } else {
-        if (isDashboardActive) hidePortfolioDashboard();
-        else showPortfolioDashboard();
-    }
-}
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 let currentMobileViewMode = 'default'; 
@@ -407,200 +278,31 @@ const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 
 
 // --- UI Element References ---
-const appHeader = document.getElementById('appHeader');
-const mainContainer = document.querySelector('main.container');
+// Copilot: No-op change to trigger source control detection
+const appHeader = document.getElementById('appHeader'); // Reference to the main header
+const mainContainer = document.querySelector('main.container'); // Reference to the main content container
 const mainTitle = document.getElementById('mainTitle');
-const portfolioDashboardBtn = document.getElementById('portfolioDashboardBtn');
-const dashboardBackBtn = document.getElementById('dashboardBackBtn');
-const portfolioDashboardSection = document.getElementById('portfolioDashboard');
-const mainSections = document.querySelectorAll('main.container');
-
-
-function showPortfolioDashboard() {
-    // Always hide main app and header
-    if (mainContainer) mainContainer.classList.add('app-hidden');
-    if (appHeader) appHeader.classList.add('app-hidden');
-    if (portfolioDashboardSection) portfolioDashboardSection.style.display = 'block';
-    renderPortfolioHoldingsList();
-    if (typeof renderAssetAllocationChart === 'function') renderAssetAllocationChart();
-    if (typeof renderPerformanceChart === 'function') renderPerformanceChart();
-    if (typeof updatePortfolioSummaryWidget === 'function') updatePortfolioSummaryWidget();
-}
-function hidePortfolioDashboard() {
-    // Always show main app and header
-    if (portfolioDashboardSection) portfolioDashboardSection.style.display = 'none';
-    if (mainContainer) mainContainer.classList.remove('app-hidden');
-    if (appHeader) appHeader.classList.remove('app-hidden');
-}
-if (portfolioDashboardBtn) {
-    portfolioDashboardBtn.addEventListener('click', function () {
-        console.log('Portfolio Dashboard button clicked');
-        showPortfolioDashboard();
-    });
-}
-if (dashboardBackBtn) {
-    dashboardBackBtn.addEventListener('click', function () {
-        hidePortfolioDashboard();
-    });
-}
-// --- Portfolio Holding Modal Logic ---
-const addPortfolioHoldingBtn = document.getElementById('addPortfolioHoldingBtn');
-const dashboardAddPortfolioBtn = document.getElementById('dashboardAddPortfolioBtn');
-const portfolioHoldingModal = document.getElementById('portfolioHoldingModal');
-const portfolioModalCloseButton = document.querySelector('.portfolio-modal-close-button');
-
-// Portfolio Holding Modal Form Elements
-const savePortfolioHoldingBtn = document.getElementById('savePortfolioHoldingBtn');
-const portfolioAsxCodeInput = document.getElementById('portfolioAsxCode');
-const portfolioQuantityInput = document.getElementById('portfolioQuantity');
-const portfolioPurchasePriceInput = document.getElementById('portfolioPurchasePrice');
-const portfolioTotalCostInput = document.getElementById('portfolioTotalCost');
-const portfolioPurchaseDateInput = document.getElementById('portfolioPurchaseDate');
-const portfolioNotesInput = document.getElementById('portfolioNotes');
-
-// In-memory portfolio holdings array
-let portfolioHoldings = [];
-
-function clearPortfolioHoldingForm() {
-    if (portfolioAsxCodeInput) portfolioAsxCodeInput.value = '';
-    if (portfolioQuantityInput) portfolioQuantityInput.value = '';
-    if (portfolioPurchasePriceInput) portfolioPurchasePriceInput.value = '';
-    if (portfolioTotalCostInput) portfolioTotalCostInput.value = '';
-    if (portfolioPurchaseDateInput) portfolioPurchaseDateInput.value = '';
-    if (portfolioNotesInput) portfolioNotesInput.value = '';
-}
-
-function getPortfolioHoldingFormData() {
-    return {
-        asxCode: (portfolioAsxCodeInput?.value || '').toUpperCase().trim(),
-        quantity: Number(portfolioQuantityInput?.value) || 0,
-        purchasePrice: Number(portfolioPurchasePriceInput?.value) || 0,
-        totalCost: Number(portfolioTotalCostInput?.value) || 0,
-        purchaseDate: portfolioPurchaseDateInput?.value || '',
-        notes: portfolioNotesInput?.value || ''
-    };
-}
-
-function addPortfolioHolding() {
-    const data = getPortfolioHoldingFormData();
-    if (!data.asxCode || data.quantity <= 0 || data.purchasePrice <= 0) {
-        showCustomAlert && showCustomAlert('Please enter ASX code, quantity, and purchase price.');
-        return;
-    }
-    // Auto-calculate total cost if not entered
-    if (!data.totalCost || data.totalCost === 0) {
-        data.totalCost = data.quantity * data.purchasePrice;
-    }
-    portfolioHoldings.push(data);
-    hidePortfolioHoldingModal();
-    clearPortfolioHoldingForm();
-    renderPortfolioHoldingsList();
-    updatePortfolioSummaryWidget();
-}
-
-if (savePortfolioHoldingBtn) {
-    savePortfolioHoldingBtn.addEventListener('click', addPortfolioHolding);
-}
-
-// Render holdings list in dashboard
-function renderPortfolioHoldingsList() {
-    const table = document.getElementById('dashboardPortfolioHoldingsList');
-    const noHoldingsMsg = document.getElementById('dashboardNoHoldingsMsg');
-    if (!table || !noHoldingsMsg) return;
-    const tbody = table.querySelector('tbody');
-    tbody.innerHTML = '';
-    if (!portfolioHoldings || portfolioHoldings.length === 0) {
-        noHoldingsMsg.style.display = '';
-        table.style.display = 'none';
-        return;
-    }
-    noHoldingsMsg.style.display = 'none';
-    table.style.display = '';
-    portfolioHoldings.forEach(holding => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${holding.asxCode}</td>
-            <td>${holding.quantity}</td>
-            <td>${formatCurrency(holding.purchasePrice)}</td>
-            <td>${formatCurrency(holding.totalCost)}</td>
-            <td>${getLivePriceDisplay(holding.asxCode)}</td>
-            <td>${formatCurrency(getMarketValue(holding))}</td>
-            <td>${formatCurrency(getGainLoss(holding))}</td>
-            <td>${holding.purchaseDate || ''}</td>
-            <td>${holding.notes || ''}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-// Patch updatePortfolioSummaryWidget to use portfolioHoldings
-const origUpdatePortfolioSummaryWidget = window.updatePortfolioSummaryWidget || updatePortfolioSummaryWidget;
-function updatePortfolioSummaryWidget() {
-    // Use portfolioHoldings if present, else fallback to original
-    let totalValue = 0, totalCost = 0;
-    for (const h of portfolioHoldings) {
-        totalValue += h.quantity * h.purchasePrice;
-        totalCost += h.totalCost;
-    }
-    const gain = totalValue - totalCost;
-    const yieldPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
-    const totalValueEl = document.getElementById('dashboardTotalValue');
-    const totalGainEl = document.getElementById('dashboardTotalGain');
-    const totalYieldEl = document.getElementById('dashboardTotalYield');
-    if (totalValueEl) totalValueEl.textContent = '$' + totalValue.toFixed(2);
-    if (totalGainEl) totalGainEl.textContent = '$' + gain.toFixed(2);
-    if (totalYieldEl) totalYieldEl.textContent = yieldPct.toFixed(2) + '%';
-}
-window.updatePortfolioSummaryWidget = updatePortfolioSummaryWidget;
-
-
-
-// Expose for debugging if needed
-window.showPortfolioDashboard = showPortfolioDashboard;
-
-function showPortfolioHoldingModal() {
-    if (portfolioHoldingModal) {
-        portfolioHoldingModal.style.display = 'block';
-        document.body.classList.add('modal-open');
-        // Optionally, clear form fields here
-    }
-}
-function hidePortfolioHoldingModal() {
-    if (portfolioHoldingModal) {
-        portfolioHoldingModal.style.display = 'none';
-        document.body.classList.remove('modal-open');
-    }
-}
-if (addPortfolioHoldingBtn) {
-    addPortfolioHoldingBtn.addEventListener('click', function () {
-        console.log('Add Portfolio Holding button clicked');
-        if (typeof hideContextMenu === 'function') hideContextMenu();
-        if (window.toggleAppSidebar) window.toggleAppSidebar(false);
-        showPortfolioHoldingModal();
-        // Also ensure dashboard is hidden if opened from sidebar
-        if (portfolioDashboardSection && portfolioDashboardSection.style.display !== 'none') {
-            hidePortfolioDashboard();
-        }
-    });
-}
-// ...existing code...
-if (dashboardAddPortfolioBtn) {
-    dashboardAddPortfolioBtn.addEventListener('click', function () {
-        showPortfolioHoldingModal();
-    });
-}
-if (portfolioModalCloseButton) {
-    portfolioModalCloseButton.addEventListener('click', function () {
-        hidePortfolioHoldingModal();
-    });
-}
-// Optional: ESC key closes modal
-document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && portfolioHoldingModal && portfolioHoldingModal.style.display === 'block') {
-        hidePortfolioHoldingModal();
-    }
-});
-// ...existing code...
+const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
+const newShareBtn = document.getElementById('newShareBtn');
+const standardCalcBtn = document.getElementById('standardCalcBtn');
+const dividendCalcBtn = document.getElementById('dividendCalcBtn');
+const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
+const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
+const shareFormSection = document.getElementById('shareFormSection');
+const formCloseButton = document.querySelector('.form-close-button');
+const formTitle = document.getElementById('formTitle');
+const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
+const saveShareBtn = document.getElementById('saveShareBtn');
+const deleteShareBtn = document.getElementById('deleteShareBtn');
+const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
+const shareNameInput = document.getElementById('shareName');
+const currentPriceInput = document.getElementById('currentPrice');
+const targetPriceInput = document.getElementById('targetPrice');
+const dividendAmountInput = document.getElementById('dividendAmount');
+const frankingCreditsInput = document.getElementById('frankingCredits');
+const shareRatingSelect = document.getElementById('shareRating');
+const commentsFormContainer = document.getElementById('dynamicCommentsArea');
+const modalStarRating = document.getElementById('modalStarRating');
 
 // --- ASX Code Toggle Button Functionality ---
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
@@ -720,7 +422,8 @@ const closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn'); // NEW
 const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: Reference to clear all alerts button (not in current HTML, but kept for consistency)
 
 // NEW: Cash & Assets UI Elements (1)
-
+const stockWatchlistSection = document.getElementById('stockWatchlistSection');
+const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
 const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
 const addCashCategoryBtn = document.getElementById('addCashCategoryBtn'); // This will be removed or repurposed
 const saveCashBalancesBtn = document.getElementById('saveCashBalancesBtn'); // This will be removed or repurposed
@@ -3700,6 +3403,8 @@ async function loadUserWatchlistsAndSettings() {
                 currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id => 
                     id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || userWatchlists.some(wl => wl.id === id)
                 );
+                logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
+            } else {
                 logDebug('User Settings: No valid last selected watchlists in profile. Will determine default.');
             }
         } else {
@@ -3797,6 +3502,12 @@ async function loadUserWatchlistsAndSettings() {
     } finally {
         if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
+}
+
+/**
+ * Fetches live price data from the Google Apps Script Web App.
+ * Updates the `livePrices` global object.
+ */
 async function fetchLivePrices() {
     console.log('Live Price: Attempting to fetch live prices...');
     // Only fetch live prices if a stock-related watchlist is selected
@@ -6610,7 +6321,6 @@ function showTargetHitDetailsModal() {
     logDebug('Target Hit Modal: Displayed details for ' + sharesAtTargetPrice.length + ' shares.');
 }
 
-
 // NEW: Target hit icon button listener (opens the modal) - moved to global scope
 if (targetHitIconBtn) {
     targetHitIconBtn.addEventListener('click', (event) => {
@@ -6773,7 +6483,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Call renderWatchlist here to ensure correct mobile card rendering after auth state is set
             renderWatchlist();
             // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
-        }); // End of onAuthStateChanged
+        });
     } else {
         console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
         const errorDiv = document.getElementById('firebaseInitError');
@@ -6788,5 +6498,4 @@ document.addEventListener('DOMContentLoaded', function() {
         // NEW: Hide splash screen if Firebase fails to initialize
         hideSplashScreen();
     }
-}); // End of DOMContentLoaded
-}); // End of DOMContentLoaded
+});
