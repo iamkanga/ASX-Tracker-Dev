@@ -4,10 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
-}
-
-// Listen for the back button (popstate event)
-window.addEventListener('popstate', function(event) {
+// End of script.js
     // NEW: First, check if the sidebar is open and close it.
     // This should be the first check, as the sidebar can be open on top of the main view.
     if (window.appSidebar && window.appSidebar.classList.contains('open')) {
@@ -39,10 +36,8 @@ window.addEventListener('popstate', function(event) {
         }
     }
     // If no modals or sidebar are open, allow default browser back (exit app)
-// End of script.js
+}
 // ...existing code for the rest of your app...
-// End of DOMContentLoaded
-// (No extra closing brace here)
 // Render asset allocation bar chart in dashboard
 function renderAssetAllocationChart() {
     const chartDiv = document.getElementById('dashboardAssetAllocationChart');
