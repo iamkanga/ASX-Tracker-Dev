@@ -1,4 +1,37 @@
+
+
+// --- ASX Code Data Loading ---
+async function loadAsxCodes() {
+    try {
+        const response = await fetch('asx_codes.csv');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const csvText = await response.text();
+        // Basic CSV parsing (assuming format: "Code","Name")
+        allAsxCodes = csvText.split('\n').slice(1).map(line => {
+            const parts = line.split('","');
+            if (parts.length === 2) {
+                const code = parts[0].replace(/"/g, '').trim();
+                const name = parts[1].replace(/"/g, '').trim();
+                if (code && name) {
+                    return { code, name };
+                }
+            }
+            return null;
+        }).filter(Boolean); // Filter out any null entries from parsing errors
+        logDebug('ASX codes loaded successfully:', allAsxCodes.length, 'codes found.');
+    } catch (error) {
+        console.error('Error loading ASX codes:', error);
+        showCustomAlert('Could not load ASX codes for autocomplete.');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadAsxCodes);
+
 // --- PORTFOLIO MODAL LOGIC ---
+
+
 const addPortfolioSidebarBtn = document.getElementById('addPortfolioSidebarBtn');
 const portfolioModal = document.getElementById('portfolioModal');
 const portfolioModalCloseButton = document.querySelector('.portfolio-modal-close-button');
