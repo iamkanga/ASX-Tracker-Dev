@@ -1,3 +1,90 @@
+// --- PORTFOLIO MODAL LOGIC ---
+const addPortfolioSidebarBtn = document.getElementById('addPortfolioSidebarBtn');
+const portfolioModal = document.getElementById('portfolioModal');
+const portfolioModalCloseButton = document.querySelector('.portfolio-modal-close-button');
+const portfolioAsxCodeInput = document.getElementById('portfolioAsxCode');
+const portfolioAsxSuggestions = document.getElementById('portfolioAsxSuggestions');
+const portfolioQuantityInput = document.getElementById('portfolioQuantity');
+const portfolioAvgPriceInput = document.getElementById('portfolioAvgPrice');
+const savePortfolioBtn = document.getElementById('savePortfolioBtn');
+
+let portfolioHoldings = [];
+
+function showPortfolioModal() {
+    if (portfolioModal) {
+        portfolioModal.style.display = 'block';
+        document.body.classList.add('modal-open');
+        clearPortfolioForm();
+    }
+}
+function hidePortfolioModal() {
+    if (portfolioModal) {
+        portfolioModal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+    }
+}
+function clearPortfolioForm() {
+    if (portfolioAsxCodeInput) portfolioAsxCodeInput.value = '';
+    if (portfolioQuantityInput) portfolioQuantityInput.value = '';
+    if (portfolioAvgPriceInput) portfolioAvgPriceInput.value = '';
+    if (portfolioAsxSuggestions) portfolioAsxSuggestions.innerHTML = '';
+}
+
+if (addPortfolioSidebarBtn) {
+    addPortfolioSidebarBtn.addEventListener('click', showPortfolioModal);
+}
+if (portfolioModalCloseButton) {
+    portfolioModalCloseButton.addEventListener('click', hidePortfolioModal);
+}
+// ESC key closes modal
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && portfolioModal && portfolioModal.style.display === 'block') {
+        hidePortfolioModal();
+    }
+});
+
+// --- ASX CODE AUTOCOMPLETE FOR PORTFOLIO MODAL ---
+if (portfolioAsxCodeInput && portfolioAsxSuggestions) {
+    portfolioAsxCodeInput.addEventListener('input', function () {
+        const val = portfolioAsxCodeInput.value.trim().toUpperCase();
+        if (!val || !Array.isArray(allAsxCodes)) {
+            portfolioAsxSuggestions.innerHTML = '';
+            return;
+        }
+        const matches = allAsxCodes.filter(c => c.code.startsWith(val)).slice(0, 8);
+        if (matches.length === 0) {
+            portfolioAsxSuggestions.innerHTML = '';
+            return;
+        }
+        portfolioAsxSuggestions.innerHTML = matches.map(c => `<div class="suggestion-item" data-code="${c.code}">${c.code} - ${c.name}</div>`).join('');
+    });
+    portfolioAsxSuggestions.addEventListener('click', function (e) {
+        const target = e.target.closest('.suggestion-item');
+        if (target) {
+            portfolioAsxCodeInput.value = target.dataset.code;
+            portfolioAsxSuggestions.innerHTML = '';
+            portfolioQuantityInput.focus();
+        }
+    });
+}
+
+// --- SAVE PORTFOLIO ENTRY ---
+if (savePortfolioBtn) {
+    savePortfolioBtn.addEventListener('click', function () {
+        const code = (portfolioAsxCodeInput?.value || '').toUpperCase().trim();
+        const qty = Number(portfolioQuantityInput?.value) || 0;
+        const avg = Number(portfolioAvgPriceInput?.value) || 0;
+        if (!code || qty <= 0 || avg <= 0) {
+            showCustomAlert && showCustomAlert('Please enter ASX code, quantity, and average price.');
+            return;
+        }
+        portfolioHoldings.push({ code, qty, avg });
+        hidePortfolioModal();
+        clearPortfolioForm();
+        showCustomAlert && showCustomAlert('Added to portfolio!');
+        // TODO: Render portfolio view
+    });
+}
 // Copilot update: 2025-07-29 - change for sync test
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
