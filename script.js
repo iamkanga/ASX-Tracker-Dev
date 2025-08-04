@@ -43,76 +43,78 @@ const savePortfolioBtn = document.getElementById('savePortfolioBtn');
 
 
 // --- PORTFOLIO VIEW LOGIC ---
-// Add 'Portfolio' to the watchlist dropdown on page load
+// Robustly add 'Portfolio' to the watchlist dropdown on page load
 document.addEventListener('DOMContentLoaded', function() {
     const watchlistSelect = document.getElementById('watchlistSelect');
-    if (watchlistSelect && !Array.from(watchlistSelect.options).some(opt => opt.value === 'portfolio')) {
+    if (watchlistSelect) {
+        // Remove all existing Portfolio options
+        Array.from(watchlistSelect.options).forEach(opt => {
+            if (opt.value === '__PORTFOLIO__') opt.remove();
+        });
+        // Add Portfolio as last option
         const portfolioOption = document.createElement('option');
-        portfolioOption.value = 'portfolio';
+        portfolioOption.value = '__PORTFOLIO__';
         portfolioOption.textContent = 'Portfolio';
-        watchlistSelect.insertBefore(portfolioOption, watchlistSelect.options[1]); // After placeholder
+        watchlistSelect.appendChild(portfolioOption);
     }
 });
 
-// Show/hide sections based on watchlist selection
+// Show/hide sections based on watchlist selection (robust Portfolio integration)
 function updateMainSectionForWatchlist() {
     const watchlistSelect = document.getElementById('watchlistSelect');
-    const portfolioSection = document.getElementById('portfolioSection');
-    const stockWatchlistSection = document.getElementById('stockWatchlistSection');
-    const cashAssetsSection = document.getElementById('cashAssetsSection');
-    if (!watchlistSelect || !portfolioSection || !stockWatchlistSection || !cashAssetsSection) return;
-    if (watchlistSelect.value === 'portfolio') {
-        portfolioSection.classList.remove('app-hidden');
-        stockWatchlistSection.classList.add('app-hidden');
-        cashAssetsSection.classList.add('app-hidden');
-        renderPortfolioTable();
+    if (!watchlistSelect) return;
+    if (watchlistSelect.value === '__PORTFOLIO__') {
+        showPortfolioView();
     } else if (watchlistSelect.value === 'cashBank') {
-        portfolioSection.classList.add('app-hidden');
-        stockWatchlistSection.classList.add('app-hidden');
-        cashAssetsSection.classList.remove('app-hidden');
+        const stockWatchlistSection = document.getElementById('stockWatchlistSection');
+        const cashAssetsSection = document.getElementById('cashAssetsSection');
+        if (stockWatchlistSection) stockWatchlistSection.classList.add('app-hidden');
+        if (cashAssetsSection) cashAssetsSection.classList.remove('app-hidden');
     } else {
-        portfolioSection.classList.add('app-hidden');
-        stockWatchlistSection.classList.remove('app-hidden');
-        cashAssetsSection.classList.add('app-hidden');
+        const stockWatchlistSection = document.getElementById('stockWatchlistSection');
+        const cashAssetsSection = document.getElementById('cashAssetsSection');
+        if (stockWatchlistSection) stockWatchlistSection.classList.remove('app-hidden');
+        if (cashAssetsSection) cashAssetsSection.classList.add('app-hidden');
     }
 }
 
-document.getElementById('watchlistSelect').addEventListener('change', updateMainSectionForWatchlist);
-// On load, if Portfolio is selected, show it
 document.addEventListener('DOMContentLoaded', function() {
     const watchlistSelect = document.getElementById('watchlistSelect');
-    if (watchlistSelect && watchlistSelect.value === 'portfolio') {
-        updateMainSectionForWatchlist();
+    if (watchlistSelect) {
+        watchlistSelect.addEventListener('change', updateMainSectionForWatchlist);
+        // On load, if Portfolio is selected, show it
+        if (watchlistSelect.value === '__PORTFOLIO__') {
+            showPortfolioView();
+        }
     }
 });
 
-// Render portfolio holdings in the table
-function renderPortfolioTable() {
-    const tableBody = document.querySelector('#portfolioTable tbody');
-    const emptyMsg = document.getElementById('portfolioEmptyMessage');
-    if (!tableBody) return;
-    tableBody.innerHTML = '';
+// Render portfolio holdings in the table (robust, always in main section)
+function renderPortfolioView() {
+    const container = document.getElementById('portfolioTableContainer');
+    if (!container) return;
     if (!window.portfolioHoldings || window.portfolioHoldings.length === 0) {
-        if (emptyMsg) emptyMsg.style.display = '';
+        container.innerHTML = '<p>No stocks in portfolio yet.</p>';
         return;
     }
-    if (emptyMsg) emptyMsg.style.display = 'none';
-    window.portfolioHoldings.forEach(entry => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${entry.code}</td>
-            <td>${entry.qty}</td>
-            <td>${Number(entry.avg).toFixed(2)}</td>
-        `;
-        tableBody.appendChild(tr);
-    });
+    let html = `<table class="portfolio-table"><thead><tr><th>ASX Code</th><th>Company</th><th>Avg Price</th><th>Quantity</th></tr></thead><tbody>`;
+    for (const holding of window.portfolioHoldings) {
+        let name = '';
+        if (window.allAsxCodes) {
+            const found = window.allAsxCodes.find(c => c.code === holding.code);
+            name = found ? found.name : '';
+        }
+        html += `<tr><td>${holding.code}</td><td>${name}</td><td>${Number(holding.avgPrice || holding.avg).toFixed(2)}</td><td>${holding.qty}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
 }
 
 // After adding to portfolio, refresh table if visible
 function afterPortfolioAdd() {
     const watchlistSelect = document.getElementById('watchlistSelect');
-    if (watchlistSelect && watchlistSelect.value === 'portfolio') {
-        renderPortfolioTable();
+    if (watchlistSelect && watchlistSelect.value === '__PORTFOLIO__') {
+        renderPortfolioView();
     }
 }
 
