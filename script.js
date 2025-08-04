@@ -575,7 +575,7 @@ function ensurePortfolioDropdownOption() {
     }
 }
 
-// Show Portfolio modal
+// Show Portfolio  modal
 function showPortfolioModal() {
     const modal = document.getElementById('portfolioModal');
     if (modal) modal.style.display = 'block';
