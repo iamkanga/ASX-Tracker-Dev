@@ -177,7 +177,7 @@ if (portfolioAsxCodeInput && portfolioAsxSuggestions) {
 
 // --- SAVE PORTFOLIO ENTRY ---
 if (savePortfolioBtn) {
-    savePortfolioBtn.addEventListener('click', function () {
+    savePortfolioBtn.addEventListener('click', async function () { // Make async
         const code = (portfolioAsxCodeInput?.value || '').toUpperCase().trim();
         const qty = Number(portfolioQuantityInput?.value) || 0;
         const avg = Number(portfolioAvgPriceInput?.value) || 0;
@@ -185,11 +185,32 @@ if (savePortfolioBtn) {
             showCustomAlert && showCustomAlert('Please enter ASX code, quantity, and average price.');
             return;
         }
-        portfolioHoldings.push({ code, qty, avg });
-        hidePortfolioModal();
-        clearPortfolioForm();
-        showCustomAlert && showCustomAlert('Added to portfolio!');
-        afterPortfolioAdd();
+
+        // --- NEW: Save to Firestore ---
+        if (!db || !currentUserId || !window.firestore) {
+            showCustomAlert('Error: Not logged in or database not available.');
+            return;
+        }
+        const portfolioData = {
+            code: code,
+            qty: qty,
+            avg: avg,
+            userId: currentUserId,
+            createdAt: new Date().toISOString()
+        };
+        try {
+            const portfolioColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/portfolio');
+            await window.firestore.addDoc(portfolioColRef, portfolioData);
+            
+            hidePortfolioModal();
+            clearPortfolioForm();
+            showCustomAlert && showCustomAlert('Added to portfolio!');
+            // The onSnapshot listener will automatically call renderPortfolioTable()
+        } catch (error) {
+            console.error('Firestore: Error saving portfolio item:', error);
+            showCustomAlert('Error saving to portfolio: ' + error.message);
+        }
+        // --- END NEW ---
     });
 }
 // Copilot update: 2025-07-29 - change for sync test
