@@ -6788,5 +6788,5 @@ document.addEventListener('DOMContentLoaded', function() {
         // NEW: Hide splash screen if Firebase fails to initialize
         hideSplashScreen();
     }
-}
+}); // End of DOMContentLoaded
 }); // End of DOMContentLoaded
