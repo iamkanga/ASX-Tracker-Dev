@@ -563,6 +563,7 @@ function ensurePortfolioModal() {
 }
 
 // Add Portfolio to watchlist dropdown if missing
+
 function ensurePortfolioDropdownOption() {
     const select = document.getElementById('watchlistSelect');
     if (!select) return;
@@ -572,9 +573,6 @@ function ensurePortfolioDropdownOption() {
         opt.textContent = 'Portfolio';
         select.appendChild(opt);
     }
-    select.addEventListener('change', () => {
-        if (select.value === '__PORTFOLIO__') showPortfolioView();
-    });
 }
 
 // Show Portfolio modal
@@ -582,6 +580,7 @@ function showPortfolioModal() {
     const modal = document.getElementById('portfolioModal');
     if (modal) modal.style.display = 'block';
 }
+
 
 // Show Portfolio view in main section
 function showPortfolioView() {
@@ -593,6 +592,18 @@ function showPortfolioView() {
     document.getElementById('addPortfolioBtn').onclick = showPortfolioModal;
     renderPortfolioView();
 }
+
+// Listen for watchlist dropdown changes to show portfolio view
+document.addEventListener('DOMContentLoaded', function() {
+    const select = document.getElementById('watchlistSelect');
+    if (select) {
+        select.addEventListener('change', function() {
+            if (select.value === '__PORTFOLIO__') {
+                showPortfolioView();
+            }
+        });
+    }
+});
 
 // Render Portfolio table
 function renderPortfolioView() {
