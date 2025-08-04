@@ -41,7 +41,6 @@ const portfolioQuantityInput = document.getElementById('portfolioQuantity');
 const portfolioAvgPriceInput = document.getElementById('portfolioAvgPrice');
 const savePortfolioBtn = document.getElementById('savePortfolioBtn');
 
-let portfolioHoldings = [];
 
 // --- PORTFOLIO VIEW LOGIC ---
 // Add 'Portfolio' to the watchlist dropdown on page load
@@ -499,6 +498,130 @@ let originalCashAssetData = null; // NEW: To store original cash asset data for 
 let cashAssetVisibility = {}; // This object will still track the *current session's* visibility.
 // NEW: Reference for the hide/show checkbox in the cash asset form modal
 const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
+
+// === PORTFOLIO FEATURE (IN-MEMORY, UI-INTEGRATED) ===
+let portfolioHoldings = [];
+
+// Add Portfolio button to sidebar if missing
+function ensurePortfolioSidebarButton() {
+    let sidebar = document.querySelector('.sidebar-menu, #sidebar, .app-sidebar, nav');
+    if (!sidebar) return;
+    if (!document.getElementById('portfolioSidebarBtn')) {
+        const btn = document.createElement('button');
+        btn.id = 'portfolioSidebarBtn';
+        btn.className = 'menu-button-item';
+        btn.innerHTML = '<span class="icon">📊</span> Portfolio';
+        btn.onclick = () => { showPortfolioView(); if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false); };
+        sidebar.appendChild(btn);
+    }
+}
+
+// Add Portfolio modal to DOM if missing
+function ensurePortfolioModal() {
+    if (document.getElementById('portfolioModal')) return;
+    const modal = document.createElement('div');
+    modal.id = 'portfolioModal';
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close-button" id="closePortfolioModal">&times;</span>
+            <h2>Add to Portfolio</h2>
+            <form id="portfolioForm">
+                <label>ASX Code: <input type="text" id="portfolioAsxCode" maxlength="5" required autocomplete="off" style="text-transform:uppercase"></label>
+                <div id="portfolioCompanyName" style="font-size:0.9em;color:#888;margin-bottom:8px;"></div>
+                <label>Average Price: <input type="number" id="portfolioAvgPrice" step="0.01" min="0" required></label>
+                <label>Quantity: <input type="number" id="portfolioQuantity" step="1" min="1" required></label>
+                <button type="submit" id="savePortfolioBtn">Save</button>
+            </form>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    // Modal close logic
+    document.getElementById('closePortfolioModal').onclick = () => { modal.style.display = 'none'; };
+    modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+    // Form logic
+    const form = document.getElementById('portfolioForm');
+    const codeInput = document.getElementById('portfolioAsxCode');
+    const nameDiv = document.getElementById('portfolioCompanyName');
+    codeInput.addEventListener('input', () => {
+        codeInput.value = codeInput.value.toUpperCase();
+        if (window.allAsxCodes) {
+            const found = window.allAsxCodes.find(c => c.code === codeInput.value);
+            nameDiv.textContent = found ? found.name : '';
+        }
+    });
+    form.onsubmit = e => {
+        e.preventDefault();
+        const code = codeInput.value.trim().toUpperCase();
+        const avgPrice = parseFloat(document.getElementById('portfolioAvgPrice').value);
+        const qty = parseInt(document.getElementById('portfolioQuantity').value);
+        if (!code || isNaN(avgPrice) || isNaN(qty) || qty < 1) return;
+        portfolioHoldings.push({ code, avgPrice, qty });
+        modal.style.display = 'none';
+        renderPortfolioView();
+    };
+}
+
+// Add Portfolio to watchlist dropdown if missing
+function ensurePortfolioDropdownOption() {
+    const select = document.getElementById('watchlistSelect');
+    if (!select) return;
+    if (!select.querySelector('option[value="__PORTFOLIO__"]')) {
+        const opt = document.createElement('option');
+        opt.value = '__PORTFOLIO__';
+        opt.textContent = 'Portfolio';
+        select.appendChild(opt);
+    }
+    select.addEventListener('change', () => {
+        if (select.value === '__PORTFOLIO__') showPortfolioView();
+    });
+}
+
+// Show Portfolio modal
+function showPortfolioModal() {
+    const modal = document.getElementById('portfolioModal');
+    if (modal) modal.style.display = 'block';
+}
+
+// Show Portfolio view in main section
+function showPortfolioView() {
+    let main = document.getElementById('mainSection') || document.querySelector('main');
+    if (!main) return;
+    main.innerHTML = `<h2>Portfolio</h2>
+        <button id="addPortfolioBtn">Add Stock</button>
+        <div id="portfolioTableContainer"></div>`;
+    document.getElementById('addPortfolioBtn').onclick = showPortfolioModal;
+    renderPortfolioView();
+}
+
+// Render Portfolio table
+function renderPortfolioView() {
+    const container = document.getElementById('portfolioTableContainer');
+    if (!container) return;
+    if (portfolioHoldings.length === 0) {
+        container.innerHTML = '<p>No stocks in portfolio yet.</p>';
+        return;
+    }
+    let html = `<table class="portfolio-table"><thead><tr><th>ASX Code</th><th>Company</th><th>Avg Price</th><th>Quantity</th></tr></thead><tbody>`;
+    for (const holding of portfolioHoldings) {
+        let name = '';
+        if (window.allAsxCodes) {
+            const found = window.allAsxCodes.find(c => c.code === holding.code);
+            name = found ? found.name : '';
+        }
+        html += `<tr><td>${holding.code}</td><td>${name}</td><td>${holding.avgPrice.toFixed(2)}</td><td>${holding.qty}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+// Initialize Portfolio feature on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    ensurePortfolioSidebarButton();
+    ensurePortfolioModal();
+    ensurePortfolioDropdownOption();
+});
+// === END PORTFOLIO FEATURE ===
 
 
 // --- UI Element References ---
