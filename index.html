@@ -386,6 +386,26 @@
                 </div>
         </div>
 
+        <!-- Portfolio Holdings Section -->
+        <div id="portfolioSection" class="portfolio-section app-hidden">
+            <h2>My Portfolio</h2>
+            <div class="table-container">
+                <table id="portfolioTable">
+                    <thead>
+                        <tr>
+                            <th>ASX Code</th>
+                            <th>Quantity</th>
+                            <th>Avg Price ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Portfolio rows will be injected here by JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="portfolioEmptyMessage" class="empty-message" style="display:none;">No portfolio holdings yet. Use the sidebar to add stocks.</div>
+        </div>
+
         <div id="cashAssetsSection" class="cash-assets-section app-hidden">
             <h2>Cash & Assets Balances</h2>
             <div id="cashCategoriesContainer" class="cash-categories-container">

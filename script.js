@@ -10,6 +10,73 @@ const savePortfolioBtn = document.getElementById('savePortfolioBtn');
 
 let portfolioHoldings = [];
 
+// --- PORTFOLIO VIEW LOGIC ---
+// Add 'Portfolio' to the watchlist dropdown on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const watchlistSelect = document.getElementById('watchlistSelect');
+    if (watchlistSelect && !Array.from(watchlistSelect.options).some(opt => opt.value === 'portfolio')) {
+        const portfolioOption = document.createElement('option');
+        portfolioOption.value = 'portfolio';
+        portfolioOption.textContent = 'Portfolio';
+        watchlistSelect.insertBefore(portfolioOption, watchlistSelect.options[1]); // After placeholder
+    }
+});
+
+// Show/hide sections based on watchlist selection
+function updateMainSectionForWatchlist() {
+    const watchlistSelect = document.getElementById('watchlistSelect');
+    const portfolioSection = document.getElementById('portfolioSection');
+    const stockWatchlistSection = document.getElementById('stockWatchlistSection');
+    const cashAssetsSection = document.getElementById('cashAssetsSection');
+    if (!watchlistSelect || !portfolioSection || !stockWatchlistSection || !cashAssetsSection) return;
+    if (watchlistSelect.value === 'portfolio') {
+        portfolioSection.classList.remove('app-hidden');
+        stockWatchlistSection.classList.add('app-hidden');
+        cashAssetsSection.classList.add('app-hidden');
+        renderPortfolioTable();
+    } else if (watchlistSelect.value === 'cashBank') {
+        portfolioSection.classList.add('app-hidden');
+        stockWatchlistSection.classList.add('app-hidden');
+        cashAssetsSection.classList.remove('app-hidden');
+    } else {
+        portfolioSection.classList.add('app-hidden');
+        stockWatchlistSection.classList.remove('app-hidden');
+        cashAssetsSection.classList.add('app-hidden');
+    }
+}
+
+document.getElementById('watchlistSelect').addEventListener('change', updateMainSectionForWatchlist);
+
+// Render portfolio holdings in the table
+function renderPortfolioTable() {
+    const tableBody = document.querySelector('#portfolioTable tbody');
+    const emptyMsg = document.getElementById('portfolioEmptyMessage');
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
+    if (!window.portfolioHoldings || window.portfolioHoldings.length === 0) {
+        if (emptyMsg) emptyMsg.style.display = '';
+        return;
+    }
+    if (emptyMsg) emptyMsg.style.display = 'none';
+    window.portfolioHoldings.forEach(entry => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${entry.code}</td>
+            <td>${entry.qty}</td>
+            <td>${Number(entry.avg).toFixed(2)}</td>
+        `;
+        tableBody.appendChild(tr);
+    });
+}
+
+// After adding to portfolio, refresh table if visible
+function afterPortfolioAdd() {
+    const watchlistSelect = document.getElementById('watchlistSelect');
+    if (watchlistSelect && watchlistSelect.value === 'portfolio') {
+        renderPortfolioTable();
+    }
+}
+
 function showPortfolioModal() {
     if (portfolioModal) {
         portfolioModal.style.display = 'block';
@@ -82,7 +149,7 @@ if (savePortfolioBtn) {
         hidePortfolioModal();
         clearPortfolioForm();
         showCustomAlert && showCustomAlert('Added to portfolio!');
-        // TODO: Render portfolio view
+        afterPortfolioAdd();
     });
 }
 // Copilot update: 2025-07-29 - change for sync test
