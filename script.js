@@ -39,7 +39,7 @@ window.addEventListener('popstate', function(event) {
         }
     }
     // If no modals or sidebar are open, allow default browser back (exit app)
-});
+// End of script.js
 // ...existing code for the rest of your app...
 // End of DOMContentLoaded
 // (No extra closing brace here)
