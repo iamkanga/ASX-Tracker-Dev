@@ -192,127 +192,6 @@ function forceApplyCurrentSort() {
 
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
 
-document.addEventListener('DOMContentLoaded', function() {
-    // --- Portfolio Dashboard & Modal Logic ---
-    const portfolioDashboard = document.getElementById('portfolioDashboard');
-    // (DOM element variables already declared elsewhere, do not redeclare here)
-    // Show main app/header on load
-    if (appHeader) appHeader.style.display = '';
-    if (mainContainer) mainContainer.style.display = '';
-    if (portfolioDashboard) portfolioDashboard.style.display = 'none';
-    if (portfolioHoldingModal) portfolioHoldingModal.style.display = 'none';
-
-    // Show Portfolio Dashboard
-    function showPortfolioDashboard() {
-        if (portfolioDashboard) portfolioDashboard.style.display = '';
-        if (appHeader) appHeader.style.display = 'none';
-        if (mainContainer) mainContainer.style.display = 'none';
-        if (portfolioHoldingModal) portfolioHoldingModal.style.display = 'none';
-        console.log('[Portfolio] Dashboard shown');
-    }
-    // Hide Portfolio Dashboard
-    function hidePortfolioDashboard() {
-        if (portfolioDashboard) portfolioDashboard.style.display = 'none';
-        if (appHeader) appHeader.style.display = '';
-        if (mainContainer) mainContainer.style.display = '';
-        if (portfolioHoldingModal) portfolioHoldingModal.style.display = 'none';
-        console.log('[Portfolio] Dashboard hidden, main app shown');
-    }
-    // Show Add Portfolio Holding Modal
-    function showPortfolioHoldingModal() {
-        if (portfolioHoldingModal) portfolioHoldingModal.style.display = '';
-        if (portfolioDashboard) portfolioDashboard.style.display = '';
-        console.log('[Portfolio] Add Holding modal shown');
-    }
-    // Hide Add Portfolio Holding Modal
-    function hidePortfolioHoldingModal() {
-        if (portfolioHoldingModal) portfolioHoldingModal.style.display = 'none';
-        if (portfolioDashboard) portfolioDashboard.style.display = '';
-        console.log('[Portfolio] Add Holding modal hidden');
-    }
-
-    function updateCheckboxes(source) {
-        if (source === hideCheckbox && hideCheckbox.checked) {
-            showCheckbox.checked = false;
-            setShowLastLivePricePreference(false);
-        } else if (source === showCheckbox && showCheckbox.checked) {
-            hideCheckbox.checked = false;
-            setShowLastLivePricePreference(true);
-        }
-        // Prevent both from being unchecked: always one selected
-        if (!hideCheckbox.checked && !showCheckbox.checked) {
-            showCheckbox.checked = true;
-            setShowLastLivePricePreference(true);
-        }
-    }
-
-    if (hideCheckbox && showCheckbox) {
-        hideCheckbox.addEventListener('change', function () {
-            updateCheckboxes(hideCheckbox);
-        });
-        showCheckbox.addEventListener('change', function () {
-            updateCheckboxes(showCheckbox);
-        });
-        // Initial state: ensure only one is checked
-        updateCheckboxes(showCheckbox.checked ? showCheckbox : hideCheckbox);
-    }
-
-    // Ensure Edit Current Watchlist button updates when selection changes
-    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
-        watchlistSelect.addEventListener('change', function () {
-            updateMainButtonsState(true);
-        });
-    }
-//  This script interacts with Firebase Firestore for data storage.
-// Firebase app, db, auth instances, and userId are made globally available
-// via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
-// from the <script type="module"> block in index.html.
-
-// --- GLOBAL VARIABLES ---
-const DEBUG_MODE = false; // Set to 'false' to disable most console.log messages in production
-
-// Custom logging function to control verbosity
-function logDebug(message, ...optionalParams) {
-    if (DEBUG_MODE) {
-        // This line MUST call the native console.log, NOT logDebug itself.
-        console.log(message, ...optionalParams); 
-    }
-}
-// --- END DEBUG LOGGING SETUP ---
-
-let db;
-let auth = null;
-let currentUserId = null;
-let currentAppId;
-let selectedShareDocId = null;
-let allSharesData = []; // Kept in sync by the onSnapshot listener
-let currentDialogCallback = null;
-let autoDismissTimeout = null;
-let lastTapTime = 0;
-let tapTimeout;
-let selectedElementForTap = null;
-let longPressTimer;
-const LONG_PRESS_THRESHOLD = 500; // Time in ms for long press detection
-let touchStartX = 0;
-let touchStartY = 0;
-const TOUCH_MOVE_THRESHOLD = 10; // Pixels for touch movement to cancel long press
-const KANGA_EMAIL = 'iamkanga@gmail.com';
-let currentCalculatorInput = '';
-let operator = null;
-let previousCalculatorInput = '';
-let resultDisplayed = false;
-const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
-const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
-let userWatchlists = []; // Stores all watchlists for the user
-let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
-const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
-const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
-let currentSortOrder = 'entryDate-desc'; // Default sort order
-let contextMenuOpen = false; // To track if the custom context menu is open
-let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
-let originalShareData = null; // Stores the original share data when editing for dirty state check
-let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
-let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 
 
 // Live Price Data
@@ -725,27 +604,8 @@ document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && portfolioHoldingModal && portfolioHoldingModal.style.display === 'block') {
         hidePortfolioHoldingModal();
     }
-const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
-const newShareBtn = document.getElementById('newShareBtn');
-const standardCalcBtn = document.getElementById('standardCalcBtn');
-const dividendCalcBtn = document.getElementById('dividendCalcBtn');
-const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
-const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
-const shareFormSection = document.getElementById('shareFormSection');
-const formCloseButton = document.querySelector('.form-close-button');
-const formTitle = document.getElementById('formTitle');
-const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
-const saveShareBtn = document.getElementById('saveShareBtn');
-const deleteShareBtn = document.getElementById('deleteShareBtn');
-const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
-const shareNameInput = document.getElementById('shareName');
-const currentPriceInput = document.getElementById('currentPrice');
-const targetPriceInput = document.getElementById('targetPrice');
-const dividendAmountInput = document.getElementById('dividendAmount');
-const frankingCreditsInput = document.getElementById('frankingCredits');
-const shareRatingSelect = document.getElementById('shareRating');
-const commentsFormContainer = document.getElementById('dynamicCommentsArea');
-const modalStarRating = document.getElementById('modalStarRating');
+});
+// ...existing code...
 
 // --- ASX Code Toggle Button Functionality ---
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
@@ -6942,4 +6802,5 @@ document.addEventListener('DOMContentLoaded', function() {
         hideSplashScreen();
     }
 }
+});
 // End of script.js
