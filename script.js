@@ -226,6 +226,15 @@ function makeFilesAvailableToSourceControl() {
 }
 // End Copilot source control helper
 
+// --- SOURCE CONTROL HELPER ---
+function markFilesForSourceControl() {
+    if (window && window.showCustomAlert) {
+        window.showCustomAlert('Files updated and ready for source control.', 2000);
+    } else {
+        console.log('Files updated and ready for source control.');
+    }
+}
+
 // Helper: Sort shares by percentage change
 function sortSharesByPercentageChange(shares) {
     return shares.slice().sort((a, b) => {
