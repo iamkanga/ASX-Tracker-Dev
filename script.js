@@ -46,6 +46,13 @@ function updateMainSectionForWatchlist() {
 }
 
 document.getElementById('watchlistSelect').addEventListener('change', updateMainSectionForWatchlist);
+// On load, if Portfolio is selected, show it
+document.addEventListener('DOMContentLoaded', function() {
+    const watchlistSelect = document.getElementById('watchlistSelect');
+    if (watchlistSelect && watchlistSelect.value === 'portfolio') {
+        updateMainSectionForWatchlist();
+    }
+});
 
 // Render portfolio holdings in the table
 function renderPortfolioTable() {

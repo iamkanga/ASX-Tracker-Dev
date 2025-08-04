@@ -153,6 +153,7 @@
             <div class="controls-flex-row no-gap">
                 <select id="watchlistSelect" class="dropdown-large left-rounded">
                     <option value="" disabled selected>Watch List</option>
+                    <option value="portfolio">Portfolio</option>
                     <option value="cashBank">Cash & Assets</option> 
                 </select>
                 <select id="sortSelect" class="dropdown-large right-rounded">
@@ -204,6 +205,7 @@
                 <label for="portfolioAsxCode">ASX Code:</label>
                 <input type="text" id="portfolioAsxCode" placeholder="e.g., BHP" autocomplete="off">
                 <div id="portfolioAsxSuggestions" class="autocomplete-suggestions"></div>
+                <div id="portfolioLiveName" class="ghosted-text" style="margin-bottom:8px;"></div>
                 <label for="portfolioQuantity">Quantity:</label>
                 <input type="number" id="portfolioQuantity" min="1" step="1" placeholder="e.g., 100">
                 <label for="portfolioAvgPrice">Average Price ($):</label>
