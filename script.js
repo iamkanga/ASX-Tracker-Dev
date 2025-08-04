@@ -3700,8 +3700,6 @@ async function loadUserWatchlistsAndSettings() {
                 currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id => 
                     id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || userWatchlists.some(wl => wl.id === id)
                 );
-                logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
-            } else {
                 logDebug('User Settings: No valid last selected watchlists in profile. Will determine default.');
             }
         } else {
@@ -3799,12 +3797,6 @@ async function loadUserWatchlistsAndSettings() {
     } finally {
         if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
-}
-
-/**
- * Fetches live price data from the Google Apps Script Web App.
- * Updates the `livePrices` global object.
- */
 async function fetchLivePrices() {
     console.log('Live Price: Attempting to fetch live prices...');
     // Only fetch live prices if a stock-related watchlist is selected
@@ -6796,5 +6788,5 @@ document.addEventListener('DOMContentLoaded', function() {
         // NEW: Hide splash screen if Firebase fails to initialize
         hideSplashScreen();
     }
+}
 }); // End of DOMContentLoaded
-// End of script.js
