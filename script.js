@@ -571,23 +571,7 @@ function adjustMainContentPadding() {
     }
 }
 
-/**
- * Helper function to apply/remove a disabled visual state to non-button elements (like spans/icons).
- * This adds/removes the 'is-disabled-icon' class, which CSS then styles.
- * @param {HTMLElement} element The element to disable/enable.
- * @param {boolean} isDisabled True to disable, false to enable.
- */
-function setIconDisabled(element, isDisabled) {
-    if (!element) {
-        console.warn('setIconDisabled: Element is null or undefined. Cannot set disabled state.');
-        return;
-    }
-    if (isDisabled) {
-        element.classList.add('is-disabled-icon');
-    } else {
-        element.classList.remove('is-disabled-icon');
-    }
-}
+// (Removed duplicate setIconDisabled function, now imported from ui-helpers.js)
 
 // Centralized Modal Closing Function
 function closeModals() {
