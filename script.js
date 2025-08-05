@@ -111,18 +111,39 @@ function forceApplyCurrentSort() {
 document.addEventListener('DOMContentLoaded', function () {
     // --- Ensure watchlist dropdowns are always populated, even if async loading is delayed ---
     if (typeof renderWatchlistSelect === 'function' && userWatchlists.length === 0) {
+        logDebug('[Portfolio Diagnostics] renderWatchlistSelect() called due to empty userWatchlists.');
         renderWatchlistSelect();
     }
     if (typeof populateShareWatchlistSelect === 'function' && userWatchlists.length === 0) {
+        logDebug('[Portfolio Diagnostics] populateShareWatchlistSelect() called due to empty userWatchlists.');
         populateShareWatchlistSelect();
     }
-    // Always ensure Portfolio is present in main watchlist dropdown
-    if (watchlistSelect && !Array.from(watchlistSelect.options).some(opt => opt.value === 'portfolio')) {
-        const portfolioOption = document.createElement('option');
-        portfolioOption.value = 'portfolio';
-        portfolioOption.textContent = 'Portfolio';
-        watchlistSelect.appendChild(portfolioOption);
+
+    // --- Robust Portfolio Option Diagnostics & Self-Healing ---
+    function ensurePortfolioOptionPresent() {
+        if (!watchlistSelect) {
+            logDebug('[Portfolio Diagnostics] watchlistSelect not found.');
+            return;
+        }
+        const hasPortfolio = Array.from(watchlistSelect.options).some(opt => opt.value === 'portfolio');
+        if (!hasPortfolio) {
+            logDebug('[Portfolio Diagnostics] Portfolio option missing from main dropdown. Adding now.');
+            const portfolioOption = document.createElement('option');
+            portfolioOption.value = 'portfolio';
+            portfolioOption.textContent = 'Portfolio';
+            watchlistSelect.appendChild(portfolioOption);
+            if (window.showCustomAlert) {
+                window.showCustomAlert('Portfolio option was missing and has been restored!', 2500);
+            } else {
+                alert('Portfolio option was missing and has been restored!');
+            }
+        } else {
+            logDebug('[Portfolio Diagnostics] Portfolio option present in main dropdown.');
+        }
     }
+    // Run diagnostics on load and after 2 seconds (in case of async population)
+    ensurePortfolioOptionPresent();
+    setTimeout(ensurePortfolioOptionPresent, 2000);
     const hideCheckbox = document.getElementById('sidebarHideCheckbox');
     const showCheckbox = document.getElementById('sidebarShowCheckbox');
 
@@ -237,7 +258,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // from the <script type="module"> block in index.html.
 
 // --- GLOBAL VARIABLES ---
-const DEBUG_MODE = false; // Set to 'false' to disable most console.log messages in production
+const DEBUG_MODE = true; // Set to 'true' to enable debug logging for troubleshooting Portfolio dropdown
 
 // Custom logging function to control verbosity
 function logDebug(message, ...optionalParams) {
