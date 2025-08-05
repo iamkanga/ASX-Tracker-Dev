@@ -686,13 +686,7 @@ function closeModals() {
 
 // (Removed duplicate showCustomAlert function, now imported from ui-helpers.js)
 
-// Date Formatting Helper Functions (Australian Style)
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
+// (Removed duplicate formatDate function, now imported from ui-helpers.js)
 
 /**
  * A centralized helper function to compute all display-related data for a share.
