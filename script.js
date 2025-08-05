@@ -514,7 +514,7 @@ let cashAssetVisibility = {}; // This object will still track the *current sessi
 const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 
 // === PORTFOLIO FEATURE (IN-MEMORY, UI-INTEGRATED) ===
-let portfolioHoldings = [];
+window.portfolioHoldings = [];
 
 // Add Portfolio button to sidebar if missing
 function ensurePortfolioSidebarButton() {
@@ -6626,7 +6626,7 @@ if (showLastLivePriceToggle) {
     updateCompactViewButtonState();
 // === PORTFOLIO FEATURE ===
 // In-memory portfolio holdings
-let portfolioHoldings = [];
+window.portfolioHoldings = [];
 
 // Add Portfolio to sidebar
 function addPortfolioSidebarEntry() {
@@ -6684,7 +6684,7 @@ function addPortfolioModal() {
         const qty = parseInt(document.getElementById('portfolioQuantity').value);
         if (!code || isNaN(avgPrice) || isNaN(qty) || qty < 1) return;
         // Add to portfolio
-        portfolioHoldings.push({ code, avgPrice, qty });
+        window.portfolioHoldings.push({ code, avgPrice, qty });
         modal.style.display = 'none';
         renderPortfolioView();
     };
@@ -6724,12 +6724,12 @@ function showPortfolioView() {
 function renderPortfolioView() {
     const container = document.getElementById('portfolioTableContainer');
     if (!container) return;
-    if (portfolioHoldings.length === 0) {
+    if (window.portfolioHoldings.length === 0) {
         container.innerHTML = '<p>No stocks in portfolio yet.</p>';
         return;
     }
     let html = `<table class="portfolio-table"><thead><tr><th>ASX Code</th><th>Company</th><th>Avg Price</th><th>Quantity</th></tr></thead><tbody>`;
-    for (const holding of portfolioHoldings) {
+    for (const holding of window.portfolioHoldings) {
         let name = '';
         if (window.allAsxCodes) {
             const found = window.allAsxCodes.find(c => c.code === holding.code);
