@@ -386,67 +386,69 @@
                 <label for="shareWatchlistSelect">Assign to Watchlist:</label>
                 <select id="shareWatchlistSelect" class="dropdown-large" required>
                     <option value="" disabled selected>Select a Watchlist</option>
-                    </select>
-
-                <label for="shareRating">Star Rating:</label>
-                <select id="shareRating" class="dropdown-large">
-                    <option value="0" selected>No Rating</option>
-                    <option value="1">⭐ 1 Star</option>
-                    <option value="2">⭐⭐ 2 Stars</option>
-                    <option value="3">⭐⭐⭐ 3 Stars</option>
-                    <option value="4">⭐⭐⭐⭐ 4 Stars</option>
-                    <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
                 </select>
 
                 <label for="shareName">Code:</label>
                 <input type="text" id="shareName" placeholder="e.g., BHP" required>
 
-                <!-- NEW: Live Price Display for Add Share Form -->
-                <div id="addShareLivePriceDisplay" class="live-price-display-section" style="display: none;"></div>
-                <!-- END NEW -->
+                <!-- Portfolio/Share Details Section (distinct grouping) -->
+                <div class="portfolio-details-section" style="margin-top: 24px; padding: 16px; border: 1px solid var(--ghosted-text,#ccc); border-radius: 8px; background: var(--modal-bg,#f9f9f9);">
+                    <label for="shareRating">Star Rating:</label>
+                    <select id="shareRating" class="dropdown-large">
+                        <option value="0" selected>No Rating</option>
+                        <option value="1">⭐ 1 Star</option>
+                        <option value="2">⭐⭐ 2 Stars</option>
+                        <option value="3">⭐⭐⭐ 3 Stars</option>
+                        <option value="4">⭐⭐⭐⭐ 4 Stars</option>
+                        <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
+                    </select>
 
-                <div class="form-group-with-toggle">
-                    <label for="targetPrice" class="target-price-label">Target Price ($):</label>
-                    <!-- NEW: 2x2 Checkbox Grid for Target Direction -->
-                    <div class="target-checkbox-grid">
-                        <div class="target-checkbox-row">
-                            <label class="checkbox-label" for="targetBuyCheckbox">
-                                <input type="checkbox" id="targetBuyCheckbox" class="modern-checkbox" disabled>
-                                Buy
-                            </label>
-                            <label class="checkbox-label" for="targetAboveCheckbox">
-                                <input type="checkbox" id="targetAboveCheckbox" class="modern-checkbox">
-                                Above
-                            </label>
+                    <!-- NEW: Live Price Display for Add Share Form -->
+                    <div id="addShareLivePriceDisplay" class="live-price-display-section" style="display: none;"></div>
+                    <!-- END NEW -->
+
+                    <div class="form-group-with-toggle">
+                        <label for="targetPrice" class="target-price-label">Target Price ($):</label>
+                        <!-- NEW: 2x2 Checkbox Grid for Target Direction -->
+                        <div class="target-checkbox-grid">
+                            <div class="target-checkbox-row">
+                                <label class="checkbox-label" for="targetBuyCheckbox">
+                                    <input type="checkbox" id="targetBuyCheckbox" class="modern-checkbox" disabled>
+                                    Buy
+                                </label>
+                                <label class="checkbox-label" for="targetAboveCheckbox">
+                                    <input type="checkbox" id="targetAboveCheckbox" class="modern-checkbox">
+                                    Above
+                                </label>
+                            </div>
+                            <div class="target-checkbox-row">
+                                <label class="checkbox-label" for="targetSellCheckbox">
+                                    <input type="checkbox" id="targetSellCheckbox" class="modern-checkbox" disabled>
+                                    Sell
+                                </label>
+                                <label class="checkbox-label" for="targetBelowCheckbox">
+                                    <input type="checkbox" id="targetBelowCheckbox" class="modern-checkbox" checked>
+                                    Below
+                                </label>
+                            </div>
                         </div>
-                        <div class="target-checkbox-row">
-                            <label class="checkbox-label" for="targetSellCheckbox">
-                                <input type="checkbox" id="targetSellCheckbox" class="modern-checkbox" disabled>
-                                Sell
-                            </label>
-                            <label class="checkbox-label" for="targetBelowCheckbox">
-                                <input type="checkbox" id="targetBelowCheckbox" class="modern-checkbox" checked>
-                                Below
-                            </label>
+                        <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
+                    </div>
+
+                    <label for="currentPrice">Entered Price ($):</label>
+                    <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
+
+                    <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
+                    <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
+
+                    <label for="frankingCredits">Franking Credits (%):</label>
+                    <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
+
+                    <div class="comments-form-container">
+                        <h3>Comments <span id="addCommentSectionBtn" class="add-section-icon"><i class="fas fa-plus"></i></span></h3>
+                        <div id="dynamicCommentsArea">
                         </div>
                     </div>
-                    <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
-                </div>
-                
-                <label for="currentPrice">Entered Price ($):</label>
-                <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
-                
-                <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
-                <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
-
-                <label for="frankingCredits">Franking Credits (%):</label>
-                <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
-
-                <div class="comments-form-container">
-                    <h3>Comments <span id="addCommentSectionBtn" class="add-section-icon"><i class="fas fa-plus"></i></span></h3>
-                    
-                    <div id="dynamicCommentsArea">
-                        </div>
                 </div>
             </div>
         </div>
