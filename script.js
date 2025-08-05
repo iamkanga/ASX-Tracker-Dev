@@ -243,17 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // from the <script type="module"> block in index.html.
 
 // --- GLOBAL VARIABLES ---
-const DEBUG_MODE = true; // Set to 'true' to enable debug logging for troubleshooting Portfolio dropdown
-
-// Custom logging function to control verbosity
-function logDebug(message, ...optionalParams) {
-    if (DEBUG_MODE) {
-        // This line MUST call the native console.log, NOT logDebug itself.
-        console.log(message, ...optionalParams); 
-    }
-}
-// --- END DEBUG LOGGING SETUP ---
-
+// logDebug is now imported from ui-helpers.js
 let db;
 let auth = null;
 let currentUserId = null;
@@ -282,7 +272,7 @@ let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchl
 const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
 const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
 let currentSortOrder = 'entryDate-desc'; // Default sort order
-let contextMenuOpen = false; // To track if the custom context menu is open
+contextMenuOpen = false; // To track if the custom context menu is open
 let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
 let originalShareData = null; // Stores the original share data when editing for dirty state check
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
