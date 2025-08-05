@@ -1,231 +1,3 @@
-
-
-
-// --- ASX Code Data Loading ---
-async function loadAsxCodes() {
-    try {
-        const response = await fetch('asx_codes.csv');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const csvText = await response.text();
-        // Basic CSV parsing (assuming format: "Code","Name")
-        allAsxCodes = csvText.split('\n').slice(1).map(line => {
-            const parts = line.split('","');
-            if (parts.length === 2) {
-                const code = parts[0].replace(/"/g, '').trim();
-                const name = parts[1].replace(/"/g, '').trim();
-                if (code && name) {
-                    return { code, name };
-                }
-            }
-            return null;
-        }).filter(Boolean); // Filter out any null entries from parsing errors
-        logDebug('ASX codes loaded successfully:', allAsxCodes.length, 'codes found.');
-    } catch (error) {
-        console.error('Error loading ASX codes:', error);
-        showCustomAlert('Could not load ASX codes for autocomplete.');
-    }
-}
-
-document.addEventListener('DOMContentLoaded', loadAsxCodes);
-
-// --- PORTFOLIO MODAL LOGIC ---
-
-
-const addPortfolioSidebarBtn = document.getElementById('addPortfolioSidebarBtn');
-const portfolioModal = document.getElementById('portfolioModal');
-const portfolioModalCloseButton = document.querySelector('.portfolio-modal-close-button');
-const portfolioAsxCodeInput = document.getElementById('portfolioAsxCode');
-const portfolioAsxSuggestions = document.getElementById('portfolioAsxSuggestions');
-const portfolioQuantityInput = document.getElementById('portfolioQuantity');
-const portfolioAvgPriceInput = document.getElementById('portfolioAvgPrice');
-const savePortfolioBtn = document.getElementById('savePortfolioBtn');
-
-
-// --- PORTFOLIO VIEW LOGIC ---
-// Robustly add 'Portfolio' to the watchlist dropdown on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const watchlistSelect = document.getElementById('watchlistSelect');
-    if (watchlistSelect) {
-        // Remove all existing Portfolio options
-        Array.from(watchlistSelect.options).forEach(opt => {
-            if (opt.value === '__PORTFOLIO__') opt.remove();
-        });
-        // Add Portfolio as last option
-        const portfolioOption = document.createElement('option');
-        portfolioOption.value = '__PORTFOLIO__';
-        portfolioOption.textContent = 'Portfolio';
-        watchlistSelect.appendChild(portfolioOption);
-    }
-});
-
-// Show/hide sections based on watchlist selection (robust Portfolio integration)
-function updateMainSectionForWatchlist() {
-    const watchlistSelect = document.getElementById('watchlistSelect');
-    if (!watchlistSelect) return;
-    if (watchlistSelect.value === '__PORTFOLIO__') {
-        // Hide other sections, show portfolioSection
-        const stockWatchlistSection = document.getElementById('stockWatchlistSection');
-        const cashAssetsSection = document.getElementById('cashAssetsSection');
-        const portfolioSection = document.getElementById('portfolioSection');
-        if (stockWatchlistSection) stockWatchlistSection.classList.add('app-hidden');
-        if (cashAssetsSection) cashAssetsSection.classList.add('app-hidden');
-        if (portfolioSection) {
-            portfolioSection.classList.remove('app-hidden');
-            renderPortfolioView();
-        }
-    } else if (watchlistSelect.value === 'cashBank') {
-        const stockWatchlistSection = document.getElementById('stockWatchlistSection');
-        const cashAssetsSection = document.getElementById('cashAssetsSection');
-        if (stockWatchlistSection) stockWatchlistSection.classList.add('app-hidden');
-        if (cashAssetsSection) cashAssetsSection.classList.remove('app-hidden');
-    } else {
-        const stockWatchlistSection = document.getElementById('stockWatchlistSection');
-        const cashAssetsSection = document.getElementById('cashAssetsSection');
-        if (stockWatchlistSection) stockWatchlistSection.classList.remove('app-hidden');
-        if (cashAssetsSection) cashAssetsSection.classList.add('app-hidden');
-        const portfolioSection = document.getElementById('portfolioSection');
-        if (portfolioSection) portfolioSection.classList.add('app-hidden');
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const watchlistSelect = document.getElementById('watchlistSelect');
-    if (watchlistSelect) {
-        watchlistSelect.addEventListener('change', updateMainSectionForWatchlist);
-        // On load, if Portfolio is selected, show it
-        if (watchlistSelect.value === '__PORTFOLIO__') {
-            showPortfolioView();
-        }
-    }
-});
-
-// Render portfolio holdings in the table (robust, always in main section)
-function renderPortfolioView() {
-    const container = document.getElementById('portfolioTableContainer');
-    if (!container) return;
-    if (!window.portfolioHoldings || window.portfolioHoldings.length === 0) {
-        container.innerHTML = '<p>No stocks in portfolio yet.</p>';
-        return;
-    }
-    let html = `<table class="portfolio-table"><thead><tr><th>ASX Code</th><th>Company</th><th>Avg Price</th><th>Quantity</th></tr></thead><tbody>`;
-    for (const holding of window.portfolioHoldings) {
-        let name = '';
-        if (window.allAsxCodes) {
-            const found = window.allAsxCodes.find(c => c.code === holding.code);
-            name = found ? found.name : '';
-        }
-        html += `<tr><td>${holding.code}</td><td>${name}</td><td>${Number(holding.avgPrice || holding.avg).toFixed(2)}</td><td>${holding.qty}</td></tr>`;
-    }
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
-
-// After adding to portfolio, refresh table if visible
-function afterPortfolioAdd() {
-    const watchlistSelect = document.getElementById('watchlistSelect');
-    if (watchlistSelect && watchlistSelect.value === '__PORTFOLIO__') {
-        renderPortfolioView();
-    }
-}
-
-function showPortfolioModal() {
-    if (portfolioModal) {
-        portfolioModal.style.display = 'block';
-        document.body.classList.add('modal-open');
-        clearPortfolioForm();
-    }
-}
-function hidePortfolioModal() {
-    if (portfolioModal) {
-        portfolioModal.style.display = 'none';
-        document.body.classList.remove('modal-open');
-    }
-}
-function clearPortfolioForm() {
-    if (portfolioAsxCodeInput) portfolioAsxCodeInput.value = '';
-    if (portfolioQuantityInput) portfolioQuantityInput.value = '';
-    if (portfolioAvgPriceInput) portfolioAvgPriceInput.value = '';
-    if (portfolioAsxSuggestions) portfolioAsxSuggestions.innerHTML = '';
-}
-
-if (addPortfolioSidebarBtn) {
-    addPortfolioSidebarBtn.addEventListener('click', showPortfolioModal);
-}
-if (portfolioModalCloseButton) {
-    portfolioModalCloseButton.addEventListener('click', hidePortfolioModal);
-}
-// ESC key closes modal
-document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && portfolioModal && portfolioModal.style.display === 'block') {
-        hidePortfolioModal();
-    }
-});
-
-// --- ASX CODE AUTOCOMPLETE FOR PORTFOLIO MODAL ---
-if (portfolioAsxCodeInput && portfolioAsxSuggestions) {
-    portfolioAsxCodeInput.addEventListener('input', function () {
-        const val = portfolioAsxCodeInput.value.trim().toUpperCase();
-        if (!val || !Array.isArray(allAsxCodes)) {
-            portfolioAsxSuggestions.innerHTML = '';
-            return;
-        }
-        const matches = allAsxCodes.filter(c => c.code.startsWith(val)).slice(0, 8);
-        if (matches.length === 0) {
-            portfolioAsxSuggestions.innerHTML = '';
-            return;
-        }
-        portfolioAsxSuggestions.innerHTML = matches.map(c => `<div class="suggestion-item" data-code="${c.code}">${c.code} - ${c.name}</div>`).join('');
-    });
-    portfolioAsxSuggestions.addEventListener('click', function (e) {
-        const target = e.target.closest('.suggestion-item');
-        if (target) {
-            portfolioAsxCodeInput.value = target.dataset.code;
-            portfolioAsxSuggestions.innerHTML = '';
-            portfolioQuantityInput.focus();
-        }
-    });
-}
-
-// --- SAVE PORTFOLIO ENTRY ---
-if (savePortfolioBtn) {
-    savePortfolioBtn.addEventListener('click', async function () { // Make async
-        const code = (portfolioAsxCodeInput?.value || '').toUpperCase().trim();
-        const qty = Number(portfolioQuantityInput?.value) || 0;
-        const avg = Number(portfolioAvgPriceInput?.value) || 0;
-        if (!code || qty <= 0 || avg <= 0) {
-            showCustomAlert && showCustomAlert('Please enter ASX code, quantity, and average price.');
-            return;
-        }
-
-        // --- NEW: Save to Firestore ---
-        if (!db || !currentUserId || !window.firestore) {
-            showCustomAlert('Error: Not logged in or database not available.');
-            return;
-        }
-        const portfolioData = {
-            code: code,
-            qty: qty,
-            avg: avg,
-            userId: currentUserId,
-            createdAt: new Date().toISOString()
-        };
-        try {
-            const portfolioColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/portfolio');
-            await window.firestore.addDoc(portfolioColRef, portfolioData);
-            
-            hidePortfolioModal();
-            clearPortfolioForm();
-            showCustomAlert && showCustomAlert('Added to portfolio!');
-            // The onSnapshot listener will automatically call renderPortfolioTable()
-        } catch (error) {
-            console.error('Firestore: Error saving portfolio item:', error);
-            showCustomAlert('Error saving to portfolio: ' + error.message);
-        }
-        // --- END NEW ---
-    });
-}
 // Copilot update: 2025-07-29 - change for sync test
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
@@ -267,16 +39,6 @@ window.addEventListener('popstate', function(event) {
     }
     // If no modals or sidebar are open, allow default browser back (exit app)
 });
-// === DEBUG BANNER: Copilot Diagnostic ===
-(() => {
-    const banner = document.createElement('div');
-    banner.id = 'copilot-debug-banner';
-    banner.style.cssText = 'position:fixed;top:0;left:0;width:100vw;z-index:99999;background:#ff0;color:#000;font-size:18px;font-weight:bold;text-align:center;padding:8px 0;border-bottom:2px solid #f00;box-shadow:0 2px 8px #0003;';
-    banner.textContent = 'DEBUG: script.js loaded at ' + new Date().toLocaleString() + ' [Copilot Diagnostic Banner]';
-    document.body.prepend(banner);
-    setTimeout(() => { banner.remove(); }, 10000); // Remove after 10s
-})();
-console.log('[COPILOT DEBUG] script.js loaded at', new Date().toISOString());
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
 // The previous patch has been removed as the root cause of the UI issues,
@@ -302,15 +64,6 @@ function makeFilesAvailableToSourceControl() {
     // To actually add to git, run: git init; git add .; git commit -m "Initial commit"
 }
 // End Copilot source control helper
-
-// --- SOURCE CONTROL HELPER ---
-function markFilesForSourceControl() {
-    if (window && window.showCustomAlert) {
-        window.showCustomAlert('Files updated and ready for source control.', 2000);
-    } else {
-        console.log('Files updated and ready for source control.');
-    }
-}
 
 // Helper: Sort shares by percentage change
 function sortSharesByPercentageChange(shares) {
@@ -522,129 +275,6 @@ let originalCashAssetData = null; // NEW: To store original cash asset data for 
 let cashAssetVisibility = {}; // This object will still track the *current session's* visibility.
 // NEW: Reference for the hide/show checkbox in the cash asset form modal
 const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
-
-// === PORTFOLIO FEATURE (IN-MEMORY, UI-INTEGRATED) ===
-window.portfolioHoldings = window.portfolioHoldings || [];
-
-// Add Portfolio button to sidebar if missing
-function ensurePortfolioSidebarButton() {
-    let sidebar = document.querySelector('.sidebar-menu, #sidebar, .app-sidebar, nav');
-    if (!sidebar) return;
-    if (!document.getElementById('portfolioSidebarBtn')) {
-        const btn = document.createElement('button');
-        btn.id = 'portfolioSidebarBtn';
-        btn.className = 'menu-button-item';
-        btn.innerHTML = '<span class="icon">📊</span> Portfolio';
-        btn.onclick = () => { showPortfolioView(); if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false); };
-        sidebar.appendChild(btn);
-    }
-}
-
-// Add Portfolio modal to DOM if missing
-function ensurePortfolioModal() {
-    if (document.getElementById('portfolioModal')) return;
-    const modal = document.createElement('div');
-    modal.id = 'portfolioModal';
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <span class="close-button" id="closePortfolioModal">&times;</span>
-            <h2>Add to Portfolio</h2>
-            <form id="portfolioForm">
-                <label>ASX Code: <input type="text" id="portfolioAsxCode" maxlength="5" required autocomplete="off" style="text-transform:uppercase"></label>
-                <div id="portfolioCompanyName" style="font-size:0.9em;color:#888;margin-bottom:8px;"></div>
-                <label>Average Price: <input type="number" id="portfolioAvgPrice" step="0.01" min="0" required></label>
-                <label>Quantity: <input type="number" id="portfolioQuantity" step="1" min="1" required></label>
-                <button type="submit" id="savePortfolioBtn">Save</button>
-            </form>
-        </div>
-    `;
-    // ...existing code for modal close logic and form handling...
-}
-
-// Copilot Fix: Wrap top-level await block in async IIFE to prevent fatal syntax error
-(async () => {
-    try {
-        targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
-
-        // Load user data, then do an initial fetch of live prices before setting the update interval.
-        // This ensures the initial view is correctly sorted by percentage change if selected.
-        await loadUserWatchlistsAndSettings();
-        await fetchLivePrices();
-        startLivePriceUpdates();
-
-        allAsxCodes = await loadAsxCodesFromCSV();
-        logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
-    } catch (e) {
-        console.error('Copilot async IIFE error:', e);
-    }
-})();
-
-// Add Portfolio to watchlist dropdown if missing
-
-function ensurePortfolioDropdownOption() {
-    const select = document.getElementById('watchlistSelect');
-    if (!select) return;
-    if (!select.querySelector('option[value="__PORTFOLIO__"]')) {
-        const opt = document.createElement('option');
-        opt.value = '__PORTFOLIO__';
-        opt.textContent = 'Portfolio';
-        select.appendChild(opt);
-    }
-}
-
-// Show Portfolio  modal
-function showPortfolioModal() {
-    const modal = document.getElementById('portfolioModal');
-    if (modal) modal.style.display = 'block';
-}
-
-
-// Show Portfolio view in main section
-function showPortfolioView() {
-    let main = document.getElementById('mainSection') || document.querySelector('main');
-    if (!main) return;
-    // Render portfolio section
-    main.innerHTML = `<h2>Portfolio</h2>
-        <button id=\"addPortfolioBtn\" style=\"margin-bottom:12px;\">Add Stock</button>
-        <div id=\"portfolioTableContainer\"></div>`;
-    document.getElementById('addPortfolioBtn').onclick = showPortfolioModal;
-    renderPortfolioView();
-    // Also update dropdown to reflect selection
-    const select = document.getElementById('watchlistSelect');
-    if (select && select.value !== '__PORTFOLIO__') select.value = '__PORTFOLIO__';
-}
-
-// Render Portfolio table
-function renderPortfolioView() {
-    const container = document.getElementById('portfolioTableContainer');
-    if (!container) return;
-    if (!window.portfolioHoldings || window.portfolioHoldings.length === 0) {
-        container.innerHTML = '<p>No stocks in portfolio yet.</p>';
-        console.log('[DEBUG] No portfolio holdings to display.');
-        return;
-    }
-    let html = `<table class="portfolio-table"><thead><tr><th>ASX Code</th><th>Company</th><th>Avg Price</th><th>Quantity</th></tr></thead><tbody>`;
-    for (const holding of window.portfolioHoldings) {
-        let name = '';
-        if (window.allAsxCodes) {
-            const found = window.allAsxCodes.find(c => c.code === holding.code);
-            name = found ? found.name : '';
-        }
-        html += `<tr><td>${holding.code}</td><td>${name}</td><td>${Number(holding.avgPrice).toFixed(2)}</td><td>${holding.qty}</td></tr>`;
-    }
-    html += '</tbody></table>';
-    container.innerHTML = html;
-    console.log('[DEBUG] Portfolio rendered:', window.portfolioHoldings);
-}
-
-// Initialize Portfolio feature on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', () => {
-    ensurePortfolioSidebarButton();
-    ensurePortfolioModal();
-    ensurePortfolioDropdownOption();
-});
-// === END PORTFOLIO FEATURE ===
 
 
 // --- UI Element References ---
@@ -6630,130 +6260,6 @@ if (showLastLivePriceToggle) {
 
     // NEW: Set initial state for the compact view button
     updateCompactViewButtonState();
-// === PORTFOLIO FEATURE ===
-// In-memory portfolio holdings
-window.portfolioHoldings = [];
-
-// Add Portfolio to sidebar
-function addPortfolioSidebarEntry() {
-    const sidebar = document.querySelector('.sidebar-menu, #sidebar, .app-sidebar, nav');
-    if (!sidebar || document.getElementById('portfolioSidebarBtn')) return;
-    const btn = document.createElement('button');
-    btn.id = 'portfolioSidebarBtn';
-    btn.className = 'menu-button-item';
-    btn.innerHTML = '<span class="icon">📊</span> Portfolio';
-    btn.addEventListener('click', () => {
-        showPortfolioView();
-        if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false);
-    });
-    sidebar.appendChild(btn);
-}
-
-// Add Portfolio modal to DOM
-function addPortfolioModal() {
-    if (document.getElementById('portfolioModal')) return;
-    const modal = document.createElement('div');
-    modal.id = 'portfolioModal';
-    modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <span class="close-button" id="closePortfolioModal">&times;</span>
-            <h2>Add to Portfolio</h2>
-            <form id="portfolioForm">
-                <label>ASX Code: <input type="text" id="portfolioAsxCode" maxlength="5" required autocomplete="off" style="text-transform:uppercase"></label>
-                <div id="portfolioCompanyName" style="font-size:0.9em;color:#888;margin-bottom:8px;"></div>
-                <label>Average Price: <input type="number" id="portfolioAvgPrice" step="0.01" min="0" required></label>
-                <label>Quantity: <input type="number" id="portfolioQuantity" step="1" min="1" required></label>
-                <button type="submit" id="savePortfolioBtn">Save</button>
-            </form>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    // Close logic
-    document.getElementById('closePortfolioModal').onclick = () => { modal.style.display = 'none'; };
-    modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
-    // Form logic
-    const form = document.getElementById('portfolioForm');
-    const codeInput = document.getElementById('portfolioAsxCode');
-    const nameDiv = document.getElementById('portfolioCompanyName');
-    codeInput.addEventListener('input', () => {
-        codeInput.value = codeInput.value.toUpperCase();
-        if (window.allAsxCodes) {
-            const found = window.allAsxCodes.find(c => c.code === codeInput.value);
-            nameDiv.textContent = found ? found.name : '';
-        }
-    });
-    form.onsubmit = e => {
-        e.preventDefault();
-        const code = codeInput.value.trim().toUpperCase();
-        const avgPrice = parseFloat(document.getElementById('portfolioAvgPrice').value);
-        const qty = parseInt(document.getElementById('portfolioQuantity').value);
-        if (!code || isNaN(avgPrice) || isNaN(qty) || qty < 1) return;
-        // Add to portfolio
-        window.portfolioHoldings.push({ code, avgPrice, qty });
-        modal.style.display = 'none';
-        renderPortfolioView();
-    };
-}
-
-// Add Portfolio to watchlist dropdown
-function addPortfolioToWatchlistDropdown() {
-    const select = document.getElementById('watchlistSelect');
-    if (!select || select.querySelector('option[value="__PORTFOLIO__"]')) return;
-    const opt = document.createElement('option');
-    opt.value = '__PORTFOLIO__';
-    opt.textContent = 'Portfolio';
-    select.appendChild(opt);
-    select.addEventListener('change', () => {
-        if (select.value === '__PORTFOLIO__') showPortfolioView();
-    });
-}
-
-// Show Portfolio modal
-function showPortfolioModal() {
-    const modal = document.getElementById('portfolioModal');
-    if (modal) modal.style.display = 'block';
-}
-
-// Show Portfolio view in main section
-function showPortfolioView() {
-    let main = document.getElementById('mainSection') || document.querySelector('main');
-    if (!main) return;
-    main.innerHTML = `<h2>Portfolio</h2>
-        <button id="addPortfolioBtn">Add Stock</button>
-        <div id="portfolioTableContainer"></div>`;
-    document.getElementById('addPortfolioBtn').onclick = showPortfolioModal;
-    renderPortfolioView();
-    console.log('[DEBUG] showPortfolioView called.');
-}
-
-// Render Portfolio table
-function renderPortfolioView() {
-    const container = document.getElementById('portfolioTableContainer');
-    if (!container) return;
-    if (window.portfolioHoldings.length === 0) {
-        container.innerHTML = '<p>No stocks in portfolio yet.</p>';
-        return;
-    }
-    let html = `<table class="portfolio-table"><thead><tr><th>ASX Code</th><th>Company</th><th>Avg Price</th><th>Quantity</th></tr></thead><tbody>`;
-    for (const holding of window.portfolioHoldings) {
-        let name = '';
-        if (window.allAsxCodes) {
-            const found = window.allAsxCodes.find(c => c.code === holding.code);
-            name = found ? found.name : '';
-        }
-        html += `<tr><td>${holding.code}</td><td>${name}</td><td>${holding.avgPrice.toFixed(2)}</td><td>${holding.qty}</td></tr>`;
-    }
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
-
-// Initialize Portfolio feature on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', () => {
-    addPortfolioSidebarEntry();
-    addPortfolioModal();
-    addPortfolioToWatchlistDropdown();
-});
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
 
@@ -6856,44 +6362,43 @@ document.addEventListener('DOMContentLoaded', function() {
     } // This closing brace completes the 'else' block for the splash screen check.
 
     // Initially hide main app content and header
-if (savePortfolioBtn) {
-    savePortfolioBtn.addEventListener('click', async function () {
-        const code = (portfolioAsxCodeInput?.value || '').toUpperCase().trim();
-        const qty = Number(portfolioQuantityInput?.value) || 0;
-        const avg = Number(portfolioAvgPriceInput?.value) || 0;
-        if (!code || qty <= 0 || avg <= 0) {
-            showCustomAlert && showCustomAlert('Please enter ASX code, quantity, and average price.');
-            return;
-        }
+    if (mainContainer) {
+        mainContainer.classList.add('app-hidden');
+    }
+    if (appHeader) {
+        appHeader.classList.add('app-hidden');
+    }
 
-        // Save to Firestore as before
-        if (!db || !currentUserId || !window.firestore) {
-            showCustomAlert('Error: Not logged in or database not available.');
-            return;
-        }
-        const portfolioData = {
-            code: code,
-            qty: qty,
-            avg: avg,
-            userId: currentUserId,
-            createdAt: new Date().toISOString()
-        };
-        try {
-            const portfolioColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/portfolio');
-            await window.firestore.addDoc(portfolioColRef, portfolioData);
-            // --- Copilot: Also update in-memory holdings and UI immediately ---
-            window.portfolioHoldings.push({ code, avgPrice: avg, qty });
-            console.log('[DEBUG] Added to portfolio (savePortfolioBtn):', { code, avgPrice: avg, qty });
-            renderPortfolioView();
-            hidePortfolioModal();
-            clearPortfolioForm();
-            showCustomAlert && showCustomAlert('Added to portfolio!');
-        } catch (error) {
-            console.error('Firestore: Error saving portfolio item:', error);
-            showCustomAlert('Error saving to portfolio: ' + error.message);
-        }
-    });
-}
+    if (window.firestoreDb && window.firebaseAuth && window.getFirebaseAppId && window.firestore && window.authFunctions) {
+        db = window.firestoreDb;
+        auth = window.firebaseAuth;
+        currentAppId = window.getFirebaseAppId();
+        window._firebaseInitialized = true; // Mark Firebase as initialized
+        logDebug('Firebase Ready: DB, Auth, and AppId assigned from window. Setting up auth state listener.');
+
+        window.authFunctions.onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUserId = user.uid;
+                logDebug('AuthState: User signed in: ' + user.uid);
+                logDebug('AuthState: User email: ' + user.email);
+                mainTitle.textContent = 'ASX Tracker';
+                logDebug('AuthState: Main title set to ASX Tracker.');
+                updateMainButtonsState(true);
+                window._userAuthenticated = true; // Mark user as authenticated
+
+                if (mainContainer) {
+                    mainContainer.classList.remove('app-hidden');
+                }
+                if (appHeader) {
+                    appHeader.classList.remove('app-hidden');
+                }
+                adjustMainContentPadding();
+
+                if (splashKangarooIcon) {
+                    splashKangarooIcon.classList.add('pulsing');
+                    logDebug('Splash Screen: Started pulsing animation after sign-in.');
+                }
+
                 targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
 
                 // Load user data, then do an initial fetch of live prices before setting the update interval.
@@ -6961,3 +6466,36 @@ if (savePortfolioBtn) {
                 targetHitIconDismissed = false; 
                 localStorage.removeItem('targetHitIconDismissed');
 
+            }
+            if (!window._appLogicInitialized) {
+                initializeAppLogic();
+                window._appLogicInitialized = true;
+            } else {
+                // If app logic already initialized, ensure view mode is applied after auth.
+                // This handles cases where user signs out and then signs back in,
+                // and we need to re-apply the correct mobile view class.
+                if (currentMobileViewMode === 'compact' && mobileShareCardsContainer) {
+                    mobileShareCardsContainer.classList.add('compact-view');
+                } else if (mobileShareCardsContainer) {
+                    mobileShareCardsContainer.classList.remove('compact-view');
+                }
+            }
+            // Call renderWatchlist here to ensure correct mobile card rendering after auth state is set
+            renderWatchlist();
+            // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
+        });
+    } else {
+        console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
+        const errorDiv = document.getElementById('firebaseInitError');
+        if (errorDiv) {
+                errorDiv.style.display = 'block';
+        }
+        updateMainButtonsState(false);
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        applyTheme('system-default');
+        // NEW: Call adjustMainContentPadding even if Firebase fails, to ensure some basic layout
+        adjustMainContentPadding();
+        // NEW: Hide splash screen if Firebase fails to initialize
+        hideSplashScreen();
+    }
+});

@@ -153,7 +153,6 @@
             <div class="controls-flex-row no-gap">
                 <select id="watchlistSelect" class="dropdown-large left-rounded">
                     <option value="" disabled selected>Watch List</option>
-                    <option value="__PORTFOLIO__">Portfolio</option>
                     <option value="cashBank">Cash & Assets</option> 
                 </select>
                 <select id="sortSelect" class="dropdown-large right-rounded">
@@ -164,10 +163,10 @@
                     <option value="shareName-desc">Code Z-A</option>
                     <option value="dividendAmount-desc">Yield % ↓</option>
                     <option value="dividendAmount-asc">Yield % ↑</option>
-                    <option value="percentageChange-desc">Change % H-L</option>
-                    <option value="percentageChange-asc">Change % L-H</option>
-                    <option value="starRating-desc">⭐ H-L</option>
-                    <option value="starRating-asc">⭐ L-H</option>
+                    <option value="percentageChange-desc">% Chg ↓</option>
+                    <option value="percentageChange-asc">% Chg ↑</option>
+                    <option value="starRating-desc">⭐ High-Low</option>
+                    <option value="starRating-asc">⭐ Low-High</option>
                 </select>
                 <div class="toggle-asx-buttons-group">
                     <button id="toggleAsxButtonsBtn" class="header-action-btn" title="Toggle ASX Code Buttons">
@@ -185,39 +184,6 @@
         <button id="closeMenuBtn" class="close-menu-btn">X</button>
         
         <div class="menu-section">
-            <h3>Portfolio</h3>
-            <div class="menu-buttons-group">
-                <button id="addPortfolioSidebarBtn" class="menu-button-item" data-action-closes-menu="true">
-                    <i class="fas fa-briefcase"></i> <span>Add to Portfolio</span>
-                </button>
-            </div>
-        </div>
-    <!-- Portfolio Modal -->
-    <div id="portfolioModal" class="modal">
-        <div class="modal-content">
-            <!-- Copilot test: Modal update visible -->
-            <div style="background: #ffeeba; color: #856404; padding: 8px; border-radius: 4px; margin-bottom: 10px; font-weight: bold; text-align: center;">
-                Copilot test: This is a visible update to the Portfolio modal. If you see this, the modal is updating!
-            </div>
-            <div class="modal-header-with-icon">
-                <h2>Add to Portfolio</h2>
-                <div class="modal-header-action-group">
-                    <span class="close-button portfolio-modal-close-button">&times;</span>
-                </div>
-            </div>
-            <div class="modal-body-scrollable">
-                <label for="portfolioAsxCode">ASX Code:</label>
-                <input type="text" id="portfolioAsxCode" placeholder="e.g., BHP" autocomplete="off">
-                <div id="portfolioAsxSuggestions" class="autocomplete-suggestions"></div>
-                <div id="portfolioLiveName" class="ghosted-text" style="margin-bottom:8px;"></div>
-                <label for="portfolioQuantity">Quantity:</label>
-                <input type="number" id="portfolioQuantity" min="1" step="1" placeholder="e.g., 100">
-                <label for="portfolioAvgPrice">Average Price ($):</label>
-                <input type="number" id="portfolioAvgPrice" min="0" step="0.01" placeholder="e.g., 25.50">
-                <button id="savePortfolioBtn" class="menu-button-item" style="margin-top:16px;">Add to Portfolio</button>
-            </div>
-        </div>
-    </div>
             <h3>Share Actions</h3>
             <div class="menu-buttons-group">
                 <button id="toggleCompactViewBtn" class="menu-button-item" data-action-closes-menu="true">
@@ -390,13 +356,6 @@
             </div>
             <div id="mobileShareCards" class="mobile-share-cards">
                 </div>
-        </div>
-
-        <!-- Portfolio Holdings Section -->
-        <div id="portfolioSection" class="portfolio-section app-hidden">
-            <h2>My Portfolio</h2>
-            <div id="portfolioTableContainer"></div>
-            <div id="portfolioEmptyMessage" class="empty-message" style="display:none;">No portfolio holdings yet. Use the sidebar to add stocks.</div>
         </div>
 
         <div id="cashAssetsSection" class="cash-assets-section app-hidden">
@@ -842,7 +801,7 @@
             console.log("index.html script module loaded and DOMContentLoaded fired.");
         }); 
     </script>
-    <script src="script.js?v=2"></script>
+    <script src="script.js"></script>
 </body>
 <!-- Copilot update: 2025-07-29 - change for sync test -->
 </html>

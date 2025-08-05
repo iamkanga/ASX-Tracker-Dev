@@ -1,18 +1,3 @@
-/* Copilot test: Make All Shares and sidebar menu items red and bold for visibility */
-#watchlistSelect option[value="all_shares_option"] {
-  color: red !important;
-  font-weight: bold !important;
-}
-/* Sidebar menu items: revert to white text, keep bold for visibility */
-.menu-button-item {
-  color: #fff !important;
-  font-weight: bold !important;
-}
-/* Copilot test: Make all h2 elements red and bold to prove file change */
-h2 {
-  color: red !important;
-  font-weight: bold !important;
-}
 /* [Copilot Update] Source control helper (style.css)
    This comment and the function below are placeholders for automating source control actions (e.g., git add/commit)
    and for tracking how many times files have been made available to source control from style.css.
