@@ -178,7 +178,22 @@ const DEBUG_MODE = false; // Set to 'false' to disable most console.log messages
 
 // --- DEBUG LOGGING, UI HELPERS, AND ALERTS ---
 // The following helpers are now imported from ui-helpers.js
-import { logDebug, setIconDisabled, showCustomAlert, formatDate } from './ui-helpers.js';
+import {
+  logDebug,
+  setIconDisabled,
+  showCustomAlert,
+  formatDate,
+  formatUserDecimalStrict,
+  adjustMainContentPadding,
+  applyCompactViewMode,
+  updateMainButtonsState,
+  updateCompactViewButtonState,
+  showModal,
+  hideModal,
+  clearWatchlistUI,
+  clearShareListUI,
+  clearShareList
+} from './ui-helpers.js';
 // --- END DEBUG LOGGING SETUP ---
 
 let db;
@@ -202,149 +217,8 @@ let currentCalculatorInput = '';
 let operator = null;
 let previousCalculatorInput = '';
 let resultDisplayed = false;
-const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
-const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
-let userWatchlists = []; // Stores all watchlists for the user
-let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
-const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
-const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
-let currentSortOrder = 'entryDate-desc'; // Default sort order
-let contextMenuOpen = false; // To track if the custom context menu is open
-let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
-let originalShareData = null; // Stores the original share data when editing for dirty state check
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
-let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 
-
-// Live Price Data
-// IMPORTANT: This URL is the exact string provided in your initial script.js file.
-// If CORS errors persist, the solution is to redeploy your Google Apps Script with "Anyone, even anonymous" access
-// and then update this constant with the NEW URL provided by Google Apps Script.
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzktFj2KTZ7Z77L6XOIo0zxjmN-nVvEE2cuq_iZFQLZjT4lnli3pILhH15H9AzNWL0/exec'; // This is your NEW development Apps Script URL
-let livePrices = {}; // Stores live price data: {ASX_CODE: {live: price, prevClose: price, PE: value, High52: value, Low52: value, targetHit: boolean, lastLivePrice: value, lastPrevClose: value}} 
-let livePriceFetchInterval = null; // To hold the interval ID for live price updates
-const LIVE_PRICE_FETCH_INTERVAL_MS = 5 * 60 * 1000; // Fetch every 5 minutes
-
-// Theme related variables
-const CUSTOM_THEMES = [
-    'bold-1', 'bold-2', 'bold-3', 'bold-4', 'bold-5', 'bold-6', 'bold-7', 'bold-8', 'bold-9', 'bold-10',
-    'subtle-1', 'subtle-2', 'subtle-3', 'subtle-4', 'subtle-5', 'subtle-6', 'subtle-7', 'subtle-8', 'subtle-9', 'subtle-10',
-    'Muted Blue', 'Muted Brown', 'Muted Pink', 'Muted Green', 'Muted Purple', 'Muted Orange', 'Muted Cyan', 'Muted Magenta', 'Muted Gold', 'Muted Grey'
-];
-let currentCustomThemeIndex = -1; // To track the current theme in the cycle
-let currentActiveTheme = 'system-default'; // Tracks the currently applied theme string
-let savedSortOrder = null; // GLOBAL: Stores the sort order loaded from user settings
-let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
-
-let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
-let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
-
-// NEW: Global variable to store shares that have hit their target price
-let sharesAtTargetPrice = [];
-
-// NEW: Global variable to track the current mobile view mode ('default' or 'compact')
-let currentMobileViewMode = 'default'; 
-
-// Helper to ensure compact mode class is always applied
-function applyCompactViewMode() {
-    if (mobileShareCardsContainer) {
-        if (currentMobileViewMode === 'compact') {
-            mobileShareCardsContainer.classList.add('compact-view');
-        } else {
-            mobileShareCardsContainer.classList.remove('compact-view');
-        }
-    }
-}
-
-// NEW: Global variable to track if the target hit icon is dismissed for the current session
-let targetHitIconDismissed = false;
-let showLastLivePriceOnClosedMarket = false; // New global variable for the toggle state
-
-// Tracks if share detail modal was opened from alerts
-let wasShareDetailOpenedFromTargetAlerts = false;
-
-// NEW: Global variable to store cash categories data
-let userCashCategories = [];
-let selectedCashAssetDocId = null; // NEW: To track which cash asset is selected for editing/details
-let originalCashAssetData = null; // NEW: To store original cash asset data for dirty state check
-// NEW: Global variable to store visibility state of cash assets (temporary, not persisted)
-// This will now be managed directly by the 'isHidden' property on the cash asset object itself.
-let cashAssetVisibility = {}; // This object will still track the *current session's* visibility.
-// NEW: Reference for the hide/show checkbox in the cash asset form modal
-const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
-
-
-// --- UI Element References ---
-// Copilot: No-op change to trigger source control detection
-const appHeader = document.getElementById('appHeader'); // Reference to the main header
-const mainContainer = document.querySelector('main.container'); // Reference to the main content container
-const mainTitle = document.getElementById('mainTitle');
-const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
-const newShareBtn = document.getElementById('newShareBtn');
-const standardCalcBtn = document.getElementById('standardCalcBtn');
-const dividendCalcBtn = document.getElementById('dividendCalcBtn');
-const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
-const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
-const shareFormSection = document.getElementById('shareFormSection');
-const formCloseButton = document.querySelector('.form-close-button');
-const formTitle = document.getElementById('formTitle');
-const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
-const saveShareBtn = document.getElementById('saveShareBtn');
-const deleteShareBtn = document.getElementById('deleteShareBtn');
-const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
-const shareNameInput = document.getElementById('shareName');
-const currentPriceInput = document.getElementById('currentPrice');
-const targetPriceInput = document.getElementById('targetPrice');
-const dividendAmountInput = document.getElementById('dividendAmount');
-const frankingCreditsInput = document.getElementById('frankingCredits');
-const shareRatingSelect = document.getElementById('shareRating');
-const commentsFormContainer = document.getElementById('dynamicCommentsArea');
-const modalStarRating = document.getElementById('modalStarRating');
-
-// --- ASX Code Toggle Button Functionality ---
-if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
-  toggleAsxButtonsBtn.addEventListener('click', function () {
-    asxCodeButtonsContainer.classList.toggle('expanded');
-    // Optionally, toggle the arrow direction
-    const icon = toggleAsxButtonsBtn.querySelector('i');
-    if (icon) {
-      icon.classList.toggle('fa-chevron-down');
-      icon.classList.toggle('fa-chevron-up');
-    }
-  });
-}
-const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
-const shareTableBody = document.querySelector('#shareTable tbody');
-const mobileShareCardsContainer = document.getElementById('mobileShareCards');
-const tableContainer = document.querySelector('.table-container');
-const loadingIndicator = document.getElementById('loadingIndicator');
-const shareDetailModal = document.getElementById('shareDetailModal');
-const modalShareName = document.getElementById('modalShareName');
-const modalCompanyName = document.getElementById('modalCompanyName');
-const modalEnteredPrice = document.getElementById('modalEnteredPrice');
-const modalTargetPrice = document.getElementById('modalTargetPrice');
-const modalDividendAmount = document.getElementById('modalDividendAmount');
-const modalFrankingCredits = document.getElementById('modalFrankingCredits');
-const modalEntryDate = document.getElementById('modalEntryDate');
-const modalCommentsContainer = document.getElementById('modalCommentsContainer');
-const modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
-const modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
-const editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
-const deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
-const modalNewsLink = document.getElementById('modalNewsLink');
-const modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
-const modalFoolLink = document.getElementById('modalFoolLink');
-const modalListcorpLink = document.getElementById('modalListcorpLink'); // NEW: Reference for Listcorp link
-const modalCommSecLink = document.getElementById('modalCommSecLink');
-const commSecLoginMessage = document.getElementById('commSecLoginMessage');
-const dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
-const calcCloseButton = document.querySelector('.calc-close-button');
-const calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
-const calcDividendAmountInput = document.getElementById('calcDividendAmount');
-const calcFrankingCreditsInput = document.getElementById('calcFrankingCredits');
-const calcUnfrankedYieldSpan = document.getElementById('calcUnfrankedYield');
-const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
-const investmentValueSelect = document.getElementById('investmentValueSelect');
 const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
 const sortSelect = document.getElementById('sortSelect');
 const customDialogModal = document.getElementById('customDialogModal');
