@@ -109,6 +109,13 @@ function forceApplyCurrentSort() {
 
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
 document.addEventListener('DOMContentLoaded', function () {
+    // --- Ensure watchlist dropdowns are always populated, even if async loading is delayed ---
+    if (typeof renderWatchlistSelect === 'function' && userWatchlists.length === 0) {
+        renderWatchlistSelect();
+    }
+    if (typeof populateShareWatchlistSelect === 'function' && userWatchlists.length === 0) {
+        populateShareWatchlistSelect();
+    }
     const hideCheckbox = document.getElementById('sidebarHideCheckbox');
     const showCheckbox = document.getElementById('sidebarShowCheckbox');
 
@@ -3425,6 +3432,11 @@ async function loadUserWatchlistsAndSettings() {
         logDebug('User Settings: Final currentSelectedWatchlistIds before renderWatchlistSelect: ' + currentSelectedWatchlistIds.join(', '));
 
         renderWatchlistSelect(); // Populate and select in the header dropdown
+
+        // Also re-populate the share modal dropdown if present
+        if (typeof populateShareWatchlistSelect === 'function') {
+            populateShareWatchlistSelect();
+        }
 
         // Apply saved sort order or default
         if (currentUserId && savedSortOrder && Array.from(sortSelect.options).some(option => option.value === savedSortOrder)) {
