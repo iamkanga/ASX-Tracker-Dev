@@ -109,41 +109,14 @@ function forceApplyCurrentSort() {
 
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
 document.addEventListener('DOMContentLoaded', function () {
-    // --- Ensure watchlist dropdowns are always populated, even if async loading is delayed ---
-    if (typeof renderWatchlistSelect === 'function' && userWatchlists.length === 0) {
-        logDebug('[Portfolio Diagnostics] renderWatchlistSelect() called due to empty userWatchlists.');
-        renderWatchlistSelect();
+    // --- Watchlist logic moved to watchlist.js ---
+    // Import and call watchlist functions
+    if (window.watchlistModule) {
+        window.watchlistModule.renderWatchlistSelect();
+        window.watchlistModule.populateShareWatchlistSelect();
+        window.watchlistModule.ensurePortfolioOptionPresent();
+        setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
     }
-    if (typeof populateShareWatchlistSelect === 'function' && userWatchlists.length === 0) {
-        logDebug('[Portfolio Diagnostics] populateShareWatchlistSelect() called due to empty userWatchlists.');
-        populateShareWatchlistSelect();
-    }
-
-    // --- Robust Portfolio Option Diagnostics & Self-Healing ---
-    function ensurePortfolioOptionPresent() {
-        if (!watchlistSelect) {
-            logDebug('[Portfolio Diagnostics] watchlistSelect not found.');
-            return;
-        }
-        const hasPortfolio = Array.from(watchlistSelect.options).some(opt => opt.value === 'portfolio');
-        if (!hasPortfolio) {
-            logDebug('[Portfolio Diagnostics] Portfolio option missing from main dropdown. Adding now.');
-            const portfolioOption = document.createElement('option');
-            portfolioOption.value = 'portfolio';
-            portfolioOption.textContent = 'Portfolio';
-            watchlistSelect.appendChild(portfolioOption);
-            if (window.showCustomAlert) {
-                window.showCustomAlert('Portfolio option was missing and has been restored!', 2500);
-            } else {
-                alert('Portfolio option was missing and has been restored!');
-            }
-        } else {
-            logDebug('[Portfolio Diagnostics] Portfolio option present in main dropdown.');
-        }
-    }
-    // Run diagnostics on load and after 2 seconds (in case of async population)
-    ensurePortfolioOptionPresent();
-    setTimeout(ensurePortfolioOptionPresent, 2000);
     const hideCheckbox = document.getElementById('sidebarHideCheckbox');
     const showCheckbox = document.getElementById('sidebarShowCheckbox');
 
