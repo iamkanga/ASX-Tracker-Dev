@@ -561,7 +561,6 @@ function ensurePortfolioModal() {
     `;
     // ...existing code for modal close logic and form handling...
 }
-}
 
 // Copilot Fix: Wrap top-level await block in async IIFE to prevent fatal syntax error
 (async () => {
@@ -580,10 +579,6 @@ function ensurePortfolioModal() {
         console.error('Copilot async IIFE error:', e);
     }
 })();
-        modal.style.display = 'none';
-        renderPortfolioView();
-    };
-}
 
 // Add Portfolio to watchlist dropdown if missing
 
@@ -6966,36 +6961,3 @@ if (savePortfolioBtn) {
                 targetHitIconDismissed = false; 
                 localStorage.removeItem('targetHitIconDismissed');
 
-            }
-            if (!window._appLogicInitialized) {
-                initializeAppLogic();
-                window._appLogicInitialized = true;
-            } else {
-                // If app logic already initialized, ensure view mode is applied after auth.
-                // This handles cases where user signs out and then signs back in,
-                // and we need to re-apply the correct mobile view class.
-                if (currentMobileViewMode === 'compact' && mobileShareCardsContainer) {
-                    mobileShareCardsContainer.classList.add('compact-view');
-                } else if (mobileShareCardsContainer) {
-                    mobileShareCardsContainer.classList.remove('compact-view');
-                }
-            }
-            // Call renderWatchlist here to ensure correct mobile card rendering after auth state is set
-            renderWatchlist();
-            // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
-        });
-    } else {
-        console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
-        const errorDiv = document.getElementById('firebaseInitError');
-        if (errorDiv) {
-                errorDiv.style.display = 'block';
-        }
-        updateMainButtonsState(false);
-        if (loadingIndicator) loadingIndicator.style.display = 'none';
-        applyTheme('system-default');
-        // NEW: Call adjustMainContentPadding even if Firebase fails, to ensure some basic layout
-        adjustMainContentPadding();
-        // NEW: Hide splash screen if Firebase fails to initialize
-        hideSplashScreen();
-    }
-});
