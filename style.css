@@ -1,3 +1,12 @@
+/* Copilot test: Make All Shares and sidebar menu items red and bold for visibility */
+#watchlistSelect option[value="all_shares_option"] {
+  color: red !important;
+  font-weight: bold !important;
+}
+.menu-button-item {
+  color: red !important;
+  font-weight: bold !important;
+}
 /* Copilot test: Make all h2 elements red and bold to prove file change */
 h2 {
   color: red !important;
