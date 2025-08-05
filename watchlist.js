@@ -1,5 +1,5 @@
 // --- WATCHLIST MODULE ---
-// Handles watch list dropdowns, rendering, and management
+// Handles watchlist dropdowns, rendering, and management
 
 // Exported variables and functions
 export let userWatchlists = [];
