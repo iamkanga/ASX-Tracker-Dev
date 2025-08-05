@@ -1182,7 +1182,95 @@ function updateOrCreateShareMobileCard(share) {
     logDebug('Mobile Cards: Updated/Created card for share ' + share.shareName + '.');
 }
 
+function updateMainButtonsState(enable) {
+    logDebug('UI State: Setting main buttons state to: ' + (enable ? 'ENABLED' : 'DISABLED'));
+    if (newShareBtn) newShareBtn.disabled = !enable;
+    if (standardCalcBtn) standardCalcBtn.disabled = !enable;
+    if (dividendCalcBtn) dividendCalcBtn.disabled = !enable;
+    if (exportWatchlistBtn) exportWatchlistBtn.disabled = !enable;
+    if (addWatchlistBtn) addWatchlistBtn.disabled = !enable;
+    if (editWatchlistBtn) {
+        const selectedValue = watchlistSelect ? watchlistSelect.value : '';
+        // Enable button if there's a selected watchlist and it's not ALL_SHARES or CASH_BANK
+        const isAnEditableWatchlistSelected = selectedValue && selectedValue !== ALL_SHARES_ID && selectedValue !== CASH_BANK_WATCHLIST_ID;
+        // Remove extra conditions and only check if an editable watchlist is selected
+        editWatchlistBtn.disabled = !isAnEditableWatchlistSelected;
+        logDebug('Edit Watchlist Button State: ' + (editWatchlistBtn.disabled ? 'disabled' : 'enabled') + 
+                ' (selectedValue=' + selectedValue + ', isEditable=' + isAnEditableWatchlistSelected + ')');
+    }
+    // addShareHeaderBtn is now contextual, its disabled state is managed by updateAddHeaderButton
+    if (logoutBtn) setIconDisabled(logoutBtn, !enable); 
+    if (themeToggleBtn) themeToggleBtn.disabled = !enable;
+    if (colorThemeSelect) colorThemeSelect.disabled = !enable;
+    if (revertToDefaultThemeBtn) revertToDefaultThemeBtn.disabled = !enable;
+    // sortSelect and watchlistSelect disabled state is managed by render functions
+    if (refreshLivePricesBtn) refreshLivePricesBtn.disabled = !enable;
+    
+    // NEW: Disable/enable buttons specific to cash section
+    // addCashCategoryBtn and saveCashBalancesBtn are removed from HTML/functionality is moved
+    if (addCashAssetSidebarBtn) addCashAssetSidebarBtn.disabled = !enable;
 
+    logDebug('UI State: Sort Select Disabled: ' + (sortSelect ? sortSelect.disabled : 'N/A'));
+    logDebug('UI State: Watchlist Select Disabled: ' + (watchlistSelect ? watchlistSelect.disabled : 'N/A'));
+}
+
+/**
+ * Enables or disables the 'Toggle Compact View' button based on screen width.
+ * This feature is only intended for mobile views (<= 768px).
+ */
+function updateCompactViewButtonState() {
+    if (!toggleCompactViewBtn) {
+        return; // Exit if the button doesn't exist
+    }
+    // Always enable the button, regardless of screen width
+    toggleCompactViewBtn.disabled = false;
+    toggleCompactViewBtn.title = "Toggle between default and compact card view.";
+    logDebug(`UI State: Compact view button enabled for all screen widths.`);
+}
+
+function showModal(modalElement) {
+    if (modalElement) {
+        // Push a new history state for every modal open
+        pushAppState({ modalId: modalElement.id }, '', '');
+        modalElement.style.setProperty('display', 'flex', 'important');
+        modalElement.scrollTop = 0;
+        const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+        if (scrollableContent) {
+            scrollableContent.scrollTop = 0;
+        }
+        logDebug('Modal: Showing modal: ' + modalElement.id);
+    }
+}
+
+function hideModal(modalElement) {
+    if (modalElement) {
+        modalElement.style.setProperty('display', 'none', 'important');
+        logDebug('Modal: Hiding modal: ' + modalElement.id);
+    }
+}
+
+function clearWatchlistUI() {
+    if (!watchlistSelect) { console.error('clearWatchlistUI: watchlistSelect element not found.'); return; }
+    watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>'; // Updated placeholder
+    userWatchlists = [];
+    currentSelectedWatchlistIds = [];
+    logDebug('UI: Watchlist UI cleared.');
+}
+
+function clearShareListUI() {
+    if (!shareTableBody) { console.error('clearShareListUI: shareTableBody element not found.'); return; }
+    if (!mobileShareCardsContainer) { console.error('clearShareListUI: mobileShareCardsContainer element not found.'); return; }
+    shareTableBody.innerHTML = '';
+    mobileShareCardsContainer.innerHTML = '';
+    logDebug('UI: Share list UI cleared.');
+}
+
+function clearShareList() {
+    clearShareListUI();
+    if (asxCodeButtonsContainer) asxCodeButtonsContainer.innerHTML = '';
+    deselectCurrentShare();
+    logDebug('UI: Full share list cleared (UI + buttons).');
+}
 
 function selectShare(shareId) {
     logDebug('Selection: Attempting to select share with ID: ' + shareId);
