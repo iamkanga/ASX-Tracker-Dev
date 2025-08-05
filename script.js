@@ -557,8 +557,10 @@ function ensurePortfolioModal() {
                 <label>Quantity: <input type="number" id="portfolioQuantity" step="1" min="1" required></label>
                 <button type="submit" id="savePortfolioBtn">Save</button>
             </form>
-
-    });
+        </div>
+    `;
+    // ...existing code for modal close logic and form handling...
+}
 }
 
 // Copilot Fix: Wrap top-level await block in async IIFE to prevent fatal syntax error
