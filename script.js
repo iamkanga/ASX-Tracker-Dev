@@ -344,26 +344,7 @@ const cashFormInputs = [
 
 
 
-/**
- * Dynamically adjusts the top padding of the main content area
- * to prevent it from being hidden by the fixed header.
- * Uses scrollHeight to get the full rendered height, including wrapped content.
- */
-function adjustMainContentPadding() {
-    // Ensure both the header and main content container elements exist.
-    if (appHeader && mainContainer) {
-        // Get the current rendered height of the fixed header, including any wrapped content.
-        // offsetHeight is usually sufficient, but scrollHeight can be more robust if content overflows.
-        // For a fixed header, offsetHeight should reflect its full rendered height.
-        const headerHeight = appHeader.offsetHeight; 
-        
-        // Apply this height as padding to the top of the main content container.
-        mainContainer.style.paddingTop = `${headerHeight}px`;
-        logDebug('Layout: Adjusted main content padding-top to: ' + headerHeight + 'px (Full Header Height).');
-    } else {
-        console.warn('Layout: Could not adjust main content padding-top: appHeader or mainContainer not found.');
-    }
-}
+
 
 
 
