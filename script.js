@@ -588,15 +588,16 @@ function showPortfolioModal() {
 function showPortfolioView() {
     let main = document.getElementById('mainSection') || document.querySelector('main');
     if (!main) return;
+    // Render portfolio section
     main.innerHTML = `<h2>Portfolio</h2>
-        <button id="addPortfolioBtn">Add Stock</button>
-        <div id="portfolioTableContainer"></div>`;
+        <button id=\"addPortfolioBtn\" style=\"margin-bottom:12px;\">Add Stock</button>
+        <div id=\"portfolioTableContainer\"></div>`;
     document.getElementById('addPortfolioBtn').onclick = showPortfolioModal;
     renderPortfolioView();
+    // Also update dropdown to reflect selection
+    const select = document.getElementById('watchlistSelect');
+    if (select && select.value !== '__PORTFOLIO__') select.value = '__PORTFOLIO__';
 }
-
-// Listen for watchlist dropdown changes to show portfolio view
-document.addEventListener('DOMContentLoaded', function() {
     const select = document.getElementById('watchlistSelect');
     if (select) {
         select.addEventListener('change', function() {
