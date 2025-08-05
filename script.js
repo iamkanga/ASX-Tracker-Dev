@@ -557,31 +557,27 @@ function ensurePortfolioModal() {
                 <label>Quantity: <input type="number" id="portfolioQuantity" step="1" min="1" required></label>
                 <button type="submit" id="savePortfolioBtn">Save</button>
             </form>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    // Modal close logic
-    document.getElementById('closePortfolioModal').onclick = () => { modal.style.display = 'none'; };
-    modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
-    // Form logic
-    const form = document.getElementById('portfolioForm');
-    const codeInput = document.getElementById('portfolioAsxCode');
-    const nameDiv = document.getElementById('portfolioCompanyName');
-    codeInput.addEventListener('input', () => {
-        codeInput.value = codeInput.value.toUpperCase();
-        if (window.allAsxCodes) {
-            const found = window.allAsxCodes.find(c => c.code === codeInput.value);
-            nameDiv.textContent = found ? found.name : '';
-        }
+
     });
-    form.onsubmit = e => {
-        e.preventDefault();
-        const code = codeInput.value.trim().toUpperCase();
-        const avgPrice = parseFloat(document.getElementById('portfolioAvgPrice').value);
-        const qty = parseInt(document.getElementById('portfolioQuantity').value);
-        if (!code || isNaN(avgPrice) || isNaN(qty) || qty < 1) return;
-        window.portfolioHoldings.push({ code, avgPrice, qty });
-        console.log('[DEBUG] Added to portfolio (modal):', { code, avgPrice, qty });
+}
+
+// Copilot Fix: Wrap top-level await block in async IIFE to prevent fatal syntax error
+(async () => {
+    try {
+        targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
+
+        // Load user data, then do an initial fetch of live prices before setting the update interval.
+        // This ensures the initial view is correctly sorted by percentage change if selected.
+        await loadUserWatchlistsAndSettings();
+        await fetchLivePrices();
+        startLivePriceUpdates();
+
+        allAsxCodes = await loadAsxCodesFromCSV();
+        logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
+    } catch (e) {
+        console.error('Copilot async IIFE error:', e);
+    }
+})();
         modal.style.display = 'none';
         renderPortfolioView();
     };
