@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
     <style>
-        /* Modal dropdowns should be full width */
+        /* Modal dropdowns should be full width and aligned with inputs */
         .modal-content .dropdown-large {
             display: block;
             width: 100% !important;
@@ -20,6 +20,7 @@
             box-sizing: border-box;
             margin-bottom: 18px;
             margin-top: 4px;
+            margin-left: 0 !important;
         }
         /* --- Controls row: all controls on one line, maximize mobile area --- */
         .controls-flex-row {
@@ -383,6 +384,7 @@
             </div>
             
             <div class="modal-body-scrollable">
+                <!-- Watchlist and Code Selection (always at top) -->
                 <label for="shareWatchlistSelect">Assign to Watchlist:</label>
                 <select id="shareWatchlistSelect" class="dropdown-large" required>
                     <option value="" disabled selected>Select a Watchlist</option>
@@ -391,9 +393,9 @@
                 <label for="shareName">Code:</label>
                 <input type="text" id="shareName" placeholder="e.g., BHP" required>
 
-                <!-- Portfolio/Share Details Section (distinct grouping) -->
+                <!-- Portfolio/Share Details Section (all grouped for clarity and extensibility) -->
                 <div class="portfolio-details-section" style="margin-top: 24px; padding: 16px; border: 1px solid var(--ghosted-text,#ccc); border-radius: 8px; background: var(--modal-bg,#f9f9f9);">
-                    <!-- Portfolio-specific fields -->
+                    <!-- Portfolio-specific fields (required for portfolio tracking) -->
                     <div class="portfolio-inputs-group" style="margin-bottom: 18px;">
                         <label for="portfolioShares">Number of Shares Purchased:</label>
                         <input type="number" id="portfolioShares" min="0" step="1" placeholder="e.g., 1000">
@@ -401,6 +403,8 @@
                         <label for="portfolioAvgPrice">Average Purchase Price ($):</label>
                         <input type="number" id="portfolioAvgPrice" min="0" step="0.01" placeholder="e.g., 23.45">
                     </div>
+
+                    <!-- Share-specific fields (apply to both portfolio and watchlist entries) -->
                     <label for="shareRating">Star Rating:</label>
                     <select id="shareRating" class="dropdown-large">
                         <option value="0" selected>No Rating</option>
@@ -411,13 +415,12 @@
                         <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
                     </select>
 
-                    <!-- NEW: Live Price Display for Add Share Form -->
+                    <!-- Live Price Display (optional, shown if available) -->
                     <div id="addShareLivePriceDisplay" class="live-price-display-section" style="display: none;"></div>
-                    <!-- END NEW -->
 
+                    <!-- Target Price and Direction -->
                     <div class="form-group-with-toggle">
                         <label for="targetPrice" class="target-price-label">Target Price ($):</label>
-                        <!-- NEW: 2x2 Checkbox Grid for Target Direction -->
                         <div class="target-checkbox-grid">
                             <div class="target-checkbox-row">
                                 <label class="checkbox-label" for="targetBuyCheckbox">
@@ -443,6 +446,7 @@
                         <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
                     </div>
 
+                    <!-- Price and Dividend Details -->
                     <label for="currentPrice">Entered Price ($):</label>
                     <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
 
@@ -452,6 +456,7 @@
                     <label for="frankingCredits">Franking Credits (%):</label>
                     <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
 
+                    <!-- Comments Section (optional, can add multiple) -->
                     <div class="comments-form-container">
                         <h3>Comments <span id="addCommentSectionBtn" class="add-section-icon"><i class="fas fa-plus"></i></span></h3>
                         <div id="dynamicCommentsArea">
