@@ -571,7 +571,23 @@ function adjustMainContentPadding() {
     }
 }
 
-// (Removed duplicate setIconDisabled function, now imported from ui-helpers.js)
+/**
+ * Helper function to apply/remove a disabled visual state to non-button elements (like spans/icons).
+ * This adds/removes the 'is-disabled-icon' class, which CSS then styles.
+ * @param {HTMLElement} element The element to disable/enable.
+ * @param {boolean} isDisabled True to disable, false to enable.
+ */
+function setIconDisabled(element, isDisabled) {
+    if (!element) {
+        console.warn('setIconDisabled: Element is null or undefined. Cannot set disabled state.');
+        return;
+    }
+    if (isDisabled) {
+        element.classList.add('is-disabled-icon');
+    } else {
+        element.classList.remove('is-disabled-icon');
+    }
+}
 
 // Centralized Modal Closing Function
 function closeModals() {
@@ -684,9 +700,37 @@ function closeModals() {
     }
 }
 
-// (Removed duplicate showCustomAlert function, now imported from ui-helpers.js)
+// Custom Dialog (Alert) Function
+function showCustomAlert(message, duration = 1000) {
+    const confirmBtn = document.getElementById('customDialogConfirmBtn');
+    const cancelBtn = document.getElementById('customDialogCancelBtn');
+    const dialogButtonsContainer = document.querySelector('#customDialogModal .custom-dialog-buttons');
 
-// (Removed duplicate formatDate function, now imported from ui-helpers.js)
+    logDebug('showCustomAlert: confirmBtn found: ' + !!confirmBtn + ', cancelBtn found: ' + !!cancelBtn + ', dialogButtonsContainer found: ' + !!dialogButtonsContainer);
+
+    if (!customDialogModal || !customDialogMessage || !confirmBtn || !cancelBtn || !dialogButtonsContainer) {
+        console.error('Custom dialog elements not found. Cannot show alert.');
+        console.log('ALERT (fallback): ' + message);
+        return;
+    }
+    customDialogMessage.textContent = message;
+
+    dialogButtonsContainer.style.display = 'none'; // Explicitly hide the container
+    logDebug('showCustomAlert: dialogButtonsContainer display set to: ' + dialogButtonsContainer.style.display);
+
+    showModal(customDialogModal);
+    if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); }
+    autoDismissTimeout = setTimeout(() => { hideModal(customDialogModal); autoDismissTimeout = null; }, duration);
+    logDebug('Alert: Showing alert: "' + message + '"');
+}
+
+// Date Formatting Helper Functions (Australian Style)
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
 
 /**
  * A centralized helper function to compute all display-related data for a share.
