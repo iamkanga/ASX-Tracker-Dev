@@ -2532,16 +2532,16 @@ function renderSortSelect() {
         sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
 
         const stockOptions = [
-            { value: 'entryDate-desc', text: 'Date Added (Newest)' },
-            { value: 'entryDate-asc', text: 'Date Added (Oldest)' },
+            { value: 'entryDate-desc', text: 'Date (H-L)' },
+            { value: 'entryDate-asc', text: 'Date (L-H)' },
             { value: 'shareName-asc', text: 'Code (A-Z)' },
             { value: 'shareName-desc', text: 'Code (Z-A)' },
-            { value: 'dividendAmount-desc', text: 'Dividend Yield % (High-Low)' }, // Changed text
-            { value: 'dividendAmount-asc', text: 'Dividend Yield % (Low-High)' },  // Changed text
-            { value: 'percentageChange-desc', text: 'Percentage Change (High-Low)' },
-            { value: 'percentageChange-asc', text: 'Percentage Change (Low-High)' },
-            { value: 'starRating-desc', text: 'Star Rating (High-Low)' },
-            { value: 'starRating-asc', text: 'Star Rating (Low-High)' }
+            { value: 'dividendAmount-desc', text: 'Yield % (H-L)' },
+            { value: 'dividendAmount-asc', text: 'Yield % (L-H)' },
+            { value: 'percentageChange-desc', text: 'Change % (H-L)' },
+            { value: 'percentageChange-asc', text: 'Change % (L-H)' },
+            { value: 'starRating-desc', text: '⭐ (H-L)' },
+            { value: 'starRating-asc', text: '⭐ (L-H)' }
         ];
 
         const cashOptions = [
