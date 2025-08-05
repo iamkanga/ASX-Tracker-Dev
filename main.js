@@ -2,16 +2,16 @@
 // This file imports modules and runs the main logic
 
 import * as watchlistModule from './watchlist.js';
-// Optionally import other modules as needed
+import './script.js'; // Import main app logic (auth, splash, etc.)
 
-// Example DOMContentLoaded setup
+// Expose the watchlist module globally for diagnostics and debugging
+window.watchlistModule = watchlistModule;
 
+// Example DOMContentLoaded setup for watchlist diagnostics (optional)
 document.addEventListener('DOMContentLoaded', function () {
-    // Initialize watchlist dropdowns and diagnostics
-    window.watchlistModule = watchlistModule; // Expose for legacy/inline use
     watchlistModule.renderWatchlistSelect();
     watchlistModule.populateShareWatchlistSelect();
     watchlistModule.ensurePortfolioOptionPresent();
     setTimeout(watchlistModule.ensurePortfolioOptionPresent, 2000);
-    // ...other initialization logic...
+    // ...other initialization logic if needed...
 });
