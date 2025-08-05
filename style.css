@@ -1,3 +1,8 @@
+/* Copilot test: Make all h2 elements red and bold to prove file change */
+h2 {
+  color: red !important;
+  font-weight: bold !important;
+}
 /* [Copilot Update] Source control helper (style.css)
    This comment and the function below are placeholders for automating source control actions (e.g., git add/commit)
    and for tracking how many times files have been made available to source control from style.css.
