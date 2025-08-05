@@ -1,16 +1,4 @@
 // Copilot update: 2025-07-29 - change for sync test
-import {
-  logDebug,
-  setIconDisabled,
-  showCustomAlert,
-  formatDate,
-  showModal,
-  hideModal,
-  addCommentSection,
-  clearForm,
-  addShareToTable,
-  addShareToMobileCards
-} from './ui-helpers.js';
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
@@ -121,14 +109,6 @@ function forceApplyCurrentSort() {
 
 // --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
 document.addEventListener('DOMContentLoaded', function () {
-    // --- Watchlist logic moved to watchlist.js ---
-    // Import and call watchlist functions
-    if (window.watchlistModule) {
-        window.watchlistModule.renderWatchlistSelect();
-        window.watchlistModule.populateShareWatchlistSelect();
-        window.watchlistModule.ensurePortfolioOptionPresent();
-        setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
-    }
     const hideCheckbox = document.getElementById('sidebarHideCheckbox');
     const showCheckbox = document.getElementById('sidebarShowCheckbox');
 
@@ -183,59 +163,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Ensure Edit Current Watchlist button updates when selection changes
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
         watchlistSelect.addEventListener('change', function () {
-            // If Portfolio is selected, show portfolio view
-            if (watchlistSelect.value === 'portfolio') {
-                showPortfolioView();
-            } else {
-                // Default: show normal watchlist view
-                showWatchlistView();
-            }
             updateMainButtonsState(true);
         });
     }
-
-    // Portfolio view logic
-    window.showPortfolioView = function() {
-        // Hide normal stock watchlist section, show a dedicated portfolio section (create if needed)
-        if (!document.getElementById('portfolioSection')) {
-            const portfolioSection = document.createElement('div');
-            portfolioSection.id = 'portfolioSection';
-            portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
-            mainContainer.appendChild(portfolioSection);
-        }
-        stockWatchlistSection.style.display = 'none';
-        let portfolioSection = document.getElementById('portfolioSection');
-        portfolioSection.style.display = 'block';
-        renderPortfolioList();
-    };
-    window.showWatchlistView = function() {
-        // Hide portfolio section if present, show normal stock watchlist section
-        let portfolioSection = document.getElementById('portfolioSection');
-        if (portfolioSection) portfolioSection.style.display = 'none';
-        stockWatchlistSection.style.display = '';
-    };
-    // Render portfolio list (basic version)
-    window.renderPortfolioList = function() {
-        let portfolioListContainer = document.getElementById('portfolioListContainer');
-        if (!portfolioListContainer) return;
-        // Filter allSharesData for shares in the portfolio
-        const portfolioShares = allSharesData.filter(share => share.watchlistId === 'portfolio');
-        if (portfolioShares.length === 0) {
-            portfolioListContainer.innerHTML = '<p>No shares in your portfolio yet.</p>';
-            return;
-        }
-        let html = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg Price</th><th>Current Price</th><th>Value</th></tr></thead><tbody>';
-        portfolioShares.forEach(share => {
-            const shares = share.portfolioShares || '';
-            const avgPrice = share.portfolioAvgPrice || '';
-            const currPrice = share.currentPrice || '';
-            const value = (shares && currPrice) ? (Number(shares) * Number(currPrice)).toFixed(2) : '';
-            html += `<tr><td>${share.shareName}</td><td>${shares}</td><td>${avgPrice}</td><td>${currPrice}</td><td>${value ? '$'+value : ''}</td></tr>`;
-        });
-        html += '</tbody></table>';
-        portfolioListContainer.innerHTML = html;
-    };
 });
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
@@ -243,7 +173,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // from the <script type="module"> block in index.html.
 
 // --- GLOBAL VARIABLES ---
-const DEBUG_MODE = true; // Set to 'true' to enable debug logging for troubleshooting Portfolio dropdown
+const DEBUG_MODE = false; // Set to 'false' to disable most console.log messages in production
 
 // Custom logging function to control verbosity
 function logDebug(message, ...optionalParams) {
@@ -1530,12 +1460,7 @@ function hideModal(modalElement) {
 
 function clearWatchlistUI() {
     if (!watchlistSelect) { console.error('clearWatchlistUI: watchlistSelect element not found.'); return; }
-    // Always include Portfolio as a special option
-    watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>';
-    const portfolioOption = document.createElement('option');
-    portfolioOption.value = 'portfolio';
-    portfolioOption.textContent = 'Portfolio';
-    watchlistSelect.appendChild(portfolioOption);
+    watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>'; // Updated placeholder
     userWatchlists = [];
     currentSelectedWatchlistIds = [];
     logDebug('UI: Watchlist UI cleared.');
@@ -1643,11 +1568,6 @@ function clearForm() {
     formInputs.forEach(input => {
         if (input) { input.value = ''; }
     });
-    // Explicitly clear portfolio fields
-    const portfolioSharesInput = document.getElementById('portfolioShares');
-    const portfolioAvgPriceInput = document.getElementById('portfolioAvgPrice');
-    if (portfolioSharesInput) portfolioSharesInput.value = '';
-    if (portfolioAvgPriceInput) portfolioAvgPriceInput.value = '';
     if (commentsFormContainer) { // This now refers to #dynamicCommentsArea
         commentsFormContainer.innerHTML = ''; // Clears ONLY the dynamically added comments
     }
@@ -1689,22 +1609,12 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         return;
     }
 
-    // Always start with placeholder
-    shareWatchlistSelect.innerHTML = '<option value="" disabled selected>Select a Watchlist</option>';
-
-    // Always include Portfolio as a special option
-    const PORTFOLIO_WATCHLIST_ID = 'portfolio';
-    const PORTFOLIO_WATCHLIST_NAME = 'Portfolio';
-    const portfolioOption = document.createElement('option');
-    portfolioOption.value = PORTFOLIO_WATCHLIST_ID;
-    portfolioOption.textContent = PORTFOLIO_WATCHLIST_NAME;
-    shareWatchlistSelect.appendChild(portfolioOption);
+    shareWatchlistSelect.innerHTML = '<option value="" disabled selected>Select a Watchlist</option>'; // Always start with placeholder
 
     // Filter out the "Cash & Assets" option from the share watchlist dropdown
     const stockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
+
     stockWatchlists.forEach(watchlist => {
-        // Don't duplicate Portfolio if userWatchlists already has it
-        if (watchlist.id === PORTFOLIO_WATCHLIST_ID) return;
         const option = document.createElement('option');
         option.value = watchlist.id;
         option.textContent = watchlist.name;
@@ -3515,11 +3425,6 @@ async function loadUserWatchlistsAndSettings() {
         logDebug('User Settings: Final currentSelectedWatchlistIds before renderWatchlistSelect: ' + currentSelectedWatchlistIds.join(', '));
 
         renderWatchlistSelect(); // Populate and select in the header dropdown
-
-        // Also re-populate the share modal dropdown if present
-        if (typeof populateShareWatchlistSelect === 'function') {
-            populateShareWatchlistSelect();
-        }
 
         // Apply saved sort order or default
         if (currentUserId && savedSortOrder && Array.from(sortSelect.options).some(option => option.value === savedSortOrder)) {
