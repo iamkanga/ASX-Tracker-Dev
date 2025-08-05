@@ -393,6 +393,14 @@
 
                 <!-- Portfolio/Share Details Section (distinct grouping) -->
                 <div class="portfolio-details-section" style="margin-top: 24px; padding: 16px; border: 1px solid var(--ghosted-text,#ccc); border-radius: 8px; background: var(--modal-bg,#f9f9f9);">
+                    <!-- Portfolio-specific fields -->
+                    <div class="portfolio-inputs-group" style="margin-bottom: 18px;">
+                        <label for="portfolioShares">Number of Shares Purchased:</label>
+                        <input type="number" id="portfolioShares" min="0" step="1" placeholder="e.g., 1000">
+
+                        <label for="portfolioAvgPrice">Average Purchase Price ($):</label>
+                        <input type="number" id="portfolioAvgPrice" min="0" step="0.01" placeholder="e.g., 23.45">
+                    </div>
                     <label for="shareRating">Star Rating:</label>
                     <select id="shareRating" class="dropdown-large">
                         <option value="0" selected>No Rating</option>
