@@ -1637,6 +1637,11 @@ function clearForm() {
     formInputs.forEach(input => {
         if (input) { input.value = ''; }
     });
+    // Explicitly clear portfolio fields
+    const portfolioSharesInput = document.getElementById('portfolioShares');
+    const portfolioAvgPriceInput = document.getElementById('portfolioAvgPrice');
+    if (portfolioSharesInput) portfolioSharesInput.value = '';
+    if (portfolioAvgPriceInput) portfolioAvgPriceInput.value = '';
     if (commentsFormContainer) { // This now refers to #dynamicCommentsArea
         commentsFormContainer.innerHTML = ''; // Clears ONLY the dynamically added comments
     }
