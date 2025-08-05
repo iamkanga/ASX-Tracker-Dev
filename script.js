@@ -116,6 +116,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (typeof populateShareWatchlistSelect === 'function' && userWatchlists.length === 0) {
         populateShareWatchlistSelect();
     }
+    // Always ensure Portfolio is present in main watchlist dropdown
+    if (watchlistSelect && !Array.from(watchlistSelect.options).some(opt => opt.value === 'portfolio')) {
+        const portfolioOption = document.createElement('option');
+        portfolioOption.value = 'portfolio';
+        portfolioOption.textContent = 'Portfolio';
+        watchlistSelect.appendChild(portfolioOption);
+    }
     const hideCheckbox = document.getElementById('sidebarHideCheckbox');
     const showCheckbox = document.getElementById('sidebarShowCheckbox');
 
@@ -170,9 +177,59 @@ document.addEventListener('DOMContentLoaded', function () {
     // Ensure Edit Current Watchlist button updates when selection changes
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
         watchlistSelect.addEventListener('change', function () {
+            // If Portfolio is selected, show portfolio view
+            if (watchlistSelect.value === 'portfolio') {
+                showPortfolioView();
+            } else {
+                // Default: show normal watchlist view
+                showWatchlistView();
+            }
             updateMainButtonsState(true);
         });
     }
+
+    // Portfolio view logic
+    window.showPortfolioView = function() {
+        // Hide normal stock watchlist section, show a dedicated portfolio section (create if needed)
+        if (!document.getElementById('portfolioSection')) {
+            const portfolioSection = document.createElement('div');
+            portfolioSection.id = 'portfolioSection';
+            portfolioSection.className = 'portfolio-section';
+            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
+            mainContainer.appendChild(portfolioSection);
+        }
+        stockWatchlistSection.style.display = 'none';
+        let portfolioSection = document.getElementById('portfolioSection');
+        portfolioSection.style.display = 'block';
+        renderPortfolioList();
+    };
+    window.showWatchlistView = function() {
+        // Hide portfolio section if present, show normal stock watchlist section
+        let portfolioSection = document.getElementById('portfolioSection');
+        if (portfolioSection) portfolioSection.style.display = 'none';
+        stockWatchlistSection.style.display = '';
+    };
+    // Render portfolio list (basic version)
+    window.renderPortfolioList = function() {
+        let portfolioListContainer = document.getElementById('portfolioListContainer');
+        if (!portfolioListContainer) return;
+        // Filter allSharesData for shares in the portfolio
+        const portfolioShares = allSharesData.filter(share => share.watchlistId === 'portfolio');
+        if (portfolioShares.length === 0) {
+            portfolioListContainer.innerHTML = '<p>No shares in your portfolio yet.</p>';
+            return;
+        }
+        let html = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg Price</th><th>Current Price</th><th>Value</th></tr></thead><tbody>';
+        portfolioShares.forEach(share => {
+            const shares = share.portfolioShares || '';
+            const avgPrice = share.portfolioAvgPrice || '';
+            const currPrice = share.currentPrice || '';
+            const value = (shares && currPrice) ? (Number(shares) * Number(currPrice)).toFixed(2) : '';
+            html += `<tr><td>${share.shareName}</td><td>${shares}</td><td>${avgPrice}</td><td>${currPrice}</td><td>${value ? '$'+value : ''}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        portfolioListContainer.innerHTML = html;
+    };
 });
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
@@ -1467,7 +1524,12 @@ function hideModal(modalElement) {
 
 function clearWatchlistUI() {
     if (!watchlistSelect) { console.error('clearWatchlistUI: watchlistSelect element not found.'); return; }
-    watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>'; // Updated placeholder
+    // Always include Portfolio as a special option
+    watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>';
+    const portfolioOption = document.createElement('option');
+    portfolioOption.value = 'portfolio';
+    portfolioOption.textContent = 'Portfolio';
+    watchlistSelect.appendChild(portfolioOption);
     userWatchlists = [];
     currentSelectedWatchlistIds = [];
     logDebug('UI: Watchlist UI cleared.');
@@ -1616,12 +1678,22 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         return;
     }
 
-    shareWatchlistSelect.innerHTML = '<option value="" disabled selected>Select a Watchlist</option>'; // Always start with placeholder
+    // Always start with placeholder
+    shareWatchlistSelect.innerHTML = '<option value="" disabled selected>Select a Watchlist</option>';
+
+    // Always include Portfolio as a special option
+    const PORTFOLIO_WATCHLIST_ID = 'portfolio';
+    const PORTFOLIO_WATCHLIST_NAME = 'Portfolio';
+    const portfolioOption = document.createElement('option');
+    portfolioOption.value = PORTFOLIO_WATCHLIST_ID;
+    portfolioOption.textContent = PORTFOLIO_WATCHLIST_NAME;
+    shareWatchlistSelect.appendChild(portfolioOption);
 
     // Filter out the "Cash & Assets" option from the share watchlist dropdown
     const stockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
-
     stockWatchlists.forEach(watchlist => {
+        // Don't duplicate Portfolio if userWatchlists already has it
+        if (watchlist.id === PORTFOLIO_WATCHLIST_ID) return;
         const option = document.createElement('option');
         option.value = watchlist.id;
         option.textContent = watchlist.name;
