@@ -684,29 +684,7 @@ function closeModals() {
     }
 }
 
-// Custom Dialog (Alert) Function
-function showCustomAlert(message, duration = 1000) {
-    const confirmBtn = document.getElementById('customDialogConfirmBtn');
-    const cancelBtn = document.getElementById('customDialogCancelBtn');
-    const dialogButtonsContainer = document.querySelector('#customDialogModal .custom-dialog-buttons');
-
-    logDebug('showCustomAlert: confirmBtn found: ' + !!confirmBtn + ', cancelBtn found: ' + !!cancelBtn + ', dialogButtonsContainer found: ' + !!dialogButtonsContainer);
-
-    if (!customDialogModal || !customDialogMessage || !confirmBtn || !cancelBtn || !dialogButtonsContainer) {
-        console.error('Custom dialog elements not found. Cannot show alert.');
-        console.log('ALERT (fallback): ' + message);
-        return;
-    }
-    customDialogMessage.textContent = message;
-
-    dialogButtonsContainer.style.display = 'none'; // Explicitly hide the container
-    logDebug('showCustomAlert: dialogButtonsContainer display set to: ' + dialogButtonsContainer.style.display);
-
-    showModal(customDialogModal);
-    if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); }
-    autoDismissTimeout = setTimeout(() => { hideModal(customDialogModal); autoDismissTimeout = null; }, duration);
-    logDebug('Alert: Showing alert: "' + message + '"');
-}
+// (Removed duplicate showCustomAlert function, now imported from ui-helpers.js)
 
 // Date Formatting Helper Functions (Australian Style)
 function formatDate(dateString) {
