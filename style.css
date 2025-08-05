@@ -3,8 +3,9 @@
   color: red !important;
   font-weight: bold !important;
 }
+/* Sidebar menu items: revert to white text, keep bold for visibility */
 .menu-button-item {
-  color: red !important;
+  color: #fff !important;
   font-weight: bold !important;
 }
 /* Copilot test: Make all h2 elements red and bold to prove file change */

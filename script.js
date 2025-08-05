@@ -1,4 +1,7 @@
 
+// Copilot test: JS is loaded and running!
+alert('Copilot test: JS is loaded and running!');
+
 
 // --- ASX Code Data Loading ---
 async function loadAsxCodes() {
