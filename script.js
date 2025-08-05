@@ -65,7 +65,16 @@ function updateMainSectionForWatchlist() {
     const watchlistSelect = document.getElementById('watchlistSelect');
     if (!watchlistSelect) return;
     if (watchlistSelect.value === '__PORTFOLIO__') {
-        showPortfolioView();
+        // Hide other sections, show portfolioSection
+        const stockWatchlistSection = document.getElementById('stockWatchlistSection');
+        const cashAssetsSection = document.getElementById('cashAssetsSection');
+        const portfolioSection = document.getElementById('portfolioSection');
+        if (stockWatchlistSection) stockWatchlistSection.classList.add('app-hidden');
+        if (cashAssetsSection) cashAssetsSection.classList.add('app-hidden');
+        if (portfolioSection) {
+            portfolioSection.classList.remove('app-hidden');
+            renderPortfolioView();
+        }
     } else if (watchlistSelect.value === 'cashBank') {
         const stockWatchlistSection = document.getElementById('stockWatchlistSection');
         const cashAssetsSection = document.getElementById('cashAssetsSection');
@@ -76,6 +85,8 @@ function updateMainSectionForWatchlist() {
         const cashAssetsSection = document.getElementById('cashAssetsSection');
         if (stockWatchlistSection) stockWatchlistSection.classList.remove('app-hidden');
         if (cashAssetsSection) cashAssetsSection.classList.add('app-hidden');
+        const portfolioSection = document.getElementById('portfolioSection');
+        if (portfolioSection) portfolioSection.classList.add('app-hidden');
     }
 }
 
