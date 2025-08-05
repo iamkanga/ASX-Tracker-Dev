@@ -598,15 +598,6 @@ function showPortfolioView() {
     const select = document.getElementById('watchlistSelect');
     if (select && select.value !== '__PORTFOLIO__') select.value = '__PORTFOLIO__';
 }
-    const select = document.getElementById('watchlistSelect');
-    if (select) {
-        select.addEventListener('change', function() {
-            if (select.value === '__PORTFOLIO__') {
-                showPortfolioView();
-            }
-        });
-    }
-});
 
 // Render Portfolio table
 function renderPortfolioView() {
