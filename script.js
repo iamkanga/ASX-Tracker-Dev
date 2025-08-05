@@ -267,6 +267,16 @@ window.addEventListener('popstate', function(event) {
     }
     // If no modals or sidebar are open, allow default browser back (exit app)
 });
+// === DEBUG BANNER: Copilot Diagnostic ===
+(() => {
+    const banner = document.createElement('div');
+    banner.id = 'copilot-debug-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;width:100vw;z-index:99999;background:#ff0;color:#000;font-size:18px;font-weight:bold;text-align:center;padding:8px 0;border-bottom:2px solid #f00;box-shadow:0 2px 8px #0003;';
+    banner.textContent = 'DEBUG: script.js loaded at ' + new Date().toLocaleString() + ' [Copilot Diagnostic Banner]';
+    document.body.prepend(banner);
+    setTimeout(() => { banner.remove(); }, 10000); // Remove after 10s
+})();
+console.log('[COPILOT DEBUG] script.js loaded at', new Date().toISOString());
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
 // The previous patch has been removed as the root cause of the UI issues,
@@ -514,7 +524,7 @@ let cashAssetVisibility = {}; // This object will still track the *current sessi
 const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 
 // === PORTFOLIO FEATURE (IN-MEMORY, UI-INTEGRATED) ===
-window.portfolioHoldings = [];
+window.portfolioHoldings = window.portfolioHoldings || [];
 
 // Add Portfolio button to sidebar if missing
 function ensurePortfolioSidebarButton() {
@@ -570,7 +580,8 @@ function ensurePortfolioModal() {
         const avgPrice = parseFloat(document.getElementById('portfolioAvgPrice').value);
         const qty = parseInt(document.getElementById('portfolioQuantity').value);
         if (!code || isNaN(avgPrice) || isNaN(qty) || qty < 1) return;
-        portfolioHoldings.push({ code, avgPrice, qty });
+        window.portfolioHoldings.push({ code, avgPrice, qty });
+        console.log('[DEBUG] Added to portfolio (modal):', { code, avgPrice, qty });
         modal.style.display = 'none';
         renderPortfolioView();
     };
@@ -615,21 +626,23 @@ function showPortfolioView() {
 function renderPortfolioView() {
     const container = document.getElementById('portfolioTableContainer');
     if (!container) return;
-    if (portfolioHoldings.length === 0) {
+    if (!window.portfolioHoldings || window.portfolioHoldings.length === 0) {
         container.innerHTML = '<p>No stocks in portfolio yet.</p>';
+        console.log('[DEBUG] No portfolio holdings to display.');
         return;
     }
     let html = `<table class="portfolio-table"><thead><tr><th>ASX Code</th><th>Company</th><th>Avg Price</th><th>Quantity</th></tr></thead><tbody>`;
-    for (const holding of portfolioHoldings) {
+    for (const holding of window.portfolioHoldings) {
         let name = '';
         if (window.allAsxCodes) {
             const found = window.allAsxCodes.find(c => c.code === holding.code);
             name = found ? found.name : '';
         }
-        html += `<tr><td>${holding.code}</td><td>${name}</td><td>${holding.avgPrice.toFixed(2)}</td><td>${holding.qty}</td></tr>`;
+        html += `<tr><td>${holding.code}</td><td>${name}</td><td>${Number(holding.avgPrice).toFixed(2)}</td><td>${holding.qty}</td></tr>`;
     }
     html += '</tbody></table>';
     container.innerHTML = html;
+    console.log('[DEBUG] Portfolio rendered:', window.portfolioHoldings);
 }
 
 // Initialize Portfolio feature on DOMContentLoaded
@@ -6718,6 +6731,7 @@ function showPortfolioView() {
         <div id="portfolioTableContainer"></div>`;
     document.getElementById('addPortfolioBtn').onclick = showPortfolioModal;
     renderPortfolioView();
+    console.log('[DEBUG] showPortfolioView called.');
 }
 
 // Render Portfolio table
@@ -6849,43 +6863,44 @@ document.addEventListener('DOMContentLoaded', function() {
     } // This closing brace completes the 'else' block for the splash screen check.
 
     // Initially hide main app content and header
-    if (mainContainer) {
-        mainContainer.classList.add('app-hidden');
-    }
-    if (appHeader) {
-        appHeader.classList.add('app-hidden');
-    }
+if (savePortfolioBtn) {
+    savePortfolioBtn.addEventListener('click', async function () {
+        const code = (portfolioAsxCodeInput?.value || '').toUpperCase().trim();
+        const qty = Number(portfolioQuantityInput?.value) || 0;
+        const avg = Number(portfolioAvgPriceInput?.value) || 0;
+        if (!code || qty <= 0 || avg <= 0) {
+            showCustomAlert && showCustomAlert('Please enter ASX code, quantity, and average price.');
+            return;
+        }
 
-    if (window.firestoreDb && window.firebaseAuth && window.getFirebaseAppId && window.firestore && window.authFunctions) {
-        db = window.firestoreDb;
-        auth = window.firebaseAuth;
-        currentAppId = window.getFirebaseAppId();
-        window._firebaseInitialized = true; // Mark Firebase as initialized
-        logDebug('Firebase Ready: DB, Auth, and AppId assigned from window. Setting up auth state listener.');
-
-        window.authFunctions.onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUserId = user.uid;
-                logDebug('AuthState: User signed in: ' + user.uid);
-                logDebug('AuthState: User email: ' + user.email);
-                mainTitle.textContent = 'ASX Tracker';
-                logDebug('AuthState: Main title set to ASX Tracker.');
-                updateMainButtonsState(true);
-                window._userAuthenticated = true; // Mark user as authenticated
-
-                if (mainContainer) {
-                    mainContainer.classList.remove('app-hidden');
-                }
-                if (appHeader) {
-                    appHeader.classList.remove('app-hidden');
-                }
-                adjustMainContentPadding();
-
-                if (splashKangarooIcon) {
-                    splashKangarooIcon.classList.add('pulsing');
-                    logDebug('Splash Screen: Started pulsing animation after sign-in.');
-                }
-
+        // Save to Firestore as before
+        if (!db || !currentUserId || !window.firestore) {
+            showCustomAlert('Error: Not logged in or database not available.');
+            return;
+        }
+        const portfolioData = {
+            code: code,
+            qty: qty,
+            avg: avg,
+            userId: currentUserId,
+            createdAt: new Date().toISOString()
+        };
+        try {
+            const portfolioColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/portfolio');
+            await window.firestore.addDoc(portfolioColRef, portfolioData);
+            // --- Copilot: Also update in-memory holdings and UI immediately ---
+            window.portfolioHoldings.push({ code, avgPrice: avg, qty });
+            console.log('[DEBUG] Added to portfolio (savePortfolioBtn):', { code, avgPrice: avg, qty });
+            renderPortfolioView();
+            hidePortfolioModal();
+            clearPortfolioForm();
+            showCustomAlert && showCustomAlert('Added to portfolio!');
+        } catch (error) {
+            console.error('Firestore: Error saving portfolio item:', error);
+            showCustomAlert('Error saving to portfolio: ' + error.message);
+        }
+    });
+}
                 targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
 
                 // Load user data, then do an initial fetch of live prices before setting the update interval.
