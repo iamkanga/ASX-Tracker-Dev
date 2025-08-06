@@ -1184,10 +1184,7 @@ function updateOrCreateShareMobileCard(share) {
 
 
 
-/**
- * Enables or disables the 'Toggle Compact View' button based on screen width.
- * This feature is only intended for mobile views (<= 768px).
- */
+
 
 
 function showModal(modalElement) {
