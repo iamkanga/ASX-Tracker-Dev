@@ -1188,15 +1188,7 @@ function updateOrCreateShareMobileCard(share) {
  * Enables or disables the 'Toggle Compact View' button based on screen width.
  * This feature is only intended for mobile views (<= 768px).
  */
-function updateCompactViewButtonState() {
-    if (!toggleCompactViewBtn) {
-        return; // Exit if the button doesn't exist
-    }
-    // Always enable the button, regardless of screen width
-    toggleCompactViewBtn.disabled = false;
-    toggleCompactViewBtn.title = "Toggle between default and compact card view.";
-    logDebug(`UI State: Compact view button enabled for all screen widths.`);
-}
+
 
 function showModal(modalElement) {
     if (modalElement) {
