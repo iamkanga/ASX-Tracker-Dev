@@ -4503,7 +4503,9 @@ function updateMainTitle() {
     if (selectedValue === ALL_SHARES_ID) {
         mainTitle.textContent = 'All Shares';
     } else if (selectedValue === CASH_BANK_WATCHLIST_ID) {
-        mainTitle.textContent = 'Cash & Assets'; // UPDATED TEXT
+        mainTitle.textContent = 'Cash & Assets';
+    } else if (selectedValue === PORTFOLIO_VIEW_ID) {
+        mainTitle.textContent = 'My Portfolio';
     } else {
         mainTitle.textContent = selectedText;
     }
