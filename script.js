@@ -2839,23 +2839,40 @@ function renderPortfolio() {
     portfolioTableBody.innerHTML = ''; // Clear existing content
     mobilePortfolioCards.innerHTML = ''; // Clear existing content
 
-    const portfolioShares = allSharesData.filter(share => 
-        share.portfolioShares !== null && share.portfolioShares > 0 &&
-        share.portfolioAvgPrice !== null && share.portfolioAvgPrice > 0
-    );
+    let sharesToConsider = [];
+    const selectedWatchlistId = currentSelectedWatchlistIds[0]; // Get the currently selected watchlist ID
+
+    // If "My Portfolio" is selected AND a specific watchlist is also selected (not "All Shares" or "Cash & Assets")
+    if (selectedWatchlistId !== ALL_SHARES_ID && selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
+        // Filter all shares by the selected watchlist AND portfolio data
+        sharesToConsider = allSharesData.filter(share =>
+            share.watchlistId === selectedWatchlistId &&
+            share.portfolioShares !== null && share.portfolioShares > 0 &&
+            share.portfolioAvgPrice !== null && share.portfolioAvgPrice > 0
+        );
+        logDebug('Render Portfolio: Filtering by specific watchlist: ' + selectedWatchlistId);
+    } else {
+        // If "My Portfolio" is selected and "All Shares" is also selected (or no specific watchlist)
+        // Display all shares that have portfolio data
+        sharesToConsider = allSharesData.filter(share =>
+            share.portfolioShares !== null && share.portfolioShares > 0 &&
+            share.portfolioAvgPrice !== null && share.portfolioAvgPrice > 0
+        );
+        logDebug('Render Portfolio: Displaying all shares with portfolio data.');
+    }
 
     let totalValue = 0;
     let totalInvested = 0;
     let totalGainLossAmount = 0;
 
-    if (portfolioShares.length === 0) {
+    if (sharesToConsider.length === 0) {
         const emptyMessage = document.createElement('p');
         emptyMessage.classList.add('empty-message');
-        emptyMessage.textContent = 'No shares in your portfolio. Add shares with purchase details to get started!';
+        emptyMessage.textContent = 'No shares in your portfolio for the current selection. Add shares with purchase details to get started!';
         emptyMessage.style.textAlign = 'center';
         emptyMessage.style.padding = '20px';
         emptyMessage.style.color = 'var(--ghosted-text)';
-        
+
         const td = document.createElement('td');
         td.colSpan = 6;
         td.appendChild(emptyMessage);
@@ -2867,10 +2884,10 @@ function renderPortfolio() {
         mobilePortfolioCards.appendChild(emptyMessage.cloneNode(true));
 
     } else {
-        portfolioShares.forEach(share => {
+        sharesToConsider.forEach(share => {
             const livePriceData = livePrices[share.shareName.toUpperCase()];
-            const currentPrice = livePriceData && livePriceData.live !== null && !isNaN(livePriceData.live) 
-                                ? livePriceData.live 
+            const currentPrice = livePriceData && livePriceData.live !== null && !isNaN(livePriceData.live)
+                                ? livePriceData.live
                                 : (share.currentPrice !== null && !isNaN(share.currentPrice) ? share.currentPrice : 0);
 
             const investedCapital = share.portfolioShares * share.portfolioAvgPrice;
@@ -2913,9 +2930,9 @@ function renderPortfolio() {
         });
     }
 
-    totalPortfolioValue.textContent = '${totalValue.toFixed(2)}';
-    totalInvestedCapital.textContent = '${totalInvested.toFixed(2)}';
-    totalGainLoss.textContent = '${totalGainLossAmount.toFixed(2)}';
+    totalPortfolioValue.textContent = `${totalValue.toFixed(2)}`;
+    totalInvestedCapital.textContent = `${totalInvested.toFixed(2)}`;
+    totalGainLoss.textContent = `${totalGainLossAmount.toFixed(2)}`;
     totalGainLoss.classList.remove('positive', 'negative', 'neutral');
     totalGainLoss.classList.add(totalGainLossAmount > 0 ? 'positive' : (totalGainLossAmount < 0 ? 'negative' : 'neutral'));
 
