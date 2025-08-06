@@ -184,6 +184,23 @@ function logDebug(message, ...optionalParams) {
 }
 // --- END DEBUG LOGGING SETUP ---
 
+/**
+ * A robust and centralized function to get DOM elements by their ID.
+ * It provides clear error logging if an element is not found, which is
+ * crucial for debugging, especially in a large application.
+ * @param {string} id The ID of the element to find.
+ * @param {boolean} isRequired If true, logs an error if the element is not found. Defaults to true.
+ * @returns {HTMLElement|null} The found element or null.
+ */
+function getElement(id, isRequired = true) {
+    const element = document.getElementById(id);
+    if (!element && isRequired) {
+        // Using console.error makes the message stand out in the developer tools.
+        console.error(`Critical Error: Required HTML element with ID '${id}' was not found. The application may not work correctly. Please check the index.html file.`);
+    }
+    return element;
+}
+
 let db;
 let auth = null;
 let currentUserId = null;
