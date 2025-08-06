@@ -1,7 +1,7 @@
 // Service Worker Version: 1.0.3 - Added more detailed logging for debugging
 
 // Cache name for the current version of the service worker
-const CACHE_NAME = `share-watchlist-v1.0.3`; // Explicit versioning for easier debugging
+const CACHE_NAME = `share-watchlist-v1.0.4`; // Explicit versioning for easier debugging
 
 // List of essential application assets to precache
 const CACHED_ASSETS = [
