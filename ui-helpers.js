@@ -1,3 +1,28 @@
+// --- Share/Watchlist UI Clearing Helpers (added for modularization) ---
+/**
+ * Clears the share list UI (table and mobile cards).
+ */
+export function clearShareList() {
+    const shareTableBody = document.querySelector('#shareTable tbody');
+    if (shareTableBody) shareTableBody.innerHTML = '';
+    const mobileCards = document.querySelectorAll('.mobile-card');
+    mobileCards.forEach(card => card.remove());
+}
+
+/**
+ * Clears the share list UI (alias for clearShareList for legacy code).
+ */
+export function clearShareListUI() {
+    clearShareList();
+}
+
+/**
+ * Clears the watchlist dropdown UI.
+ */
+export function clearWatchlistUI() {
+    const watchlistSelect = document.getElementById('watchlistSelect');
+    if (watchlistSelect) watchlistSelect.innerHTML = '';
+}
 // --- Selection Helpers (migrated from script.js) ---
 /**
  * Selects a share in both table and mobile card views.
