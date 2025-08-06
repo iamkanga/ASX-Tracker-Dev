@@ -477,7 +477,8 @@ if (!sidebarOverlay) {
 
 const formInputs = [
     shareNameInput, currentPriceInput, targetPriceInput,
-    dividendAmountInput, frankingCreditsInput, shareRatingSelect
+    dividendAmountInput, frankingCreditsInput, shareRatingSelect,
+    portfolioShares, portfolioAvgPrice // NEW: Add portfolio inputs
 ];
 
 // NEW: Form inputs for Cash Asset Modal
@@ -1714,6 +1715,10 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? formatUserDecimalStrict(shareToEdit.dividendAmount) : '';
     if (frankingCreditsInput) frankingCreditsInput.value = Number(shareToEdit.frankingCredits) !== null && !isNaN(Number(shareToEdit.frankingCredits)) ? Number(shareToEdit.frankingCredits).toFixed(1) : '';
 
+    // NEW: Populate portfolio shares and average price
+    if (portfolioShares) portfolioShares.value = Number(shareToEdit.portfolioShares) !== null && !isNaN(Number(shareToEdit.portfolioShares)) ? shareToEdit.portfolioShares : '';
+    if (portfolioAvgPrice) portfolioAvgPrice.value = Number(shareToEdit.portfolioAvgPrice) !== null && !isNaN(Number(shareToEdit.portfolioAvgPrice)) ? formatUserDecimalStrict(shareToEdit.portfolioAvgPrice) : '';
+
     // Set the star rating dropdown
     if (shareRatingSelect) {
         shareRatingSelect.value = shareToEdit.starRating !== undefined && shareToEdit.starRating !== null ? shareToEdit.starRating.toString() : '0';
@@ -1772,6 +1777,9 @@ function getCurrentFormData() {
         targetDirection: targetAboveCheckbox?.checked ? 'above' : 'below',
         dividendAmount: parseFloat(dividendAmountInput?.value),
         frankingCredits: parseFloat(frankingCreditsInput?.value),
+        // NEW: Get portfolio shares and average price
+        portfolioShares: parseInt(portfolioShares?.value),
+        portfolioAvgPrice: parseFloat(portfolioAvgPrice?.value),
         // Get the selected star rating as a number
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0,
         comments: comments,
@@ -1790,7 +1798,7 @@ function getCurrentFormData() {
 function areShareDataEqual(data1, data2) {
     if (!data1 || !data2) return false;
 
-    const fields = ['shareName', 'currentPrice', 'targetPrice', 'targetDirection', 'dividendAmount', 'frankingCredits', 'watchlistId', 'starRating']; // Include new targetDirection
+    const fields = ['shareName', 'currentPrice', 'targetPrice', 'targetDirection', 'dividendAmount', 'frankingCredits', 'watchlistId', 'starRating', 'portfolioShares', 'portfolioAvgPrice']; // Include new portfolio fields
     for (const field of fields) {
         let val1 = data1[field];
         let val2 = data2[field];
@@ -1912,6 +1920,8 @@ async function saveShareData(isSilent = false) {
         targetDirection: targetAboveCheckbox.checked ? 'above' : 'below',
         dividendAmount: isNaN(dividendAmount) ? null : dividendAmount,
         frankingCredits: isNaN(frankingCredits) ? null : frankingCredits,
+        portfolioShares: parseInt(portfolioShares?.value) || null,
+        portfolioAvgPrice: parseFloat(portfolioAvgPrice?.value) || null,
         comments: comments,
         // Use the selected watchlist from the modal dropdown
         watchlistId: selectedWatchlistIdForSave,
@@ -5160,6 +5170,16 @@ async function initializeAppLogic() {
             });
         }
     });
+
+    // NEW: Add event listeners for portfolio inputs to trigger dirty state check
+    if (portfolioShares) {
+        portfolioShares.addEventListener('input', checkFormDirtyState);
+        portfolioShares.addEventListener('change', checkFormDirtyState);
+    }
+    if (portfolioAvgPrice) {
+        portfolioAvgPrice.addEventListener('input', checkFormDirtyState);
+        portfolioAvgPrice.addEventListener('change', checkFormDirtyState);
+    }
 
     // NEW: Add event listeners for target direction checkboxes to make them mutually exclusive
     if (targetAboveCheckbox && targetBelowCheckbox) {
