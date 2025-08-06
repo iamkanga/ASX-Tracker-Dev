@@ -1,3 +1,26 @@
+// --- Modal Show/Hide Helpers (migrated from script.js) ---
+/**
+ * Shows a modal dialog by setting display to block and removing app-hidden class.
+ * @param {HTMLElement} modalElement
+ */
+export function showModal(modalElement) {
+    if (!modalElement) return;
+    modalElement.style.display = 'block';
+    modalElement.classList.remove('app-hidden');
+    // Optionally focus the first input or button inside the modal
+    const focusable = modalElement.querySelector('input, button, select, textarea');
+    if (focusable) focusable.focus();
+}
+
+/**
+ * Hides a modal dialog by setting display to none and adding app-hidden class.
+ * @param {HTMLElement} modalElement
+ */
+export function hideModal(modalElement) {
+    if (!modalElement) return;
+    modalElement.style.display = 'none';
+    modalElement.classList.add('app-hidden');
+}
 // --- Number Formatting Helper (migrated from script.js) ---
 /**
  * Formats a user-entered number for display in form fields, preserving up to 3 decimals, stripping trailing zeros.
