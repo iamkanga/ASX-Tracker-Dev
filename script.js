@@ -2639,14 +2639,6 @@ function renderSortSelect() {
             });
             logDebug('Sort Select: Populated with Portfolio options.');
         } else {
-            cashOptions.forEach(opt => {
-                const optionElement = document.createElement('option');
-                optionElement.value = opt.value;
-                optionElement.textContent = opt.text;
-                sortSelect.appendChild(optionElement);
-            });
-            logDebug('Sort Select: Populated with Cash Asset options.');
-        } else {
             stockOptions.forEach(opt => {
                 const optionElement = document.createElement('option');
                 optionElement.value = opt.value;
