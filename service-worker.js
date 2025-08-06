@@ -7,7 +7,7 @@ const CACHE_NAME = 'share-watchlist-v1.0.1'; // Version incremented
 const CACHED_ASSETS = [
     './', // Caches the root (index.html)
     './index.html',
-    './main.js',
+    './script.js',
     './style.css',
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
