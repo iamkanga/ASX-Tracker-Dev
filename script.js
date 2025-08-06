@@ -233,7 +233,7 @@ const customDialogModal = document.getElementById('customDialogModal');
 const customDialogMessage = document.getElementById('customDialogMessage');
 const calculatorModal = document.getElementById('calculatorModal');
 const calculatorInput = document.getElementById('calculatorInput');
-const calculatorResult = document.getElementById('calculatorResult');
+    const calculatorResultDisplay = document.getElementById('calculatorResult');
 const calculatorButtons = document.querySelector('.calculator-buttons');
 const watchlistSelect = document.getElementById('watchlistSelect');
 const themeToggleBtn = document.getElementById('themeToggleBtn');
@@ -2881,7 +2881,7 @@ function updateCalculatorDisplay() {
     calculatorInput.textContent = previousCalculatorInput + (operator ? ' ' + getOperatorSymbol(operator) + ' ' : '') + currentCalculatorInput;
     if (resultDisplayed) { /* nothing */ }
     else { calculatorResult.textContent = currentCalculatorInput === '' ? '0' : currentCalculatorInput; }
-}
+}  
 
 function calculateResult() {
     let prev = parseFloat(previousCalculatorInput);
