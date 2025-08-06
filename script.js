@@ -278,6 +278,8 @@ const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn
 // NEW: Target Direction Checkbox UI Elements
 const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
 const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
+
+const mainContainer = document.getElementById('mainContainer');
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 
 // --- GLOBAL STATE (added for ReferenceError fix) ---
