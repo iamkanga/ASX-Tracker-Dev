@@ -1,6 +1,62 @@
 // --- UI Helper Functions (Modularized) ---
 // These helpers were moved from script.js for maintainability.
 
+// --- UI State Management Helpers (migrated from script.js) ---
+// These are helpers used for compact view, main content padding, and button state
+
+/**
+ * Adjusts the main content padding based on the visibility of the sidebar or other overlays.
+ * Ensures the main content is not hidden behind fixed UI elements.
+ */
+export function adjustMainContentPadding() {
+    const mainContent = document.getElementById('mainContent');
+    const appSidebar = document.getElementById('appSidebar');
+    if (!mainContent) return;
+    if (appSidebar && appSidebar.classList.contains('open')) {
+        mainContent.style.paddingLeft = '260px';
+    } else {
+        mainContent.style.paddingLeft = '';
+    }
+}
+
+/**
+ * Applies or removes the compact view mode for the main content area.
+ * @param {boolean} enable True to enable compact view, false to disable.
+ */
+export function applyCompactViewMode(enable) {
+    const mainContent = document.getElementById('mainContent');
+    if (!mainContent) return;
+    if (enable) {
+        mainContent.classList.add('compact-view');
+    } else {
+        mainContent.classList.remove('compact-view');
+    }
+}
+
+/**
+ * Updates the enabled/disabled state of main action buttons based on app state.
+ * E.g., disables buttons if no share is selected, or if in a modal, etc.
+ */
+export function updateMainButtonsState() {
+    const saveShareBtn = document.getElementById('saveShareBtn');
+    const deleteShareBtn = document.getElementById('deleteShareBtn');
+    if (saveShareBtn) saveShareBtn.disabled = false;
+    if (deleteShareBtn) deleteShareBtn.disabled = false;
+}
+
+/**
+ * Updates the state of the compact view toggle button (active/inactive).
+ * @param {boolean} isActive True if compact view is active, false otherwise.
+ */
+export function updateCompactViewButtonState(isActive) {
+    const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
+    if (!toggleCompactViewBtn) return;
+    if (isActive) {
+        toggleCompactViewBtn.classList.add('active');
+    } else {
+        toggleCompactViewBtn.classList.remove('active');
+    }
+}
 // Custom logging function to control verbosity
 export function logDebug(message, ...optionalParams) {
     // DEBUG_MODE is expected to be defined in script.js
