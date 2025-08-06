@@ -1,3 +1,19 @@
+// --- Number Formatting Helper (migrated from script.js) ---
+/**
+ * Formats a user-entered number for display in form fields, preserving up to 3 decimals, stripping trailing zeros.
+ * Returns an empty string for null/NaN/undefined.
+ * @param {number|string} value
+ * @returns {string}
+ */
+export function formatUserDecimalStrict(value) {
+    if (value === null || value === undefined || isNaN(Number(value))) return '';
+    // Always show up to 3 decimals, but strip trailing zeros (e.g., 1.50 -> 1.5, 2.000 -> 2)
+    let num = Number(value);
+    let str = num.toFixed(3);
+    // Remove trailing zeros and decimal if not needed
+    str = str.replace(/\.0+$/, '').replace(/(\.[0-9]*[1-9])0+$/, '$1');
+    return str;
+}
 // --- Share/Watchlist UI Clearing Helpers (added for modularization) ---
 /**
  * Clears the share list UI (table and mobile cards).
