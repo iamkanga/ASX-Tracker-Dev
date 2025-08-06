@@ -291,7 +291,7 @@ let originalCashAssetData = null; // NEW: To store original cash asset data for 
 // This will now be managed directly by the 'isHidden' property on the cash asset object itself.
 let cashAssetVisibility = {}; // This object will still track the *current session's* visibility.
 // NEW: Reference for the hide/show checkbox in the cash asset form modal
-const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
+const hideCashAssetCheckbox = getElement('hideCashAssetCheckbox');
 
 
 // --- UI Element References ---
