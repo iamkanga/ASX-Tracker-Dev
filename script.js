@@ -439,7 +439,7 @@ function closeModals() {
         }
     });
     resetCalculator();
-    deselectCurrentShare();
+    deselectCurrentShare(logDebug, window);
 
     // NEW: Deselect current cash asset
     deselectCurrentCashAsset();
@@ -546,7 +546,7 @@ function addShareToTable(share) {
     // Add click listener to open share details modal
     row.addEventListener('click', () => {
         logDebug('Table Row Click: Share ID: ' + share.id);
-        selectShare(share.id);
+        selectShare(share.id, logDebug, () => deselectCurrentShare(logDebug, window), window);
         // If this row is inside the Target Price Alerts modal, set the restoration flag
         if (row.closest('#targetHitSharesList')) {
             wasShareDetailOpenedFromTargetAlerts = true;
@@ -619,7 +619,7 @@ function addShareToTable(share) {
 
         longPressTimer = setTimeout(() => {
             if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                selectShare(share.id); // Select the share first
+                selectShare(share.id, logDebug, () => deselectCurrentShare(logDebug, window), window); // Select the share first
                 showContextMenu(e, share.id);
                 e.preventDefault(); // Prevent default browser context menu
             }
@@ -651,7 +651,7 @@ function addShareToTable(share) {
     row.addEventListener('contextmenu', (e) => {
         if (window.innerWidth > 768) { // Only enable on desktop
             e.preventDefault();
-            selectShare(share.id);
+            selectShare(share.id, logDebug, () => deselectCurrentShare(logDebug, window), window);
             showContextMenu(e, share.id);
         }
     });
@@ -821,7 +821,7 @@ function addShareToMobileCards(share) {
 
     card.addEventListener('click', () => {
         logDebug('Mobile Card Click: Share ID: ' + share.id);
-        selectShare(share.id);
+        selectShare(share.id, logDebug, () => deselectCurrentShare(logDebug, window), window);
         showShareDetails();
     });
 
@@ -835,7 +835,7 @@ function addShareToMobileCards(share) {
 
         longPressTimer = setTimeout(() => {
             if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                selectShare(share.id); // Select the share first
+                selectShare(share.id, logDebug, () => deselectCurrentShare(logDebug, window), window); // Select the share first
                 showContextMenu(e, share.id);
                 e.preventDefault(); // Prevent default browser context menu
             }
@@ -883,7 +883,7 @@ function updateOrCreateShareTableRow(share) {
         // Add event listeners only once when the row is created
         row.addEventListener('click', () => {
             logDebug('Table Row Click: Share ID: ' + share.id);
-            selectShare(share.id);
+            selectShare(share.id, logDebug, () => deselectCurrentShare(logDebug, window), window);
             showShareDetails();
         });
 
@@ -896,7 +896,7 @@ function updateOrCreateShareTableRow(share) {
 
             longPressTimer = setTimeout(() => {
                 if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                    selectShare(share.id);
+                    selectShare(share.id, logDebug, () => deselectCurrentShare(logDebug, window), window);
                     showContextMenu(e, share.id);
                     e.preventDefault();
                 }
@@ -925,7 +925,7 @@ function updateOrCreateShareTableRow(share) {
         row.addEventListener('contextmenu', (e) => {
             if (window.innerWidth > 768) {
                 e.preventDefault();
-                selectShare(share.id);
+                selectShare(share.id, logDebug, () => deselectCurrentShare(logDebug, window), window);
                 showContextMenu(e, share.id);
             }
         });
@@ -1034,7 +1034,7 @@ function updateOrCreateShareMobileCard(share) {
         // Add event listeners only once when the card is created
         card.addEventListener('click', () => {
             logDebug('Mobile Card Click: Share ID: ' + share.id);
-            selectShare(share.id);
+            selectShare(share.id, logDebug, () => deselectCurrentShare(logDebug, window), window);
             showShareDetails();
         });
 
@@ -1047,7 +1047,7 @@ function updateOrCreateShareMobileCard(share) {
 
             longPressTimer = setTimeout(() => {
                 if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                    selectShare(share.id);
+                    selectShare(share.id, logDebug, () => deselectCurrentShare(logDebug, window), window);
                     showContextMenu(e, share.id);
                     e.preventDefault();
                 }
@@ -1611,13 +1611,13 @@ async function saveShareData(isSilent = false) {
             shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
             shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
         }
-        deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
+        deselectCurrentShare(logDebug, window); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
             // NEW: Explicitly hide the share form modal immediately and deselect the share
             if (!isSilent && shareFormSection) {
                 shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
                 shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
             }
-            deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
+            deselectCurrentShare(logDebug, window); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
             // NEW: Trigger a fresh fetch of live prices and re-render to reflect new target hit status
             await fetchLivePrices(); // This will also trigger renderWatchlist and updateTargetHitBanner
             if (!isSilent) showCustomAlert('Share \'' + shareName + '\' updated. Updating live prices...', 1500);
@@ -1643,13 +1643,13 @@ async function saveShareData(isSilent = false) {
             shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
             shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
         }
-        deselectCurrentShare(); // Deselect newly added share BEFORE fetching live prices
+        deselectCurrentShare(logDebug, window); // Deselect newly added share BEFORE fetching live prices
             // NEW: Explicitly hide the share form modal immediately and deselect the share
             if (!isSilent && shareFormSection) {
                 shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
                 shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
             }
-            deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
+            deselectCurrentShare(logDebug, window); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
             // NEW: Trigger a fresh fetch of live prices and re-render to reflect new target hit status
             await fetchLivePrices(); // This will also trigger renderWatchlist and updateTargetHitBanner
             if (!isSilent) showCustomAlert('Share \'' + shareName + '\' added. Updating live prices...', 1500);
@@ -2516,7 +2516,7 @@ function scrollToShare(asxCode) {
     logDebug('UI: Attempting to scroll to/highlight share with Code: ' + asxCode);
     const targetShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === asxCode.toUpperCase());
     if (targetShare) {
-        selectShare(targetShare.id);
+        selectShare(targetShare.id, logDebug, () => deselectCurrentShare(logDebug, window), window);
         let elementToScrollTo = document.querySelector('#shareTable tbody tr[data-doc-id="' + targetShare.id + '"]');
         if (!elementToScrollTo || window.matchMedia('(max-width: 768px)').matches) {
             elementToScrollTo = document.querySelector('.mobile-card[data-doc-id="' + targetShare.id + '"]');
@@ -4245,7 +4245,7 @@ function hideContextMenu() {
         shareContextMenu.style.display = 'none';
         contextMenuOpen = false;
         currentContextMenuShareId = null;
-        deselectCurrentShare();
+        deselectCurrentShare(logDebug, window);
         logDebug('Context Menu: Hidden.');
     }
 }
@@ -5994,7 +5994,7 @@ function showTargetHitDetailsModal() {
                     // FIX: Hide the current (alerts) modal before showing the share detail modal.
                     // The `closeModals()` function will restore the alerts modal when the share detail modal is closed.
                     hideModal(targetHitDetailsModal);
-                    selectShare(clickedShareId); // Select the share
+                    selectShare(clickedShareId, logDebug, () => deselectCurrentShare(logDebug, window), window); // Select the share
                     showShareDetails(); // Open the share details modal for the clicked share
                 }
             });
