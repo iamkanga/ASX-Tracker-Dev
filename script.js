@@ -1187,19 +1187,7 @@ function updateOrCreateShareMobileCard(share) {
 
 
 
-function showModal(modalElement) {
-    if (modalElement) {
-        // Push a new history state for every modal open
-        pushAppState({ modalId: modalElement.id }, '', '');
-        modalElement.style.setProperty('display', 'flex', 'important');
-        modalElement.scrollTop = 0;
-        const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
-        if (scrollableContent) {
-            scrollableContent.scrollTop = 0;
-        }
-        logDebug('Modal: Showing modal: ' + modalElement.id);
-    }
-}
+
 
 function hideModal(modalElement) {
     if (modalElement) {
