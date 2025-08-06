@@ -4697,7 +4697,7 @@ async function initializeAppLogic() {
 
     // Share Name Input to uppercase
     if (shareNameInput) {
-        shareNameInput.addEventListener('input', function() { 
+        shareNameInput.addEventListener('input', function() {
             this.value = this.value.toUpperCase(); 
             checkFormDirtyState();
         });
@@ -5328,7 +5328,7 @@ if (sortSelect) {
                 const shareToDeleteId = currentContextMenuShareId;
                 hideContextMenu();
                 try {
-                    const shareDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', shareToDeleteId);
+                    const shareDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', shareToDeleteId)
                     await window.firestore.deleteDoc(shareDocRef);
                     // showCustomAlert('Share deleted successfully!', 1500); // Removed as per user request
                     logDebug('Firestore: Share (ID: ' + shareToDeleteId + ') deleted.');
