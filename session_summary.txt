@@ -1,0 +1,9 @@
+We are troubleshooting a web application where recent code changes are not appearing for the end-user. The user has indicated this is likely not a simple browser cache issue.
+
+Our primary goal is to diagnose and fix this update problem, while also implementing improvements to make the application more robust and easier to manage for a non-coder.
+
+The immediate plan is as follows:
+
+1.  **Analyze the Service Worker:** The file `service-worker.js` is the most likely cause. It controls how the application caches files. I will examine its logic to see if it's serving old, cached files instead of fetching the new versions.
+2.  **Review Core Application Files:** I will inspect `index.html` and `script.js` to understand how the service worker is registered and how the application's logic runs.
+3.  **Propose a Solution:** Based on the analysis, I will propose specific code changes to fix the update mechanism and add simple diagnostic features (like displaying the current app version) to make future troubleshooting easier.
