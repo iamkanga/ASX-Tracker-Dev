@@ -1182,37 +1182,7 @@ function updateOrCreateShareMobileCard(share) {
     logDebug('Mobile Cards: Updated/Created card for share ' + share.shareName + '.');
 }
 
-function updateMainButtonsState(enable) {
-    logDebug('UI State: Setting main buttons state to: ' + (enable ? 'ENABLED' : 'DISABLED'));
-    if (newShareBtn) newShareBtn.disabled = !enable;
-    if (standardCalcBtn) standardCalcBtn.disabled = !enable;
-    if (dividendCalcBtn) dividendCalcBtn.disabled = !enable;
-    if (exportWatchlistBtn) exportWatchlistBtn.disabled = !enable;
-    if (addWatchlistBtn) addWatchlistBtn.disabled = !enable;
-    if (editWatchlistBtn) {
-        const selectedValue = watchlistSelect ? watchlistSelect.value : '';
-        // Enable button if there's a selected watchlist and it's not ALL_SHARES or CASH_BANK
-        const isAnEditableWatchlistSelected = selectedValue && selectedValue !== ALL_SHARES_ID && selectedValue !== CASH_BANK_WATCHLIST_ID;
-        // Remove extra conditions and only check if an editable watchlist is selected
-        editWatchlistBtn.disabled = !isAnEditableWatchlistSelected;
-        logDebug('Edit Watchlist Button State: ' + (editWatchlistBtn.disabled ? 'disabled' : 'enabled') + 
-                ' (selectedValue=' + selectedValue + ', isEditable=' + isAnEditableWatchlistSelected + ')');
-    }
-    // addShareHeaderBtn is now contextual, its disabled state is managed by updateAddHeaderButton
-    if (logoutBtn) setIconDisabled(logoutBtn, !enable); 
-    if (themeToggleBtn) themeToggleBtn.disabled = !enable;
-    if (colorThemeSelect) colorThemeSelect.disabled = !enable;
-    if (revertToDefaultThemeBtn) revertToDefaultThemeBtn.disabled = !enable;
-    // sortSelect and watchlistSelect disabled state is managed by render functions
-    if (refreshLivePricesBtn) refreshLivePricesBtn.disabled = !enable;
-    
-    // NEW: Disable/enable buttons specific to cash section
-    // addCashCategoryBtn and saveCashBalancesBtn are removed from HTML/functionality is moved
-    if (addCashAssetSidebarBtn) addCashAssetSidebarBtn.disabled = !enable;
 
-    logDebug('UI State: Sort Select Disabled: ' + (sortSelect ? sortSelect.disabled : 'N/A'));
-    logDebug('UI State: Watchlist Select Disabled: ' + (watchlistSelect ? watchlistSelect.disabled : 'N/A'));
-}
 
 /**
  * Enables or disables the 'Toggle Compact View' button based on screen width.
