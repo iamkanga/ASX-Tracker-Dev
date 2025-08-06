@@ -81,7 +81,7 @@ import {
     createTimeInterval, createDo, createLet, createIdentity, 
     createUnaryPlus, createUnaryMinus, createBitwiseNot, createLogicalNot, 
     createTypeOf, createVoid, createDelete, createInstanceOf, createIn, 
-    createNew, createSpread, createYield, createYieldStar, createAwait,
+    createNew, createSpread, createYield, createYieldStar, createAwait, 
     createImport, createExport, createDefault, createConst, createLet, 
     createVar, createFunction, createClass, createEnum, createInterface, 
     createType, createModule, createNamespace, createPackage, 
