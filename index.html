@@ -157,6 +157,7 @@
             <div class="controls-flex-row no-gap">
                 <select id="watchlistSelect" class="dropdown-large left-rounded">
                     <option value="" disabled selected>Watch List</option>
+                    <option value="myPortfolio">My Portfolio</option>
                     <option value="cashBank">Cash & Assets</option> 
                 </select>
                 <select id="sortSelect" class="dropdown-large right-rounded">
@@ -373,6 +374,33 @@
                 </div>
             <div class="total-cash-display">
                 <h3>Total Cash: <span id="totalCashDisplay">$0.00</span></h3>
+            </div>
+        </div>
+
+        <div id="myPortfolioSection" class="my-portfolio-section app-hidden">
+            <h2>My Portfolio</h2>
+            <div class="portfolio-summary">
+                <p>Total Portfolio Value: <span id="totalPortfolioValue">$0.00</span></p>
+                <p>Total Invested Capital: <span id="totalInvestedCapital">$0.00</span></p>
+                <p>Total Gain/Loss: <span id="totalGainLoss">$0.00</span></p>
+            </div>
+            <div class="table-container">
+                <table id="portfolioTable">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Shares</th>
+                            <th>Avg. Price</th>
+                            <th>Current Price</th>
+                            <th>Total Value</th>
+                            <th>Gain/Loss</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+            <div id="mobilePortfolioCards" class="mobile-portfolio-cards">
             </div>
         </div>
     </main>

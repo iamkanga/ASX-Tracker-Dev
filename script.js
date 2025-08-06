@@ -442,6 +442,7 @@ const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: 
 // NEW: Cash & Assets UI Elements (1)
 const stockWatchlistSection = document.getElementById('stockWatchlistSection');
 const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
+const myPortfolioSection = document.getElementById('myPortfolioSection'); // NEW: My Portfolio Section
 const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
 const addCashCategoryBtn = document.getElementById('addCashCategoryBtn'); // This will be removed or repurposed
 const saveCashBalancesBtn = document.getElementById('saveCashBalancesBtn'); // This will be removed or repurposed
@@ -467,6 +468,14 @@ const detailCashAssetLastUpdated = document.getElementById('detailCashAssetLastU
 const editCashAssetFromDetailBtn = document.getElementById('editCashAssetFromDetailBtn');
 const deleteCashAssetFromDetailBtn = document.getElementById('deleteCashAssetFromDetailBtn');
 const modalCashAssetCommentsContainer = document.getElementById('modalCashAssetCommentsContainer'); // NEW: Comments container for cash asset details
+
+// NEW: My Portfolio UI Elements
+const portfolioTable = document.getElementById('portfolioTable');
+const portfolioTableBody = document.querySelector('#portfolioTable tbody');
+const mobilePortfolioCards = document.getElementById('mobilePortfolioCards');
+const totalPortfolioValue = document.getElementById('totalPortfolioValue');
+const totalInvestedCapital = document.getElementById('totalInvestedCapital');
+const totalGainLoss = document.getElementById('totalGainLoss');
 
 
 let sidebarOverlay = document.querySelector('.sidebar-overlay');
@@ -1630,8 +1639,8 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
 
     shareWatchlistSelect.innerHTML = '<option value="" disabled selected>Select a Watchlist</option>'; // Always start with placeholder
 
-    // Filter out the "Cash & Assets" option from the share watchlist dropdown
-    const stockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
+    // Filter out special view options from the share watchlist dropdown
+    const stockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== PORTFOLIO_VIEW_ID);
 
     stockWatchlists.forEach(watchlist => {
         const option = document.createElement('option');
@@ -2444,6 +2453,26 @@ function sortShares() {
             const timeB = isNaN(dateB.getTime()) ? (order === 'asc' ? Infinity : -Infinity) : dateB.getTime();
 
             return order === 'asc' ? timeA - timeB : timeB - timeA;
+        } else if (field === 'portfolioShares' || field === 'portfolioAvgPrice') {
+            valA = (typeof valA === 'number' && !isNaN(valA)) ? valA : (order === 'asc' ? -Infinity : Infinity);
+            valB = (typeof valB === 'number' && !isNaN(valB)) ? valB : (order === 'asc' ? -Infinity : Infinity);
+            return order === 'asc' ? valA - valB : valB - valA;
+        } else if (field === 'gainLoss') {
+            const livePriceDataA = livePrices[a.shareName.toUpperCase()];
+            const currentPriceA = livePriceDataA && livePriceDataA.live !== null && !isNaN(livePriceDataA.live) 
+                                ? livePriceDataA.live 
+                                : (a.currentPrice !== null && !isNaN(a.currentPrice) ? a.currentPrice : 0);
+            const investedCapitalA = (a.portfolioShares || 0) * (a.portfolioAvgPrice || 0);
+            const gainLossA = (a.portfolioShares || 0) * currentPriceA - investedCapitalA;
+
+            const livePriceDataB = livePrices[b.shareName.toUpperCase()];
+            const currentPriceB = livePriceDataB && livePriceDataB.live !== null && !isNaN(livePriceDataB.live) 
+                                ? livePriceDataB.live 
+                                : (b.currentPrice !== null && !isNaN(b.currentPrice) ? b.currentPrice : 0);
+            const investedCapitalB = (b.portfolioShares || 0) * (b.portfolioAvgPrice || 0);
+            const gainLossB = (b.portfolioShares || 0) * currentPriceB - investedCapitalB;
+
+            return order === 'asc' ? gainLossA - gainLossB : gainLossB - gainLossA;
         } else {
             if (order === 'asc') {
                 if (valA < valB) return -1;
@@ -2579,8 +2608,37 @@ function renderSortSelect() {
             { value: 'balance-asc', text: 'Balance (Low-High)' }
         ];
 
+        const portfolioOptions = [
+            { value: 'shareName-asc', text: 'Code (A-Z)' },
+            { value: 'shareName-desc', text: 'Code (Z-A)' },
+            { value: 'portfolioShares-desc', text: 'Shares (H-L)' },
+            { value: 'portfolioShares-asc', text: 'Shares (L-H)' },
+            { value: 'portfolioAvgPrice-desc', text: 'Avg. Price (H-L)' },
+            { value: 'portfolioAvgPrice-asc', text: 'Avg. Price (L-H)' },
+            { value: 'currentPrice-desc', text: 'Current Price (H-L)' },
+            { value: 'currentPrice-asc', text: 'Current Price (L-H)' },
+            { value: 'gainLoss-desc', text: 'Gain/Loss (H-L)' },
+            { value: 'gainLoss-asc', text: 'Gain/Loss (L-H)' }
+        ];
+
         // Determine which set of options to display
         if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+            cashOptions.forEach(opt => {
+                const optionElement = document.createElement('option');
+                optionElement.value = opt.value;
+                optionElement.textContent = opt.text;
+                sortSelect.appendChild(optionElement);
+            });
+            logDebug('Sort Select: Populated with Cash Asset options.');
+        } else if (currentSelectedWatchlistIds.includes(PORTFOLIO_VIEW_ID)) {
+            portfolioOptions.forEach(opt => {
+                const optionElement = document.createElement('option');
+                optionElement.value = opt.value;
+                optionElement.textContent = opt.text;
+                sortSelect.appendChild(optionElement);
+            });
+            logDebug('Sort Select: Populated with Portfolio options.');
+        } else {
             cashOptions.forEach(opt => {
                 const optionElement = document.createElement('option');
                 optionElement.value = opt.value;
@@ -2656,15 +2714,44 @@ function renderWatchlist() {
 
     const selectedWatchlistId = currentSelectedWatchlistIds[0];
 
-    // Hide both sections initially
+    // Hide all main sections initially
     stockWatchlistSection.classList.add('app-hidden');
     cashAssetsSection.classList.add('app-hidden');
+    myPortfolioSection.classList.add('app-hidden');
 
     // Clear previous content (only for elements that will be conditionally displayed)
-    // We will now manage individual row/card updates, so don't clear the whole tbody/container yet.
-    // However, for switching between stock/cash, we might still need to clear.
-    if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
-        // Stock Watchlist Logic
+    if (shareTableBody) shareTableBody.innerHTML = '';
+    if (mobileShareCardsContainer) mobileShareCardsContainer.innerHTML = '';
+    if (cashCategoriesContainer) cashCategoriesContainer.innerHTML = '';
+    if (portfolioTableBody) portfolioTableBody.innerHTML = '';
+    if (mobilePortfolioCards) mobilePortfolioCards.innerHTML = '';
+
+    // Logic to display the correct section based on selectedWatchlistId
+    if (selectedWatchlistId === CASH_BANK_WATCHLIST_ID) {
+        // Cash & Assets section Logic
+        cashAssetsSection.classList.remove('app-hidden');
+        mainTitle.textContent = 'Cash & Assets';
+        renderCashCategories();
+        sortSelect.classList.remove('app-hidden');
+        refreshLivePricesBtn.classList.add('app-hidden');
+        toggleCompactViewBtn.classList.add('app-hidden');
+        asxCodeButtonsContainer.classList.add('app-hidden');
+        targetHitIconBtn.classList.add('app-hidden');
+        exportWatchlistBtn.classList.add('app-hidden');
+        stopLivePriceUpdates();
+    } else if (selectedWatchlistId === PORTFOLIO_VIEW_ID) {
+        // My Portfolio section Logic
+        myPortfolioSection.classList.remove('app-hidden');
+        mainTitle.textContent = 'My Portfolio';
+        renderPortfolio();
+        sortSelect.classList.remove('app-hidden');
+        refreshLivePricesBtn.classList.remove('app-hidden');
+        toggleCompactViewBtn.classList.remove('app-hidden');
+        asxCodeButtonsContainer.classList.remove('app-hidden');
+        targetHitIconBtn.classList.remove('app-hidden');
+        exportWatchlistBtn.classList.remove('app-hidden');
+        startLivePriceUpdates();
+    } else { // Stock Watchlist Logic (including ALL_SHARES_ID)
         stockWatchlistSection.classList.remove('app-hidden');
         const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
         if (selectedWatchlistId === ALL_SHARES_ID) {
@@ -2680,12 +2767,9 @@ function renderWatchlist() {
         refreshLivePricesBtn.classList.remove('app-hidden');
         toggleCompactViewBtn.classList.remove('app-hidden');
         exportWatchlistBtn.classList.remove('app-hidden');
-        // startLivePriceUpdates(); // Removed this line to prevent multiple intervals
-        updateAddHeaderButton();
+        startLivePriceUpdates();
 
-        const isMobileView = window.innerWidth <= 768;
         let sharesToRender = [];
-
         if (selectedWatchlistId === ALL_SHARES_ID) {
             sharesToRender = [...allSharesData];
             logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
@@ -2697,41 +2781,28 @@ function renderWatchlist() {
         }
 
         // --- Optimized DOM Update for Shares ---
-        const existingTableRows = Array.from(shareTableBody.children);
-        const existingMobileCards = Array.from(mobileShareCardsContainer.children);
-        const existingAsxButtons = Array.from(asxCodeButtonsContainer.children);
-
         const newShareIds = new Set(sharesToRender.map(s => s.id));
-        const newAsxCodes = new Set(sharesToRender.map(s => s.shareName.trim().toUpperCase()));
 
-        // Remove old rows/cards/buttons that are no longer in the filtered list
-        existingTableRows.forEach(row => {
+        // Remove old rows/cards that are no longer in the filtered list
+        Array.from(shareTableBody.children).forEach(row => {
             if (!newShareIds.has(row.dataset.docId)) {
                 row.remove();
             }
         });
-        existingMobileCards.forEach(card => {
+        Array.from(mobileShareCardsContainer.children).forEach(card => {
             if (!newShareIds.has(card.dataset.docId)) {
                 card.remove();
             }
         });
-        // Clear existing rows and cards before re-rendering in sorted order
-        // This ensures the order is always correct based on the sorted `sharesToRender` array
-        if (shareTableBody) {
-            shareTableBody.innerHTML = '';
-        }
-        if (mobileShareCardsContainer) {
-            mobileShareCardsContainer.innerHTML = '';
-        }
 
         // Re-add shares to the UI in their sorted order
         if (sharesToRender.length > 0) {
             sharesToRender.forEach(share => {
                 if (tableContainer && tableContainer.style.display !== 'none') {
-                    addShareToTable(share); // Using add functions to ensure new row/card is created in order
+                    updateOrCreateShareTableRow(share); // Use updateOrCreate to handle existing elements
                 }
                 if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
-                    addShareToMobileCards(share); // Using add functions to ensure new row/card is created in order
+                    updateOrCreateShareMobileCard(share); // Use updateOrCreate to handle existing elements
                 }
             });
         } else {
@@ -2747,39 +2818,116 @@ function renderWatchlist() {
                 td.colSpan = 6;
                 td.appendChild(emptyWatchlistMessage);
                 const tr = document.createElement('tr');
-                tr.classList.add('empty-message-row'); // Add class to easily target for removal later
-                tr.appendChild(td);
+                tr.classList.add('empty-message-row');
                 shareTableBody.appendChild(tr);
             }
             if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
                 mobileShareCardsContainer.appendChild(emptyWatchlistMessage.cloneNode(true));
             }
         }
-        
-        // Re-render ASX Code Buttons separately
         renderAsxCodeButtons();
+    }
+    updateAddHeaderButton();
+    renderSortSelect();
+    updateMainButtonsState(!!currentUserId);
+    adjustMainContentPadding();
+}
+
+/**
+ * Renders the portfolio section.
+ */
+function renderPortfolio() {
+    logDebug('DEBUG: renderPortfolio called.');
+
+    if (!portfolioTableBody || !mobilePortfolioCards || !totalPortfolioValue || !totalInvestedCapital || !totalGainLoss) {
+        console.error('renderPortfolio: One or more portfolio elements not found.');
+        return;
+    }
+
+    portfolioTableBody.innerHTML = ''; // Clear existing content
+    mobilePortfolioCards.innerHTML = ''; // Clear existing content
+
+    const portfolioShares = allSharesData.filter(share => 
+        share.portfolioShares !== null && share.portfolioShares > 0 &&
+        share.portfolioAvgPrice !== null && share.portfolioAvgPrice > 0
+    );
+
+    let totalValue = 0;
+    let totalInvested = 0;
+    let totalGainLossAmount = 0;
+
+    if (portfolioShares.length === 0) {
+        const emptyMessage = document.createElement('p');
+        emptyMessage.classList.add('empty-message');
+        emptyMessage.textContent = 'No shares in your portfolio. Add shares with purchase details to get started!';
+        emptyMessage.style.textAlign = 'center';
+        emptyMessage.style.padding = '20px';
+        emptyMessage.style.color = 'var(--ghosted-text)';
+        
+        const td = document.createElement('td');
+        td.colSpan = 6;
+        td.appendChild(emptyMessage);
+        const tr = document.createElement('tr');
+        tr.classList.add('empty-message-row');
+        tr.appendChild(td);
+        portfolioTableBody.appendChild(tr);
+
+        mobilePortfolioCards.appendChild(emptyMessage.cloneNode(true));
 
     } else {
-        // Cash & Assets section Logic
-        cashAssetsSection.classList.remove('app-hidden');
-        mainTitle.textContent = 'Cash & Assets';
-        renderCashCategories();
-        sortSelect.classList.remove('app-hidden');
-        refreshLivePricesBtn.classList.add('app-hidden');
-        toggleCompactViewBtn.classList.add('app-hidden');
-        asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
-        targetHitIconBtn.classList.add('app-hidden'); // Ensure hidden in cash view
-        exportWatchlistBtn.classList.add('app-hidden');
-        stopLivePriceUpdates();
-        updateAddHeaderButton();
-        // Ensure stock-specific containers are hidden when showing cash assets
-        if (tableContainer) tableContainer.style.display = 'none';
-        if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
+        portfolioShares.forEach(share => {
+            const livePriceData = livePrices[share.shareName.toUpperCase()];
+            const currentPrice = livePriceData && livePriceData.live !== null && !isNaN(livePriceData.live) 
+                                ? livePriceData.live 
+                                : (share.currentPrice !== null && !isNaN(share.currentPrice) ? share.currentPrice : 0);
+
+            const investedCapital = share.portfolioShares * share.portfolioAvgPrice;
+            const currentValue = share.portfolioShares * currentPrice;
+            const gainLoss = currentValue - investedCapital;
+
+            totalValue += currentValue;
+            totalInvested += investedCapital;
+            totalGainLossAmount += gainLoss;
+
+            // Determine price class for gain/loss
+            const gainLossClass = gainLoss > 0 ? 'positive' : (gainLoss < 0 ? 'negative' : 'neutral');
+
+            // Add to desktop table
+            const row = document.createElement('tr');
+            row.dataset.docId = share.id;
+            row.innerHTML = `
+                <td>${share.shareName}</td>
+                <td class="numeric-data-cell">${share.portfolioShares}</td>
+                <td class="numeric-data-cell">${share.portfolioAvgPrice.toFixed(2)}</td>
+                <td class="numeric-data-cell">${currentPrice.toFixed(2)}</td>
+                <td class="numeric-data-cell">${currentValue.toFixed(2)}</td>
+                <td class="numeric-data-cell ${gainLossClass}">${gainLoss.toFixed(2)}</td>
+            `;
+            portfolioTableBody.appendChild(row);
+
+            // Add to mobile cards
+            const card = document.createElement('div');
+            card.classList.add('mobile-card', 'portfolio-card', gainLossClass); // Add portfolio-card class
+            card.dataset.docId = share.id;
+            card.innerHTML = `
+                <h3>${share.shareName}</h3>
+                <p><strong>Shares:</strong> ${share.portfolioShares}</p>
+                <p><strong>Avg. Price:</strong> ${share.portfolioAvgPrice.toFixed(2)}</p>
+                <p><strong>Current Price:</strong> ${currentPrice.toFixed(2)}</p>
+                <p><strong>Total Value:</strong> ${currentValue.toFixed(2)}</p>
+                <p class="${gainLossClass}"><strong>Gain/Loss:</strong> ${gainLoss.toFixed(2)}</p>
+            `;
+            mobilePortfolioCards.appendChild(card);
+        });
     }
-    // Update sort dropdown options based on selected watchlist type
-    renderSortSelect(); // Moved here to ensure it updates for both stock and cash views
-    updateMainButtonsState(!!currentUserId); // Ensure button states (like Edit Watchlist) are correct for the current view
-    adjustMainContentPadding();
+
+    totalPortfolioValue.textContent = '${totalValue.toFixed(2)}';
+    totalInvestedCapital.textContent = '${totalInvested.toFixed(2)}';
+    totalGainLoss.textContent = '${totalGainLossAmount.toFixed(2)}';
+    totalGainLoss.classList.remove('positive', 'negative', 'neutral');
+    totalGainLoss.classList.add(totalGainLossAmount > 0 ? 'positive' : (totalGainLossAmount < 0 ? 'negative' : 'neutral'));
+
+    logDebug('Portfolio: UI rendered.');
 }
 
 function renderAsxCodeButtons() {
