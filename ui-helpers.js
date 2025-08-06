@@ -1,3 +1,43 @@
+// --- Selection Helpers (migrated from script.js) ---
+/**
+ * Selects a share in both table and mobile card views.
+ * @param {string} shareId
+ * @param {function} logDebug
+ * @param {function} deselectCurrentShare
+ * @param {object} context (optional) - pass { selectedShareDocId } to update selection state
+ */
+export function selectShare(shareId, logDebug, deselectCurrentShare, context = window) {
+    logDebug('Selection: Attempting to select share with ID: ' + shareId);
+    deselectCurrentShare();
+
+    const tableRow = document.querySelector('#shareTable tbody tr[data-doc-id="' + shareId + '"]');
+    const mobileCard = document.querySelector('.mobile-card[data-doc-id="' + shareId + '"]');
+
+    if (tableRow) {
+        tableRow.classList.add('selected');
+        logDebug('Selection: Selected table row for ID: ' + shareId);
+    }
+    if (mobileCard) {
+        mobileCard.classList.add('selected');
+        logDebug('Selection: Selected mobile card for ID: ' + shareId);
+    }
+    context.selectedShareDocId = shareId;
+}
+
+/**
+ * Deselects any currently selected share in both table and mobile card views.
+ * @param {function} logDebug
+ * @param {object} context (optional) - pass { selectedShareDocId } to update selection state
+ */
+export function deselectCurrentShare(logDebug, context = window) {
+    const currentlySelected = document.querySelectorAll('.share-list-section tr.selected, .mobile-card.selected');
+    logDebug('Selection: Attempting to deselect ' + currentlySelected.length + ' elements.');
+    currentlySelected.forEach(el => {
+        el.classList.remove('selected');
+    });
+    context.selectedShareDocId = null;
+    logDebug('Selection: Share deselected. selectedShareDocId is now null.');
+}
 // --- UI Helper Functions (Modularized) ---
 // These helpers were moved from script.js for maintainability.
 
