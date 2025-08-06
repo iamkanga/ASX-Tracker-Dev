@@ -1189,35 +1189,7 @@ function updateOrCreateShareMobileCard(share) {
 
 
 
-function hideModal(modalElement) {
-    if (modalElement) {
-        modalElement.style.setProperty('display', 'none', 'important');
-        logDebug('Modal: Hiding modal: ' + modalElement.id);
-    }
-}
 
-function clearWatchlistUI() {
-    if (!watchlistSelect) { console.error('clearWatchlistUI: watchlistSelect element not found.'); return; }
-    watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>'; // Updated placeholder
-    userWatchlists = [];
-    currentSelectedWatchlistIds = [];
-    logDebug('UI: Watchlist UI cleared.');
-}
-
-function clearShareListUI() {
-    if (!shareTableBody) { console.error('clearShareListUI: shareTableBody element not found.'); return; }
-    if (!mobileShareCardsContainer) { console.error('clearShareListUI: mobileShareCardsContainer element not found.'); return; }
-    shareTableBody.innerHTML = '';
-    mobileShareCardsContainer.innerHTML = '';
-    logDebug('UI: Share list UI cleared.');
-}
-
-function clearShareList() {
-    clearShareListUI();
-    if (asxCodeButtonsContainer) asxCodeButtonsContainer.innerHTML = '';
-    deselectCurrentShare();
-    logDebug('UI: Full share list cleared (UI + buttons).');
-}
 
 function selectShare(shareId) {
     logDebug('Selection: Attempting to select share with ID: ' + shareId);
