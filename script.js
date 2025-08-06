@@ -219,6 +219,14 @@ let previousCalculatorInput = '';
 let resultDisplayed = false;
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
 
+// --- INPUT ELEMENTS (added for ReferenceError fix) ---
+const shareNameInput = document.getElementById('shareNameInput');
+const currentPriceInput = document.getElementById('currentPriceInput');
+const targetPriceInput = document.getElementById('targetPriceInput');
+const dividendAmountInput = document.getElementById('dividendAmountInput');
+const frankingCreditsInput = document.getElementById('frankingCreditsInput');
+const shareRatingSelect = document.getElementById('shareRatingSelect');
+
 const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
 const sortSelect = document.getElementById('sortSelect');
 const customDialogModal = document.getElementById('customDialogModal');
@@ -271,6 +279,9 @@ const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn
 const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
 const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
+
+// --- GLOBAL STATE (added for ReferenceError fix) ---
+let showLastLivePriceOnClosedMarket = false;
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
 const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
