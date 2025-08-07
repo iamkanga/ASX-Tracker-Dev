@@ -850,17 +850,11 @@
         }); 
     </script>
     <script src="script.js"></script>
-    <script>
-        // Dynamically load style.css with a cache-busting parameter
-        const styleLink = document.createElement('link');
-        styleLink.rel = 'stylesheet';
-        styleLink.href = 'style.css?v=' + Date.now();
-        document.head.appendChild(styleLink);
-    </script>
+    <link rel="stylesheet" href="style.css">
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js?v=' + Date.now())
+                navigator.serviceWorker.register('./service-worker.js')
                     .then(registration => {
                         console.log('Service Worker: Registered successfully with scope:', registration.scope);
 
