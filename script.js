@@ -234,6 +234,7 @@ let contextMenuOpen = false; // To track if the custom context menu is open
 let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
 let originalShareData = null; // Stores the original share data when editing for dirty state check
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
+let unsubscribeWatchlists = null; // NEW: Holds the unsubscribe function for the watchlists listener
 let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 
 
@@ -6575,6 +6576,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         window.authFunctions.onAuthStateChanged(auth, async (user) => {
             if (user) {
+                window.authFunctions.onAuthStateChanged(auth, async (user) => {
+            if (user) {
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
                 logDebug('AuthState: User email: ' + user.email);
@@ -6606,6 +6609,70 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
+            }
+
+            else {
+                currentUserId = null;
+                mainTitle.textContent = 'Share Watchlist';
+                logDebug('AuthState: User signed out.');
+                updateMainButtonsState(false);
+                clearShareList();
+                clearWatchlistUI();
+                userCashCategories = []; // Clear cash data on logout
+                if (cashCategoriesContainer) cashCategoriesContainer.innerHTML = ''; // Clear cash UI
+                if (totalCashDisplay) totalCashDisplay.textContent = '$0.00'; // Reset total cash
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
+                applyTheme('system-default');
+                if (unsubscribeShares) {
+                    unsubscribeShares();
+                    unsubscribeShares = null;
+                    logDebug('Firestore Listener: Unsubscribed from shares listener on logout.');
+                }
+                if (unsubscribeWatchlists) { // NEW: Unsubscribe from watchlists
+                    unsubscribeWatchlists();
+                    unsubscribeWatchlists = null;
+                    logDebug('Firestore Listener: Unsubscribed from watchlists listener on logout.');
+                }
+                if (unsubscribeCashCategories) { // NEW: Unsubscribe from cash categories
+                    unsubscribeCashCategories();
+                    unsubscribeCashCategories = null;
+                    logDebug('Firestore Listener: Unsubscribed from cash categories listener on logout.');
+                }
+                stopLivePriceUpdates();
+                
+                window._userAuthenticated = false; // Mark user as not authenticated
+                // If signed out, ensure splash screen is visible for sign-in
+                if (splashScreen) {
+                    splashScreen.style.display = 'flex'; // Ensure splash screen is visible
+                    splashScreen.classList.remove('hidden'); // Ensure it's not hidden
+                    document.body.style.overflow = 'hidden'; // Re-apply overflow hidden
+                    if (splashKangarooIcon) {
+                        splashKangarooIcon.classList.remove('pulsing'); // Stop animation if signed out
+                    }
+                    if (splashSignInBtn) {
+                        splashSignInBtn.disabled = false; // Enable sign-in button
+                        const buttonTextSpan = splashSignInBtn.querySelector('span');
+                        if (buttonTextSpan) {
+                            buttonTextSpan.textContent = 'Sign in with Google'; // Reset only the text, not the icon
+                        }
+                    }
+                    // Hide main app content
+                    if (mainContainer) {
+                        mainContainer.classList.add('app-hidden');
+                    }
+                    if (appHeader) {
+                        appHeader.classList.add('app-hidden');
+                    }
+                    logDebug('Splash Screen: User signed out, splash screen remains visible for sign-in.');
+                } else {
+                    console.warn('Splash Screen: User signed out, but splash screen element not found. App content might be visible.');
+                }
+                // NEW: Reset targetHitIconDismissed and clear localStorage entry on logout for a fresh start on next login
+                targetHitIconDismissed = false; 
+                localStorage.removeItem('targetHitIconDismissed');
+
+            }
+        });
             }
 
             else {
