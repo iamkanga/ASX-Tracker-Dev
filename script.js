@@ -201,6 +201,7 @@ let auth = null;
 let currentUserId = null;
 let currentAppId;
 let selectedShareDocId = null;
+let userWatchlists = []; // populated from Firestore; safe default to avoid ReferenceErrors in module scope
 let allSharesData = []; // Kept in sync by the onSnapshot listener
 let currentDialogCallback = null;
 let autoDismissTimeout = null;
@@ -315,6 +316,8 @@ const LIVE_PRICE_FETCH_INTERVAL_MS = 60000; // 1 minute default fetch cadence
 const ALL_SHARES_ID = '__ALL_SHARES__';
 const CASH_BANK_WATCHLIST_ID = 'cashBank'; // matches index.html option value
 const CUSTOM_THEMES = []; // safe default; populated elsewhere if custom themes exist
+const DEFAULT_WATCHLIST_NAME = 'My Watchlist';
+const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
 
 // Currently selected watchlist(s). Default to All Shares until user selects otherwise
 let currentSelectedWatchlistIds = [ALL_SHARES_ID];
