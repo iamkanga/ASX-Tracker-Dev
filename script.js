@@ -337,6 +337,12 @@ let currentSelectedWatchlistIds = [ALL_SHARES_ID];
 // Mobile view mode for cards/table rendering logic
 let currentMobileViewMode = 'auto'; // 'auto'|'cards'|'table' safe default
 
+// Sort state
+let currentSortOrder = 'entryDate-desc'; // default for stocks; will be overridden based on view/saved
+let savedSortOrder = null; // populated from Firestore user profile if available
+
+// User watchlists collection declared earlier near top of file
+
 // Provide minimal fallback for theme application if not defined elsewhere
 // This avoids crashes on logout where applyTheme("system-default") is called
 // Note: simple implementation toggles a data attribute; adjust if you have a richer theming system
