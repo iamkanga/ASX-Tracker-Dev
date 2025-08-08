@@ -138,7 +138,7 @@ function makeFilesAvailableToSourceControlCSS() {
     --asx-button-text: #333;
     --asx-button-active-bg: #007bff;
     --asx-button-active-text: #fff;
-    --success-color: #008000;
+    --success-color: #00FF00;
     --danger-color: #FF0000;
     --warning-color: #ffc107;
     --info-color: #17a2b8;
@@ -171,7 +171,7 @@ function makeFilesAvailableToSourceControlCSS() {
     --calc-num-btn-bg: #f0f0f0;
     --calc-num-btn-text: #333;
     --calc-num-btn-hover-bg: #e0e0e0;
-    --price-up-color: #008000;
+    --price-up-color: #00FF00;
     --price-down-color: #FF0000;
     --price-neutral-color: #6c757d;
     --live-price-section-bg: rgba(0, 123, 255, 0.05); /* Subtle blue tint */
@@ -182,9 +182,9 @@ function makeFilesAvailableToSourceControlCSS() {
     --target-alert-text: #0056b3; /* Darker blue for target hit text */
     --target-alert-border: #007bff;
     --target-banner-height: 40px; /* This variable is now effectively unused for the banner, but kept for other potential uses */
-    ---green-color: #008000; /* Standard green for general use */
-    --green-color-dark: #006400; /* Darker green for hover states */
-    --green-color-dark-rgb: 0, 100, 0; /* RGB for #006400 for pulsing effect */
+    ---green-color: #00FF00; /* Standard green for general use */
+    --green-color-dark: #00FF00; /* Unify hover green */
+    --green-color-dark-rgb: 0, 255, 0; /* RGB for #00FF00 for pulsing effect */
     /* NEW: Alert System Colors */
     --alert-icon-bg: #dc3545; /* Red for the chat box icon */
     --alert-icon-text: #fff;
@@ -193,7 +193,7 @@ function makeFilesAvailableToSourceControlCSS() {
     --alert-panel-border: #c9d2d4;
     --alert-item-bg: #ffffff;
     --alert-item-hover-bg: #f0f4f5;
-    --alert-dismiss-btn-color: #28a745; /* Green for dismiss */
+    --alert-dismiss-btn-color: #00FF00; /* Green for dismiss */
     --alert-snooze-btn-color: #17a2b8; /* Info blue for snooze */
     --snooze-options-bg: #ffffff;
     --snooze-options-border: #b0b8bb;
@@ -204,8 +204,8 @@ function makeFilesAvailableToSourceControlCSS() {
     --cash-border-color: #c9d2d4;
     --cash-total-bg: #e0f7fa;
     --cash-total-text: #0056b3;
-    --cash-button-bg: #28a745; /* Green for add */
-    --cash-button-hover-bg: #218838;
+    --cash-button-bg: #00FF00; /* Green for add */
+    --cash-button-hover-bg: #00FF00;
     --cash-primary-button-bg: #007bff; /* Blue for save */
     --cash-primary-button-hover-bg: #0056b3;
     --cash-delete-icon-color: #dc3545;
@@ -234,7 +234,7 @@ body.dark-theme {
     --asx-button-hover-bg: #5a5a5a; /* Lighter gray for ASX button hover */
     --asx-button-active-bg: #888888; /* Even lighter gray for active ASX button */
     --asx-button-active-text: #ffffff; /* White text for active ASX button */
-    --success-color: #32CD32;
+    --success-color: #00FF00;
     --danger-color: #FF0000; /* Keep red for danger */
     --warning-color: #f39c12; /* Keep orange for warning */
     --info-color: #3498db; /* Keep blue for info */
@@ -256,8 +256,8 @@ body.dark-theme {
     --calc-num-btn-bg: #555555; /* Gray for calculator number buttons */
     --calc-num-btn-text: #e0e0e0;
     --calc-num-btn-hover-bg: #6a6a6a;
-    --price-up-color: #2ecc71; /* Keep green for price up */
-    --price-down-color: #e74c3c; /* Keep red for price down */
+    --price-up-color: #00FF00; /* Pure green */
+    --price-down-color: #FF0000; /* Pure red */
     --price-neutral-color: #888888; /* Gray for neutral price */
     --live-price-section-bg: rgba(68, 68, 68, 0.1); /* Very subtle dark gray tint */
     --live-price-positive-bg: rgba(46, 204, 113, 0.1); /* Faint green */
@@ -267,17 +267,17 @@ body.dark-theme {
     --target-alert-text: #ffffff; /* White text for target alert */
     --target-alert-border: #888888; /* Gray border for target alert */
     --target-banner-height: 40px;
-    --green-color: #2ecc71; /* Green for success in dark theme */
-    --green-color-dark: #229954; /* Darker green for hover */
-    --green-color-dark-rgb: 34, 153, 84; /* RGB for #229954 for pulsing effect */
+    --green-color: #00FF00; /* Pure green */
+    --green-color-dark: #00FF00; /* Unify hover */
+    --green-color-dark-rgb: 0, 255, 0; /* RGB for #00FF00 */
     /* UPDATED: Cash & Assets Section Colors (Dark Theme) */
     --cash-section-bg: #282828;
     --cash-card-bg: #333333;
     --cash-border-color: #555555;
     --cash-total-bg: #444444;
     --cash-total-text: #e0e0e0;
-    --cash-button-bg: #2ecc71; /* Keep green */
-    --cash-button-hover-bg: #229954; /* Keep green hover */
+    --cash-button-bg: #00FF00; /* Pure green */
+    --cash-button-hover-bg: #00FF00; /* Pure green hover */
     --cash-primary-button-bg: #555555; /* Gray primary button */
     --cash-primary-button-hover-bg: #6a6a6a; /* Gray primary button hover */
     --cash-delete-icon-color: #e74c3c; /* Keep red */
@@ -329,7 +329,7 @@ body.theme-bold-1 { /* Ocean Blue */
     --google-auth-btn-bg: #FFFFFF;
     --google-auth-btn-hover-bg: #F0F0F0;
     --google-auth-btn-text: #4285F4;
-    --price-up-color: #2ecc71;
+    --price-up-color: #00FF00;
     --price-down-color: #e74c3c;
     --price-neutral-color: #a8dadc;
     --live-price-section-bg: rgba(0, 180, 216, 0.1);
@@ -347,8 +347,8 @@ body.theme-bold-1 { /* Ocean Blue */
     --cash-border-color: #008793;
     --cash-total-bg: #0096c7;
     --cash-total-text: #e0f2f7;
-    --cash-button-bg: #2ecc71;
-    --cash-button-hover-bg: #229954;
+    --cash-button-bg: #00FF00;
+    --cash-button-hover-bg: #00FF00;
     --cash-primary-button-bg: #00b4d8;
     --cash-primary-button-hover-bg: #0096c7;
     --cash-delete-icon-color: #e63946;
@@ -398,7 +398,7 @@ body.theme-bold-2 { /* Forest Green */
     --google-auth-btn-bg: #FFFFFF;
     --google-auth-btn-hover-bg: #F0F0F0;
     --google-auth-btn-text: #4285F4;
-    --price-up-color: #2ecc71;
+    --price-up-color: #00FF00;
     --price-down-color: #e74c3c;
     --price-neutral-color: #d4e3c9;
     --live-price-section-bg: rgba(167, 201, 87, 0.1);
@@ -416,8 +416,8 @@ body.theme-bold-2 { /* Forest Green */
     --cash-border-color: #6a9955;
     --cash-total-bg: #8ba84a;
     --cash-total-text: #e6ffe6;
-    --cash-button-bg: #2ecc71;
-    --cash-button-hover-bg: #229954;
+    --cash-button-bg: #00FF00;
+    --cash-button-hover-bg: #00FF00;
     --cash-primary-button-bg: #a7c957;
     --cash-primary-button-hover-bg: #8ba84a;
     --cash-delete-icon-color: #e74c3c;
@@ -467,7 +467,7 @@ body.theme-bold-3 { /* Sunset Orange */
     --google-auth-btn-bg: #FFFFFF;
     --google-auth-btn-hover-bg: #F0F0F0;
     --google-auth-btn-text: #4285F4;
-    --price-up-color: #2ecc71;
+    --price-up-color: #00FF00;
     --price-down-color: #e74c3c;
     --price-neutral-color: #ffd790;
     --live-price-section-bg: rgba(255, 195, 0, 0.1);
@@ -485,8 +485,8 @@ body.theme-bold-3 { /* Sunset Orange */
     --cash-border-color: #e76f51;
     --cash-total-bg: #e0ac00;
     --cash-total-text: #fff8e1;
-    --cash-button-bg: #2ecc71;
-    --cash-button-hover-bg: #229954;
+    --cash-button-bg: #00FF00;
+    --cash-button-hover-bg: #00FF00;
     --cash-primary-button-bg: #ffc300;
     --cash-primary-button-hover-bg: #e0ac00;
     --cash-delete-icon-color: #e63946;
@@ -536,7 +536,7 @@ body.theme-bold-4 { /* Royal Purple */
     --google-auth-btn-bg: #FFFFFF;
     --google-auth-btn-hover-bg: #F0F0F0;
     --google-auth-btn-text: #4285F4;
-    --price-up-color: #2ecc71;
+    --price-up-color: #00FF00;
     --price-down-color: #e74c3c;
     --price-neutral-color: #e8d0ff;
     --live-price-section-bg: rgba(199, 125, 255, 0.1);
@@ -554,8 +554,8 @@ body.theme-bold-4 { /* Royal Purple */
     --cash-border-color: #9d4edd;
     --cash-total-bg: #a842ff;
     --cash-total-text: #f0e6ff;
-    --cash-button-bg: #2ecc71;
-    --cash-button-hover-bg: #229954;
+    --cash-button-bg: #00FF00;
+    --cash-button-hover-bg: #00FF00;
     --cash-primary-button-bg: #c77dff;
     --cash-primary-button-hover-bg: #a842ff;
     --cash-delete-icon-color: #e74c3c;
@@ -605,7 +605,7 @@ body.theme-bold-5 { /* Deep Red */
     --google-auth-btn-bg: #FFFFFF;
     --google-auth-btn-hover-bg: #F0F0F0;
     --google-auth-btn-text: #4285F4;
-    --price-up-color: #2ecc71;
+    --price-up-color: #00FF00;
     --price-down-color: #e74c3c;
     --price-neutral-color: #ffcccc;
     --live-price-section-bg: rgba(231, 76, 60, 0.1);
@@ -623,8 +623,8 @@ body.theme-bold-5 { /* Deep Red */
     --cash-border-color: #c0392b;
     --cash-total-bg: #c0392b;
     --cash-total-text: #ffe6e6;
-    --cash-button-bg: #2ecc71;
-    --cash-button-hover-bg: #229954;
+    --cash-button-bg: #00FF00;
+    --cash-button-hover-bg: #00FF00;
     --cash-primary-button-bg: #e74c3c;
     --cash-primary-button-hover-bg: #c0392b;
     --cash-delete-icon-color: #e74c3c;
@@ -674,7 +674,7 @@ body.theme-bold-6 { /* Gold */
     --google-auth-btn-bg: #FFFFFF;
     --google-auth-btn-hover-bg: #F0F0F0;
     --google-auth-btn-text: #4285F4;
-    --price-up-color: #2ecc71;
+    --price-up-color: #00FF00;
     --price-down-color: #e74c3c;
     --price-neutral-color: #fff2c4;
     --live-price-section-bg: rgba(255, 235, 59, 0.1);
@@ -692,8 +692,8 @@ body.theme-bold-6 { /* Gold */
     --cash-border-color: #ffd700;
     --cash-total-bg: #fdd835;
     --cash-total-text: #3b301a;
-    --cash-button-bg: #2ecc71;
-    --cash-button-hover-bg: #229954;
+    --cash-button-bg: #00FF00;
+    --cash-button-hover-bg: #00FF00;
     --cash-primary-button-bg: #ffeb3b;
     --cash-primary-button-hover-bg: #fdd835;
     --cash-delete-icon-color: #e74c3c;
@@ -3008,7 +3008,7 @@ table tbody tr:not(.selected):hover {
 }
 
 /* Ensure positive/negative colors apply clearly in portfolio cells */
-#portfolioSection .portfolio-table td.positive { color: #008000 !important; font-weight: 700; }
+#portfolioSection .portfolio-table td.positive { color: #00FF00 !important; font-weight: 700; }
 #portfolioSection .portfolio-table td.negative { color: #FF0000 !important; font-weight: 700; }
 
 /* NEW: Target hit alert styling for table rows and mobile cards */
