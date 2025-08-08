@@ -219,13 +219,13 @@ let previousCalculatorInput = '';
 let resultDisplayed = false;
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
 
-// --- INPUT ELEMENTS (added for ReferenceError fix) ---
-const shareNameInput = document.getElementById('shareNameInput');
-const currentPriceInput = document.getElementById('currentPriceInput');
-const targetPriceInput = document.getElementById('targetPriceInput');
-const dividendAmountInput = document.getElementById('dividendAmountInput');
-const frankingCreditsInput = document.getElementById('frankingCreditsInput');
-const shareRatingSelect = document.getElementById('shareRatingSelect');
+// --- INPUT ELEMENTS (aligned with index.html IDs) ---
+const shareNameInput = document.getElementById('shareName');
+const currentPriceInput = document.getElementById('currentPrice');
+const targetPriceInput = document.getElementById('targetPrice');
+const dividendAmountInput = document.getElementById('dividendAmount');
+const frankingCreditsInput = document.getElementById('frankingCredits');
+const shareRatingSelect = document.getElementById('shareRating');
 
 const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
 const sortSelect = document.getElementById('sortSelect');
@@ -279,7 +279,8 @@ const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn
 const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
 const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
 
-const mainContainer = document.getElementById('mainContainer');
+// Use existing main container element (no id present in HTML)
+const mainContainer = document.querySelector('main.container');
 const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 
 // --- GLOBAL STATE (added for ReferenceError fix) ---
@@ -292,7 +293,35 @@ let targetHitIconDismissed = false; // Tracks if target-hit icon alert was dismi
 const appHeader = document.getElementById('appHeader');
 const mainTitle = document.getElementById('mainTitle');
 const shareTableBody = document.querySelector('#shareTable tbody');
-const mobileShareCardsContainer = document.getElementById('mobileShareCardsContainer');
+const mobileShareCardsContainer = document.getElementById('mobileShareCards');
+
+// --- FORM/MODAL DOM REFERENCES (aligned with index.html) ---
+const formTitle = document.getElementById('formTitle');
+const formCompanyName = document.getElementById('formCompanyName');
+const deleteShareBtn = document.getElementById('deleteShareBtn');
+const saveShareBtn = document.getElementById('saveShareBtn');
+const shareFormSection = document.getElementById('shareFormSection');
+const commentsFormContainer = document.getElementById('dynamicCommentsArea');
+const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay');
+
+// Share Detail Modal Elements
+const shareDetailModal = document.getElementById('shareDetailModal');
+const modalShareName = document.getElementById('modalShareName');
+const modalCompanyName = document.getElementById('modalCompanyName');
+const modalEnteredPrice = document.getElementById('modalEnteredPrice');
+const modalTargetPrice = document.getElementById('modalTargetPrice');
+const modalDividendAmount = document.getElementById('modalDividendAmount');
+const modalFrankingCredits = document.getElementById('modalFrankingCredits');
+const modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
+const modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
+const modalEntryDate = document.getElementById('modalEntryDate');
+const modalStarRating = document.getElementById('modalStarRating');
+const modalCommentsContainer = document.getElementById('modalCommentsContainer');
+const modalNewsLink = document.getElementById('modalNewsLink');
+const modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
+const modalFoolLink = document.getElementById('modalFoolLink');
+const modalListcorpLink = document.getElementById('modalListcorpLink');
+const modalCommSecLink = document.getElementById('modalCommSecLink');
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
 const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
