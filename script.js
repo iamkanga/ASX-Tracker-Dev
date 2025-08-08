@@ -145,14 +145,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return (h > 16) || (h === 16 && m >= 0);
     }
     function updateMarketStatusUI() {
-        const open = isAsxMarketOpen();
-        const closedAfterClose = !open && isAfterCloseUntilMidnightSydney();
-        const body = document.body;
-        if (closedAfterClose) {
-            body.classList.add('market-closed-ghost');
-        } else {
-            body.classList.remove('market-closed-ghost');
-        }
+    const open = isAsxMarketOpen();
         if (marketStatusBanner) {
             if (!open) {
                 const now = new Date();
@@ -164,8 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 marketStatusBanner.classList.add('app-hidden');
             }
         }
-        // Disable interactions that imply trading actions when closed
-        updateMainButtonsState(open);
+    // No global disabling; controls remain enabled regardless of market state
     }
     // Initial status and periodic re-check each minute
     updateMarketStatusUI();
@@ -400,7 +392,7 @@ let originalWatchlistData = null; // Stores original watchlist data for dirty st
 let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 
 // App version (single source of truth for display)
-const APP_VERSION = 'v0.1.3';
+const APP_VERSION = 'v0.1.4';
 
 
 // Live Price Data

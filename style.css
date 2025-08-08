@@ -222,19 +222,7 @@ function makeFilesAvailableToSourceControlCSS() {
     background: var(--app-bg, #fff);
 }
 
-/* Ghost UI when market closed after 16:00 Sydney until midnight */
-body.market-closed-ghost .live-price-value,
-body.market-closed-ghost .live-price-large,
-body.market-closed-ghost .price-change,
-body.market-closed-ghost .price-change-large {
-    opacity: 0.75;
-}
-body.market-closed-ghost .menu-button-item,
-body.market-closed-ghost .header-action-btn,
-body.market-closed-ghost .button {
-    pointer-events: none;
-    opacity: 0.6;
-}
+/* Removed global ghosting when market is closed. Watchlist, borders, and ASX code buttons stay full color. */
 
 /* Dark Theme Variables */
 body.dark-theme {
@@ -5069,7 +5057,7 @@ body.dark-theme .alert-item {
 
 /* Ensure the live price display section remains visible and formatted */
 .mobile-share-cards.compact-view .mobile-card .live-price-display-section {
-    background-color: transparent; /* Remove background in compact view */
+    background-color: rgba(0, 255, 0, 0.06); /* Subtle green tinge only in compact view */
     box-shadow: none; /* Remove shadow */
     padding: 0; /* Remove padding */
     margin-bottom: 0; /* Remove margin */
