@@ -203,6 +203,12 @@ let auth = null;
 let currentUserId = null;
 let currentAppId;
 let selectedShareDocId = null;
+// Safe defaults to prevent ReferenceErrors during early app lifecycle
+let livePrices = {}; // Global live prices map keyed by ASX code (uppercased)
+let selectedCashAssetDocId = null; // Currently selected cash asset ID
+let originalCashAssetData = null; // Tracks original cash asset form data for dirty checks
+let sharesAtTargetPrice = []; // Global list of shares currently at target
+let currentContextMenuShareId = null; // Tracks which share the context menu is acting on
 let userWatchlists = []; // populated from Firestore; safe default to avoid ReferenceErrors in module scope
 let allSharesData = []; // Kept in sync by the onSnapshot listener
 let currentDialogCallback = null;
