@@ -1,0 +1,13 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Node / tooling (optional future use)
+node_modules/
+dist/
+coverage/
+*.log
+
+# Service worker caches (runtime on some hosts)
+.cache/
