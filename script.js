@@ -94,9 +94,23 @@ function onLivePricesUpdated() {
         
         // Force re-render after sorting
         renderWatchlist();
+        // If the Portfolio view is visible, update it too
+        if (typeof renderPortfolioList === 'function') {
+            const section = document.getElementById('portfolioSection');
+            if (section && section.style.display !== 'none') {
+                renderPortfolioList();
+            }
+        }
     } else {
         // Still render to update UI with new prices
         renderWatchlist();
+        // Update portfolio view if active
+        if (typeof renderPortfolioList === 'function') {
+            const section = document.getElementById('portfolioSection');
+            if (section && section.style.display !== 'none') {
+                renderPortfolioList();
+            }
+        }
     }
 }
 
@@ -204,24 +218,70 @@ document.addEventListener('DOMContentLoaded', function () {
         if (portfolioSection) portfolioSection.style.display = 'none';
         stockWatchlistSection.style.display = '';
     };
-    // Render portfolio list (basic version)
+    // Render portfolio list (uses live prices when available)
     window.renderPortfolioList = function() {
-        let portfolioListContainer = document.getElementById('portfolioListContainer');
+        const portfolioListContainer = document.getElementById('portfolioListContainer');
         if (!portfolioListContainer) return;
-        // Filter allSharesData for shares in the portfolio
-        const portfolioShares = allSharesData.filter(share => share.watchlistId === 'portfolio');
+
+        // Filter for shares assigned to the Portfolio
+        const portfolioShares = allSharesData.filter(s => s.watchlistId === 'portfolio');
         if (portfolioShares.length === 0) {
             portfolioListContainer.innerHTML = '<p>No shares in your portfolio yet.</p>';
             return;
         }
+
+        // Helper to get a displayable current price for a share (live, last live when closed, then entered price)
+        function getDisplayPrice(share) {
+            const code = (share.shareName || '').toUpperCase();
+            const lp = livePrices ? livePrices[code] : undefined;
+            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+            let price = null;
+            if (lp) {
+                if (marketOpen && lp.live !== null && !isNaN(lp.live)) {
+                    price = Number(lp.live);
+                } else if (!marketOpen && window.showLastLivePriceOnClosedMarket && lp.lastLivePrice !== null && !isNaN(lp.lastLivePrice)) {
+                    price = Number(lp.lastLivePrice);
+                }
+            }
+            if (price === null || isNaN(price)) {
+                // Fallback to user-entered currentPrice if available
+                price = (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice)))
+                    ? Number(share.currentPrice)
+                    : null;
+            }
+            return price;
+        }
+
+        function fmtMoney(n) {
+            return (typeof n === 'number' && !isNaN(n)) ? '$' + n.toFixed(2) : '';
+        }
+
+        let totalValue = 0;
         let html = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg Price</th><th>Current Price</th><th>Value</th></tr></thead><tbody>';
         portfolioShares.forEach(share => {
-            const shares = share.portfolioShares || '';
-            const avgPrice = share.portfolioAvgPrice || '';
-            const currPrice = share.currentPrice || '';
-            const value = (shares && currPrice) ? (Number(shares) * Number(currPrice)).toFixed(2) : '';
-            html += `<tr><td>${share.shareName}</td><td>${shares}</td><td>${avgPrice}</td><td>${currPrice}</td><td>${value ? '$'+value : ''}</td></tr>`;
+            const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
+                ? Math.trunc(Number(share.portfolioShares))
+                : '';
+            const avgPrice = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)))
+                ? Number(share.portfolioAvgPrice)
+                : '';
+            const priceNow = getDisplayPrice(share);
+            const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
+            if (typeof rowValue === 'number') totalValue += rowValue;
+
+            html += `<tr>
+                <td>${share.shareName || ''}</td>
+                <td>${shares !== '' ? shares : ''}</td>
+                <td>${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
+                <td>${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</td>
+                <td>${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
+            </tr>`;
         });
+        // Total row
+        html += `<tr class="portfolio-total-row">
+            <td colspan="4" style="text-align:right;font-weight:600;">Total</td>
+            <td style="font-weight:700;">${fmtMoney(totalValue)}</td>
+        </tr>`;
         html += '</tbody></table>';
         portfolioListContainer.innerHTML = html;
     };
