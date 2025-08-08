@@ -2962,6 +2962,56 @@ table tbody tr:not(.selected):hover {
     background-color: var(--table-row-hover-bg) !important; /* Force hover background color */
 }
 
+/* Portfolio section/table styling */
+#portfolioSection.portfolio-section {
+    margin-top: 20px;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px var(--shadow-color);
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 0; /* Breathe a bit around the table */
+}
+
+#portfolioSection h2 {
+    margin: 12px 16px;
+    font-weight: 700;
+}
+
+/* Reuse base table styles; add numeric alignment + totals emphasis */
+#portfolioSection .portfolio-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-color);
+}
+
+#portfolioSection .portfolio-table th,
+#portfolioSection .portfolio-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Align numeric columns to the right: Shares, Avg, Current, Value, P/L, P/L% */
+#portfolioSection .portfolio-table td:nth-child(2),
+#portfolioSection .portfolio-table td:nth-child(3),
+#portfolioSection .portfolio-table td:nth-child(4),
+#portfolioSection .portfolio-table td:nth-child(5),
+#portfolioSection .portfolio-table td:nth-child(6),
+#portfolioSection .portfolio-table td:nth-child(7) {
+    text-align: right;
+}
+
+/* Totals row emphasis */
+#portfolioSection .portfolio-table tr.portfolio-total-row td {
+    border-top: 2px solid var(--border-color);
+    background-color: var(--table-header-bg);
+}
+
+/* Ensure positive/negative colors apply clearly in portfolio cells */
+#portfolioSection .portfolio-table td.positive { color: #008000 !important; font-weight: 700; }
+#portfolioSection .portfolio-table td.negative { color: #FF0000 !important; font-weight: 700; }
+
 /* NEW: Target hit alert styling for table rows and mobile cards */
 table tbody tr.target-hit-alert,
 .mobile-card.target-hit-alert {

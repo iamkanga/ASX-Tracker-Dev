@@ -1,7 +1,7 @@
-// Service Worker Version: 1.0.2
+// Service Worker Version: 1.0.3
 
 // Cache name for the current version of the service worker
-const CACHE_NAME = 'share-watchlist-v1.0.3'; // Version incremented
+const CACHE_NAME = 'share-watchlist-v1.0.4'; // Version incremented
 
 // List of essential application assets to precache
 const CACHED_ASSETS = [
