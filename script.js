@@ -1,16 +1,5 @@
 // Copilot update: 2025-07-29 - change for sync test
-import {
-  logDebug,
-  setIconDisabled,
-  showCustomAlert,
-  formatDate,
-  showModal,
-  hideModal,
-  addCommentSection,
-  clearForm,
-  addShareToTable,
-  addShareToMobileCards
-} from './ui-helpers.js';
+// Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
