@@ -3604,8 +3604,8 @@ table td.live-price-cell.negative-change {
 .modal-content input[type="text"],
 .modal-content input[type="number"],
 .modal-content textarea,
-calc-input-group input[type="number"],
-calc-input-group select {
+.calc-input-group input[type="number"],
+.calc-input-group select {
     width: calc(100% - 22px);
     padding: 10px;
     margin-bottom: 15px;
@@ -4477,6 +4477,14 @@ calc-input-group select {
     white-space: nowrap;
     overflow-x: auto;
     direction: rtl;
+}
+
+/* Ensure horizontal rule in calculator modal is styled consistently */
+#dividendCalculatorModal hr {
+    border: 0;
+    border-top: 1px solid var(--border-color);
+    margin: 12px 0;
+    height: 0;
 }
 
 /* Calculator Buttons Layout */

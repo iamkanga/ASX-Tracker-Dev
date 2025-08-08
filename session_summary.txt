@@ -1,9 +1,37 @@
-We are troubleshooting a web application where recent code changes are not appearing for the end-user. The user has indicated this is likely not a simple browser cache issue.
+Conversation handoff (compact): Dividend calculator UI fix, PWA hygiene, prior UI/behavior changes
 
-Our primary goal is to diagnose and fix this update problem, while also implementing improvements to make the application more robust and easier to manage for a non-coder.
+Latest issue and fix
+- Problem: Dividend calculator "Investment Value" select rendered incorrectly and a stray dot appeared between Franked Yield and Investment Value.
+- Root cause: Malformed CSS selectors for calculator fields (missing leading "." on .calc-input-group rules) and no explicit hr styling inside the calculator modal.
+- Fixes:
+	- style.css: Corrected .calc-input-group input/select selectors (desktop and mobile sections). Added scoped separator: #dividendCalculatorModal hr { border-top: 1px solid var(--border-color); border: 0; margin: 10px 0; }.
+	- index.html: Bumped stylesheet reference to style.css?v=0.1.5.
+	- service-worker.js: Updated precache list to include ./style.css?v=0.1.5; skipWaiting/clients.claim already in place. Cache name remains share-watchlist-v1.0.8.
+- Status: Changes saved and precache updated. Pending verification on devices to confirm normal select rendering and no stray dot. No JS logic changes; calculations unaffected.
 
-The immediate plan is as follows:
+Key prior improvements (context)
+- UI polish: Version badge placement, company name under code, standardized pure #FF0000/#00FF00 for numbers and borders.
+- Watchlist layout and icons refined for desktop/mobile.
+- Market closed behavior: Automatic Sydney-time checks with informational banner only (no global ghosting; compact view uses subtle background tint).
+- Share Details modal: Restored live price, 52-week high/low, and P/E; unique container to avoid selector conflicts.
+- PWA: Versioned assets, updated SW with precache discipline, skipWaiting and clients.claim to reduce stale clients.
 
-1.  **Analyze the Service Worker:** The file `service-worker.js` is the most likely cause. It controls how the application caches files. I will examine its logic to see if it's serving old, cached files instead of fetching the new versions.
-2.  **Review Core Application Files:** I will inspect `index.html` and `script.js` to understand how the service worker is registered and how the application's logic runs.
-3.  **Propose a Solution:** Based on the analysis, I will propose specific code changes to fix the update mechanism and add simple diagnostic features (like displaying the current app version) to make future troubleshooting easier.
+Files involved
+- index.html: Dividend calculator markup and CSS link now style.css?v=0.1.5.
+- style.css: Fixed .calc-input-group selectors; added hr styling scoped to the calculator modal.
+- service-worker.js: Precaches ./style.css?v=0.1.5; cache name share-watchlist-v1.0.8 unchanged.
+- script.js: Calculator bindings intact; no changes required for this UI bug.
+
+Quality gates (quick)
+- Build: N/A (static site).
+- Type/Lint: N/A.
+- Smoke: Requires runtime check to validate dropdown rendering and separator on both desktop and mobile.
+
+Requirements coverage
+- “Fix dividend calculator select rendering and remove stray dot”: Done (CSS selector corrections + modal-scoped hr style).
+- “Keep app colors pure red/green; restore modal metrics; auto market-close handling with banner only”: Done previously.
+- “Ensure updates reach clients under SW”: Done (asset version bump + SW precache update); may optionally bump cache name if propagation lags.
+
+Next steps
+- Verify on-device the calculator modal: confirm proper Investment Value dropdown, no stray dot, and Estimated Annual Dividend updates as selection/inputs change.
+- If any clients lag receiving CSS, consider bumping CACHE_NAME to a new version to force a clean install.
