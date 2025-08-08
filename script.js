@@ -295,6 +295,30 @@ const mainTitle = document.getElementById('mainTitle');
 const shareTableBody = document.querySelector('#shareTable tbody');
 const mobileShareCardsContainer = document.getElementById('mobileShareCards');
 
+// --- AUTH/CASH/LIVE-PRICE GLOBALS & FALLBACKS ---
+// Ensures references used during auth/logout won’t throw if not set elsewhere
+let userCashCategories = [];
+let unsubscribeShares = null;
+let unsubscribeCashCategories = null;
+const loadingIndicator = document.getElementById('loadingIndicator');
+
+// Provide minimal fallback for theme application if not defined elsewhere
+// This avoids crashes on logout where applyTheme("system-default") is called
+// Note: simple implementation toggles a data attribute; adjust if you have a richer theming system
+if (typeof applyTheme === 'undefined') {
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme || 'system-default');
+    }
+}
+
+// Provide a safe no-op for stopping live price updates if not defined elsewhere
+if (typeof stopLivePriceUpdates === 'undefined') {
+    function stopLivePriceUpdates() {
+        // If you manage an interval elsewhere, consider clearing it here:
+        // if (window.livePriceInterval) { clearInterval(window.livePriceInterval); window.livePriceInterval = null; }
+    }
+}
+
 // --- FORM/MODAL DOM REFERENCES (aligned with index.html) ---
 const formTitle = document.getElementById('formTitle');
 const formCompanyName = document.getElementById('formCompanyName');
