@@ -6,7 +6,7 @@
     <title>Share Watchlist (Updated)</title>
     <link rel="icon" href="favicon.png" type="image/png">
 
-    <link rel="stylesheet" href="style.css?v=0.1.1">
+    <link rel="stylesheet" href="style.css?v=0.1.3">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
@@ -169,6 +169,8 @@
                 </div>
             </div>
         </div>
+    <!-- Market status banner (shown automatically when market is closed) -->
+    <div id="marketStatusBanner" class="market-status-banner app-hidden" aria-live="polite"></div>
         
         <div id="asxCodeButtonsContainer" class="asx-code-buttons-container">
             </div>
@@ -192,22 +194,6 @@
                 <button id="searchStockBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-search-plus"></i> <span>Search & Add Stock</span>
                 </button>
-                <!-- Sidebar Last Price Toggle Switch removed, logic preserved -->
-                <div class="menu-button-item checkbox-switch-container" data-action-closes-menu="false">
-                    <div class="toggle-title-row">
-                        <i class="fas fa-history"></i> <span>Display End-of-Day</span>
-                    </div>
-                    <div class="checkbox-switch-row">
-                        <label class="checkbox-label" for="sidebarHideCheckbox">
-                            <input type="checkbox" id="sidebarHideCheckbox" class="modern-checkbox">
-                            Hide
-                        </label>
-                        <label class="checkbox-label" for="sidebarShowCheckbox">
-                            <input type="checkbox" id="sidebarShowCheckbox" class="modern-checkbox">
-                            Show
-                        </label>
-                    </div>
-                </div>
             </div>
         </div>
 

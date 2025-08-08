@@ -196,7 +196,7 @@ export function addShareToMobileCards(share) {
         const previousClosePrice = livePriceData.prevClose;
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
-        if (isMarketOpen || window.showLastLivePriceOnClosedMarket) {
+    if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
                 displayLivePrice = '$' + currentLivePrice.toFixed(2);
             }

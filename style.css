@@ -212,6 +212,30 @@ function makeFilesAvailableToSourceControlCSS() {
     --cash-edit-icon-color: #007bff;
 }
 
+/* Market status banner */
+.market-status-banner {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 0.95rem;
+    color: var(--ghosted-text);
+    border-top: 1px solid var(--border-color, #c9d2d4);
+    background: var(--app-bg, #fff);
+}
+
+/* Ghost UI when market closed after 16:00 Sydney until midnight */
+body.market-closed-ghost .live-price-value,
+body.market-closed-ghost .live-price-large,
+body.market-closed-ghost .price-change,
+body.market-closed-ghost .price-change-large {
+    opacity: 0.75;
+}
+body.market-closed-ghost .menu-button-item,
+body.market-closed-ghost .header-action-btn,
+body.market-closed-ghost .button {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
 /* Dark Theme Variables */
 body.dark-theme {
     /* Dark Theme Variables */
@@ -3674,16 +3698,7 @@ calc-input-group select {
     color: var(--ghosted-text);
 }
 
-/* Highlight active label for sidebar toggle */
-#showLastLivePriceToggle:checked + .slider + .toggle-label.right {
-    font-weight: bold;
-    color: var(--positive-color);
-}
-
-#showLastLivePriceToggle:not(:checked) + .slider + .toggle-label.left {
-    font-weight: bold;
-    color: var(--negative-color);
-}
+/* Removed toggle-specific highlight rules (#showLastLivePriceToggle) as the feature was deprecated */
 
 /* Ensure the main sidebar button item is still clickable as a whole */
 .menu-button-item.toggle-switch-container > .switch {
@@ -3892,14 +3907,7 @@ calc-input-group select {
     color: var(--ghosted-text);
 }
 
-/* Highlight active label for sidebar toggle */
-#showLastLivePriceToggle:checked + .slider + .toggle-label.right {
-    font-weight: bold;
-    color: var(--positive-color);
-}
-
-#showLastLivePriceToggle:not(:checked) + .slider + .toggle-label.left {
- /* Specific styling for the sidebar toggle section */
+/* Specific styling for the sidebar toggle section */
 .menu-button-item.toggle-switch-container {
     display: flex;
     flex-direction: column; /* Stack items vertically: title then toggle */
@@ -3958,16 +3966,7 @@ calc-input-group select {
     color: var(--ghosted-text);
 }
 
-/* Highlight active label for sidebar toggle */
-#showLastLivePriceToggle:checked + .slider + .toggle-label.right {
-    font-weight: bold;
-    color: var(--positive-color);
-}
-
-#showLastLivePriceToggle:not(:checked) + .slider + .toggle-label.left {
-    font-weight: bold;
-    color: var(--negative-color);
-}
+/* Removed toggle-specific highlight rules (#showLastLivePriceToggle) as the feature was deprecated */
 
 /* Ensure the main sidebar button item is still clickable as a whole */
 .menu-button-item.toggle-switch-container > .switch {
@@ -3981,8 +3980,6 @@ calc-input-group select {
 /* NEW: Styling for the notification badge text color */
 .target-hit-fixed-btn .badge {
     color: var(--button-text); /* Default to white/light for dark backgrounds */
-}   font-weight: bold;
-    color: var(--negative-color);
 }
 
 /* Ensure the main sidebar button item is still clickable as a whole */
@@ -4125,16 +4122,7 @@ calc-input-group select {
     color: var(--ghosted-text);
 }
 
-/* Highlight active label for sidebar toggle */
-#showLastLivePriceToggle:checked + .slider + .toggle-label.right {
-    font-weight: bold;
-    color: var(--positive-color);
-}
-
-#showLastLivePriceToggle:not(:checked) + .slider + .toggle-label.left {
-    font-weight: bold;
-    color: var(--negative-color);
-}
+/* Removed toggle-specific highlight rules (#showLastLivePriceToggle) as the feature was deprecated */
 
 /* Ensure the main sidebar button item is still clickable as a whole */
 .menu-button-item.toggle-switch-container > .switch {

@@ -122,7 +122,7 @@ function forceApplyCurrentSort() {
     }
 }
 
-// --- SIDEBAR CHECKBOX LOGIC FOR LAST PRICE DISPLAY ---
+// --- Automatic market status handling (Sydney time) ---
 document.addEventListener('DOMContentLoaded', function () {
     // --- Watchlist logic moved to watchlist.js ---
     // Import and call watchlist functions
@@ -132,56 +132,44 @@ document.addEventListener('DOMContentLoaded', function () {
         window.watchlistModule.ensurePortfolioOptionPresent();
         setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
     }
-    const hideCheckbox = document.getElementById('sidebarHideCheckbox');
-    const showCheckbox = document.getElementById('sidebarShowCheckbox');
-
-    function setShowLastLivePricePreference(value) {
-        showLastLivePriceOnClosedMarket = value;
-        window.showLastLivePriceOnClosedMarket = value;
-        // Persist to Firestore if available
-        if (window.firebaseAuth && window.firebaseAuth.currentUser && window.firestoreDb && window.firestore && window.getFirebaseAppId) {
-            const currentUserId = window.firebaseAuth.currentUser.uid;
-            const currentAppId = window.getFirebaseAppId();
-            const userProfileDocRef = window.firestore.doc(window.firestoreDb, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-            window.firestore.setDoc(userProfileDocRef, { showLastLivePriceOnClosedMarket: value }, { merge: true })
-                .then(() => {
-                    if (window.logDebug) window.logDebug('Sidebar Checkbox: Saved "Show Last Live Price" preference to Firestore: ' + value);
-                })
-                .catch((error) => {
-                    if (window.showCustomAlert) window.showCustomAlert('Error saving preference: ' + error.message);
-                });
-        }
-        // Update UI immediately
-        if (window.renderWatchlist) window.renderWatchlist();
-        if (window.showCustomAlert) window.showCustomAlert('Last Price Display set to: ' + (value ? 'On (Market Closed)' : 'Off (Market Closed)'), 1500);
-        if (window.toggleAppSidebar) window.toggleAppSidebar(false);
+    // Automatic closed-market banner and ghosting
+    const marketStatusBanner = document.getElementById('marketStatusBanner');
+    function formatSydneyDate(d) {
+        return new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
     }
-
-    function updateCheckboxes(source) {
-        if (source === hideCheckbox && hideCheckbox.checked) {
-            showCheckbox.checked = false;
-            setShowLastLivePricePreference(false);
-        } else if (source === showCheckbox && showCheckbox.checked) {
-            hideCheckbox.checked = false;
-            setShowLastLivePricePreference(true);
-        }
-        // Prevent both from being unchecked: always one selected
-        if (!hideCheckbox.checked && !showCheckbox.checked) {
-            showCheckbox.checked = true;
-            setShowLastLivePricePreference(true);
-        }
+    function isAfterCloseUntilMidnightSydney() {
+        const now = new Date();
+        const opts = { hour: 'numeric', minute: 'numeric', hour12: false, timeZone: 'Australia/Sydney' };
+        const timeStr = new Intl.DateTimeFormat('en-AU', opts).format(now);
+        const [h, m] = timeStr.split(':').map(Number);
+        return (h > 16) || (h === 16 && m >= 0);
     }
-
-    if (hideCheckbox && showCheckbox) {
-        hideCheckbox.addEventListener('change', function () {
-            updateCheckboxes(hideCheckbox);
-        });
-        showCheckbox.addEventListener('change', function () {
-            updateCheckboxes(showCheckbox);
-        });
-        // Initial state: ensure only one is checked
-        updateCheckboxes(showCheckbox.checked ? showCheckbox : hideCheckbox);
+    function updateMarketStatusUI() {
+        const open = isAsxMarketOpen();
+        const closedAfterClose = !open && isAfterCloseUntilMidnightSydney();
+        const body = document.body;
+        if (closedAfterClose) {
+            body.classList.add('market-closed-ghost');
+        } else {
+            body.classList.remove('market-closed-ghost');
+        }
+        if (marketStatusBanner) {
+            if (!open) {
+                const now = new Date();
+                // Snapshot is the last fetched live as at close; show date to avoid weekend ambiguity
+                marketStatusBanner.textContent = `ASX market is closed. Showing final prices from today. (${formatSydneyDate(now)})`;
+                marketStatusBanner.classList.remove('app-hidden');
+            } else {
+                marketStatusBanner.textContent = '';
+                marketStatusBanner.classList.add('app-hidden');
+            }
+        }
+        // Disable interactions that imply trading actions when closed
+        updateMainButtonsState(open);
     }
+    // Initial status and periodic re-check each minute
+    updateMarketStatusUI();
+    setInterval(updateMarketStatusUI, 60 * 1000);
 
     // Ensure Edit Current Watchlist button updates when selection changes
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
@@ -245,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (lp) {
                 if (marketOpen && lp.live !== null && !isNaN(lp.live)) {
                     price = Number(lp.live);
-                } else if (!marketOpen && window.showLastLivePriceOnClosedMarket && lp.lastLivePrice !== null && !isNaN(lp.lastLivePrice)) {
+                } else if (!marketOpen && lp.lastLivePrice !== null && !isNaN(lp.lastLivePrice)) {
                     price = Number(lp.lastLivePrice);
                 }
             }
@@ -412,7 +400,7 @@ let originalWatchlistData = null; // Stores original watchlist data for dirty st
 let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 
 // App version (single source of truth for display)
-const APP_VERSION = 'v0.1.1';
+const APP_VERSION = 'v0.1.3';
 
 
 // Live Price Data
@@ -457,7 +445,7 @@ function applyCompactViewMode() {
 
 // NEW: Global variable to track if the target hit icon is dismissed for the current session
 let targetHitIconDismissed = false;
-let showLastLivePriceOnClosedMarket = false; // New global variable for the toggle state
+// Removed: manual EOD toggle state; behavior is automatic based on Sydney market hours
 
 // Tracks if share detail modal was opened from alerts
 let wasShareDetailOpenedFromTargetAlerts = false;
@@ -595,7 +583,6 @@ const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn
 // NEW: Target Direction Checkbox UI Elements
 const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
 const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
-const showLastLivePriceToggle = document.getElementById('showLastLivePriceToggle');
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
 const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
@@ -898,7 +885,7 @@ function getShareDisplayData(share) {
         high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? '$' + livePriceData.High52.toFixed(2) : 'N/A';
         low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A';
 
-        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
+    if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
                 displayLivePrice = '$' + currentLivePrice.toFixed(2);
             }
@@ -1093,7 +1080,7 @@ function addShareToMobileCards(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
+    if (isMarketOpen) {
             // Show live data if market is open, or if market is closed but toggle is ON
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
                 displayLivePrice = '$' + currentLivePrice.toFixed(2);
@@ -1140,7 +1127,7 @@ function addShareToMobileCards(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
+    if (isMarketOpen) {
             // Show live data if market is open, or if market is closed but toggle is ON
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
                 displayLivePrice = '$' + currentLivePrice.toFixed(2);
@@ -1361,7 +1348,7 @@ function updateOrCreateShareTableRow(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
+    if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
                 displayLivePrice = '$' + currentLivePrice.toFixed(2);
             }
@@ -1511,7 +1498,7 @@ function updateOrCreateShareMobileCard(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-        if (isMarketOpen || showLastLivePriceOnClosedMarket) {
+    if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
                 displayLivePrice = '$' + currentLivePrice.toFixed(2);
             }
@@ -1530,8 +1517,15 @@ function updateOrCreateShareMobileCard(share) {
             }
         } else {
             displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
-            displayPriceChange = '0.00 (0.00%)';
-            priceClass = 'neutral';
+            if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+            } else {
+                displayPriceChange = '0.00 (0.00%)';
+                priceClass = 'neutral';
+            }
             cardPriceChangeClass = '';
         }
     }
@@ -3689,17 +3683,14 @@ async function loadUserWatchlistsAndSettings() {
         logDebug('User Settings: Watchlists after sorting: ' + userWatchlists.map(wl => wl.name).join(', '));
 
         const userProfileSnap = await window.firestore.getDoc(userProfileDocRef);
-        savedSortOrder = null;
-        savedTheme = null;
-        let savedShowLastLivePricePreference = null;
+    savedSortOrder = null;
+    savedTheme = null;
 
         if (userProfileSnap.exists()) {
             savedSortOrder = userProfileSnap.data().lastSortOrder;
             savedTheme = userProfileSnap.data().lastTheme;
-            savedShowLastLivePricePreference = userProfileSnap.data().showLastLivePriceOnClosedMarket; // Load the new preference
             const loadedSelectedWatchlistIds = userProfileSnap.data().lastSelectedWatchlistIds;
-            showLastLivePriceOnClosedMarket = userProfileSnap.data().showLastLivePriceOnClosedMarket || false; // Load preference
-            logDebug('User Settings: Loaded showLastLivePriceOnClosedMarket: ' + showLastLivePriceOnClosedMarket);
+            // Manual EOD preference removed; behavior is now automatic
 
             if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
                 // Filter out invalid or non-existent watchlists from loaded preferences
@@ -3768,21 +3759,7 @@ async function loadUserWatchlistsAndSettings() {
         }
         updateThemeToggleAndSelector();
 
-        // Apply saved 'show last live price' preference to the new checkboxes
-        if (typeof savedShowLastLivePricePreference === 'boolean') {
-            showLastLivePriceOnClosedMarket = savedShowLastLivePricePreference;
-            const hideCheckbox = document.getElementById('sidebarHideCheckbox');
-            const showCheckbox = document.getElementById('sidebarShowCheckbox');
-            if (hideCheckbox && showCheckbox) {
-                showCheckbox.checked = showLastLivePriceOnClosedMarket;
-                hideCheckbox.checked = !showLastLivePriceOnClosedMarket;
-            }
-            logDebug('Toggle: Applied saved "Show Last Live Price" preference: ' + showLastLivePriceOnClosedMarket);
-        } else {
-            // Default to true (Show) if not set
-            showLastLivePriceOnClosedMarket = true;
-            logDebug('Toggle: No saved "Show Last Live Price" preference, defaulting to true (Show).');
-        }
+    // Removed: manual EOD preference handling
 
         const migratedSomething = await migrateOldSharesToWatchlist();
         if (!migratedSomething) {
@@ -3800,10 +3777,6 @@ async function loadUserWatchlistsAndSettings() {
         hideSplashScreenIfReady();
 
     } catch (error) {
-        // Set the initial state of the toggle switch based on loaded preference
-        if (showLastLivePriceToggle) {
-            showLastLivePriceToggle.checked = showLastLivePriceOnClosedMarket;
-        }
         console.error('User Settings: Error loading user watchlists and settings:', error);
         showCustomAlert('Error loading user settings: ' + error.message);
         hideSplashScreen();
@@ -6549,28 +6522,7 @@ if (sortSelect) {
         });
     }
     
-    // NEW: Show Last Live Price Toggle Listener
-if (showLastLivePriceToggle) {
-    showLastLivePriceToggle.addEventListener('change', async (event) => {
-        showLastLivePriceOnClosedMarket = event.target.checked;
-        logDebug('Toggle: "Show Last Live Price" toggled to: ' + showLastLivePriceOnClosedMarket);
-
-        // Save preference to Firestore
-        if (currentUserId && db && window.firestore) {
-            const userProfileDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-            try {
-                await window.firestore.setDoc(userProfileDocRef, { showLastLivePriceOnClosedMarket: showLastLivePriceOnClosedMarket }, { merge: true });
-                logDebug('Toggle: Saved "Show Last Live Price" preference to Firestore: ' + showLastLivePriceOnClosedMarket);
-            } catch (error) {
-                console.error('Toggle: Error saving "Show Last Live Price" preference to Firestore:', error);
-                showCustomAlert('Error saving preference: ' + error.message);
-            }
-        }
-        renderWatchlist(); // Re-render to apply the new display logic immediately
-        showCustomAlert('Last Price Display set to: ' + (showLastLivePriceOnClosedMarket ? 'On (Market Closed)' : 'Off (Market Closed)'), 1500);
-        toggleAppSidebar(false); // Close sidebar after action
-    });
-}
+    // Removed: Show Last Live Price toggle listener (automatic behavior now)
 
     // NEW: Cash Asset Form Modal Save/Delete/Edit Buttons (2.1, 2.2)
     if (saveCashAssetBtn) {
