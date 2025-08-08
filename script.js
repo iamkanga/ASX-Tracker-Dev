@@ -208,9 +208,15 @@ document.addEventListener('DOMContentLoaded', function () {
             mainContainer.appendChild(portfolioSection);
         }
         stockWatchlistSection.style.display = 'none';
+        // Ensure selection state reflects Portfolio for downstream filters (e.g., ASX buttons)
+        currentSelectedWatchlistIds = ['portfolio'];
         let portfolioSection = document.getElementById('portfolioSection');
         portfolioSection.style.display = 'block';
         renderPortfolioList();
+        if (typeof renderAsxCodeButtons === 'function') {
+            if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
+            renderAsxCodeButtons();
+        }
     };
     window.showWatchlistView = function() {
         // Hide portfolio section if present, show normal stock watchlist section
@@ -2868,6 +2874,10 @@ function renderWatchlist() {
         // Render the portfolio list
         if (typeof renderPortfolioList === 'function') {
             renderPortfolioList();
+        }
+        // Also render ASX code buttons for portfolio shares
+        if (typeof renderAsxCodeButtons === 'function') {
+            renderAsxCodeButtons();
         }
         adjustMainContentPadding();
         return;
