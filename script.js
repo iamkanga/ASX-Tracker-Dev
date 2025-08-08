@@ -335,6 +335,13 @@ const LIVE_PRICE_FETCH_INTERVAL_MS = 60000; // 1 minute default fetch cadence
 // Google Apps Script URL can be provided via window for environment-specific configuration
 const GOOGLE_APPS_SCRIPT_URL = window.GOOGLE_APPS_SCRIPT_URL || null;
 
+// Helper to determine if live prices are configured at runtime
+function isLivePricesConfigured() {
+    return Boolean(window.GOOGLE_APPS_SCRIPT_URL || GOOGLE_APPS_SCRIPT_URL);
+}
+// Track if we've already warned about missing config to avoid noisy console spam
+let _livePricesConfigWarned = false;
+
 // --- WATCHLIST & VIEW DEFAULTS ---
 // Constants used when filtering/identifying special watchlists in code paths
 const ALL_SHARES_ID = '__ALL_SHARES__';
@@ -3351,13 +3358,16 @@ async function fetchLivePrices() {
     }
 
     try {
-        if (!GOOGLE_APPS_SCRIPT_URL) {
-            console.warn('Live Price: GOOGLE_APPS_SCRIPT_URL not configured. Skipping live prices.');
+        if (!isLivePricesConfigured()) {
+            if (!_livePricesConfigWarned) {
+                console.warn('Live Price: GOOGLE_APPS_SCRIPT_URL not configured. Skipping live prices.');
+                _livePricesConfigWarned = true;
+            }
             window._livePricesLoaded = true;
             hideSplashScreenIfReady();
             return;
         }
-        const response = await fetch(GOOGLE_APPS_SCRIPT_URL); 
+        const response = await fetch(window.GOOGLE_APPS_SCRIPT_URL || GOOGLE_APPS_SCRIPT_URL); 
         if (!response.ok) {
             throw new Error('HTTP error! status: ' + response.status);
         }
@@ -3443,11 +3453,18 @@ function startLivePriceUpdates() {
         logDebug('Live Price: Cleared existing live price interval.');
     }
     // Only start fetching if not in cash view
-    if (!currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (!currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID) && isLivePricesConfigured()) {
         livePriceFetchInterval = setInterval(fetchLivePrices, LIVE_PRICE_FETCH_INTERVAL_MS); // Only set the interval
         logDebug('Live Price: Started live price updates every ' + (LIVE_PRICE_FETCH_INTERVAL_MS / 1000 / 60) + ' minutes.');
     } else {
-        logDebug('Live Price: Not starting live price updates because "Cash & Assets" is selected.'); // UPDATED TEXT
+        if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+            logDebug('Live Price: Not starting live price updates because "Cash & Assets" is selected.');
+        } else if (!isLivePricesConfigured()) {
+            if (!_livePricesConfigWarned) {
+                console.warn('Live Price: Not starting updates; GOOGLE_APPS_SCRIPT_URL not configured.');
+                _livePricesConfigWarned = true;
+            }
+        }
     }
 }
 
@@ -6239,11 +6256,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
 
-                // Load user data, then do an initial fetch of live prices before setting the update interval.
+                // Load user data, then fetch live prices (if configured) before setting the update interval.
                 // This ensures the initial view is correctly sorted by percentage change if selected.
                 await loadUserWatchlistsAndSettings();
-                await fetchLivePrices();
-                startLivePriceUpdates();
+                if (isLivePricesConfigured()) {
+                    await fetchLivePrices();
+                    startLivePriceUpdates();
+                } else {
+                    // Mark as loaded to allow splash to dismiss even without live prices
+                    window._livePricesLoaded = true;
+                    hideSplashScreenIfReady();
+                }
 
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
