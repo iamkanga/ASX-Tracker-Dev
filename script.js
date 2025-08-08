@@ -304,9 +304,23 @@ const loadingIndicator = document.getElementById('loadingIndicator');
 
 // Theme state used by some applyTheme implementations
 let currentActiveTheme = 'system-default';
+let currentCustomThemeIndex = 0; // default to first custom theme option
 
 // Live prices interval handle
 let livePriceFetchInterval = null;
+const LIVE_PRICE_FETCH_INTERVAL_MS = 60000; // 1 minute default fetch cadence
+
+// --- WATCHLIST & VIEW DEFAULTS ---
+// Constants used when filtering/identifying special watchlists in code paths
+const ALL_SHARES_ID = '__ALL_SHARES__';
+const CASH_BANK_WATCHLIST_ID = 'cashBank'; // matches index.html option value
+const CUSTOM_THEMES = []; // safe default; populated elsewhere if custom themes exist
+
+// Currently selected watchlist(s). Default to All Shares until user selects otherwise
+let currentSelectedWatchlistIds = [ALL_SHARES_ID];
+
+// Mobile view mode for cards/table rendering logic
+let currentMobileViewMode = 'auto'; // 'auto'|'cards'|'table' safe default
 
 // Provide minimal fallback for theme application if not defined elsewhere
 // This avoids crashes on logout where applyTheme("system-default") is called
