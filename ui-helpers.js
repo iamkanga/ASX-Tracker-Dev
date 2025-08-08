@@ -1,180 +1,15 @@
-// --- Modal Show/Hide Helpers (migrated from script.js) ---
-/**
- * Shows a modal dialog by setting display to block and removing app-hidden class.
- * @param {HTMLElement} modalElement
- */
-export function showModal(modalElement) {
-    if (!modalElement) return;
-    modalElement.style.display = 'block';
-    modalElement.classList.remove('app-hidden');
-    // Optionally focus the first input or button inside the modal
-    const focusable = modalElement.querySelector('input, button, select, textarea');
-    if (focusable) focusable.focus();
-}
+// UI helper functions extracted from script.js
+// This module will contain utility functions for UI updates, modals, alerts, etc.
+// UI Helper Functions migrated from script.js
 
-/**
- * Hides a modal dialog by setting display to none and adding app-hidden class.
- * @param {HTMLElement} modalElement
- */
-export function hideModal(modalElement) {
-    if (!modalElement) return;
-    modalElement.style.display = 'none';
-    modalElement.classList.add('app-hidden');
-}
-// --- Number Formatting Helper (migrated from script.js) ---
-/**
- * Formats a user-entered number for display in form fields, preserving up to 3 decimals, stripping trailing zeros.
- * Returns an empty string for null/NaN/undefined.
- * @param {number|string} value
- * @returns {string}
- */
-export function formatUserDecimalStrict(value) {
-    if (value === null || value === undefined || isNaN(Number(value))) return '';
-    // Always show up to 3 decimals, but strip trailing zeros (e.g., 1.50 -> 1.5, 2.000 -> 2)
-    let num = Number(value);
-    let str = num.toFixed(3);
-    // Remove trailing zeros and decimal if not needed
-    str = str.replace(/\.0+$/, '').replace(/(\.[0-9]*[1-9])0+$/, '$1');
-    return str;
-}
-// --- Share/Watchlist UI Clearing Helpers (added for modularization) ---
-/**
- * Clears the share list UI (table and mobile cards).
- */
-export function clearShareList() {
-    const shareTableBody = document.querySelector('#shareTable tbody');
-    if (shareTableBody) shareTableBody.innerHTML = '';
-    const mobileCards = document.querySelectorAll('.mobile-card');
-    mobileCards.forEach(card => card.remove());
-}
-
-/**
- * Clears the share list UI (alias for clearShareList for legacy code).
- */
-export function clearShareListUI() {
-    clearShareList();
-}
-
-/**
- * Clears the watchlist dropdown UI.
- */
-export function clearWatchlistUI() {
-    const watchlistSelect = document.getElementById('watchlistSelect');
-    if (watchlistSelect) watchlistSelect.innerHTML = '';
-}
-// --- Selection Helpers (migrated from script.js) ---
-/**
- * Selects a share in both table and mobile card views.
- * @param {string} shareId
- * @param {function} logDebug
- * @param {function} deselectCurrentShare
- * @param {object} context (optional) - pass { selectedShareDocId } to update selection state
- */
-export function selectShare(shareId, logDebug, deselectCurrentShare, context = window) {
-    logDebug('Selection: Attempting to select share with ID: ' + shareId);
-    deselectCurrentShare();
-
-    const tableRow = document.querySelector('#shareTable tbody tr[data-doc-id="' + shareId + '"]');
-    const mobileCard = document.querySelector('.mobile-card[data-doc-id="' + shareId + '"]');
-
-    if (tableRow) {
-        tableRow.classList.add('selected');
-        logDebug('Selection: Selected table row for ID: ' + shareId);
-    }
-    if (mobileCard) {
-        mobileCard.classList.add('selected');
-        logDebug('Selection: Selected mobile card for ID: ' + shareId);
-    }
-    context.selectedShareDocId = shareId;
-}
-
-/**
- * Deselects any currently selected share in both table and mobile card views.
- * @param {function} logDebug
- * @param {object} context (optional) - pass { selectedShareDocId } to update selection state
- */
-export function deselectCurrentShare(logDebug, context = window) {
-    const currentlySelected = document.querySelectorAll('.share-list-section tr.selected, .mobile-card.selected');
-    logDebug('Selection: Attempting to deselect ' + currentlySelected.length + ' elements.');
-    currentlySelected.forEach(el => {
-        el.classList.remove('selected');
-    });
-    context.selectedShareDocId = null;
-    logDebug('Selection: Share deselected. selectedShareDocId is now null.');
-}
-// --- UI Helper Functions (Modularized) ---
-// These helpers were moved from script.js for maintainability.
-
-// --- UI State Management Helpers (migrated from script.js) ---
-// These are helpers used for compact view, main content padding, and button state
-
-/**
- * Adjusts the main content padding based on the visibility of the sidebar or other overlays.
- * Ensures the main content is not hidden behind fixed UI elements.
- */
-export function adjustMainContentPadding() {
-    const mainContent = document.getElementById('mainContent');
-    const appSidebar = document.getElementById('appSidebar');
-    if (!mainContent) return;
-    if (appSidebar && appSidebar.classList.contains('open')) {
-        mainContent.style.paddingLeft = '260px';
-    } else {
-        mainContent.style.paddingLeft = '';
-    }
-}
-
-/**
- * Applies or removes the compact view mode for the main content area.
- * @param {boolean} enable True to enable compact view, false to disable.
- */
-export function applyCompactViewMode(enable) {
-    const mainContent = document.getElementById('mainContent');
-    if (!mainContent) return;
-    if (enable) {
-        mainContent.classList.add('compact-view');
-    } else {
-        mainContent.classList.remove('compact-view');
-    }
-}
-
-/**
- * Updates the enabled/disabled state of main action buttons based on app state.
- * E.g., disables buttons if no share is selected, or if in a modal, etc.
- */
-export function updateMainButtonsState() {
-    const saveShareBtn = document.getElementById('saveShareBtn');
-    const deleteShareBtn = document.getElementById('deleteShareBtn');
-    if (saveShareBtn) saveShareBtn.disabled = false;
-    if (deleteShareBtn) deleteShareBtn.disabled = false;
-}
-
-/**
- * Updates the state of the compact view toggle button (active/inactive).
- * @param {boolean} isActive True if compact view is active, false otherwise.
- */
-export function updateCompactViewButtonState(isActive) {
-    const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
-    if (!toggleCompactViewBtn) return;
-    if (isActive) {
-        toggleCompactViewBtn.classList.add('active');
-    } else {
-        toggleCompactViewBtn.classList.remove('active');
-    }
-}
-// Custom logging function to control verbosity
+// Debug logging
 export function logDebug(message, ...optionalParams) {
-    // DEBUG_MODE is expected to be defined in script.js
     if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
         console.log(message, ...optionalParams);
     }
 }
 
-/**
- * Helper function to apply/remove a disabled visual state to non-button elements (like spans/icons).
- * This adds/removes the 'is-disabled-icon' class, which CSS then styles.
- * @param {HTMLElement} element The element to disable/enable.
- * @param {boolean} isDisabled True to disable, false to enable.
- */
+// Enable/disable icon button
 export function setIconDisabled(element, isDisabled) {
     if (!element) {
         console.warn('setIconDisabled: Element is null or undefined. Cannot set disabled state.');
@@ -187,47 +22,217 @@ export function setIconDisabled(element, isDisabled) {
     }
 }
 
-// Custom Dialog (Alert) Function
+// Show custom alert modal
 export function showCustomAlert(message, duration = 1000) {
-    const customDialogModal = document.getElementById('customDialogModal');
-    const customDialogMessage = document.getElementById('customDialogMessage');
     const confirmBtn = document.getElementById('customDialogConfirmBtn');
     const cancelBtn = document.getElementById('customDialogCancelBtn');
     const dialogButtonsContainer = document.querySelector('#customDialogModal .custom-dialog-buttons');
-
     logDebug('showCustomAlert: confirmBtn found: ' + !!confirmBtn + ', cancelBtn found: ' + !!cancelBtn + ', dialogButtonsContainer found: ' + !!dialogButtonsContainer);
-
-    if (!customDialogModal || !customDialogMessage || !confirmBtn || !cancelBtn || !dialogButtonsContainer) {
+    if (!window.customDialogModal || !window.customDialogMessage || !confirmBtn || !cancelBtn || !dialogButtonsContainer) {
         console.error('Custom dialog elements not found. Cannot show alert.');
         console.log('ALERT (fallback): ' + message);
         return;
     }
-    customDialogMessage.textContent = message;
-
-    dialogButtonsContainer.style.display = 'none'; // Explicitly hide the container
+    window.customDialogMessage.textContent = message;
+    dialogButtonsContainer.style.display = 'none';
     logDebug('showCustomAlert: dialogButtonsContainer display set to: ' + dialogButtonsContainer.style.display);
-
-    if (typeof showModal === 'function') {
-        showModal(customDialogModal);
-    } else if (customDialogModal && customDialogModal.style) {
-        customDialogModal.style.display = 'block';
-    }
+    showModal(window.customDialogModal);
     if (window.autoDismissTimeout) { clearTimeout(window.autoDismissTimeout); }
-    window.autoDismissTimeout = setTimeout(() => {
-        if (typeof hideModal === 'function') {
-            hideModal(customDialogModal);
-        } else if (customDialogModal && customDialogModal.style) {
-            customDialogModal.style.display = 'none';
-        }
-        window.autoDismissTimeout = null;
-    }, duration);
+    window.autoDismissTimeout = setTimeout(() => { hideModal(window.customDialogModal); window.autoDismissTimeout = null; }, duration);
     logDebug('Alert: Showing alert: "' + message + '"');
 }
 
-// Date Formatting Helper Functions (Australian Style)
+// Date formatting (Australian style)
 export function formatDate(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return '';
     return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+// Show/hide modal helpers
+export function showModal(modalElement) {
+    if (modalElement) {
+        if (typeof pushAppState === 'function') {
+            pushAppState({ modalId: modalElement.id }, '', '');
+        }
+        modalElement.style.setProperty('display', 'flex', 'important');
+        modalElement.scrollTop = 0;
+        const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+        if (scrollableContent) {
+            scrollableContent.scrollTop = 0;
+        }
+        logDebug('Modal: Showing modal: ' + modalElement.id);
+    }
+}
+
+export function hideModal(modalElement) {
+    if (modalElement) {
+        modalElement.style.setProperty('display', 'none', 'important');
+        logDebug('Modal: Hiding modal: ' + modalElement.id);
+    }
+}
+
+// Add a comment section to a container
+export function addCommentSection(container, title = '', text = '', isCashAssetComment = false) {
+    if (!container) { console.error('addCommentSection: comments container not found.'); return; }
+    const commentSectionDiv = document.createElement('div');
+    commentSectionDiv.className = 'comment-section';
+    commentSectionDiv.innerHTML = `
+        <div class="comment-section-header">
+            <input type="text" class="comment-title-input" placeholder="Comment Title" value="${title}">
+            <button type="button" class="comment-delete-btn">&times;</button>
+        </div>
+        <textarea class="comment-text-input" placeholder="Your comments here...">${text}</textarea>
+    `;
+    container.appendChild(commentSectionDiv);
+    const commentTitleInput = commentSectionDiv.querySelector('.comment-title-input');
+    const commentTextInput = commentSectionDiv.querySelector('.comment-text-input');
+    if (commentTitleInput) {
+        commentTitleInput.addEventListener('input', isCashAssetComment ? window.checkCashAssetFormDirtyState : window.checkFormDirtyState);
+    }
+    if (commentTextInput) {
+        commentTextInput.addEventListener('input', isCashAssetComment ? window.checkCashAssetFormDirtyState : window.checkFormDirtyState);
+    }
+    commentSectionDiv.querySelector('.comment-delete-btn').addEventListener('click', (event) => {
+        logDebug('Comments: Delete comment button clicked.');
+        event.target.closest('.comment-section').remove();
+        isCashAssetComment ? window.checkCashAssetFormDirtyState() : window.checkFormDirtyState();
+    });
+    logDebug('Comments: Added new comment section.');
+}
+
+// Clear the share form
+export function clearForm() {
+    if (!window.formInputs) return;
+    window.formInputs.forEach(input => {
+        if (input) { input.value = ''; }
+    });
+    // Explicitly clear portfolio fields
+    const portfolioSharesInput = document.getElementById('portfolioShares');
+    const portfolioAvgPriceInput = document.getElementById('portfolioAvgPrice');
+    if (portfolioSharesInput) portfolioSharesInput.value = '';
+    if (portfolioAvgPriceInput) portfolioAvgPriceInput.value = '';
+    if (window.commentsFormContainer) {
+        window.commentsFormContainer.innerHTML = '';
+    }
+    if (window.formTitle) window.formTitle.textContent = 'Add New Share';
+    if (window.formCompanyName) window.formCompanyName.textContent = '';
+    if (window.addShareLivePriceDisplay) {
+        window.addShareLivePriceDisplay.style.display = 'none';
+        window.addShareLivePriceDisplay.innerHTML = '';
+    }
+    window.selectedShareDocId = null;
+    window.originalShareData = null;
+    if (window.deleteShareBtn) {
+        window.deleteShareBtn.classList.add('hidden');
+        logDebug('clearForm: deleteShareBtn hidden.');
+    }
+    if (window.shareWatchlistSelect) {
+        window.shareWatchlistSelect.value = '';
+        window.shareWatchlistSelect.disabled = false;
+    }
+    setIconDisabled(window.saveShareBtn, true);
+    logDebug('Form: Form fields cleared and selectedShareDocId reset. saveShareBtn disabled.');
+}
+
+// Add share to table row
+export function addShareToTable(share) {
+    if (!window.shareTableBody) {
+        console.error('addShareToTable: shareTableBody element not found.');
+        return;
+    }
+    const row = document.createElement('tr');
+    row.dataset.docId = share.id;
+    row.addEventListener('click', () => {
+        logDebug('Table Row Click: Share ID: ' + share.id);
+        if (typeof window.selectShare === 'function') window.selectShare(share.id);
+        if (row.closest('#targetHitSharesList')) {
+            window.wasShareDetailOpenedFromTargetAlerts = true;
+        }
+        if (typeof window.showShareDetails === 'function') window.showShareDetails();
+    });
+    const livePriceData = window.livePrices[share.shareName.toUpperCase()];
+    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
+    if (isTargetHit && !window.targetHitIconDismissed) {
+        row.classList.add('target-hit-alert');
+    } else {
+        row.classList.remove('target-hit-alert');
+    }
+    const displayData = typeof window.getShareDisplayData === 'function' ? window.getShareDisplayData(share) : {};
+    const companyInfo = window.allAsxCodes && window.allAsxCodes.find ? window.allAsxCodes.find(c => c.code === share.shareName.toUpperCase()) : null;
+    const companyName = companyInfo ? companyInfo.name : '';
+    row.innerHTML = `
+        <td>
+            <span class="share-code-display ${displayData.priceClass || ''}">${share.shareName || ''}</span>
+            <span class="company-name">${companyName}</span>
+        </td>
+        <td>${displayData.displayLivePrice || ''}</td>
+        <td>${displayData.displayPriceChange || ''}</td>
+        <td>${displayData.yieldDisplayTable || ''}</td>
+        <td>${displayData.peRatio || ''}</td>
+        <td>${displayData.high52Week || ''} / ${displayData.low52Week || ''}</td>
+    `;
+    window.shareTableBody.appendChild(row);
+}
+
+// Add share to mobile cards
+export function addShareToMobileCards(share) {
+    if (!window.mobileShareCardsContainer) {
+        console.error('addShareToMobileCards: mobileShareCardsContainer element not found.');
+        return;
+    }
+    const card = document.createElement('div');
+    card.classList.add('mobile-card');
+    card.dataset.docId = share.id;
+    const livePriceData = window.livePrices[share.shareName.toUpperCase()];
+    const isMarketOpen = typeof window.isAsxMarketOpen === 'function' ? window.isAsxMarketOpen() : false;
+    let displayLivePrice = 'N/A';
+    let displayPriceChange = '';
+    let priceClass = '';
+    let cardPriceChangeClass = '';
+    if (livePriceData) {
+        const currentLivePrice = livePriceData.live;
+        const previousClosePrice = livePriceData.prevClose;
+        const lastFetchedLive = livePriceData.lastLivePrice;
+        const lastFetchedPrevClose = livePriceData.lastPrevClose;
+        if (isMarketOpen || window.showLastLivePriceOnClosedMarket) {
+            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+            }
+            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                const change = currentLivePrice - previousClosePrice;
+                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+            }
+        }
+    }
+    card.innerHTML = `
+        <div class="mobile-card-header">
+            <span class="share-code-display ${priceClass}">${share.shareName || ''}</span>
+        </div>
+        <div class="mobile-card-body">
+            <span class="live-price">${displayLivePrice}</span>
+            <span class="price-change ${priceClass}">${displayPriceChange}</span>
+        </div>
+    `;
+    window.mobileShareCardsContainer.appendChild(card);
+}
+
+export function logDebug(message, ...optionalParams) {
+    if (window.DEBUG_MODE) {
+        console.log(message, ...optionalParams);
+    }
+}
+
+export function showCustomAlert(message, duration = 1000) {
+    // ...implementation from script.js...
 }
