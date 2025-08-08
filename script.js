@@ -2785,16 +2785,20 @@ function renderSortSelect() {
         sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
 
         const stockOptions = [
-            { value: 'entryDate-desc', text: 'Date (H-L)' },
-            { value: 'entryDate-asc', text: 'Date (L-H)' },
-            { value: 'shareName-asc', text: 'Code (A-Z)' },
-            { value: 'shareName-desc', text: 'Code (Z-A)' },
-            { value: 'dividendAmount-desc', text: 'Yield % (H-L)' },
-            { value: 'dividendAmount-asc', text: 'Yield % (L-H)' },
+            // Put Percentage Change at the top
             { value: 'percentageChange-desc', text: 'Change % (H-L)' },
             { value: 'percentageChange-asc', text: 'Change % (L-H)' },
+            // Then Name (Code)
+            { value: 'shareName-asc', text: 'Code (A-Z)' },
+            { value: 'shareName-desc', text: 'Code (Z-A)' },
+            // Then Date and Rating
+            { value: 'entryDate-desc', text: 'Date (H-L)' },
+            { value: 'entryDate-asc', text: 'Date (L-H)' },
             { value: 'starRating-desc', text: '⭐ (H-L)' },
-            { value: 'starRating-asc', text: '⭐ (L-H)' }
+            { value: 'starRating-asc', text: '⭐ (L-H)' },
+            // Dividend Yield last
+            { value: 'dividendAmount-desc', text: 'Yield % (H-L)' },
+            { value: 'dividendAmount-asc', text: 'Yield % (L-H)' }
         ];
 
         const cashOptions = [
