@@ -325,6 +325,38 @@ document.addEventListener('DOMContentLoaded', function () {
                     showContextMenu(e, docId);
                 }
             });
+            // Touch long-press to open context menu on mobile
+            let touchStartTime = 0;
+            row.addEventListener('touchstart', (e) => {
+                touchStartTime = Date.now();
+                selectedElementForTap = row;
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                longPressTimer = setTimeout(() => {
+                    if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
+                        selectShare(docId);
+                        showContextMenu(e, docId);
+                        e.preventDefault();
+                    }
+                }, LONG_PRESS_THRESHOLD);
+            }, { passive: false });
+            row.addEventListener('touchmove', (e) => {
+                const currentX = e.touches[0].clientX;
+                const currentY = e.touches[0].clientY;
+                const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
+                if (dist > TOUCH_MOVE_THRESHOLD) {
+                    clearTimeout(longPressTimer);
+                    touchStartTime = 0;
+                }
+            });
+            row.addEventListener('touchend', () => {
+                clearTimeout(longPressTimer);
+                if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === row) {
+                    // Short tap handled by click event
+                }
+                touchStartTime = 0;
+                selectedElementForTap = null;
+            });
         });
     };
 });
@@ -1653,6 +1685,7 @@ function selectShare(shareId) {
 
     const tableRow = document.querySelector('#shareTable tbody tr[data-doc-id="' + shareId + '"]');
     const mobileCard = document.querySelector('.mobile-card[data-doc-id="' + shareId + '"]');
+    const portfolioRow = document.querySelector('#portfolioSection table.portfolio-table tbody tr[data-doc-id="' + shareId + '"]');
 
     if (tableRow) {
         tableRow.classList.add('selected');
@@ -1662,11 +1695,15 @@ function selectShare(shareId) {
         mobileCard.classList.add('selected');
         logDebug('Selection: Selected mobile card for ID: ' + shareId);
     }
+    if (portfolioRow) {
+        portfolioRow.classList.add('selected');
+        logDebug('Selection: Selected portfolio row for ID: ' + shareId);
+    }
     selectedShareDocId = shareId;
 }
 
 function deselectCurrentShare() {
-    const currentlySelected = document.querySelectorAll('.share-list-section tr.selected, .mobile-card.selected');
+    const currentlySelected = document.querySelectorAll('.share-list-section tr.selected, .mobile-card.selected, #portfolioSection tr.selected');
     logDebug('Selection: Attempting to deselect ' + currentlySelected.length + ' elements.');
     currentlySelected.forEach(el => {
         el.classList.remove('selected');
