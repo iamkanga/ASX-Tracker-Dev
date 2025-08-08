@@ -411,6 +411,9 @@ let originalShareData = null; // Stores the original share data when editing for
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
 let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 
+// App version (single source of truth for display)
+const APP_VERSION = 'v0.1.0';
+
 
 // Live Price Data
 // IMPORTANT: This URL is the exact string provided in your initial script.js file.
@@ -5265,6 +5268,27 @@ async function initializeAppLogic() {
                     console.error('Service Worker: Registration failed:', error);
                 });
         });
+    }
+
+    // Insert a tiny version badge in the header to help confirm updates
+    try {
+        const existing = document.getElementById('appVersionBadge');
+        if (!existing && appHeader) {
+            const badge = document.createElement('span');
+            badge.id = 'appVersionBadge';
+            badge.textContent = APP_VERSION;
+            badge.style.marginLeft = '8px';
+            badge.style.fontSize = '0.85rem';
+            badge.style.color = 'var(--ghosted-text, #888)';
+            const title = document.getElementById('mainTitle');
+            if (title && title.parentElement) {
+                title.parentElement.appendChild(badge);
+            } else if (appHeader) {
+                appHeader.appendChild(badge);
+            }
+        }
+    } catch (e) {
+        console.warn('Version badge insert failed:', e);
     }
 
     // NEW: Load saved mobile view mode preference
