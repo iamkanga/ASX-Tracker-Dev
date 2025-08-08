@@ -2505,8 +2505,8 @@ function showShareDetails() {
     if (modalCommSecLink && share.shareName) {
         // Use the required URL format: https://www2.commsec.com.au/quotes/summary?stockCode=AMP&exchangeCode=ASX
         const commsecUrl = `https://www2.commsec.com.au/quotes/summary?stockCode=${encodeURIComponent(share.shareName)}&exchangeCode=ASX`;
-        modalCommSecLink.href = commsecUrl;
-        modalCommSecLink.textContent = 'View on CommSec.com.au';
+    modalCommSecLink.href = commsecUrl;
+    modalCommSecLink.innerHTML = 'View on commsec.com.au <i class="fas fa-external-link-alt"></i>';
         modalCommSecLink.style.display = 'inline-flex';
         setIconDisabled(modalCommSecLink, false);
     } else if (modalCommSecLink) {
