@@ -380,7 +380,10 @@
                 </select>
 
                 <label for="shareName">Code:</label>
-                <input type="text" id="shareName" placeholder="e.g., BHP" required>
+                <div class="search-input-container">
+                    <input type="text" id="shareName" placeholder="e.g., BHP" autocomplete="off" required>
+                    <div id="shareNameSuggestions" class="autocomplete-suggestions"></div>
+                </div>
 
                 <!-- Portfolio/Share Details Section (all grouped for clarity and extensibility) -->
                 <div class="portfolio-details-section" style="margin-top: 24px; padding: 16px; border: 1px solid var(--ghosted-text,#ccc); border-radius: 8px; background: var(--modal-bg,#f9f9f9);">

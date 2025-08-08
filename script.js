@@ -581,6 +581,7 @@ const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: St
 const stockSearchTitle = document.getElementById('stockSearchTitle'); // NEW: Title for search modal
 const asxSearchInput = document.getElementById('asxSearchInput'); // NEW: Search input field
 const asxSuggestions = document.getElementById('asxSuggestions'); // NEW: Autocomplete suggestions container
+const shareNameSuggestions = document.getElementById('shareNameSuggestions'); // NEW: Autocomplete for share form code input
 const searchResultDisplay = document.getElementById('searchResultDisplay'); // NEW: Display area for search results
 const searchModalActionButtons = document.querySelector('#stockSearchModal .modal-action-buttons-footer'); // NEW: Action buttons container
 const searchModalCloseButton = document.querySelector('.search-close-button'); // NEW: Close button for search modal
@@ -5335,34 +5336,167 @@ async function initializeAppLogic() {
     }
 
 
-    // Share Name Input to uppercase
+    // Share Name Input to uppercase + live suggestions
     if (shareNameInput) {
-        shareNameInput.addEventListener('input', function() { 
-            this.value = this.value.toUpperCase(); 
+        let shareNameSelectedSuggestionIndex = -1;
+        shareNameInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
             checkFormDirtyState();
-        });
-        // NEW: Add blur event listener for live data fetching
-        shareNameInput.addEventListener('blur', async () => {
-            // Only act if we are in the "Add New Share" modal (not editing)
-            if (shareFormSection.style.display !== 'none' && !selectedShareDocId) {
-                const asxCode = shareNameInput.value.trim().toUpperCase();
-                if (asxCode) {
-                    // Find and display company name
-                    const companyInfo = allAsxCodes.find(c => c.code === asxCode);
-                    if (formCompanyName) {
-                        formCompanyName.textContent = companyInfo ? companyInfo.name : 'Company not found';
-                    }
 
-                    // The live price fetching logic can remain here if needed in the future
-                } else if (addShareLivePriceDisplay) {
-                    addShareLivePriceDisplay.style.display = 'none';
-                    if (formCompanyName) {
-                        formCompanyName.textContent = ''; // Clear company name if ASX code is cleared
+            if (!shareNameSuggestions) return;
+            const query = this.value.trim();
+            // Lazy-load ASX codes if not loaded yet
+            if (allAsxCodes.length === 0 && typeof loadAsxCodesFromCSV === 'function') {
+                loadAsxCodesFromCSV().then(codes => {
+                    allAsxCodes = codes || [];
+                    // Re-run rendering if user is still typing the same query
+                    if (shareNameInput.value.trim() === query) {
+                        renderShareNameSuggestions(query);
+                    }
+                }).catch(() => {/* ignore */});
+            }
+            shareNameSuggestions.innerHTML = '';
+            shareNameSelectedSuggestionIndex = -1;
+
+            if (query.length < 2) {
+                shareNameSuggestions.classList.remove('active');
+                // Clear company name if user deletes input
+                if (formCompanyName) formCompanyName.textContent = '';
+                return;
+            }
+            renderShareNameSuggestions(query);
+        });
+
+        // Keyboard navigation for shareName suggestions
+        shareNameInput.addEventListener('keydown', (e) => {
+            if (!shareNameSuggestions || !shareNameSuggestions.classList.contains('active')) return;
+            const items = shareNameSuggestions.querySelectorAll('.suggestion-item');
+            if (items.length === 0) return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                shareNameSelectedSuggestionIndex = (shareNameSelectedSuggestionIndex + 1) % items.length;
+                updateShareNameSelectedSuggestion(items, shareNameSelectedSuggestionIndex);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                shareNameSelectedSuggestionIndex = (shareNameSelectedSuggestionIndex - 1 + items.length) % items.length;
+                updateShareNameSelectedSuggestion(items, shareNameSelectedSuggestionIndex);
+            } else if (e.key === 'Enter') {
+                if (shareNameSelectedSuggestionIndex > -1) {
+                    e.preventDefault();
+                    const code = items[shareNameSelectedSuggestionIndex].dataset.code;
+                    const match = allAsxCodes.find(s => s.code === code);
+                    if (match) applyShareCodeSelection(match.code, match.name);
+                } else if (shareNameInput.value.trim()) {
+                    // If user pressed Enter without selecting, try to match the current value
+                    const code = shareNameInput.value.trim().toUpperCase();
+                    const match = allAsxCodes.find(s => s.code === code);
+                    if (match) {
+                        e.preventDefault();
+                        applyShareCodeSelection(match.code, match.name);
                     }
                 }
+            } else if (e.key === 'Escape') {
+                shareNameSuggestions.classList.remove('active');
             }
         });
+
+        function updateShareNameSelectedSuggestion(items, idx) {
+            items.forEach((el, i) => el.classList.toggle('selected', i === idx));
+            if (idx > -1) {
+                shareNameInput.value = items[idx].dataset.code;
+            }
+        }
+
+        async function applyShareCodeSelection(code, name) {
+            shareNameInput.value = code;
+            if (formCompanyName) formCompanyName.textContent = name || '';
+            if (shareNameSuggestions) shareNameSuggestions.classList.remove('active');
+            // Optionally move focus to next field for quicker entry
+            const next = currentPriceInput || targetPriceInput;
+            if (next) next.focus();
+            checkFormDirtyState();
+
+            // Fetch live snapshot for the selected code to show context in the form and prefill price
+            try {
+                if (!GOOGLE_APPS_SCRIPT_URL) return; // Safety
+                const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${code}`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const stock = Array.isArray(data) && data[0] ? data[0] : null;
+                if (!stock) return;
+                const live = parseFloat(stock.LivePrice);
+                const prev = parseFloat(stock.PrevClose);
+                const pe = parseFloat(stock.PE);
+                const hi = parseFloat(stock.High52);
+                const lo = parseFloat(stock.Low52);
+
+                // Prefill Entered Price if empty
+                if (currentPriceInput && (currentPriceInput.value === '' || isNaN(parseFloat(currentPriceInput.value)))) {
+                    if (!isNaN(live)) currentPriceInput.value = live.toFixed(2);
+                }
+                // Render a compact live display panel
+                if (addShareLivePriceDisplay) {
+                    const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
+                    const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
+                    const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
+                    addShareLivePriceDisplay.innerHTML = `
+                        <div class="fifty-two-week-row">
+                            <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? '$' + lo.toFixed(2) : 'N/A'}</span>
+                            <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? '$' + hi.toFixed(2) : 'N/A'}</span>
+                        </div>
+                        <div class="live-price-main-row">
+                            <span class="live-price-large ${priceClass}">${!isNaN(live) ? '$' + live.toFixed(2) : 'N/A'}</span>
+                            <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${change.toFixed(2)} (${pct.toFixed(2)}%)` : 'N/A'}</span>
+                        </div>
+                        <div class="pe-ratio-row">
+                            <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? pe.toFixed(2) : 'N/A'}</span>
+                        </div>
+                    `;
+                    addShareLivePriceDisplay.style.display = 'block';
+                }
+            } catch { /* ignore transient errors */ }
+        }
+
+        function renderShareNameSuggestions(query) {
+            shareNameSuggestions.innerHTML = '';
+            const matches = allAsxCodes
+                .filter(s => s.code.includes(query) || s.name.toUpperCase().includes(query))
+                .slice(0, 8);
+
+            if (matches.length === 0) {
+                shareNameSuggestions.classList.remove('active');
+                return;
+            }
+
+            matches.forEach((s) => {
+                const div = document.createElement('div');
+                div.classList.add('suggestion-item');
+                div.textContent = `${s.code} - ${s.name}`;
+                div.dataset.code = s.code;
+                div.addEventListener('click', () => {
+                    applyShareCodeSelection(s.code, s.name);
+                });
+                shareNameSuggestions.appendChild(div);
+            });
+            shareNameSuggestions.classList.add('active');
+        }
+
+        // Keep a lightweight blur handler for clearing company name if field emptied
+        shareNameInput.addEventListener('blur', () => {
+            setTimeout(() => { // Delay to allow click selection to complete
+                if (shareNameSuggestions) shareNameSuggestions.classList.remove('active');
+                const asxCode = shareNameInput.value.trim().toUpperCase();
+                if (!asxCode && formCompanyName) formCompanyName.textContent = '';
+            }, 100);
+        });
     }
+
+    // Hide shareName suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+        if (shareNameSuggestions && !shareNameSuggestions.contains(e.target) && e.target !== shareNameInput) {
+            shareNameSuggestions.classList.remove('active');
+        }
+    });
 
     
     // NEW: Autocomplete Search Input Listeners for Stock Search Modal (Consolidated & Corrected)
