@@ -255,9 +255,13 @@ document.addEventListener('DOMContentLoaded', function () {
         function fmtMoney(n) {
             return (typeof n === 'number' && !isNaN(n)) ? '$' + n.toFixed(2) : '';
         }
+        function fmtPct(n) {
+            return (typeof n === 'number' && !isNaN(n)) ? n.toFixed(2) + '%' : '';
+        }
 
         let totalValue = 0;
-        let html = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg Price</th><th>Current Price</th><th>Value</th></tr></thead><tbody>';
+        let totalPL = 0;
+        let html = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg Price</th><th>Current Price</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
         portfolioShares.forEach(share => {
             const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
                 ? Math.trunc(Number(share.portfolioShares))
@@ -268,6 +272,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const priceNow = getDisplayPrice(share);
             const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
             if (typeof rowValue === 'number') totalValue += rowValue;
+            const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number')
+                ? (priceNow - avgPrice) * shares
+                : null;
+            if (typeof rowPL === 'number') totalPL += rowPL;
+            const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number')
+                ? ((priceNow - avgPrice) / avgPrice) * 100
+                : null;
+            const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
 
             html += `<tr>
                 <td>${share.shareName || ''}</td>
@@ -275,12 +287,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 <td>${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
                 <td>${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</td>
                 <td>${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
+                <td class="${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
+                <td class="${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
             </tr>`;
         });
         // Total row
+        const totalPLClass = totalPL > 0 ? 'positive' : (totalPL < 0 ? 'negative' : 'neutral');
         html += `<tr class="portfolio-total-row">
             <td colspan="4" style="text-align:right;font-weight:600;">Total</td>
             <td style="font-weight:700;">${fmtMoney(totalValue)}</td>
+            <td class="${totalPLClass}" style="font-weight:700;">${fmtMoney(totalPL)}</td>
+            <td></td>
         </tr>`;
         html += '</tbody></table>';
         portfolioListContainer.innerHTML = html;
