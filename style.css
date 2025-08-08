@@ -3037,7 +3037,7 @@ table td .live-price-value {
 .mobile-card h3.positive,     /* For ASX code in mobile card */
 .live-price-large.positive,   /* For live price in mobile card/modal */
 .asx-code-btn.positive {      /* For ASX code buttons */
-    color: var(--price-up-color) !important;
+    color: #008000 !important; /* Strong green */
 }
 
 .negative,
@@ -3046,7 +3046,7 @@ table td .live-price-value {
 .mobile-card h3.negative,
 .live-price-large.negative,
 .asx-code-btn.negative {
-    color: var(--price-down-color) !important;
+    color: #FF0000 !important; /* Strong red, matches delete bin */
 }
 
 .neutral,
