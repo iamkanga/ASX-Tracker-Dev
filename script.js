@@ -1171,7 +1171,6 @@ function addShareToMobileCards(share) {
 
     card.innerHTML = `
         <h3 class="${priceClass}">${share.shareName || ''}</h3>
-        ${companyName ? `<p class="modal-company-name-display" style="margin-top: -8px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
         <div class="live-price-display-section">
             <div class="fifty-two-week-row">
                 <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A'}</span>
@@ -1181,12 +1180,14 @@ function addShareToMobileCards(share) {
                 <span class="live-price-large ${priceClass}">${displayLivePrice}</span>
                 <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
             </div>
+            ${companyName ? `<p class="modal-company-name-display" style="margin-top: 2px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
             <div class="pe-ratio-row">
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
             </div>
         </div>
         <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</span></p>
         <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</span></p>
+        <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
             <span class="data-value">
@@ -1221,7 +1222,6 @@ function addShareToMobileCards(share) {
             }
             </span>
         </p>
-        <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
 `;
 
     card.addEventListener('click', () => {
