@@ -1,1 +1,0 @@
-Fix: Dividend calculator Investment Value select rendering + remove stray dot; bump CSS to v0.1.5 and update SW precache
