@@ -302,20 +302,40 @@ let unsubscribeShares = null;
 let unsubscribeCashCategories = null;
 const loadingIndicator = document.getElementById('loadingIndicator');
 
+// Theme state used by some applyTheme implementations
+let currentActiveTheme = 'system-default';
+
+// Live prices interval handle
+let livePriceFetchInterval = null;
+
 // Provide minimal fallback for theme application if not defined elsewhere
 // This avoids crashes on logout where applyTheme("system-default") is called
 // Note: simple implementation toggles a data attribute; adjust if you have a richer theming system
 if (typeof applyTheme === 'undefined') {
     function applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme || 'system-default');
+        currentActiveTheme = theme || 'system-default';
+        document.documentElement.setAttribute('data-theme', currentActiveTheme);
     }
 }
 
 // Provide a safe no-op for stopping live price updates if not defined elsewhere
 if (typeof stopLivePriceUpdates === 'undefined') {
     function stopLivePriceUpdates() {
-        // If you manage an interval elsewhere, consider clearing it here:
-        // if (window.livePriceInterval) { clearInterval(window.livePriceInterval); window.livePriceInterval = null; }
+        if (livePriceFetchInterval) {
+            clearInterval(livePriceFetchInterval);
+            livePriceFetchInterval = null;
+        }
+    }
+}
+
+// Provide a safe starter for live price updates if not defined elsewhere
+if (typeof startLivePriceUpdates === 'undefined') {
+    function startLivePriceUpdates(intervalMs = 60000) {
+        if (!livePriceFetchInterval && typeof fetchLivePrices === 'function') {
+            livePriceFetchInterval = setInterval(() => {
+                try { fetchLivePrices(); } catch (e) { console.error('Live Prices: periodic fetch failed:', e); }
+            }, intervalMs);
+        }
     }
 }
 
