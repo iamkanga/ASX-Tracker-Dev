@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
 
-            html += `<tr>
+            html += `<tr data-doc-id="${share.id}">
                 <td>${share.shareName || ''}</td>
                 <td>${shares !== '' ? shares : ''}</td>
                 <td>${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
@@ -301,6 +301,25 @@ document.addEventListener('DOMContentLoaded', function () {
         </tr>`;
         html += '</tbody></table>';
         portfolioListContainer.innerHTML = html;
+
+        // Make portfolio rows interactive: click to open details; right-click to open context menu
+        const rows = portfolioListContainer.querySelectorAll('table.portfolio-table tbody tr');
+        rows.forEach(row => {
+            if (row.classList.contains('portfolio-total-row')) return; // skip totals
+            const docId = row.getAttribute('data-doc-id');
+            if (!docId) return;
+            row.addEventListener('click', () => {
+                selectShare(docId);
+                showShareDetails();
+            });
+            row.addEventListener('contextmenu', (e) => {
+                if (window.innerWidth > 768) {
+                    e.preventDefault();
+                    selectShare(docId);
+                    showContextMenu(e, docId);
+                }
+            });
+        });
     };
 });
 //  This script interacts with Firebase Firestore for data storage.
