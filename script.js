@@ -5315,28 +5315,33 @@ async function initializeAppLogic() {
         });
     }
 
-    // Insert a tiny version badge in the header to help confirm updates
+    // Insert a tiny version badge to the right of the title and keep it there
     try {
-        const existing = document.getElementById('appVersionBadge');
-        if (!existing && appHeader) {
-            const badge = document.createElement('span');
-            badge.id = 'appVersionBadge';
-            badge.textContent = APP_VERSION;
-            badge.style.marginLeft = '8px';
-            badge.style.fontSize = '0.85rem';
-            badge.style.color = 'var(--ghosted-text, #888)';
-            const hamburger = document.getElementById('hamburgerBtn');
-            if (hamburger && hamburger.parentElement) {
-                // Place the badge immediately to the right of the hamburger button
-                hamburger.insertAdjacentElement('afterend', badge);
-            } else {
-                const title = document.getElementById('mainTitle');
-                if (title && title.parentElement) {
-                    title.parentElement.appendChild(badge);
-                } else if (appHeader) {
-                    appHeader.appendChild(badge);
-                }
+        const ensureBadge = () => {
+            const title = document.getElementById('mainTitle');
+            if (!title) return;
+            let badge = document.getElementById('appVersionBadge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.id = 'appVersionBadge';
+                badge.textContent = APP_VERSION;
+                badge.style.marginLeft = '8px';
+                badge.style.fontSize = '0.85rem';
+                badge.style.color = 'var(--ghosted-text, #888)';
+                badge.style.verticalAlign = 'middle';
             }
+            if (badge.parentElement !== title) {
+                // Append inside the title so it appears directly to the right of the text
+                title.appendChild(badge);
+            }
+        };
+        // Initial placement
+        ensureBadge();
+        // Re-attach if other code replaces the title contents
+        const titleEl = document.getElementById('mainTitle');
+        if (titleEl && typeof MutationObserver !== 'undefined') {
+            const mo = new MutationObserver(() => ensureBadge());
+            mo.observe(titleEl, { childList: true });
         }
     } catch (e) {
         console.warn('Version badge insert failed:', e);
