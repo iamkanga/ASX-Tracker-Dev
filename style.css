@@ -234,7 +234,7 @@ body.dark-theme {
     --asx-button-hover-bg: #5a5a5a; /* Lighter gray for ASX button hover */
     --asx-button-active-bg: #888888; /* Even lighter gray for active ASX button */
     --asx-button-active-text: #ffffff; /* White text for active ASX button */
-    --success-color: #32CD
+    --success-color: #32CD32;
     --danger-color: #FF0000; /* Keep red for danger */
     --warning-color: #f39c12; /* Keep orange for warning */
     --info-color: #3498db; /* Keep blue for info */
@@ -2302,7 +2302,6 @@ h1#mainTitle {
     z-index: 2;
     position: relative;
     pointer-events: auto;
-}
 }
 
 /* Watchlist and Sort controls */

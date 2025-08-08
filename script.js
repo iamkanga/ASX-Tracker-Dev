@@ -412,7 +412,7 @@ let originalWatchlistData = null; // Stores original watchlist data for dirty st
 let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 
 // App version (single source of truth for display)
-const APP_VERSION = 'v0.1.0';
+const APP_VERSION = 'v0.1.1';
 
 
 // Live Price Data
