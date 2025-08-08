@@ -980,39 +980,39 @@ function addShareToTable(share) {
     row.innerHTML = `
         <td>
             <span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>
-            ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
         </td>
         <td class="live-price-cell">
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
+            ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
         </td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
-        <td class="numeric-data-cell">
-        ${
-            (() => {
-                const dividendAmount = Number(share.dividendAmount) || 0;
-                const frankingCredits = Number(share.frankingCredits) || 0;
-                const enteredPrice = Number(share.currentPrice) || 0;
-                const priceForYield = (displayData.displayLivePrice !== 'N/A' && displayData.displayLivePrice.startsWith('$'))
-                                    ? parseFloat(displayData.displayLivePrice.substring(1))
-                                    : (enteredPrice > 0 ? enteredPrice : 0);
-                if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
-                const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
-                const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
-                if (frankingCredits > 0 && frankedYield > 0) {
-                    return frankedYield.toFixed(2) + '% (F)'; // Display franked yield with (F)
-                } else if (unfrankedYield > 0) {
-                    return unfrankedYield.toFixed(2) + '% (U)'; // Display unfranked yield with (U)
-                }
-                return '';
-            })()
-        }
-    </td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
         <td class="star-rating-cell numeric-data-cell">
-        ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
-    </td>
-`;
+            ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
+        </td>
+        <td class="numeric-data-cell">
+            ${
+                (() => {
+                    const dividendAmount = Number(share.dividendAmount) || 0;
+                    const frankingCredits = Number(share.frankingCredits) || 0;
+                    const enteredPrice = Number(share.currentPrice) || 0;
+                    const priceForYield = (displayData.displayLivePrice !== 'N/A' && displayData.displayLivePrice.startsWith('$'))
+                                        ? parseFloat(displayData.displayLivePrice.substring(1))
+                                        : (enteredPrice > 0 ? enteredPrice : 0);
+                    if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
+                    const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
+                    const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
+                    if (frankingCredits > 0 && frankedYield > 0) {
+                        return frankedYield.toFixed(2) + '% (F)';
+                    } else if (unfrankedYield > 0) {
+                        return unfrankedYield.toFixed(2) + '% (U)';
+                    }
+                    return '';
+                })()
+            }
+        </td>
+    `;
 
     // Add long press / context menu for desktop
     let touchStartTime = 0;
@@ -1403,18 +1403,22 @@ function updateOrCreateShareTableRow(share) {
         return ''; // No valid yield or yield is 0, display empty string
     })();
 
+    const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
+    const companyName = companyInfo ? companyInfo.name : '';
+
     row.innerHTML = `
         <td><span class="share-code-display ${priceClass}">${share.shareName || ''}</span></td>
         <td class="live-price-cell">
             <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
             <span class="price-change ${priceClass}">${displayPriceChange}</span>
+            ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
         </td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
-        <td class="numeric-data-cell">${yieldDisplay}</td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
         </td>
+        <td class="numeric-data-cell">${yieldDisplay}</td>
     `;
 
     logDebug('Table: Updated/Created row for share ' + share.shareName + '.');
@@ -1558,6 +1562,10 @@ function updateOrCreateShareMobileCard(share) {
     })();
 
 
+    // Look up company name for display under percentage change
+    const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
+    const companyName = companyInfo ? companyInfo.name : '';
+
     card.innerHTML = `
         <h3 class="${priceClass}">${share.shareName || ''}</h3>
         <div class="live-price-display-section">
@@ -1569,14 +1577,15 @@ function updateOrCreateShareMobileCard(share) {
                 <span class="live-price-large ${priceClass}">${displayLivePrice}</span>
                 <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
             </div>
+            ${companyName ? `<p class="modal-company-name-display" style="margin-top: 2px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
             <div class="pe-ratio-row">
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
             </div>
         </div>
         <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</span></p>
         <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</span></p>
-        <p class="data-row"><span class="label-text">Show Live Price:</span><span class="data-value">${yieldDisplay}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
+        <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
 
     // Re-apply selected class if it was previously selected
