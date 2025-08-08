@@ -1776,6 +1776,18 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? formatUserDecimalStrict(shareToEdit.dividendAmount) : '';
     if (frankingCreditsInput) frankingCreditsInput.value = Number(shareToEdit.frankingCredits) !== null && !isNaN(Number(shareToEdit.frankingCredits)) ? Number(shareToEdit.frankingCredits).toFixed(1) : '';
 
+    // Portfolio fields (optional per share)
+    const portfolioSharesInput = document.getElementById('portfolioShares');
+    const portfolioAvgPriceInput = document.getElementById('portfolioAvgPrice');
+    if (portfolioSharesInput) {
+        const v = Number(shareToEdit.portfolioShares);
+        portfolioSharesInput.value = !isNaN(v) && v !== null ? String(Math.trunc(v)) : '';
+    }
+    if (portfolioAvgPriceInput) {
+        const v = Number(shareToEdit.portfolioAvgPrice);
+        portfolioAvgPriceInput.value = !isNaN(v) && v !== null ? formatUserDecimalStrict(v) : '';
+    }
+
     // Set the star rating dropdown
     if (shareRatingSelect) {
         shareRatingSelect.value = shareToEdit.starRating !== undefined && shareToEdit.starRating !== null ? shareToEdit.starRating.toString() : '0';
@@ -1826,6 +1838,12 @@ function getCurrentFormData() {
         });
     }
 
+    // Portfolio-specific fields (optional)
+    const portfolioSharesEl = document.getElementById('portfolioShares');
+    const portfolioAvgPriceEl = document.getElementById('portfolioAvgPrice');
+    const portfolioSharesVal = portfolioSharesEl ? parseFloat(portfolioSharesEl.value) : null;
+    const portfolioAvgPriceVal = portfolioAvgPriceEl ? parseFloat(portfolioAvgPriceEl.value) : null;
+
     return {
         shareName: shareNameInput?.value?.trim().toUpperCase() || '',
         currentPrice: parseFloat(currentPriceInput?.value),
@@ -1838,7 +1856,10 @@ function getCurrentFormData() {
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0,
         comments: comments,
         // Include the selected watchlist ID from the new dropdown
-        watchlistId: shareWatchlistSelect ? shareWatchlistSelect.value : null
+        watchlistId: shareWatchlistSelect ? shareWatchlistSelect.value : null,
+        // Portfolio fields
+        portfolioShares: isNaN(portfolioSharesVal) ? null : Math.trunc(portfolioSharesVal),
+        portfolioAvgPrice: isNaN(portfolioAvgPriceVal) ? null : portfolioAvgPriceVal
     };
 }
 
@@ -1852,7 +1873,7 @@ function getCurrentFormData() {
 function areShareDataEqual(data1, data2) {
     if (!data1 || !data2) return false;
 
-    const fields = ['shareName', 'currentPrice', 'targetPrice', 'targetDirection', 'dividendAmount', 'frankingCredits', 'watchlistId', 'starRating']; // Include new targetDirection
+    const fields = ['shareName', 'currentPrice', 'targetPrice', 'targetDirection', 'dividendAmount', 'frankingCredits', 'watchlistId', 'starRating', 'portfolioShares', 'portfolioAvgPrice']; // Include portfolio fields
     for (const field of fields) {
         let val1 = data1[field];
         let val2 = data2[field];
@@ -1976,7 +1997,10 @@ async function saveShareData(isSilent = false) {
         frankingCredits: isNaN(frankingCredits) ? null : frankingCredits,
         comments: comments,
         // Use the selected watchlist from the modal dropdown
-        watchlistId: selectedWatchlistIdForSave,
+    watchlistId: selectedWatchlistIdForSave,
+    // Portfolio fields (optional)
+    portfolioShares: (() => { const el = document.getElementById('portfolioShares'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : Math.trunc(v); })(),
+    portfolioAvgPrice: (() => { const el = document.getElementById('portfolioAvgPrice'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : v; })(),
         lastPriceUpdateTime: new Date().toISOString(),
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0 // Ensure rating is saved as a number
     };
