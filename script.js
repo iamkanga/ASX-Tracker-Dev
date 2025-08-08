@@ -236,6 +236,17 @@ const calculatorModal = document.getElementById('calculatorModal');
 const calculatorInput = document.getElementById('calculatorInput');
 const calculatorResult = document.getElementById('calculatorResult');
 const calculatorButtons = document.querySelector('.calculator-buttons');
+
+// Dividend Calculator modal + inputs/outputs
+const dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
+const dividendCalcBtn = document.getElementById('dividendCalcBtn');
+const standardCalcBtn = document.getElementById('standardCalcBtn');
+const calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
+const calcDividendAmountInput = document.getElementById('calcDividendAmount');
+const calcFrankingCreditsInput = document.getElementById('calcFrankingCredits');
+const calcUnfrankedYieldSpan = document.getElementById('calcUnfrankedYield');
+const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
+// calcEstimatedDividend is already declared below
 const watchlistSelect = document.getElementById('watchlistSelect');
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 const colorThemeSelect = document.getElementById('colorThemeSelect');
@@ -295,6 +306,7 @@ const appHeader = document.getElementById('appHeader');
 const mainTitle = document.getElementById('mainTitle');
 const shareTableBody = document.querySelector('#shareTable tbody');
 const mobileShareCardsContainer = document.getElementById('mobileShareCards');
+const tableContainer = document.querySelector('#stockWatchlistSection .table-container');
 
 // --- AUTH/CASH/LIVE-PRICE GLOBALS & FALLBACKS ---
 // Ensures references used during auth/logout won’t throw if not set elsewhere
