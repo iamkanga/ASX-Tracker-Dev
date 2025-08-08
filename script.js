@@ -192,7 +192,9 @@ import {
   hideModal,
   clearWatchlistUI,
   clearShareListUI,
-  clearShareList
+    clearShareList,
+    selectShare,
+    deselectCurrentShare
 } from './ui-helpers.js';
 // --- END DEBUG LOGGING SETUP ---
 
@@ -219,6 +221,8 @@ let operator = null;
 let previousCalculatorInput = '';
 let resultDisplayed = false;
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
+let originalShareData = null; // Tracks original share form data for dirty checks and resets
+let contextMenuOpen = false; // Tracks whether the context menu is currently open
 
 // --- INPUT ELEMENTS (aligned with index.html IDs) ---
 const shareNameInput = document.getElementById('shareName');
@@ -322,6 +326,8 @@ let currentCustomThemeIndex = 0; // default to first custom theme option
 // Live prices interval handle
 let livePriceFetchInterval = null;
 const LIVE_PRICE_FETCH_INTERVAL_MS = 60000; // 1 minute default fetch cadence
+// Google Apps Script URL can be provided via window for environment-specific configuration
+const GOOGLE_APPS_SCRIPT_URL = window.GOOGLE_APPS_SCRIPT_URL || null;
 
 // --- WATCHLIST & VIEW DEFAULTS ---
 // Constants used when filtering/identifying special watchlists in code paths
@@ -340,6 +346,7 @@ let currentMobileViewMode = 'auto'; // 'auto'|'cards'|'table' safe default
 // Sort state
 let currentSortOrder = 'entryDate-desc'; // default for stocks; will be overridden based on view/saved
 let savedSortOrder = null; // populated from Firestore user profile if available
+let savedTheme = null; // populated from Firestore user profile if available
 
 // User watchlists collection declared earlier near top of file
 
@@ -2693,6 +2700,11 @@ async function displayStockDetailsInSearchModal(asxCode) {
     currentSearchShareData = null; // Reset previous data
 
     try {
+        if (!GOOGLE_APPS_SCRIPT_URL) {
+            logDebug('Search: GOOGLE_APPS_SCRIPT_URL not set; skipping live fetch for ' + asxCode + '.');
+            searchResultDisplay.innerHTML = `<p class="initial-message">Live data source not configured. Please set GOOGLE_APPS_SCRIPT_URL.</p>`;
+            return;
+        }
         const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${asxCode}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -3333,6 +3345,12 @@ async function fetchLivePrices() {
     }
 
     try {
+        if (!GOOGLE_APPS_SCRIPT_URL) {
+            console.warn('Live Price: GOOGLE_APPS_SCRIPT_URL not configured. Skipping live prices.');
+            window._livePricesLoaded = true;
+            hideSplashScreenIfReady();
+            return;
+        }
         const response = await fetch(GOOGLE_APPS_SCRIPT_URL); 
         if (!response.ok) {
             throw new Error('HTTP error! status: ' + response.status);
