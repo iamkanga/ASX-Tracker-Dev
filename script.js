@@ -5270,12 +5270,44 @@ async function initializeAppLogic() {
     // The targetHitDetailsModal itself is hidden by showModal/hideModal, so no explicit line needed for its close button.
 
 
-    // Service Worker Registration
+    // Service Worker Registration + Robust Auto-Update Flow
     if ('serviceWorker' in navigator) {
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            // Reload to get the new cached assets (CSS/JS)
+            window.location.reload();
+        });
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./service-worker.js', { scope: './' }) 
-                .then(registration => {
-                    logDebug('Service Worker: Registered with scope:', registration.scope); 
+            navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+                .then(reg => {
+                    logDebug('Service Worker: Registered with scope:', reg.scope);
+                    // If there is an updated service worker waiting or installing, prompt it to activate
+                    function promptUpdate(sw) {
+                        if (!sw) return;
+                        // Tell the new SW to skip waiting so it becomes active immediately
+                        sw.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                    if (reg.waiting) {
+                        promptUpdate(reg.waiting);
+                    }
+                    if (reg.installing) {
+                        reg.installing.addEventListener('statechange', () => {
+                            if (reg.installing && reg.installing.state === 'installed') {
+                                promptUpdate(reg.installing);
+                            }
+                        });
+                    }
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        if (!newWorker) return;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed') {
+                                promptUpdate(newWorker);
+                            }
+                        });
+                    });
                 })
                 .catch(error => {
                     console.error('Service Worker: Registration failed:', error);
