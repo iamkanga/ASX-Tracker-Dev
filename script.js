@@ -565,7 +565,7 @@ const deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
 const exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
 const refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
 const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
-const modalLivePriceDisplaySection = document.querySelector('.live-price-display-section'); 
+const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection'); 
 const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
 const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
 // NEW: Target Hit Details Modal Elements
