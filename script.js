@@ -5293,11 +5293,17 @@ async function initializeAppLogic() {
             badge.style.marginLeft = '8px';
             badge.style.fontSize = '0.85rem';
             badge.style.color = 'var(--ghosted-text, #888)';
-            const title = document.getElementById('mainTitle');
-            if (title && title.parentElement) {
-                title.parentElement.appendChild(badge);
-            } else if (appHeader) {
-                appHeader.appendChild(badge);
+            const hamburger = document.getElementById('hamburgerBtn');
+            if (hamburger && hamburger.parentElement) {
+                // Place the badge immediately to the right of the hamburger button
+                hamburger.insertAdjacentElement('afterend', badge);
+            } else {
+                const title = document.getElementById('mainTitle');
+                if (title && title.parentElement) {
+                    title.parentElement.appendChild(badge);
+                } else if (appHeader) {
+                    appHeader.appendChild(badge);
+                }
             }
         }
     } catch (e) {
