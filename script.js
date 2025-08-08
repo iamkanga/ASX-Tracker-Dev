@@ -980,11 +980,11 @@ function addShareToTable(share) {
     row.innerHTML = `
         <td>
             <span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>
+            ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
         </td>
         <td class="live-price-cell">
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
-            ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
         </td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
@@ -1407,11 +1407,13 @@ function updateOrCreateShareTableRow(share) {
     const companyName = companyInfo ? companyInfo.name : '';
 
     row.innerHTML = `
-        <td><span class="share-code-display ${priceClass}">${share.shareName || ''}</span></td>
+        <td>
+            <span class="share-code-display ${priceClass}">${share.shareName || ''}</span>
+            ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
+        </td>
         <td class="live-price-cell">
             <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
             <span class="price-change ${priceClass}">${displayPriceChange}</span>
-            ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
         </td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
