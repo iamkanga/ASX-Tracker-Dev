@@ -2587,6 +2587,14 @@ function renderWatchlistSelect() {
     allSharesOption.textContent = 'All Shares';
     watchlistSelect.appendChild(allSharesOption);
 
+    // Ensure Portfolio is always present as a special option
+    if (!watchlistSelect.querySelector('option[value="portfolio"]')) {
+        const portfolioOption = document.createElement('option');
+        portfolioOption.value = 'portfolio';
+        portfolioOption.textContent = 'Portfolio';
+        watchlistSelect.appendChild(portfolioOption);
+    }
+
     userWatchlists.forEach(watchlist => {
         // Skip adding "Cash & Assets" if it's already a hardcoded option in HTML
         if (watchlist.id === CASH_BANK_WATCHLIST_ID) {
@@ -2738,7 +2746,36 @@ function renderWatchlist() {
     // Clear previous content (only for elements that will be conditionally displayed)
     // We will now manage individual row/card updates, so don't clear the whole tbody/container yet.
     // However, for switching between stock/cash, we might still need to clear.
-    if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
+    if (selectedWatchlistId === 'portfolio') {
+        // Portfolio View: hide stock and cash sections, show/create portfolio section and render
+        if (stockWatchlistSection) stockWatchlistSection.classList.add('app-hidden');
+        if (cashAssetsSection) cashAssetsSection.classList.add('app-hidden');
+        let portfolioSection = document.getElementById('portfolioSection');
+        if (!portfolioSection) {
+            portfolioSection = document.createElement('div');
+            portfolioSection.id = 'portfolioSection';
+            portfolioSection.className = 'portfolio-section';
+            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
+            if (mainContainer) mainContainer.appendChild(portfolioSection);
+        }
+        portfolioSection.style.display = 'block';
+        // Hide stock-specific containers
+        if (tableContainer) tableContainer.style.display = 'none';
+        if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
+        // Update title
+        if (mainTitle) mainTitle.textContent = 'Portfolio';
+        // Hide/disable stock-only controls
+        sortSelect.classList.add('app-hidden');
+        refreshLivePricesBtn.classList.add('app-hidden');
+        toggleCompactViewBtn.classList.add('app-hidden');
+        exportWatchlistBtn.classList.remove('app-hidden'); // Allow export if desired
+        // Render the portfolio list
+        if (typeof renderPortfolioList === 'function') {
+            renderPortfolioList();
+        }
+        adjustMainContentPadding();
+        return;
+    } else if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
         // Stock Watchlist Logic
         stockWatchlistSection.classList.remove('app-hidden');
         const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
@@ -2746,6 +2783,8 @@ function renderWatchlist() {
             mainTitle.textContent = 'All Shares';
         } else if (selectedWatchlist) {
             mainTitle.textContent = selectedWatchlist.name;
+        } else if (selectedWatchlistId === 'portfolio') {
+            mainTitle.textContent = 'Portfolio';
         } else {
             mainTitle.textContent = 'Share Watchlist';
         }
