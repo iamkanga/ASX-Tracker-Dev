@@ -253,8 +253,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function fmtMoney(n) {
-        return (typeof n === 'number' && !isNaN(n)) ? '
-});
+    return (typeof n === 'number' && !isNaN(n)) ? `$${n.toFixed(2)}` : '';
+}
+
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
 // via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
