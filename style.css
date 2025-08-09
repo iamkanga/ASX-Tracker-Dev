@@ -5065,7 +5065,7 @@ body.dark-theme .alert-item {
 
 /* Ensure the live price display section remains visible and formatted */
 .mobile-share-cards.compact-view .mobile-card .live-price-display-section {
-    background-color: rgba(0, 255, 0, 0.06); /* Subtle green tinge only in compact view */
+    background-color: transparent; /* Subtle green tinge only in compact view */
     box-shadow: none; /* Remove shadow */
     padding: 0; /* Remove padding */
     margin-bottom: 0; /* Remove margin */
