@@ -3384,67 +3384,44 @@ async function loadAsxCodesFromCSV() {
  */
 function isAsxMarketOpen() {
     const now = new Date();
-    // Get current time in Sydney (Australia/Sydney)
-    // Using 'en-AU' locale and 'Australia/Sydney' timezone for accurate comparison
     const options = {
         hour: 'numeric',
         minute: 'numeric',
-        hour12: false, // 24-hour format
+        hour12: false,
         timeZone: 'Australia/Sydney',
-        weekday: 'short', // To check for weekends
-        year: 'numeric', // For holidays
-        month: 'numeric', // For holidays
-        day: 'numeric' // For holidays
+        weekday: 'short',
     };
 
     const sydneyTimeStr = new Intl.DateTimeFormat('en-AU', options).format(now);
-    const [dayOfWeekStr, dateStr, timeStr] = sydneyTimeStr.split(', ');
-    const [day, month, year] = dateStr.split('/').map(Number);
+    const [dayOfWeekStr, timeStr] = sydneyTimeStr.split(', ');
     const [hours, minutes] = timeStr.split(':').map(Number);
 
-    // Reconstruct date in Sydney time to use for holiday checks
-    const sydneyDate = new Date(year, month - 1, day, hours, minutes);
-    const dayOfWeek = sydneyDate.getDay(); // Sunday - Saturday : 0 - 6
+    // Map weekday strings to numbers (Sunday = 0, Monday = 1, ..., Saturday = 6)
+    const dayOfWeekMap = {
+        'Sun': 0,
+        'Mon': 1,
+        'Tue': 2,
+        'Wed': 3,
+        'Thu': 4,
+        'Fri': 5,
+        'Sat': 6
+    };
 
-    // Check for weekends (Saturday = 6, Sunday = 0)
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-        logDebug('Market Status: Market is closed (weekend).');
+    const dayOfWeek = dayOfWeekMap[dayOfWeekStr];
+
+    // Custom schedule logic
+    if (dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6) {
+        // Closed all weekend (Friday, Saturday, Sunday)
         return false;
     }
 
-    // Standard ASX trading hours: 10:00 AM to 4:00 PM (Sydney time)
-    const marketOpenHours = 10;
-    const marketCloseHours = 16; // 4:00 PM
-
-    if (hours < marketOpenHours || hours >= marketCloseHours) {
-        logDebug('Market Status: Market is closed (outside trading hours: ' + timeStr + ').');
+    if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+        // Closed from 12:01 AM to 11:59 PM Monday to Thursday
         return false;
     }
 
-    // Basic check for major Sydney public holidays (non-exhaustive)
-    // This list should be updated annually for accuracy or fetched from an external API.
-    // Format: 'MM/DD'
-    const sydneyPublicHolidays = [
-        '01/01', // New Year's Day
-        '01/26', // Australia Day (observed)
-        '03/28', // Good Friday (example for 2025 - changes annually)
-        '03/31', // Easter Monday (example for 2025 - changes annually)
-        '04/25', // Anzac Day
-        '06/09', // King's Birthday (NSW)
-        '08/04', // Bank Holiday (NSW - First Monday in August)
-        '10/06', // Labour Day (NSW - First Monday in October)
-        '12/25', // Christmas Day
-        '12/26' // Boxing Day
-    ];
-
-    const todayMonthDay = `${(month < 10 ? '0' : '') + month}/${(day < 10 ? '0' : '') + day}`;
-    if (sydneyPublicHolidays.includes(todayMonthDay)) {
-        logDebug('Market Status: Market is closed (public holiday: ' + todayMonthDay + ').');
-        return false;
-    }
-
-    logDebug('Market Status: Market is likely open (' + timeStr + ').');
-    return true;
+    // Default to closed if none of the above conditions are met
+    return false;
 }
 function calculateFrankedYield(dividendAmount, currentPrice, frankingCreditsPercentage) {
     // Ensure inputs are valid numbers and currentPrice is not zero
