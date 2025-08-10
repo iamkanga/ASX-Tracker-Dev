@@ -322,22 +322,22 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="pc-row bottom ${totalPLClass}"><div class="pc-pl-label">P/L</div><div class="pc-pl-val">${fmtMoney(totalPL)}</div></div>
         </div>`;
     const totalPLPctDisplay = (totalCostBasis > 0) ? fmtPct((totalPL / totalCostBasis) * 100) : '0.00%';
-    const profitLossSummary = `<div class="portfolio-summary-bar">
-            <div class="ps-card profit">
+        const profitLossSummary = `<div class="portfolio-summary-bar">
+            <div class="ps-card profit highlight">
                 <div class="ps-label">Profit</div>
                 <div class="ps-value">${fmtMoney(profitPLSum)}</div>
             </div>
-            <div class="ps-card loss">
+            <div class="ps-card loss highlight">
                 <div class="ps-label">Loss</div>
                 <div class="ps-value">${fmtMoney(Math.abs(lossPLSum))}</div>
             </div>
-            <div class="ps-card net ${totalPLClass}">
+            <div class="ps-card net ${totalPLClass} highlight">
         <div class="ps-label">Net</div>
         <div class="ps-value">${fmtMoney(totalPL)}</div>
         <div class="ps-percent">${totalPLPctDisplay}</div>
             </div>
         </div>`;
-        const htmlCards = `<div class="portfolio-cards">${cards.join('')}${totalsCard}</div>`;
+    const htmlCards = `<div class="portfolio-cards">${cards.join('')}<div class="totals-footer-wrapper">${totalsCard}</div></div>`;
         portfolioListContainer.innerHTML = profitLossSummary + htmlTable + htmlCards;
 
         // Make portfolio rows interactive: click to open details; right-click to open context menu
@@ -2972,8 +2972,8 @@ function renderWatchlist() {
         if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
         // Update title
         if (mainTitle) mainTitle.textContent = 'Portfolio';
-        // Hide/disable stock-only controls
-        sortSelect.classList.add('app-hidden');
+    // Show sort dropdown in portfolio too
+    sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
         toggleCompactViewBtn.classList.add('app-hidden');
         exportWatchlistBtn.classList.remove('app-hidden'); // Allow export if desired
