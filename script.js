@@ -10,47 +10,40 @@ function pushAppState(type, id, stateObj = {}, title = '', url = '') {
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
-    logDebug('Popstate event fired. event.state:', event.state);
-    const state = event.state;
+    logDebug('Popstate event fired. State:', event.state);
 
-    // Sidebar handling: always close sidebar first if open
-    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
-        logDebug('Popstate: Closing open sidebar.');
-        if (window.toggleAppSidebar) {
-            window.toggleAppSidebar(false);
-        }
+    // First, check if the sidebar is open on mobile. If so, the back button should close it.
+    if (appSidebar && appSidebar.classList.contains('open') && window.innerWidth <= 768) {
+        logDebug('Popstate: Closing sidebar.');
+        // Call toggleAppSidebar but prevent it from manipulating history, as popstate is the source of truth.
+        toggleAppSidebar(false, false);
         return;
     }
 
-    // Modal stack handling: pop the top modal, restore previous modal if any
+    // If the sidebar is closed, handle modals. The popstate event means we need to close the top-most UI element.
+    // We use our modalStack to determine what that is.
     if (modalStack.length > 0) {
-        const lastModalId = modalStack.pop();
-        const lastModal = document.getElementById(lastModalId);
-        if (lastModal && lastModal.style.display !== 'none') {
-            hideModal(lastModal);
-            // If there is another modal underneath, show it again
-            if (modalStack.length > 0) {
-                const prevModalId = modalStack[modalStack.length - 1];
-                const prevModal = document.getElementById(prevModalId);
-                if (prevModal) {
-                    prevModal.style.setProperty('display', 'flex', 'important');
-                    logDebug('Popstate: Restored previous modal:', prevModalId);
-                }
-            }
-            return;
+        const topModalId = modalStack.pop(); // The modal being closed by the back button.
+        const topModal = document.getElementById(topModalId);
+
+        if (topModal) {
+            topModal.style.setProperty('display', 'none', 'important');
+            logDebug('Popstate: Closed modal:', topModalId);
         }
+
+        // If there's another modal in the stack, it's the one we are going "back" to. Ensure it's visible.
+        if (modalStack.length > 0) {
+            const prevModalId = modalStack[modalStack.length - 1];
+            const prevModal = document.getElementById(prevModalId);
+            if (prevModal) {
+                prevModal.style.setProperty('display', 'flex', 'important');
+                logDebug('Popstate: Restored previous modal:', prevModalId);
+            }
+        }
+        return; // Modal logic handled.
     }
 
-    // Fallback: close any open modal (should rarely be needed)
-    const openModals = document.querySelectorAll('.modal[style*="display: flex"]');
-    if (openModals.length > 0) {
-        const lastModal = openModals[openModals.length - 1];
-        logDebug('Popstate: Closing last open modal:', lastModal.id);
-        hideModal(lastModal);
-        return;
-    }
-
-    logDebug('Popstate: No sidebar or modals open. Allowing default browser back behavior.');
+    logDebug('Popstate: No UI element to handle. Default browser behavior will apply.');
 });
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
@@ -1653,11 +1646,6 @@ function hideModal(modalElement) {
     if (modalElement) {
         modalElement.style.setProperty('display', 'none', 'important');
         logDebug('Modal: Hiding modal: ' + modalElement.id);
-        // Remove from stack if present
-        const idx = modalStack.lastIndexOf(modalElement.id);
-        if (idx !== -1) {
-            modalStack.splice(idx, 1);
-        }
     }
 }
 
@@ -4812,15 +4800,17 @@ function hideContextMenu() {
     }
 }
 
-function toggleAppSidebar(forceState = null) {
-    logDebug('Sidebar: toggleAppSidebar called. Current open state: ' + appSidebar.classList.contains('open') + ', Force state: ' + forceState);
+function toggleAppSidebar(forceState = null, manageHistory = true) {
+    logDebug('Sidebar: toggleAppSidebar called. Current open state: ' + appSidebar.classList.contains('open') + ', Force state: ' + forceState + ', Manage History: ' + manageHistory);
     const isDesktop = window.innerWidth > 768;
     const isOpen = appSidebar.classList.contains('open');
 
-    if (forceState === true || (forceState === null && !isOpen)) {
+    const shouldOpen = forceState === true || (forceState === null && !isOpen);
+    const shouldClose = forceState === false || (forceState === null && isOpen);
+
+    if (shouldOpen) {
         // On mobile, opening the sidebar is a navigation event that should be caught by the back button.
-        if (!isDesktop) {
-            // Push a new history state for the sidebar opening
+        if (!isDesktop && manageHistory) {
             pushAppState('sidebar', 'appSidebar', { sidebarOpen: true }, '', '#sidebar');
         }
 
@@ -4845,7 +4835,7 @@ function toggleAppSidebar(forceState = null) {
             logDebug('Sidebar: Mobile: Sidebar opened, body NOT shifted, overlay pointer-events: auto.');
         }
         logDebug('Sidebar: Sidebar opened.');
-    } else if (forceState === false || (forceState === null && isOpen)) {
+    } else if (shouldClose) {
         appSidebar.classList.remove('open');
         sidebarOverlay.classList.remove('open');
         document.body.classList.remove('sidebar-active');
