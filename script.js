@@ -1,16 +1,23 @@
-// --- Restored Header & Navigation Utilities ---
-// In-app history helper so back button closes overlays before exiting
+// Copilot update: 2025-07-29 - change for sync test
+// Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
+// --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
+// Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
-    try { history.pushState(stateObj, title, url); } catch (e) { /* ignore */ }
+    history.pushState(stateObj, title, url);
 }
 
-window.addEventListener('popstate', function() {
-    // Close sidebar first if open
-    if (window.appSidebar && window.appSidebar.classList.contains('open') && window.toggleAppSidebar) {
-        window.toggleAppSidebar(false);
-        return;
+// Listen for the back button (popstate event)
+window.addEventListener('popstate', function(event) {
+    // NEW: First, check if the sidebar is open and close it.
+    // This should be the first check, as the sidebar can be open on top of the main view.
+    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
+        if (window.toggleAppSidebar) {
+            window.toggleAppSidebar(false); // Explicitly close the sidebar
+        }
+        return; // Exit after handling the sidebar
     }
-    // Close topmost modal (simple approach: list known modals)
+
+    // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
     const modals = [
         window.shareFormSection,
         window.shareDetailModal,
@@ -25,24 +32,321 @@ window.addEventListener('popstate', function() {
         window.stockSearchModal,
         window.alertPanel
     ];
-    for (const m of modals) {
-        if (m && m.style && m.style.display !== 'none') {
-            if (typeof closeModals === 'function') closeModals();
-            return;
+    for (const modal of modals) {
+        if (modal && modal.style.display !== 'none') {
+            if (window.closeModals) closeModals();
+            return; // Exit after handling the first open modal
         }
     }
+    // If no modals or sidebar are open, allow default browser back (exit app)
 });
+// ...existing code...
+// --- (Aggressive Enforcement Patch Removed) ---
+// The previous patch has been removed as the root cause of the UI issues,
+// a syntax error in index.html, has been corrected. The standard application
+// logic should now function as intended.
+// --- END REMOVED PATCH ---
 
-// NOTE: Portions of market status logic earlier removed are redefined later inside DOMContentLoaded.
-// ---------------------------------------------------------------------
+
+// [Copilot Update] Source control helper
+// This function is a placeholder for automating source control actions (e.g., git add/commit)
+// and for tracking how many times files have been made available to source control.
+// Usage: Call makeFilesAvailableToSourceControl() after major changes if you want to automate this.
+let sourceControlMakeAvailableCount = 0;
+function makeFilesAvailableToSourceControl() {
+    // This is a placeholder for future automation (e.g., via backend or extension)
+    // Instructs the user to use git or triggers a VS Code command if available
+    sourceControlMakeAvailableCount++;
+    if (window && window.showCustomAlert) {
+        window.showCustomAlert('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')', 2000);
+    } else {
+        console.log('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')');
+    }
+    // To actually add to git, run: git init; git add .; git commit -m "Initial commit"
+}
+// End Copilot source control helper
+
+// Helper: Sort shares by percentage change
+function sortSharesByPercentageChange(shares) {
+    return shares.slice().sort((a, b) => {
+        const liveA = livePrices[a.shareName?.toUpperCase()]?.live;
+        const prevA = livePrices[a.shareName?.toUpperCase()]?.prevClose;
+        const liveB = livePrices[b.shareName?.toUpperCase()]?.live;
+        const prevB = livePrices[b.shareName?.toUpperCase()]?.prevClose;
+        const pctA = (prevA && liveA) ? ((liveA - prevA) / prevA) : 0;
+        const pctB = (prevB && liveB) ? ((liveB - prevB) / prevB) : 0;
+        return pctB - pctA; // Descending
+    });
+}
+
+// AGGRESSIVE FIX: After live prices update, forcefully re-sort and re-render if sort order is percentage change
+function onLivePricesUpdated() {
+    // AGGRESSIVE FIX: Always resort regardless of current sort order to ensure data consistency
+    if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
+        logDebug('AGGRESSIVE SORT: Force resorting shares by percentage change after live prices update');
+        // Re-sort shares and re-render
+        let sortedShares = sortSharesByPercentageChange(allSharesData);
+        if (currentSortOrder === 'percentageChange-asc') sortedShares.reverse();
+        
+        // AGGRESSIVE: Force the allSharesData to the sorted order
+        allSharesData.length = 0; // Clear the array
+        allSharesData.push(...sortedShares); // Re-populate with sorted data
+        
+        // Force re-render after sorting
+        renderWatchlist();
+        // If the Portfolio view is visible, update it too
+        if (typeof renderPortfolioList === 'function') {
+            const section = document.getElementById('portfolioSection');
+            if (section && section.style.display !== 'none') {
+                renderPortfolioList();
+            }
+        }
+    } else {
+        // Still render to update UI with new prices
+        renderWatchlist();
+        // Update portfolio view if active
+        if (typeof renderPortfolioList === 'function') {
+            const section = document.getElementById('portfolioSection');
+            if (section && section.style.display !== 'none') {
+                renderPortfolioList();
+            }
+        }
+    }
+}
+
+// AGGRESSIVE FIX: Force apply current sort order after data loads
+function forceApplyCurrentSort() {
+    if (currentSortOrder && currentSortOrder !== '') {
+        logDebug('AGGRESSIVE SORT: Force applying current sort order: ' + currentSortOrder);
+        sortShares();
+    }
+}
+
+// --- Automatic market status handling (Sydney time) ---
+document.addEventListener('DOMContentLoaded', function () {
+    // --- Watchlist logic moved to watchlist.js ---
+    // Import and call watchlist functions
+    if (window.watchlistModule) {
+        window.watchlistModule.renderWatchlistSelect();
+        window.watchlistModule.populateShareWatchlistSelect();
+        window.watchlistModule.ensurePortfolioOptionPresent();
+        setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
+    }
+    // Automatic closed-market banner and ghosting
+    const marketStatusBanner = document.getElementById('marketStatusBanner');
+    function formatSydneyDate(d) {
+        return new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+    }
+    function isAfterCloseUntilMidnightSydney() {
+        const now = new Date();
+        const opts = { hour: 'numeric', minute: 'numeric', hour12: false, timeZone: 'Australia/Sydney' };
+        const timeStr = new Intl.DateTimeFormat('en-AU', opts).format(now);
+        const [h, m] = timeStr.split(':').map(Number);
+        return (h > 16) || (h === 16 && m >= 0);
+    }
+    function updateMarketStatusUI() {
+    const open = isAsxMarketOpen();
+        if (marketStatusBanner) {
+            if (!open) {
+                const now = new Date();
+                // Snapshot is the last fetched live as at close; show date to avoid weekend ambiguity
+                marketStatusBanner.textContent = `ASX market is closed. Showing final prices from today. (${formatSydneyDate(now)})`;
+                marketStatusBanner.classList.remove('app-hidden');
+            } else {
+                marketStatusBanner.textContent = '';
+                marketStatusBanner.classList.add('app-hidden');
+            }
+        }
+    // No global disabling; controls remain enabled regardless of market state
+    }
+    // Initial status and periodic re-check each minute
+    updateMarketStatusUI();
+    setInterval(updateMarketStatusUI, 60 * 1000);
+
+    // Ensure Edit Current Watchlist button updates when selection changes
+    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+        watchlistSelect.addEventListener('change', function () {
+            // If Portfolio is selected, show portfolio view
+            if (watchlistSelect.value === 'portfolio') {
+                showPortfolioView();
+            } else {
+                // Default: show normal watchlist view
+                showWatchlistView();
+            }
+            updateMainButtonsState(true);
+        });
+    }
+
+    // Portfolio view logic
+    window.showPortfolioView = function() {
+        // Hide normal stock watchlist section, show a dedicated portfolio section (create if needed)
+        if (!document.getElementById('portfolioSection')) {
+            const portfolioSection = document.createElement('div');
+            portfolioSection.id = 'portfolioSection';
+            portfolioSection.className = 'portfolio-section';
+            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
+            mainContainer.appendChild(portfolioSection);
+        }
+        stockWatchlistSection.style.display = 'none';
+        // Ensure selection state reflects Portfolio for downstream filters (e.g., ASX buttons)
+        currentSelectedWatchlistIds = ['portfolio'];
+        let portfolioSection = document.getElementById('portfolioSection');
+        portfolioSection.style.display = 'block';
+        renderPortfolioList();
+        if (typeof renderAsxCodeButtons === 'function') {
+            if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
+            renderAsxCodeButtons();
+        }
+    };
+    window.showWatchlistView = function() {
+        // Hide portfolio section if present, show normal stock watchlist section
+        let portfolioSection = document.getElementById('portfolioSection');
+        if (portfolioSection) portfolioSection.style.display = 'none';
+        stockWatchlistSection.style.display = '';
+    };
+    // Render portfolio list (uses live prices when available)
+    window.renderPortfolioList = function() {
+        const portfolioListContainer = document.getElementById('portfolioListContainer');
+        if (!portfolioListContainer) return;
+
+        // Filter for shares assigned to the Portfolio
+        const portfolioShares = allSharesData.filter(s => s.watchlistId === 'portfolio');
+        if (portfolioShares.length === 0) {
+            portfolioListContainer.innerHTML = '<p>No shares in your portfolio yet.</p>';
+            return;
+        }
+
+        // Helper to get a displayable current price for a share (live, last live when closed, then entered price)
+        function getDisplayPrice(share) {
+            const code = (share.shareName || '').toUpperCase();
+            const lp = livePrices ? livePrices[code] : undefined;
+            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+            let price = null;
+            if (lp) {
+                if (marketOpen && lp.live !== null && !isNaN(lp.live)) {
+                    price = Number(lp.live);
+                } else if (!marketOpen && lp.lastLivePrice !== null && !isNaN(lp.lastLivePrice)) {
+                    price = Number(lp.lastLivePrice);
+                }
+            }
+            if (price === null || isNaN(price)) {
+                // Fallback to user-entered currentPrice if available
+                price = (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice)))
+                    ? Number(share.currentPrice)
+                    : null;
+            }
+            return price;
+        }
+
+        function fmtMoney(n) {
+            return (typeof n === 'number' && !isNaN(n)) ? '$' + n.toFixed(2) : '';
+        }
+        function fmtPct(n) {
+            return (typeof n === 'number' && !isNaN(n)) ? n.toFixed(2) + '%' : '';
+        }
+
+        let totalValue = 0;
+        let totalPL = 0;
+        let html = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg Price</th><th>Current Price</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
+        portfolioShares.forEach(share => {
+            const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
+                ? Math.trunc(Number(share.portfolioShares))
+                : '';
+            const avgPrice = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)))
+                ? Number(share.portfolioAvgPrice)
+                : '';
+            const priceNow = getDisplayPrice(share);
+            const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
+            if (typeof rowValue === 'number') totalValue += rowValue;
+            const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number')
+                ? (priceNow - avgPrice) * shares
+                : null;
+            if (typeof rowPL === 'number') totalPL += rowPL;
+            const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number')
+                ? ((priceNow - avgPrice) / avgPrice) * 100
+                : null;
+            const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
+
+            html += `<tr data-doc-id="${share.id}">
+                <td>${share.shareName || ''}</td>
+                <td>${shares !== '' ? shares : ''}</td>
+                <td>${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
+                <td>${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</td>
+                <td>${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
+                <td class="${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
+                <td class="${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
+            </tr>`;
+        });
+        // Total row
+        const totalPLClass = totalPL > 0 ? 'positive' : (totalPL < 0 ? 'negative' : 'neutral');
+        html += `<tr class="portfolio-total-row">
+            <td colspan="4" style="text-align:right;font-weight:600;">Total</td>
+            <td style="font-weight:700;">${fmtMoney(totalValue)}</td>
+            <td class="${totalPLClass}" style="font-weight:700;">${fmtMoney(totalPL)}</td>
+            <td></td>
+        </tr>`;
+        html += '</tbody></table>';
+        portfolioListContainer.innerHTML = html;
+
+        // Make portfolio rows interactive: click to open details; right-click to open context menu
+        const rows = portfolioListContainer.querySelectorAll('table.portfolio-table tbody tr');
+        rows.forEach(row => {
+            if (row.classList.contains('portfolio-total-row')) return; // skip totals
+            const docId = row.getAttribute('data-doc-id');
+            if (!docId) return;
+            row.addEventListener('click', () => {
+                selectShare(docId);
+                showShareDetails();
+            });
+            row.addEventListener('contextmenu', (e) => {
+                if (window.innerWidth > 768) {
+                    e.preventDefault();
+                    selectShare(docId);
+                    showContextMenu(e, docId);
+                }
+            });
+            // Touch long-press to open context menu on mobile
+            let touchStartTime = 0;
+            row.addEventListener('touchstart', (e) => {
+                touchStartTime = Date.now();
+                selectedElementForTap = row;
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                longPressTimer = setTimeout(() => {
+                    if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
+                        selectShare(docId);
+                        showContextMenu(e, docId);
+                        e.preventDefault();
+                    }
+                }, LONG_PRESS_THRESHOLD);
+            }, { passive: false });
+            row.addEventListener('touchmove', (e) => {
+                const currentX = e.touches[0].clientX;
+                const currentY = e.touches[0].clientY;
+                const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
+                if (dist > TOUCH_MOVE_THRESHOLD) {
+                    clearTimeout(longPressTimer);
+                    touchStartTime = 0;
+                }
+            });
+            row.addEventListener('touchend', () => {
+                clearTimeout(longPressTimer);
+                if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === row) {
+                    // Short tap handled by click event
+                }
+                touchStartTime = 0;
+                selectedElementForTap = null;
+            });
+        });
+    };
+});
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
 // via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
 // from the <script type="module"> block in index.html.
 
 // --- GLOBAL VARIABLES ---
-const DEBUG_MODE = true; // Set to 'true' to enable debug logging for troubleshooting
-const VERBOSE_SORT_LOGS = false; // Extra noisy comparator logs for percentage sort
+const DEBUG_MODE = true; // Set to 'true' to enable debug logging for troubleshooting Portfolio dropdown
 
 // Custom logging function to control verbosity
 function logDebug(message, ...optionalParams) {
@@ -2234,39 +2538,53 @@ function showShareDetails() {
 
 function sortShares() {
     const sortValue = currentSortOrder;
+    logDebug('AGGRESSIVE DEBUG: sortShares called with currentSortOrder: ' + sortValue);
     if (!sortValue || sortValue === '') {
-        renderWatchlist();
+        logDebug('Sort: Sort placeholder selected, no explicit sorting applied.');
+        renderWatchlist(); 
         return;
     }
     const [field, order] = sortValue.split('-');
-    if (VERBOSE_SORT_LOGS) logDebug('Sort: Sorting by field: ' + field + ' order: ' + order);
+    logDebug('AGGRESSIVE DEBUG: Sorting by field: ' + field + ', order: ' + order);
     allSharesData.sort((a, b) => {
+        // Handle sorting by percentage change
         if (field === 'percentageChange') {
-            // Single log for percentageChange sort start
-            // (Not per comparison to avoid spam)
+            logDebug('AGGRESSIVE DEBUG: Percentage change sorting detected');
             const livePriceDataA = livePrices[a.shareName.toUpperCase()];
             const livePriceA = livePriceDataA ? livePriceDataA.live : undefined;
             const prevCloseA = livePriceDataA ? livePriceDataA.prevClose : undefined;
 
             const livePriceDataB = livePrices[b.shareName.toUpperCase()];
             const livePriceB = livePriceDataB ? livePriceDataB.live : undefined;
-            const prevCloseB = livePriceDataB ? livePriceDataB.prevClose : undefined;
+            const prevCloseB = livePriceDataB ? livePriceDataB.prevClose : undefined; // Corrected variable name
 
             let percentageChangeA = null;
+            // Only calculate if both livePriceA and prevCloseA are valid numbers and prevCloseA is not zero
             if (livePriceA !== undefined && livePriceA !== null && !isNaN(livePriceA) &&
                 prevCloseA !== undefined && prevCloseA !== null && !isNaN(prevCloseA) && prevCloseA !== 0) {
                 percentageChangeA = ((livePriceA - prevCloseA) / prevCloseA) * 100;
             }
 
             let percentageChangeB = null;
+            // Only calculate if both livePriceB and prevCloseB are valid numbers and prevCloseB is not zero
             if (livePriceB !== undefined && livePriceB !== null && !isNaN(livePriceB) &&
-                prevCloseB !== undefined && prevCloseB !== null && !isNaN(prevCloseB) && prevCloseB !== 0) {
+                prevCloseB !== undefined && prevCloseB !== null && !isNaN(prevCloseB) && prevCloseB !== 0) { // Corrected variable name here
                 percentageChangeB = ((livePriceB - prevCloseB) / prevCloseB) * 100;
             }
 
+            // Debugging log for percentage sort
+            logDebug('Sort Debug - Percentage: Comparing ' + a.shareName + ' (Change: ' + percentageChangeA + ') vs ' + b.shareName + ' (Change: ' + percentageChangeB + ')');
+
+
+            // Handle null/NaN percentage changes to push them to the bottom
+            // If both are null, their relative order doesn't matter (return 0)
             if (percentageChangeA === null && percentageChangeB === null) return 0;
-            if (percentageChangeA === null) return 1;
-            if (percentageChangeB === null) return -1;
+            // If A is null but B is a number, A goes to the bottom
+            if (percentageChangeA === null) return 1; 
+            // If B is null but A is a number, B goes to the bottom
+            if (percentageChangeB === null) return -1; 
+
+            // Now perform numerical comparison for non-null values
             return order === 'asc' ? percentageChangeA - percentageChangeB : percentageChangeB - percentageChangeA;
         }
 
@@ -2369,39 +2687,6 @@ function sortShares() {
     });
     logDebug('Sort: Shares sorted. Rendering watchlist.');
     renderWatchlist(); 
-}
-
-// Legacy helper retained for backward compatibility. Previously this reapplied the
-// active sort immediately after certain data events. The current flow already
-// calls sortShares() explicitly right after snapshots and live price updates.
-// Leaving the original call sites in place caused a ReferenceError once the
-// function was removed, halting script execution and breaking initial render.
-// Implement as a safe no-op (with optional debug log) to avoid duplicate sorts.
-function forceApplyCurrentSort() {
-    if (VERBOSE_SORT_LOGS) {
-        logDebug('Sort: forceApplyCurrentSort() no-op (sorting handled elsewhere).');
-    }
-    // Intentionally empty.
-}
-
-// Live Prices: Central handler invoked after livePrices object changes (fetch or fallback)
-// Needs to be defined BEFORE any fetchLivePrices() execution to avoid ReferenceError.
-function onLivePricesUpdated() {
-    try {
-        // Re-run sort only if current sort depends on live prices (percentageChange or dividendAmount yield calc)
-        if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
-            sortShares(); // Includes renderWatchlist()
-        } else {
-            // Still refresh UI so live price columns update
-            renderWatchlist();
-        }
-        // Update any target-hit indicators
-        if (typeof updateTargetHitBanner === 'function') {
-            updateTargetHitBanner();
-        }
-    } catch (e) {
-        console.error('Live Price: onLivePricesUpdated error', e);
-    }
 }
 
 /**
@@ -2771,29 +3056,6 @@ function renderWatchlist() {
     renderSortSelect(); // Moved here to ensure it updates for both stock and cash views
     updateMainButtonsState(!!currentUserId); // Ensure button states (like Edit Watchlist) are correct for the current view
     adjustMainContentPadding();
-}
-
-// --- Batched Render Wrapper ---
-// Reduce redundant sequential calls within the same frame.
-if (!window.__renderWatchlistWrapped) {
-    const __origRenderWatchlist = renderWatchlist;
-    let __scheduled = false;
-    let __reasons = new Set();
-    window.renderWatchlist = function(reason) {
-        if (reason) __reasons.add(reason);
-        if (__scheduled) return;
-        __scheduled = true;
-        requestAnimationFrame(() => {
-            const reasonsJoined = Array.from(__reasons).join(', ');
-            __reasons.clear();
-            __scheduled = false;
-            if (reasonsJoined) {
-                logDebug('Render: Batched renderWatchlist. Reasons: ' + reasonsJoined);
-            }
-            __origRenderWatchlist();
-        });
-    };
-    window.__renderWatchlistWrapped = true;
 }
 
 function renderAsxCodeButtons() {
@@ -3507,12 +3769,8 @@ async function fetchLivePrices() {
         return;
     }
 
-    const FETCH_TIMEOUT_MS = 8000;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-        const response = await fetch(GOOGLE_APPS_SCRIPT_URL, { signal: controller.signal }); 
-        clearTimeout(timeoutId);
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL); 
         if (!response.ok) {
             throw new Error('HTTP error! status: ' + response.status);
         }
@@ -3520,135 +3778,74 @@ async function fetchLivePrices() {
         console.log('Live Price: Raw data received:', data); 
 
         const newLivePrices = {};
-        const LOG_SKIP_LIMIT = 25; // cap noisy skip logs
-        let skipped = 0, skippedLogged = 0, accepted = 0, surrogateUsed = 0, notNeeded = 0;
-        // Build needed code set only when we actually have shares loaded; else accept all
-        const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
-        const neededCodes = haveShares ? new Set(allSharesData.map(s => s.shareName.toUpperCase())) : null;
-
         data.forEach(item => {
-            const asxCodeRaw = item.ASXCode;
-            if (!asxCodeRaw) { return; }
-            const asxCode = String(asxCodeRaw).toUpperCase();
-            if (neededCodes && !neededCodes.has(asxCode)) { notNeeded++; return; }
+            const asxCode = String(item.ASXCode).toUpperCase();
+            const livePrice = parseFloat(item.LivePrice);
+            const prevClose = parseFloat(item.PrevClose); 
+            const pe = parseFloat(item.PE);
+            const high52 = parseFloat(item.High52);
+            const low52 = parseFloat(item.Low52);
 
-            const livePriceParsed = parseFloat(item.LivePrice);
-            const prevCloseParsed = parseFloat(item.PrevClose);
-            const peParsed = parseFloat(item.PE);
-            const high52Parsed = parseFloat(item.High52);
-            const low52Parsed = parseFloat(item.Low52);
+    if (asxCode && livePrice !== null && !isNaN(livePrice)) {
+    // Find the corresponding share in allSharesData to get its targetPrice
+    const shareData = allSharesData.find(s => s.shareName.toUpperCase() === asxCode);
+    // Ensure targetPrice is parsed as a number, handling null/undefined/NaN
+    const targetPrice = shareData && shareData.targetPrice !== null && !isNaN(parseFloat(shareData.targetPrice))
+        ? parseFloat(shareData.targetPrice)
+        : undefined;
 
-            const hasLive = !isNaN(livePriceParsed);
-            const hasPrevClose = !isNaN(prevCloseParsed);
-            let effectiveLive = hasLive ? livePriceParsed : (hasPrevClose ? prevCloseParsed : NaN);
-            const usedSurrogate = !hasLive && hasPrevClose;
+    // Determine if target is hit based on targetDirection (new field) or default to 'below' for old shares
+            // Ensure shareData exists and has targetDirection, otherwise default to 'below'
+            const targetDirection = shareData && shareData.targetDirection ? shareData.targetDirection : 'below'; 
 
-            if (!isNaN(effectiveLive)) {
-                // Find the corresponding share in allSharesData to get its targetPrice
-                const shareData = haveShares ? allSharesData.find(s => s.shareName.toUpperCase() === asxCode) : null;
-                const targetPrice = shareData && shareData.targetPrice !== null && !isNaN(parseFloat(shareData.targetPrice))
-                    ? parseFloat(shareData.targetPrice)
-                    : undefined;
-                const targetDirection = shareData && shareData.targetDirection ? shareData.targetDirection : 'below'; 
-                let isTargetHit = false;
-                if (targetPrice !== undefined && !isNaN(effectiveLive)) {
-                    if (targetDirection === 'above') {
-                        isTargetHit = (effectiveLive >= targetPrice);
-                    } else {
-                        isTargetHit = (effectiveLive <= targetPrice);
-                    }
-                }
-                newLivePrices[asxCode] = {
-                    live: effectiveLive,
-                    prevClose: hasPrevClose ? prevCloseParsed : null,
-                    PE: isNaN(peParsed) ? null : peParsed,
-                    High52: isNaN(high52Parsed) ? null : high52Parsed,
-                    Low52: isNaN(low52Parsed) ? null : low52Parsed,
-                    targetHit: isTargetHit,
-                    lastLivePrice: effectiveLive,
-                    lastPrevClose: hasPrevClose ? prevCloseParsed : null,
-                    surrogateFromPrevClose: usedSurrogate || undefined
-                };
-                accepted++;
-                if (usedSurrogate) surrogateUsed++;
-            } else {
-                skipped++;
-                if (DEBUG_MODE && skippedLogged < LOG_SKIP_LIMIT) {
-                    console.warn('Live Price: Skipping item due to missing price (ASX, Live, Prev):', asxCode, item.LivePrice, item.PrevClose);
-                    skippedLogged++;
+            let isTargetHit = false;
+            if (targetPrice !== undefined && livePrice !== null && !isNaN(livePrice)) { // Only check if targetPrice and livePrice are valid
+                if (targetDirection === 'above') {
+                    isTargetHit = (livePrice >= targetPrice);
+                } else { // 'below' or any other unexpected value, including older shares
+                    isTargetHit = (livePrice <= targetPrice);
                 }
             }
+
+    newLivePrices[asxCode] = {
+        live: livePrice,
+        prevClose: isNaN(prevClose) ? null : prevClose,
+        PE: isNaN(pe) ? null : pe,
+        High52: isNaN(high52) ? null : high52,
+        Low52: isNaN(low52) ? null : low52,
+        targetHit: isTargetHit,
+        // Store the fetched live and prevClose prices for use when market is closed
+        lastLivePrice: livePrice,
+        lastPrevClose: isNaN(prevClose) ? null : prevClose
+    };
+} else {
+    if (DEBUG_MODE) {
+        console.warn('Live Price: Skipping item due to missing ASX code or invalid price:', item);
+    }
+}
         });
-        if (DEBUG_MODE) {
-            const parts = [`accepted=${accepted}`];
-            if (surrogateUsed) parts.push(`surrogate=${surrogateUsed}`);
-            if (skipped) parts.push(`skipped=${skipped}`);
-            if (notNeeded) parts.push(`filteredOut=${notNeeded}`);
-            if (skipped > skippedLogged) parts.push(`skippedNotLogged=${skipped - skippedLogged}`);
-            console.log('Live Price: Summary -> ' + parts.join(', '));
-        }
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices);
+        
+        // AGGRESSIVE FIX: Explicitly call onLivePricesUpdated to ensure proper sorting
         onLivePricesUpdated();
+        
+        // AGGRESSIVE FIX: Force apply current sort order after live prices load
+        forceApplyCurrentSort();
+        
+        // After fetching new prices, always re-sort and re-render the watchlist.
+        // This ensures all data, including percentage changes, is correctly displayed.
+        sortShares();
+        adjustMainContentPadding(); 
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
         updateTargetHitBanner(); // Explicitly update banner after prices are fresh
     } catch (error) {
-        const errMsg = error && error.message ? error.message : String(error);
-        console.error('Live Price: Error fetching live prices:', errMsg, error && error.stack ? '\nStack:' + error.stack : '');
-        try {
-            simulateLivePricesFallback();
-        } catch (fbErr) {
-            console.error('Live Price: simulateLivePricesFallback threw:', fbErr);
-            // Ensure splash can still hide so UI not blocked
-            window._livePricesLoaded = true;
-            hideSplashScreenIfReady();
-        }
+        console.error('Live Price: Error fetching live prices:', error);
+        // NEW: Hide splash screen on error
+        hideSplashScreen();
     }
 }
-
-function simulateLivePricesFallback() {
-    try {
-    if (livePrices && Object.keys(livePrices).length > 0) {
-        // Already have something; just release splash
-        window._livePricesLoaded = true;
-        hideSplashScreenIfReady();
-        return;
-    }
-    if (!allSharesData || allSharesData.length === 0) {
-        window._livePricesLoaded = true;
-        hideSplashScreenIfReady();
-        return;
-    }
-    const simulated = {};
-    allSharesData.forEach(s => {
-        const base = Number(s.currentPrice) || 1;
-        const jitter = base * (Math.random() * 0.04 - 0.02); // +/-2%
-        const live = +(base + jitter).toFixed(2);
-        simulated[s.shareName.toUpperCase()] = {
-            live,
-            prevClose: base,
-            PE: null,
-            High52: null,
-            Low52: null,
-            targetHit: false,
-            lastLivePrice: live,
-            lastPrevClose: base
-        };
-    });
-    livePrices = simulated;
-    console.warn('Live Price: Using simulated live prices (fallback).');
-    onLivePricesUpdated();
-    window._livePricesLoaded = true;
-    hideSplashScreenIfReady();
-    } catch (e) {
-        console.error('Live Price: Fallback generation failed:', e);
-        window._livePricesLoaded = true;
-        hideSplashScreenIfReady();
-    }
-}
-
-// (Removed shim: onLivePricesUpdated is now defined earlier once.)
 
 /**
  * Starts the periodic fetching of live prices.
@@ -3808,39 +4005,21 @@ function hideSplashScreen() {
  * Checks if all necessary app data is loaded and hides the splash screen if ready.
  * This function is called after each major data loading step.
  */
-let _lastSplashStatusLog = '';
-let _splashFallbackTimerStarted = false;
 function hideSplashScreenIfReady() {
-    const stateSummary = 'Firebase Init: ' + window._firebaseInitialized +
-        ', User Auth: ' + window._userAuthenticated +
-        ', App Data: ' + window._appDataLoaded +
-        ', Live Prices: ' + window._livePricesLoaded;
+    // Only hide if Firebase is initialized, user is authenticated, and all data flags are true
     if (window._firebaseInitialized && window._userAuthenticated && window._appDataLoaded && window._livePricesLoaded) {
-        if (splashScreenReady) {
-            if (_lastSplashStatusLog !== 'HIDE') {
-                logDebug('Splash Screen: All data loaded and ready. Hiding splash screen.');
-                _lastSplashStatusLog = 'HIDE';
-            }
+        if (splashScreenReady) { // Ensure splash screen itself is ready to be hidden
+            logDebug('Splash Screen: All data loaded and ready. Hiding splash screen.');
             hideSplashScreen();
-        } else if (_lastSplashStatusLog !== 'WAIT_READY') {
-            logDebug('Splash Screen: Data loaded, waiting for readiness flag.');
-            _lastSplashStatusLog = 'WAIT_READY';
+        } else {
+            logDebug('Splash Screen: Data loaded, but splash screen not yet marked as ready. Will hide when ready.');
         }
     } else {
-        if (_lastSplashStatusLog !== stateSummary) {
-            logDebug('Splash Screen: Not all data loaded yet. Current state: ' + stateSummary);
-            _lastSplashStatusLog = stateSummary;
-        }
-        if (!_splashFallbackTimerStarted && window._firebaseInitialized && window._userAuthenticated && window._appDataLoaded && !window._livePricesLoaded) {
-            _splashFallbackTimerStarted = true;
-            setTimeout(() => {
-                if (!window._livePricesLoaded && splashScreen) {
-                    logDebug('Splash Screen: Live prices still not loaded after 15s, proceeding without them.');
-                    window._livePricesLoaded = true;
-                    hideSplashScreen();
-                }
-            }, 15000);
-        }
+        logDebug('Splash Screen: Not all data loaded yet. Current state: ' +
+            'Firebase Init: ' + window._firebaseInitialized +
+            ', User Auth: ' + window._userAuthenticated +
+            ', App Data: ' + window._appDataLoaded +
+            ', Live Prices: ' + window._livePricesLoaded);
     }
 }
 
@@ -5765,7 +5944,11 @@ if (sortSelect) {
         logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
         currentSortOrder = sortSelect.value;
         
-    // Percentage change sorts no longer force an immediate extra pass; normal path handles it.
+        // AGGRESSIVE FIX: Force apply sort immediately for percentage change sorts
+        if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
+            logDebug('AGGRESSIVE SORT: Percentage change sort selected, forcing immediate application');
+            forceApplyCurrentSort();
+        }
         
         // Determine whether to sort shares or cash assets
         if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
