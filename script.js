@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const portfolioSection = document.createElement('div');
             portfolioSection.id = 'portfolioSection';
             portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
+            portfolioSection.innerHTML = '<h2>Portfolio</h2><div class="portfolio-scroll-wrapper"><div id="portfolioListContainer">Loading portfolio...</div></div>';
             mainContainer.appendChild(portfolioSection);
         }
         stockWatchlistSection.style.display = 'none';
@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let totalValue = 0;
         let totalPL = 0;
-        let html = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg Price</th><th>Current Price</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
+        let html = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg<br>Price</th><th>Live</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
         portfolioShares.forEach(share => {
             const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
                 ? Math.trunc(Number(share.portfolioShares))
@@ -241,6 +241,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? Number(share.portfolioAvgPrice)
                 : '';
             const priceNow = getDisplayPrice(share);
+            // Determine if we used live (market open), lastLive (market closed), or fallback user price
+            let priceMode = 'manual';
+            const codeKey = (share.shareName || '').toUpperCase();
+            const lpObj = livePrices ? livePrices[codeKey] : null;
+            if (lpObj) {
+                const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+                if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceMode = 'live';
+                else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceMode = 'last';
+            }
             const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
             if (typeof rowValue === 'number') totalValue += rowValue;
             const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number')
@@ -251,15 +260,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? ((priceNow - avgPrice) / avgPrice) * 100
                 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
+            const badge = priceMode === 'live' ? '<span class="price-badge live">LIVE</span>' : (priceMode === 'last' ? '<span class="price-badge stale">LAST</span>' : '');
+            const priceCell = (priceNow !== null && priceNow !== undefined) ? (badge + '<span class="price-value">' + fmtMoney(priceNow) + '</span>') : '';
 
             html += `<tr data-doc-id="${share.id}">
-                <td>${share.shareName || ''}</td>
-                <td>${shares !== '' ? shares : ''}</td>
-                <td>${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
-                <td>${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</td>
-                <td>${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
-                <td class="${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
-                <td class="${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
+                <td class="code-cell">${share.shareName || ''}</td>
+                <td class="num-cell">${shares !== '' ? shares : ''}</td>
+                <td class="num-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
+                <td class="num-cell live-cell ${priceMode}">${priceCell}</td>
+                <td class="num-cell">${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
+                <td class="num-cell ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
+                <td class="num-cell ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
             </tr>`;
         });
         // Total row

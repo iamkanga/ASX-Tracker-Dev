@@ -3023,6 +3023,50 @@ table tbody tr:not(.selected):hover {
 #portfolioSection .portfolio-table td.positive { color: #00FF00 !important; font-weight: 700; }
 #portfolioSection .portfolio-table td.negative { color: #FF0000 !important; font-weight: 700; }
 
+/* Portfolio: Responsive scroll wrapper for mobile overflow */
+.portfolio-scroll-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+/* Hide default scrollbar on WebKit (keep accessible) */
+.portfolio-scroll-wrapper::-webkit-scrollbar { height: 8px; }
+.portfolio-scroll-wrapper::-webkit-scrollbar-track { background: transparent; }
+.portfolio-scroll-wrapper::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+/* Alignment utility classes to mirror watchlist */
+#portfolioSection .portfolio-table td.code-cell { text-align: left; font-weight: 600; }
+#portfolioSection .portfolio-table td.num-cell { text-align: right; white-space: nowrap; }
+
+/* Live price badge styling */
+#portfolioSection .portfolio-table .price-badge {
+    display: inline-block;
+    font-size: 0.60rem;
+    font-weight: 600;
+    padding: 2px 4px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: middle;
+    letter-spacing: 0.5px;
+}
+#portfolioSection .portfolio-table .price-badge.live { background: var(--green-color); color: #000; }
+#portfolioSection .portfolio-table .price-badge.stale { background: var(--border-color); color: var(--text-color); }
+#portfolioSection .portfolio-table td.live-cell.live .price-value { font-weight: 700; }
+
+/* Slightly reduce padding on very narrow screens */
+@media (max-width: 560px) {
+    #portfolioSection .portfolio-table th, #portfolioSection .portfolio-table td { padding: 8px 10px; }
+    #portfolioSection .portfolio-table th { font-size: 0.72rem; }
+    #portfolioSection .portfolio-table td { font-size: 0.75rem; }
+    #portfolioSection h2 { font-size: 1.05rem; }
+}
+
+/* Collapse some text labels if extremely narrow */
+@media (max-width: 420px) {
+    #portfolioSection .portfolio-table thead th:nth-child(3) { min-width: 70px; }
+    #portfolioSection .portfolio-table thead th:nth-child(4) { min-width: 64px; }
+}
+
 /* NEW: Target hit alert styling for table rows and mobile cards */
 table tbody tr.target-hit-alert,
 .mobile-card.target-hit-alert {
