@@ -917,10 +917,7 @@ function addShareToTable(share) {
     row.addEventListener('click', () => {
         logDebug('Table Row Click: Share ID: ' + share.id);
         selectShare(share.id);
-        // If this row is inside the Target Price Alerts modal, set the restoration flag
-        if (row.closest('#targetHitSharesList')) {
-            wasShareDetailOpenedFromTargetAlerts = true;
-        }
+        
         showShareDetails();
     });
 
@@ -6703,11 +6700,6 @@ function showTargetHitDetailsModal() {
             targetHitItem.addEventListener('click', () => {
                 const clickedShareId = targetHitItem.dataset.shareId;
                 if (clickedShareId) {
-                    // Set the flag to true so the back button knows to return here
-                    wasShareDetailOpenedFromTargetAlerts = true;
-                    // FIX: Hide the current (alerts) modal before showing the share detail modal.
-                    // The `closeModals()` function will restore the alerts modal when the share detail modal is closed.
-                    hideModal(targetHitDetailsModal);
                     selectShare(clickedShareId); // Select the share
                     showShareDetails(); // Open the share details modal for the clicked share
                 }
