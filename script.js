@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const badge = priceMode === 'live' ? '<span class="price-badge live">LIVE</span>' : (priceMode === 'last' ? '<span class="price-badge stale">LAST</span>' : '');
             const priceCell = (priceNow !== null && priceNow !== undefined) ? (badge + '<span class="price-value">' + fmtMoney(priceNow) + '</span>') : '';
 
-            htmlTable += `<tr data-doc-id="${share.id}">
+            htmlTable += `<tr data-doc-id="${share.id}" class="${plClass}">
                 <td class="code-cell">${share.shareName || ''}</td>
                 <td class="num-cell">${shares !== '' ? shares : ''}</td>
                 <td class="num-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         // Total row
         const totalPLClass = totalPL > 0 ? 'positive' : (totalPL < 0 ? 'negative' : 'neutral');
-        htmlTable += `<tr class="portfolio-total-row">
+    htmlTable += `<tr class="portfolio-total-row ${totalPLClass}">
             <td colspan="4" style="text-align:right;font-weight:600;">Total</td>
             <td style="font-weight:700;">${fmtMoney(totalValue)}</td>
             <td class="${totalPLClass}" style="font-weight:700;">${fmtMoney(totalPL)}</td>

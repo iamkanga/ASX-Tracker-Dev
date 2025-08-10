@@ -3022,6 +3022,17 @@ table tbody tr:not(.selected):hover {
 /* Ensure positive/negative colors apply clearly in portfolio cells */
 #portfolioSection .portfolio-table td.positive { color: #00FF00 !important; font-weight: 700; }
 #portfolioSection .portfolio-table td.negative { color: #FF0000 !important; font-weight: 700; }
+/* Row-level color cue */
+#portfolioSection .portfolio-table tr.positive td.code-cell { color:#00FF00 !important; }
+#portfolioSection .portfolio-table tr.negative td.code-cell { color:#FF4D4D !important; }
+#portfolioSection .portfolio-table tr.portfolio-total-row.positive td { color:#00FF00; }
+#portfolioSection .portfolio-table tr.portfolio-total-row.negative td { color:#FF4D4D; }
+
+/* Watchlist numeric inputs left aligned */
+#shareTable td input[type="number"],
+#shareTable td input[type="text"] {
+    text-align: left;
+}
 
 /* Portfolio: Responsive scroll wrapper for mobile overflow */
 .portfolio-scroll-wrapper {
