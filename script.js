@@ -346,7 +346,8 @@ document.addEventListener('DOMContentLoaded', function () {
 // from the <script type="module"> block in index.html.
 
 // --- GLOBAL VARIABLES ---
-const DEBUG_MODE = true; // Set to 'true' to enable debug logging for troubleshooting Portfolio dropdown
+const DEBUG_MODE = true; // Set to 'true' to enable debug logging for troubleshooting
+const VERBOSE_SORT_LOGS = false; // Extra noisy comparator logs for percentage sort
 
 // Custom logging function to control verbosity
 function logDebug(message, ...optionalParams) {
@@ -2573,7 +2574,9 @@ function sortShares() {
             }
 
             // Debugging log for percentage sort
-            logDebug('Sort Debug - Percentage: Comparing ' + a.shareName + ' (Change: ' + percentageChangeA + ') vs ' + b.shareName + ' (Change: ' + percentageChangeB + ')');
+            if (VERBOSE_SORT_LOGS) {
+                logDebug('Sort Debug - Percentage: Comparing ' + a.shareName + ' (Change: ' + percentageChangeA + ') vs ' + b.shareName + ' (Change: ' + percentageChangeB + ')');
+            }
 
 
             // Handle null/NaN percentage changes to push them to the bottom
@@ -3056,6 +3059,29 @@ function renderWatchlist() {
     renderSortSelect(); // Moved here to ensure it updates for both stock and cash views
     updateMainButtonsState(!!currentUserId); // Ensure button states (like Edit Watchlist) are correct for the current view
     adjustMainContentPadding();
+}
+
+// --- Batched Render Wrapper ---
+// Reduce redundant sequential calls within the same frame.
+if (!window.__renderWatchlistWrapped) {
+    const __origRenderWatchlist = renderWatchlist;
+    let __scheduled = false;
+    let __reasons = new Set();
+    window.renderWatchlist = function(reason) {
+        if (reason) __reasons.add(reason);
+        if (__scheduled) return;
+        __scheduled = true;
+        requestAnimationFrame(() => {
+            const reasonsJoined = Array.from(__reasons).join(', ');
+            __reasons.clear();
+            __scheduled = false;
+            if (reasonsJoined) {
+                logDebug('Render: Batched renderWatchlist. Reasons: ' + reasonsJoined);
+            }
+            __origRenderWatchlist();
+        });
+    };
+    window.__renderWatchlistWrapped = true;
 }
 
 function renderAsxCodeButtons() {
@@ -4005,21 +4031,39 @@ function hideSplashScreen() {
  * Checks if all necessary app data is loaded and hides the splash screen if ready.
  * This function is called after each major data loading step.
  */
+let _lastSplashStatusLog = '';
+let _splashFallbackTimerStarted = false;
 function hideSplashScreenIfReady() {
-    // Only hide if Firebase is initialized, user is authenticated, and all data flags are true
+    const stateSummary = 'Firebase Init: ' + window._firebaseInitialized +
+        ', User Auth: ' + window._userAuthenticated +
+        ', App Data: ' + window._appDataLoaded +
+        ', Live Prices: ' + window._livePricesLoaded;
     if (window._firebaseInitialized && window._userAuthenticated && window._appDataLoaded && window._livePricesLoaded) {
-        if (splashScreenReady) { // Ensure splash screen itself is ready to be hidden
-            logDebug('Splash Screen: All data loaded and ready. Hiding splash screen.');
+        if (splashScreenReady) {
+            if (_lastSplashStatusLog !== 'HIDE') {
+                logDebug('Splash Screen: All data loaded and ready. Hiding splash screen.');
+                _lastSplashStatusLog = 'HIDE';
+            }
             hideSplashScreen();
-        } else {
-            logDebug('Splash Screen: Data loaded, but splash screen not yet marked as ready. Will hide when ready.');
+        } else if (_lastSplashStatusLog !== 'WAIT_READY') {
+            logDebug('Splash Screen: Data loaded, waiting for readiness flag.');
+            _lastSplashStatusLog = 'WAIT_READY';
         }
     } else {
-        logDebug('Splash Screen: Not all data loaded yet. Current state: ' +
-            'Firebase Init: ' + window._firebaseInitialized +
-            ', User Auth: ' + window._userAuthenticated +
-            ', App Data: ' + window._appDataLoaded +
-            ', Live Prices: ' + window._livePricesLoaded);
+        if (_lastSplashStatusLog !== stateSummary) {
+            logDebug('Splash Screen: Not all data loaded yet. Current state: ' + stateSummary);
+            _lastSplashStatusLog = stateSummary;
+        }
+        if (!_splashFallbackTimerStarted && window._firebaseInitialized && window._userAuthenticated && window._appDataLoaded && !window._livePricesLoaded) {
+            _splashFallbackTimerStarted = true;
+            setTimeout(() => {
+                if (!window._livePricesLoaded && splashScreen) {
+                    logDebug('Splash Screen: Live prices still not loaded after 15s, proceeding without them.');
+                    window._livePricesLoaded = true;
+                    hideSplashScreen();
+                }
+            }, 15000);
+        }
     }
 }
 
