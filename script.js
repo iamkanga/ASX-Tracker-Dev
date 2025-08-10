@@ -263,8 +263,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? ((priceNow - avgPrice) / avgPrice) * 100
                 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
-            const badge = priceMode === 'live' ? '<span class="price-badge live">LIVE</span>' : (priceMode === 'last' ? '<span class="price-badge stale">LAST</span>' : '');
-            const priceCell = (priceNow !== null && priceNow !== undefined) ? (badge + '<span class="price-value">' + fmtMoney(priceNow) + '</span>') : '';
+            const badge = ''; // remove textual badge for cleaner look on mobile & table
+            const priceColorClass = priceMode === 'live' ? 'live-price' : (priceMode === 'last' ? 'last-price' : 'manual-price');
+            const priceCell = (priceNow !== null && priceNow !== undefined) ? ('<span class="price-value '+priceColorClass+'">' + fmtMoney(priceNow) + '</span>') : '';
 
             htmlTable += `<tr data-doc-id="${share.id}" class="${plClass}">
                 <td class="code-cell">${share.shareName || ''}</td>
@@ -277,10 +278,10 @@ document.addEventListener('DOMContentLoaded', function () {
             </tr>`;
 
             // Mobile card variant
-            const card = `<div class="portfolio-card ${plClass}" data-doc-id="${share.id}">
+        const card = `<div class="portfolio-card ${plClass}" data-doc-id="${share.id}">
                 <div class="pc-row top">
                     <div class="pc-code">${share.shareName || ''}</div>
-                    <div class="pc-live ${priceMode}">${badge}<span class="val">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
+            <div class="pc-live ${priceMode}"><span class="val ${priceColorClass}">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
                     <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
                 </div>
                 <div class="pc-row mid">
@@ -303,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <td></td>
         </tr>`;
         htmlTable += '</tbody></table>';
-        const totalsCard = `<div class="portfolio-card total ${totalPLClass}">
+    const totalsCard = `<div class="portfolio-card total ${totalPLClass} wide">
             <div class="pc-row top"><div class="pc-code">Totals</div></div>
             <div class="pc-row mid"><div class="pc-value-label">Value</div><div class="pc-value">${fmtMoney(totalValue)}</div></div>
             <div class="pc-row bottom ${totalPLClass}"><div class="pc-pl-label">P/L</div><div class="pc-pl-val">${fmtMoney(totalPL)}</div></div>
