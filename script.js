@@ -10,14 +10,10 @@ function pushAppState(type, id, stateObj = {}, title = '', url = '') {
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
-// --- Modal Stack for Back Button Navigation ---
-let modalStack = [];
-
-window.addEventListener('popstate', function(event) {
     logDebug('Popstate event fired. event.state:', event.state);
     const state = event.state;
 
-    // Sidebar handling
+    // Sidebar handling: always close sidebar first if open
     if (window.appSidebar && window.appSidebar.classList.contains('open')) {
         logDebug('Popstate: Closing open sidebar.');
         if (window.toggleAppSidebar) {
@@ -26,7 +22,7 @@ window.addEventListener('popstate', function(event) {
         return;
     }
 
-    // Modal stack handling
+    // Modal stack handling: pop the top modal, restore previous modal if any
     if (modalStack.length > 0) {
         const lastModalId = modalStack.pop();
         const lastModal = document.getElementById(lastModalId);
@@ -34,16 +30,18 @@ window.addEventListener('popstate', function(event) {
             hideModal(lastModal);
             // If there is another modal underneath, show it again
             if (modalStack.length > 0) {
-                const prevModal = document.getElementById(modalStack[modalStack.length - 1]);
+                const prevModalId = modalStack[modalStack.length - 1];
+                const prevModal = document.getElementById(prevModalId);
                 if (prevModal) {
                     prevModal.style.setProperty('display', 'flex', 'important');
+                    logDebug('Popstate: Restored previous modal:', prevModalId);
                 }
             }
             return;
         }
     }
 
-    // Fallback: close any open modal
+    // Fallback: close any open modal (should rarely be needed)
     const openModals = document.querySelectorAll('.modal[style*="display: flex"]');
     if (openModals.length > 0) {
         const lastModal = openModals[openModals.length - 1];
@@ -53,7 +51,6 @@ window.addEventListener('popstate', function(event) {
     }
 
     logDebug('Popstate: No sidebar or modals open. Allowing default browser back behavior.');
-});
 });
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
