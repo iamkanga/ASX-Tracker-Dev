@@ -154,9 +154,11 @@ document.addEventListener('DOMContentLoaded', function () {
             // If Portfolio is selected, show portfolio view
             if (watchlistSelect.value === 'portfolio') {
                 showPortfolioView();
+                try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e){}
             } else {
                 // Default: show normal watchlist view
                 showWatchlistView();
+                try { localStorage.setItem('lastSelectedView', watchlistSelect.value); } catch(e){}
             }
             updateMainButtonsState(true);
         });
@@ -426,6 +428,17 @@ const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
 const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
 let userWatchlists = []; // Stores all watchlists for the user
 let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
+// Restore last selected view (persisted)
+try {
+    const lastView = localStorage.getItem('lastSelectedView');
+    if (lastView === 'portfolio') {
+        currentSelectedWatchlistIds = ['portfolio'];
+        // Defer actual DOM switch until initial data load completes; hook into data load readiness
+        window.addEventListener('load', () => {
+            setTimeout(() => { if (typeof showPortfolioView === 'function') showPortfolioView(); }, 300);
+        });
+    }
+} catch(e) { /* ignore */ }
 const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
 const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
 let currentSortOrder = 'entryDate-desc'; // Default sort order
@@ -3140,6 +3153,10 @@ function renderAsxCodeButtons() {
         // Apply color class based on price change
         if (buttonPriceChangeClass) {
             button.classList.add(buttonPriceChangeClass);
+        }
+        // Additional context class when in portfolio for stronger theme coloring
+        if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] === 'portfolio') {
+            button.classList.add('portfolio-context');
         }
 
         // Add target-hit-border class if this ASX code has a target hit AND not dismissed

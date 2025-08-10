@@ -3003,15 +3003,8 @@ table tbody tr:not(.selected):hover {
     border-bottom: 1px solid var(--border-color);
 }
 
-/* Align numeric columns to the right: Shares, Avg, Current, Value, P/L, P/L% */
-#portfolioSection .portfolio-table td:nth-child(2),
-#portfolioSection .portfolio-table td:nth-child(3),
-#portfolioSection .portfolio-table td:nth-child(4),
-#portfolioSection .portfolio-table td:nth-child(5),
-#portfolioSection .portfolio-table td:nth-child(6),
-#portfolioSection .portfolio-table td:nth-child(7) {
-    text-align: right;
-}
+/* Override: Left-align portfolio data cells for consistent column start */
+#portfolioSection .portfolio-table td { text-align:left; }
 
 /* Totals row emphasis */
 #portfolioSection .portfolio-table tr.portfolio-total-row td {
@@ -3048,6 +3041,8 @@ table tbody tr:not(.selected):hover {
 .portfolio-summary-bar .ps-value { font-size:0.95rem; font-weight:700; position:relative; z-index:1; }
 .portfolio-summary-bar .ps-card.profit .ps-value { color:#00FF9C; }
 .portfolio-summary-bar .ps-card.loss .ps-value { color:#FF7A7A; }
+.portfolio-summary-bar .ps-card.loss { border-color:#FF2F2F; }
+.portfolio-summary-bar .ps-card.loss .ps-value { color:#FF2F2F; }
 .portfolio-summary-bar .ps-card.net.positive .ps-value { color:#00FF9C; }
 .portfolio-summary-bar .ps-card.net.negative .ps-value { color:#FF7A7A; }
 @media (max-width:640px){
@@ -3168,6 +3163,11 @@ table tbody tr.target-hit-alert td,
 .portfolio-card .pc-code { font-weight:600; letter-spacing:0.5px; }
 .portfolio-card.positive .pc-code { color:var(--green-color); }
 .portfolio-card.negative .pc-code { color:#FF4D4D; }
+
+/* Stronger portfolio context button coloring */
+.asx-code-btn.portfolio-context.positive { background:rgba(0,255,140,0.15); border-color:#00FF8C; color:#00FF8C; }
+.asx-code-btn.portfolio-context.negative { background:rgba(255,70,70,0.18); border-color:#FF3B3B; color:#FF3B3B; }
+.asx-code-btn.portfolio-context.neutral { background:rgba(255,255,255,0.05); }
 .portfolio-card .pc-live { display:flex; align-items:center; gap:4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; }
 .portfolio-card .pc-live.live { color:var(--green-color); }
 .portfolio-card .pc-live.stale { opacity:0.75; }
