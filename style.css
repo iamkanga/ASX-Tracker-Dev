@@ -3029,8 +3029,7 @@ table tbody tr:not(.selected):hover {
 #portfolioSection .portfolio-table tr.portfolio-total-row.negative td { color:#FF4D4D; }
 
 /* Specific alignment tweaks: value column left aligned for readability */
-#portfolioSection .portfolio-table td.value-cell { text-align:left; }
-#portfolioSection .portfolio-table td.value-cell { padding-left:14px; }
+#portfolioSection .portfolio-table td.value-cell { text-align:left; padding-left:14px; }
 
 /* Profit/Loss summary bar */
 .portfolio-summary-bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
@@ -3059,12 +3058,6 @@ table tbody tr:not(.selected):hover {
 }
 
 /* Ensure Value header aligns with left-aligned value cells */
-#portfolioSection .portfolio-table th:nth-child(2),
-#portfolioSection .portfolio-table th:nth-child(3),
-#portfolioSection .portfolio-table th:nth-child(4),
-#portfolioSection .portfolio-table th:nth-child(6),
-#portfolioSection .portfolio-table th:nth-child(7) { text-align:right; }
-#portfolioSection .portfolio-table th:nth-child(5) { text-align:left; padding-left:14px; }
 
 /* Portfolio: Responsive scroll wrapper for mobile overflow */
 .portfolio-scroll-wrapper {
