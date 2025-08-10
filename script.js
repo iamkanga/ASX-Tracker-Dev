@@ -5807,40 +5807,92 @@ async function initializeAppLogic() {
     // Its functionality is now handled by splashSignInBtn.
 
     // NEW: Splash Screen Sign-In Button
+    // Helper to update splash sign-in button UI states for better desktop UX
+    function updateSplashSignInButtonState(state, detail) {
+        if (!splashSignInBtn) return;
+        const span = splashSignInBtn.querySelector('span');
+        switch (state) {
+            case 'idle':
+                splashSignInBtn.disabled = false;
+                if (span) span.textContent = 'Sign in with Google';
+                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
+                break;
+            case 'loading':
+                splashSignInBtn.disabled = true;
+                if (span) span.textContent = 'Signing in…';
+                if (splashKangarooIcon) splashKangarooIcon.classList.add('pulsing');
+                break;
+            case 'retry':
+                splashSignInBtn.disabled = false;
+                if (span) span.textContent = detail || 'Try again (popup blocked?)';
+                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
+                break;
+            case 'error':
+                splashSignInBtn.disabled = false;
+                if (span) span.textContent = detail || 'Retry Sign-In';
+                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
+                break;
+        }
+    }
+
     if (splashSignInBtn) {
+        let splashSignInRetryTimer = null;
         splashSignInBtn.addEventListener('click', async () => {
             logDebug('Auth: Splash Screen Sign-In Button Clicked.');
             const currentAuth = window.firebaseAuth;
             if (!currentAuth || !window.authFunctions) {
                 console.warn('Auth: Auth service not ready or functions not loaded. Cannot process splash sign-in.');
                 showCustomAlert('Authentication service not ready. Please try again in a moment.');
+                updateSplashSignInButtonState('error', 'Retry (service not ready)');
                 return;
             }
             try {
-                // Start pulsing animation immediately on click
-                if (splashKangarooIcon) {
-                    splashKangarooIcon.classList.add('pulsing');
-                    logDebug('Splash Screen: Started pulsing animation on sign-in click.');
-                }
-                splashSignInBtn.disabled = true; // Disable button to prevent multiple clicks
-                
+                updateSplashSignInButtonState('loading');
                 const provider = window.authFunctions.GoogleAuthProviderInstance;
                 if (!provider) {
                     console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
-                    showCustomAlert('Authentication service not ready. Please ensure Firebase module script is loaded.');
-                    splashSignInBtn.disabled = false; // Re-enable on error
-                    if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing'); // Stop animation on error
+                    showCustomAlert('Authentication service not ready. Firebase script missing.');
+                    updateSplashSignInButtonState('error', 'Retry (init issue)');
                     return;
                 }
+
+                // Start timeout to auto-enable retry if popup blocked or user closes it silently
+                if (splashSignInRetryTimer) clearTimeout(splashSignInRetryTimer);
+                splashSignInRetryTimer = setTimeout(() => {
+                    if (!window._userAuthenticated) {
+                        logDebug('Auth: Sign-in timeout elapsed without auth state change. Enabling retry.');
+                        updateSplashSignInButtonState('retry');
+                    }
+                }, 7000);
+
                 await window.authFunctions.signInWithPopup(currentAuth, provider);
                 logDebug('Auth: Google Sign-In successful from splash screen.');
-                // The onAuthStateChanged listener will handle hiding the splash screen
+                if (splashSignInRetryTimer) {
+                    clearTimeout(splashSignInRetryTimer);
+                    splashSignInRetryTimer = null;
+                }
+                // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
             }
             catch (error) {
+                if (splashSignInRetryTimer) {
+                    clearTimeout(splashSignInRetryTimer);
+                    splashSignInRetryTimer = null;
+                }
                 console.error('Auth: Google Sign-In failed from splash screen: ' + error.message);
-                showCustomAlert('Google Sign-In failed: ' + error.message);
-                splashSignInBtn.disabled = false; // Re-enable on error
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing'); // Stop animation on error
+                let userMsg = 'Google Sign-In failed';
+                if (error.code === 'auth/popup-blocked') {
+                    userMsg = 'Popup blocked by browser. Allow popups & retry.';
+                    updateSplashSignInButtonState('retry', 'Retry (allow popup)');
+                } else if (error.code === 'auth/popup-closed-by-user') {
+                    userMsg = 'Popup closed. Click retry.';
+                    updateSplashSignInButtonState('retry', 'Retry (popup closed)');
+                } else if (error.code === 'auth/cancelled-popup-request') {
+                    userMsg = 'Popup request cancelled. Try again.';
+                    updateSplashSignInButtonState('retry', 'Retry sign-in');
+                } else {
+                    updateSplashSignInButtonState('error');
+                }
+                showCustomAlert(userMsg + ': ' + error.message);
             }
         });
     }
