@@ -232,7 +232,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let totalValue = 0;
         let totalPL = 0;
-        let html = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg<br>Price</th><th>Live</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
+    // Build desktop/table HTML
+    let htmlTable = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg<br>Price</th><th>Live</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
+    // Build mobile cards markup
+    let cards = [];
         portfolioShares.forEach(share => {
             const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
                 ? Math.trunc(Number(share.portfolioShares))
@@ -263,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const badge = priceMode === 'live' ? '<span class="price-badge live">LIVE</span>' : (priceMode === 'last' ? '<span class="price-badge stale">LAST</span>' : '');
             const priceCell = (priceNow !== null && priceNow !== undefined) ? (badge + '<span class="price-value">' + fmtMoney(priceNow) + '</span>') : '';
 
-            html += `<tr data-doc-id="${share.id}">
+            htmlTable += `<tr data-doc-id="${share.id}">
                 <td class="code-cell">${share.shareName || ''}</td>
                 <td class="num-cell">${shares !== '' ? shares : ''}</td>
                 <td class="num-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
@@ -272,20 +275,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 <td class="num-cell ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
                 <td class="num-cell ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
             </tr>`;
+
+            // Mobile card variant
+            const card = `<div class="portfolio-card ${plClass}" data-doc-id="${share.id}">
+                <div class="pc-row top">
+                    <div class="pc-code">${share.shareName || ''}</div>
+                    <div class="pc-live ${priceMode}">${badge}<span class="val">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
+                    <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
+                </div>
+                <div class="pc-row mid">
+                    <div class="pc-shares">${shares !== '' ? shares : ''} @ ${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</div>
+                    <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
+                </div>
+                <div class="pc-row bottom ${plClass}">
+                    <div class="pc-pl-label">P/L</div>
+                    <div class="pc-pl-val">${rowPL !== null ? fmtMoney(rowPL) : ''}</div>
+                </div>
+            </div>`;
+            cards.push(card);
         });
         // Total row
         const totalPLClass = totalPL > 0 ? 'positive' : (totalPL < 0 ? 'negative' : 'neutral');
-        html += `<tr class="portfolio-total-row">
+        htmlTable += `<tr class="portfolio-total-row">
             <td colspan="4" style="text-align:right;font-weight:600;">Total</td>
             <td style="font-weight:700;">${fmtMoney(totalValue)}</td>
             <td class="${totalPLClass}" style="font-weight:700;">${fmtMoney(totalPL)}</td>
             <td></td>
         </tr>`;
-        html += '</tbody></table>';
-        portfolioListContainer.innerHTML = html;
+        htmlTable += '</tbody></table>';
+        const totalsCard = `<div class="portfolio-card total ${totalPLClass}">
+            <div class="pc-row top"><div class="pc-code">Totals</div></div>
+            <div class="pc-row mid"><div class="pc-value-label">Value</div><div class="pc-value">${fmtMoney(totalValue)}</div></div>
+            <div class="pc-row bottom ${totalPLClass}"><div class="pc-pl-label">P/L</div><div class="pc-pl-val">${fmtMoney(totalPL)}</div></div>
+        </div>`;
+        const htmlCards = `<div class="portfolio-cards">${cards.join('')}${totalsCard}</div>`;
+        portfolioListContainer.innerHTML = htmlTable + htmlCards;
 
         // Make portfolio rows interactive: click to open details; right-click to open context menu
-        const rows = portfolioListContainer.querySelectorAll('table.portfolio-table tbody tr');
+    const rows = portfolioListContainer.querySelectorAll('table.portfolio-table tbody tr, .portfolio-cards .portfolio-card');
         rows.forEach(row => {
             if (row.classList.contains('portfolio-total-row')) return; // skip totals
             const docId = row.getAttribute('data-doc-id');
