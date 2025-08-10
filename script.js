@@ -177,6 +177,14 @@ document.addEventListener('DOMContentLoaded', function () {
         stockWatchlistSection.style.display = 'none';
         // Ensure selection state reflects Portfolio for downstream filters (e.g., ASX buttons)
         currentSelectedWatchlistIds = ['portfolio'];
+        // Reflect in dropdown if present
+        if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+            if (watchlistSelect.value !== 'portfolio') {
+                watchlistSelect.value = 'portfolio';
+            }
+        }
+        // Persist user intent
+        try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e) {}
         let portfolioSection = document.getElementById('portfolioSection');
         portfolioSection.style.display = 'block';
         renderPortfolioList();
@@ -3147,14 +3155,13 @@ function renderAsxCodeButtons() {
         // Determine price change class for the button
         let buttonPriceChangeClass = '';
         const livePriceData = livePrices[asxCode.toUpperCase()];
-        if (livePriceData && livePriceData.live !== null && livePriceData.prevClose !== null && !isNaN(livePriceData.live) && !isNaN(livePriceData.prevClose)) {
-            const change = livePriceData.live - livePriceData.prevClose;
-            if (change > 0) {
-                buttonPriceChangeClass = 'positive';
-            } else if (change < 0) {
-                buttonPriceChangeClass = 'negative';
-            } else {
-                buttonPriceChangeClass = 'neutral';
+        if (livePriceData) {
+            // Fallback logic: use current values else last fetched values
+            const latestLive = (livePriceData.live !== null && !isNaN(livePriceData.live)) ? livePriceData.live : (livePriceData.lastLivePrice ?? null);
+            const latestPrev = (livePriceData.prevClose !== null && !isNaN(livePriceData.prevClose)) ? livePriceData.prevClose : (livePriceData.lastPrevClose ?? null);
+            if (latestLive !== null && latestPrev !== null && !isNaN(latestLive) && !isNaN(latestPrev)) {
+                const change = latestLive - latestPrev;
+                if (change > 0) buttonPriceChangeClass = 'positive'; else if (change < 0) buttonPriceChangeClass = 'negative'; else buttonPriceChangeClass = 'neutral';
             }
         }
         // Apply color class based on price change
@@ -6913,6 +6920,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
+                // After essential data loaded, restore last view (portfolio or watchlist) unless user already interacted
+                try {
+                    const lastView = localStorage.getItem('lastSelectedView');
+                    if (lastView === 'portfolio') {
+                        showPortfolioView();
+                    } else if (lastView && lastView !== 'portfolio' && typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+                        // Attempt to set dropdown so renderWatchlist picks correct list
+                        const opt = Array.from(watchlistSelect.options).find(o => o.value === lastView);
+                        if (opt) {
+                            watchlistSelect.value = lastView;
+                            // Ensure internal selection array updated (mimic change)
+                            currentSelectedWatchlistIds = [lastView];
+                            renderWatchlist();
+                        }
+                    }
+                } catch(e) {}
             }
 
             else {
