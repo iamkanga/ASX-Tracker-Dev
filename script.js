@@ -6727,7 +6727,7 @@ function showTargetHitDetailsModal() {
             targetHitItem.addEventListener('click', () => {
                 const clickedShareId = targetHitItem.dataset.shareId;
                 if (clickedShareId) {
-                    hideModal(targetHitDetailsModal); // Hide the alerts modal first
+                    // Do NOT hide the alerts modal; just open the share details modal on top
                     selectShare(clickedShareId); // Select the share
                     showShareDetails(); // Open the share details modal for the clicked share
                 }
