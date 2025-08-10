@@ -341,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="pc-row bottom ${totalPLClass}"><div class="pc-pl-label">P/L</div><div class="pc-pl-val">${fmtMoney(totalPL)}</div></div>
         </div>`;
     const totalPLPctDisplay = (totalCostBasis > 0) ? fmtPct((totalPL / totalCostBasis) * 100) : '0.00%';
-        const profitLossSummary = `<div class="portfolio-summary-bar">
+        const profitLossSummary = `<div class="portfolio-summary-bar two-cards">
             <div class="ps-card profit highlight">
                 <div class="ps-label">Profit</div>
                 <div class="ps-value">${fmtMoney(profitPLSum)}</div>
@@ -349,11 +349,6 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="ps-card loss highlight">
                 <div class="ps-label">Loss</div>
                 <div class="ps-value">${fmtMoney(Math.abs(lossPLSum))}</div>
-            </div>
-            <div class="ps-card net ${totalPLClass} highlight">
-        <div class="ps-label">Net</div>
-        <div class="ps-value">${fmtMoney(totalPL)}</div>
-        <div class="ps-percent">${totalPLPctDisplay}</div>
             </div>
         </div>`;
     const htmlCards = `<div class="portfolio-cards">${cards.join('')}<div class="totals-footer-wrapper">${totalsCard}</div></div>`;
