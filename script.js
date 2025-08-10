@@ -3520,52 +3520,73 @@ async function fetchLivePrices() {
         console.log('Live Price: Raw data received:', data); 
 
         const newLivePrices = {};
+        const LOG_SKIP_LIMIT = 25; // cap noisy skip logs
+        let skipped = 0, skippedLogged = 0, accepted = 0, surrogateUsed = 0, notNeeded = 0;
+        // Build needed code set only when we actually have shares loaded; else accept all
+        const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
+        const neededCodes = haveShares ? new Set(allSharesData.map(s => s.shareName.toUpperCase())) : null;
+
         data.forEach(item => {
-            const asxCode = String(item.ASXCode).toUpperCase();
-            const livePrice = parseFloat(item.LivePrice);
-            const prevClose = parseFloat(item.PrevClose); 
-            const pe = parseFloat(item.PE);
-            const high52 = parseFloat(item.High52);
-            const low52 = parseFloat(item.Low52);
+            const asxCodeRaw = item.ASXCode;
+            if (!asxCodeRaw) { return; }
+            const asxCode = String(asxCodeRaw).toUpperCase();
+            if (neededCodes && !neededCodes.has(asxCode)) { notNeeded++; return; }
 
-    if (asxCode && livePrice !== null && !isNaN(livePrice)) {
-    // Find the corresponding share in allSharesData to get its targetPrice
-    const shareData = allSharesData.find(s => s.shareName.toUpperCase() === asxCode);
-    // Ensure targetPrice is parsed as a number, handling null/undefined/NaN
-    const targetPrice = shareData && shareData.targetPrice !== null && !isNaN(parseFloat(shareData.targetPrice))
-        ? parseFloat(shareData.targetPrice)
-        : undefined;
+            const livePriceParsed = parseFloat(item.LivePrice);
+            const prevCloseParsed = parseFloat(item.PrevClose);
+            const peParsed = parseFloat(item.PE);
+            const high52Parsed = parseFloat(item.High52);
+            const low52Parsed = parseFloat(item.Low52);
 
-    // Determine if target is hit based on targetDirection (new field) or default to 'below' for old shares
-            // Ensure shareData exists and has targetDirection, otherwise default to 'below'
-            const targetDirection = shareData && shareData.targetDirection ? shareData.targetDirection : 'below'; 
+            const hasLive = !isNaN(livePriceParsed);
+            const hasPrevClose = !isNaN(prevCloseParsed);
+            let effectiveLive = hasLive ? livePriceParsed : (hasPrevClose ? prevCloseParsed : NaN);
+            const usedSurrogate = !hasLive && hasPrevClose;
 
-            let isTargetHit = false;
-            if (targetPrice !== undefined && livePrice !== null && !isNaN(livePrice)) { // Only check if targetPrice and livePrice are valid
-                if (targetDirection === 'above') {
-                    isTargetHit = (livePrice >= targetPrice);
-                } else { // 'below' or any other unexpected value, including older shares
-                    isTargetHit = (livePrice <= targetPrice);
+            if (!isNaN(effectiveLive)) {
+                // Find the corresponding share in allSharesData to get its targetPrice
+                const shareData = haveShares ? allSharesData.find(s => s.shareName.toUpperCase() === asxCode) : null;
+                const targetPrice = shareData && shareData.targetPrice !== null && !isNaN(parseFloat(shareData.targetPrice))
+                    ? parseFloat(shareData.targetPrice)
+                    : undefined;
+                const targetDirection = shareData && shareData.targetDirection ? shareData.targetDirection : 'below'; 
+                let isTargetHit = false;
+                if (targetPrice !== undefined && !isNaN(effectiveLive)) {
+                    if (targetDirection === 'above') {
+                        isTargetHit = (effectiveLive >= targetPrice);
+                    } else {
+                        isTargetHit = (effectiveLive <= targetPrice);
+                    }
+                }
+                newLivePrices[asxCode] = {
+                    live: effectiveLive,
+                    prevClose: hasPrevClose ? prevCloseParsed : null,
+                    PE: isNaN(peParsed) ? null : peParsed,
+                    High52: isNaN(high52Parsed) ? null : high52Parsed,
+                    Low52: isNaN(low52Parsed) ? null : low52Parsed,
+                    targetHit: isTargetHit,
+                    lastLivePrice: effectiveLive,
+                    lastPrevClose: hasPrevClose ? prevCloseParsed : null,
+                    surrogateFromPrevClose: usedSurrogate || undefined
+                };
+                accepted++;
+                if (usedSurrogate) surrogateUsed++;
+            } else {
+                skipped++;
+                if (DEBUG_MODE && skippedLogged < LOG_SKIP_LIMIT) {
+                    console.warn('Live Price: Skipping item due to missing price (ASX, Live, Prev):', asxCode, item.LivePrice, item.PrevClose);
+                    skippedLogged++;
                 }
             }
-
-    newLivePrices[asxCode] = {
-        live: livePrice,
-        prevClose: isNaN(prevClose) ? null : prevClose,
-        PE: isNaN(pe) ? null : pe,
-        High52: isNaN(high52) ? null : high52,
-        Low52: isNaN(low52) ? null : low52,
-        targetHit: isTargetHit,
-        // Store the fetched live and prevClose prices for use when market is closed
-        lastLivePrice: livePrice,
-        lastPrevClose: isNaN(prevClose) ? null : prevClose
-    };
-} else {
-    if (DEBUG_MODE) {
-        console.warn('Live Price: Skipping item due to missing ASX code or invalid price:', item);
-    }
-}
         });
+        if (DEBUG_MODE) {
+            const parts = [`accepted=${accepted}`];
+            if (surrogateUsed) parts.push(`surrogate=${surrogateUsed}`);
+            if (skipped) parts.push(`skipped=${skipped}`);
+            if (notNeeded) parts.push(`filteredOut=${notNeeded}`);
+            if (skipped > skippedLogged) parts.push(`skippedNotLogged=${skipped - skippedLogged}`);
+            console.log('Live Price: Summary -> ' + parts.join(', '));
+        }
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices);
         onLivePricesUpdated();
