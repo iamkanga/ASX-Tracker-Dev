@@ -1,49 +1,44 @@
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
-// --- Modal Stack for Back Button Navigation ---
-let modalStack = [];
 // Push a new state when opening a modal or navigating to a new in-app view
-function pushAppState(type, id, stateObj = {}, title = '', url = '') {
-    history.pushState({ type: type, id: id, ...stateObj }, title, url);
+function pushAppState(stateObj = {}, title = '', url = '') {
+    history.pushState(stateObj, title, url);
 }
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
-    logDebug('Popstate event fired. State:', event.state);
-
-    // First, check if the sidebar is open on mobile. If so, the back button should close it.
-    if (appSidebar && appSidebar.classList.contains('open') && window.innerWidth <= 768) {
-        logDebug('Popstate: Closing sidebar.');
-        // Call toggleAppSidebar but prevent it from manipulating history, as popstate is the source of truth.
-        toggleAppSidebar(false, false);
-        return;
+    // NEW: First, check if the sidebar is open and close it.
+    // This should be the first check, as the sidebar can be open on top of the main view.
+    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
+        if (window.toggleAppSidebar) {
+            window.toggleAppSidebar(false); // Explicitly close the sidebar
+        }
+        return; // Exit after handling the sidebar
     }
 
-    // If the sidebar is closed, handle modals. The popstate event means we need to close the top-most UI element.
-    // We use our modalStack to determine what that is.
-    if (modalStack.length > 0) {
-        const topModalId = modalStack.pop(); // The modal being closed by the back button.
-        const topModal = document.getElementById(topModalId);
-
-        if (topModal) {
-            topModal.style.setProperty('display', 'none', 'important');
-            logDebug('Popstate: Closed modal:', topModalId);
+    // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
+    const modals = [
+        window.shareFormSection,
+        window.shareDetailModal,
+        window.targetHitDetailsModal,
+        window.cashAssetFormModal,
+        window.cashAssetDetailModal,
+        window.customDialogModal,
+        window.calculatorModal,
+        window.dividendCalculatorModal,
+        window.addWatchlistModal,
+        window.manageWatchlistModal,
+        window.stockSearchModal,
+        window.alertPanel
+    ];
+    for (const modal of modals) {
+        if (modal && modal.style.display !== 'none') {
+            if (window.closeModals) closeModals();
+            return; // Exit after handling the first open modal
         }
-
-        // If there's another modal in the stack, it's the one we are going "back" to. Ensure it's visible.
-        if (modalStack.length > 0) {
-            const prevModalId = modalStack[modalStack.length - 1];
-            const prevModal = document.getElementById(prevModalId);
-            if (prevModal) {
-                prevModal.style.setProperty('display', 'flex', 'important');
-                logDebug('Popstate: Restored previous modal:', prevModalId);
-            }
-        }
-        return; // Modal logic handled.
     }
-
-    logDebug('Popstate: No UI element to handle. Default browser behavior will apply.');
+    // If no modals or sidebar are open, allow default browser back (exit app)
 });
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
@@ -444,7 +439,8 @@ function applyCompactViewMode() {
 let targetHitIconDismissed = false;
 // Removed: manual EOD toggle state; behavior is automatic based on Sydney market hours
 
-
+// Tracks if share detail modal was opened from alerts
+let wasShareDetailOpenedFromTargetAlerts = false;
 
 // NEW: Global variable to store cash categories data
 let userCashCategories = [];
@@ -810,7 +806,14 @@ function closeModals() {
     if (alertPanel) hideModal(alertPanel);
     logDebug('Modal: All modals closed.');
 
-    
+    // Restore Target Price Alerts modal if share detail was opened from it
+    if (wasShareDetailOpenedFromTargetAlerts) {
+        logDebug('Restoring Target Price Alerts modal after closing share detail modal.');
+        if (targetHitDetailsModal) {
+            showModal(targetHitDetailsModal);
+        }
+        wasShareDetailOpenedFromTargetAlerts = false;
+    }
 }
 
 // Custom Dialog (Alert) Function
@@ -929,7 +932,10 @@ function addShareToTable(share) {
     row.addEventListener('click', () => {
         logDebug('Table Row Click: Share ID: ' + share.id);
         selectShare(share.id);
-        
+        // If this row is inside the Target Price Alerts modal, set the restoration flag
+        if (row.closest('#targetHitSharesList')) {
+            wasShareDetailOpenedFromTargetAlerts = true;
+        }
         showShareDetails();
     });
 
@@ -1627,11 +1633,8 @@ function updateCompactViewButtonState() {
 
 function showModal(modalElement) {
     if (modalElement) {
-        // Only push if this modal isn't already the top of the stack
-        if (modalStack.length === 0 || modalStack[modalStack.length - 1] !== modalElement.id) {
-            modalStack.push(modalElement.id);
-            pushAppState('modal', modalElement.id, {}, '', '');
-        }
+        // Push a new history state for every modal open
+        pushAppState({ modalId: modalElement.id }, '', '');
         modalElement.style.setProperty('display', 'flex', 'important');
         modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
@@ -4800,18 +4803,16 @@ function hideContextMenu() {
     }
 }
 
-function toggleAppSidebar(forceState = null, manageHistory = true) {
-    logDebug('Sidebar: toggleAppSidebar called. Current open state: ' + appSidebar.classList.contains('open') + ', Force state: ' + forceState + ', Manage History: ' + manageHistory);
+function toggleAppSidebar(forceState = null) {
+    logDebug('Sidebar: toggleAppSidebar called. Current open state: ' + appSidebar.classList.contains('open') + ', Force state: ' + forceState);
     const isDesktop = window.innerWidth > 768;
     const isOpen = appSidebar.classList.contains('open');
 
-    const shouldOpen = forceState === true || (forceState === null && !isOpen);
-    const shouldClose = forceState === false || (forceState === null && isOpen);
-
-    if (shouldOpen) {
+    if (forceState === true || (forceState === null && !isOpen)) {
         // On mobile, opening the sidebar is a navigation event that should be caught by the back button.
-        if (!isDesktop && manageHistory) {
-            pushAppState('sidebar', 'appSidebar', { sidebarOpen: true }, '', '#sidebar');
+        if (!isDesktop) {
+            // Push a new history state for the sidebar opening
+            pushAppState({ sidebarOpen: true }, '', '#sidebar');
         }
 
         appSidebar.classList.add('open');
@@ -4835,7 +4836,7 @@ function toggleAppSidebar(forceState = null, manageHistory = true) {
             logDebug('Sidebar: Mobile: Sidebar opened, body NOT shifted, overlay pointer-events: auto.');
         }
         logDebug('Sidebar: Sidebar opened.');
-    } else if (shouldClose) {
+    } else if (forceState === false || (forceState === null && isOpen)) {
         appSidebar.classList.remove('open');
         sidebarOverlay.classList.remove('open');
         document.body.classList.remove('sidebar-active');
@@ -6717,7 +6718,11 @@ function showTargetHitDetailsModal() {
             targetHitItem.addEventListener('click', () => {
                 const clickedShareId = targetHitItem.dataset.shareId;
                 if (clickedShareId) {
-                    // Do NOT hide the alerts modal; just open the share details modal on top
+                    // Set the flag to true so the back button knows to return here
+                    wasShareDetailOpenedFromTargetAlerts = true;
+                    // FIX: Hide the current (alerts) modal before showing the share detail modal.
+                    // The `closeModals()` function will restore the alerts modal when the share detail modal is closed.
+                    hideModal(targetHitDetailsModal);
                     selectShare(clickedShareId); // Select the share
                     showShareDetails(); // Open the share details modal for the clicked share
                 }
