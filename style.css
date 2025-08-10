@@ -3028,6 +3028,30 @@ table tbody tr:not(.selected):hover {
 #portfolioSection .portfolio-table tr.portfolio-total-row.positive td { color:#00FF00; }
 #portfolioSection .portfolio-table tr.portfolio-total-row.negative td { color:#FF4D4D; }
 
+/* Specific alignment tweaks: value column left aligned for readability */
+#portfolioSection .portfolio-table td.value-cell { text-align:left; }
+#portfolioSection .portfolio-table td.value-cell { padding-left:14px; }
+
+/* Profit/Loss summary bar */
+.portfolio-summary-bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.portfolio-summary-bar .ps-card { flex:1 1 110px; background:var(--card-bg,#1e1f26); border:1px solid var(--border-color); border-radius:8px; padding:8px 12px; position:relative; overflow:hidden; }
+.portfolio-summary-bar .ps-card::after { content:""; position:absolute; inset:0; opacity:0.15; pointer-events:none; }
+.portfolio-summary-bar .ps-card.profit::after { background:linear-gradient(135deg,#00c878,#004d2f); }
+.portfolio-summary-bar .ps-card.loss::after { background:linear-gradient(135deg,#ff4d4d,#5c0b0b); }
+.portfolio-summary-bar .ps-card.net.positive::after { background:linear-gradient(135deg,#00c878,#004d2f); }
+.portfolio-summary-bar .ps-card.net.negative::after { background:linear-gradient(135deg,#ff4d4d,#5c0b0b); }
+.portfolio-summary-bar .ps-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.6px; opacity:0.75; margin-bottom:2px; }
+.portfolio-summary-bar .ps-value { font-size:0.95rem; font-weight:700; position:relative; z-index:1; }
+.portfolio-summary-bar .ps-card.profit .ps-value { color:#00FF9C; }
+.portfolio-summary-bar .ps-card.loss .ps-value { color:#FF7A7A; }
+.portfolio-summary-bar .ps-card.net.positive .ps-value { color:#00FF9C; }
+.portfolio-summary-bar .ps-card.net.negative .ps-value { color:#FF7A7A; }
+@media (max-width:640px){
+    .portfolio-summary-bar { gap:6px; }
+    .portfolio-summary-bar .ps-card { padding:6px 8px; }
+    .portfolio-summary-bar .ps-value { font-size:0.85rem; }
+}
+
 /* Watchlist numeric inputs left aligned */
 #shareTable td input[type="number"],
 #shareTable td input[type="text"] {

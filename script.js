@@ -236,6 +236,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let htmlTable = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg<br>Price</th><th>Live</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
     // Build mobile cards markup
     let cards = [];
+    let profitPLSum = 0; // sum of positive P/L
+    let lossPLSum = 0;   // sum of negative P/L (will stay negative)
         portfolioShares.forEach(share => {
             const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
                 ? Math.trunc(Number(share.portfolioShares))
@@ -259,6 +261,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? (priceNow - avgPrice) * shares
                 : null;
             if (typeof rowPL === 'number') totalPL += rowPL;
+            if (typeof rowPL === 'number') {
+                if (rowPL > 0) profitPLSum += rowPL; else if (rowPL < 0) lossPLSum += rowPL;
+            }
             const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number')
                 ? ((priceNow - avgPrice) / avgPrice) * 100
                 : null;
@@ -269,12 +274,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             htmlTable += `<tr data-doc-id="${share.id}" class="${plClass}">
                 <td class="code-cell">${share.shareName || ''}</td>
-                <td class="num-cell">${shares !== '' ? shares : ''}</td>
-                <td class="num-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
-                <td class="num-cell live-cell ${priceMode}">${priceCell}</td>
-                <td class="num-cell">${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
-                <td class="num-cell ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
-                <td class="num-cell ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
+                <td class="num-cell shares-cell">${shares !== '' ? shares : ''}</td>
+                <td class="num-cell avg-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
+                <td class="num-cell live-cell ${priceMode} liveprice-cell">${priceCell}</td>
+                <td class="num-cell value-cell">${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
+                <td class="num-cell pl-cell ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
+                <td class="num-cell plpct-cell ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
             </tr>`;
 
             // Mobile card variant
@@ -304,13 +309,27 @@ document.addEventListener('DOMContentLoaded', function () {
             <td></td>
         </tr>`;
         htmlTable += '</tbody></table>';
-    const totalsCard = `<div class="portfolio-card total ${totalPLClass} wide">
+        const totalsCard = `<div class="portfolio-card total ${totalPLClass} wide">
             <div class="pc-row top"><div class="pc-code">Totals</div></div>
             <div class="pc-row mid"><div class="pc-value-label">Value</div><div class="pc-value">${fmtMoney(totalValue)}</div></div>
             <div class="pc-row bottom ${totalPLClass}"><div class="pc-pl-label">P/L</div><div class="pc-pl-val">${fmtMoney(totalPL)}</div></div>
         </div>`;
+        const profitLossSummary = `<div class="portfolio-summary-bar">
+            <div class="ps-card profit">
+                <div class="ps-label">Profit</div>
+                <div class="ps-value">${fmtMoney(profitPLSum)}</div>
+            </div>
+            <div class="ps-card loss">
+                <div class="ps-label">Loss</div>
+                <div class="ps-value">${fmtMoney(Math.abs(lossPLSum))}</div>
+            </div>
+            <div class="ps-card net ${totalPLClass}">
+                <div class="ps-label">Net</div>
+                <div class="ps-value">${fmtMoney(totalPL)}</div>
+            </div>
+        </div>`;
         const htmlCards = `<div class="portfolio-cards">${cards.join('')}${totalsCard}</div>`;
-        portfolioListContainer.innerHTML = htmlTable + htmlCards;
+        portfolioListContainer.innerHTML = profitLossSummary + htmlTable + htmlCards;
 
         // Make portfolio rows interactive: click to open details; right-click to open context menu
     const rows = portfolioListContainer.querySelectorAll('table.portfolio-table tbody tr, .portfolio-cards .portfolio-card');
