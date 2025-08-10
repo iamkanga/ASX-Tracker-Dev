@@ -1,6 +1,8 @@
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
+// --- Modal Stack for Back Button Navigation ---
+let modalStack = [];
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(type, id, stateObj = {}, title = '', url = '') {
     history.pushState({ type: type, id: id, ...stateObj }, title, url);
