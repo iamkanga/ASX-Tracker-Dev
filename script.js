@@ -79,46 +79,31 @@ function sortSharesByPercentageChange(shares) {
     });
 }
 
-// AGGRESSIVE FIX: After live prices update, forcefully re-sort and re-render if sort order is percentage change
+// Lean live prices hook: only resort when sort actually depends on live data
 function onLivePricesUpdated() {
-    // AGGRESSIVE FIX: Always resort regardless of current sort order to ensure data consistency
-    if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
-        logDebug('AGGRESSIVE SORT: Force resorting shares by percentage change after live prices update');
-        // Re-sort shares and re-render
-        let sortedShares = sortSharesByPercentageChange(allSharesData);
-        if (currentSortOrder === 'percentageChange-asc') sortedShares.reverse();
-        
-        // AGGRESSIVE: Force the allSharesData to the sorted order
-        allSharesData.length = 0; // Clear the array
-        allSharesData.push(...sortedShares); // Re-populate with sorted data
-        
-        // Force re-render after sorting
-        renderWatchlist();
-        // If the Portfolio view is visible, update it too
+    try {
+        if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
+            sortShares();
+        } else {
+            // Just re-render to reflect new price values
+            renderWatchlist();
+        }
         if (typeof renderPortfolioList === 'function') {
             const section = document.getElementById('portfolioSection');
             if (section && section.style.display !== 'none') {
                 renderPortfolioList();
             }
         }
-    } else {
-        // Still render to update UI with new prices
-        renderWatchlist();
-        // Update portfolio view if active
-        if (typeof renderPortfolioList === 'function') {
-            const section = document.getElementById('portfolioSection');
-            if (section && section.style.display !== 'none') {
-                renderPortfolioList();
-            }
-        }
+    } catch (e) {
+        console.error('Live Price: onLivePricesUpdated error:', e);
     }
 }
 
-// AGGRESSIVE FIX: Force apply current sort order after data loads
+// Compatibility stub (legacy callsites may invoke)
 function forceApplyCurrentSort() {
-    if (currentSortOrder && currentSortOrder !== '') {
-        logDebug('AGGRESSIVE SORT: Force applying current sort order: ' + currentSortOrder);
-        sortShares();
+    if (currentSortOrder) {
+        // No aggressive re-sort; rely on user interactions & targeted resort triggers
+        return;
     }
 }
 
@@ -346,7 +331,8 @@ document.addEventListener('DOMContentLoaded', function () {
 // from the <script type="module"> block in index.html.
 
 // --- GLOBAL VARIABLES ---
-const DEBUG_MODE = true; // Set to 'true' to enable debug logging for troubleshooting Portfolio dropdown
+let DEBUG_MODE = false; // Quiet by default; enable via window.toggleDebug(true)
+window.toggleDebug = (on) => { DEBUG_MODE = !!on; console.log('Debug mode', DEBUG_MODE ? 'ENABLED' : 'DISABLED'); };
 
 // Custom logging function to control verbosity
 function logDebug(message, ...optionalParams) {
@@ -3746,90 +3732,70 @@ async function loadUserWatchlistsAndSettings() {
  * Updates the `livePrices` global object.
  */
 async function fetchLivePrices() {
-    console.log('Live Price: Attempting to fetch live prices...');
-    // Only fetch live prices if a stock-related watchlist is selected
+    logDebug('Live Price: Fetching...');
     if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-        console.log('Live Price: Skipping live price fetch because "Cash & Assets" is selected.');
-        window._livePricesLoaded = true; // Mark as loaded even if skipped for splash screen
+        logDebug('Live Price: Skipped (cash view).');
+        window._livePricesLoaded = true;
         hideSplashScreenIfReady();
         return;
     }
-
     try {
-        const response = await fetch(GOOGLE_APPS_SCRIPT_URL); 
-        if (!response.ok) {
-            throw new Error('HTTP error! status: ' + response.status);
-        }
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL);
+        if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
-        console.log('Live Price: Raw data received:', data); 
-
+        const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
+        const needed = haveShares ? new Set(allSharesData.map(s => s.shareName.toUpperCase())) : null;
+        const LOG_LIMIT = 20;
+        let skipped = 0, skippedLogged = 0, accepted = 0, surrogate = 0, filtered = 0;
         const newLivePrices = {};
         data.forEach(item => {
-            const asxCode = String(item.ASXCode).toUpperCase();
-            const livePrice = parseFloat(item.LivePrice);
-            const prevClose = parseFloat(item.PrevClose); 
-            const pe = parseFloat(item.PE);
-            const high52 = parseFloat(item.High52);
-            const low52 = parseFloat(item.Low52);
-
-    if (asxCode && livePrice !== null && !isNaN(livePrice)) {
-    // Find the corresponding share in allSharesData to get its targetPrice
-    const shareData = allSharesData.find(s => s.shareName.toUpperCase() === asxCode);
-    // Ensure targetPrice is parsed as a number, handling null/undefined/NaN
-    const targetPrice = shareData && shareData.targetPrice !== null && !isNaN(parseFloat(shareData.targetPrice))
-        ? parseFloat(shareData.targetPrice)
-        : undefined;
-
-    // Determine if target is hit based on targetDirection (new field) or default to 'below' for old shares
-            // Ensure shareData exists and has targetDirection, otherwise default to 'below'
-            const targetDirection = shareData && shareData.targetDirection ? shareData.targetDirection : 'below'; 
-
-            let isTargetHit = false;
-            if (targetPrice !== undefined && livePrice !== null && !isNaN(livePrice)) { // Only check if targetPrice and livePrice are valid
-                if (targetDirection === 'above') {
-                    isTargetHit = (livePrice >= targetPrice);
-                } else { // 'below' or any other unexpected value, including older shares
-                    isTargetHit = (livePrice <= targetPrice);
-                }
+            const codeRaw = item.ASXCode; if (!codeRaw) return;
+            const code = String(codeRaw).toUpperCase();
+            if (needed && !needed.has(code)) { filtered++; return; }
+            const liveParsed = parseFloat(item.LivePrice);
+            const prevParsed = parseFloat(item.PrevClose);
+            const hasLive = !isNaN(liveParsed);
+            const hasPrev = !isNaN(prevParsed);
+            const effectiveLive = hasLive ? liveParsed : (hasPrev ? prevParsed : NaN);
+            if (isNaN(effectiveLive)) { skipped++; if (DEBUG_MODE && skippedLogged < LOG_LIMIT) { console.warn('Live Price skip', code, item.LivePrice, item.PrevClose); skippedLogged++; } return; }
+            if (!hasLive && hasPrev) surrogate++;
+            accepted++;
+            const shareData = haveShares ? allSharesData.find(s => s.shareName.toUpperCase() === code) : null;
+            const targetPrice = shareData && !isNaN(parseFloat(shareData.targetPrice)) ? parseFloat(shareData.targetPrice) : undefined;
+            const dir = shareData && shareData.targetDirection ? shareData.targetDirection : 'below';
+            let hit = false;
+            if (targetPrice !== undefined) {
+                hit = dir === 'above' ? (effectiveLive >= targetPrice) : (effectiveLive <= targetPrice);
             }
-
-    newLivePrices[asxCode] = {
-        live: livePrice,
-        prevClose: isNaN(prevClose) ? null : prevClose,
-        PE: isNaN(pe) ? null : pe,
-        High52: isNaN(high52) ? null : high52,
-        Low52: isNaN(low52) ? null : low52,
-        targetHit: isTargetHit,
-        // Store the fetched live and prevClose prices for use when market is closed
-        lastLivePrice: livePrice,
-        lastPrevClose: isNaN(prevClose) ? null : prevClose
-    };
-} else {
-    if (DEBUG_MODE) {
-        console.warn('Live Price: Skipping item due to missing ASX code or invalid price:', item);
-    }
-}
+            newLivePrices[code] = {
+                live: effectiveLive,
+                prevClose: hasPrev ? prevParsed : null,
+                PE: isNaN(parseFloat(item.PE)) ? null : parseFloat(item.PE),
+                High52: isNaN(parseFloat(item.High52)) ? null : parseFloat(item.High52),
+                Low52: isNaN(parseFloat(item.Low52)) ? null : parseFloat(item.Low52),
+                targetHit: hit,
+                lastLivePrice: effectiveLive,
+                lastPrevClose: hasPrev ? prevParsed : null,
+                surrogateFromPrevClose: (!hasLive && hasPrev) || undefined
+            };
         });
         livePrices = newLivePrices;
-        console.log('Live Price: Live prices updated:', livePrices);
-        
-        // AGGRESSIVE FIX: Explicitly call onLivePricesUpdated to ensure proper sorting
+        if (DEBUG_MODE) {
+            const parts = [`accepted=${accepted}`];
+            if (surrogate) parts.push(`surrogate=${surrogate}`);
+            if (skipped) parts.push(`skipped=${skipped}`);
+            if (filtered) parts.push(`filtered=${filtered}`);
+            if (skipped > skippedLogged) parts.push(`skippedNotLogged=${skipped - skippedLogged}`);
+            console.log('Live Price: Summary ' + parts.join(', '));
+        }
         onLivePricesUpdated();
-        
-        // AGGRESSIVE FIX: Force apply current sort order after live prices load
-        forceApplyCurrentSort();
-        
-        // After fetching new prices, always re-sort and re-render the watchlist.
-        // This ensures all data, including percentage changes, is correctly displayed.
-        sortShares();
-        adjustMainContentPadding(); 
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
-        updateTargetHitBanner(); // Explicitly update banner after prices are fresh
-    } catch (error) {
-        console.error('Live Price: Error fetching live prices:', error);
-        // NEW: Hide splash screen on error
-        hideSplashScreen();
+        updateTargetHitBanner();
+    } catch (e) {
+        console.error('Live Price: Fetch error', e);
+        window._livePricesLoaded = true; // Allow UI to proceed even if prices failed
+        hideSplashScreenIfReady();
     }
 }
 
