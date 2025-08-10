@@ -2424,21 +2424,24 @@ h1#mainTitle {
 
 @media (max-width: 768px) {
     .watchlist-controls-row {
-        flex-direction: row;
-        flex-wrap: nowrap;
-        gap: 10px;
-        padding: 10px 8px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 10px 10px 10px;
     }
     .watchlist-group,
     .sort-group {
-        flex: 1 1 0;
-        min-width: 0;
-        max-width: 100%;
-        margin: 0 2px;
+        width: 100%;
+        max-width: 320px;
+        display: flex;
+        justify-content: center;
+        margin: 0;
     }
     .dropdown-large {
         font-size: 0.95em;
-        padding: 6px 8px;
+        padding: 6px 10px;
+        text-align: center;
     }
     .header-top-row {
         display: flex;
@@ -3064,6 +3067,11 @@ table tbody tr:not(.selected):hover {
 
 /* Totals card full-width placement in portfolio cards grid */
 .portfolio-cards .totals-footer-wrapper { grid-column:1 / -1; width:100%; }
+.portfolio-cards { padding:4px 4px 10px 4px; box-sizing:border-box; }
+.portfolio-cards .portfolio-card.total.wide { margin-top:4px; }
+@media (max-width:600px){
+    .portfolio-cards { padding-left:8px; padding-right:8px; }
+}
 .portfolio-cards .portfolio-card.total.wide { width:100%; }
 
 /* Watchlist numeric inputs left aligned */
@@ -3078,6 +3086,7 @@ table tbody tr:not(.selected):hover {
 .portfolio-scroll-wrapper {
     width: 100%;
     overflow-x: auto;
+    padding-bottom:4px; /* Room for scrollbar so content not clipped */
     -webkit-overflow-scrolling: touch;
 }
 /* Hide default scrollbar on WebKit (keep accessible) */

@@ -266,6 +266,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceMode = 'live';
                 else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceMode = 'last';
             }
+            // DAILY CHANGE (on-the-day) vs overall P/L: compute day change using live vs prevClose (fallback to last fetched)
+            let dailyChangeClass = 'neutral';
+            if (lpObj) {
+                const latestLive = (lpObj.live !== null && !isNaN(lpObj.live)) ? Number(lpObj.live) : (lpObj.lastLivePrice ?? null);
+                const latestPrev = (lpObj.prevClose !== null && !isNaN(lpObj.prevClose)) ? Number(lpObj.prevClose) : (lpObj.lastPrevClose ?? null);
+                if (latestLive !== null && latestPrev !== null && !isNaN(latestLive) && !isNaN(latestPrev)) {
+                    const dayChange = latestLive - latestPrev;
+                    if (dayChange > 0) dailyChangeClass = 'positive'; else if (dayChange < 0) dailyChangeClass = 'negative';
+                }
+            }
             const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
             if (typeof rowValue === 'number') totalValue += rowValue;
             const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number')
@@ -286,7 +296,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const priceColorClass = priceMode === 'live' ? 'live-price' : (priceMode === 'last' ? 'last-price' : 'manual-price');
             const priceCell = (priceNow !== null && priceNow !== undefined) ? ('<span class="price-value '+priceColorClass+'">' + fmtMoney(priceNow) + '</span>') : '';
 
-            htmlTable += `<tr data-doc-id="${share.id}" class="${plClass}">
+            // Row colored by DAILY change, P/L cells individually colored by overall P/L (plClass)
+            htmlTable += `<tr data-doc-id="${share.id}" class="${dailyChangeClass}">
                 <td class="code-cell">${share.shareName || ''}</td>
                 <td class="num-cell shares-cell">${shares !== '' ? shares : ''}</td>
                 <td class="num-cell avg-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
@@ -297,11 +308,11 @@ document.addEventListener('DOMContentLoaded', function () {
             </tr>`;
 
             // Mobile card variant
-        const card = `<div class="portfolio-card ${plClass}" data-doc-id="${share.id}">
+    const card = `<div class="portfolio-card ${dailyChangeClass}" data-doc-id="${share.id}">
                 <div class="pc-row top">
-                    <div class="pc-code">${share.shareName || ''}</div>
+            <div class="pc-code ${dailyChangeClass}">${share.shareName || ''}</div>
             <div class="pc-live ${priceMode}"><span class="val ${priceColorClass}">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
-                    <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
+            <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
                 </div>
                 <div class="pc-row mid">
                     <div class="pc-shares">${shares !== '' ? shares : ''} @ ${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</div>
