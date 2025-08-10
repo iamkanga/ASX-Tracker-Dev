@@ -2234,55 +2234,39 @@ function showShareDetails() {
 
 function sortShares() {
     const sortValue = currentSortOrder;
-    logDebug('AGGRESSIVE DEBUG: sortShares called with currentSortOrder: ' + sortValue);
     if (!sortValue || sortValue === '') {
-        logDebug('Sort: Sort placeholder selected, no explicit sorting applied.');
-        renderWatchlist(); 
+        renderWatchlist();
         return;
     }
     const [field, order] = sortValue.split('-');
-    logDebug('AGGRESSIVE DEBUG: Sorting by field: ' + field + ', order: ' + order);
+    if (VERBOSE_SORT_LOGS) logDebug('Sort: Sorting by field: ' + field + ' order: ' + order);
     allSharesData.sort((a, b) => {
-        // Handle sorting by percentage change
         if (field === 'percentageChange') {
-            logDebug('AGGRESSIVE DEBUG: Percentage change sorting detected');
+            // Single log for percentageChange sort start
+            // (Not per comparison to avoid spam)
             const livePriceDataA = livePrices[a.shareName.toUpperCase()];
             const livePriceA = livePriceDataA ? livePriceDataA.live : undefined;
             const prevCloseA = livePriceDataA ? livePriceDataA.prevClose : undefined;
 
             const livePriceDataB = livePrices[b.shareName.toUpperCase()];
             const livePriceB = livePriceDataB ? livePriceDataB.live : undefined;
-            const prevCloseB = livePriceDataB ? livePriceDataB.prevClose : undefined; // Corrected variable name
+            const prevCloseB = livePriceDataB ? livePriceDataB.prevClose : undefined;
 
             let percentageChangeA = null;
-            // Only calculate if both livePriceA and prevCloseA are valid numbers and prevCloseA is not zero
             if (livePriceA !== undefined && livePriceA !== null && !isNaN(livePriceA) &&
                 prevCloseA !== undefined && prevCloseA !== null && !isNaN(prevCloseA) && prevCloseA !== 0) {
                 percentageChangeA = ((livePriceA - prevCloseA) / prevCloseA) * 100;
             }
 
             let percentageChangeB = null;
-            // Only calculate if both livePriceB and prevCloseB are valid numbers and prevCloseB is not zero
             if (livePriceB !== undefined && livePriceB !== null && !isNaN(livePriceB) &&
-                prevCloseB !== undefined && prevCloseB !== null && !isNaN(prevCloseB) && prevCloseB !== 0) { // Corrected variable name here
+                prevCloseB !== undefined && prevCloseB !== null && !isNaN(prevCloseB) && prevCloseB !== 0) {
                 percentageChangeB = ((livePriceB - prevCloseB) / prevCloseB) * 100;
             }
 
-            // Debugging log for percentage sort
-            if (VERBOSE_SORT_LOGS) {
-                logDebug('Sort Debug - Percentage: Comparing ' + a.shareName + ' (Change: ' + percentageChangeA + ') vs ' + b.shareName + ' (Change: ' + percentageChangeB + ')');
-            }
-
-
-            // Handle null/NaN percentage changes to push them to the bottom
-            // If both are null, their relative order doesn't matter (return 0)
             if (percentageChangeA === null && percentageChangeB === null) return 0;
-            // If A is null but B is a number, A goes to the bottom
-            if (percentageChangeA === null) return 1; 
-            // If B is null but A is a number, B goes to the bottom
-            if (percentageChangeB === null) return -1; 
-
-            // Now perform numerical comparison for non-null values
+            if (percentageChangeA === null) return 1;
+            if (percentageChangeB === null) return -1;
             return order === 'asc' ? percentageChangeA - percentageChangeB : percentageChangeB - percentageChangeA;
         }
 
@@ -3607,6 +3591,15 @@ function simulateLivePricesFallback() {
     onLivePricesUpdated();
     window._livePricesLoaded = true;
     hideSplashScreenIfReady();
+}
+
+// Compatibility shim: ensure onLivePricesUpdated exists (was referenced after live price fetch)
+if (typeof onLivePricesUpdated !== 'function') {
+    function onLivePricesUpdated() {
+        // Re-sort to update percentageChange ordering after livePrices mutates
+        if (VERBOSE_SORT_LOGS) logDebug('Live Price: onLivePricesUpdated -> invoking sortShares');
+        try { sortShares(); } catch (err) { console.error('Live Price: onLivePricesUpdated error', err); }
+    }
 }
 
 /**
