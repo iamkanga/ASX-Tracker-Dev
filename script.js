@@ -8,10 +8,12 @@ function pushAppState(type, id, stateObj = {}, title = '', url = '') {
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
+    logDebug('Popstate event fired. event.state:', event.state); // ADDED LOGGING
     const state = event.state;
 
     if (state && state.type) {
         if (state.type === 'sidebar') {
+            logDebug('Popstate: Handling sidebar state.'); // ADDED LOGGING
             if (window.appSidebar && window.appSidebar.classList.contains('open')) {
                 if (window.toggleAppSidebar) {
                     window.toggleAppSidebar(false); // Explicitly close the sidebar
@@ -19,6 +21,7 @@ window.addEventListener('popstate', function(event) {
                 return; // Exit after handling the sidebar
             }
         } else if (state.type === 'modal') {
+            logDebug('Popstate: Handling modal state. Modal ID:', state.id); // ADDED LOGGING
             const modalToClose = document.getElementById(state.id);
             if (modalToClose && modalToClose.style.display !== 'none') {
                 hideModal(modalToClose); // Use hideModal to close only this specific modal
@@ -26,14 +29,9 @@ window.addEventListener('popstate', function(event) {
             }
         }
         // Add more conditions for other UI elements if needed
+    } else {
+        logDebug('Popstate: No specific state type found or state is null. Allowing default browser back behavior.'); // ADDED LOGGING
     }
-
-    // If no specific state was handled, or if state is null (initial page load, or external navigation)
-    // and no sidebar/modal was explicitly opened via pushAppState, then allow default browser back.
-    // This means the problematic loop that closes all modals will be removed.
-    // The original logic for closing modals one by one is removed here.
-    // If the user navigates back to a state where no specific UI element was pushed,
-    // the browser's default back behavior will occur.
 });
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
