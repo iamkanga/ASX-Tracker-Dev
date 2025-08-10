@@ -3427,30 +3427,14 @@ async function loadAsxCodesFromCSV() {
  * @returns {boolean} True if the ASX is open, false otherwise.
  */
 function isAsxMarketOpen() {
-    const now = new Date();
-    // Get current date and time in Sydney timezone
-    const sydneyDate = new Date(now.toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
-    const dayOfWeek = sydneyDate.getDay(); // Sunday: 0, Monday: 1, ..., Saturday: 6
-    const hours = sydneyDate.getHours();
-    const minutes = sydneyDate.getMinutes();
-
-    // The market is considered "closed" from Monday at 12:01 AM until Thursday at 12:01 AM.
-    // This means it is closed on Monday (after 00:00), Tuesday, and Wednesday, and for the first minute of Thursday.
-
-    // It's closed on Monday (after 12:00 AM), Tuesday, or Wednesday.
-    if ((dayOfWeek === 1 && (hours > 0 || minutes > 0)) || dayOfWeek === 2 || dayOfWeek === 3) {
-        logDebug('Market Status: Market is closed (custom hours).');
-        return false;
-    }
-
-    // It's closed for the first minute of Thursday (00:00).
-    if (dayOfWeek === 4 && hours === 0 && minutes === 0) {
-        logDebug('Market Status: Market is closed (custom hours).');
-        return false;
-    }
-
-    // For all other times, the market is open.
-    logDebug('Market Status: Market is open (custom hours).');
+    // Manual override support: localStorage key 'marketStatusOverride' can be 'open' or 'closed'
+    try {
+        const override = localStorage.getItem('marketStatusOverride');
+        if (override === 'open') return true;
+        if (override === 'closed') return false;
+    } catch (e) { /* ignore */ }
+    // Simplified: treat market as open by default per user preference (always show live styling)
+    // Optionally, you can reintroduce custom windows here.
     return true;
 }
 function calculateFrankedYield(dividendAmount, currentPrice, frankingCreditsPercentage) {

@@ -3023,13 +3023,18 @@ table tbody tr:not(.selected):hover {
 #portfolioSection .portfolio-table td.positive { color: #00FF00 !important; font-weight: 700; }
 #portfolioSection .portfolio-table td.negative { color: #FF0000 !important; font-weight: 700; }
 /* Row-level color cue */
-#portfolioSection .portfolio-table tr.positive td.code-cell { color:#00FF00 !important; }
-#portfolioSection .portfolio-table tr.negative td.code-cell { color:#FF4D4D !important; }
+#portfolioSection .portfolio-table tr.positive td.code-cell { color:#00FF00 !important; font-weight:700; }
+#portfolioSection .portfolio-table tr.negative td.code-cell { color:#FF4D4D !important; font-weight:700; }
 #portfolioSection .portfolio-table tr.portfolio-total-row.positive td { color:#00FF00; }
 #portfolioSection .portfolio-table tr.portfolio-total-row.negative td { color:#FF4D4D; }
 
 /* Specific alignment tweaks: value column left aligned for readability */
 #portfolioSection .portfolio-table td.value-cell { text-align:left; padding-left:14px; }
+#portfolioSection .portfolio-table td.shares-cell,
+#portfolioSection .portfolio-table td.avg-cell,
+#portfolioSection .portfolio-table td.liveprice-cell,
+#portfolioSection .portfolio-table td.pl-cell,
+#portfolioSection .portfolio-table td.plpct-cell { text-align:left; }
 
 /* Profit/Loss summary bar */
 .portfolio-summary-bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
@@ -3161,6 +3166,8 @@ table tbody tr.target-hit-alert td,
 .portfolio-card .pc-row.mid { font-size:0.75rem; opacity:0.9; margin-bottom:4px; }
 .portfolio-card .pc-row.bottom { font-weight:600; font-size:0.8rem; }
 .portfolio-card .pc-code { font-weight:600; letter-spacing:0.5px; }
+.portfolio-card.positive .pc-code { color:var(--green-color); }
+.portfolio-card.negative .pc-code { color:#FF4D4D; }
 .portfolio-card .pc-live { display:flex; align-items:center; gap:4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; }
 .portfolio-card .pc-live.live { color:var(--green-color); }
 .portfolio-card .pc-live.stale { opacity:0.75; }
