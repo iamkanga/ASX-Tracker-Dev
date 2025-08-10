@@ -2,43 +2,38 @@
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
-function pushAppState(stateObj = {}, title = '', url = '') {
-    history.pushState(stateObj, title, url);
+function pushAppState(type, id, stateObj = {}, title = '', url = '') {
+    history.pushState({ type: type, id: id, ...stateObj }, title, url);
 }
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
-    // NEW: First, check if the sidebar is open and close it.
-    // This should be the first check, as the sidebar can be open on top of the main view.
-    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
-        if (window.toggleAppSidebar) {
-            window.toggleAppSidebar(false); // Explicitly close the sidebar
+    const state = event.state;
+
+    if (state && state.type) {
+        if (state.type === 'sidebar') {
+            if (window.appSidebar && window.appSidebar.classList.contains('open')) {
+                if (window.toggleAppSidebar) {
+                    window.toggleAppSidebar(false); // Explicitly close the sidebar
+                }
+                return; // Exit after handling the sidebar
+            }
+        } else if (state.type === 'modal') {
+            const modalToClose = document.getElementById(state.id);
+            if (modalToClose && modalToClose.style.display !== 'none') {
+                hideModal(modalToClose); // Use hideModal to close only this specific modal
+                return; // Exit after handling the modal
+            }
         }
-        return; // Exit after handling the sidebar
+        // Add more conditions for other UI elements if needed
     }
 
-    // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
-    const modals = [
-        window.shareFormSection,
-        window.shareDetailModal,
-        window.targetHitDetailsModal,
-        window.cashAssetFormModal,
-        window.cashAssetDetailModal,
-        window.customDialogModal,
-        window.calculatorModal,
-        window.dividendCalculatorModal,
-        window.addWatchlistModal,
-        window.manageWatchlistModal,
-        window.stockSearchModal,
-        window.alertPanel
-    ];
-    for (const modal of modals) {
-        if (modal && modal.style.display !== 'none') {
-            if (window.closeModals) closeModals();
-            return; // Exit after handling the first open modal
-        }
-    }
-    // If no modals or sidebar are open, allow default browser back (exit app)
+    // If no specific state was handled, or if state is null (initial page load, or external navigation)
+    // and no sidebar/modal was explicitly opened via pushAppState, then allow default browser back.
+    // This means the problematic loop that closes all modals will be removed.
+    // The original logic for closing modals one by one is removed here.
+    // If the user navigates back to a state where no specific UI element was pushed,
+    // the browser's default back behavior will occur.
 });
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
@@ -1634,7 +1629,7 @@ function updateCompactViewButtonState() {
 function showModal(modalElement) {
     if (modalElement) {
         // Push a new history state for every modal open
-        pushAppState({ modalId: modalElement.id }, '', '');
+        pushAppState('modal', modalElement.id, {}, '', ''); // Pass type and id
         modalElement.style.setProperty('display', 'flex', 'important');
         modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
@@ -4812,7 +4807,7 @@ function toggleAppSidebar(forceState = null) {
         // On mobile, opening the sidebar is a navigation event that should be caught by the back button.
         if (!isDesktop) {
             // Push a new history state for the sidebar opening
-            pushAppState({ sidebarOpen: true }, '', '#sidebar');
+            pushAppState('sidebar', 'appSidebar', { sidebarOpen: true }, '', '#sidebar');
         }
 
         appSidebar.classList.add('open');
