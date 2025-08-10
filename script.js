@@ -6699,7 +6699,8 @@ function showTargetHitDetailsModal() {
             // NEW: Add click listener to make the item clickable
             targetHitItem.addEventListener('click', () => {
                 const clickedShareId = targetHitItem.dataset.shareId;
-                if (clickedShareId) {
+                if (clickedClickedShareId) {
+                    hideModal(targetHitDetailsModal); // Hide the alerts modal first
                     selectShare(clickedShareId); // Select the share
                     showShareDetails(); // Open the share details modal for the clicked share
                 }
