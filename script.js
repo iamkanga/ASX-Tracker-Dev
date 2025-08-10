@@ -1,23 +1,16 @@
-// Copilot update: 2025-07-29 - change for sync test
-// Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
-// --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
-// Push a new state when opening a modal or navigating to a new in-app view
+// --- Restored Header & Navigation Utilities ---
+// In-app history helper so back button closes overlays before exiting
 function pushAppState(stateObj = {}, title = '', url = '') {
-    history.pushState(stateObj, title, url);
+    try { history.pushState(stateObj, title, url); } catch (e) { /* ignore */ }
 }
 
-// Listen for the back button (popstate event)
-window.addEventListener('popstate', function(event) {
-    // NEW: First, check if the sidebar is open and close it.
-    // This should be the first check, as the sidebar can be open on top of the main view.
-    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
-        if (window.toggleAppSidebar) {
-            window.toggleAppSidebar(false); // Explicitly close the sidebar
-        }
-        return; // Exit after handling the sidebar
+window.addEventListener('popstate', function() {
+    // Close sidebar first if open
+    if (window.appSidebar && window.appSidebar.classList.contains('open') && window.toggleAppSidebar) {
+        window.toggleAppSidebar(false);
+        return;
     }
-
-    // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
+    // Close topmost modal (simple approach: list known modals)
     const modals = [
         window.shareFormSection,
         window.shareDetailModal,
@@ -32,299 +25,16 @@ window.addEventListener('popstate', function(event) {
         window.stockSearchModal,
         window.alertPanel
     ];
-    for (const modal of modals) {
-        if (modal && modal.style.display !== 'none') {
-            if (window.closeModals) closeModals();
-            return; // Exit after handling the first open modal
-        }
-    }
-    // If no modals or sidebar are open, allow default browser back (exit app)
-});
-// ...existing code...
-// --- (Aggressive Enforcement Patch Removed) ---
-// The previous patch has been removed as the root cause of the UI issues,
-// a syntax error in index.html, has been corrected. The standard application
-// logic should now function as intended.
-// --- END REMOVED PATCH ---
-
-
-// [Copilot Update] Source control helper
-// This function is a placeholder for automating source control actions (e.g., git add/commit)
-// and for tracking how many times files have been made available to source control.
-// Usage: Call makeFilesAvailableToSourceControl() after major changes if you want to automate this.
-let sourceControlMakeAvailableCount = 0;
-function makeFilesAvailableToSourceControl() {
-    // This is a placeholder for future automation (e.g., via backend or extension)
-    // Instructs the user to use git or triggers a VS Code command if available
-    sourceControlMakeAvailableCount++;
-    if (window && window.showCustomAlert) {
-        window.showCustomAlert('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')', 2000);
-    } else {
-        console.log('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')');
-    }
-    // To actually add to git, run: git init; git add .; git commit -m "Initial commit"
-}
-// End Copilot source control helper
-
-// Helper: Sort shares by percentage change
-function sortSharesByPercentageChange(shares) {
-    return shares.slice().sort((a, b) => {
-        const liveA = livePrices[a.shareName?.toUpperCase()]?.live;
-        const prevA = livePrices[a.shareName?.toUpperCase()]?.prevClose;
-        const liveB = livePrices[b.shareName?.toUpperCase()]?.live;
-        const prevB = livePrices[b.shareName?.toUpperCase()]?.prevClose;
-        const pctA = (prevA && liveA) ? ((liveA - prevA) / prevA) : 0;
-        const pctB = (prevB && liveB) ? ((liveB - prevB) / prevB) : 0;
-        return pctB - pctA; // Descending
-    });
-}
-
-// AGGRESSIVE FIX: After live prices update, forcefully re-sort and re-render if sort order is percentage change
-function onLivePricesUpdated() {
-    const pctSort = currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc';
-    if (pctSort) {
-        if (VERBOSE_SORT_LOGS) logDebug('Live Prices: Re-sorting for percentageChange.');
-        let sorted = sortSharesByPercentageChange(allSharesData);
-        if (currentSortOrder === 'percentageChange-asc') sorted.reverse();
-        allSharesData.splice(0, allSharesData.length, ...sorted);
-        sortShares(); // triggers (batched) render
-    } else {
-        renderWatchlist('livePricesUpdated');
-        if (typeof renderPortfolioList === 'function') {
-            const section = document.getElementById('portfolioSection');
-            if (section && section.style.display !== 'none') {
-                renderPortfolioList();
-            }
-        }
-    }
-}
-
-// AGGRESSIVE FIX: Force apply current sort order after data loads
-function forceApplyCurrentSort() {
-    if (currentSortOrder && currentSortOrder !== '') {
-        logDebug('AGGRESSIVE SORT: Force applying current sort order: ' + currentSortOrder);
-        sortShares();
-    }
-}
-
-// --- Automatic market status handling (Sydney time) ---
-document.addEventListener('DOMContentLoaded', function () {
-    // --- Watchlist logic moved to watchlist.js ---
-    // Import and call watchlist functions
-    if (window.watchlistModule) {
-        window.watchlistModule.renderWatchlistSelect();
-        window.watchlistModule.populateShareWatchlistSelect();
-        window.watchlistModule.ensurePortfolioOptionPresent();
-        setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
-    }
-    // Automatic closed-market banner and ghosting
-    const marketStatusBanner = document.getElementById('marketStatusBanner');
-    function formatSydneyDate(d) {
-        return new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
-    }
-    function isAfterCloseUntilMidnightSydney() {
-        const now = new Date();
-        const opts = { hour: 'numeric', minute: 'numeric', hour12: false, timeZone: 'Australia/Sydney' };
-        const timeStr = new Intl.DateTimeFormat('en-AU', opts).format(now);
-        const [h, m] = timeStr.split(':').map(Number);
-        return (h > 16) || (h === 16 && m >= 0);
-    }
-    function updateMarketStatusUI() {
-    const open = isAsxMarketOpen();
-        if (marketStatusBanner) {
-            if (!open) {
-                const now = new Date();
-                // Snapshot is the last fetched live as at close; show date to avoid weekend ambiguity
-                marketStatusBanner.textContent = `ASX market is closed. Showing final prices from today. (${formatSydneyDate(now)})`;
-                marketStatusBanner.classList.remove('app-hidden');
-            } else {
-                marketStatusBanner.textContent = '';
-                marketStatusBanner.classList.add('app-hidden');
-            }
-        }
-    // No global disabling; controls remain enabled regardless of market state
-    }
-    // Initial status and periodic re-check each minute
-    updateMarketStatusUI();
-    setInterval(updateMarketStatusUI, 60 * 1000);
-
-    // Ensure Edit Current Watchlist button updates when selection changes
-    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
-        watchlistSelect.addEventListener('change', function () {
-            // If Portfolio is selected, show portfolio view
-            if (watchlistSelect.value === 'portfolio') {
-                showPortfolioView();
-            } else {
-                // Default: show normal watchlist view
-                showWatchlistView();
-            }
-            updateMainButtonsState(true);
-        });
-    }
-
-    // Portfolio view logic
-    window.showPortfolioView = function() {
-        // Hide normal stock watchlist section, show a dedicated portfolio section (create if needed)
-        if (!document.getElementById('portfolioSection')) {
-            const portfolioSection = document.createElement('div');
-            portfolioSection.id = 'portfolioSection';
-            portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
-            mainContainer.appendChild(portfolioSection);
-        }
-        stockWatchlistSection.style.display = 'none';
-        // Ensure selection state reflects Portfolio for downstream filters (e.g., ASX buttons)
-        currentSelectedWatchlistIds = ['portfolio'];
-        let portfolioSection = document.getElementById('portfolioSection');
-        portfolioSection.style.display = 'block';
-        renderPortfolioList();
-        if (typeof renderAsxCodeButtons === 'function') {
-            if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
-            renderAsxCodeButtons();
-        }
-    };
-    window.showWatchlistView = function() {
-        // Hide portfolio section if present, show normal stock watchlist section
-        let portfolioSection = document.getElementById('portfolioSection');
-        if (portfolioSection) portfolioSection.style.display = 'none';
-        stockWatchlistSection.style.display = '';
-    };
-    // Render portfolio list (uses live prices when available)
-    window.renderPortfolioList = function() {
-        const portfolioListContainer = document.getElementById('portfolioListContainer');
-        if (!portfolioListContainer) return;
-
-        // Filter for shares assigned to the Portfolio
-        const portfolioShares = allSharesData.filter(s => s.watchlistId === 'portfolio');
-        if (portfolioShares.length === 0) {
-            portfolioListContainer.innerHTML = '<p>No shares in your portfolio yet.</p>';
+    for (const m of modals) {
+        if (m && m.style && m.style.display !== 'none') {
+            if (typeof closeModals === 'function') closeModals();
             return;
         }
-
-        // Helper to get a displayable current price for a share (live, last live when closed, then entered price)
-        function getDisplayPrice(share) {
-            const code = (share.shareName || '').toUpperCase();
-            const lp = livePrices ? livePrices[code] : undefined;
-            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
-            let price = null;
-            if (lp) {
-                if (marketOpen && lp.live !== null && !isNaN(lp.live)) {
-                    price = Number(lp.live);
-                } else if (!marketOpen && lp.lastLivePrice !== null && !isNaN(lp.lastLivePrice)) {
-                    price = Number(lp.lastLivePrice);
-                }
-            }
-            if (price === null || isNaN(price)) {
-                // Fallback to user-entered currentPrice if available
-                price = (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice)))
-                    ? Number(share.currentPrice)
-                    : null;
-            }
-            return price;
-        }
-
-        function fmtMoney(n) {
-            return (typeof n === 'number' && !isNaN(n)) ? '$' + n.toFixed(2) : '';
-        }
-        function fmtPct(n) {
-            return (typeof n === 'number' && !isNaN(n)) ? n.toFixed(2) + '%' : '';
-        }
-
-        let totalValue = 0;
-        let totalPL = 0;
-        let html = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg Price</th><th>Current Price</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
-        portfolioShares.forEach(share => {
-            const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
-                ? Math.trunc(Number(share.portfolioShares))
-                : '';
-            const avgPrice = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)))
-                ? Number(share.portfolioAvgPrice)
-                : '';
-            const priceNow = getDisplayPrice(share);
-            const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
-            if (typeof rowValue === 'number') totalValue += rowValue;
-            const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number')
-                ? (priceNow - avgPrice) * shares
-                : null;
-            if (typeof rowPL === 'number') totalPL += rowPL;
-            const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number')
-                ? ((priceNow - avgPrice) / avgPrice) * 100
-                : null;
-            const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
-
-            html += `<tr data-doc-id="${share.id}">
-                <td>${share.shareName || ''}</td>
-                <td>${shares !== '' ? shares : ''}</td>
-                <td>${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
-                <td>${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</td>
-                <td>${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
-                <td class="${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
-                <td class="${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
-            </tr>`;
-        });
-        // Total row
-        const totalPLClass = totalPL > 0 ? 'positive' : (totalPL < 0 ? 'negative' : 'neutral');
-        html += `<tr class="portfolio-total-row">
-            <td colspan="4" style="text-align:right;font-weight:600;">Total</td>
-            <td style="font-weight:700;">${fmtMoney(totalValue)}</td>
-            <td class="${totalPLClass}" style="font-weight:700;">${fmtMoney(totalPL)}</td>
-            <td></td>
-        </tr>`;
-        html += '</tbody></table>';
-        portfolioListContainer.innerHTML = html;
-
-        // Make portfolio rows interactive: click to open details; right-click to open context menu
-        const rows = portfolioListContainer.querySelectorAll('table.portfolio-table tbody tr');
-        rows.forEach(row => {
-            if (row.classList.contains('portfolio-total-row')) return; // skip totals
-            const docId = row.getAttribute('data-doc-id');
-            if (!docId) return;
-            row.addEventListener('click', () => {
-                selectShare(docId);
-                showShareDetails();
-            });
-            row.addEventListener('contextmenu', (e) => {
-                if (window.innerWidth > 768) {
-                    e.preventDefault();
-                    selectShare(docId);
-                    showContextMenu(e, docId);
-                }
-            });
-            // Touch long-press to open context menu on mobile
-            let touchStartTime = 0;
-            row.addEventListener('touchstart', (e) => {
-                touchStartTime = Date.now();
-                selectedElementForTap = row;
-                touchStartX = e.touches[0].clientX;
-                touchStartY = e.touches[0].clientY;
-                longPressTimer = setTimeout(() => {
-                    if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                        selectShare(docId);
-                        showContextMenu(e, docId);
-                        e.preventDefault();
-                    }
-                }, LONG_PRESS_THRESHOLD);
-            }, { passive: false });
-            row.addEventListener('touchmove', (e) => {
-                const currentX = e.touches[0].clientX;
-                const currentY = e.touches[0].clientY;
-                const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
-                if (dist > TOUCH_MOVE_THRESHOLD) {
-                    clearTimeout(longPressTimer);
-                    touchStartTime = 0;
-                }
-            });
-            row.addEventListener('touchend', () => {
-                clearTimeout(longPressTimer);
-                if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === row) {
-                    // Short tap handled by click event
-                }
-                touchStartTime = 0;
-                selectedElementForTap = null;
-            });
-        });
-    };
+    }
 });
+
+// NOTE: Portions of market status logic earlier removed are redefined later inside DOMContentLoaded.
+// ---------------------------------------------------------------------
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
 // via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
@@ -6001,11 +5711,7 @@ if (sortSelect) {
         logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
         currentSortOrder = sortSelect.value;
         
-        // AGGRESSIVE FIX: Force apply sort immediately for percentage change sorts
-        if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
-            logDebug('AGGRESSIVE SORT: Percentage change sort selected, forcing immediate application');
-            forceApplyCurrentSort();
-        }
+    // Percentage change sorts no longer force an immediate extra pass; normal path handles it.
         
         // Determine whether to sort shares or cash assets
         if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
