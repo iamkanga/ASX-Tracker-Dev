@@ -3573,12 +3573,21 @@ async function fetchLivePrices() {
         hideSplashScreenIfReady();
         updateTargetHitBanner(); // Explicitly update banner after prices are fresh
     } catch (error) {
-        console.error('Live Price: Error fetching live prices:', error);
-        simulateLivePricesFallback();
+        const errMsg = error && error.message ? error.message : String(error);
+        console.error('Live Price: Error fetching live prices:', errMsg, error && error.stack ? '\nStack:' + error.stack : '');
+        try {
+            simulateLivePricesFallback();
+        } catch (fbErr) {
+            console.error('Live Price: simulateLivePricesFallback threw:', fbErr);
+            // Ensure splash can still hide so UI not blocked
+            window._livePricesLoaded = true;
+            hideSplashScreenIfReady();
+        }
     }
 }
 
 function simulateLivePricesFallback() {
+    try {
     if (livePrices && Object.keys(livePrices).length > 0) {
         // Already have something; just release splash
         window._livePricesLoaded = true;
@@ -3611,6 +3620,11 @@ function simulateLivePricesFallback() {
     onLivePricesUpdated();
     window._livePricesLoaded = true;
     hideSplashScreenIfReady();
+    } catch (e) {
+        console.error('Live Price: Fallback generation failed:', e);
+        window._livePricesLoaded = true;
+        hideSplashScreenIfReady();
+    }
 }
 
 // (Removed shim: onLivePricesUpdated is now defined earlier once.)
