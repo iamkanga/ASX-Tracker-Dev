@@ -2387,6 +2387,19 @@ function sortShares() {
     renderWatchlist(); 
 }
 
+// Legacy helper retained for backward compatibility. Previously this reapplied the
+// active sort immediately after certain data events. The current flow already
+// calls sortShares() explicitly right after snapshots and live price updates.
+// Leaving the original call sites in place caused a ReferenceError once the
+// function was removed, halting script execution and breaking initial render.
+// Implement as a safe no-op (with optional debug log) to avoid duplicate sorts.
+function forceApplyCurrentSort() {
+    if (VERBOSE_SORT_LOGS) {
+        logDebug('Sort: forceApplyCurrentSort() no-op (sorting handled elsewhere).');
+    }
+    // Intentionally empty.
+}
+
 /**
  * Sorts the cash categories based on the currentSortOrder.
  * @returns {Array} The sorted array of cash categories.
