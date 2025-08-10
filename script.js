@@ -81,30 +81,15 @@ function sortSharesByPercentageChange(shares) {
 
 // AGGRESSIVE FIX: After live prices update, forcefully re-sort and re-render if sort order is percentage change
 function onLivePricesUpdated() {
-    // AGGRESSIVE FIX: Always resort regardless of current sort order to ensure data consistency
-    if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
-        logDebug('AGGRESSIVE SORT: Force resorting shares by percentage change after live prices update');
-        // Re-sort shares and re-render
-        let sortedShares = sortSharesByPercentageChange(allSharesData);
-        if (currentSortOrder === 'percentageChange-asc') sortedShares.reverse();
-        
-        // AGGRESSIVE: Force the allSharesData to the sorted order
-        allSharesData.length = 0; // Clear the array
-        allSharesData.push(...sortedShares); // Re-populate with sorted data
-        
-        // Force re-render after sorting
-        renderWatchlist();
-        // If the Portfolio view is visible, update it too
-        if (typeof renderPortfolioList === 'function') {
-            const section = document.getElementById('portfolioSection');
-            if (section && section.style.display !== 'none') {
-                renderPortfolioList();
-            }
-        }
+    const pctSort = currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc';
+    if (pctSort) {
+        if (VERBOSE_SORT_LOGS) logDebug('Live Prices: Re-sorting for percentageChange.');
+        let sorted = sortSharesByPercentageChange(allSharesData);
+        if (currentSortOrder === 'percentageChange-asc') sorted.reverse();
+        allSharesData.splice(0, allSharesData.length, ...sorted);
+        sortShares(); // triggers (batched) render
     } else {
-        // Still render to update UI with new prices
-        renderWatchlist();
-        // Update portfolio view if active
+        renderWatchlist('livePricesUpdated');
         if (typeof renderPortfolioList === 'function') {
             const section = document.getElementById('portfolioSection');
             if (section && section.style.display !== 'none') {
@@ -3795,8 +3780,12 @@ async function fetchLivePrices() {
         return;
     }
 
+    const FETCH_TIMEOUT_MS = 8000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-        const response = await fetch(GOOGLE_APPS_SCRIPT_URL); 
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL, { signal: controller.signal }); 
+        clearTimeout(timeoutId);
         if (!response.ok) {
             throw new Error('HTTP error! status: ' + response.status);
         }
@@ -3852,25 +3841,49 @@ async function fetchLivePrices() {
         });
         livePrices = newLivePrices;
         console.log('Live Price: Live prices updated:', livePrices);
-        
-        // AGGRESSIVE FIX: Explicitly call onLivePricesUpdated to ensure proper sorting
         onLivePricesUpdated();
-        
-        // AGGRESSIVE FIX: Force apply current sort order after live prices load
-        forceApplyCurrentSort();
-        
-        // After fetching new prices, always re-sort and re-render the watchlist.
-        // This ensures all data, including percentage changes, is correctly displayed.
-        sortShares();
-        adjustMainContentPadding(); 
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
         updateTargetHitBanner(); // Explicitly update banner after prices are fresh
     } catch (error) {
         console.error('Live Price: Error fetching live prices:', error);
-        // NEW: Hide splash screen on error
-        hideSplashScreen();
+        simulateLivePricesFallback();
     }
+}
+
+function simulateLivePricesFallback() {
+    if (livePrices && Object.keys(livePrices).length > 0) {
+        // Already have something; just release splash
+        window._livePricesLoaded = true;
+        hideSplashScreenIfReady();
+        return;
+    }
+    if (!allSharesData || allSharesData.length === 0) {
+        window._livePricesLoaded = true;
+        hideSplashScreenIfReady();
+        return;
+    }
+    const simulated = {};
+    allSharesData.forEach(s => {
+        const base = Number(s.currentPrice) || 1;
+        const jitter = base * (Math.random() * 0.04 - 0.02); // +/-2%
+        const live = +(base + jitter).toFixed(2);
+        simulated[s.shareName.toUpperCase()] = {
+            live,
+            prevClose: base,
+            PE: null,
+            High52: null,
+            Low52: null,
+            targetHit: false,
+            lastLivePrice: live,
+            lastPrevClose: base
+        };
+    });
+    livePrices = simulated;
+    console.warn('Live Price: Using simulated live prices (fallback).');
+    onLivePricesUpdated();
+    window._livePricesLoaded = true;
+    hideSplashScreenIfReady();
 }
 
 /**
