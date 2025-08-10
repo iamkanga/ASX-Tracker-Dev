@@ -432,8 +432,7 @@ function applyCompactViewMode() {
 let targetHitIconDismissed = false;
 // Removed: manual EOD toggle state; behavior is automatic based on Sydney market hours
 
-// Tracks if share detail modal was opened from alerts
-let wasShareDetailOpenedFromTargetAlerts = false;
+
 
 // NEW: Global variable to store cash categories data
 let userCashCategories = [];
