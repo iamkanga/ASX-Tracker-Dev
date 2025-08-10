@@ -3045,6 +3045,9 @@ table tbody tr:not(.selected):hover {
 .portfolio-summary-bar .ps-card.loss .ps-value { color:#FF2F2F; }
 .portfolio-summary-bar .ps-card.net.positive .ps-value { color:#00FF9C; }
 .portfolio-summary-bar .ps-card.net.negative .ps-value { color:#FF7A7A; }
+.portfolio-summary-bar .ps-card.net .ps-percent { margin-top:4px; font-size:0.7rem; font-weight:600; letter-spacing:0.5px; opacity:0.85; }
+.portfolio-summary-bar .ps-card.net.positive .ps-percent { color:#00FF9C; }
+.portfolio-summary-bar .ps-card.net.negative .ps-percent { color:#FF2F2F; }
 @media (max-width:640px){
     .portfolio-summary-bar { gap:6px; }
     .portfolio-summary-bar .ps-card { padding:6px 8px; }
@@ -3072,7 +3075,7 @@ table tbody tr:not(.selected):hover {
 
 /* Alignment utility classes to mirror watchlist */
 #portfolioSection .portfolio-table td.code-cell { text-align: left; font-weight: 600; }
-#portfolioSection .portfolio-table td.num-cell { text-align: right; white-space: nowrap; }
+#portfolioSection .portfolio-table td.num-cell { text-align: left !important; white-space: nowrap; }
 
 /* Live price badge styling */
 #portfolioSection .portfolio-table .price-badge {

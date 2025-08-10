@@ -232,8 +232,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return (typeof n === 'number' && !isNaN(n)) ? n.toFixed(2) + '%' : '';
         }
 
-        let totalValue = 0;
-        let totalPL = 0;
+    let totalValue = 0;
+    let totalPL = 0;
+    let totalCostBasis = 0; // sum of shares * avgPrice for total % calc
     // Build desktop/table HTML
     let htmlTable = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg<br>Price</th><th>Live</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
     // Build mobile cards markup
@@ -262,6 +263,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number')
                 ? (priceNow - avgPrice) * shares
                 : null;
+            if (typeof shares === 'number' && typeof avgPrice === 'number') {
+                totalCostBasis += (shares * avgPrice);
+            }
             if (typeof rowPL === 'number') totalPL += rowPL;
             if (typeof rowPL === 'number') {
                 if (rowPL > 0) profitPLSum += rowPL; else if (rowPL < 0) lossPLSum += rowPL;
@@ -304,11 +308,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         // Total row
         const totalPLClass = totalPL > 0 ? 'positive' : (totalPL < 0 ? 'negative' : 'neutral');
-    htmlTable += `<tr class="portfolio-total-row ${totalPLClass}">
+        const totalPLPct = (totalCostBasis > 0 && typeof totalPL === 'number') ? (totalPL / totalCostBasis) * 100 : 0;
+        htmlTable += `<tr class="portfolio-total-row ${totalPLClass}">
             <td colspan="4" style="text-align:right;font-weight:600;">Total</td>
             <td style="font-weight:700;">${fmtMoney(totalValue)}</td>
             <td class="${totalPLClass}" style="font-weight:700;">${fmtMoney(totalPL)}</td>
-            <td></td>
+            <td class="${totalPLClass}" style="font-weight:700;">${fmtPct(totalPLPct)}</td>
         </tr>`;
         htmlTable += '</tbody></table>';
         const totalsCard = `<div class="portfolio-card total ${totalPLClass} wide">
@@ -316,7 +321,8 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="pc-row mid"><div class="pc-value-label">Value</div><div class="pc-value">${fmtMoney(totalValue)}</div></div>
             <div class="pc-row bottom ${totalPLClass}"><div class="pc-pl-label">P/L</div><div class="pc-pl-val">${fmtMoney(totalPL)}</div></div>
         </div>`;
-        const profitLossSummary = `<div class="portfolio-summary-bar">
+    const totalPLPctDisplay = (totalCostBasis > 0) ? fmtPct((totalPL / totalCostBasis) * 100) : '0.00%';
+    const profitLossSummary = `<div class="portfolio-summary-bar">
             <div class="ps-card profit">
                 <div class="ps-label">Profit</div>
                 <div class="ps-value">${fmtMoney(profitPLSum)}</div>
@@ -326,8 +332,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="ps-value">${fmtMoney(Math.abs(lossPLSum))}</div>
             </div>
             <div class="ps-card net ${totalPLClass}">
-                <div class="ps-label">Net</div>
-                <div class="ps-value">${fmtMoney(totalPL)}</div>
+        <div class="ps-label">Net</div>
+        <div class="ps-value">${fmtMoney(totalPL)}</div>
+        <div class="ps-percent">${totalPLPctDisplay}</div>
             </div>
         </div>`;
         const htmlCards = `<div class="portfolio-cards">${cards.join('')}${totalsCard}</div>`;
@@ -4022,6 +4029,13 @@ function hideSplashScreenIfReady() {
         if (splashScreenReady) { // Ensure splash screen itself is ready to be hidden
             logDebug('Splash Screen: All data loaded and ready. Hiding splash screen.');
             hideSplashScreen();
+            // If user last viewed portfolio, ensure portfolio view is shown now that data is ready
+            try {
+                const lastView = localStorage.getItem('lastSelectedView');
+                if (lastView === 'portfolio' && typeof showPortfolioView === 'function') {
+                    showPortfolioView();
+                }
+            } catch(e) {}
         } else {
             logDebug('Splash Screen: Data loaded, but splash screen not yet marked as ready. Will hide when ready.');
         }
