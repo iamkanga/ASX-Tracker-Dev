@@ -2384,6 +2384,26 @@ function forceApplyCurrentSort() {
     // Intentionally empty.
 }
 
+// Live Prices: Central handler invoked after livePrices object changes (fetch or fallback)
+// Needs to be defined BEFORE any fetchLivePrices() execution to avoid ReferenceError.
+function onLivePricesUpdated() {
+    try {
+        // Re-run sort only if current sort depends on live prices (percentageChange or dividendAmount yield calc)
+        if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
+            sortShares(); // Includes renderWatchlist()
+        } else {
+            // Still refresh UI so live price columns update
+            renderWatchlist();
+        }
+        // Update any target-hit indicators
+        if (typeof updateTargetHitBanner === 'function') {
+            updateTargetHitBanner();
+        }
+    } catch (e) {
+        console.error('Live Price: onLivePricesUpdated error', e);
+    }
+}
+
 /**
  * Sorts the cash categories based on the currentSortOrder.
  * @returns {Array} The sorted array of cash categories.
@@ -3593,14 +3613,7 @@ function simulateLivePricesFallback() {
     hideSplashScreenIfReady();
 }
 
-// Compatibility shim: ensure onLivePricesUpdated exists (was referenced after live price fetch)
-if (typeof onLivePricesUpdated !== 'function') {
-    function onLivePricesUpdated() {
-        // Re-sort to update percentageChange ordering after livePrices mutates
-        if (VERBOSE_SORT_LOGS) logDebug('Live Price: onLivePricesUpdated -> invoking sortShares');
-        try { sortShares(); } catch (err) { console.error('Live Price: onLivePricesUpdated error', err); }
-    }
-}
+// (Removed shim: onLivePricesUpdated is now defined earlier once.)
 
 /**
  * Starts the periodic fetching of live prices.
