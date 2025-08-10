@@ -773,3 +773,18 @@ body.theme-bold-7 { /* Emerald */
     --cash-total-bg: #4caf50;
     --cash-total-text: #e6fff0;
     --cash-button-bg: #2ecc71;
+    --cash-button-hover-bg: #2ecc71;
+    --cash-primary-button-bg: #66bb6a;
+    --cash-primary-button-hover-bg: #4caf50;
+    --cash-delete-icon-color: #e74c3c;
+    --cash-edit-icon-color: #66bb6a;
+}
+
+/* Splash Screen Adjustments */
+.splash-icon { width:140px; height:auto; max-width:50vw; object-fit:contain; transition:transform .4s ease; }
+@media (min-width:769px){ .splash-icon { width:180px; } }
+body.dark-theme .google-auth-btn { background: var(--google-auth-btn-bg); color: var(--google-auth-btn-text); }
+.splash-screen .google-auth-btn { margin-top:24px; }
+/* If button somehow hidden, force visibility */
+#splashSignInBtn { display:inline-flex !important; }
+/* End Splash Screen Adjustments */
