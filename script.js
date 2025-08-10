@@ -1905,12 +1905,14 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? formatUserDecimalStrict(shareToEdit.currentPrice) : '';
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimalStrict(shareToEdit.targetPrice) : '';
     
-    // Set the correct state for the new target direction checkboxes
-    if (targetAboveCheckbox && targetBelowCheckbox) {
-        // Default to 'below' if not set
-        const savedTargetDirection = shareToEdit.targetDirection || 'below';
-        targetAboveCheckbox.checked = (savedTargetDirection === 'above');
-        targetBelowCheckbox.checked = (savedTargetDirection === 'below');
+    // PATCH: Integrate intent/direction toggle state when loading share for edit
+    // Replace legacy checkbox handling with new toggle UI.
+    if (targetToggleContainer && intentToggle && directionToggle) {
+        // Determine saved intent/direction with fallbacks
+        const savedDirection = shareToEdit.targetDirection || 'below';
+        const savedIntent = shareToEdit.targetIntent || (savedDirection === 'above' ? 'sell' : 'buy');
+        setActiveToggle(intentToggle, savedIntent);
+        setActiveToggle(directionToggle, savedDirection);
     }
 
     if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? formatUserDecimalStrict(shareToEdit.dividendAmount) : '';
@@ -2127,20 +2129,20 @@ async function saveShareData(isSilent = false) {
         });
     }
 
+    const intentDir = getCurrentTargetIntentAndDirection ? getCurrentTargetIntentAndDirection() : {intent:'buy', direction:'below'};
+    // REMOVED: legacy targetAbove/Below checkbox handling now replaced by toggle
     const shareData = {
         shareName: shareName,
         currentPrice: isNaN(currentPrice) ? null : currentPrice,
         targetPrice: isNaN(targetPrice) ? null : targetPrice,
-        // UPDATED: Save the selected target direction from the new checkboxes
-        targetDirection: targetAboveCheckbox.checked ? 'above' : 'below',
+        targetIntent: intentDir.intent,
+        targetDirection: intentDir.direction,
         dividendAmount: isNaN(dividendAmount) ? null : dividendAmount,
         frankingCredits: isNaN(frankingCredits) ? null : frankingCredits,
         comments: comments,
-        // Use the selected watchlist from the modal dropdown
-    watchlistId: selectedWatchlistIdForSave,
-    // Portfolio fields (optional)
-    portfolioShares: (() => { const el = document.getElementById('portfolioShares'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : Math.trunc(v); })(),
-    portfolioAvgPrice: (() => { const el = document.getElementById('portfolioAvgPrice'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : v; })(),
+        watchlistId: selectedWatchlistIdForSave,
+        portfolioShares: (() => { const el = document.getElementById('portfolioShares'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : Math.trunc(v); })(),
+        portfolioAvgPrice: (() => { const el = document.getElementById('portfolioAvgPrice'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : v; })(),
         lastPriceUpdateTime: new Date().toISOString(),
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0 // Ensure rating is saved as a number
     };
@@ -2395,6 +2397,18 @@ function showShareDetails() {
         ${targetNotificationMessage ? `<span class="ghosted-text">${targetNotificationMessage}</span>` : ''}
         ${targetNotificationMessage && displayTargetPrice ? ' ' : ''} ${displayTargetPrice}
     `.trim(); // Trim to remove potential leading/trailing whitespace if parts are empty
+
+    // Append intent/direction display below target price if available
+    const targetMetaId = 'modalTargetMeta';
+    let targetMetaEl = document.getElementById(targetMetaId);
+    if (!targetMetaEl) {
+      targetMetaEl = document.createElement('p');
+      targetMetaEl.id = targetMetaId;
+      modalTargetPrice && modalTargetPrice.parentElement && modalTargetPrice.parentElement.insertAdjacentElement('afterend', targetMetaEl);
+    }
+    const intentTxt = share.targetIntent ? share.targetIntent.charAt(0).toUpperCase()+share.targetIntent.slice(1) : '';
+    const directionTxt = share.targetDirection ? share.targetDirection.toUpperCase() : '';
+    targetMetaEl.textContent = (intentTxt && directionTxt) ? `Intent: ${intentTxt} • Direction: ${directionTxt}` : '';
 
     // Ensure dividendAmount and frankingCredits are numbers before formatting
     const displayDividendAmount = Number(share.dividendAmount);

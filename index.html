@@ -124,6 +124,9 @@
                 padding-bottom: 0;
             }
         }
+
+        /* HIDE legacy target checkbox grid */
+        .target-checkbox-grid { display:none !important; }
     </style>
 </head>
 <body>
@@ -301,6 +304,16 @@
                 </span>
             </div>
         </div>
+
+        <!-- INSERTED: Alerts Menu Section -->
+        <div class="menu-section">
+            <h3>Alerts</h3>
+            <div class="menu-buttons-group">
+                <button id="alertHistoryBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-bell"></i> <span>Alert History</span>
+                </button>
+            </div>
+        </div>
     </nav>
 
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -453,6 +466,18 @@
                         <h3>Comments <span id="addCommentSectionBtn" class="add-section-icon"><i class="fas fa-plus"></i></span></h3>
                         <div id="dynamicCommentsArea">
                         </div>
+                    </div>
+                </div>
+
+                <!-- INSERTED: Target Intent/Direction Toggle UI (appended near end of form for integration) -->
+                <div id="targetToggleContainer" class="target-toggle-container" style="display:none;">
+                    <div class="toggle-group" id="intentToggle" data-selected="buy">
+                        <button type="button" class="toggle-btn intent-btn active" data-value="buy">Buy</button>
+                        <button type="button" class="toggle-btn intent-btn" data-value="sell">Sell</button>
+                    </div>
+                    <div class="toggle-group" id="directionToggle" data-selected="below">
+                        <button type="button" class="toggle-btn direction-btn active" data-value="below">Below</button>
+                        <button type="button" class="toggle-btn direction-btn" data-value="above">Above</button>
                     </div>
                 </div>
             </div>
@@ -721,6 +746,47 @@
         </div>
     </div>
 
+
+    <!-- INSERTED: Alert History Modal -->
+    <div id="alertHistoryModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header-with-icon">
+          <h2>Alert History</h2>
+          <div class="modal-header-action-group">
+            <span class="close-button">&times;</span>
+          </div>
+        </div>
+        <div class="modal-body-scrollable">
+          <ul id="alertHistoryList" class="alert-history-list">
+            <li class="placeholder">No alerts logged yet.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSERTED: Price Movement Alert Details Modal -->
+    <div id="priceMovementAlertDetailModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header-with-icon">
+          <h2 id="pmAlertTitle">Price Movement Alert</h2>
+          <div class="modal-header-action-group">
+            <span class="close-button">&times;</span>
+          </div>
+        </div>
+        <div class="modal-body-scrollable">
+          <p><strong>Code:</strong> <span id="pmAlertCode"></span></p>
+          <p><strong>Movement Type:</strong> <span id="pmAlertType"></span></p>
+          <p><strong>% Change:</strong> <span id="pmAlertPercent"></span></p>
+          <p><strong>Current Price:</strong> <span id="pmAlertCurrentPrice"></span></p>
+          <p><strong>Reference Price:</strong> <span id="pmAlertRefPrice"></span></p>
+          <p><strong>Triggered At:</strong> <span id="pmAlertTriggeredAt"></span></p>
+        </div>
+        <div class="modal-action-buttons-footer">
+          <button id="pmViewStockBtn" class="button">View Stock</button>
+          <button id="pmDismissAlertBtn" class="button danger-button">Dismiss</button>
+        </div>
+      </div>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
