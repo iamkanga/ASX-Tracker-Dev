@@ -8,30 +8,50 @@ function pushAppState(type, id, stateObj = {}, title = '', url = '') {
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
-    logDebug('Popstate event fired. event.state:', event.state); // ADDED LOGGING
+// --- Modal Stack for Back Button Navigation ---
+let modalStack = [];
+
+window.addEventListener('popstate', function(event) {
+    logDebug('Popstate event fired. event.state:', event.state);
     const state = event.state;
 
-    if (state && state.type) {
-        if (state.type === 'sidebar') {
-            logDebug('Popstate: Handling sidebar state.'); // ADDED LOGGING
-            if (window.appSidebar && window.appSidebar.classList.contains('open')) {
-                if (window.toggleAppSidebar) {
-                    window.toggleAppSidebar(false); // Explicitly close the sidebar
-                }
-                return; // Exit after handling the sidebar
-            }
-        } else if (state.type === 'modal') {
-            logDebug('Popstate: Handling modal state. Modal ID:', state.id); // ADDED LOGGING
-            const modalToClose = document.getElementById(state.id);
-            if (modalToClose && modalToClose.style.display !== 'none') {
-                hideModal(modalToClose); // Use hideModal to close only this specific modal
-                return; // Exit after handling the modal
-            }
+    // Sidebar handling
+    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
+        logDebug('Popstate: Closing open sidebar.');
+        if (window.toggleAppSidebar) {
+            window.toggleAppSidebar(false);
         }
-        // Add more conditions for other UI elements if needed
-    } else {
-        logDebug('Popstate: No specific state type found or state is null. Allowing default browser back behavior.'); // ADDED LOGGING
+        return;
     }
+
+    // Modal stack handling
+    if (modalStack.length > 0) {
+        const lastModalId = modalStack.pop();
+        const lastModal = document.getElementById(lastModalId);
+        if (lastModal && lastModal.style.display !== 'none') {
+            hideModal(lastModal);
+            // If there is another modal underneath, show it again
+            if (modalStack.length > 0) {
+                const prevModal = document.getElementById(modalStack[modalStack.length - 1]);
+                if (prevModal) {
+                    prevModal.style.setProperty('display', 'flex', 'important');
+                }
+            }
+            return;
+        }
+    }
+
+    // Fallback: close any open modal
+    const openModals = document.querySelectorAll('.modal[style*="display: flex"]');
+    if (openModals.length > 0) {
+        const lastModal = openModals[openModals.length - 1];
+        logDebug('Popstate: Closing last open modal:', lastModal.id);
+        hideModal(lastModal);
+        return;
+    }
+
+    logDebug('Popstate: No sidebar or modals open. Allowing default browser back behavior.');
+});
 });
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
@@ -1615,8 +1635,11 @@ function updateCompactViewButtonState() {
 
 function showModal(modalElement) {
     if (modalElement) {
-        // Push a new history state for every modal open
-        pushAppState('modal', modalElement.id, {}, '', ''); // Pass type and id
+        // Only push if this modal isn't already the top of the stack
+        if (modalStack.length === 0 || modalStack[modalStack.length - 1] !== modalElement.id) {
+            modalStack.push(modalElement.id);
+            pushAppState('modal', modalElement.id, {}, '', '');
+        }
         modalElement.style.setProperty('display', 'flex', 'important');
         modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
@@ -1631,6 +1654,11 @@ function hideModal(modalElement) {
     if (modalElement) {
         modalElement.style.setProperty('display', 'none', 'important');
         logDebug('Modal: Hiding modal: ' + modalElement.id);
+        // Remove from stack if present
+        const idx = modalStack.lastIndexOf(modalElement.id);
+        if (idx !== -1) {
+            modalStack.splice(idx, 1);
+        }
     }
 }
 
