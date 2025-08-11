@@ -748,52 +748,96 @@ async function fetchLivePrices() {
         return;
     }
     try {
-        const response = await fetch(GOOGLE_APPS_SCRIPT_URL);
+        // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
+        const url = typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' ? GOOGLE_APPS_SCRIPT_URL : (typeof appsScriptUrl !== 'undefined' ? appsScriptUrl : null);
+        if (!url) throw new Error('Apps Script URL not defined');
+        const response = await fetch(url, { cache: 'no-store' }); // no-store to avoid stale cached 302 chain
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
+        if (!Array.isArray(data)) {
+            console.warn('Live Price: Response not an array, got:', data);
+            window._livePricesLoaded = true; hideSplashScreenIfReady(); return;
+        }
+        if (DEBUG_MODE && data[0]) console.log('Live Price: Sample keys', Object.keys(data[0]));
+
         const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
-        const needed = haveShares ? new Set(allSharesData.map(s => s.shareName.toUpperCase())) : null;
-        const LOG_LIMIT = 20;
+        const needed = haveShares ? new Set(allSharesData.filter(s => s && s.shareName).map(s => s.shareName.toUpperCase())) : null;
+        const LOG_LIMIT = 30;
         let skipped = 0, skippedLogged = 0, accepted = 0, surrogate = 0, filtered = 0;
         const newLivePrices = {};
+
+        // Helper: normalize numeric fields; treat null / undefined / '' / '#N/A' as null
+        const numOrNull = v => {
+            if (v === null || v === undefined) return null;
+            if (typeof v === 'string') {
+                const t = v.trim();
+                if (!t || t.toUpperCase() === '#N/A') return null;
+                const parsed = parseFloat(t.replace(/,/g,''));
+                return isNaN(parsed) ? null : parsed;
+            }
+            if (typeof v === 'number') return isNaN(v) ? null : v;
+            return null;
+        };
+
         data.forEach(item => {
-            const codeRaw = item.ASXCode; if (!codeRaw) return;
-            const code = String(codeRaw).toUpperCase();
+            if (!item) return;
+            const codeRaw = item.ASXCode || item.ASX_Code || item['ASX Code'] || item.Code || item.code;
+            if (!codeRaw) return; // no code
+            const code = String(codeRaw).toUpperCase().trim();
+            if (!code) return;
             if (needed && !needed.has(code)) { filtered++; return; }
-            const liveParsed = parseFloat(item.LivePrice);
-            const prevParsed = parseFloat(item.PrevClose);
-            const hasLive = !isNaN(liveParsed);
-            const hasPrev = !isNaN(prevParsed);
+
+            const liveParsed = numOrNull(item.LivePrice || item['Live Price'] || item.live || item.price);
+            const prevParsed = numOrNull(item.PrevClose || item['Prev Close'] || item.previous || item.prev || item.prevClose);
+            const peParsed = numOrNull(item.PE || item['PE Ratio'] || item.pe);
+            const high52Parsed = numOrNull(item.High52 || item['High52'] || item['High 52'] || item['52WeekHigh'] || item['52 High']);
+            const low52Parsed = numOrNull(item.Low52 || item['Low52'] || item['Low 52'] || item['52WeekLow'] || item['52 Low']);
+
+            const hasLive = liveParsed !== null;
+            const hasPrev = prevParsed !== null;
             const effectiveLive = hasLive ? liveParsed : (hasPrev ? prevParsed : NaN);
-            if (isNaN(effectiveLive)) { skipped++; if (DEBUG_MODE && skippedLogged < LOG_LIMIT) { console.warn('Live Price skip', code, item.LivePrice, item.PrevClose); skippedLogged++; } return; }
+            if (isNaN(effectiveLive)) {
+                skipped++; if (DEBUG_MODE && skippedLogged < LOG_LIMIT) { console.warn('Live Price skip (no usable price)', code, item); skippedLogged++; }
+                return;
+            }
             if (!hasLive && hasPrev) surrogate++;
             accepted++;
-            const shareData = haveShares ? allSharesData.find(s => s.shareName.toUpperCase() === code) : null;
+
+            // Target evaluation
+            const shareData = haveShares ? allSharesData.find(s => s && s.shareName && s.shareName.toUpperCase() === code) : null;
             const targetPrice = shareData && !isNaN(parseFloat(shareData.targetPrice)) ? parseFloat(shareData.targetPrice) : undefined;
             const dir = shareData && shareData.targetDirection ? shareData.targetDirection : 'below';
             let hit = false;
             if (targetPrice !== undefined) {
                 hit = dir === 'above' ? (effectiveLive >= targetPrice) : (effectiveLive <= targetPrice);
             }
+
+            const companyName = (item.CompanyName || item['Company Name'] || item.Name || item.name || '').toString().trim() || null;
+            if (companyName && Array.isArray(allAsxCodes) && !allAsxCodes.some(c => c.code === code)) {
+                allAsxCodes.push({ code, name: companyName });
+            }
+
             newLivePrices[code] = {
                 live: effectiveLive,
                 prevClose: hasPrev ? prevParsed : null,
-                PE: isNaN(parseFloat(item.PE)) ? null : parseFloat(item.PE),
-                High52: isNaN(parseFloat(item.High52)) ? null : parseFloat(item.High52),
-                Low52: isNaN(parseFloat(item.Low52)) ? null : parseFloat(item.Low52),
+                PE: peParsed,
+                High52: high52Parsed,
+                Low52: low52Parsed,
                 targetHit: hit,
                 lastLivePrice: effectiveLive,
                 lastPrevClose: hasPrev ? prevParsed : null,
-                surrogateFromPrevClose: (!hasLive && hasPrev) || undefined
+                surrogateFromPrevClose: (!hasLive && hasPrev) || undefined,
+                companyName: companyName || undefined
             };
         });
+
         livePrices = newLivePrices;
         if (DEBUG_MODE) {
             const parts = [`accepted=${accepted}`];
             if (surrogate) parts.push(`surrogate=${surrogate}`);
             if (skipped) parts.push(`skipped=${skipped}`);
             if (filtered) parts.push(`filtered=${filtered}`);
-            if (skipped > skippedLogged) parts.push(`skippedNotLogged=${skipped - skippedLogged}`);
+            if (skipped > LOG_LIMIT) parts.push(`skippedNotLogged=${skipped - LOG_LIMIT}`);
             console.log('Live Price: Summary ' + parts.join(', '));
         }
         onLivePricesUpdated();
