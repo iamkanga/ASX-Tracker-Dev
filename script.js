@@ -558,6 +558,7 @@ const modalStarRating = document.getElementById('modalStarRating');
 // --- ASX Code Toggle Button Functionality ---
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     toggleAsxButtonsBtn.addEventListener('click', function () {
+    console.log('[ASX Toggle] Clicked. Current classes on container:', asxCodeButtonsContainer.className);
     const expanded = !asxCodeButtonsContainer.classList.contains('expanded');
     if (expanded) {
         asxCodeButtonsContainer.classList.add('expanded');
@@ -569,6 +570,7 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     toggleAsxButtonsBtn.classList.toggle('expanded', expanded);
     toggleAsxButtonsBtn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
     asxCodeButtonsContainer.setAttribute('aria-hidden', expanded ? 'false':'true');
+    console.log('[ASX Toggle] Expanded state now:', expanded);
     });
 }
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
@@ -3046,6 +3048,7 @@ function openWatchlistPicker() {
         console.warn('Watchlist Picker: Modal elements not found. modal?', !!watchlistPickerModal, ' list?', !!watchlistPickerList);
         return;
     }
+    console.log('[WatchlistPicker] Opening picker...');
     watchlistPickerList.innerHTML='';
     const items=[];
     items.push({id:ALL_SHARES_ID,name:'All Shares'});
@@ -3058,6 +3061,7 @@ function openWatchlistPicker() {
         div.textContent=it.name;
         div.tabIndex=0;
         div.onclick=()=>{
+            console.log('[WatchlistPicker] Selecting watchlist', it.id);
             currentSelectedWatchlistIds=[it.id];
             if (watchlistSelect) watchlistSelect.value=it.id; // sync hidden select
             updateMainTitle();
@@ -3065,11 +3069,15 @@ function openWatchlistPicker() {
             renderWatchlist();
             toggleCodeButtonsArrow();
             watchlistPickerModal.classList.add('app-hidden');
+            dynamicWatchlistTitle.setAttribute('aria-expanded','false');
         };
         div.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); div.click(); } };
         watchlistPickerList.appendChild(div);
     });
     watchlistPickerModal.classList.remove('app-hidden');
+    // Force display in case base .modal sets display:none
+    watchlistPickerModal.style.display='block';
+    console.log('[WatchlistPicker] Modal shown. Item count:', watchlistPickerList.children.length);
 }
 function toggleCodeButtonsArrow() {
     if (!toggleAsxButtonsBtn) return;
