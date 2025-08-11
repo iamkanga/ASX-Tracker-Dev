@@ -613,7 +613,7 @@ const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
 const watchlistPickerModal = document.getElementById('watchlistPickerModal');
 const watchlistPickerList = document.getElementById('watchlistPickerList');
 const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
-const currentSortDisplay = document.getElementById('currentSortDisplay');
+// Removed legacy currentSortDisplay element (text summary of sort) now that dropdown itself is visible
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 const colorThemeSelect = document.getElementById('colorThemeSelect');
 const revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
@@ -3033,34 +3033,9 @@ function renderSortSelect() {
             logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
         }
 
-        logDebug('UI Update: Sort select rendered. Sort select disabled: ' + sortSelect.disabled);
-        updateSortDisplayText();
+    logDebug('UI Update: Sort select rendered. Sort select disabled: ' + sortSelect.disabled);
     }
 
-// Map current sort selection to user-facing label under title
-function updateSortDisplayText() {
-    if (!currentSortDisplay || !sortSelect) return;
-    const opt = sortSelect.options[sortSelect.selectedIndex];
-    if (!opt || !opt.value) { currentSortDisplay.textContent=''; return; }
-    const map = {
-        'percentageChange-desc':'Change % (High-Low)',
-        'percentageChange-asc':'Change % (Low-High)',
-        'shareName-asc':'Code (A-Z)',
-        'shareName-desc':'Code (Z-A)',
-        'entryDate-desc':'Date (Newest-Oldest)',
-        'entryDate-asc':'Date (Oldest-Newest)',
-        'starRating-desc':'⭐ (High-Low)',
-        'starRating-asc':'⭐ (Low-High)',
-        'dividendAmount-desc':'Yield % (High-Low)',
-        'dividendAmount-asc':'Yield % (Low-High)',
-        'name-asc':'Asset Name (A-Z)',
-        'name-desc':'Asset Name (Z-A)',
-        'balance-desc':'Balance (High-Low)',
-        'balance-asc':'Balance (Low-High)'
-    };
-    currentSortDisplay.textContent = 'Sort: ' + (map[opt.value] || opt.textContent);
-}
-if (sortSelect) sortSelect.addEventListener('change', updateSortDisplayText);
 
 function openWatchlistPicker() {
     if (!watchlistPickerModal || !watchlistPickerList) return;
@@ -3107,7 +3082,6 @@ loadUserWatchlistsAndSettings = async function() {
     await __origLoadUserWatchlistsAndSettings();
     updateMainTitle();
     renderSortSelect();
-    updateSortDisplayText();
     toggleCodeButtonsArrow();
 };
 
