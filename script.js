@@ -3844,39 +3844,6 @@ async function loadUserWatchlistsAndSettings() {
     }
 }
 
-async function fetchLivePricesAndUpdateUI() {
-    logDebug('Live Price: Fetching from Apps Script...');
-    // You may have a function to show a loading indicator
-    // showLoadingIndicator();
-    
-    try {
-        const response = await fetch(appsScriptUrl);
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
-
-        if (data.error) {
-            console.error('Apps Script Error:', data.error);
-            // Assuming you have a function to show errors to the user.
-            // e.g., showErrorInUI('Failed to fetch prices. Please check the Apps Script logs.');
-            return;
-        }
-
-        // This is a placeholder. You will need to write a function that takes the `data`
-        // and updates the prices in your app's user interface.
-        // For example: updatePricesInUI(data);
-
-    } catch (error) {
-        console.error('Fetch operation failed:', error);
-        // Assuming you have a function to show network errors.
-        // e.g., showErrorInUI('Network error. Could not connect to the server.');
-    } finally {
-        // Hide the loading state, assuming you have a function for this.
-        // e.g., hideLoadingIndicator();
-    }
-}
-
 /**
  * Starts the periodic fetching of live prices.
  */
