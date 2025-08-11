@@ -3927,7 +3927,7 @@ async function loadUserWatchlistsAndSettings() {
         }
         logDebug('User Settings: Final currentSelectedWatchlistIds before renderWatchlistSelect: ' + currentSelectedWatchlistIds.join(', '));
 
-        renderWatchlistSelect(); // Populate and select in the header dropdown
+    // renderWatchlistSelect(); // Legacy header dropdown removed in favor of title bar
 
         // Also re-populate the share modal dropdown if present
         if (typeof populateShareWatchlistSelect === 'function') {
@@ -3979,8 +3979,11 @@ async function loadUserWatchlistsAndSettings() {
         await loadShares(); // Sets up the listener for shares
         await loadCashCategories(); // Sets up the listener for cash categories
 
-        // Initial render based on selected watchlist (stock or cash)
-        renderWatchlist(); // This will now correctly display based on the initial currentSelectedWatchlistIds
+    // Initial render based on selected watchlist (stock or cash)
+    renderWatchlist(); // This will now correctly display based on the initial currentSelectedWatchlistIds
+    // Update new watchlist title bar now that watchlists are loaded
+    renderWatchlistTitleBar();
+    setupWatchlistTitleBarEvents();
 
         window._appDataLoaded = true;
         hideSplashScreenIfReady();
