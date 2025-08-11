@@ -556,23 +556,34 @@ const commentsFormContainer = document.getElementById('dynamicCommentsArea');
 const modalStarRating = document.getElementById('modalStarRating');
 
 // --- ASX Code Toggle Button Functionality ---
-if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
-    toggleAsxButtonsBtn.addEventListener('click', function () {
-    console.log('[ASX Toggle] Clicked. Current classes on container:', asxCodeButtonsContainer.className);
-    const expanded = !asxCodeButtonsContainer.classList.contains('expanded');
-    if (expanded) {
+// Persisted ASX code buttons expanded state
+let asxButtonsExpanded = false;
+try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 'true') asxButtonsExpanded = true; } catch(e) {}
+
+function applyAsxButtonsState() {
+    if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
+    if (asxButtonsExpanded) {
         asxCodeButtonsContainer.classList.add('expanded');
+        asxCodeButtonsContainer.classList.remove('app-hidden');
+        asxCodeButtonsContainer.style.display='flex';
         asxCodeButtonsContainer.style.pointerEvents='auto';
-    asxCodeButtonsContainer.classList.remove('app-hidden'); // ensure visible
-    asxCodeButtonsContainer.style.display='flex';
     } else {
         asxCodeButtonsContainer.classList.remove('expanded');
         asxCodeButtonsContainer.style.pointerEvents='none';
+        // Keep element present but collapsed (CSS handles max-height=0); hide only if truly empty
     }
-    toggleAsxButtonsBtn.classList.toggle('expanded', expanded);
-    toggleAsxButtonsBtn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
-    asxCodeButtonsContainer.setAttribute('aria-hidden', expanded ? 'false':'true');
-    console.log('[ASX Toggle] Expanded state now:', expanded);
+    toggleAsxButtonsBtn.classList.toggle('expanded', asxButtonsExpanded);
+    toggleAsxButtonsBtn.setAttribute('aria-pressed', asxButtonsExpanded ? 'true':'false');
+    asxCodeButtonsContainer.setAttribute('aria-hidden', asxButtonsExpanded ? 'false':'true');
+}
+
+if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
+    applyAsxButtonsState();
+    toggleAsxButtonsBtn.addEventListener('click', () => {
+        asxButtonsExpanded = !asxButtonsExpanded;
+        try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
+        applyAsxButtonsState();
+        console.log('[ASX Toggle] Toggled. Expanded=', asxButtonsExpanded);
     });
 }
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
@@ -713,6 +724,43 @@ if (typeof window.formatUserDecimalStrict !== 'function') {
         return str;
     };
 }
+
+// ----- Lightweight Back Stack Handling (limit to 2 states) -----
+const appBackStack = [];
+function pushAppStateEntry(type, ref) {
+    appBackStack.push({type, ref});
+    if (appBackStack.length > 2) appBackStack.shift();
+}
+function popAppStateEntry() { return appBackStack.pop(); }
+
+// Hook sidebar open
+if (hamburgerBtn && appSidebar) {
+    hamburgerBtn.addEventListener('click', ()=>{ pushAppStateEntry('sidebar','sidebar'); });
+}
+// Override showModal to push (wrap existing if not already wrapped)
+if (!window.__origShowModalForBack) {
+    window.__origShowModalForBack = showModal;
+    showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
+}
+
+window.addEventListener('popstate', ()=>{
+    // Not using deep browser history here; rely on our own stack
+    const last = popAppStateEntry();
+    if (!last) return;
+    if (last.type === 'modal') {
+        if (last.ref && last.ref.style) hideModal(last.ref);
+    } else if (last.type === 'sidebar') {
+        if (appSidebar) appSidebar.classList.remove('open');
+    }
+});
+
+// Hardware / browser back key mapping (mobile)
+window.addEventListener('keydown', e=>{
+    if (e.key === 'Escape') {
+        const last = appBackStack[appBackStack.length-1];
+        if (last) { e.preventDefault(); history.back(); }
+    }
+});
 const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
 const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
 const addCashCategoryBtn = document.getElementById('addCashCategoryBtn'); // This will be removed or repurposed
@@ -3102,8 +3150,7 @@ function openWatchlistPicker() {
         watchlistPickerList.appendChild(div);
     });
     watchlistPickerModal.classList.remove('app-hidden');
-    // Force display in case base .modal sets display:none
-    watchlistPickerModal.style.display='block';
+    watchlistPickerModal.style.display='flex';
     console.log('[WatchlistPicker] Modal shown. Item count:', watchlistPickerList.children.length);
 }
 function toggleCodeButtonsArrow() {
@@ -3115,6 +3162,7 @@ function toggleCodeButtonsArrow() {
     } else {
         toggleAsxButtonsBtn.style.display='';
         if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
+        applyAsxButtonsState();
     }
 }
 if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {

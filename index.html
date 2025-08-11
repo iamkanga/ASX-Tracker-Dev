@@ -128,7 +128,7 @@
         <style>
         /* Dynamic Watchlist Title + Sort Row */
     .watchlist-title-bar-row, .sort-line-row { display:flex; align-items:center; justify-content:center; width:100%; }
-    .watchlist-dynamic-title { margin:4px 0 2px; font-size:1.85rem; font-weight:650; cursor:default; text-align:center; line-height:1.1; width:100%; outline:none; }
+    .watchlist-dynamic-title { margin:4px 0 2px; font-size:1.85rem; font-weight:650; cursor:default; text-align:center; line-height:1.1; flex:0 1 auto; width:auto; outline:none; }
     #dynamicWatchlistTitleText { cursor:pointer; display:inline-block; padding:0 4px; border-radius:4px; }
     #dynamicWatchlistTitleText:focus { outline:2px solid var(--accent-color,#c18b47); outline-offset:2px; }
         .watchlist-dynamic-title:focus { outline:2px solid var(--accent-color, #c18b47); outline-offset:3px; }
@@ -180,12 +180,12 @@
     </div>
 
     <header id="appHeader" class="app-hidden">
-        <div class="header-top-row single-dynamic-title">
+    <div class="header-top-row single-dynamic-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
             <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
                 <i class="fas fa-bars"></i>
             </button>
             <!-- Single dynamic clickable title acts as the only title bar -->
-            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" tabindex="0" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText">Share Watchlist</span></h1>
+            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
             <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right" aria-label="Add Share">
                 <i class="fas fa-plus"></i>
             </button>

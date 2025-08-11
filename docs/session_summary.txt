@@ -1,3 +1,24 @@
+2025-08-12 Issue Status Recap (user feedback):
+1 Watchlist picker not opening (desktop/mobile) - NOT RESOLVED
+2 Title container width not reduced - NOT RESOLVED
+3 Chevron not collapsing ASX buttons - NOT RESOLVED
+4 Arrow border removal - NOT RESOLVED
+5 Title border/focus styling dissatisfaction - NOT RESOLVED
+6 Edit button in detail modal broken (was formatUserDecimalStrict) - NOT RESOLVED
+7 Comma formatting incomplete - PARTIAL
+8 Back button behavior (sidebar/modals) - NOT RESOLVED
+9 First tap outside sidebar still triggers underlying UI - NOT RESOLVED
+10 Coffee theme mostly OK - LIKELY RESOLVED
+11 Arrow default state clarification not needed
+12 Portfolio bleed fixed - RESOLVED
+13 Initial code buttons visibility relevance - N/A
+14 Dark mode picker contrast - RESOLVED
+15 Google sign-in popup warning accepted - RESOLVED
+16 (implicit) Title span clickable width on mobile still over-sensitive per user - NOT RESOLVED
+17 aria-expanded sync (user unsure) - TO VERIFY
+20 Number formatting in edit form inputs (user unclear) - TO DEFINE
+
+Next focus (planned): 1,2,3,4,5,6,8,9 plus finalize 7 strategy.
 
 
 
