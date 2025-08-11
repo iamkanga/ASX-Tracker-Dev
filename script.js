@@ -722,9 +722,25 @@ const cashFormInputs = [
 
 
 // --- GLOBAL HELPER FUNCTIONS ---
-const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
+const appsScriptUrl = '[https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec](https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec)';
 
 // Function to fetch the latest prices from the Apps Script and update the UI
+async function fetchLivePricesAndUpdateUI() {
+    logDebug('UI: Refresh Live Prices button clicked.');
+    // Show a loading state if needed
+    // You may have a function like showLoadingIndicator();
+    
+    // Call the newly updated live price fetch function
+    await fetchLivePrices();
+
+    // Hide the loading state
+    // You may have a function like hideLoadingIndicator();
+}
+
+/**
+ * Fetches live price data from the Google Apps Script Web App.
+ * Updates the `livePrices` global object.
+ */
 async function fetchLivePrices() {
     logDebug('Live Price: Fetching from Apps Script...');
     if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
@@ -734,7 +750,7 @@ async function fetchLivePrices() {
         return;
     }
     try {
-        const response = await fetch(GOOGLE_APPS_SCRIPT_URL + '?callback=1');
+        const response = await fetch(appsScriptUrl + '?callback=1');
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
         const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
