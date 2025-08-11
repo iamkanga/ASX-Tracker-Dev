@@ -1,6 +1,44 @@
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
+// --- NEW: Apps Script Integration for Live Price Refresh ---
+
+// The Apps Script URL is defined here. It's the URL you received after deploying the script.
+const appsScriptUrl = 'YOURhttps://script.google.com/macros/s/AKfycbzktFj2KTZ7Z77L6XOIo0zxjmN-nVvEE2cuq_iZFQLZjT4lnli3pILhH15H9AzNWL0/exec_APPS_SCRIPT_URL_HERE'; // *** IMPORTANT: Replace this placeholder with your actual URL ***
+
+// Function to fetch the latest prices from the Apps Script and update the UI
+async function fetchLivePricesAndUpdateUI() {
+    logDebug('Live Price: Fetching from Apps Script...');
+    // You may have a function to show a loading indicator
+    // showLoadingIndicator();
+    
+    try {
+        const response = await fetch(appsScriptUrl);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+
+        if (data.error) {
+            console.error('Apps Script Error:', data.error);
+            // Assuming you have a function to show errors to the user.
+            // showErrorInUI('Failed to fetch prices. Please check the Apps Script logs.');
+            return;
+        }
+
+        // Process the fetched data and update the UI.
+        // This function will need to be written or updated to handle the new data structure.
+        updatePricesInUI(data);
+
+    } catch (error) {
+        console.error('Fetch operation failed:', error);
+        // Assuming you have a function to show network errors.
+        // showErrorInUI('Network error. Could not connect to the server.');
+    } finally {
+        // Hide the loading state, assuming you have a function for this.
+        // hideLoadingIndicator();
+    }
+}
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
@@ -6692,9 +6730,10 @@ if (sortSelect) {
     if (refreshLivePricesBtn) {
         refreshLivePricesBtn.addEventListener('click', () => {
             logDebug('UI: Refresh Live Prices button clicked.');
-            fetchLivePrices();
+            // This new function will handle the fetch and UI update
+            fetchLivePricesAndUpdateUI();
             showCustomAlert('Refreshing live prices...', 1000);
-            toggleAppSidebar(false); // NEW: Close sidebar on refresh
+            toggleAppSidebar(false);
         });
     }
 
