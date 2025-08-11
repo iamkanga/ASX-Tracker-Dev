@@ -8,36 +8,15 @@ const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNb
 
 // Function to fetch the latest prices from the Apps Script and update the UI
 async function fetchLivePricesAndUpdateUI() {
-    logDebug('Live Price: Fetching from Apps Script...');
-    // You may have a function to show a loading indicator
-    // showLoadingIndicator();
+    logDebug('UI: Refresh Live Prices button clicked.');
+    // Show a loading state if needed
+    // You may have a function like showLoadingIndicator();
     
-    try {
-        const response = await fetch(appsScriptUrl);
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
+    // Call the newly updated live price fetch function
+    await fetchLivePrices();
 
-        if (data.error) {
-            console.error('Apps Script Error:', data.error);
-            // Assuming you have a function to show errors to the user.
-            // showErrorInUI('Failed to fetch prices. Please check the Apps Script logs.');
-            return;
-        }
-
-        // Process the fetched data and update the UI.
-        // This function will need to be written or updated to handle the new data structure.
-        updatePricesInUI(data);
-
-    } catch (error) {
-        console.error('Fetch operation failed:', error);
-        // Assuming you have a function to show network errors.
-        // showErrorInUI('Network error. Could not connect to the server.');
-    } finally {
-        // Hide the loading state, assuming you have a function for this.
-        // hideLoadingIndicator();
-    }
+    // Hide the loading state
+    // You may have a function like hideLoadingIndicator();
 }
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
