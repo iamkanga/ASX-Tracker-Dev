@@ -699,6 +699,20 @@ function formatWithCommas(value) {
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return parts.join('.');
 }
+
+// Fallback for missing formatUserDecimalStrict (called in edit form population)
+if (typeof window.formatUserDecimalStrict !== 'function') {
+    window.formatUserDecimalStrict = function(v){
+        if (v === null || v === undefined || v === '') return '';
+        const num = Number(v);
+        if (isNaN(num)) return '';
+        // Keep up to 4 decimals if needed, trim trailing zeros
+        let str = num.toFixed(4); // start with 4
+        str = str.replace(/\.0+$/,'');
+        str = str.replace(/(\.\d*[1-9])0+$/,'$1');
+        return str;
+    };
+}
 const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
 const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
 const addCashCategoryBtn = document.getElementById('addCashCategoryBtn'); // This will be removed or repurposed
@@ -3103,7 +3117,7 @@ function toggleCodeButtonsArrow() {
         if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
     }
 }
-if (dynamicWatchlistTitleText) {
+if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
     const openPicker = () => {
         openWatchlistPicker();
         dynamicWatchlistTitle.setAttribute('aria-expanded','true');
@@ -3112,9 +3126,10 @@ if (dynamicWatchlistTitleText) {
             if (first) first.focus();
         },30);
     };
-    dynamicWatchlistTitleText.addEventListener('click', openPicker);
-    dynamicWatchlistTitleText.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
-    dynamicWatchlistTitleText.setAttribute('role','button');
+    const clickable = dynamicWatchlistTitleText || dynamicWatchlistTitle;
+    clickable.addEventListener('click', openPicker);
+    clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
+    clickable.setAttribute('role','button');
 }
 if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); });
 window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });

@@ -128,13 +128,15 @@
         <style>
         /* Dynamic Watchlist Title + Sort Row */
     .watchlist-title-bar-row, .sort-line-row { display:flex; align-items:center; justify-content:center; width:100%; }
-    .watchlist-dynamic-title { margin:4px 0 2px; font-size:1.85rem; font-weight:650; cursor:pointer; text-align:center; line-height:1.1; width:100%; outline:none; }
+    .watchlist-dynamic-title { margin:4px 0 2px; font-size:1.85rem; font-weight:650; cursor:default; text-align:center; line-height:1.1; width:100%; outline:none; }
+    #dynamicWatchlistTitleText { cursor:pointer; display:inline-block; padding:0 4px; border-radius:4px; }
+    #dynamicWatchlistTitleText:focus { outline:2px solid var(--accent-color,#c18b47); outline-offset:2px; }
         .watchlist-dynamic-title:focus { outline:2px solid var(--accent-color, #c18b47); outline-offset:3px; }
     .sort-line-row { gap:12px; font-size:0.9rem; margin-bottom:6px; }
         .current-sort-display { min-height:1.2em; font-weight:500; }
     /* Subtle triangle toggle: two chevrons forming minimal arrow */
     /* Reworked subtle chevron toggle (single arrow) */
-    .asx-toggle-triangle { position:relative; width:30px; height:26px; background:transparent; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+    .asx-toggle-triangle { position:relative; width:30px; height:26px; background:transparent; border:none !important; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
     .asx-toggle-triangle::before { content:""; width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-top:10px solid var(--text-color); transition:transform .28s ease; transform-origin:center; }
     .asx-toggle-triangle.expanded::before { transform:rotate(180deg); }
     .asx-toggle-triangle::after { display:none; }
