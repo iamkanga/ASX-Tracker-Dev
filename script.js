@@ -608,6 +608,12 @@ const calculatorInput = document.getElementById('calculatorInput');
 const calculatorResult = document.getElementById('calculatorResult');
 const calculatorButtons = document.querySelector('.calculator-buttons');
 const watchlistSelect = document.getElementById('watchlistSelect');
+// Dynamic watchlist title + picker modal + sort display (new UI layer)
+const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
+const watchlistPickerModal = document.getElementById('watchlistPickerModal');
+const watchlistPickerList = document.getElementById('watchlistPickerList');
+const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
+const currentSortDisplay = document.getElementById('currentSortDisplay');
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 const colorThemeSelect = document.getElementById('colorThemeSelect');
 const revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
@@ -3028,7 +3034,82 @@ function renderSortSelect() {
         }
 
         logDebug('UI Update: Sort select rendered. Sort select disabled: ' + sortSelect.disabled);
+        updateSortDisplayText();
     }
+
+// Map current sort selection to user-facing label under title
+function updateSortDisplayText() {
+    if (!currentSortDisplay || !sortSelect) return;
+    const opt = sortSelect.options[sortSelect.selectedIndex];
+    if (!opt || !opt.value) { currentSortDisplay.textContent=''; return; }
+    const map = {
+        'percentageChange-desc':'Change % (High-Low)',
+        'percentageChange-asc':'Change % (Low-High)',
+        'shareName-asc':'Code (A-Z)',
+        'shareName-desc':'Code (Z-A)',
+        'entryDate-desc':'Date (Newest-Oldest)',
+        'entryDate-asc':'Date (Oldest-Newest)',
+        'starRating-desc':'⭐ (High-Low)',
+        'starRating-asc':'⭐ (Low-High)',
+        'dividendAmount-desc':'Yield % (High-Low)',
+        'dividendAmount-asc':'Yield % (Low-High)',
+        'name-asc':'Asset Name (A-Z)',
+        'name-desc':'Asset Name (Z-A)',
+        'balance-desc':'Balance (High-Low)',
+        'balance-asc':'Balance (Low-High)'
+    };
+    currentSortDisplay.textContent = 'Sort: ' + (map[opt.value] || opt.textContent);
+}
+if (sortSelect) sortSelect.addEventListener('change', updateSortDisplayText);
+
+function openWatchlistPicker() {
+    if (!watchlistPickerModal || !watchlistPickerList) return;
+    watchlistPickerList.innerHTML='';
+    const items=[];
+    items.push({id:ALL_SHARES_ID,name:'All Shares'});
+    items.push({id:'portfolio',name:'Portfolio'});
+    userWatchlists.filter(w=>w.id!==ALL_SHARES_ID && w.id!==CASH_BANK_WATCHLIST_ID).forEach(w=>items.push(w));
+    items.push({id:CASH_BANK_WATCHLIST_ID,name:'Cash & Assets'});
+    items.forEach(it=>{
+        const div=document.createElement('div');
+        div.className='picker-item'+(currentSelectedWatchlistIds[0]===it.id?' active':'');
+        div.textContent=it.name;
+        div.tabIndex=0;
+        div.onclick=()=>{
+            currentSelectedWatchlistIds=[it.id];
+            if (watchlistSelect) watchlistSelect.value=it.id; // sync hidden select
+            updateMainTitle();
+            renderSortSelect();
+            renderWatchlist();
+            toggleCodeButtonsArrow();
+            watchlistPickerModal.classList.add('app-hidden');
+        };
+        div.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); div.click(); } };
+        watchlistPickerList.appendChild(div);
+    });
+    watchlistPickerModal.classList.remove('app-hidden');
+}
+function toggleCodeButtonsArrow() {
+    if (!toggleAsxButtonsBtn) return;
+    const current=currentSelectedWatchlistIds[0];
+    if (current===CASH_BANK_WATCHLIST_ID) toggleAsxButtonsBtn.style.display='none'; else toggleAsxButtonsBtn.style.display='';
+}
+if (dynamicWatchlistTitle) {
+    dynamicWatchlistTitle.addEventListener('click', openWatchlistPicker);
+    dynamicWatchlistTitle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openWatchlistPicker(); } });
+}
+if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>watchlistPickerModal.classList.add('app-hidden'));
+window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal) watchlistPickerModal.classList.add('app-hidden'); });
+
+// Wrap loadUserWatchlistsAndSettings to refresh new UI parts after data load
+const __origLoadUserWatchlistsAndSettings = loadUserWatchlistsAndSettings;
+loadUserWatchlistsAndSettings = async function() {
+    await __origLoadUserWatchlistsAndSettings();
+    updateMainTitle();
+    renderSortSelect();
+    updateSortDisplayText();
+    toggleCodeButtonsArrow();
+};
 
 /**
  * Renders the watchlist based on the currentSelectedWatchlistIds. (1)
@@ -4655,6 +4736,7 @@ function updateMainTitle() {
     } else {
         mainTitle.textContent = selectedText;
     }
+    if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = mainTitle.textContent;
     logDebug('UI: Main title updated to: ' + mainTitle.textContent);
 }
 

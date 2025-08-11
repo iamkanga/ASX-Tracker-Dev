@@ -125,6 +125,28 @@
             }
         }
     </style>
+        <style>
+        /* Dynamic Watchlist Title + Sort Row */
+        .watchlist-title-bar-row, .sort-line-row { display:flex; align-items:center; justify-content:center; width:100%; }
+        .watchlist-dynamic-title { margin:10px 0 4px; font-size:1.5rem; font-weight:600; cursor:pointer; text-align:center; }
+        .watchlist-dynamic-title:focus { outline:2px solid var(--accent-color, #3498db); outline-offset:2px; }
+        .sort-line-row { gap:14px; font-size:0.95rem; margin-bottom:8px; }
+        .current-sort-display { min-height:1.2em; font-weight:500; }
+        .code-buttons-toggle { padding:4px 10px; font-size:0.9rem; border:1px solid #ccc; border-radius:6px; background:#fafafa; }
+        .code-buttons-toggle:hover { background:#f0f0f0; }
+        /* Watchlist picker modal */
+        .watchlist-picker-list { display:flex; flex-direction:column; gap:6px; margin:12px 0; }
+        .watchlist-picker-list .picker-item { padding:10px 12px; border:1px solid #d0d0d0; border-radius:6px; cursor:pointer; background:#fff; font-size:0.95rem; display:flex; justify-content:space-between; align-items:center; }
+        .watchlist-picker-list .picker-item.active { background:#3498db; color:#fff; border-color:#3498db; }
+        .watchlist-picker-list .picker-item:hover { background:#f5f7fa; }
+        .modal-content.watchlist-picker { max-width:400px; width:94%; }
+        .modal-actions { text-align:right; margin-top:8px; }
+        @media (max-width:600px){
+            .watchlist-dynamic-title { font-size:1.25rem; }
+            .sort-line-row { gap:10px; }
+            .code-buttons-toggle { font-size:0.8rem; }
+        }
+        </style>
 </head>
 <body>
     <div id="splashScreen" class="splash-screen">
@@ -153,28 +175,34 @@
             </button>
         </div>
 
-        <div class="watchlist-controls-row">
-            <div class="controls-flex-row no-gap">
-                <select id="watchlistSelect" class="dropdown-large left-rounded">
-                    <option value="" disabled selected>Watch List</option>
-                    <option value="cashBank">Cash & Assets</option> 
-                </select>
-                <select id="sortSelect" class="dropdown-large right-rounded">
-                    <!-- Options are rendered dynamically by script.js -->
-                </select>
-                <div class="toggle-asx-buttons-group">
-                    <button id="toggleAsxButtonsBtn" class="header-action-btn" title="Toggle ASX Code Buttons">
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                </div>
-            </div>
+        <!-- New dynamic watchlist title (click to open selection modal) -->
+        <div id="watchlistTitleBarRow" class="watchlist-title-bar-row">
+            <h2 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" tabindex="0">Share Watchlist</h2>
         </div>
+        <!-- Sort display line with code buttons arrow to the right -->
+        <div id="sortLine" class="sort-line-row">
+            <span id="currentSortDisplay" class="current-sort-display"></span>
+            <button id="toggleAsxButtonsBtn" class="header-action-btn code-buttons-toggle" title="Show/Hide ASX Code Buttons" aria-label="Toggle code buttons">&#9662;</button>
+        </div>
+        <!-- Hidden select kept for existing internal logic, visually removed -->
+        <select id="watchlistSelect" style="display:none"></select>
+        <select id="sortSelect" style="display:none"></select>
     <!-- Market status banner (shown automatically when market is closed) -->
     <div id="marketStatusBanner" class="market-status-banner app-hidden" aria-live="polite"></div>
         
         <div id="asxCodeButtonsContainer" class="asx-code-buttons-container">
             </div>
     </header>
+        <!-- Watchlist selection modal -->
+        <div id="watchlistPickerModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="watchlistPickerTitle">
+            <div class="modal-content watchlist-picker">
+                <h3 id="watchlistPickerTitle">Select Watchlist</h3>
+                <div id="watchlistPickerList" class="watchlist-picker-list"></div>
+                <div class="modal-actions">
+                        <button id="closeWatchlistPickerBtn" class="header-action-btn">Close</button>
+                </div>
+            </div>
+        </div>
 
     <nav id="appSidebar" class="app-sidebar">
         <button id="closeMenuBtn" class="close-menu-btn">X</button>
