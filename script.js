@@ -722,7 +722,7 @@ const cashFormInputs = [
 
 
 // --- GLOBAL HELPER FUNCTIONS ---
-const appsScriptUrl = '[https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec](https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec)';
+const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
 
 // Function to fetch the latest prices from the Apps Script and update the UI
 async function fetchLivePricesAndUpdateUI() {
@@ -750,7 +750,7 @@ async function fetchLivePrices() {
         return;
     }
     try {
-        const response = await fetch(appsScriptUrl + '?callback=1');
+        const response = await fetch(appsScriptUrl);
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
         const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
