@@ -618,6 +618,7 @@ const calculatorButtons = document.querySelector('.calculator-buttons');
 const watchlistSelect = document.getElementById('watchlistSelect');
 // Dynamic watchlist title + picker modal + sort display (new UI layer)
 const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
+const dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
 const watchlistPickerModal = document.getElementById('watchlistPickerModal');
 const watchlistPickerList = document.getElementById('watchlistPickerList');
 const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
@@ -3102,18 +3103,18 @@ function toggleCodeButtonsArrow() {
         if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
     }
 }
-if (dynamicWatchlistTitle) {
+if (dynamicWatchlistTitleText) {
     const openPicker = () => {
         openWatchlistPicker();
         dynamicWatchlistTitle.setAttribute('aria-expanded','true');
-        // Focus first item after slight delay to allow render
         setTimeout(()=>{
             const first = watchlistPickerList && watchlistPickerList.querySelector('.picker-item');
             if (first) first.focus();
         },30);
     };
-    dynamicWatchlistTitle.addEventListener('click', openPicker);
-    dynamicWatchlistTitle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
+    dynamicWatchlistTitleText.addEventListener('click', openPicker);
+    dynamicWatchlistTitleText.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
+    dynamicWatchlistTitleText.setAttribute('role','button');
 }
 if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); });
 window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });
@@ -3398,12 +3399,20 @@ function renderAsxCodeButtons() {
         }
 
         asxCodeButtonsContainer.appendChild(button);
-        button.addEventListener('click', (event) => {
-            logDebug('ASX Button Click: Button for ' + asxCode + ' clicked.');
-            const clickedCode = event.target.dataset.asxCode;
-            scrollToShare(clickedCode);
-        });
     });
+    // Delegated click handler (single)
+    if (!asxCodeButtonsContainer.__delegated) {
+        asxCodeButtonsContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('button.asx-code-btn');
+            if (!btn) return;
+            const code = btn.dataset.asxCode;
+            logDebug('ASX Button Click (delegated): ' + code);
+            asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            scrollToShare(code);
+        });
+        asxCodeButtonsContainer.__delegated = true;
+    }
     logDebug('UI: Rendered ' + sortedAsxCodes.length + ' code buttons.');
     // NEW: Adjust padding after rendering buttons, as their presence affects header height
     adjustMainContentPadding();
