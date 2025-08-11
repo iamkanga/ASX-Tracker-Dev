@@ -1,10 +1,14 @@
+/* LEGACY TITLE BAR CODE DISABLED
 // --- New Tap-Activated Watchlist Title Bar and Dropdown Logic ---
 
 // Helper to render the watchlist title bar and dropdown
 function renderWatchlistTitleBar() {
+    return; // legacy title bar logic disabled
     const titleBar = document.getElementById('watchlistTitleBar');
     const dropdown = document.getElementById('watchlistListDropdown');
     const currentTitle = document.getElementById('currentWatchlistTitle');
+    const arrow = document.getElementById('watchlistDropdownArrow');
+    if (!dropdown || !currentTitle || !arrow) return;
     const sortSelect = document.getElementById('sortSelect');
     const arrow = document.getElementById('watchlistDropdownArrow');
     const toggleBtn = document.getElementById('toggleAsxButtonsBtn');
@@ -51,9 +55,11 @@ function renderWatchlistTitleBar() {
 
 // Toggle dropdown on title bar tap
 function setupWatchlistTitleBarEvents() {
+    return; // legacy title bar events disabled
     const currentTitle = document.getElementById('currentWatchlistTitle');
     const arrow = document.getElementById('watchlistDropdownArrow');
     const dropdown = document.getElementById('watchlistListDropdown');
+    if (!currentTitle || !arrow || !dropdown) return;
 
     function toggleDropdown() {
         if (userWatchlists.length > 1) {
@@ -75,11 +81,12 @@ function setupWatchlistTitleBarEvents() {
 // Call these after DOM is loaded and userWatchlists is set
 // Example:
 document.addEventListener('DOMContentLoaded', function () {
-    renderWatchlistTitleBar();
-    setupWatchlistTitleBarEvents();
+    // renderWatchlistTitleBar(); // legacy title bar removed
+    // setupWatchlistTitleBarEvents();
 });
 
 // --- End New Watchlist Title Bar Logic ---// Copilot update: 2025-07-29 - change for sync test
+*/
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
@@ -192,12 +199,13 @@ function forceApplyCurrentSort() {
 document.addEventListener('DOMContentLoaded', function () {
     // --- Watchlist logic moved to watchlist.js ---
     // Import and call watchlist functions
-    if (window.watchlistModule) {
-        window.watchlistModule.renderWatchlistSelect();
-        window.watchlistModule.populateShareWatchlistSelect();
-        window.watchlistModule.ensurePortfolioOptionPresent();
-        setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
-    }
+    // Legacy watchlistModule calls disabled.
+    // if (window.watchlistModule) {
+    //     window.watchlistModule.renderWatchlistSelect();
+    //     window.watchlistModule.populateShareWatchlistSelect();
+    //     window.watchlistModule.ensurePortfolioOptionPresent();
+    //     setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
+    // }
     // Automatic closed-market banner and ghosting
     const marketStatusBanner = document.getElementById('marketStatusBanner');
     function formatSydneyDate(d) {
@@ -3981,9 +3989,9 @@ async function loadUserWatchlistsAndSettings() {
 
     // Initial render based on selected watchlist (stock or cash)
     renderWatchlist(); // This will now correctly display based on the initial currentSelectedWatchlistIds
-    // Update new watchlist title bar now that watchlists are loaded
-    renderWatchlistTitleBar();
-    setupWatchlistTitleBarEvents();
+    // Title bar functions disabled (modal-based selection used instead)
+    // renderWatchlistTitleBar();
+    // setupWatchlistTitleBarEvents();
 
         window._appDataLoaded = true;
         hideSplashScreenIfReady();
@@ -6965,10 +6973,10 @@ if (targetHitIconBtn) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    logDebug('script.js DOMContentLoaded fired.');
-
-    // Ensure Edit Current Watchlist button updates when watchlist selection changes
+// Disabled legacy title-bar initialization; using modal-based watchlist selection
+document.addEventListener('DOMContentLoaded', function () {
+    // no-op
+});
     if (watchlistSelect) {
         watchlistSelect.addEventListener('change', function() {
             updateMainButtonsState(true);
