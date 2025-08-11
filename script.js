@@ -3066,11 +3066,21 @@ function toggleCodeButtonsArrow() {
     if (current===CASH_BANK_WATCHLIST_ID) toggleAsxButtonsBtn.style.display='none'; else toggleAsxButtonsBtn.style.display='';
 }
 if (dynamicWatchlistTitle) {
-    dynamicWatchlistTitle.addEventListener('click', openWatchlistPicker);
-    dynamicWatchlistTitle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openWatchlistPicker(); } });
+    const openPicker = () => {
+        openWatchlistPicker();
+        dynamicWatchlistTitle.setAttribute('aria-expanded','true');
+        // Focus first item after slight delay to allow render
+        setTimeout(()=>{
+            const first = watchlistPickerList && watchlistPickerList.querySelector('.picker-item');
+            if (first) first.focus();
+        },30);
+    };
+    dynamicWatchlistTitle.addEventListener('click', openPicker);
+    dynamicWatchlistTitle.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
 }
-if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>watchlistPickerModal.classList.add('app-hidden'));
-window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal) watchlistPickerModal.classList.add('app-hidden'); });
+if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); });
+window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape' && !watchlistPickerModal.classList.contains('app-hidden')){ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });
 
 // Wrap loadUserWatchlistsAndSettings to refresh new UI parts after data load
 const __origLoadUserWatchlistsAndSettings = loadUserWatchlistsAndSettings;

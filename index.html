@@ -128,17 +128,17 @@
         <style>
         /* Dynamic Watchlist Title + Sort Row */
     .watchlist-title-bar-row, .sort-line-row { display:flex; align-items:center; justify-content:center; width:100%; }
-    .watchlist-dynamic-title { margin:6px 0 2px; font-size:1.4rem; font-weight:600; cursor:pointer; text-align:center; line-height:1.1; }
+    .watchlist-dynamic-title { margin:4px 0 2px; font-size:1.85rem; font-weight:650; cursor:pointer; text-align:center; line-height:1.1; width:100%; }
         .watchlist-dynamic-title:focus { outline:2px solid var(--accent-color, #3498db); outline-offset:2px; }
     .sort-line-row { gap:12px; font-size:0.9rem; margin-bottom:6px; }
         .current-sort-display { min-height:1.2em; font-weight:500; }
     /* Subtle triangle toggle: two chevrons forming minimal arrow */
     .asx-toggle-triangle { position:relative; width:28px; height:22px; background:transparent; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-    .asx-toggle-triangle::before, .asx-toggle-triangle::after { content:""; position:absolute; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; transition:transform .25s ease, opacity .25s ease; }
-    .asx-toggle-triangle::before { border-top:8px solid var(--text-color); top:6px; opacity:.85; }
-    .asx-toggle-triangle::after { border-bottom:8px solid var(--text-color); bottom:6px; opacity:.25; }
-    .asx-toggle-triangle.expanded::before { transform:translateY(4px) rotate(180deg); opacity:.25; }
-    .asx-toggle-triangle.expanded::after { transform:translateY(-4px) rotate(180deg); opacity:.85; }
+    .asx-toggle-triangle::before, .asx-toggle-triangle::after { content:""; position:absolute; left:50%; width:14px; height:2px; background:var(--text-color); transform-origin:center; transition:transform .25s ease, opacity .25s ease; border-radius:1px; }
+    .asx-toggle-triangle::before { transform:translate(-50%, -2px) rotate(40deg); }
+    .asx-toggle-triangle::after { transform:translate(-50%, -2px) rotate(-40deg); }
+    .asx-toggle-triangle.expanded::before { transform:translate(-50%, 2px) rotate(-40deg); }
+    .asx-toggle-triangle.expanded::after { transform:translate(-50%, 2px) rotate(40deg); }
     .asx-toggle-triangle:focus { outline:2px solid var(--accent-color,#3498db); outline-offset:2px; border-radius:4px; }
     @media (hover:hover){ .asx-toggle-triangle:hover::before, .asx-toggle-triangle:hover::after { opacity:1; } }
         /* Watchlist picker modal */

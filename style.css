@@ -2275,16 +2275,16 @@ main.container {
     order: 1;
     margin-right: auto;
 }
-h1#mainTitle {
+/* Center the single dynamic title */
+h1#dynamicWatchlistTitle {
     order: 2;
-    flex: 0 1 auto;
-    margin: 0 auto;
-    left: 0;
-    right: 0;
-    position: absolute;
-    width: 100%;
+    flex: 1 1 auto;
+    margin: 0;
     text-align: center;
-    pointer-events: none;
+    font-size: 1.85rem;
+    font-weight: 650;
+    line-height: 1.1;
+    pointer-events: auto;
     z-index: 1;
 }
 .header-action-btn-right {
