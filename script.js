@@ -3178,6 +3178,12 @@ if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
     clickable.addEventListener('click', openPicker);
     clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
     clickable.setAttribute('role','button');
+    // Fallback: if user clicks the h1 but not directly on span (e.g., minor padding), map to open
+    if (dynamicWatchlistTitle && dynamicWatchlistTitle !== clickable) {
+        dynamicWatchlistTitle.addEventListener('click', (e)=>{
+            if (e.target === dynamicWatchlistTitle) openPicker();
+        });
+    }
 }
 if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); });
 window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });
@@ -4826,7 +4832,11 @@ function updateMainTitle() {
     else if (selectedValue === CASH_BANK_WATCHLIST_ID) titleText = 'Cash & Assets';
     else if (selectedValue === 'portfolio') titleText = 'Portfolio';
     else titleText = selectedText || 'Share Watchlist';
-    if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = titleText;
+    if (dynamicWatchlistTitleText) {
+        dynamicWatchlistTitleText.textContent = titleText;
+    } else if (dynamicWatchlistTitle) {
+        dynamicWatchlistTitle.textContent = titleText;
+    }
     logDebug('UI: Dynamic title updated to: ' + titleText);
 }
 
