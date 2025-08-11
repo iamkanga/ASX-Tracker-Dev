@@ -124,6 +124,38 @@
                 padding-bottom: 0;
             }
         }
+    /* Modal for watchlist selection */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-content {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 90%;
+        max-height: 80%;
+        overflow-y: auto;
+    }
+    .modal-item {
+        padding: 10px;
+        cursor: pointer;
+    }
+    .modal-item:hover {
+        background: #f0f0f0;
+    }
+    .sort-display {
+        font-size: 1rem;
+        padding: 0 10px;
+        align-self: center;
+    }
     </style>
 </head>
 <body>
@@ -153,31 +185,28 @@
             </button>
         </div>
 
-        <div class="watchlist-controls-row">
-            <div class="controls-flex-row no-gap">
-                <div id="watchlistTitleBar" class="watchlist-title-bar" tabindex="0">
-                    <span id="currentWatchlistTitle">Share Watchlist</span>
-                    <span id="watchlistDropdownArrow">&#9662;</span>
-                </div>
-                <div id="watchlistListDropdown" class="watchlist-list-dropdown"></div>
-                <div class="controls-flex-row no-gap sort-arrow-row">
-                    <select id="sortSelect" class="dropdown-large right-rounded">
-                        <!-- Options are rendered dynamically by script.js -->
-                    </select>
-                    <div class="toggle-asx-buttons-group">
-                        <button id="toggleAsxButtonsBtn" class="header-action-btn" title="Toggle ASX Code Buttons">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <!-- New Dynamic Watchlist Title Bar -->
+        <div id="watchlistTitleBarRow" class="controls-flex-row">
+            <h2 id="watchlistTitleBar" class="clickable">Share Watchlist</h2>
+        </div>
+        <!-- Sort display and code-buttons arrow -->
+        <div id="sortAndArrowRow" class="controls-flex-row no-gap">
+            <div id="currentSortDisplay" class="sort-display"></div>
+            <button id="toggleAsxButtonsBtn" class="header-action-btn" title="Toggle ASX Code Buttons">&#9662;</button>
         </div>
     <!-- Market status banner (shown automatically when market is closed) -->
     <div id="marketStatusBanner" class="market-status-banner app-hidden" aria-live="polite"></div>
         
         <div id="asxCodeButtonsContainer" class="asx-code-buttons-container">
             </div>
-    </header>
+        </header>
+        <!-- Watchlist Selection Modal -->
+        <div id="watchlistModal" class="modal app-hidden">
+            <div class="modal-content">
+                <button id="watchlistModalCloseBtn" class="header-action-btn">Close</button>
+                <div id="watchlistModalList"></div>
+            </div>
+        </div>
 
     <nav id="appSidebar" class="app-sidebar">
         <button id="closeMenuBtn" class="close-menu-btn">X</button>
