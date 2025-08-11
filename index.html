@@ -127,13 +127,20 @@
     </style>
         <style>
         /* Dynamic Watchlist Title + Sort Row */
-        .watchlist-title-bar-row, .sort-line-row { display:flex; align-items:center; justify-content:center; width:100%; }
-        .watchlist-dynamic-title { margin:10px 0 4px; font-size:1.5rem; font-weight:600; cursor:pointer; text-align:center; }
+    .watchlist-title-bar-row, .sort-line-row { display:flex; align-items:center; justify-content:center; width:100%; }
+    .watchlist-dynamic-title { margin:6px 0 2px; font-size:1.4rem; font-weight:600; cursor:pointer; text-align:center; line-height:1.1; }
         .watchlist-dynamic-title:focus { outline:2px solid var(--accent-color, #3498db); outline-offset:2px; }
-        .sort-line-row { gap:14px; font-size:0.95rem; margin-bottom:8px; }
+    .sort-line-row { gap:12px; font-size:0.9rem; margin-bottom:6px; }
         .current-sort-display { min-height:1.2em; font-weight:500; }
-        .code-buttons-toggle { padding:4px 10px; font-size:0.9rem; border:1px solid #ccc; border-radius:6px; background:#fafafa; }
-        .code-buttons-toggle:hover { background:#f0f0f0; }
+    /* Subtle triangle toggle: two chevrons forming minimal arrow */
+    .asx-toggle-triangle { position:relative; width:28px; height:22px; background:transparent; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .asx-toggle-triangle::before, .asx-toggle-triangle::after { content:""; position:absolute; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; transition:transform .25s ease, opacity .25s ease; }
+    .asx-toggle-triangle::before { border-top:8px solid var(--text-color); top:6px; opacity:.85; }
+    .asx-toggle-triangle::after { border-bottom:8px solid var(--text-color); bottom:6px; opacity:.25; }
+    .asx-toggle-triangle.expanded::before { transform:translateY(4px) rotate(180deg); opacity:.25; }
+    .asx-toggle-triangle.expanded::after { transform:translateY(-4px) rotate(180deg); opacity:.85; }
+    .asx-toggle-triangle:focus { outline:2px solid var(--accent-color,#3498db); outline-offset:2px; border-radius:4px; }
+    @media (hover:hover){ .asx-toggle-triangle:hover::before, .asx-toggle-triangle:hover::after { opacity:1; } }
         /* Watchlist picker modal */
         .watchlist-picker-list { display:flex; flex-direction:column; gap:6px; margin:12px 0; }
         .watchlist-picker-list .picker-item { padding:10px 12px; border:1px solid #d0d0d0; border-radius:6px; cursor:pointer; background:#fff; font-size:0.95rem; display:flex; justify-content:space-between; align-items:center; }
@@ -165,24 +172,20 @@
     </div>
 
     <header id="appHeader" class="app-hidden">
-        <div class="header-top-row">
-            <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left">
+        <div class="header-top-row single-dynamic-title">
+            <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
                 <i class="fas fa-bars"></i>
             </button>
-            <h1 id="mainTitle">Share Watchlist</h1>
-            <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right">
+            <!-- Single dynamic clickable title acts as the only title bar -->
+            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" tabindex="0" aria-haspopup="dialog" aria-expanded="false">Share Watchlist</h1>
+            <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right" aria-label="Add Share">
                 <i class="fas fa-plus"></i>
             </button>
         </div>
-
-        <!-- New dynamic watchlist title (click to open selection modal) -->
-        <div id="watchlistTitleBarRow" class="watchlist-title-bar-row">
-            <h2 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" tabindex="0">Share Watchlist</h2>
-        </div>
-        <!-- Sort display line with code buttons arrow to the right -->
+        <!-- Sort row with subtle arrow toggle -->
         <div id="sortLine" class="sort-line-row">
-            <select id="sortSelect" class="dropdown-large"></select>
-            <button id="toggleAsxButtonsBtn" class="header-action-btn code-buttons-toggle" title="Show/Hide ASX Code Buttons" aria-label="Toggle code buttons">&#9662;</button>
+            <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
+            <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false"></button>
         </div>
         <select id="watchlistSelect" style="display:none"></select>
     <!-- Market status banner (shown automatically when market is closed) -->

@@ -532,7 +532,7 @@ const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 // Copilot: No-op change to trigger source control detection
 const appHeader = document.getElementById('appHeader'); // Reference to the main header
 const mainContainer = document.querySelector('main.container'); // Reference to the main content container
-const mainTitle = document.getElementById('mainTitle');
+// mainTitle removed in favour of dynamicWatchlistTitle only
 const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
 const newShareBtn = document.getElementById('newShareBtn');
 const standardCalcBtn = document.getElementById('standardCalcBtn');
@@ -557,15 +557,11 @@ const modalStarRating = document.getElementById('modalStarRating');
 
 // --- ASX Code Toggle Button Functionality ---
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
-  toggleAsxButtonsBtn.addEventListener('click', function () {
-    asxCodeButtonsContainer.classList.toggle('expanded');
-    // Optionally, toggle the arrow direction
-    const icon = toggleAsxButtonsBtn.querySelector('i');
-    if (icon) {
-      icon.classList.toggle('fa-chevron-down');
-      icon.classList.toggle('fa-chevron-up');
-    }
-  });
+    toggleAsxButtonsBtn.addEventListener('click', function () {
+        const expanded = asxCodeButtonsContainer.classList.toggle('expanded');
+        toggleAsxButtonsBtn.classList.toggle('expanded', expanded);
+        toggleAsxButtonsBtn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+    });
 }
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
 const shareTableBody = document.querySelector('#shareTable tbody');
@@ -3147,7 +3143,7 @@ function renderWatchlist() {
         if (tableContainer) tableContainer.style.display = 'none';
         if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
         // Update title
-        if (mainTitle) mainTitle.textContent = 'Portfolio';
+    // Title handled by updateMainTitle
     // Show sort dropdown in portfolio too
     sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
@@ -3168,13 +3164,13 @@ function renderWatchlist() {
         stockWatchlistSection.classList.remove('app-hidden');
         const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
         if (selectedWatchlistId === ALL_SHARES_ID) {
-            mainTitle.textContent = 'All Shares';
+            // Title handled by updateMainTitle
         } else if (selectedWatchlist) {
-            mainTitle.textContent = selectedWatchlist.name;
+            // Title handled by updateMainTitle
         } else if (selectedWatchlistId === 'portfolio') {
-            mainTitle.textContent = 'Portfolio';
+            // Title handled by updateMainTitle
         } else {
-            mainTitle.textContent = 'Share Watchlist';
+            // Title handled by updateMainTitle
         }
 
         // Show stock-specific UI elements
@@ -3264,7 +3260,7 @@ function renderWatchlist() {
     } else {
         // Cash & Assets section Logic
         cashAssetsSection.classList.remove('app-hidden');
-        mainTitle.textContent = 'Cash & Assets';
+    // Title handled by updateMainTitle
         renderCashCategories();
         sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
@@ -4698,20 +4694,16 @@ function showCustomConfirm(message, callback) {
  * Updates the main title of the app based on the currently selected watchlist.
  */
 function updateMainTitle() {
-    if (!mainTitle || !watchlistSelect) return;
-
+    if (!watchlistSelect) return;
     const selectedValue = watchlistSelect.value;
-    const selectedText = watchlistSelect.options[watchlistSelect.selectedIndex].textContent;
-
-    if (selectedValue === ALL_SHARES_ID) {
-        mainTitle.textContent = 'All Shares';
-    } else if (selectedValue === CASH_BANK_WATCHLIST_ID) {
-        mainTitle.textContent = 'Cash & Assets'; // UPDATED TEXT
-    } else {
-        mainTitle.textContent = selectedText;
-    }
-    if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = mainTitle.textContent;
-    logDebug('UI: Main title updated to: ' + mainTitle.textContent);
+    const selectedText = watchlistSelect.options[watchlistSelect.selectedIndex]?.textContent || '';
+    let titleText;
+    if (selectedValue === ALL_SHARES_ID) titleText = 'All Shares';
+    else if (selectedValue === CASH_BANK_WATCHLIST_ID) titleText = 'Cash & Assets';
+    else if (selectedValue === 'portfolio') titleText = 'Portfolio';
+    else titleText = selectedText || 'Share Watchlist';
+    if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = titleText;
+    logDebug('UI: Dynamic title updated to: ' + titleText);
 }
 
 /**
@@ -5392,7 +5384,7 @@ async function initializeAppLogic() {
     // Insert a tiny version badge to the right of the title and keep it there
     try {
         const ensureBadge = () => {
-            const title = document.getElementById('mainTitle');
+            const title = document.getElementById('dynamicWatchlistTitle');
             if (!title) return;
             let badge = document.getElementById('appVersionBadge');
             if (!badge) {
@@ -5400,26 +5392,21 @@ async function initializeAppLogic() {
                 badge.id = 'appVersionBadge';
                 badge.textContent = APP_VERSION;
                 badge.style.marginLeft = '8px';
-                badge.style.fontSize = '0.85rem';
+                badge.style.fontSize = '0.75rem';
+                badge.style.fontWeight = '400';
                 badge.style.color = 'var(--ghosted-text, #888)';
                 badge.style.verticalAlign = 'middle';
+                badge.style.letterSpacing = '0.5px';
             }
-            if (badge.parentElement !== title) {
-                // Append inside the title so it appears directly to the right of the text
-                title.appendChild(badge);
-            }
+            if (badge.parentElement !== title) title.appendChild(badge);
         };
-        // Initial placement
         ensureBadge();
-        // Re-attach if other code replaces the title contents
-        const titleEl = document.getElementById('mainTitle');
+        const titleEl = document.getElementById('dynamicWatchlistTitle');
         if (titleEl && typeof MutationObserver !== 'undefined') {
             const mo = new MutationObserver(() => ensureBadge());
             mo.observe(titleEl, { childList: true });
         }
-    } catch (e) {
-        console.warn('Version badge insert failed:', e);
-    }
+    } catch(e){ console.warn('Version badge insert failed:', e); }
 
     // NEW: Load saved mobile view mode preference
     const savedMobileViewMode = localStorage.getItem('currentMobileViewMode');
@@ -6989,8 +6976,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
                 logDebug('AuthState: User email: ' + user.email);
-                mainTitle.textContent = 'ASX Tracker';
-                logDebug('AuthState: Main title set to ASX Tracker.');
+                if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = 'ASX Tracker';
+                logDebug('AuthState: Dynamic title set to ASX Tracker.');
                 updateMainButtonsState(true);
                 window._userAuthenticated = true; // Mark user as authenticated
 
@@ -7037,7 +7024,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             else {
                 currentUserId = null;
-                mainTitle.textContent = 'Share Watchlist';
+                if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = 'Share Watchlist';
                 logDebug('AuthState: User signed out.');
                 updateMainButtonsState(false);
                 clearShareList();
