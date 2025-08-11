@@ -750,7 +750,7 @@ async function fetchLivePrices() {
         return;
     }
     try {
-        const response = await fetch(appsScriptUrl);
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL);
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
         const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
