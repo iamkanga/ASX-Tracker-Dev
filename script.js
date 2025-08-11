@@ -1,4 +1,85 @@
-// Copilot update: 2025-07-29 - change for sync test
+// --- New Tap-Activated Watchlist Title Bar and Dropdown Logic ---
+
+// Helper to render the watchlist title bar and dropdown
+function renderWatchlistTitleBar() {
+    const titleBar = document.getElementById('watchlistTitleBar');
+    const dropdown = document.getElementById('watchlistListDropdown');
+    const currentTitle = document.getElementById('currentWatchlistTitle');
+    const sortSelect = document.getElementById('sortSelect');
+    const arrow = document.getElementById('watchlistDropdownArrow');
+    const toggleBtn = document.getElementById('toggleAsxButtonsBtn');
+
+    // Set current watchlist name
+    const currentWatchlist = userWatchlists.find(wl => wl.id === currentSelectedWatchlistIds[0]);
+    currentTitle.textContent = currentWatchlist ? currentWatchlist.name : 'Select Watchlist';
+
+    // Show/hide arrow only if more than one watchlist
+    if (userWatchlists.length > 1) {
+        arrow.style.display = '';
+        currentTitle.style.cursor = 'pointer';
+    } else {
+        arrow.style.display = 'none';
+        currentTitle.style.cursor = 'default';
+    }
+
+    // Render dropdown list
+    dropdown.innerHTML = '';
+    userWatchlists.forEach(wl => {
+        const item = document.createElement('div');
+        item.className = 'watchlist-dropdown-item';
+        item.textContent = wl.name;
+        if (wl.id === currentSelectedWatchlistIds[0]) {
+            item.classList.add('selected');
+        }
+        item.onclick = () => {
+            if (wl.id !== currentSelectedWatchlistIds[0]) {
+                currentSelectedWatchlistIds[0] = wl.id;
+                renderWatchlistTitleBar();
+                dropdown.style.display = 'none';
+                // Call your function to update the main view here, e.g.:
+                // updateWatchlistView();
+            } else {
+                dropdown.style.display = 'none';
+            }
+        };
+        dropdown.appendChild(item);
+    });
+
+    // Hide dropdown by default
+    dropdown.style.display = 'none';
+}
+
+// Toggle dropdown on title bar tap
+function setupWatchlistTitleBarEvents() {
+    const currentTitle = document.getElementById('currentWatchlistTitle');
+    const arrow = document.getElementById('watchlistDropdownArrow');
+    const dropdown = document.getElementById('watchlistListDropdown');
+
+    function toggleDropdown() {
+        if (userWatchlists.length > 1) {
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+    }
+
+    currentTitle.onclick = toggleDropdown;
+    arrow.onclick = toggleDropdown;
+
+    // Hide dropdown if clicking outside
+    document.addEventListener('click', function (e) {
+        if (!currentTitle.contains(e.target) && !arrow.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+}
+
+// Call these after DOM is loaded and userWatchlists is set
+// Example:
+document.addEventListener('DOMContentLoaded', function () {
+    renderWatchlistTitleBar();
+    setupWatchlistTitleBarEvents();
+});
+
+// --- End New Watchlist Title Bar Logic ---// Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
