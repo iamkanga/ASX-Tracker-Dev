@@ -3844,75 +3844,36 @@ async function loadUserWatchlistsAndSettings() {
     }
 }
 
-/**
- * Fetches live price data from the Google Apps Script Web App.
- * Updates the `livePrices` global object.
- */
-async function fetchLivePrices() {
-    logDebug('Live Price: Fetching...');
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-        logDebug('Live Price: Skipped (cash view).');
-        window._livePricesLoaded = true;
-        hideSplashScreenIfReady();
-        return;
-    }
+async function fetchLivePricesAndUpdateUI() {
+    logDebug('Live Price: Fetching from Apps Script...');
+    // You may have a function to show a loading indicator
+    // showLoadingIndicator();
+    
     try {
-        const response = await fetch(GOOGLE_APPS_SCRIPT_URL);
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        const data = await response.json();
-        const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
-        const needed = haveShares ? new Set(allSharesData.map(s => s.shareName.toUpperCase())) : null;
-        const LOG_LIMIT = 20;
-        let skipped = 0, skippedLogged = 0, accepted = 0, surrogate = 0, filtered = 0;
-        const newLivePrices = {};
-        data.forEach(item => {
-            const codeRaw = item.ASXCode; if (!codeRaw) return;
-            const code = String(codeRaw).toUpperCase();
-            if (needed && !needed.has(code)) { filtered++; return; }
-            const liveParsed = parseFloat(item.LivePrice);
-            const prevParsed = parseFloat(item.PrevClose);
-            const hasLive = !isNaN(liveParsed);
-            const hasPrev = !isNaN(prevParsed);
-            const effectiveLive = hasLive ? liveParsed : (hasPrev ? prevParsed : NaN);
-            if (isNaN(effectiveLive)) { skipped++; if (DEBUG_MODE && skippedLogged < LOG_LIMIT) { console.warn('Live Price skip', code, item.LivePrice, item.PrevClose); skippedLogged++; } return; }
-            if (!hasLive && hasPrev) surrogate++;
-            accepted++;
-            const shareData = haveShares ? allSharesData.find(s => s.shareName.toUpperCase() === code) : null;
-            const targetPrice = shareData && !isNaN(parseFloat(shareData.targetPrice)) ? parseFloat(shareData.targetPrice) : undefined;
-            const dir = shareData && shareData.targetDirection ? shareData.targetDirection : 'below';
-            let hit = false;
-            if (targetPrice !== undefined) {
-                hit = dir === 'above' ? (effectiveLive >= targetPrice) : (effectiveLive <= targetPrice);
-            }
-            newLivePrices[code] = {
-                live: effectiveLive,
-                prevClose: hasPrev ? prevParsed : null,
-                PE: isNaN(parseFloat(item.PE)) ? null : parseFloat(item.PE),
-                High52: isNaN(parseFloat(item.High52)) ? null : parseFloat(item.High52),
-                Low52: isNaN(parseFloat(item.Low52)) ? null : parseFloat(item.Low52),
-                targetHit: hit,
-                lastLivePrice: effectiveLive,
-                lastPrevClose: hasPrev ? prevParsed : null,
-                surrogateFromPrevClose: (!hasLive && hasPrev) || undefined
-            };
-        });
-        livePrices = newLivePrices;
-        if (DEBUG_MODE) {
-            const parts = [`accepted=${accepted}`];
-            if (surrogate) parts.push(`surrogate=${surrogate}`);
-            if (skipped) parts.push(`skipped=${skipped}`);
-            if (filtered) parts.push(`filtered=${filtered}`);
-            if (skipped > skippedLogged) parts.push(`skippedNotLogged=${skipped - skippedLogged}`);
-            console.log('Live Price: Summary ' + parts.join(', '));
+        const response = await fetch(appsScriptUrl);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
         }
-        onLivePricesUpdated();
-        window._livePricesLoaded = true;
-        hideSplashScreenIfReady();
-        updateTargetHitBanner();
-    } catch (e) {
-        console.error('Live Price: Fetch error', e);
-        window._livePricesLoaded = true; // Allow UI to proceed even if prices failed
-        hideSplashScreenIfReady();
+        const data = await response.json();
+
+        if (data.error) {
+            console.error('Apps Script Error:', data.error);
+            // Assuming you have a function to show errors to the user.
+            // e.g., showErrorInUI('Failed to fetch prices. Please check the Apps Script logs.');
+            return;
+        }
+
+        // This is a placeholder. You will need to write a function that takes the `data`
+        // and updates the prices in your app's user interface.
+        // For example: updatePricesInUI(data);
+
+    } catch (error) {
+        console.error('Fetch operation failed:', error);
+        // Assuming you have a function to show network errors.
+        // e.g., showErrorInUI('Network error. Could not connect to the server.');
+    } finally {
+        // Hide the loading state, assuming you have a function for this.
+        // e.g., hideLoadingIndicator();
     }
 }
 
