@@ -563,6 +563,8 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     if (expanded) {
         asxCodeButtonsContainer.classList.add('expanded');
         asxCodeButtonsContainer.style.pointerEvents='auto';
+    asxCodeButtonsContainer.classList.remove('app-hidden'); // ensure visible
+    asxCodeButtonsContainer.style.display='flex';
     } else {
         asxCodeButtonsContainer.classList.remove('expanded');
         asxCodeButtonsContainer.style.pointerEvents='none';
@@ -686,6 +688,16 @@ const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: 
 
 // NEW: Cash & Assets UI Elements (1)
 const stockWatchlistSection = document.getElementById('stockWatchlistSection');
+// Generic number formatting helper (adds commas to large numbers while preserving decimals)
+function formatWithCommas(value) {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'number') return value.toLocaleString(undefined, { maximumFractionDigits: 8 });
+    const str = value.toString();
+    if (!/^[-+]?\d*(\.\d+)?$/.test(str)) return value; // not a plain number string
+    const parts = str.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+}
 const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
 const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
 const addCashCategoryBtn = document.getElementById('addCashCategoryBtn'); // This will be removed or repurposed
@@ -1164,7 +1176,7 @@ function addShareToTable(share) {
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
         <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
+    <td class="numeric-data-cell">${(val => { if (val !== null && !isNaN(val) && val !== 0) { const f = val.toFixed(2); const parts=f.split('.'); parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ','); return '$'+parts.join('.'); } return ''; })(Number(share.currentPrice))}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
         </td>
@@ -3082,7 +3094,13 @@ function openWatchlistPicker() {
 function toggleCodeButtonsArrow() {
     if (!toggleAsxButtonsBtn) return;
     const current=currentSelectedWatchlistIds[0];
-    if (current===CASH_BANK_WATCHLIST_ID) toggleAsxButtonsBtn.style.display='none'; else toggleAsxButtonsBtn.style.display='';
+    if (current===CASH_BANK_WATCHLIST_ID) {
+        toggleAsxButtonsBtn.style.display='none';
+        if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.add('app-hidden');
+    } else {
+        toggleAsxButtonsBtn.style.display='';
+        if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
+    }
 }
 if (dynamicWatchlistTitle) {
     const openPicker = () => {
@@ -3189,6 +3207,9 @@ function renderWatchlist() {
         adjustMainContentPadding();
         return;
     } else if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
+    // Hide portfolio section if it exists from previous view
+    const existingPortfolio = document.getElementById('portfolioSection');
+    if (existingPortfolio) existingPortfolio.style.display='none';
         // Stock Watchlist Logic
         stockWatchlistSection.classList.remove('app-hidden');
         const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
@@ -3289,6 +3310,8 @@ function renderWatchlist() {
     } else {
         // Cash & Assets section Logic
         cashAssetsSection.classList.remove('app-hidden');
+    const existingPortfolio2 = document.getElementById('portfolioSection');
+    if (existingPortfolio2) existingPortfolio2.style.display='none';
     // Title handled by updateMainTitle
         renderCashCategories();
         sortSelect.classList.remove('app-hidden');
