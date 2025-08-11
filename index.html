@@ -155,17 +155,20 @@
 
         <div class="watchlist-controls-row">
             <div class="controls-flex-row no-gap">
-                <select id="watchlistSelect" class="dropdown-large left-rounded">
-                    <option value="" disabled selected>Watch List</option>
-                    <option value="cashBank">Cash & Assets</option> 
-                </select>
-                <select id="sortSelect" class="dropdown-large right-rounded">
-                    <!-- Options are rendered dynamically by script.js -->
-                </select>
-                <div class="toggle-asx-buttons-group">
-                    <button id="toggleAsxButtonsBtn" class="header-action-btn" title="Toggle ASX Code Buttons">
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
+                <div id="watchlistTitleBar" class="watchlist-title-bar" tabindex="0">
+                    <span id="currentWatchlistTitle">Share Watchlist</span>
+                    <i class="fas fa-chevron-down watchlist-title-arrow"></i>
+                </div>
+                <div id="watchlistListDropdown" class="watchlist-list-dropdown app-hidden"></div>
+                <div class="controls-flex-row no-gap sort-arrow-row">
+                    <select id="sortSelect" class="dropdown-large right-rounded">
+                        <!-- Options are rendered dynamically by script.js -->
+                    </select>
+                    <div class="toggle-asx-buttons-group">
+                        <button id="toggleAsxButtonsBtn" class="header-action-btn" title="Toggle ASX Code Buttons">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
