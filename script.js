@@ -558,9 +558,17 @@ const modalStarRating = document.getElementById('modalStarRating');
 // --- ASX Code Toggle Button Functionality ---
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     toggleAsxButtonsBtn.addEventListener('click', function () {
-        const expanded = asxCodeButtonsContainer.classList.toggle('expanded');
-        toggleAsxButtonsBtn.classList.toggle('expanded', expanded);
-        toggleAsxButtonsBtn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+    const expanded = !asxCodeButtonsContainer.classList.contains('expanded');
+    if (expanded) {
+        asxCodeButtonsContainer.classList.add('expanded');
+        asxCodeButtonsContainer.style.pointerEvents='auto';
+    } else {
+        asxCodeButtonsContainer.classList.remove('expanded');
+        asxCodeButtonsContainer.style.pointerEvents='none';
+    }
+    toggleAsxButtonsBtn.classList.toggle('expanded', expanded);
+    toggleAsxButtonsBtn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+    asxCodeButtonsContainer.setAttribute('aria-hidden', expanded ? 'false':'true');
     });
 }
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
@@ -3034,7 +3042,10 @@ function renderSortSelect() {
 
 
 function openWatchlistPicker() {
-    if (!watchlistPickerModal || !watchlistPickerList) return;
+    if (!watchlistPickerModal || !watchlistPickerList) {
+        console.warn('Watchlist Picker: Modal elements not found. modal?', !!watchlistPickerModal, ' list?', !!watchlistPickerList);
+        return;
+    }
     watchlistPickerList.innerHTML='';
     const items=[];
     items.push({id:ALL_SHARES_ID,name:'All Shares'});
@@ -6206,8 +6217,12 @@ if (sortSelect) {
                 console.warn('Edit Share From Detail: Edit button was disabled, preventing action.');
                 return;
             }
-            hideModal(shareDetailModal);
-            showEditFormForSelectedShare();
+            // Do not immediately hide detail modal; allow edit form to open and then close detail if needed inside showEditFormForSelectedShare
+            if (typeof showEditFormForSelectedShare === 'function') {
+                showEditFormForSelectedShare();
+            } else {
+                hideModal(shareDetailModal);
+            }
         });
     }
 
