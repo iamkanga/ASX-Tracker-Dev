@@ -724,6 +724,97 @@ const cashFormInputs = [
 
 
 // --- GLOBAL HELPER FUNCTIONS ---
+const appsScriptUrl = 'YOUR_APPS_SCRIPT_URL_HERE'; // *** IMPORTANT: Replace this placeholder with your actual URL ***
+
+// Function to fetch the latest prices from the Apps Script and update the UI
+async function fetchLivePricesAndUpdateUI() {
+    logDebug('UI: Refresh Live Prices button clicked.');
+    // You may have a function like showLoadingIndicator();
+    
+    // Call the newly updated live price fetch function
+    await fetchLivePrices();
+
+    // You may have a function like hideLoadingIndicator();
+}
+
+/**
+ * Fetches live price data from the Google Apps Script Web App.
+ * Updates the `livePrices` global object.
+ * This version uses a POST request to avoid CORS issues.
+ */
+async function fetchLivePrices() {
+    logDebug('Live Price: Fetching from Apps Script...');
+    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+        logDebug('Live Price: Skipped (cash view).');
+        window._livePricesLoaded = true;
+        hideSplashScreenIfReady();
+        return;
+    }
+    try {
+        const response = await fetch(appsScriptUrl, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'getPrices' }),
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
+        const needed = haveShares ? new Set(allSharesData.map(s => s.shareName.toUpperCase())) : null;
+        const LOG_LIMIT = 20;
+        let skipped = 0, skippedLogged = 0, accepted = 0, surrogate = 0, filtered = 0;
+        const newLivePrices = {};
+        data.forEach(item => {
+            const codeRaw = item.ASXCode; if (!codeRaw) return;
+            const code = String(codeRaw).toUpperCase();
+            if (needed && !needed.has(code)) { filtered++; return; }
+            const liveParsed = parseFloat(item.LivePrice);
+            const prevParsed = parseFloat(item.PrevClose);
+            const hasLive = !isNaN(liveParsed);
+            const hasPrev = !isNaN(prevParsed);
+            const effectiveLive = hasLive ? liveParsed : (hasPrev ? prevParsed : NaN);
+            if (isNaN(effectiveLive)) { skipped++; if (DEBUG_MODE && skippedLogged < LOG_LIMIT) { console.warn('Live Price skip', code, item.LivePrice, item.PrevClose); skippedLogged++; } return; }
+            if (!hasLive && hasPrev) surrogate++;
+            accepted++;
+            const shareData = haveShares ? allSharesData.find(s => s.shareName.toUpperCase() === code) : null;
+            const targetPrice = shareData && !isNaN(parseFloat(shareData.targetPrice)) ? parseFloat(shareData.targetPrice) : undefined;
+            const dir = shareData && shareData.targetDirection ? shareData.targetDirection : 'below';
+            let hit = false;
+            if (targetPrice !== undefined) {
+                hit = dir === 'above' ? (effectiveLive >= targetPrice) : (effectiveLive <= targetPrice);
+            }
+            newLivePrices[code] = {
+                live: effectiveLive,
+                prevClose: hasPrev ? prevParsed : null,
+                PE: isNaN(parseFloat(item.PE)) ? null : parseFloat(item.PE),
+                High52: isNaN(parseFloat(item.High52)) ? null : parseFloat(item.High52),
+                Low52: isNaN(parseFloat(item.Low52)) ? null : parseFloat(item.Low52),
+                targetHit: hit,
+                lastLivePrice: effectiveLive,
+                lastPrevClose: hasPrev ? prevParsed : null,
+                surrogateFromPrevClose: (!hasLive && hasPrev) || undefined
+            };
+        });
+        livePrices = newLivePrices;
+        if (DEBUG_MODE) {
+            const parts = [`accepted=${accepted}`];
+            if (surrogate) parts.push(`surrogate=${surrogate}`);
+            if (skipped) parts.push(`skipped=${skipped}`);
+            if (filtered) parts.push(`filtered=${filtered}`);
+            if (skipped > skippedLogged) parts.push(`skippedNotLogged=${skipped - skippedLogged}`);
+            console.log('Live Price: Summary ' + parts.join(', '));
+        }
+        onLivePricesUpdated();
+        window._livePricesLoaded = true;
+        hideSplashScreenIfReady();
+        updateTargetHitBanner();
+    } catch (e) {
+        console.error('Live Price: Fetch error', e);
+        window._livePricesLoaded = true;
+        hideSplashScreenIfReady();
+    }
+}
 
 // Helper to format decimals: always show 2 decimals, show 3 only if user entered it
 function formatUserDecimalStrict(value) {
