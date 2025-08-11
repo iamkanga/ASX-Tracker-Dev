@@ -725,16 +725,6 @@ const cashFormInputs = [
 const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
 
 // Function to fetch the latest prices from the Apps Script and update the UI
-async function fetchLivePricesAndUpdateUI() {
-    logDebug('UI: Refresh Live Prices button clicked.');
-    // You may have a function like showLoadingIndicator();
-    
-    // Call the newly updated live price fetch function
-    await fetchLivePrices();
-
-    // You may have a function like hideLoadingIndicator();
-}
-
 async function fetchLivePrices() {
     logDebug('Live Price: Fetching from Apps Script...');
     if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
