@@ -793,25 +793,6 @@ async function fetchLivePrices() {
     }
 }
 
-// Helper to format decimals: always show 2 decimals, show 3 only if user entered it
-function formatUserDecimalStrict(value) {
-    if (value === null || isNaN(value)) return '';
-    let str = value.toString();
-    if (!str.includes('.')) return value.toFixed(2); // No decimals entered
-    let [intPart, decPart] = str.split('.');
-    if (decPart.length === 3) {
-        // User entered 3 decimals
-        return intPart + '.' + decPart;
-    } else if (decPart.length === 2) {
-        return intPart + '.' + decPart;
-    } else if (decPart.length === 1) {
-        return intPart + '.' + decPart.padEnd(2, '0');
-    } else {
-        // More than 3 decimals, round to 3
-        return Number(value).toFixed(3);
-    }
-}
-
 /**
  * Dynamically adjusts the top padding of the main content area
  * to prevent it from being hidden by the fixed header.
