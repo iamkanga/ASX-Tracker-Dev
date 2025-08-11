@@ -724,7 +724,6 @@ const cashFormInputs = [
 // --- GLOBAL HELPER FUNCTIONS ---
 const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
 
-// Function to fetch the latest prices from the Apps Script and update the UI
 async function fetchLivePricesAndUpdateUI() {
     logDebug('UI: Refresh Live Prices button clicked.');
     // Show a loading state if needed
