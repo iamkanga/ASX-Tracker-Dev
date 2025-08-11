@@ -735,11 +735,6 @@ async function fetchLivePricesAndUpdateUI() {
     // You may have a function like hideLoadingIndicator();
 }
 
-/**
- * Fetches live price data from the Google Apps Script Web App.
- * Updates the `livePrices` global object.
- * This version uses a POST request to avoid CORS issues.
- */
 async function fetchLivePrices() {
     logDebug('Live Price: Fetching from Apps Script...');
     if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
@@ -749,13 +744,7 @@ async function fetchLivePrices() {
         return;
     }
     try {
-        const response = await fetch(appsScriptUrl, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'getPrices' }),
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL);
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
         const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
