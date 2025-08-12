@@ -830,6 +830,7 @@
         
         window.authFunctions = firebaseInitialized ? {
             GoogleAuthProviderInstance: new GoogleAuthProvider(),
+            createGoogleProvider: () => new GoogleAuthProvider(),
             signInAnonymously: signInAnonymously,
             signInWithCustomToken: signInWithCustomToken,
             signInWithPopup: signInWithPopup,

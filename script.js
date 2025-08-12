@@ -6356,7 +6356,8 @@ async function initializeAppLogic() {
                 }
                 splashSignInInProgress = true;
                 updateSplashSignInButtonState('loading');
-                const provider = window.authFunctions.GoogleAuthProviderInstance;
+                // Always create a fresh provider per attempt to avoid stale customParameters
+                const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
                 if (!provider) {
                     console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
                     showCustomAlert('Authentication service not ready. Firebase script missing.');
@@ -6364,6 +6365,7 @@ async function initializeAppLogic() {
                     splashSignInInProgress = false;
                     return;
                 }
+                try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
 
                 // No auto-retry timer: keep loading state until success or real error
                 if (splashSignInRetryTimer) { clearTimeout(splashSignInRetryTimer); splashSignInRetryTimer = null; }
@@ -6422,7 +6424,7 @@ async function initializeAppLogic() {
                     userMsg = 'Popup blocked by browser. Switching to redirect…';
                     // Automatically fallback to redirect on popup-blocked
                     try {
-                        const provider = window.authFunctions.GoogleAuthProviderInstance;
+                        const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
                         try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
                         try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
                         const resolver = window.authFunctions.browserPopupRedirectResolver;
@@ -6439,7 +6441,7 @@ async function initializeAppLogic() {
                 } else if (error.code === 'auth/operation-not-supported-in-this-environment') {
                     userMsg = 'This environment blocks popups. Switching to redirect…';
                     try {
-                        const provider = window.authFunctions.GoogleAuthProviderInstance;
+                        const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
                         try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
                         try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
                         const resolver = window.authFunctions.browserPopupRedirectResolver;
@@ -6481,15 +6483,28 @@ async function initializeAppLogic() {
     // Handle redirect sign-in result (e.g., mobile flow)
     try {
         if (window.authFunctions && window.authFunctions.getRedirectResult && window.firebaseAuth) {
-            window.authFunctions.getRedirectResult(window.firebaseAuth).then((result) => {
+            const resolver = window.authFunctions.browserPopupRedirectResolver;
+            window.authFunctions.getRedirectResult(window.firebaseAuth, resolver).then(async (result) => {
                 if (result && result.user) {
                     logDebug('Auth: getRedirectResult returned user; redirect sign-in completed.');
                     try { localStorage.removeItem('authRedirectAttempted'); } catch(_) {}
                 } else {
                     // No result returned after redirect; if we attempted a redirect, hint the user
                     const attempted = (()=>{ try { return localStorage.getItem('authRedirectAttempted') === '1'; } catch(_) { return false; } })();
-                    if (attempted && splashSignInBtn) {
-                        updateSplashSignInButtonState('retry', 'Try again');
+                    if (attempted) {
+                        const ua = navigator.userAgent || '';
+                        const isiOSPWA = /iPhone|iPad|iPod/i.test(ua) && ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true);
+                        if (isiOSPWA) {
+                            updateSplashSignInButtonState('error', 'Open in Safari');
+                            showCustomAlert('On iOS when installed to Home Screen, Google sign-in may not return a session. Please open this app in Safari and sign in.');
+                        } else {
+                            // Wait briefly to allow onAuthStateChanged to deliver the user before showing retry
+                            setTimeout(() => {
+                                if (!window._userAuthenticated && splashSignInBtn) {
+                                    updateSplashSignInButtonState('retry', 'Try again');
+                                }
+                            }, 1500);
+                        }
                         try { localStorage.removeItem('authRedirectAttempted'); } catch(_) {}
                     }
                 }
