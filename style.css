@@ -5173,12 +5173,15 @@ body.dark-theme .alert-item {
     transition: background-color 0.2s ease;
 }
 
-.alert-panel-footer .secondary-buttons {
+/* Use coffee accent styling for secondary action buttons in both legacy alert panel and modal footers */
+.alert-panel-footer .secondary-buttons,
+.modal-action-buttons-footer .secondary-buttons {
     background-color: var(--accent-color);
     color: #fff;
     border: 1px solid var(--accent-color);
 }
-.alert-panel-footer .secondary-buttons:hover {
+.alert-panel-footer .secondary-buttons:hover,
+.modal-action-buttons-footer .secondary-buttons:hover {
     background-color: var(--icon-action-hover-color);
     border-color: var(--icon-action-hover-color);
 }

@@ -188,13 +188,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 watchlistSelect.value = 'portfolio';
             }
         }
-        // Persist user intent
+    // Persist user intent
         try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e) {}
         let portfolioSection = document.getElementById('portfolioSection');
         portfolioSection.style.display = 'block';
     renderPortfolioList();
     // Keep header text in sync
     try { updateMainTitle(); } catch(e) {}
+    // Ensure sort options and alerts are correct for Portfolio view
+    try { renderSortSelect(); } catch(e) {}
+    try { updateTargetHitBanner(); } catch(e) {}
         if (typeof renderAsxCodeButtons === 'function') {
             if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
             renderAsxCodeButtons();
@@ -3135,11 +3138,26 @@ function renderWatchlistSelect() {
     if (desiredWatchlistId && Array.from(watchlistSelect.options).some(opt => opt.value === desiredWatchlistId)) {
         watchlistSelect.value = desiredWatchlistId;
     } else {
-        // Fallback: If the desired watchlist is not found (e.g., deleted, or first load with no preference),
-        // default to "All Shares".
-        watchlistSelect.value = ALL_SHARES_ID;
-        currentSelectedWatchlistIds = [ALL_SHARES_ID]; // Ensure currentSelectedWatchlistIds is consistent
-        logDebug('UI Update: Watchlist select defaulted to All Shares as desired ID was not found.');
+        // Fallback: Prefer the last selected view from localStorage if valid, especially for 'portfolio'
+        try {
+            const lsView = localStorage.getItem('lastSelectedView');
+            const hasOption = lsView && Array.from(watchlistSelect.options).some(opt => opt.value === lsView);
+            if (hasOption) {
+                watchlistSelect.value = lsView;
+                currentSelectedWatchlistIds = [lsView];
+                logDebug('UI Update: Watchlist select applied lastSelectedView from localStorage: ' + lsView);
+            } else {
+                // Default to All Shares only if no valid preference is found
+                watchlistSelect.value = ALL_SHARES_ID;
+                currentSelectedWatchlistIds = [ALL_SHARES_ID];
+                logDebug('UI Update: Watchlist select defaulted to All Shares as desired ID was not found.');
+            }
+        } catch(e) {
+            // On any error, default to All Shares
+            watchlistSelect.value = ALL_SHARES_ID;
+            currentSelectedWatchlistIds = [ALL_SHARES_ID];
+            logDebug('UI Update: Watchlist select defaulted to All Shares due to error reading localStorage.');
+        }
     }
     logDebug('UI Update: Watchlist select dropdown rendered. Selected value: ' + watchlistSelect.value);
     updateMainTitle(); // Update main title based on newly selected watchlist
@@ -3411,6 +3429,9 @@ function renderWatchlist() {
         if (typeof renderPortfolioList === 'function') {
             renderPortfolioList();
         }
+    // Update sort options and alerts for portfolio view as well
+    try { renderSortSelect(); } catch(e) {}
+    try { updateTargetHitBanner(); } catch(e) {}
         // Also render ASX code buttons for portfolio shares
         if (typeof renderAsxCodeButtons === 'function') {
             renderAsxCodeButtons();
