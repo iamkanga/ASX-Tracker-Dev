@@ -452,11 +452,14 @@ const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
 const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
 let userWatchlists = []; // Stores all watchlists for the user
 let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
+// Initialize dismissal and sort state from localStorage as early as possible to avoid flashes/defaults
+try { targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true'; } catch(e) {}
 // Restore last selected view (persisted)
 try {
     const lastView = localStorage.getItem('lastSelectedView');
     if (lastView === 'portfolio') {
         currentSelectedWatchlistIds = ['portfolio'];
+    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
         // Defer actual DOM switch until initial data load completes; hook into data load readiness
         window.addEventListener('load', () => {
             setTimeout(() => { if (typeof showPortfolioView === 'function') showPortfolioView(); }, 300);
@@ -466,11 +469,18 @@ try {
     try { updateMainTitle(); } catch(e) {}
     try { ensureTitleStructure(); } catch(e) {}
     try { updateTargetHitBanner(); } catch(e) {}
+    } else if (lastView && lastView !== 'portfolio') {
+        currentSelectedWatchlistIds = [lastView];
+        if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = lastView; }
+        try { updateMainTitle(); } catch(e) {}
+        try { ensureTitleStructure(); } catch(e) {}
+        try { updateTargetHitBanner(); } catch(e) {}
     }
 } catch(e) { /* ignore */ }
 const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
 const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
 let currentSortOrder = 'entryDate-desc'; // Default sort order
+try { const lsSort = localStorage.getItem('lastSortOrder'); if (lsSort) { currentSortOrder = lsSort; } } catch(e) {}
 let contextMenuOpen = false; // To track if the custom context menu is open
 let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
 let originalShareData = null; // Stores the original share data when editing for dirty state check
@@ -3138,8 +3148,8 @@ function renderWatchlistSelect() {
 
 function renderSortSelect() {
         if (!sortSelect) { console.error('renderSortSelect: sortSelect element not found.'); return; }
-        // Store the currently selected value before clearing
-        const currentSelectedSortValue = sortSelect.value;
+    // Store the currently selected value before clearing (used as a fallback)
+    const currentSelectedSortValue = sortSelect.value;
 
         // Set the initial placeholder text to "Sort List"
         sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
@@ -3192,8 +3202,12 @@ function renderSortSelect() {
             defaultSortValue = 'name-asc'; // Default for cash
         }
 
-        // Try to re-select the previously selected value if it's still valid for the current view
-        if (currentSelectedSortValue && Array.from(sortSelect.options).some(option => option.value === currentSelectedSortValue)) {
+        // Prefer an explicitly set currentSortOrder if it's valid for this view
+        const optionValues = Array.from(sortSelect.options).map(o => o.value);
+        if (currentSortOrder && optionValues.includes(currentSortOrder)) {
+            sortSelect.value = currentSortOrder;
+            logDebug('Sort: Applied currentSortOrder: ' + currentSortOrder);
+        } else if (currentSelectedSortValue && optionValues.includes(currentSelectedSortValue)) {
             sortSelect.value = currentSelectedSortValue;
             currentSortOrder = currentSelectedSortValue;
             logDebug('Sort: Applied previously selected sort order: ' + currentSortOrder);
@@ -3230,6 +3244,8 @@ function openWatchlistPicker() {
             currentSelectedWatchlistIds=[it.id];
             if (watchlistSelect) watchlistSelect.value=it.id; // sync hidden select
             try { localStorage.setItem('lastSelectedView', it.id); } catch(e) {}
+            // Persist to Firestore as well for cross-device restore
+            try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
             updateMainTitle();
             renderSortSelect();
             renderWatchlist();
@@ -4151,6 +4167,18 @@ async function loadUserWatchlistsAndSettings() {
             logDebug('User Settings: User profile settings not found. Will determine default watchlist selection.');
         }
 
+        // Prefer local device's last selected view if available and valid
+        try {
+            const lsView = localStorage.getItem('lastSelectedView');
+            if (lsView) {
+                const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || userWatchlists.some(wl => wl.id === lsView);
+                if (isValid) {
+                    currentSelectedWatchlistIds = [lsView];
+                    logDebug('User Settings: Overriding selection with localStorage lastSelectedView: ' + lsView);
+                }
+            }
+        } catch(e) { /* ignore */ }
+
         // Determine final currentSelectedWatchlistIds if not set or invalid after loading/filtering
         if (!currentSelectedWatchlistIds || currentSelectedWatchlistIds.length === 0) {
             const firstAvailableStockWatchlist = userWatchlists.find(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
@@ -4171,28 +4199,21 @@ async function loadUserWatchlistsAndSettings() {
             populateShareWatchlistSelect();
         }
 
-        // Apply saved sort order or default
-        // Try Firestore sort first; if missing/invalid, fall back to localStorage
+        // Apply saved sort preference to currentSortOrder; let renderSortSelect enforce it after options are built
         let candidateSort = savedSortOrder;
         if (!candidateSort) {
             try { candidateSort = localStorage.getItem('lastSortOrder') || null; } catch (e) { candidateSort = null; }
             if (candidateSort) logDebug('Sort: Loaded sort order from localStorage fallback: ' + candidateSort);
         }
-        if (currentUserId && candidateSort && Array.from(sortSelect.options).some(option => option.value === candidateSort)) {
-            sortSelect.value = candidateSort;
-            // AGGRESSIVE FIX: Ensure currentSortOrder is updated to match the saved sort
+        if (candidateSort) {
             currentSortOrder = candidateSort;
-            logDebug('Sort: Applied saved sort order: ' + currentSortOrder);
+            logDebug('Sort: Using saved sort order: ' + currentSortOrder);
         } else {
             // Set to default sort for the current view type
-            let defaultSortValue = 'entryDate-desc';
-            if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-                defaultSortValue = 'name-asc';
-            }
-            currentSortOrder = defaultSortValue;
-            logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
+            currentSortOrder = currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'entryDate-desc';
+            logDebug('Sort: No saved sort order found, defaulting to: ' + currentSortOrder);
         }
-        renderSortSelect(); // Re-render sort options based on selected watchlist type
+        renderSortSelect(); // Build options, then apply currentSortOrder
 
         // Apply saved theme or default
         if (savedTheme) {
