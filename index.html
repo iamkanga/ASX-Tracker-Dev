@@ -131,8 +131,8 @@
     .watchlist-dynamic-title { margin:4px 0 2px; font-size:1.85rem; font-weight:650; cursor:default; text-align:center; line-height:1.1; flex:0 1 auto; width:auto; outline:none; }
     #dynamicWatchlistTitleText { cursor:pointer; display:inline-block; padding:0 4px; border-radius:4px; pointer-events:auto; }
     #dynamicWatchlistTitle { user-select:none; pointer-events:none; }
-    #dynamicWatchlistTitleText:focus { outline:2px solid var(--accent-color,#c18b47); outline-offset:2px; }
-        .watchlist-dynamic-title:focus { outline:2px solid var(--accent-color, #c18b47); outline-offset:3px; }
+    #dynamicWatchlistTitleText:focus { outline:2px solid var(--accent-color,#a49393); outline-offset:2px; }
+        .watchlist-dynamic-title:focus { outline:2px solid var(--accent-color, #a49393); outline-offset:3px; }
     .sort-line-row { gap:12px; font-size:0.9rem; margin-bottom:6px; }
         .current-sort-display { min-height:1.2em; font-weight:500; }
     /* Subtle triangle toggle: two chevrons forming minimal arrow */
@@ -143,18 +143,18 @@
     .asx-toggle-triangle::after { display:none; }
     /* Remove mouse/touch focus ring but keep keyboard focus-visible */
     .asx-toggle-triangle:focus { outline:none; }
-    .asx-toggle-triangle:focus-visible { outline:2px solid var(--accent-color,#c18b47); outline-offset:2px; border-radius:4px; }
+    .asx-toggle-triangle:focus-visible { outline:2px solid var(--accent-color,#a49393); outline-offset:2px; border-radius:4px; }
     .asx-toggle-triangle:active { outline:none; }
     @media (hover:hover){ .asx-toggle-triangle:hover::before, .asx-toggle-triangle:hover::after { opacity:1; } }
         /* Watchlist picker modal */
         .watchlist-picker-list { display:flex; flex-direction:column; gap:6px; margin:12px 0; }
     .watchlist-picker-list .picker-item { padding:10px 12px; border:1px solid var(--border-color,#d0d0d0); border-radius:6px; cursor:pointer; background:var(--card-bg,#fff); color:var(--text-color); font-size:0.95rem; display:flex; justify-content:space-between; align-items:center; transition:background .18s,color .18s,border-color .18s; }
-    .watchlist-picker-list .picker-item.active { background:var(--accent-color,#c18b47); color:#fff; border-color:var(--accent-color,#c18b47); font-weight:600; box-shadow:0 0 0 2px rgba(255,255,255,0.18) inset; }
+    .watchlist-picker-list .picker-item.active { background:var(--accent-color,#a49393); color:#fff; border-color:var(--accent-color,#a49393); font-weight:600; box-shadow:0 0 0 2px rgba(255,255,255,0.18) inset; }
     .watchlist-picker-list .picker-item:hover { background:var(--hover-bg,#f5f7fa); }
     /* Dark theme override (assumes a body.dark or body.dark-theme class if present) */
     body.dark .watchlist-picker-list .picker-item { background:var(--card-bg,#222); border-color:var(--border-color,#444); }
     body.dark .watchlist-picker-list .picker-item:hover { background:#2e2e2e; }
-    body.dark .watchlist-picker-list .picker-item.active { background:var(--accent-color,#c18b47); color:#fff; border-color:var(--accent-color,#c18b47); box-shadow:0 0 0 2px rgba(0,0,0,0.4) inset; }
+    body.dark .watchlist-picker-list .picker-item.active { background:var(--accent-color,#a49393); color:#fff; border-color:var(--accent-color,#a49393); box-shadow:0 0 0 2px rgba(0,0,0,0.4) inset; }
         .modal-content.watchlist-picker { max-width:400px; width:94%; }
         .modal-actions { text-align:right; margin-top:8px; }
         @media (max-width:600px){
@@ -164,7 +164,7 @@
         }
     /* Flash highlight for scrolled share */
     .flash-highlight { animation: flashFade 1.2s ease-in-out; }
-    @keyframes flashFade { 0% { box-shadow:0 0 0 3px var(--accent-color,#c18b47); } 50% { box-shadow:0 0 0 1px var(--accent-color,#c18b47); } 100% { box-shadow:none; } }
+    @keyframes flashFade { 0% { box-shadow:0 0 0 3px var(--accent-color,#a49393); } 50% { box-shadow:0 0 0 1px var(--accent-color,#a49393); } 100% { box-shadow:none; } }
         </style>
 </head>
 <body>

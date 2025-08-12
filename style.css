@@ -104,7 +104,7 @@ function makeFilesAvailableToSourceControlCSS() {
     --background-color: #eef2f3;
     --text-color: #333;
     --header-bg: #d9e2f4;
-    --accent-color: #c18b47; /* coffee accent */
+    --accent-color: #a49393; /* coffee accent (standardized selection fill) */
     --border-color: #c9d2d4;
     --button-bg: #007bff;
     --button-text: #fff;
@@ -185,8 +185,8 @@ function makeFilesAvailableToSourceControlCSS() {
     --cash-section-bg: #f8f9fa;
     --cash-card-bg: #ffffff;
     --cash-border-color: #c9d2d4;
-    --cash-total-bg: #e0f7fa;
-    --cash-total-text: #0056b3;
+    --cash-total-bg: #a49393; /* standardized coffee fill */
+    --cash-total-text: #ffffff; /* maintain contrast over coffee fill */
     --cash-button-bg: #00FF00; /* Green for add */
     --cash-button-hover-bg: #00FF00;
     --cash-primary-button-bg: #007bff; /* Blue for save */
@@ -269,8 +269,8 @@ body.dark-theme {
     --cash-section-bg: #282828;
     --cash-card-bg: #333333;
     --cash-border-color: #555555;
-    --cash-total-bg: #444444;
-    --cash-total-text: #e0e0e0;
+    --cash-total-bg: #a49393; /* coffee fill in dark theme for consistency */
+    --cash-total-text: #ffffff;
     --cash-button-bg: #00FF00; /* Pure green */
     --cash-button-hover-bg: #00FF00; /* Pure green hover */
     --cash-primary-button-bg: #555555; /* Gray primary button */
