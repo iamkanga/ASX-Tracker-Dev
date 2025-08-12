@@ -597,9 +597,6 @@ function applyAsxButtonsState() {
         toggleAsxButtonsBtn.classList.toggle('expanded', shouldShow);
         toggleAsxButtonsBtn.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
     }
-
-    // Adjust main content padding after a short delay to allow the DOM to update
-    setTimeout(adjustMainContentPadding, 50);
 }
 
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {

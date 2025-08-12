@@ -2278,6 +2278,7 @@ main.container {
 /* Center the single dynamic title */
 h1#dynamicWatchlistTitle {
     order: 2;
+    flex: 1 1 auto;
     margin: 0;
     text-align: center;
     font-size: 1.85rem;
@@ -2291,7 +2292,7 @@ h1#dynamicWatchlistTitle {
 /* Accessible keyboard-only focus for dynamic title text/button */
 #dynamicWatchlistTitle:focus { outline: none; }
 #dynamicWatchlistTitle:focus-visible { outline: 2px solid var(--green-color); outline-offset: 2px; }
-#dynamicWatchlistTitleText { cursor:pointer; padding:0 4px; border-radius:4px; pointer-events:auto; }
+#dynamicWatchlistTitleText:focus { outline: none; }
 #dynamicWatchlistTitleText:focus-visible { outline: 2px solid var(--green-color); outline-offset: 2px; }
 .header-action-btn-right {
     order: 3;
@@ -3041,11 +3042,11 @@ table tbody tr:not(.selected):hover {
 .portfolio-summary-bar .ps-card.loss.highlight { border-color:#FF2F2F; }
 .portfolio-summary-bar .ps-card.net.positive.highlight { border-color:#00FF8C; }
 .portfolio-summary-bar .ps-card.net.negative.highlight { border-color:#FF2F2F; }
-/* .portfolio-summary-bar .ps-card::after { content:""; position:absolute; inset:0; opacity:0.15; pointer-events:none; }
+.portfolio-summary-bar .ps-card::after { content:""; position:absolute; inset:0; opacity:0.15; pointer-events:none; }
 .portfolio-summary-bar .ps-card.profit::after { background:linear-gradient(135deg,#00c878,#004d2f); }
 .portfolio-summary-bar .ps-card.loss::after { background:linear-gradient(135deg,#ff4d4d,#5c0b0b); }
 .portfolio-summary-bar .ps-card.net.positive::after { background:linear-gradient(135deg,#00c878,#004d2f); }
-.portfolio-summary-bar .ps-card.net.negative::after { background:linear-gradient(135deg,#ff4d4d,#5c0b0b); } */
+.portfolio-summary-bar .ps-card.net.negative::after { background:linear-gradient(135deg,#ff4d4d,#5c0b0b); }
 .portfolio-summary-bar .ps-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.6px; opacity:0.75; margin-bottom:2px; }
 .portfolio-summary-bar .ps-value { font-size:1.15rem; font-weight:700; position:relative; z-index:1; }
 .portfolio-summary-bar .ps-card.profit .ps-value { color:#00FF9C; }
