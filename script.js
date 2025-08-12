@@ -6314,7 +6314,6 @@ async function initializeAppLogic() {
     if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
         let splashSignInRetryTimer = null;
         let splashSignInInProgress = false;
-        let splashTriedPopup = false;
         splashSignInBtn.setAttribute('data-bound','true');
         splashSignInBtn.addEventListener('click', async () => {
             logDebug('Auth: Splash Screen Sign-In Button Clicked.');
@@ -6341,32 +6340,10 @@ async function initializeAppLogic() {
                     return;
                 }
 
-                // Start timeout to auto-enable retry if popup blocked or user closes it silently
-                if (splashSignInRetryTimer) clearTimeout(splashSignInRetryTimer);
-                splashSignInRetryTimer = setTimeout(async () => {
-                    if (!window._userAuthenticated) {
-                        logDebug('Auth: Sign-in timeout elapsed without auth state change.');
-                        if (splashTriedPopup && window.authFunctions && window.authFunctions.signInWithRedirect) {
-                            logDebug('Auth: Auto-falling back to redirect after popup timeout.');
-                            try {
-                                await window.authFunctions.signInWithRedirect(currentAuth, provider);
-                                return;
-                            } catch (e5) {
-                                console.warn('Auth: Redirect fallback failed after popup timeout:', e5);
-                                updateSplashSignInButtonState('retry');
-                                splashSignInInProgress = false;
-                            }
-                        } else {
-                            updateSplashSignInButtonState('retry');
-                            splashSignInInProgress = false;
-                        }
-                    }
-                }, 7000);
+                // No auto-retry timer: keep loading state until success or real error
+                if (splashSignInRetryTimer) { clearTimeout(splashSignInRetryTimer); splashSignInRetryTimer = null; }
 
-                // Configure provider UX hints
-                try {
-                    provider.setCustomParameters({ prompt: 'select_account' });
-                } catch(_) {}
+                // Configure provider UX hints: only force account selection for redirect flows
                 // Prefer popup on desktop; force redirect on mobile Chrome (prevents popup blocked)
                 const ua = navigator.userAgent || navigator.vendor || '';
                 const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
@@ -6378,6 +6355,11 @@ async function initializeAppLogic() {
                 const forceRedirectOverride = (() => { try { return localStorage.getItem('forceRedirectAuth') === 'true' || localStorage.getItem('forceRedirectAuthDesktop') === 'true'; } catch(_) { return false; } })();
                 // Prefer redirect on mobile/PWA/file://; use popup on desktop http(s). Allow overrides via localStorage.
                 const preferRedirect = forceRedirectOverride || (isMobile || isStandalonePWA || isIOS || isMobileChrome || isFileProtocol);
+                try {
+                    if (preferRedirect) {
+                        provider.setCustomParameters({ prompt: 'select_account' });
+                    }
+                } catch(_) {}
                 console.log('[Auth Env]', { isMobile, isStandalonePWA, isIOS, isAndroid, isMobileChrome, isFileProtocol, preferRedirect, forceRedirectOverride, origin: window.location.origin });
                 if (preferRedirect && window.authFunctions.signInWithRedirect) {
                     await window.authFunctions.signInWithRedirect(currentAuth, provider);
@@ -6385,7 +6367,6 @@ async function initializeAppLogic() {
                 } else {
                     // Desktop or environments where popup is allowed
                     await window.authFunctions.signInWithPopup(currentAuth, provider);
-                    splashTriedPopup = true;
                 }
                 logDebug('Auth: Google Sign-In successful from splash screen.');
                 if (splashSignInRetryTimer) {
@@ -6433,16 +6414,9 @@ async function initializeAppLogic() {
                     updateSplashSignInButtonState('retry', 'Retry (popup closed)');
                     splashSignInInProgress = false;
                 } else if (error.code === 'auth/cancelled-popup-request') {
-                    userMsg = 'Popup request cancelled. Switching to redirect…';
-                    try {
-                        const provider = window.authFunctions.GoogleAuthProviderInstance;
-                        try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
-                        await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
-                        return;
-                    } catch (e4) {
-                        updateSplashSignInButtonState('retry', 'Retry sign-in');
-                        splashSignInInProgress = false;
-                    }
+                    userMsg = 'Popup request cancelled. Try again.';
+                    updateSplashSignInButtonState('retry', 'Retry sign-in');
+                    splashSignInInProgress = false;
                 } else if (error.code === 'auth/network-request-failed') {
                     userMsg = 'Network error. Check your internet connection and try again.';
                     updateSplashSignInButtonState('retry', 'Retry (network)');
