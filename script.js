@@ -6352,7 +6352,9 @@ async function initializeAppLogic() {
                 const isIOS = /iPhone|iPad|iPod/i.test(ua);
                 const isAndroid = /Android/i.test(ua);
                 const isMobileChrome = (/CriOS|Chrome\/[0-9.]+/i.test(ua) && (isAndroid || isIOS));
-                const preferRedirect = (isMobile || isStandalonePWA || isIOS || isMobileChrome);
+                const isFileProtocol = (window.location && window.location.protocol === 'file:');
+                // Prefer redirect broadly to avoid popup blockers on desktop and mobile
+                const preferRedirect = true;
                 if (preferRedirect && window.authFunctions.signInWithRedirect) {
                     await window.authFunctions.signInWithRedirect(currentAuth, provider);
                     return; // onAuthStateChanged will run after redirect
@@ -6385,14 +6387,30 @@ async function initializeAppLogic() {
                     } catch (e2) {
                         updateSplashSignInButtonState('retry', 'Retry (allow popup)');
                     }
+                } else if (error.code === 'auth/operation-not-supported-in-this-environment') {
+                    userMsg = 'This environment blocks popups. Switching to redirect…';
+                    try {
+                        const provider = window.authFunctions.GoogleAuthProviderInstance;
+                        try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
+                        await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
+                        return;
+                    } catch (e3) {
+                        updateSplashSignInButtonState('retry', 'Retry (unsupported env)');
+                    }
+                } else if (error.code === 'auth/unauthorized-domain') {
+                    userMsg = 'Unauthorized domain for OAuth. Add this domain to Firebase Auth > Authorized domains.';
+                    updateSplashSignInButtonState('error', 'Check Firebase Auth domains');
                 } else if (error.code === 'auth/popup-closed-by-user') {
                     userMsg = 'Popup closed. Click retry.';
                     updateSplashSignInButtonState('retry', 'Retry (popup closed)');
                 } else if (error.code === 'auth/cancelled-popup-request') {
                     userMsg = 'Popup request cancelled. Try again.';
                     updateSplashSignInButtonState('retry', 'Retry sign-in');
+                } else if (error.code === 'auth/network-request-failed') {
+                    userMsg = 'Network error. Check your internet connection and try again.';
+                    updateSplashSignInButtonState('retry', 'Retry (network)');
                 } else {
-                    updateSplashSignInButtonState('error');
+                    updateSplashSignInButtonState('error', 'Retry Sign-In');
                 }
                 showCustomAlert(userMsg + ': ' + error.message);
             }
