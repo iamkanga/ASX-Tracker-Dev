@@ -6390,6 +6390,13 @@ async function initializeAppLogic() {
                 console.log('[Auth Env]', { isMobile, isStandalonePWA, isIOS, isAndroid, isMobileChrome, isFileProtocol, preferRedirect, forceRedirectOverride, origin: window.location.origin });
                 if (preferRedirect && window.authFunctions.signInWithRedirect) {
                     try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
+                    // Switch to session persistence for mobile/redirect to survive incognito/storage quirks
+                    try {
+                        if (window.authFunctions.setPersistence && window.authFunctions.browserSessionPersistence) {
+                            await window.authFunctions.setPersistence(currentAuth, window.authFunctions.browserSessionPersistence);
+                            logDebug('Auth: Persistence set to browserSessionPersistence for redirect flow.');
+                        }
+                    } catch(e) { console.warn('Auth: Failed to set session persistence before redirect.', e); }
                     const resolver = window.authFunctions.browserPopupRedirectResolver;
                     if (resolver) {
                         await window.authFunctions.signInWithRedirect(currentAuth, provider, resolver);
@@ -6427,6 +6434,12 @@ async function initializeAppLogic() {
                         const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
                         try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
                         try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
+                        try {
+                            if (window.authFunctions.setPersistence && window.authFunctions.browserSessionPersistence) {
+                                await window.authFunctions.setPersistence(window.firebaseAuth, window.authFunctions.browserSessionPersistence);
+                                logDebug('Auth: Persistence set to browserSessionPersistence (popup-blocked fallback).');
+                            }
+                        } catch(e) { console.warn('Auth: Failed to set session persistence in popup-blocked fallback.', e); }
                         const resolver = window.authFunctions.browserPopupRedirectResolver;
                         if (resolver) {
                             await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider, resolver);
@@ -6444,6 +6457,12 @@ async function initializeAppLogic() {
                         const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
                         try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
                         try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
+                        try {
+                            if (window.authFunctions.setPersistence && window.authFunctions.browserSessionPersistence) {
+                                await window.authFunctions.setPersistence(window.firebaseAuth, window.authFunctions.browserSessionPersistence);
+                                logDebug('Auth: Persistence set to browserSessionPersistence (unsupported env fallback).');
+                            }
+                        } catch(e) { console.warn('Auth: Failed to set session persistence in unsupported env fallback.', e); }
                         const resolver = window.authFunctions.browserPopupRedirectResolver;
                         if (resolver) {
                             await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider, resolver);
