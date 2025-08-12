@@ -810,7 +810,19 @@ window.addEventListener('popstate', ()=>{
     // Use centralized close to enable restoration (e.g., return to Alerts modal)
     closeModals();
     } else if (last.type === 'sidebar') {
-        if (appSidebar) appSidebar.classList.remove('open');
+        // Use the unified closer to fully reset layout, overlay, and scroll locks
+        if (typeof toggleAppSidebar === 'function') {
+            toggleAppSidebar(false);
+        } else if (appSidebar) {
+            // Fallback: ensure classes and styles are reset to avoid layout gaps
+            appSidebar.classList.remove('open');
+            document.body.classList.remove('sidebar-active');
+            document.body.style.overflow = '';
+            if (typeof sidebarOverlay !== 'undefined' && sidebarOverlay) {
+                sidebarOverlay.classList.remove('open');
+                sidebarOverlay.style.pointerEvents = 'none';
+            }
+        }
     }
 });
 
