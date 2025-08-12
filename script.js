@@ -6311,8 +6311,10 @@ async function initializeAppLogic() {
         }
     }
 
-    if (splashSignInBtn) {
+    if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
         let splashSignInRetryTimer = null;
+        let splashSignInInProgress = false;
+        splashSignInBtn.setAttribute('data-bound','true');
         splashSignInBtn.addEventListener('click', async () => {
             logDebug('Auth: Splash Screen Sign-In Button Clicked.');
             const currentAuth = window.firebaseAuth;
@@ -6323,12 +6325,18 @@ async function initializeAppLogic() {
                 return;
             }
             try {
+                if (splashSignInInProgress) {
+                    console.warn('Auth: Sign-in already in progress; ignoring duplicate click.');
+                    return;
+                }
+                splashSignInInProgress = true;
                 updateSplashSignInButtonState('loading');
                 const provider = window.authFunctions.GoogleAuthProviderInstance;
                 if (!provider) {
                     console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
                     showCustomAlert('Authentication service not ready. Firebase script missing.');
                     updateSplashSignInButtonState('error', 'Retry (init issue)');
+                    splashSignInInProgress = false;
                     return;
                 }
 
@@ -6388,6 +6396,7 @@ async function initializeAppLogic() {
                         return;
                     } catch (e2) {
                         updateSplashSignInButtonState('retry', 'Retry (allow popup)');
+                        splashSignInInProgress = false;
                     }
                 } else if (error.code === 'auth/operation-not-supported-in-this-environment') {
                     userMsg = 'This environment blocks popups. Switching to redirect…';
@@ -6398,21 +6407,34 @@ async function initializeAppLogic() {
                         return;
                     } catch (e3) {
                         updateSplashSignInButtonState('retry', 'Retry (unsupported env)');
+                        splashSignInInProgress = false;
                     }
                 } else if (error.code === 'auth/unauthorized-domain') {
                     userMsg = 'Unauthorized domain for OAuth. Add this domain to Firebase Auth > Authorized domains.';
                     updateSplashSignInButtonState('error', 'Check Firebase Auth domains');
+                    splashSignInInProgress = false;
                 } else if (error.code === 'auth/popup-closed-by-user') {
                     userMsg = 'Popup closed. Click retry.';
                     updateSplashSignInButtonState('retry', 'Retry (popup closed)');
+                    splashSignInInProgress = false;
                 } else if (error.code === 'auth/cancelled-popup-request') {
-                    userMsg = 'Popup request cancelled. Try again.';
-                    updateSplashSignInButtonState('retry', 'Retry sign-in');
+                    userMsg = 'Popup request cancelled. Switching to redirect…';
+                    try {
+                        const provider = window.authFunctions.GoogleAuthProviderInstance;
+                        try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
+                        await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
+                        return;
+                    } catch (e4) {
+                        updateSplashSignInButtonState('retry', 'Retry sign-in');
+                        splashSignInInProgress = false;
+                    }
                 } else if (error.code === 'auth/network-request-failed') {
                     userMsg = 'Network error. Check your internet connection and try again.';
                     updateSplashSignInButtonState('retry', 'Retry (network)');
+                    splashSignInInProgress = false;
                 } else {
                     updateSplashSignInButtonState('error', 'Retry Sign-In');
+                    splashSignInInProgress = false;
                 }
                 showCustomAlert(userMsg + ': ' + error.message);
             }
