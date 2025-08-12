@@ -235,12 +235,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return price;
         }
 
-        function fmtMoney(n) {
-            return (typeof n === 'number' && !isNaN(n)) ? '$' + n.toFixed(2) : '';
-        }
-        function fmtPct(n) {
-            return (typeof n === 'number' && !isNaN(n)) ? n.toFixed(2) + '%' : '';
-        }
+    function fmtMoney(n) { return formatMoney(n); }
+    function fmtPct(n) { return formatPercent(n); }
 
     let totalValue = 0;
     let totalPL = 0;
@@ -301,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Row colored by DAILY change, P/L cells individually colored by overall P/L (plClass)
             htmlTable += `<tr data-doc-id="${share.id}" class="${dailyChangeClass}">
                 <td class="code-cell">${share.shareName || ''}</td>
-                <td class="num-cell shares-cell">${shares !== '' ? shares : ''}</td>
+                <td class="num-cell shares-cell">${shares !== '' ? formatWithCommas(shares) : ''}</td>
                 <td class="num-cell avg-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
                 <td class="num-cell live-cell ${priceMode} liveprice-cell">${priceCell}</td>
                 <td class="num-cell value-cell">${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
@@ -712,6 +708,27 @@ function formatWithCommas(value) {
     const parts = str.split('.');
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return parts.join('.');
+}
+
+// Global helpers for consistent numeric formatting across the UI
+function formatMoney(val, opts = {}) {
+    const { hideZero = false, decimals = 2 } = opts;
+    if (val === null || val === undefined) return '';
+    const n = Number(val);
+    if (!isFinite(n)) return '';
+    if (hideZero && n === 0) return '';
+    const fixed = n.toFixed(decimals);
+    const parts = fixed.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return '$' + parts.join('.');
+}
+
+function formatPercent(val, opts = {}) {
+    const { decimals = 2 } = opts;
+    if (val === null || val === undefined) return '';
+    const n = Number(val);
+    if (!isFinite(n)) return '';
+    return n.toFixed(decimals) + '%';
 }
 
 // Fallback for missing formatUserDecimalStrict (called in edit form population)
@@ -1149,13 +1166,13 @@ function getShareDisplayData(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-        peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A';
-        high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? '$' + livePriceData.High52.toFixed(2) : 'N/A';
-        low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A';
+    peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A';
+    high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A';
+    low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A';
 
     if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+                displayLivePrice = formatMoney(currentLivePrice);
             }
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
@@ -1171,7 +1188,7 @@ function getShareDisplayData(share) {
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             }
         } else {
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? formatMoney(lastFetchedLive) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
             cardPriceChangeClass = '';
@@ -1241,8 +1258,8 @@ function addShareToTable(share) {
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
-    <td class="numeric-data-cell">${(val => { if (val !== null && !isNaN(val) && val !== 0) { const f = val.toFixed(2); const parts=f.split('.'); parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ','); return '$'+parts.join('.'); } return ''; })(Number(share.currentPrice))}</td>
+        <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
+    <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
         </td>
@@ -1428,8 +1445,8 @@ function addShareToMobileCards(share) {
         <h3 class="${priceClass}">${share.shareName || ''}</h3>
         <div class="live-price-display-section">
             <div class="fifty-two-week-row">
-                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A'}</span>
-                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? '$' + livePriceData.High52.toFixed(2) : 'N/A'}</span>
+                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
+                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
             </div>
             <div class="live-price-main-row">
                 <span class="live-price-large ${priceClass}">${displayLivePrice}</span>
@@ -1440,8 +1457,8 @@ function addShareToMobileCards(share) {
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
             </div>
         </div>
-        <p class="data-row"><span class="label-text">Reference Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</span></p>
-        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</span></p>
+    <p class="data-row"><span class="label-text">Reference Price:</span><span class="data-value">${formatMoney(Number(share.currentPrice), { hideZero: true })}</span></p>
+    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${formatMoney(Number(share.targetPrice), { hideZero: true })}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
@@ -1670,8 +1687,8 @@ function updateOrCreateShareTableRow(share) {
             <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
             <span class="price-change ${priceClass}">${displayPriceChange}</span>
         </td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
+    <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
+    <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
         </td>
@@ -1834,8 +1851,8 @@ function updateOrCreateShareMobileCard(share) {
         <h3 class="${priceClass}">${share.shareName || ''}</h3>
         <div class="live-price-display-section">
             <div class="fifty-two-week-row">
-                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A'}</span>
-                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? '$' + livePriceData.High52.toFixed(2) : 'N/A'}</span>
+                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
+                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
             </div>
             <div class="live-price-main-row">
                 <span class="live-price-large ${priceClass}">${displayLivePrice}</span>
@@ -2588,12 +2605,12 @@ function showShareDetails() {
 
         const lowSpan = document.createElement('h3');
         lowSpan.classList.add('fifty-two-week-value', 'low'); // New classes
-        lowSpan.textContent = 'Low: ' + (low52Week !== undefined && low52Week !== null && !isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A');
+    lowSpan.textContent = 'Low: ' + (low52Week !== undefined && low52Week !== null && !isNaN(low52Week) ? formatMoney(low52Week) : 'N/A');
         fiftyTwoWeekRow.appendChild(lowSpan);
 
         const highSpan = document.createElement('h3');
         highSpan.classList.add('fifty-two-week-value', 'high'); // New classes
-        highSpan.textContent = 'High: ' + (high52Week !== undefined && high52Week !== null && !isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A');
+    highSpan.textContent = 'High: ' + (high52Week !== undefined && high52Week !== null && !isNaN(high52Week) ? formatMoney(high52Week) : 'N/A');
         fiftyTwoWeekRow.appendChild(highSpan);
 
         modalLivePriceDisplaySection.appendChild(fiftyTwoWeekRow);
@@ -3602,8 +3619,8 @@ async function displayStockDetailsInSearchModal(asxCode) {
             </div>
             <div class="live-price-display-section">
                 <div class="fifty-two-week-row">
-                    <h3 class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A'}</h3>
-                    <h3 class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A'}</h3>
+                    <h3 class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? formatMoney(low52Week) : 'N/A'}</h3>
+                    <h3 class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? formatMoney(high52Week) : 'N/A'}</h3>
                 </div>
                 <div class="live-price-main-row">
                     <h2 class="modal-share-name ${priceClass}">${displayPrice}</h2>
@@ -5677,13 +5694,13 @@ async function initializeAppLogic() {
                     const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
                     const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
                     const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
-                    addShareLivePriceDisplay.innerHTML = `
+            addShareLivePriceDisplay.innerHTML = `
                         <div class="fifty-two-week-row">
-                            <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? '$' + lo.toFixed(2) : 'N/A'}</span>
-                            <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? '$' + hi.toFixed(2) : 'N/A'}</span>
+                <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
+                <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
                         </div>
                         <div class="live-price-main-row">
-                            <span class="live-price-large ${priceClass}">${!isNaN(live) ? '$' + live.toFixed(2) : 'N/A'}</span>
+                <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
                             <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${change.toFixed(2)} (${pct.toFixed(2)}%)` : 'N/A'}</span>
                         </div>
                         <div class="pe-ratio-row">
