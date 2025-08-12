@@ -493,6 +493,12 @@ let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for
 
 // NEW: Global variable to store shares that have hit their target price
 let sharesAtTargetPrice = [];
+// NEW: Remember last shown alert count to avoid icon flicker on reload while prices are loading (persisted)
+let lastKnownTargetCount = 0;
+try {
+    const persisted = parseInt(localStorage.getItem('lastKnownTargetCount') || '0', 10);
+    if (!isNaN(persisted) && persisted > 0) lastKnownTargetCount = persisted;
+} catch(e) {}
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 let currentMobileViewMode = 'default'; 
@@ -4247,15 +4253,27 @@ function updateTargetHitBanner() {
     });
 
     // Update the fixed bottom-left icon
-    if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
-        targetHitIconCount.textContent = sharesAtTargetPrice.length;
-        targetHitIconBtn.classList.remove('app-hidden'); // Show the icon via class
-        targetHitIconCount.style.display = 'block'; // Show the count badge
-        logDebug('Target Alert: Showing icon: ' + sharesAtTargetPrice.length + ' shares hit target (global check).');
+    const liveLoaded = livePrices && Object.keys(livePrices).length > 0;
+    let displayCount = sharesAtTargetPrice.length;
+    if (!liveLoaded && lastKnownTargetCount > 0 && !targetHitIconDismissed) {
+        // Keep showing previous count until live data arrives to avoid the perception of dismissal
+        displayCount = lastKnownTargetCount;
+    }
+    if (displayCount > 0 && !targetHitIconDismissed) {
+        targetHitIconCount.textContent = String(displayCount);
+        targetHitIconBtn.classList.remove('app-hidden');
+        targetHitIconCount.style.display = 'block';
+        logDebug('Target Alert: Showing icon: ' + displayCount + ' shares hit target (liveLoaded=' + liveLoaded + ').');
     } else {
-        targetHitIconBtn.classList.add('app-hidden'); // Hide the icon via class
-        targetHitIconCount.style.display = 'none'; // Hide the count badge
+        targetHitIconBtn.classList.add('app-hidden');
+        targetHitIconCount.style.display = 'none';
         logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
+    }
+
+    // Update last known count when we have live data
+    if (liveLoaded) {
+        lastKnownTargetCount = sharesAtTargetPrice.length;
+        try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch(e) {}
     }
 
     // Apply/remove border to watchlist and sort dropdowns if the *current view* has target hits
@@ -6249,6 +6267,7 @@ async function initializeAppLogic() {
         alertModalDismissAllBtn.addEventListener('click', () => {
             targetHitIconDismissed = true; // Mark as dismissed for the session
             localStorage.setItem('targetHitIconDismissed', 'true'); // Save dismissal preference
+            try { localStorage.setItem('lastKnownTargetCount', '0'); } catch(e) {}
             // No need to explicitly hide the bubble here, updateTargetHitBanner will handle it.
             updateTargetHitBanner(); // Update the bubble (will hide it if no alerts and dismissed)
             hideModal(targetHitDetailsModal); // Close the modal
@@ -6316,6 +6335,7 @@ async function initializeAppLogic() {
                 // NEW: Reset targetHitIconDismissed and clear localStorage entry on logout for a fresh start on next login
                 targetHitIconDismissed = false; 
                 localStorage.removeItem('targetHitIconDismissed');
+                try { localStorage.setItem('lastKnownTargetCount', '0'); } catch(e) {}
 
             }
             catch (error) {
@@ -7234,6 +7254,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     appHeader.classList.remove('app-hidden');
                 }
                 adjustMainContentPadding();
+
+                        // Ensure header click bindings are attached after header becomes visible
+                        try { bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind after auth show', e); }
 
                 if (splashKangarooIcon) {
                     splashKangarooIcon.classList.add('pulsing');

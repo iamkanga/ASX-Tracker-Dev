@@ -2286,7 +2286,14 @@ h1#dynamicWatchlistTitle {
     line-height: 1.1;
     pointer-events: auto;
     z-index: 1;
+    outline: none; /* Remove default focus outline */
 }
+
+/* Accessible keyboard-only focus for dynamic title text/button */
+#dynamicWatchlistTitle:focus { outline: none; }
+#dynamicWatchlistTitle:focus-visible { outline: 2px solid var(--green-color); outline-offset: 2px; }
+#dynamicWatchlistTitleText:focus { outline: none; }
+#dynamicWatchlistTitleText:focus-visible { outline: 2px solid var(--green-color); outline-offset: 2px; }
 .header-action-btn-right {
     order: 3;
     margin-left: auto;
