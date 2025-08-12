@@ -3208,18 +3208,22 @@ function toggleCodeButtonsArrow() {
 if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
     const openPicker = () => {
         openWatchlistPicker();
-        dynamicWatchlistTitle.setAttribute('aria-expanded','true');
+        if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','true');
         setTimeout(()=>{
-            const first = watchlistPickerList && watchlistPickerList.querySelector('.picker-item');
+            const listEl = document.getElementById('watchlistPickerList');
+            const first = listEl && listEl.querySelector('.picker-item');
             if (first) first.focus();
         },30);
     };
     const clickable = dynamicWatchlistTitleText || dynamicWatchlistTitle;
-    clickable.addEventListener('click', openPicker);
-    clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
-    clickable.setAttribute('role','button');
+    if (clickable && clickable.getAttribute('data-picker-bound') !== 'true') {
+        clickable.addEventListener('click', openPicker);
+        clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
+        clickable.setAttribute('role','button');
+        clickable.setAttribute('data-picker-bound','true');
+    }
 }
-if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); });
+if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ const modalEl=document.getElementById('watchlistPickerModal'); if (modalEl) modalEl.classList.add('app-hidden'); if (dynamicWatchlistTitle) { dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });
 window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });
 window.addEventListener('keydown', e=>{ if(e.key==='Escape' && !watchlistPickerModal.classList.contains('app-hidden')){ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });
 
@@ -3231,6 +3235,34 @@ loadUserWatchlistsAndSettings = async function() {
     renderSortSelect();
     toggleCodeButtonsArrow();
 };
+
+// Late-binding helper to ensure header interactions are wired when DOM is ready
+function bindHeaderInteractiveElements() {
+    const titleEl = document.getElementById('dynamicWatchlistTitle');
+    const textEl = document.getElementById('dynamicWatchlistTitleText');
+    const clickable = textEl || titleEl;
+    if (clickable && clickable.getAttribute('data-picker-bound') !== 'true') {
+        const openPicker = () => {
+            openWatchlistPicker();
+            if (titleEl) titleEl.setAttribute('aria-expanded','true');
+            setTimeout(()=>{
+                const listEl = document.getElementById('watchlistPickerList');
+                const first = listEl && listEl.querySelector('.picker-item');
+                if (first) first.focus();
+            },30);
+        };
+        clickable.addEventListener('click', openPicker);
+        clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
+        clickable.setAttribute('role','button');
+        clickable.setAttribute('data-picker-bound','true');
+    }
+    const closeBtn = document.getElementById('closeWatchlistPickerBtn');
+    const pickerModal = document.getElementById('watchlistPickerModal');
+    if (closeBtn && closeBtn.getAttribute('data-close-bound') !== 'true') {
+        closeBtn.addEventListener('click', ()=>{ if (pickerModal) pickerModal.classList.add('app-hidden'); if (titleEl) { titleEl.setAttribute('aria-expanded','false'); titleEl.focus(); } });
+        closeBtn.setAttribute('data-close-bound','true');
+    }
+}
 
 /**
  * Renders the watchlist based on the currentSelectedWatchlistIds. (1)
@@ -4473,10 +4505,12 @@ function renderCashCategories() {
         categoryItem.appendChild(categoryHeader); // Attach header directly
 
         // Balance Display (3.1)
-        const balanceDisplay = document.createElement('span');
-        balanceDisplay.classList.add('category-balance-display');
-        balanceDisplay.textContent = '$' + (Number(category.balance) !== null && !isNaN(Number(category.balance)) ? Number(category.balance).toFixed(2) : '0.00');
-        categoryItem.appendChild(balanceDisplay);
+    const balanceDisplay = document.createElement('span');
+    balanceDisplay.classList.add('category-balance-display');
+    // Use shared money formatter for commas and currency symbol
+    const balNum = Number(category.balance);
+    balanceDisplay.textContent = formatMoney(!isNaN(balNum) ? balNum : 0);
+    categoryItem.appendChild(balanceDisplay);
 
         // Add click listener for details modal (2.2)
         categoryItem.addEventListener('click', () => {
@@ -4548,7 +4582,7 @@ function calculateTotalCash() {
         }
     });
     if (totalCashDisplay) {
-        totalCashDisplay.textContent = '$' + total.toFixed(2);
+    totalCashDisplay.textContent = formatMoney(total);
     }
     logDebug('Cash Categories: Total cash calculated: $' + total.toFixed(2));
 }
@@ -4766,7 +4800,7 @@ function showCashCategoryDetailsModal(assetId) {
 
     modalCashAssetName.textContent = asset.name || 'N/A';
     detailCashAssetName.textContent = asset.name || 'N/A';
-    detailCashAssetBalance.textContent = '$' + (Number(asset.balance) !== null && !isNaN(Number(asset.balance)) ? Number(asset.balance).toFixed(2) : '0.00');
+    detailCashAssetBalance.textContent = formatMoney((Number(asset.balance) !== null && !isNaN(Number(asset.balance)) ? Number(asset.balance) : 0));
     detailCashAssetLastUpdated.textContent = formatDate(asset.lastUpdated) || 'N/A';
 
     // Display comments in details modal
@@ -6380,11 +6414,10 @@ if (sortSelect) {
                 console.warn('Edit Share From Detail: Edit button was disabled, preventing action.');
                 return;
             }
-            // Do not immediately hide detail modal; allow edit form to open and then close detail if needed inside showEditFormForSelectedShare
+            // Close the detail modal first to avoid overlay conflicts, then open the edit form
+            hideModal(shareDetailModal);
             if (typeof showEditFormForSelectedShare === 'function') {
                 showEditFormForSelectedShare();
-            } else {
-                hideModal(shareDetailModal);
             }
         });
     }
@@ -7114,6 +7147,9 @@ if (targetHitIconBtn) {
 
 document.addEventListener('DOMContentLoaded', function() {
     logDebug('script.js DOMContentLoaded fired.');
+
+    // Ensure header interactive bindings are attached even on first load
+    try { bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
 
     // Ensure Edit Current Watchlist button updates when watchlist selection changes
     if (watchlistSelect) {
