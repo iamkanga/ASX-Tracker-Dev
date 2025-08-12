@@ -1,3 +1,21 @@
+2025-08-12 Session Summary
+
+**Key Issues Addressed/Discussed:**
+
+*   **CORS Errors:** Significant problems with CORS when the backend App Script returns `null` or `N/A` values, causing display issues. This is a major recurring issue that needs a robust solution.
+*   **UI & Theming:**
+    *   **Resolved:** The blue text for ASX codes has been successfully changed to a coffee color.
+    *   **Outstanding:** In the portfolio view, the profit and loss bars at the top have a black fill, which is incorrect. This styling should be governed by the selected theme (e.g., light/dark/coffee).
+*   **Dynamic Elements & State:**
+    *   **Outstanding:** The watchlist view does not reposition correctly when the ASX code buttons are opened or closed.
+    *   **Outstanding:** The dynamic title bar is not updating as expected, an issue carried over from previous sessions.
+    *   **Outstanding:** ASX code buttons are not functioning after a hard reload, despite working previously. This points to an initialization or state restoration problem.
+    *   **Outstanding:** Notifications require a page refresh to appear after a hard reload, indicating a service worker or initialization timing issue.
+*   **Mobile Specific:**
+    *   **Outstanding:** A "Try Again" pop-up is incorrectly appearing and blocking the Google authorization sign-in button on mobile devices, even though the sign-in process itself is successful.
+
+**Previous Session Notes (for context):**
+
 2025-08-12
 - Header UX: Made whole title clickable, pointer cursor, and green keyboard-only focus ring.
 - Sidebar: Initialize closed on desktop after reload.
@@ -26,8 +44,6 @@
 20 Number formatting in edit form inputs (user unclear) - TO DEFINE
 
 Next focus (planned): 1,2,3,4,5,6,8,9 plus finalize 7 strategy.
-
-
 
 Conversation handoff (compact): Dividend calculator UI fix, PWA hygiene, prior UI/behavior changes
 
