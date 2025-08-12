@@ -8,37 +8,14 @@ function pushAppState(stateObj = {}, title = '', url = '') {
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
-    // NEW: First, check if the sidebar is open and close it.
-    // This should be the first check, as the sidebar can be open on top of the main view.
+    // Let the unified stack-based handler manage modals. Only handle sidebar here.
     if (window.appSidebar && window.appSidebar.classList.contains('open')) {
         if (window.toggleAppSidebar) {
             window.toggleAppSidebar(false); // Explicitly close the sidebar
         }
         return; // Exit after handling the sidebar
     }
-
-    // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
-    const modals = [
-        window.shareFormSection,
-        window.shareDetailModal,
-        window.targetHitDetailsModal,
-        window.cashAssetFormModal,
-        window.cashAssetDetailModal,
-        window.customDialogModal,
-        window.calculatorModal,
-        window.dividendCalculatorModal,
-        window.addWatchlistModal,
-        window.manageWatchlistModal,
-        window.stockSearchModal,
-        window.alertPanel
-    ];
-    for (const modal of modals) {
-        if (modal && modal.style.display !== 'none') {
-            if (window.closeModals) closeModals();
-            return; // Exit after handling the first open modal
-        }
-    }
-    // If no modals or sidebar are open, allow default browser back (exit app)
+    // Defer modal handling to the stack popstate handler below.
 });
 // Keep main content padding in sync with header height changes (e.g., viewport resize)
 window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
@@ -553,6 +530,8 @@ let targetHitIconDismissed = false;
 
 // Tracks if share detail modal was opened from alerts
 let wasShareDetailOpenedFromTargetAlerts = false;
+// Track if the edit form was opened from the share detail modal, so back can return to detail
+let wasEditOpenedFromShareDetail = false;
 
 // NEW: Global variable to store cash categories data
 let userCashCategories = [];
@@ -820,7 +799,14 @@ if (hamburgerBtn && appSidebar) {
 // Override showModal to push (wrap existing if not already wrapped)
 if (!window.__origShowModalForBack) {
     window.__origShowModalForBack = showModal;
-    showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
+    // Wrapper: push one app-stack entry and one browser history entry per modal open
+    showModal = function(m){
+        if (!m) return;
+        pushAppStateEntry('modal', m);
+        // Single browser history push per modal
+        try { pushAppState({ modalId: m.id }, '', '#' + (m.id || 'modal')); } catch (_) {}
+        window.__origShowModalForBack(m);
+    };
 }
 
 window.addEventListener('popstate', ()=>{
@@ -828,8 +814,12 @@ window.addEventListener('popstate', ()=>{
     const last = popAppStateEntry();
     if (!last) return;
     if (last.type === 'modal') {
-    // Use centralized close to enable restoration (e.g., return to Alerts modal)
-    closeModals();
+    // Close only the top-most modal and run targeted cleanup
+    if (last.ref) {
+        closeOneModalForBack(last.ref);
+    } else {
+        closeModals(); // Fallback
+    }
     } else if (last.type === 'sidebar') {
         if (appSidebar) appSidebar.classList.remove('open');
     }
@@ -1162,6 +1152,12 @@ function closeModals() {
     // Clear any lingering active highlight on ASX code buttons when closing modals
     if (asxCodeButtonsContainer) {
         asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn.active').forEach(btn=>btn.classList.remove('active'));
+    }
+
+    // If edit was opened from share detail, restore the detail modal
+    if (wasEditOpenedFromShareDetail && shareDetailModal) {
+        showModal(shareDetailModal);
+        wasEditOpenedFromShareDetail = false;
     }
 
     // Restore Target Price Alerts modal if share detail was opened from it
@@ -1991,8 +1987,7 @@ function updateCompactViewButtonState() {
 
 function showModal(modalElement) {
     if (modalElement) {
-        // Push a new history state for every modal open
-        pushAppState({ modalId: modalElement.id }, '', '');
+        // History is handled by the wrapper installed above
         modalElement.style.setProperty('display', 'flex', 'important');
         modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
@@ -2007,6 +2002,69 @@ function hideModal(modalElement) {
     if (modalElement) {
         modalElement.style.setProperty('display', 'none', 'important');
         logDebug('Modal: Hiding modal: ' + modalElement.id);
+    }
+}
+
+// Close a single modal in response to browser back, preserving autosave and restoration semantics
+function closeOneModalForBack(modalElement) {
+    if (!modalElement) return;
+    // Apply targeted auto-saves depending on which modal is closing
+    if (modalElement === shareFormSection) {
+        // Mirror share form auto-save behavior
+        const currentData = getCurrentFormData();
+        const isShareNameValid = currentData.shareName.trim() !== '';
+        if (selectedShareDocId) {
+            if (originalShareData && !areShareDataEqual(originalShareData, currentData)) {
+                saveShareData(true);
+            }
+        } else {
+            const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
+            if (isShareNameValid && isWatchlistSelected) {
+                saveShareData(true);
+            }
+        }
+    } else if (modalElement === addWatchlistModal) {
+        const currentWatchlistData = getCurrentWatchlistFormData(true);
+        if (currentWatchlistData.name.trim() !== '') {
+            saveWatchlistChanges(true, currentWatchlistData.name);
+        }
+    } else if (modalElement === manageWatchlistModal) {
+        const currentWatchlistData = getCurrentWatchlistFormData(false);
+        if (originalWatchlistData && !areWatchlistDataEqual(originalWatchlistData, currentWatchlistData)) {
+            saveWatchlistChanges(true, currentWatchlistData.name, watchlistSelect.value);
+        }
+    } else if (modalElement === cashAssetFormModal) {
+        const currentCashData = getCurrentCashAssetFormData();
+        const isCashAssetNameValid = currentCashData.name.trim() !== '';
+        if (selectedCashAssetDocId) {
+            if (originalCashAssetData && !areCashAssetDataEqual(originalCashAssetData, currentCashData)) {
+                saveCashAsset(true);
+            }
+        } else if (isCashAssetNameValid) {
+            saveCashAsset(true);
+        }
+    }
+
+    hideModal(modalElement);
+
+    // Restoration rules
+    if (modalElement === shareFormSection && wasEditOpenedFromShareDetail && shareDetailModal) {
+        if (window.__origShowModalForBack) {
+            window.__origShowModalForBack(shareDetailModal);
+        } else {
+            showModal(shareDetailModal);
+        }
+        wasEditOpenedFromShareDetail = false;
+        return;
+    }
+    if (modalElement === shareDetailModal && wasShareDetailOpenedFromTargetAlerts && targetHitDetailsModal) {
+        if (window.__origShowModalForBack) {
+            window.__origShowModalForBack(targetHitDetailsModal);
+        } else {
+            showModal(targetHitDetailsModal);
+        }
+        wasShareDetailOpenedFromTargetAlerts = false;
+        return;
     }
 }
 
@@ -2337,7 +2395,11 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     originalShareData = getCurrentFormData();
     setIconDisabled(saveShareBtn, true); // Save button disabled initially for editing
     logDebug('showEditFormForSelectedShare: saveShareBtn initially disabled for dirty check.');
-
+    // If detail modal is currently open, remember and hide it; showModal will push a single state
+    if (shareDetailModal && shareDetailModal.style.display !== 'none') {
+        wasEditOpenedFromShareDetail = true;
+        hideModal(shareDetailModal);
+    }
     showModal(shareFormSection);
     shareNameInput.focus();
     logDebug('Form: Opened edit form for share: ' + shareToEdit.shareName + ' (ID: ' + selectedShareDocId + ')');
@@ -6356,8 +6418,14 @@ async function initializeAppLogic() {
                     }
                 }, 7000);
 
-                // Prefer popup on desktop; fallback to redirect on mobile (prevents popup blocked)
-                const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                // Configure provider UX hints
+                try {
+                    provider.setCustomParameters({ prompt: 'select_account' });
+                } catch(_) {}
+                // Prefer popup on desktop; force redirect on mobile Chrome (prevents popup blocked)
+                const ua = navigator.userAgent || navigator.vendor || '';
+                const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+                const isChromeMobile = /CriOS|Chrome\/\d+/.test(ua) && isMobile;
                 if (isMobile && window.authFunctions.signInWithRedirect) {
                     await window.authFunctions.signInWithRedirect(currentAuth, provider);
                     return; // onAuthStateChanged will run after redirect
@@ -6383,6 +6451,7 @@ async function initializeAppLogic() {
                     // Automatically fallback to redirect on popup-blocked
                     try {
                         const provider = window.authFunctions.GoogleAuthProviderInstance;
+                        try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
                         await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
                         return;
                     } catch (e2) {
@@ -7410,7 +7479,19 @@ document.addEventListener('DOMContentLoaded', function() {
         window._firebaseInitialized = true; // Mark Firebase as initialized
         logDebug('Firebase Ready: DB, Auth, and AppId assigned from window. Setting up auth state listener.');
 
-        window.authFunctions.onAuthStateChanged(auth, async (user) => {
+        // Ensure persistence is set once (prefer local for seamless mobile redirect flows)
+        try {
+            if (window.authFunctions.setPersistence && window.authFunctions.browserLocalPersistence) {
+                window.authFunctions
+                    .setPersistence(auth, window.authFunctions.browserLocalPersistence)
+                    .then(() => logDebug('Auth: Persistence set to browserLocalPersistence.'))
+                    .catch((e) => console.warn('Auth: Failed to set persistence, continuing with default.', e));
+            }
+        } catch (e) {
+            console.warn('Auth: Failed to set persistence (outer), continuing with default.', e);
+        }
+
+    window.authFunctions.onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
