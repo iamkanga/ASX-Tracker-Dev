@@ -2164,11 +2164,27 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         if (currentShareWatchlistId && stockWatchlists.some(wl => wl.id === currentShareWatchlistId)) {
             selectedOptionId = currentShareWatchlistId;
             logDebug('Share Form: Editing share: Pre-selected to existing share\'s watchlist: ' + selectedOptionId);
+        } else if (currentShareWatchlistId) {
+            // If the original watchlist isn't in the filtered stock lists, inject a temporary option to preserve it
+            const original = userWatchlists.find(wl => wl.id === currentShareWatchlistId);
+            if (original && original.id !== CASH_BANK_WATCHLIST_ID) {
+                const opt = document.createElement('option');
+                opt.value = original.id;
+                opt.textContent = original.name + ' (original)';
+                shareWatchlistSelect.appendChild(opt);
+                selectedOptionId = original.id;
+                console.warn('Share Form: Editing share: Original watchlist not in stock list; temporarily added original to dropdown.');
+            } else {
+                // Unknown/removed list or Cash; require explicit user choice instead of defaulting silently
+                selectedOptionId = '';
+                console.warn('Share Form: Editing share: Original watchlist missing or not applicable. Please select a watchlist.');
+            }
         } else if (stockWatchlists.length > 0) {
-            selectedOptionId = stockWatchlists[0].id;
-            console.warn('Share Form: Editing share: Original watchlist not found, defaulted to first available stock watchlist.');
+            // No original ID on the share; do not auto-assign—leave blank to force explicit choice
+            selectedOptionId = '';
+            logDebug('Share Form: Editing share: No original watchlist set; leaving blank for user to choose.');
         } else {
-            selectedOptionId = ''; // No watchlists available
+            selectedOptionId = '';
             console.warn('Share Form: Editing share: No stock watchlists available to select.');
         }
         disableDropdown = false; // Always allow changing watchlist when editing
@@ -3207,6 +3223,11 @@ function toggleCodeButtonsArrow() {
 }
 if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
     const openPicker = () => {
+        // If the sidebar (hamburger menu) is open, close it and do not open the picker on this click
+        if (appSidebar && appSidebar.classList.contains('open')) {
+            if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false);
+            return;
+        }
         openWatchlistPicker();
         if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','true');
         setTimeout(()=>{
