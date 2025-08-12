@@ -207,7 +207,11 @@ document.addEventListener('DOMContentLoaded', function () {
         // Hide portfolio section if present, show normal stock watchlist section
         let portfolioSection = document.getElementById('portfolioSection');
         if (portfolioSection) portfolioSection.style.display = 'none';
-        stockWatchlistSection.style.display = '';
+    stockWatchlistSection.style.display = '';
+    stockWatchlistSection.classList.remove('app-hidden');
+    // Also ensure the table and mobile containers are restored from any previous hide
+    if (tableContainer) tableContainer.style.display = '';
+    if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = '';
     };
     // Render portfolio list (uses live prices when available)
     window.renderPortfolioList = function() {
@@ -3444,6 +3448,10 @@ function renderWatchlist() {
     if (existingPortfolio) existingPortfolio.style.display='none';
         // Stock Watchlist Logic
         stockWatchlistSection.classList.remove('app-hidden');
+        // IMPORTANT: Also clear any inline display:none applied by showPortfolioView
+        if (typeof stockWatchlistSection.style !== 'undefined') {
+            stockWatchlistSection.style.display = '';
+        }
         const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
         if (selectedWatchlistId === ALL_SHARES_ID) {
             // Title handled by updateMainTitle
