@@ -3262,8 +3262,14 @@ function openWatchlistPicker() {
         div.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); div.click(); } };
         watchlistPickerList.appendChild(div);
     });
-    watchlistPickerModal.classList.remove('app-hidden');
-    watchlistPickerModal.style.display='flex';
+    // Use centralized modal open so history/back works consistently
+    try {
+        showModal(watchlistPickerModal);
+    } catch(e) {
+        // Fallback if showModal is unavailable for some reason
+        watchlistPickerModal.classList.remove('app-hidden');
+        watchlistPickerModal.style.display='flex';
+    }
     console.log('[WatchlistPicker] Modal shown. Item count:', watchlistPickerList.children.length);
 }
 function toggleCodeButtonsArrow() {
@@ -3302,9 +3308,9 @@ if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
         clickable.setAttribute('data-picker-bound','true');
     }
 }
-if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ const modalEl=document.getElementById('watchlistPickerModal'); if (modalEl) modalEl.classList.add('app-hidden'); if (dynamicWatchlistTitle) { dynamicWatchlistTitle.setAttribute('aria-expanded','false'); } if (dynamicWatchlistTitleText) { dynamicWatchlistTitleText.focus(); } });
-window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ watchlistPickerModal.classList.add('app-hidden'); if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
-window.addEventListener('keydown', e=>{ if(e.key==='Escape' && !watchlistPickerModal.classList.contains('app-hidden')){ watchlistPickerModal.classList.add('app-hidden'); if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
+if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ const modalEl=document.getElementById('watchlistPickerModal'); if (modalEl) { try { hideModal(modalEl); } catch(_) { modalEl.classList.add('app-hidden'); } } if (dynamicWatchlistTitle) { dynamicWatchlistTitle.setAttribute('aria-expanded','false'); } if (dynamicWatchlistTitleText) { dynamicWatchlistTitleText.focus(); } });
+window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape' && watchlistPickerModal && watchlistPickerModal.style.display!=='none' && !watchlistPickerModal.classList.contains('app-hidden')){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
 
 // Wrap loadUserWatchlistsAndSettings to refresh new UI parts after data load
 const __origLoadUserWatchlistsAndSettings = loadUserWatchlistsAndSettings;
@@ -6342,11 +6348,16 @@ async function initializeAppLogic() {
                 // Prefer popup on desktop; force redirect on mobile Chrome (prevents popup blocked)
                 const ua = navigator.userAgent || navigator.vendor || '';
                 const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-                const isChromeMobile = /CriOS|Chrome\/\d+/.test(ua) && isMobile;
-                if (isMobile && window.authFunctions.signInWithRedirect) {
+                const isStandalonePWA = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || (window.navigator && window.navigator.standalone === true);
+                const isIOS = /iPhone|iPad|iPod/i.test(ua);
+                const isAndroid = /Android/i.test(ua);
+                const isMobileChrome = (/CriOS|Chrome\/[0-9.]+/i.test(ua) && (isAndroid || isIOS));
+                const preferRedirect = (isMobile || isStandalonePWA || isIOS || isMobileChrome);
+                if (preferRedirect && window.authFunctions.signInWithRedirect) {
                     await window.authFunctions.signInWithRedirect(currentAuth, provider);
                     return; // onAuthStateChanged will run after redirect
                 } else {
+                    // Desktop or environments where popup is allowed
                     await window.authFunctions.signInWithPopup(currentAuth, provider);
                 }
                 logDebug('Auth: Google Sign-In successful from splash screen.');
