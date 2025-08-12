@@ -6353,8 +6353,10 @@ async function initializeAppLogic() {
                 const isAndroid = /Android/i.test(ua);
                 const isMobileChrome = (/CriOS|Chrome\/[0-9.]+/i.test(ua) && (isAndroid || isIOS));
                 const isFileProtocol = (window.location && window.location.protocol === 'file:');
-                // Prefer redirect broadly to avoid popup blockers on desktop and mobile
-                const preferRedirect = true;
+                const forceRedirectOverride = (() => { try { return localStorage.getItem('forceRedirectAuth') === 'true' || localStorage.getItem('forceRedirectAuthDesktop') === 'true'; } catch(_) { return false; } })();
+                // Prefer redirect on mobile/PWA/file://; use popup on desktop http(s). Allow overrides via localStorage.
+                const preferRedirect = forceRedirectOverride || (isMobile || isStandalonePWA || isIOS || isMobileChrome || isFileProtocol);
+                console.log('[Auth Env]', { isMobile, isStandalonePWA, isIOS, isAndroid, isMobileChrome, isFileProtocol, preferRedirect, forceRedirectOverride, origin: window.location.origin });
                 if (preferRedirect && window.authFunctions.signInWithRedirect) {
                     await window.authFunctions.signInWithRedirect(currentAuth, provider);
                     return; // onAuthStateChanged will run after redirect
@@ -6374,7 +6376,7 @@ async function initializeAppLogic() {
                     clearTimeout(splashSignInRetryTimer);
                     splashSignInRetryTimer = null;
                 }
-                console.error('Auth: Google Sign-In failed from splash screen: ' + error.message);
+                console.error('Auth: Google Sign-In failed from splash screen:', { code: error.code, message: error.message });
                 let userMsg = 'Google Sign-In failed';
                 if (error.code === 'auth/popup-blocked') {
                     userMsg = 'Popup blocked by browser. Switching to redirect…';
