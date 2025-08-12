@@ -799,14 +799,7 @@ if (hamburgerBtn && appSidebar) {
 // Override showModal to push (wrap existing if not already wrapped)
 if (!window.__origShowModalForBack) {
     window.__origShowModalForBack = showModal;
-    // Wrapper: push one app-stack entry and one browser history entry per modal open
-    showModal = function(m){
-        if (!m) return;
-        pushAppStateEntry('modal', m);
-        // Single browser history push per modal
-        try { pushAppState({ modalId: m.id }, '', '#' + (m.id || 'modal')); } catch (_) {}
-        window.__origShowModalForBack(m);
-    };
+    showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
 }
 
 window.addEventListener('popstate', ()=>{
@@ -814,12 +807,8 @@ window.addEventListener('popstate', ()=>{
     const last = popAppStateEntry();
     if (!last) return;
     if (last.type === 'modal') {
-    // Close only the top-most modal and run targeted cleanup
-    if (last.ref) {
-        closeOneModalForBack(last.ref);
-    } else {
-        closeModals(); // Fallback
-    }
+    // Use centralized close to enable restoration (e.g., return to Alerts modal)
+    closeModals();
     } else if (last.type === 'sidebar') {
         if (appSidebar) appSidebar.classList.remove('open');
     }
@@ -1152,12 +1141,6 @@ function closeModals() {
     // Clear any lingering active highlight on ASX code buttons when closing modals
     if (asxCodeButtonsContainer) {
         asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn.active').forEach(btn=>btn.classList.remove('active'));
-    }
-
-    // If edit was opened from share detail, restore the detail modal
-    if (wasEditOpenedFromShareDetail && shareDetailModal) {
-        showModal(shareDetailModal);
-        wasEditOpenedFromShareDetail = false;
     }
 
     // Restore Target Price Alerts modal if share detail was opened from it
@@ -1987,7 +1970,8 @@ function updateCompactViewButtonState() {
 
 function showModal(modalElement) {
     if (modalElement) {
-        // History is handled by the wrapper installed above
+        // Push a new history state for every modal open
+        pushAppState({ modalId: modalElement.id }, '', '');
         modalElement.style.setProperty('display', 'flex', 'important');
         modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
@@ -2002,69 +1986,6 @@ function hideModal(modalElement) {
     if (modalElement) {
         modalElement.style.setProperty('display', 'none', 'important');
         logDebug('Modal: Hiding modal: ' + modalElement.id);
-    }
-}
-
-// Close a single modal in response to browser back, preserving autosave and restoration semantics
-function closeOneModalForBack(modalElement) {
-    if (!modalElement) return;
-    // Apply targeted auto-saves depending on which modal is closing
-    if (modalElement === shareFormSection) {
-        // Mirror share form auto-save behavior
-        const currentData = getCurrentFormData();
-        const isShareNameValid = currentData.shareName.trim() !== '';
-        if (selectedShareDocId) {
-            if (originalShareData && !areShareDataEqual(originalShareData, currentData)) {
-                saveShareData(true);
-            }
-        } else {
-            const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
-            if (isShareNameValid && isWatchlistSelected) {
-                saveShareData(true);
-            }
-        }
-    } else if (modalElement === addWatchlistModal) {
-        const currentWatchlistData = getCurrentWatchlistFormData(true);
-        if (currentWatchlistData.name.trim() !== '') {
-            saveWatchlistChanges(true, currentWatchlistData.name);
-        }
-    } else if (modalElement === manageWatchlistModal) {
-        const currentWatchlistData = getCurrentWatchlistFormData(false);
-        if (originalWatchlistData && !areWatchlistDataEqual(originalWatchlistData, currentWatchlistData)) {
-            saveWatchlistChanges(true, currentWatchlistData.name, watchlistSelect.value);
-        }
-    } else if (modalElement === cashAssetFormModal) {
-        const currentCashData = getCurrentCashAssetFormData();
-        const isCashAssetNameValid = currentCashData.name.trim() !== '';
-        if (selectedCashAssetDocId) {
-            if (originalCashAssetData && !areCashAssetDataEqual(originalCashAssetData, currentCashData)) {
-                saveCashAsset(true);
-            }
-        } else if (isCashAssetNameValid) {
-            saveCashAsset(true);
-        }
-    }
-
-    hideModal(modalElement);
-
-    // Restoration rules
-    if (modalElement === shareFormSection && wasEditOpenedFromShareDetail && shareDetailModal) {
-        if (window.__origShowModalForBack) {
-            window.__origShowModalForBack(shareDetailModal);
-        } else {
-            showModal(shareDetailModal);
-        }
-        wasEditOpenedFromShareDetail = false;
-        return;
-    }
-    if (modalElement === shareDetailModal && wasShareDetailOpenedFromTargetAlerts && targetHitDetailsModal) {
-        if (window.__origShowModalForBack) {
-            window.__origShowModalForBack(targetHitDetailsModal);
-        } else {
-            showModal(targetHitDetailsModal);
-        }
-        wasShareDetailOpenedFromTargetAlerts = false;
-        return;
     }
 }
 
@@ -2395,11 +2316,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     originalShareData = getCurrentFormData();
     setIconDisabled(saveShareBtn, true); // Save button disabled initially for editing
     logDebug('showEditFormForSelectedShare: saveShareBtn initially disabled for dirty check.');
-    // If detail modal is currently open, remember and hide it; showModal will push a single state
-    if (shareDetailModal && shareDetailModal.style.display !== 'none') {
-        wasEditOpenedFromShareDetail = true;
-        hideModal(shareDetailModal);
-    }
+
     showModal(shareFormSection);
     shareNameInput.focus();
     logDebug('Form: Opened edit form for share: ' + shareToEdit.shareName + ' (ID: ' + selectedShareDocId + ')');
