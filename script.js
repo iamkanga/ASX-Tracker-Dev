@@ -828,7 +828,8 @@ window.addEventListener('popstate', ()=>{
     const last = popAppStateEntry();
     if (!last) return;
     if (last.type === 'modal') {
-        if (last.ref && last.ref.style) hideModal(last.ref);
+    // Use centralized close to enable restoration (e.g., return to Alerts modal)
+    closeModals();
     } else if (last.type === 'sidebar') {
         if (appSidebar) appSidebar.classList.remove('open');
     }
