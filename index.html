@@ -767,7 +767,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, FieldValue, deleteField, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // YOUR FIREBASE CONFIGURATION - Replace with your actual Firebase project config
@@ -833,6 +833,8 @@
             signInAnonymously: signInAnonymously,
             signInWithCustomToken: signInWithCustomToken,
             signInWithPopup: signInWithPopup,
+            signInWithRedirect: signInWithRedirect,
+            getRedirectResult: getRedirectResult,
             signOut: signOut,
             onAuthStateChanged: onAuthStateChanged
         } : null;

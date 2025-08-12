@@ -2489,10 +2489,11 @@ h1#dynamicWatchlistTitle {
     border-top: none; /* Hide border when collapsed */
 }
 
-/* NEW: Hide ASX code buttons when compact view is active */
-/* Removed !important to allow JS to control display if needed, but CSS handles it by default */
+/* Compact view: allow buttons to show; JS controls visibility. Enable horizontal scroll for tight space. */
 .mobile-share-cards.compact-view + #asxCodeButtonsContainer {
-    display: none; 
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Expanded state for the container */

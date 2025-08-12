@@ -602,12 +602,15 @@ function applyAsxButtonsState() {
     const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
     // If there are no buttons, never show and hide chevron
     const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
-    const shouldShow = !!hasButtons && asxButtonsExpanded && !isCompact;
+    // In compact mode, still allow showing the buttons (they can be horizontally scrollable)
+    const shouldShow = !!hasButtons && asxButtonsExpanded;
 
     if (shouldShow) {
         asxCodeButtonsContainer.classList.add('expanded');
         asxCodeButtonsContainer.classList.remove('app-hidden');
-        asxCodeButtonsContainer.style.display = 'flex';
+    asxCodeButtonsContainer.style.display = 'flex';
+    asxCodeButtonsContainer.style.overflowX = 'auto';
+    asxCodeButtonsContainer.style.webkitOverflowScrolling = 'touch';
         asxCodeButtonsContainer.style.pointerEvents = 'auto';
         asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
     } else {
@@ -625,7 +628,7 @@ function applyAsxButtonsState() {
     } else {
         toggleAsxButtonsBtn.style.display = '';
         toggleAsxButtonsBtn.removeAttribute('aria-disabled');
-        toggleAsxButtonsBtn.classList.toggle('expanded', shouldShow);
+    toggleAsxButtonsBtn.classList.toggle('expanded', shouldShow);
         toggleAsxButtonsBtn.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
     }
     // After any state change, adjust content padding to account for header height change
@@ -6352,7 +6355,14 @@ async function initializeAppLogic() {
                     }
                 }, 7000);
 
-                await window.authFunctions.signInWithPopup(currentAuth, provider);
+                // Prefer popup on desktop; fallback to redirect on mobile (prevents popup blocked)
+                const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isMobile && window.authFunctions.signInWithRedirect) {
+                    await window.authFunctions.signInWithRedirect(currentAuth, provider);
+                    return; // onAuthStateChanged will run after redirect
+                } else {
+                    await window.authFunctions.signInWithPopup(currentAuth, provider);
+                }
                 logDebug('Auth: Google Sign-In successful from splash screen.');
                 if (splashSignInRetryTimer) {
                     clearTimeout(splashSignInRetryTimer);
@@ -6368,8 +6378,15 @@ async function initializeAppLogic() {
                 console.error('Auth: Google Sign-In failed from splash screen: ' + error.message);
                 let userMsg = 'Google Sign-In failed';
                 if (error.code === 'auth/popup-blocked') {
-                    userMsg = 'Popup blocked by browser. Allow popups & retry.';
-                    updateSplashSignInButtonState('retry', 'Retry (allow popup)');
+                    userMsg = 'Popup blocked by browser. Switching to redirect…';
+                    // Automatically fallback to redirect on popup-blocked
+                    try {
+                        const provider = window.authFunctions.GoogleAuthProviderInstance;
+                        await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
+                        return;
+                    } catch (e2) {
+                        updateSplashSignInButtonState('retry', 'Retry (allow popup)');
+                    }
                 } else if (error.code === 'auth/popup-closed-by-user') {
                     userMsg = 'Popup closed. Click retry.';
                     updateSplashSignInButtonState('retry', 'Retry (popup closed)');
@@ -6383,6 +6400,19 @@ async function initializeAppLogic() {
             }
         });
     }
+
+    // Handle redirect sign-in result (e.g., mobile flow)
+    try {
+        if (window.authFunctions && window.authFunctions.getRedirectResult && window.firebaseAuth) {
+            window.authFunctions.getRedirectResult(window.firebaseAuth).then((result) => {
+                if (result && result.user) {
+                    logDebug('Auth: getRedirectResult returned user; redirect sign-in completed.');
+                }
+            }).catch((err) => {
+                console.warn('Auth: getRedirectResult error:', err);
+            });
+        }
+    } catch(e) { /* ignore */ }
 
     // NEW: Event listener for the top 'X' close button in the Target Hit Details Modal
     if (targetHitModalCloseTopBtn) {
