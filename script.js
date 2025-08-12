@@ -461,6 +461,11 @@ try {
         window.addEventListener('load', () => {
             setTimeout(() => { if (typeof showPortfolioView === 'function') showPortfolioView(); }, 300);
         });
+
+    // Keep header and alerts consistent after portfolio render
+    try { updateMainTitle(); } catch(e) {}
+    try { ensureTitleStructure(); } catch(e) {}
+    try { updateTargetHitBanner(); } catch(e) {}
     }
 } catch(e) { /* ignore */ }
 const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
@@ -3215,9 +3220,11 @@ function openWatchlistPicker() {
             console.log('[WatchlistPicker] Selecting watchlist', it.id);
             currentSelectedWatchlistIds=[it.id];
             if (watchlistSelect) watchlistSelect.value=it.id; // sync hidden select
+            try { localStorage.setItem('lastSelectedView', it.id); } catch(e) {}
             updateMainTitle();
             renderSortSelect();
             renderWatchlist();
+            try { updateAddHeaderButton(); updateSidebarAddButtonContext(); } catch(e) {}
             toggleCodeButtonsArrow();
             watchlistPickerModal.classList.add('app-hidden');
             dynamicWatchlistTitle.setAttribute('aria-expanded','false');
@@ -3509,6 +3516,9 @@ function renderWatchlist() {
     renderSortSelect(); // Moved here to ensure it updates for both stock and cash views
     updateMainButtonsState(!!currentUserId); // Ensure button states (like Edit Watchlist) are correct for the current view
     adjustMainContentPadding();
+    try { updateMainTitle(); } catch(e) {}
+    try { ensureTitleStructure(); } catch(e) {}
+    try { updateTargetHitBanner(); } catch(e) {}
 }
 
 function renderAsxCodeButtons() {
@@ -7339,6 +7349,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             currentSelectedWatchlistIds = [lastView];
                             renderWatchlist();
                             // Ensure the header reflects the restored selection
+                            try { updateMainTitle(); } catch(e) {}
+                        } else {
+                            // Fallback: default to All Shares if stored view isn't present
+                            watchlistSelect.value = ALL_SHARES_ID;
+                            currentSelectedWatchlistIds = [ALL_SHARES_ID];
+                            renderWatchlist();
                             try { updateMainTitle(); } catch(e) {}
                         }
                     }

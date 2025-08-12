@@ -5174,13 +5174,13 @@ body.dark-theme .alert-item {
 }
 
 .alert-panel-footer .secondary-buttons {
-    background-color: var(--secondary-button-bg);
-    color: var(--button-text);
-    border: 1px solid var(--secondary-button-bg);
+    background-color: var(--accent-color);
+    color: #fff;
+    border: 1px solid var(--accent-color);
 }
 .alert-panel-footer .secondary-buttons:hover {
-    background-color: var(--secondary-button-hover-bg);
-    border-color: var(--secondary-button-hover-bg);
+    background-color: var(--icon-action-hover-color);
+    border-color: var(--icon-action-hover-color);
 }
 
 .no-alerts-message {
