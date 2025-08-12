@@ -6323,6 +6323,19 @@ async function initializeAppLogic() {
         }
     }
 
+    // Early environment safety check: mobile + file:// cannot perform Google auth
+    try {
+        const precheckUA = navigator.userAgent || navigator.vendor || '';
+        const precheckIsMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(precheckUA);
+        const precheckIsFile = (window.location && window.location.protocol === 'file:');
+        if (splashSignInBtn && precheckIsMobile && precheckIsFile) {
+            updateSplashSignInButtonState('error', 'Open via web URL');
+            splashSignInBtn.disabled = true;
+            showCustomAlert('Mobile sign-in can’t run from a file:// URL. Please serve this app over http(s) (e.g., VS Code Live Server) and retry.');
+            console.warn('Auth Precheck: Blocking sign-in on mobile file:// context.');
+        }
+    } catch(_) {}
+
     if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
         let splashSignInRetryTimer = null;
         let splashSignInInProgress = false;
@@ -6374,6 +6387,7 @@ async function initializeAppLogic() {
                 } catch(_) {}
                 console.log('[Auth Env]', { isMobile, isStandalonePWA, isIOS, isAndroid, isMobileChrome, isFileProtocol, preferRedirect, forceRedirectOverride, origin: window.location.origin });
                 if (preferRedirect && window.authFunctions.signInWithRedirect) {
+                    try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
                     await window.authFunctions.signInWithRedirect(currentAuth, provider);
                     return; // onAuthStateChanged will run after redirect
                 } else {
@@ -6400,6 +6414,7 @@ async function initializeAppLogic() {
                     try {
                         const provider = window.authFunctions.GoogleAuthProviderInstance;
                         try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
+                        try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
                         await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
                         return;
                     } catch (e2) {
@@ -6411,6 +6426,7 @@ async function initializeAppLogic() {
                     try {
                         const provider = window.authFunctions.GoogleAuthProviderInstance;
                         try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
+                        try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
                         await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
                         return;
                     } catch (e3) {
@@ -6448,9 +6464,30 @@ async function initializeAppLogic() {
             window.authFunctions.getRedirectResult(window.firebaseAuth).then((result) => {
                 if (result && result.user) {
                     logDebug('Auth: getRedirectResult returned user; redirect sign-in completed.');
+                    try { localStorage.removeItem('authRedirectAttempted'); } catch(_) {}
+                } else {
+                    // No result returned after redirect; if we attempted a redirect, hint the user
+                    const attempted = (()=>{ try { return localStorage.getItem('authRedirectAttempted') === '1'; } catch(_) { return false; } })();
+                    if (attempted && splashSignInBtn) {
+                        updateSplashSignInButtonState('retry', 'Try again');
+                        try { localStorage.removeItem('authRedirectAttempted'); } catch(_) {}
+                    }
                 }
             }).catch((err) => {
                 console.warn('Auth: getRedirectResult error:', err);
+                if (splashSignInBtn) {
+                    // Map common mobile errors to actionable messages
+                    const code = err && err.code ? String(err.code) : '';
+                    if (code === 'auth/unauthorized-domain') {
+                        updateSplashSignInButtonState('error', 'Fix domain settings');
+                        showCustomAlert('Sign-in blocked: unauthorized domain. Add your app URL to Firebase Auth > Authorized domains.');
+                    } else if (code === 'auth/operation-not-supported-in-this-environment') {
+                        updateSplashSignInButtonState('error', 'Open in browser');
+                        showCustomAlert('Sign-in not supported in this environment. On iOS, open in Safari (not PWA) or use a hosted URL.');
+                    } else {
+                        updateSplashSignInButtonState('retry', 'Try again');
+                    }
+                }
             });
         }
     } catch(e) { /* ignore */ }
