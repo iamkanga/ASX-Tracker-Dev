@@ -187,7 +187,9 @@ document.addEventListener('DOMContentLoaded', function () {
         try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e) {}
         let portfolioSection = document.getElementById('portfolioSection');
         portfolioSection.style.display = 'block';
-        renderPortfolioList();
+    renderPortfolioList();
+    // Keep header text in sync
+    try { updateMainTitle(); } catch(e) {}
         if (typeof renderAsxCodeButtons === 'function') {
             if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
             renderAsxCodeButtons();
@@ -570,7 +572,8 @@ function applyAsxButtonsState() {
     } else {
         asxCodeButtonsContainer.classList.remove('expanded');
         asxCodeButtonsContainer.style.pointerEvents='none';
-        // Keep element present but collapsed (CSS handles max-height=0); hide only if truly empty
+        asxCodeButtonsContainer.style.display='none';
+        asxCodeButtonsContainer.setAttribute('aria-hidden','true');
     }
     toggleAsxButtonsBtn.classList.toggle('expanded', asxButtonsExpanded);
     toggleAsxButtonsBtn.setAttribute('aria-pressed', asxButtonsExpanded ? 'true':'false');
@@ -3157,11 +3160,11 @@ function toggleCodeButtonsArrow() {
     if (!toggleAsxButtonsBtn) return;
     const current=currentSelectedWatchlistIds[0];
     if (current===CASH_BANK_WATCHLIST_ID) {
-        toggleAsxButtonsBtn.style.display='none';
-        if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.add('app-hidden');
+    toggleAsxButtonsBtn.style.display='none';
+    if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.add('app-hidden'); asxCodeButtonsContainer.style.display='none'; }
     } else {
-        toggleAsxButtonsBtn.style.display='';
-        if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
+    toggleAsxButtonsBtn.style.display='';
+    if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.remove('app-hidden'); if (asxButtonsExpanded) asxCodeButtonsContainer.style.display='flex'; }
         applyAsxButtonsState();
     }
 }
@@ -3178,12 +3181,6 @@ if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
     clickable.addEventListener('click', openPicker);
     clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
     clickable.setAttribute('role','button');
-    // Fallback: if user clicks the h1 but not directly on span (e.g., minor padding), map to open
-    if (dynamicWatchlistTitle && dynamicWatchlistTitle !== clickable) {
-        dynamicWatchlistTitle.addEventListener('click', (e)=>{
-            if (e.target === dynamicWatchlistTitle) openPicker();
-        });
-    }
 }
 if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); });
 window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });
