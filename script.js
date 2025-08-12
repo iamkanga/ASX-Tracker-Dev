@@ -113,6 +113,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Import and call watchlist functions
     if (window.watchlistModule) {
         window.watchlistModule.renderWatchlistSelect();
+    // If we have a persisted lastKnownTargetCount, ensure the notification icon restores pre-live-load
+    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
         window.watchlistModule.populateShareWatchlistSelect();
         window.watchlistModule.ensurePortfolioOptionPresent();
         setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
@@ -3242,7 +3244,8 @@ if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
             if (first) first.focus();
         },30);
     };
-    const clickable = dynamicWatchlistTitleText || dynamicWatchlistTitle;
+    // Prefer binding to the container so the whole title area is clickable
+    const clickable = dynamicWatchlistTitle || dynamicWatchlistTitleText;
     if (clickable && clickable.getAttribute('data-picker-bound') !== 'true') {
         clickable.addEventListener('click', openPicker);
         clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
@@ -3267,7 +3270,8 @@ loadUserWatchlistsAndSettings = async function() {
 function bindHeaderInteractiveElements() {
     const titleEl = document.getElementById('dynamicWatchlistTitle');
     const textEl = document.getElementById('dynamicWatchlistTitleText');
-    const clickable = textEl || titleEl;
+    // Prefer binding to the container so the whole title area is clickable
+    const clickable = titleEl || textEl;
     if (clickable && clickable.getAttribute('data-picker-bound') !== 'true') {
         const openPicker = () => {
             openWatchlistPicker();
@@ -6933,12 +6937,12 @@ if (sortSelect) {
             sidebarOverlay: !!sidebarOverlay
         });
         
-        // Ensure initial state is correct for desktop
+        // Ensure initial state is correct: always start CLOSED after reload
         if (window.innerWidth > 768) {
-            document.body.classList.add('sidebar-active'); // Sidebar active on desktop by default
-            sidebarOverlay.style.pointerEvents = 'none'; // Overlay non-interactive on desktop
-            appSidebar.classList.add('open'); // Keep sidebar open by default on desktop
-            logDebug('Sidebar: Desktop: Sidebar initialized as open.');
+            document.body.classList.remove('sidebar-active'); // Do not shift body on load
+            sidebarOverlay.style.pointerEvents = 'none'; // Overlay non-interactive on desktop when closed
+            appSidebar.classList.remove('open'); // Start closed on desktop too
+            logDebug('Sidebar: Desktop: Sidebar initialized as closed.');
         } else {
             document.body.classList.remove('sidebar-active'); // No shift on mobile
             sidebarOverlay.style.pointerEvents = 'auto'; // Overlay interactive on mobile
@@ -7264,6 +7268,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
+                // Immediately reflect any persisted target count before live data loads
+                try { updateTargetHitBanner(); } catch(e) { console.warn('Auth early Target Alert restore failed', e); }
 
                 // Load user data, then do an initial fetch of live prices before setting the update interval.
                 // This ensures the initial view is correctly sorted by percentage change if selected.
@@ -7286,6 +7292,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Ensure internal selection array updated (mimic change)
                             currentSelectedWatchlistIds = [lastView];
                             renderWatchlist();
+                            // Ensure the header reflects the restored selection
+                            try { updateMainTitle(); } catch(e) {}
                         }
                     }
                 } catch(e) {}

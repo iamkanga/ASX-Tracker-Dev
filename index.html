@@ -128,11 +128,13 @@
         <style>
         /* Dynamic Watchlist Title + Sort Row */
     .watchlist-title-bar-row, .sort-line-row { display:flex; align-items:center; justify-content:center; width:100%; }
-    .watchlist-dynamic-title { margin:4px 0 2px; font-size:1.85rem; font-weight:650; cursor:default; text-align:center; line-height:1.1; flex:0 1 auto; width:auto; outline:none; }
+    .watchlist-dynamic-title { margin:4px 0 2px; font-size:1.85rem; font-weight:650; cursor:pointer; text-align:center; line-height:1.1; flex:0 1 auto; width:auto; outline:none; }
     #dynamicWatchlistTitleText { cursor:pointer; display:inline-block; padding:0 4px; border-radius:4px; pointer-events:auto; }
-    #dynamicWatchlistTitle { user-select:none; pointer-events:none; }
-    #dynamicWatchlistTitleText:focus { outline:2px solid var(--accent-color,#a49393); outline-offset:2px; }
-        .watchlist-dynamic-title:focus { outline:2px solid var(--accent-color, #a49393); outline-offset:3px; }
+    #dynamicWatchlistTitle { user-select:none; pointer-events:auto; }
+    /* Keyboard-only focus ring should be green; suppress mouse focus ring */
+    #dynamicWatchlistTitleText:focus { outline:none; }
+    #dynamicWatchlistTitleText:focus-visible { outline:2px solid var(--green-color); outline-offset:2px; }
+        .watchlist-dynamic-title:focus { outline:none; }
     .sort-line-row { gap:12px; font-size:0.9rem; margin-bottom:6px; }
         .current-sort-display { min-height:1.2em; font-weight:500; }
     /* Subtle triangle toggle: two chevrons forming minimal arrow */
