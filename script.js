@@ -4185,8 +4185,9 @@ async function loadUserWatchlistsAndSettings() {
 
             if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
                 // Filter out invalid or non-existent watchlists from loaded preferences
+                // Treat 'portfolio' as a valid special view alongside All Shares and Cash & Assets
                 currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id => 
-                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || userWatchlists.some(wl => wl.id === id)
+                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
                 );
                 logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
             } else {
