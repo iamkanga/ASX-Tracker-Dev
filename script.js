@@ -6388,11 +6388,21 @@ async function initializeAppLogic() {
                 console.log('[Auth Env]', { isMobile, isStandalonePWA, isIOS, isAndroid, isMobileChrome, isFileProtocol, preferRedirect, forceRedirectOverride, origin: window.location.origin });
                 if (preferRedirect && window.authFunctions.signInWithRedirect) {
                     try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
-                    await window.authFunctions.signInWithRedirect(currentAuth, provider);
+                    const resolver = window.authFunctions.browserPopupRedirectResolver;
+                    if (resolver) {
+                        await window.authFunctions.signInWithRedirect(currentAuth, provider, resolver);
+                    } else {
+                        await window.authFunctions.signInWithRedirect(currentAuth, provider);
+                    }
                     return; // onAuthStateChanged will run after redirect
                 } else {
                     // Desktop or environments where popup is allowed
-                    await window.authFunctions.signInWithPopup(currentAuth, provider);
+                    const resolver = window.authFunctions.browserPopupRedirectResolver;
+                    if (resolver) {
+                        await window.authFunctions.signInWithPopup(currentAuth, provider, resolver);
+                    } else {
+                        await window.authFunctions.signInWithPopup(currentAuth, provider);
+                    }
                 }
                 logDebug('Auth: Google Sign-In successful from splash screen.');
                 if (splashSignInRetryTimer) {
@@ -6415,7 +6425,12 @@ async function initializeAppLogic() {
                         const provider = window.authFunctions.GoogleAuthProviderInstance;
                         try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
                         try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
-                        await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
+                        const resolver = window.authFunctions.browserPopupRedirectResolver;
+                        if (resolver) {
+                            await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider, resolver);
+                        } else {
+                            await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
+                        }
                         return;
                     } catch (e2) {
                         updateSplashSignInButtonState('retry', 'Retry (allow popup)');
@@ -6427,7 +6442,12 @@ async function initializeAppLogic() {
                         const provider = window.authFunctions.GoogleAuthProviderInstance;
                         try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
                         try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
-                        await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
+                        const resolver = window.authFunctions.browserPopupRedirectResolver;
+                        if (resolver) {
+                            await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider, resolver);
+                        } else {
+                            await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
+                        }
                         return;
                     } catch (e3) {
                         updateSplashSignInButtonState('retry', 'Retry (unsupported env)');
