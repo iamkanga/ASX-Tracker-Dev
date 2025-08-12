@@ -137,11 +137,14 @@
         .current-sort-display { min-height:1.2em; font-weight:500; }
     /* Subtle triangle toggle: two chevrons forming minimal arrow */
     /* Reworked subtle chevron toggle (single arrow) */
-    .asx-toggle-triangle { position:relative; width:30px; height:26px; background:transparent; border:none !important; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+    .asx-toggle-triangle { position:relative; width:30px; height:26px; background:transparent; border:none !important; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; -webkit-tap-highlight-color: transparent; }
     .asx-toggle-triangle::before { content:""; width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-top:10px solid var(--text-color); transition:transform .28s ease; transform-origin:center; }
     .asx-toggle-triangle.expanded::before { transform:rotate(180deg); }
     .asx-toggle-triangle::after { display:none; }
-    .asx-toggle-triangle:focus { outline:2px solid var(--accent-color,#c18b47); outline-offset:2px; border-radius:4px; }
+    /* Remove mouse/touch focus ring but keep keyboard focus-visible */
+    .asx-toggle-triangle:focus { outline:none; }
+    .asx-toggle-triangle:focus-visible { outline:2px solid var(--accent-color,#c18b47); outline-offset:2px; border-radius:4px; }
+    .asx-toggle-triangle:active { outline:none; }
     @media (hover:hover){ .asx-toggle-triangle:hover::before, .asx-toggle-triangle:hover::after { opacity:1; } }
         /* Watchlist picker modal */
         .watchlist-picker-list { display:flex; flex-direction:column; gap:6px; margin:12px 0; }
@@ -194,7 +197,7 @@
         <!-- Sort row with subtle arrow toggle -->
         <div id="sortLine" class="sort-line-row">
             <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
-            <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false"></button>
+            <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer"></button>
         </div>
         <select id="watchlistSelect" style="display:none"></select>
     <!-- Market status banner (shown automatically when market is closed) -->

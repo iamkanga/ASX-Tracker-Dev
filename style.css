@@ -2898,10 +2898,16 @@ input:checked + .slider:before {
 }
 
 .asx-code-btn.active {
-    background-color: var(--asx-button-active-bg);
-    color: var(--asx-button-active-text);
-    border-color: var(--asx-button-active-bg);
+    /* Border-only highlight using the current text color (set by positive/negative/neutral classes) */
+    background-color: transparent !important;
+    color: inherit; /* keep current text color */
+    border-color: currentColor !important;
+    box-shadow: 0 0 0 2px currentColor inset; /* subtle inner ring */
 }
+
+/* Keyboard focus-visible styling */
+.asx-code-btn:focus { outline: none; }
+.asx-code-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 
 /* Conditional green border for ASX code buttons that hit target */
 .asx-code-btn.asx-target-hit-border {
@@ -5209,13 +5215,7 @@ body.dark-theme .alert-item {
         width: auto !important;
     }
 
-    /* Restore the ASX code buttons container on desktop */
-    .asx-code-buttons-container {
-        max-height: 500px;
-        opacity: 1;
-        padding: 10px 15px;
-        border-top: 1px solid var(--border-color);
-    }
+    /* Note: do not force ASX buttons container open on desktop; JS controls state */
 }
 
 /* Hide most <p> tags in compact view to only show live price and change */

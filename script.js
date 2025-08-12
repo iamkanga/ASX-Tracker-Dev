@@ -560,20 +560,35 @@ try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 't
 
 function applyAsxButtonsState() {
     if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
-    if (asxButtonsExpanded) {
+    const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
+    // If there are no buttons, never show and hide chevron
+    const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
+    const shouldShow = !!hasButtons && asxButtonsExpanded && !isCompact;
+
+    if (shouldShow) {
         asxCodeButtonsContainer.classList.add('expanded');
         asxCodeButtonsContainer.classList.remove('app-hidden');
-        asxCodeButtonsContainer.style.display='flex';
-        asxCodeButtonsContainer.style.pointerEvents='auto';
+        asxCodeButtonsContainer.style.display = 'flex';
+        asxCodeButtonsContainer.style.pointerEvents = 'auto';
+        asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
     } else {
         asxCodeButtonsContainer.classList.remove('expanded');
-        asxCodeButtonsContainer.style.pointerEvents='none';
-        asxCodeButtonsContainer.style.display='none';
-        asxCodeButtonsContainer.setAttribute('aria-hidden','true');
+        asxCodeButtonsContainer.style.pointerEvents = 'none';
+        asxCodeButtonsContainer.style.display = 'none';
+        asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
     }
-    toggleAsxButtonsBtn.classList.toggle('expanded', asxButtonsExpanded);
-    toggleAsxButtonsBtn.setAttribute('aria-pressed', asxButtonsExpanded ? 'true':'false');
-    asxCodeButtonsContainer.setAttribute('aria-hidden', asxButtonsExpanded ? 'false':'true');
+    // Chevron visibility and state
+    if (!hasButtons) {
+        toggleAsxButtonsBtn.style.display = 'none';
+        toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
+        toggleAsxButtonsBtn.classList.remove('expanded');
+        toggleAsxButtonsBtn.setAttribute('aria-pressed', 'false');
+    } else {
+        toggleAsxButtonsBtn.style.display = '';
+        toggleAsxButtonsBtn.removeAttribute('aria-disabled');
+        toggleAsxButtonsBtn.classList.toggle('expanded', shouldShow);
+        toggleAsxButtonsBtn.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
+    }
 }
 
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
@@ -1097,6 +1112,11 @@ function closeModals() {
     // NEW: Close the alert panel if open (alertPanel is not in current HTML, but kept for consistency)
     if (alertPanel) hideModal(alertPanel);
     logDebug('Modal: All modals closed.');
+
+    // Clear any lingering active highlight on ASX code buttons when closing modals
+    if (asxCodeButtonsContainer) {
+        asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn.active').forEach(btn=>btn.classList.remove('active'));
+    }
 
     // Restore Target Price Alerts modal if share detail was opened from it
     if (wasShareDetailOpenedFromTargetAlerts) {
@@ -3435,15 +3455,13 @@ function renderAsxCodeButtons() {
     });
 
     if (uniqueAsxCodes.size === 0) {
+        // Hide container hard if empty and bail early to let applyAsxButtonsState hide chevron
         asxCodeButtonsContainer.style.display = 'none';
+        asxCodeButtonsContainer.style.pointerEvents = 'none';
+        asxCodeButtonsContainer.setAttribute('aria-hidden','true');
         logDebug('UI: No unique ASX codes found for current view. Hiding ASX buttons container.');
-    } else {
-        // Only show if not in compact view mode
-        if (currentMobileViewMode !== 'compact') {
-            asxCodeButtonsContainer.style.display = 'flex';
-        } else {
-            asxCodeButtonsContainer.style.display = 'none';
-        }
+        applyAsxButtonsState();
+        return;
     }
     const sortedAsxCodes = Array.from(uniqueAsxCodes).sort();
     sortedAsxCodes.forEach(asxCode => {
@@ -3483,6 +3501,8 @@ function renderAsxCodeButtons() {
 
         asxCodeButtonsContainer.appendChild(button);
     });
+    // Remove any lingering active state on rebuild
+    asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b=>b.classList.remove('active'));
     // Delegated click handler (single)
     if (!asxCodeButtonsContainer.__delegated) {
         asxCodeButtonsContainer.addEventListener('click', (e) => {
@@ -3499,6 +3519,8 @@ function renderAsxCodeButtons() {
     logDebug('UI: Rendered ' + sortedAsxCodes.length + ' code buttons.');
     // NEW: Adjust padding after rendering buttons, as their presence affects header height
     adjustMainContentPadding();
+    // Re-apply visibility state centrally
+    applyAsxButtonsState();
 }
 
 function scrollToShare(asxCode) {
