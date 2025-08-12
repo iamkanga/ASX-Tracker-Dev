@@ -4982,6 +4982,29 @@ function updateMainTitle() {
     logDebug('UI: Dynamic title updated to: ' + titleText);
 }
 
+// Ensure the dynamic title uses a narrow clickable span and not the whole header
+function ensureTitleStructure() {
+    const titleEl = document.getElementById('dynamicWatchlistTitle');
+    if (!titleEl) return;
+    let textEl = document.getElementById('dynamicWatchlistTitleText');
+    if (!textEl) {
+        // Create the inner span and move any existing text into it
+        textEl = document.createElement('span');
+        textEl.id = 'dynamicWatchlistTitleText';
+        textEl.tabIndex = 0;
+        textEl.textContent = titleEl.textContent && titleEl.textContent.trim() ? titleEl.textContent.trim() : 'Share Watchlist';
+        // Clear and append
+        while (titleEl.firstChild) titleEl.removeChild(titleEl.firstChild);
+        titleEl.appendChild(textEl);
+    }
+    // Constrain click target: disable container pointer events, allow only span
+    try {
+        titleEl.style.pointerEvents = 'none';
+        textEl.style.pointerEvents = 'auto';
+        textEl.setAttribute('role','button');
+    } catch(e) {}
+}
+
 /**
  * Updates the behavior of the main header's plus button and sidebar's "Add New Share" button
  * based on the selected watchlist.
@@ -7210,7 +7233,7 @@ document.addEventListener('DOMContentLoaded', function() {
     logDebug('script.js DOMContentLoaded fired.');
 
     // Ensure header interactive bindings are attached even on first load
-    try { bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
+    try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
     // Early notification restore from persisted count
     try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
 
@@ -7279,7 +7302,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 adjustMainContentPadding();
 
                         // Ensure header click bindings are attached after header becomes visible
-                        try { bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind after auth show', e); }
+                        try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind after auth show', e); }
 
                 if (splashKangarooIcon) {
                     splashKangarooIcon.classList.add('pulsing');
@@ -7293,6 +7316,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Load user data, then do an initial fetch of live prices before setting the update interval.
                 // This ensures the initial view is correctly sorted by percentage change if selected.
                 await loadUserWatchlistsAndSettings();
+                try { ensureTitleStructure(); } catch(e) {}
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
                 await fetchLivePrices({ forceLiveFetch: !forcedOnce });
@@ -7323,7 +7347,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             else {
                 currentUserId = null;
-                if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = 'Share Watchlist';
+                // Reset title safely using the inner span, do not expand click target
+                try { ensureTitleStructure(); const t = document.getElementById('dynamicWatchlistTitleText'); if (t) t.textContent = 'Share Watchlist'; } catch(e) {}
                 logDebug('AuthState: User signed out.');
                 updateMainButtonsState(false);
                 clearShareList();
@@ -7392,6 +7417,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // Call renderWatchlist here to ensure correct mobile card rendering after auth state is set
             renderWatchlist();
+            try { ensureTitleStructure(); } catch(e) {}
             // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
         });
     } else {
