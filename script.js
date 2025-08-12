@@ -3268,8 +3268,9 @@ function openWatchlistPicker() {
             renderWatchlist();
             try { updateAddHeaderButton(); updateSidebarAddButtonContext(); } catch(e) {}
             toggleCodeButtonsArrow();
-            watchlistPickerModal.classList.add('app-hidden');
-            dynamicWatchlistTitle.setAttribute('aria-expanded','false');
+            try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); watchlistPickerModal.style.display='none'; }
+            if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false');
+            if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus();
         };
         div.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); div.click(); } };
         watchlistPickerList.appendChild(div);
@@ -6388,7 +6389,10 @@ async function initializeAppLogic() {
                     }
                 } catch(_) {}
                 console.log('[Auth Env]', { isMobile, isStandalonePWA, isIOS, isAndroid, isMobileChrome, isFileProtocol, preferRedirect, forceRedirectOverride, origin: window.location.origin });
-                if (preferRedirect && window.authFunctions.signInWithRedirect) {
+                // If a prior redirect returned without a user, prefer popup on next try
+                const redirectPreviouslyFailed = (()=>{ try { return localStorage.getItem('authRedirectReturnedNoUser') === '1'; } catch(_) { return false; } })();
+                const useRedirect = preferRedirect && !redirectPreviouslyFailed;
+                if (useRedirect && window.authFunctions.signInWithRedirect) {
                     try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
                     // Switch to session persistence for mobile/redirect to survive incognito/storage quirks
                     try {
@@ -6507,6 +6511,7 @@ async function initializeAppLogic() {
                 if (result && result.user) {
                     logDebug('Auth: getRedirectResult returned user; redirect sign-in completed.');
                     try { localStorage.removeItem('authRedirectAttempted'); } catch(_) {}
+                    try { localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
                 } else {
                     // No result returned after redirect; if we attempted a redirect, hint the user
                     const attempted = (()=>{ try { return localStorage.getItem('authRedirectAttempted') === '1'; } catch(_) { return false; } })();
@@ -6524,6 +6529,7 @@ async function initializeAppLogic() {
                                 }
                             }, 1500);
                         }
+                        try { localStorage.setItem('authRedirectReturnedNoUser','1'); } catch(_) {}
                         try { localStorage.removeItem('authRedirectAttempted'); } catch(_) {}
                     }
                 }
@@ -7541,13 +7547,20 @@ document.addEventListener('DOMContentLoaded', function() {
         window._firebaseInitialized = true; // Mark Firebase as initialized
         logDebug('Firebase Ready: DB, Auth, and AppId assigned from window. Setting up auth state listener.');
 
-        // Ensure persistence is set once (prefer local for seamless mobile redirect flows)
+        // Ensure persistence is set once
         try {
-            if (window.authFunctions.setPersistence && window.authFunctions.browserLocalPersistence) {
-                window.authFunctions
-                    .setPersistence(auth, window.authFunctions.browserLocalPersistence)
-                    .then(() => logDebug('Auth: Persistence set to browserLocalPersistence.'))
-                    .catch((e) => console.warn('Auth: Failed to set persistence, continuing with default.', e));
+            if (window.authFunctions.setPersistence) {
+                const ua = navigator.userAgent || navigator.vendor || '';
+                const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+                const targetPersistence = isMobile && window.authFunctions.browserSessionPersistence
+                    ? window.authFunctions.browserSessionPersistence
+                    : window.authFunctions.browserLocalPersistence;
+                if (targetPersistence) {
+                    window.authFunctions
+                        .setPersistence(auth, targetPersistence)
+                        .then(() => logDebug('Auth: Persistence set to ' + (targetPersistence === window.authFunctions.browserSessionPersistence ? 'browserSessionPersistence' : 'browserLocalPersistence') + '.'))
+                        .catch((e) => console.warn('Auth: Failed to set persistence, continuing with default.', e));
+                }
             }
         } catch (e) {
             console.warn('Auth: Failed to set persistence (outer), continuing with default.', e);
