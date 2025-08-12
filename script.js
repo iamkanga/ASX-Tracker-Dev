@@ -2186,7 +2186,11 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         disableDropdown = false; // Always allow user to select a watchlist
         logDebug('Share Form: New share: Watchlist selector forced to blank placeholder, enabled for user selection.');
     } else { // Editing an existing share
-        if (currentShareWatchlistId && stockWatchlists.some(wl => wl.id === currentShareWatchlistId)) {
+        // Always honor 'portfolio' explicitly even if userWatchlists doesn't include it
+        if (currentShareWatchlistId === 'portfolio') {
+            selectedOptionId = 'portfolio';
+            logDebug('Share Form: Editing share: Detected portfolio watchlist, pre-selecting Portfolio.');
+        } else if (currentShareWatchlistId && stockWatchlists.some(wl => wl.id === currentShareWatchlistId)) {
             selectedOptionId = currentShareWatchlistId;
             logDebug('Share Form: Editing share: Pre-selected to existing share\'s watchlist: ' + selectedOptionId);
         } else if (currentShareWatchlistId) {
@@ -2205,9 +2209,14 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
                 console.warn('Share Form: Editing share: Original watchlist missing or not applicable. Please select a watchlist.');
             }
         } else if (stockWatchlists.length > 0) {
-            // No original ID on the share; do not auto-assign—leave blank to force explicit choice
-            selectedOptionId = '';
-            logDebug('Share Form: Editing share: No original watchlist set; leaving blank for user to choose.');
+            // No original ID on the share; default to current view if it's Portfolio, else leave blank
+            if (Array.isArray(currentSelectedWatchlistIds) && currentSelectedWatchlistIds[0] === 'portfolio') {
+                selectedOptionId = 'portfolio';
+                logDebug('Share Form: Editing share: No original watchlist; defaulting to current view Portfolio.');
+            } else {
+                selectedOptionId = '';
+                logDebug('Share Form: Editing share: No original watchlist set; leaving blank for user to choose.');
+            }
         } else {
             selectedOptionId = '';
             console.warn('Share Form: Editing share: No stock watchlists available to select.');
@@ -4047,8 +4056,20 @@ async function saveSortOrderPreference(sortOrder) {
     logDebug('Sort Debug: currentUserId: ' + currentUserId);
     logDebug('Sort Debug: window.firestore: ' + (window.firestore ? 'Available' : 'Not Available'));
 
+    // Always persist to localStorage as an offline-friendly backup
+    try {
+        if (sortOrder) {
+            localStorage.setItem('lastSortOrder', sortOrder);
+        } else {
+            localStorage.removeItem('lastSortOrder');
+        }
+        logDebug('Sort: Saved sort order to localStorage: ' + sortOrder);
+    } catch (e) {
+        console.warn('Sort: Failed to write sort order to localStorage:', e);
+    }
+
     if (!db || !currentUserId || !window.firestore) {
-        console.warn('Sort: Cannot save sort order preference: DB, User ID, or Firestore functions not available. Skipping save.');
+        console.warn('Sort: Cannot save sort order preference: DB, User ID, or Firestore functions not available. Skipping cloud save.');
         return;
     }
     const userProfileDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
@@ -4151,10 +4172,16 @@ async function loadUserWatchlistsAndSettings() {
         }
 
         // Apply saved sort order or default
-        if (currentUserId && savedSortOrder && Array.from(sortSelect.options).some(option => option.value === savedSortOrder)) {
-            sortSelect.value = savedSortOrder;
+        // Try Firestore sort first; if missing/invalid, fall back to localStorage
+        let candidateSort = savedSortOrder;
+        if (!candidateSort) {
+            try { candidateSort = localStorage.getItem('lastSortOrder') || null; } catch (e) { candidateSort = null; }
+            if (candidateSort) logDebug('Sort: Loaded sort order from localStorage fallback: ' + candidateSort);
+        }
+        if (currentUserId && candidateSort && Array.from(sortSelect.options).some(option => option.value === candidateSort)) {
+            sortSelect.value = candidateSort;
             // AGGRESSIVE FIX: Ensure currentSortOrder is updated to match the saved sort
-            currentSortOrder = savedSortOrder;
+            currentSortOrder = candidateSort;
             logDebug('Sort: Applied saved sort order: ' + currentSortOrder);
         } else {
             // Set to default sort for the current view type
