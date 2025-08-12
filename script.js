@@ -40,6 +40,9 @@ window.addEventListener('popstate', function(event) {
     }
     // If no modals or sidebar are open, allow default browser back (exit app)
 });
+// Keep main content padding in sync with header height changes (e.g., viewport resize)
+window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
+document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
 // The previous patch has been removed as the root cause of the UI issues,
@@ -514,6 +517,12 @@ function applyCompactViewMode() {
             mobileShareCardsContainer.classList.remove('compact-view');
         }
     }
+    // Re-apply ASX buttons visibility since compact view hides them
+    if (typeof applyAsxButtonsState === 'function') {
+        applyAsxButtonsState();
+    }
+    // Adjust layout after view mode change
+    requestAnimationFrame(adjustMainContentPadding);
 }
 
 // NEW: Global variable to track if the target hit icon is dismissed for the current session
@@ -597,6 +606,9 @@ function applyAsxButtonsState() {
         toggleAsxButtonsBtn.classList.toggle('expanded', shouldShow);
         toggleAsxButtonsBtn.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
     }
+    // After any state change, adjust content padding to account for header height change
+    // Use rAF to wait for styles/transition to apply
+    requestAnimationFrame(adjustMainContentPadding);
 }
 
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
@@ -3518,11 +3530,8 @@ function renderAsxCodeButtons() {
     });
 
     if (uniqueAsxCodes.size === 0) {
-        // Hide container hard if empty and bail early to let applyAsxButtonsState hide chevron
-        asxCodeButtonsContainer.style.display = 'none';
-        asxCodeButtonsContainer.style.pointerEvents = 'none';
-        asxCodeButtonsContainer.setAttribute('aria-hidden','true');
-        logDebug('UI: No unique ASX codes found for current view. Hiding ASX buttons container.');
+        // Let centralized state handler control visibility; just clear contents
+        logDebug('UI: No unique ASX codes found for current view.');
         applyAsxButtonsState();
         return;
     }
@@ -3580,9 +3589,7 @@ function renderAsxCodeButtons() {
         asxCodeButtonsContainer.__delegated = true;
     }
     logDebug('UI: Rendered ' + sortedAsxCodes.length + ' code buttons.');
-    // NEW: Adjust padding after rendering buttons, as their presence affects header height
-    adjustMainContentPadding();
-    // Re-apply visibility state centrally
+    // Re-apply visibility state centrally and adjust padding via applyAsxButtonsState()
     applyAsxButtonsState();
 }
 

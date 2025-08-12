@@ -5,12 +5,14 @@
 *   **CORS Errors:** Significant problems with CORS when the backend App Script returns `null` or `N/A` values, causing display issues. This is a major recurring issue that needs a robust solution.
 *   **UI & Theming:**
     *   **Resolved:** The blue text for ASX codes has been successfully changed to a coffee color.
-    *   **Outstanding:** In the portfolio view, the profit and loss bars at the top have a black fill, which is incorrect. This styling should be governed by the selected theme (e.g., light/dark/coffee).
+    *   **Resolved:** Portfolio Profit/Loss cards now use theme variable --card-bg (no black fallback). Fixed in style.css by defining :root --card-bg and removing dark fallbacks on .ps-card and .portfolio-card.
 *   **Dynamic Elements & State:**
     *   **Outstanding:** The watchlist view does not reposition correctly when the ASX code buttons are opened or closed.
     *   **Outstanding:** The dynamic title bar is not updating as expected, an issue carried over from previous sessions.
-    *   **Outstanding:** ASX code buttons are not functioning after a hard reload, despite working previously. This points to an initialization or state restoration problem.
-    *   **Outstanding:** Notifications require a page refresh to appear after a hard reload, indicating a service worker or initialization timing issue.
+    *   **Resolved:** ASX code buttons reinitialize after hard reload. Centralized visibility control in applyAsxButtonsState(); removed direct style overrides in renderAsxCodeButtons; reapplied state on DOM load and compact-mode changes.
+    *   **Outstanding:** Notifications require a manual refresh after hard reload. Will link first-live-load to updateTargetHitBanner automatically next.
+*   **CORS Errors:** Significant problems with CORS when the backend App Script returns `null` or `N/A` values, causing display issues. This is a major recurring issue that needs a robust solution.
+*   **CORS Errors:** Significant problems with CORS when the backend App Script returns `null` or `N/A`. Client now guards all fields (numOrNull, lastLivePrice/lastPrevClose fallbacks) and avoids throwing on empty/invalid arrays. Server should still send Access-Control-Allow-Origin and well-formed JSON.
 *   **Mobile Specific:**
     *   **Outstanding:** A "Try Again" pop-up is incorrectly appearing and blocking the Google authorization sign-in button on mobile devices, even though the sign-in process itself is successful.
 
