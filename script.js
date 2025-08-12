@@ -6314,6 +6314,7 @@ async function initializeAppLogic() {
     if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
         let splashSignInRetryTimer = null;
         let splashSignInInProgress = false;
+        let splashTriedPopup = false;
         splashSignInBtn.setAttribute('data-bound','true');
         splashSignInBtn.addEventListener('click', async () => {
             logDebug('Auth: Splash Screen Sign-In Button Clicked.');
@@ -6342,10 +6343,23 @@ async function initializeAppLogic() {
 
                 // Start timeout to auto-enable retry if popup blocked or user closes it silently
                 if (splashSignInRetryTimer) clearTimeout(splashSignInRetryTimer);
-                splashSignInRetryTimer = setTimeout(() => {
+                splashSignInRetryTimer = setTimeout(async () => {
                     if (!window._userAuthenticated) {
-                        logDebug('Auth: Sign-in timeout elapsed without auth state change. Enabling retry.');
-                        updateSplashSignInButtonState('retry');
+                        logDebug('Auth: Sign-in timeout elapsed without auth state change.');
+                        if (splashTriedPopup && window.authFunctions && window.authFunctions.signInWithRedirect) {
+                            logDebug('Auth: Auto-falling back to redirect after popup timeout.');
+                            try {
+                                await window.authFunctions.signInWithRedirect(currentAuth, provider);
+                                return;
+                            } catch (e5) {
+                                console.warn('Auth: Redirect fallback failed after popup timeout:', e5);
+                                updateSplashSignInButtonState('retry');
+                                splashSignInInProgress = false;
+                            }
+                        } else {
+                            updateSplashSignInButtonState('retry');
+                            splashSignInInProgress = false;
+                        }
                     }
                 }, 7000);
 
@@ -6371,6 +6385,7 @@ async function initializeAppLogic() {
                 } else {
                     // Desktop or environments where popup is allowed
                     await window.authFunctions.signInWithPopup(currentAuth, provider);
+                    splashTriedPopup = true;
                 }
                 logDebug('Auth: Google Sign-In successful from splash screen.');
                 if (splashSignInRetryTimer) {
