@@ -162,7 +162,7 @@ function makeFilesAvailableToSourceControlCSS() {
     --live-price-negative-bg: rgba(220, 53, 69, 0.1); /* Faint red */
     --comment-title-bg: rgba(0, 0, 0, 0.05); /* Subtle background for comment titles */
     --target-alert-bg: #e0f7fa; /* Light blue for target hit alert */
-    --target-alert-text: #0056b3; /* Darker blue for target hit text */
+    --target-alert-text: #a49393; /* Coffee color for target-hit ASX code in modals */
     --target-alert-border: #007bff;
     --target-banner-height: 40px; /* This variable is now effectively unused for the banner, but kept for other potential uses */
     ---green-color: #00FF00; /* Standard green for general use */

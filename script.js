@@ -7203,11 +7203,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Ensure header interactive bindings are attached even on first load
     try { bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
+    // Early notification restore from persisted count
+    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
 
     // Ensure Edit Current Watchlist button updates when watchlist selection changes
     if (watchlistSelect) {
         watchlistSelect.addEventListener('change', function() {
             updateMainButtonsState(true);
+            try { updateMainTitle(); } catch(e) {}
         });
     }
     // NEW: Initialize splash screen related flags
