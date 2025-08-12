@@ -4824,9 +4824,23 @@ function showCustomConfirm(message, callback) {
  * Updates the main title of the app based on the currently selected watchlist.
  */
 function updateMainTitle() {
-    if (!watchlistSelect) return;
+    if (!watchlistSelect) {
+        // Fallback: derive from currentSelectedWatchlistIds if dropdown not mounted yet
+        const fallbackId = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
+        let fallbackText = 'Share Watchlist';
+        if (fallbackId === ALL_SHARES_ID) fallbackText = 'All Shares';
+        else if (fallbackId === CASH_BANK_WATCHLIST_ID) fallbackText = 'Cash & Assets';
+        else if (fallbackId === 'portfolio') fallbackText = 'Portfolio';
+        else if (fallbackId) {
+            const wl = userWatchlists.find(w=>w.id===fallbackId);
+            if (wl) fallbackText = wl.name;
+        }
+        if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = fallbackText;
+        else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = fallbackText;
+        return;
+    }
     const selectedValue = watchlistSelect.value;
-    const selectedText = watchlistSelect.options[watchlistSelect.selectedIndex]?.textContent || '';
+    const selectedText = watchlistSelect.selectedIndex >=0 ? (watchlistSelect.options[watchlistSelect.selectedIndex]?.textContent || '') : '';
     let titleText;
     if (selectedValue === ALL_SHARES_ID) titleText = 'All Shares';
     else if (selectedValue === CASH_BANK_WATCHLIST_ID) titleText = 'Cash & Assets';
@@ -7114,8 +7128,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
                 logDebug('AuthState: User email: ' + user.email);
-                if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = 'ASX Tracker';
-                logDebug('AuthState: Dynamic title set to ASX Tracker.');
+                // Use dynamic update instead of hard-coded label so it reflects current selection
+                updateMainTitle();
+                logDebug('AuthState: Dynamic title initialized via updateMainTitle().');
                 updateMainButtonsState(true);
                 window._userAuthenticated = true; // Mark user as authenticated
 
