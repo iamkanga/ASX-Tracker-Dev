@@ -881,9 +881,9 @@ async function fetchLivePricesAndUpdateUI() {
  * Fetches live price data from the Google Apps Script Web App.
  * Updates the `livePrices` global object.
  */
-async function fetchLivePrices() {
+async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID) && !(opts && opts.forceLiveFetch)) {
         logDebug('Live Price: Skipped (cash view).');
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
@@ -3256,8 +3256,8 @@ if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
             if (first) first.focus();
         },30);
     };
-    // Prefer binding to the container so the whole title area is clickable
-    const clickable = dynamicWatchlistTitle || dynamicWatchlistTitleText;
+    // Bind to the narrow span to keep the click target tight
+    const clickable = dynamicWatchlistTitleText || dynamicWatchlistTitle;
     if (clickable && clickable.getAttribute('data-picker-bound') !== 'true') {
         clickable.addEventListener('click', openPicker);
         clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
@@ -3265,9 +3265,9 @@ if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
         clickable.setAttribute('data-picker-bound','true');
     }
 }
-if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ const modalEl=document.getElementById('watchlistPickerModal'); if (modalEl) modalEl.classList.add('app-hidden'); if (dynamicWatchlistTitle) { dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });
-window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });
-window.addEventListener('keydown', e=>{ if(e.key==='Escape' && !watchlistPickerModal.classList.contains('app-hidden')){ watchlistPickerModal.classList.add('app-hidden'); dynamicWatchlistTitle.setAttribute('aria-expanded','false'); dynamicWatchlistTitle.focus(); } });
+if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ const modalEl=document.getElementById('watchlistPickerModal'); if (modalEl) modalEl.classList.add('app-hidden'); if (dynamicWatchlistTitle) { dynamicWatchlistTitle.setAttribute('aria-expanded','false'); } if (dynamicWatchlistTitleText) { dynamicWatchlistTitleText.focus(); } });
+window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ watchlistPickerModal.classList.add('app-hidden'); if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape' && !watchlistPickerModal.classList.contains('app-hidden')){ watchlistPickerModal.classList.add('app-hidden'); if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
 
 // Wrap loadUserWatchlistsAndSettings to refresh new UI parts after data load
 const __origLoadUserWatchlistsAndSettings = loadUserWatchlistsAndSettings;
@@ -3282,8 +3282,8 @@ loadUserWatchlistsAndSettings = async function() {
 function bindHeaderInteractiveElements() {
     const titleEl = document.getElementById('dynamicWatchlistTitle');
     const textEl = document.getElementById('dynamicWatchlistTitleText');
-    // Prefer binding to the container so the whole title area is clickable
-    const clickable = titleEl || textEl;
+    // Bind only to the inner span for a narrower click target
+    const clickable = textEl || titleEl;
     if (clickable && clickable.getAttribute('data-picker-bound') !== 'true') {
         const openPicker = () => {
             openWatchlistPicker();
@@ -3302,7 +3302,7 @@ function bindHeaderInteractiveElements() {
     const closeBtn = document.getElementById('closeWatchlistPickerBtn');
     const pickerModal = document.getElementById('watchlistPickerModal');
     if (closeBtn && closeBtn.getAttribute('data-close-bound') !== 'true') {
-        closeBtn.addEventListener('click', ()=>{ if (pickerModal) pickerModal.classList.add('app-hidden'); if (titleEl) { titleEl.setAttribute('aria-expanded','false'); titleEl.focus(); } });
+        closeBtn.addEventListener('click', ()=>{ if (pickerModal) pickerModal.classList.add('app-hidden'); if (titleEl) { titleEl.setAttribute('aria-expanded','false'); } if (textEl) textEl.focus(); });
         closeBtn.setAttribute('data-close-bound','true');
     }
 }
@@ -6354,6 +6354,7 @@ async function initializeAppLogic() {
                 // NEW: Reset targetHitIconDismissed and clear localStorage entry on logout for a fresh start on next login
                 targetHitIconDismissed = false; 
                 localStorage.removeItem('targetHitIconDismissed');
+                try { localStorage.removeItem('forcedLiveFetchOnce'); } catch(e) {}
                 try { localStorage.setItem('lastKnownTargetCount', '0'); } catch(e) {}
 
             }
@@ -7292,7 +7293,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Load user data, then do an initial fetch of live prices before setting the update interval.
                 // This ensures the initial view is correctly sorted by percentage change if selected.
                 await loadUserWatchlistsAndSettings();
-                await fetchLivePrices();
+                // On first auth load, force one live fetch even if starting in Cash view to restore alerts
+                const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
+                await fetchLivePrices({ forceLiveFetch: !forcedOnce });
+                try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true'); } catch(e) {}
                 startLivePriceUpdates();
 
                 allAsxCodes = await loadAsxCodesFromCSV();

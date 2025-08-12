@@ -148,8 +148,9 @@ function makeFilesAvailableToSourceControlCSS() {
     --shadow-color: rgba(0, 0, 0, 0.15);
     --sidebar-width: 280px;
     --close-sidebar-btn-color: #666;
-    --icon-action-color: #007bff;
-    --icon-action-hover-color: #0056b3;
+    /* Icon/button colors tuned to coffee accent */
+    --icon-action-color: var(--accent-color);
+    --icon-action-hover-color: #8a7f7f; /* slightly darker coffee */
     --icon-danger-color: #FF0000;
     --icon-danger-hover-color: #FF0000;
     --calc-num-btn-bg: #f0f0f0;
@@ -245,8 +246,8 @@ body.dark-theme {
     --ghosted-text: #888888; /* Medium gray for ghosted text */
     --danger-button-bg: #FF0000;
     --danger-button-hover-bg: #FF0000;
-    --icon-action-color: #cccccc; /* Light gray for action icons */
-    --icon-action-hover-color: #ffffff; /* White for action icon hover */
+    --icon-action-color: var(--accent-color); /* Coffee accent in dark as well */
+    --icon-action-hover-color: #c8bebe; /* lighter coffee for contrast on dark */
     --icon-danger-color: #FF0000;
     --icon-danger-hover-color: #FF0000;
     --calc-num-btn-bg: #555555; /* Gray for calculator number buttons */
@@ -307,8 +308,8 @@ body.theme-bold-1 { /* Ocean Blue */
     --ghosted-text: #a8dadc;
     --danger-button-bg: #FF0000;
     --danger-button-hover-bg: #FF0000;
-    --icon-action-color: #00b4d8;
-    --icon-action-hover-color: #0096c7;
+    --icon-action-color: var(--accent-color);
+    --icon-action-hover-color: #8a7f7f;
     --icon-danger-color: #FF0000;
     --icon-danger-hover-color: #FF0000;
     --calc-num-btn-bg: #007f8c;
@@ -376,8 +377,8 @@ body.theme-bold-2 { /* Forest Green */
     --ghosted-text: #d4e3c9;
     --danger-button-bg: #FF0000;
     --danger-button-hover-bg: #FF0000;
-    --icon-action-color: #a7c957;
-    --icon-action-hover-color: #8ba84a;
+    --icon-action-color: var(--accent-color);
+    --icon-action-hover-color: #8a7f7f;
     --icon-danger-color: #FF0000;
     --icon-danger-hover-color: #FF0000;
     --calc-num-btn-bg: #5a855a;
@@ -445,8 +446,8 @@ body.theme-bold-3 { /* Sunset Orange */
     --ghosted-text: #ffd790;
     --danger-button-bg: #FF0000;
     --danger-button-hover-bg: #FF0000;
-    --icon-action-color: #ffc300;
-    --icon-action-hover-color: #e0ac00;
+    --icon-action-color: var(--accent-color);
+    --icon-action-hover-color: #8a7f7f;
     --icon-danger-color: #e63946;
     --icon-danger-hover-color: #c0392b;
     --calc-num-btn-bg: #f7b98d;
@@ -514,8 +515,8 @@ body.theme-bold-4 { /* Royal Purple */
     --ghosted-text: #e8d0ff;
     --danger-button-bg: #e74c3c;
     --danger-button-hover-bg: #c0392b;
-    --icon-action-color: #c77dff;
-    --icon-action-hover-color: #a842ff;
+    --icon-action-color: var(--accent-color);
+    --icon-action-hover-color: #8a7f7f;
     --icon-danger-color: #e74c3c;
     --icon-danger-hover-color: #c0392b;
     --calc-num-btn-bg: #9d4edd;
@@ -583,7 +584,7 @@ body.theme-bold-5 { /* Deep Red */
     --ghosted-text: #ffcccc;
     --danger-button-bg: #e74c3c;
     --danger-button-hover-bg: #c0392b;
-    --icon-action-color: #e74c3c;
+    --icon-action-color: var(--accent-color);
     --icon-action-hover-color: #c0392b;
     --icon-danger-color: #e74c3c;
     --icon-danger-hover-color: #c0392b;
@@ -4495,6 +4496,11 @@ table td.live-price-cell.negative-change {
     transform: translateY(-1px);
 }
 
+.modal-action-icon:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
 .modal-action-icon.danger {
     color: var(--icon-danger-color);
 }
@@ -4508,6 +4514,31 @@ table td.live-price-cell.negative-change {
 .modal-action-icon.secondary:hover {
     color: var(--secondary-button-hover-color);
     background-color: var(--menu-button-hover-bg);
+}
+
+/* Generic small round icon buttons (header, notifications, etc.) */
+.icon-button {
+    background: transparent;
+    border: none;
+    padding: 6px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--icon-action-color);
+    border-radius: 50%;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+}
+
+.icon-button:hover {
+    background-color: var(--menu-button-hover-bg);
+    color: var(--icon-action-hover-color);
+}
+
+.icon-button:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
 }
 
 /* Share Details Modal Specifics */
