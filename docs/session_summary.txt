@@ -1,3 +1,10 @@
+2025-08-12
+- Header UX: Made whole title clickable, pointer cursor, and green keyboard-only focus ring.
+- Sidebar: Initialize closed on desktop after reload.
+- Notifications: Restore persisted alert count on DOMContentLoaded and post-auth before live prices load.
+- Title sync: Ensure header title updates after restoring lastSelectedView; resolve from userWatchlists if select text missing.
+- Minor: Bound click handler to title container for reliable activation area.
+
 2025-08-12 Issue Status Recap (user feedback):
 1 Watchlist picker not opening (desktop/mobile) - NOT RESOLVED
 2 Title container width not reduced - NOT RESOLVED

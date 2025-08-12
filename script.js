@@ -470,7 +470,7 @@ let originalWatchlistData = null; // Stores original watchlist data for dirty st
 let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 
 // App version (single source of truth for display)
-const APP_VERSION = 'v0.1.4';
+const APP_VERSION = 'v0.1.5';
 
 
 // Live Price Data
@@ -4958,7 +4958,15 @@ function updateMainTitle() {
     if (selectedValue === ALL_SHARES_ID) titleText = 'All Shares';
     else if (selectedValue === CASH_BANK_WATCHLIST_ID) titleText = 'Cash & Assets';
     else if (selectedValue === 'portfolio') titleText = 'Portfolio';
-    else titleText = selectedText || 'Share Watchlist';
+    else {
+        // Prefer the select option text if available; otherwise resolve from userWatchlists by id
+        if (selectedText && selectedText.trim()) {
+            titleText = selectedText.trim();
+        } else {
+            const wl = userWatchlists && Array.isArray(userWatchlists) ? userWatchlists.find(w => w.id === selectedValue) : null;
+            titleText = (wl && wl.name) ? wl.name : 'Share Watchlist';
+        }
+    }
     if (dynamicWatchlistTitleText) {
         dynamicWatchlistTitleText.textContent = titleText;
     } else if (dynamicWatchlistTitle) {
