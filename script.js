@@ -4275,6 +4275,15 @@ async function loadUserWatchlistsAndSettings() {
         // Initial render based on selected watchlist (stock or cash)
         renderWatchlist(); // This will now correctly display based on the initial currentSelectedWatchlistIds
 
+        // Strong enforcement: if the last view was Portfolio, ensure Portfolio is shown now
+        try {
+            const lsViewFinal = localStorage.getItem('lastSelectedView');
+            if (lsViewFinal === 'portfolio' && typeof showPortfolioView === 'function') {
+                showPortfolioView();
+                logDebug('User Settings: Enforced Portfolio view after initial render.');
+            }
+        } catch(e) { /* ignore */ }
+
         window._appDataLoaded = true;
         hideSplashScreenIfReady();
 
