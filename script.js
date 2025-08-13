@@ -592,7 +592,7 @@ const saveShareBtn = document.getElementById('saveShareBtn');
 const deleteShareBtn = document.getElementById('deleteShareBtn');
 const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
 const shareNameInput = document.getElementById('shareName');
-const currentPriceInput = document.getElementById('currentPrice');
+// Removed manual Reference Price input; currentPrice now auto-captured
 const targetPriceInput = document.getElementById('targetPrice');
 const dividendAmountInput = document.getElementById('dividendAmount');
 const frankingCreditsInput = document.getElementById('frankingCredits');
@@ -931,7 +931,7 @@ if (!sidebarOverlay) {
 
 const formInputs = [
     shareNameInput,
-    currentPriceInput,
+    // currentPriceInput removed (auto mode)
     targetPriceInput,
     dividendAmountInput,
     frankingCreditsInput,
@@ -2737,7 +2737,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     }
 
     if (shareNameInput) shareNameInput.value = shareToEdit.shareName || '';
-    if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? formatUserDecimalStrict(shareToEdit.currentPrice) : '';
+    // Removed setting manual currentPrice input (field no longer present)
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimalStrict(shareToEdit.targetPrice) : '';
     
     // Reset toggle state helpers
@@ -2833,7 +2833,7 @@ function getCurrentFormData() {
 
     return {
         shareName: shareNameInput?.value?.trim().toUpperCase() || '',
-        currentPrice: parseFloat(currentPriceInput?.value),
+    currentPrice: null, // Will be auto-derived when saving new/updated share
         targetPrice: parseFloat(targetPriceInput?.value),
         // UPDATED: Get targetDirection from the new checkboxes
         targetDirection: targetAboveCheckbox?.checked ? 'above' : 'below',
@@ -2992,7 +2992,16 @@ async function saveShareData(isSilent = false) {
     }
 
 
-    const currentPrice = parseFloat(currentPriceInput.value);
+    // Auto-capture live or fallback current price (no manual input)
+    let currentPrice = NaN;
+    try {
+        const liveData = livePrices[shareName.toUpperCase()];
+        if (liveData && typeof liveData.live === 'number' && !isNaN(liveData.live)) {
+            currentPrice = liveData.live;
+        } else if (liveData && typeof liveData.lastLivePrice === 'number' && !isNaN(liveData.lastLivePrice)) {
+            currentPrice = liveData.lastLivePrice;
+        }
+    } catch(_) {}
     const targetPrice = parseFloat(targetPriceInput.value);
     const dividendAmount = parseFloat(dividendAmountInput.value);
     const frankingCredits = parseFloat(frankingCreditsInput.value);
@@ -3012,7 +3021,7 @@ async function saveShareData(isSilent = false) {
 
     const shareData = {
         shareName: shareName,
-        currentPrice: isNaN(currentPrice) ? null : currentPrice,
+        currentPrice: isNaN(currentPrice) ? null : currentPrice, // auto derived above
         targetPrice: isNaN(targetPrice) ? null : targetPrice,
         // UPDATED: Save the selected target direction from the new checkboxes
         targetDirection: targetAboveCheckbox.checked ? 'above' : 'below',
@@ -3085,6 +3094,17 @@ async function saveShareData(isSilent = false) {
         }
     } else {
         shareData.entryDate = new Date().toISOString();
+        // If currentPrice still null attempt a late grab (race with live fetch)
+        if (shareData.currentPrice === null) {
+            try {
+                const liveDataLate = livePrices[shareName.toUpperCase()];
+                if (liveDataLate && typeof liveDataLate.live === 'number' && !isNaN(liveDataLate.live)) {
+                    shareData.currentPrice = liveDataLate.live;
+                } else if (liveDataLate && typeof liveDataLate.lastLivePrice === 'number' && !isNaN(liveDataLate.lastLivePrice)) {
+                    shareData.currentPrice = liveDataLate.lastLivePrice;
+                }
+            } catch(_) {}
+        }
         shareData.lastFetchedPrice = shareData.currentPrice;
         shareData.previousFetchedPrice = shareData.currentPrice;
 
@@ -4399,7 +4419,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 userManuallyOverrodeDirection = false;
                 formTitle.textContent = 'Add New Share'; // Set title for new share
                 shareNameInput.value = currentSearchShareData.shareName; // Pre-fill code
-                currentPriceInput.value = !isNaN(currentSearchShareData.currentPrice) ? currentSearchShareData.currentPrice.toFixed(2) : ''; // Pre-fill live price
+                // currentPriceInput removed; no prefill needed
                 populateShareWatchlistSelect(null, true); // Populate and enable watchlist select for new share
                 // Default toggles to Buy+Below
                 try {
@@ -6504,7 +6524,7 @@ async function initializeAppLogic() {
             if (formCompanyName) formCompanyName.textContent = name || '';
             if (shareNameSuggestions) shareNameSuggestions.classList.remove('active');
             // Optionally move focus to next field for quicker entry
-            const next = currentPriceInput || targetPriceInput;
+            const next = targetPriceInput;
             if (next) next.focus();
             checkFormDirtyState();
 
@@ -6523,9 +6543,7 @@ async function initializeAppLogic() {
                 const lo = parseFloat(stock.Low52);
 
                 // Prefill Entered Price if empty
-                if (currentPriceInput && (currentPriceInput.value === '' || isNaN(parseFloat(currentPriceInput.value)))) {
-                    if (!isNaN(live)) currentPriceInput.value = live.toFixed(2);
-                }
+                // Removed auto inserting into currentPrice input (field removed)
                 // Render a compact live display panel
                 if (addShareLivePriceDisplay) {
                     const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
