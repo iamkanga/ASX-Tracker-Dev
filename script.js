@@ -4359,7 +4359,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
     currentSearchShareData = null; // Reset previous data
 
     try {
-        const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${asxCode}`);
+    const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${asxCode}&_ts=${Date.now()}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -4472,20 +4472,106 @@ async function displayStockDetailsInSearchModal(asxCode) {
         if (searchModalListcorpLink) searchModalListcorpLink.href = `https://www.listcorp.com/asx/${asxCode.toLowerCase()}`;
         if (searchModalCommSecLink) searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
 
-        // Store the fetched data for potential adding/editing
+        // Store the fetched data for potential adding/editing (normalize code property fallbacks)
+        const resolvedCode = stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode;
         currentSearchShareData = {
-            shareName: stockData.ASXCode,
+            shareName: String(resolvedCode || '').toUpperCase(),
             companyName: stockData.CompanyName,
-            currentPrice: currentLivePrice, // Use current live price as initial entered price
-            targetPrice: null, // Default null
-            dividendAmount: null, // Default null
-            frankingCredits: null, // Default null
-            starRating: 0, // Default 0
-            comments: [], // Default empty array
-            watchlistId: null // To be selected when adding
+            currentPrice: currentLivePrice,
+            targetPrice: null,
+            dividendAmount: null,
+            frankingCredits: null,
+            starRating: 0,
+            comments: [],
+            watchlistId: null
         };
 
-        // Render action buttons
+        // AUTO-POPULATE / OPEN FORM LOGIC
+        try {
+            const alreadyEditing = !!selectedShareDocId;
+            if (existingShare) {
+                // If the code already exists, seamlessly open its edit form (unless already open for that share)
+                if (!alreadyEditing || selectedShareDocId !== existingShare.id) {
+                    hideModal(stockSearchModal);
+                    showEditFormForSelectedShare(existingShare.id);
+                }
+            } else {
+                // New share path: open (or update) the Add New Share form immediately for faster workflow
+                hideModal(stockSearchModal);
+                // Clear only if we are not already in a fresh new-share form state
+                if (selectedShareDocId) {
+                    // Was editing something else; start a clean add flow
+                    clearForm();
+                } else if (formTitle && formTitle.textContent !== 'Add New Share') {
+                    clearForm();
+                }
+                // Ensure form baseline state
+                formTitle.textContent = 'Add New Share';
+                selectedShareDocId = null; // ensure new
+                if (shareNameInput) shareNameInput.value = currentSearchShareData.shareName;
+                if (formCompanyName) formCompanyName.textContent = currentSearchShareData.companyName || '';
+                // Prefill default intent (Buy/Below) only if nothing chosen yet
+                try {
+                    if (targetIntentBuyBtn && targetIntentSellBtn && !targetIntentBuyBtn.classList.contains('is-active') && !targetIntentSellBtn.classList.contains('is-active')) {
+                        targetIntentBuyBtn.classList.add('is-active');
+                        targetIntentBuyBtn.setAttribute('aria-pressed','true');
+                        targetIntentSellBtn.classList.remove('is-active');
+                        targetIntentSellBtn.setAttribute('aria-pressed','false');
+                    }
+                    if (targetAboveCheckbox && targetBelowCheckbox && !targetAboveCheckbox.checked && !targetBelowCheckbox.checked) {
+                        targetAboveCheckbox.checked = false; targetBelowCheckbox.checked = true;
+                    }
+                    if (targetDirAboveBtn && targetDirBelowBtn && !targetDirAboveBtn.classList.contains('is-active') && !targetDirBelowBtn.classList.contains('is-active')) {
+                        targetDirAboveBtn.classList.remove('is-active'); targetDirAboveBtn.setAttribute('aria-pressed','false');
+                        targetDirBelowBtn.classList.add('is-active'); targetDirBelowBtn.setAttribute('aria-pressed','true');
+                    }
+                } catch(_) {}
+                // Populate watchlist selector (new share context)
+                populateShareWatchlistSelect(null, true);
+                // Add initial blank comment section if none exists
+                if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
+                    addCommentSection(commentsFormContainer);
+                }
+                // Render live snapshot into addShareLivePriceDisplay (robust key fallbacks)
+                try {
+                    if (addShareLivePriceDisplay) {
+                        const liveVal = parseFloat(stockData.LivePrice ?? stockData['Live Price'] ?? stockData.live ?? stockData.price ?? stockData.Last ?? stockData.LastPrice ?? stockData['Last Price']);
+                        const prevVal = parseFloat(stockData.PrevClose ?? stockData['Prev Close'] ?? stockData.prevClose ?? stockData.prev ?? stockData['Previous Close'] ?? stockData.Close ?? stockData['Last Close']);
+                        const peVal = parseFloat(stockData.PE ?? stockData['PE Ratio'] ?? stockData.pe);
+                        const hiVal = parseFloat(stockData.High52 ?? stockData['High52'] ?? stockData['High 52'] ?? stockData['52WeekHigh'] ?? stockData['52 High']);
+                        const loVal = parseFloat(stockData.Low52 ?? stockData['Low52'] ?? stockData['Low 52'] ?? stockData['52WeekLow'] ?? stockData['52 Low']);
+                        const change = (!isNaN(liveVal) && !isNaN(prevVal)) ? (liveVal - prevVal) : null;
+                        const pct = (!isNaN(liveVal) && !isNaN(prevVal) && prevVal !== 0) ? ((liveVal - prevVal) / prevVal) * 100 : null;
+                        const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
+                        addShareLivePriceDisplay.innerHTML = `
+                            <div class="fifty-two-week-row">
+                                <span class="fifty-two-week-value low">Low: ${!isNaN(loVal) ? formatMoney(loVal) : 'N/A'}</span>
+                                <span class="fifty-two-week-value high">High: ${!isNaN(hiVal) ? formatMoney(hiVal) : 'N/A'}</span>
+                            </div>
+                            <div class="live-price-main-row">
+                                <span class="live-price-large ${priceClass}">${!isNaN(liveVal) ? formatMoney(liveVal) : 'N/A'}</span>
+                                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${change.toFixed(2)} (${pct.toFixed(2)}%)` : 'N/A'}</span>
+                            </div>
+                            <div class="pe-ratio-row">
+                                <span class="pe-ratio-value">P/E: ${!isNaN(peVal) ? peVal.toFixed(2) : 'N/A'}</span>
+                            </div>`;
+                        addShareLivePriceDisplay.style.display = 'block';
+                    }
+                } catch(_) {}
+                // Finally show the form if not visible
+                if (shareFormSection && (shareFormSection.style.display === 'none' || shareFormSection.classList.contains('app-hidden'))) {
+                    showModal(shareFormSection);
+                }
+                // Focus code input for immediate target price entry
+                if (shareNameInput) shareNameInput.focus();
+                // Recompute dirty state now populated
+                checkFormDirtyState();
+            }
+        } catch (autoErr) {
+            console.warn('Search AutoFill: Failed to auto-populate form from search selection', autoErr);
+        }
+
+    // Render action buttons (kept for explicit user intent, though auto-open logic above already populated form)
         const actionButton = document.createElement('button');
         actionButton.classList.add('button', 'primary-button'); // Apply base button styles
         
