@@ -1,7 +1,7 @@
 // Service Worker Version: 1.0.8
 
 // Cache name for the current version of the service worker
-const CACHE_NAME = 'share-watchlist-v1.0.20'; // Bump for accordion bug fixes (default state + toggle)
+const CACHE_NAME = 'share-watchlist-v1.0.21'; // Bump for accordion event delegation fix
 
 // List of essential application assets to precache
 const CACHED_ASSETS = [

@@ -1496,63 +1496,53 @@ function getShareDisplayData(share) {
 // --- UI State Management Functions ---
 
 // Accordion (Share Form) Initialization
-function initShareFormAccordion() {
-    const accordionRoot = document.getElementById('shareFormAccordion');
-    if (!accordionRoot) return;
-    const sections = Array.from(accordionRoot.querySelectorAll('.accordion-section'));
-    // Ensure only Core (data-section="core") is open by default
+function initShareFormAccordion(force = false) {
+    const root = document.getElementById('shareFormAccordion');
+    if (!root) return;
+    if (root.dataset.accordionInit && !force) return; // idempotent
+    const sections = root.querySelectorAll('.accordion-section');
     sections.forEach(sec => {
         const isCore = sec.getAttribute('data-section') === 'core';
-        if (isCore) {
-            sec.classList.add('open');
-        } else {
-            sec.classList.remove('open');
-        }
+        if (isCore) sec.classList.add('open'); else sec.classList.remove('open');
+        const toggleBtn = sec.querySelector('.accordion-toggle');
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', String(isCore));
     });
-    sections.forEach(section => {
-        const toggleBtn = section.querySelector('.accordion-toggle');
-        const panel = section.querySelector('.accordion-panel');
-        if (!toggleBtn || !panel) return;
-        toggleBtn.addEventListener('click', () => toggleAccordionSection(section));
-        // Ensure ARIA states reflect initial .open class
-        const isOpen = section.classList.contains('open');
-        toggleBtn.setAttribute('aria-expanded', String(isOpen));
-        // Using max-height CSS transition; no hidden attribute (avoid layout jumps)
+    // Event delegation for reliability
+    root.addEventListener('click', (e) => {
+        const header = e.target.closest('.accordion-toggle');
+        if (!header || !root.contains(header)) return;
+        e.preventDefault();
+        const section = header.closest('.accordion-section');
+        if (!section) return;
+        toggleAccordionSection(section);
     });
+    root.dataset.accordionInit = 'true';
 }
 
 function toggleAccordionSection(section) {
-    if (!section) return;
-    const isCurrentlyOpen = section.classList.contains('open');
     const toggleBtn = section.querySelector('.accordion-toggle');
-    const panel = section.querySelector('.accordion-panel');
-    if (!toggleBtn || !panel) return;
-    if (isCurrentlyOpen) {
-        section.classList.remove('open');
-        toggleBtn.setAttribute('aria-expanded', 'false');
-    } else {
-        section.classList.add('open');
-        toggleBtn.setAttribute('aria-expanded', 'true');
-        // Scroll new section header into view on narrow screens for usability
-        if (window.innerWidth < 650) {
-            setTimeout(() => {
-                try { toggleBtn.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
-            }, 20);
-        }
+    if (!toggleBtn) return;
+    const opening = !section.classList.contains('open');
+    section.classList.toggle('open');
+    toggleBtn.setAttribute('aria-expanded', String(opening));
+    if (opening && window.innerWidth < 650) {
+        setTimeout(() => {
+            try { toggleBtn.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
+        }, 30);
     }
 }
 
-// Ensure accordion initialized when share form modal is shown
-const originalShowModal = typeof showModal === 'function' ? showModal : null;
-if (originalShowModal) {
-    window.showModal = function(modalEl) {
-        originalShowModal(modalEl);
-        if (modalEl === shareFormSection) {
-            // Delay init slightly to allow dynamic content (suggestions etc.)
-            requestAnimationFrame(initShareFormAccordion);
-        }
-    };
-}
+// Initialize accordion when DOM ready; also on modal open via observer fallback
+document.addEventListener('DOMContentLoaded', () => {
+    initShareFormAccordion();
+});
+
+// MutationObserver safety net: if form content is replaced dynamically later
+const accordionObserver = new MutationObserver(() => {
+    const root = document.getElementById('shareFormAccordion');
+    if (root && !root.dataset.accordionInit) initShareFormAccordion(true);
+});
+try { accordionObserver.observe(document.body, { childList: true, subtree: true }); } catch(e) {}
 
 /**
  * Adds a single share to the desktop table view.
