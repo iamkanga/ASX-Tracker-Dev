@@ -430,10 +430,10 @@
             
             <div class="modal-body-scrollable">
                 <div id="shareFormAccordion" class="accordion">
-                    <!-- Core Details -->
+                    <!-- Core Info -->
                     <div class="accordion-section open" data-section="core">
                         <button type="button" class="accordion-toggle" aria-expanded="true" aria-controls="accordion-panel-core" id="accordion-header-core">
-                            <span class="accordion-title">Core Details</span>
+                            <span class="accordion-title">Core Info</span>
                             <span class="accordion-caret" aria-hidden="true"></span>
                         </button>
                         <div id="accordion-panel-core" class="accordion-panel" role="region" aria-labelledby="accordion-header-core">
@@ -450,25 +450,30 @@
                                 <input type="text" id="shareName" placeholder="e.g. BHP" autocomplete="off" required>
                                 <div id="shareNameSuggestions" class="autocomplete-suggestions"></div>
                             </div>
-
-                            <!-- Live Price (optional) -->
                             <div id="addShareLivePriceDisplay" class="live-price-display-section" style="display:none;"></div>
                         </div>
                     </div>
-
-                    <!-- Portfolio Tracking -->
+                    <!-- Portfolio Holdings -->
                     <div class="accordion-section" data-section="portfolio">
                         <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-portfolio" id="accordion-header-portfolio">
-                            <span class="accordion-title">Portfolio Tracking</span>
+                            <span class="accordion-title">Portfolio Holdings</span>
                             <span class="accordion-caret" aria-hidden="true"></span>
                         </button>
                         <div id="accordion-panel-portfolio" class="accordion-panel" role="region" aria-labelledby="accordion-header-portfolio">
-                            <label for="portfolioShares">Number of Shares Purchased:</label>
+                            <label for="portfolioShares">Number of Shares:</label>
                             <input type="number" id="portfolioShares" min="0" step="1" placeholder="1000" class="smart-ph">
 
                             <label for="portfolioAvgPrice">Average Purchase Price ($):</label>
                             <input type="number" id="portfolioAvgPrice" min="0" step="0.01" placeholder="23.45" class="smart-ph">
-
+                        </div>
+                    </div>
+                    <!-- Target & Rating -->
+                    <div class="accordion-section" data-section="target">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-target" id="accordion-header-target">
+                            <span class="accordion-title">Target & Rating</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-target" class="accordion-panel" role="region" aria-labelledby="accordion-header-target">
                             <label for="shareRating">Star Rating:</label>
                             <select id="shareRating" class="dropdown-large">
                                 <option value="0" selected>No Rating</option>
@@ -478,7 +483,6 @@
                                 <option value="4">⭐⭐⭐⭐ 4 Stars</option>
                                 <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
                             </select>
-
                             <div class="form-group-with-toggle">
                                 <label for="targetPrice" class="target-price-label">Target Price ($):</label>
                                 <div class="toggle-row" aria-label="Alert configuration">
@@ -517,10 +521,8 @@
                                 </div>
                                 <input type="number" id="targetPrice" step="0.01" placeholder="25.50" class="smart-ph">
                             </div>
-
                         </div>
                     </div>
-
                     <!-- Dividends -->
                     <div class="accordion-section" data-section="dividends">
                         <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-dividends" id="accordion-header-dividends">
@@ -530,12 +532,21 @@
                         <div id="accordion-panel-dividends" class="accordion-panel" role="region" aria-labelledby="accordion-header-dividends">
                             <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
                             <input type="number" id="dividendAmount" step="0.001" placeholder="1.250" class="smart-ph">
-
                             <label for="frankingCredits">Franking Credits (%):</label>
                             <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="70 (for 70%)" class="smart-ph">
                         </div>
                     </div>
-
+                    <!-- Other Details (auto populated, read-only display) -->
+                    <div class="accordion-section" data-section="other">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-other" id="accordion-header-other">
+                            <span class="accordion-title">Other Details</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-other" class="accordion-panel" role="region" aria-labelledby="accordion-header-other">
+                            <p class="static-field"><strong>Entry Date:</strong> <span id="autoEntryDateDisplay" class="ghosted-text">Auto when saved</span></p>
+                            <p class="static-field"><strong>Reference Price:</strong> <span id="autoReferencePriceDisplay" class="ghosted-text">Auto when saved</span></p>
+                        </div>
+                    </div>
                     <!-- Comments -->
                     <div class="accordion-section" data-section="comments">
                         <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-comments" id="accordion-header-comments">
@@ -711,15 +722,6 @@
         </div>
     </div>
 
-    <div id="customDialogModal" class="modal">
-        <div class="modal-content">
-            <p id="customDialogMessage"></p>
-            <div class="custom-dialog-buttons">
-                <span id="customDialogConfirmBtn" class="modal-action-icon" title="Yes"><i class="fas fa-check-circle"></i></span>
-                <span id="customDialogCancelBtn" class="modal-action-icon danger" title="No"><i class="fas fa-times-circle"></i></span>
-            </div>
-        </div>
-    </div>
 
     <div id="targetHitDetailsModal" class="modal target-hit-details-modal">
         <div class="modal-content">

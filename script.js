@@ -682,6 +682,9 @@ const modalFoolLink = document.getElementById('modalFoolLink');
 const modalListcorpLink = document.getElementById('modalListcorpLink'); // NEW: Reference for Listcorp link
 const modalCommSecLink = document.getElementById('modalCommSecLink');
 const commSecLoginMessage = document.getElementById('commSecLoginMessage');
+// NEW: Auto (read-only) fields in Other Details section of Share Form
+const autoEntryDateDisplay = document.getElementById('autoEntryDateDisplay');
+const autoReferencePriceDisplay = document.getElementById('autoReferencePriceDisplay');
 const dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
 const calcCloseButton = document.querySelector('.calc-close-button');
 const calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
@@ -692,8 +695,7 @@ const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
 const investmentValueSelect = document.getElementById('investmentValueSelect');
 const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
 const sortSelect = document.getElementById('sortSelect');
-const customDialogModal = document.getElementById('customDialogModal');
-const customDialogMessage = document.getElementById('customDialogMessage');
+// Legacy customDialogModal removed; toast system fully replaces it.
 const calculatorModal = document.getElementById('calculatorModal');
 const calculatorInput = document.getElementById('calculatorInput');
 const calculatorResult = document.getElementById('calculatorResult');
@@ -793,23 +795,27 @@ function formatWithCommas(value) {
 
 // Global helpers for consistent numeric formatting across the UI
 function formatMoney(val, opts = {}) {
-    const { hideZero = false, decimals = 2 } = opts;
+    const { hideZero = false, decimals } = opts; // if decimals supplied explicitly, override adaptive logic
     if (val === null || val === undefined) return '';
     const n = Number(val);
     if (!isFinite(n)) return '';
     if (hideZero && n === 0) return '';
-    const fixed = n.toFixed(decimals);
+    // Adaptive decimals: < 1 cent show 3 decimals (e.g., $0.005), otherwise 2.
+    const useDecimals = (typeof decimals === 'number') ? decimals : (Math.abs(n) < 0.01 && n !== 0 ? 3 : 2);
+    const fixed = n.toFixed(useDecimals);
     const parts = fixed.split('.');
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return '$' + parts.join('.');
 }
 
 function formatPercent(val, opts = {}) {
-    const { decimals = 2 } = opts;
+    const { maxDecimals = 2 } = opts; // allow specifying maximum decimals
     if (val === null || val === undefined) return '';
     const n = Number(val);
     if (!isFinite(n)) return '';
-    return n.toFixed(decimals) + '%';
+    // Show whole number when no fractional component (e.g., 100 instead of 100.00)
+    if (Math.abs(n % 1) < 1e-9) return n.toFixed(0) + '%';
+    return n.toFixed(maxDecimals) + '%';
 }
 
 // Fallback for missing formatUserDecimalStrict (called in edit form population)
@@ -1334,23 +1340,12 @@ function showCustomAlert(message, duration = 3000, type = 'info') {
             toast.querySelector('.close').addEventListener('click', remove);
             container.appendChild(toast);
             requestAnimationFrame(()=> toast.classList.add('show'));
-        if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
+            if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
             return;
         }
-    } catch (e) { console.warn('Toast render failed, falling back to modal alert.', e); }
-    // Fallback to existing modal if container missing
-    const confirmBtn = document.getElementById('customDialogConfirmBtn');
-    const cancelBtn = document.getElementById('customDialogCancelBtn');
-    const dialogButtonsContainer = document.querySelector('#customDialogModal .custom-dialog-buttons');
-    if (!customDialogModal || !customDialogMessage || !confirmBtn || !cancelBtn || !dialogButtonsContainer) {
-        console.log('ALERT (fallback): ' + message);
-        return;
-    }
-    customDialogMessage.textContent = message;
-    dialogButtonsContainer.style.display = 'none';
-    showModal(customDialogModal);
-    if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); }
-    autoDismissTimeout = setTimeout(() => { hideModal(customDialogModal); autoDismissTimeout = null; }, effectiveDuration || 3000);
+    } catch (e) { console.warn('Toast render failed, using alert fallback.', e); }
+    // Minimal fallback
+    try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
 }
 
 // ToastManager: centralized API
@@ -2496,6 +2491,15 @@ function clearForm() {
     }
     setIconDisabled(saveShareBtn, true); // Save button disabled on clear
     logDebug('Form: Form fields cleared and selectedShareDocId reset. saveShareBtn disabled.');
+    // Reset auto details read-only placeholders
+    if (autoEntryDateDisplay) {
+        autoEntryDateDisplay.textContent = 'Auto when saved';
+        autoEntryDateDisplay.classList.add('ghosted-text');
+    }
+    if (autoReferencePriceDisplay) {
+        autoReferencePriceDisplay.textContent = 'Auto when saved';
+        autoReferencePriceDisplay.classList.add('ghosted-text');
+    }
 }
 
 /**
@@ -2801,6 +2805,30 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     originalShareData = getCurrentFormData();
     setIconDisabled(saveShareBtn, true); // Save button disabled initially for editing
     logDebug('showEditFormForSelectedShare: saveShareBtn initially disabled for dirty check.');
+
+    // Populate read-only auto fields (Entry Date & Reference Price)
+    try {
+        if (autoEntryDateDisplay) {
+            const ed = shareToEdit.entryDate ? formatDate(shareToEdit.entryDate) : '';
+            if (ed) {
+                autoEntryDateDisplay.textContent = ed;
+                autoEntryDateDisplay.classList.remove('ghosted-text');
+            } else {
+                autoEntryDateDisplay.textContent = 'Auto when saved';
+                autoEntryDateDisplay.classList.add('ghosted-text');
+            }
+        }
+        if (autoReferencePriceDisplay) {
+            const rp = (shareToEdit.currentPrice !== undefined && shareToEdit.currentPrice !== null && !isNaN(Number(shareToEdit.currentPrice))) ? Number(shareToEdit.currentPrice) : null;
+            if (rp !== null) {
+                autoReferencePriceDisplay.textContent = formatMoney(rp);
+                autoReferencePriceDisplay.classList.remove('ghosted-text');
+            } else {
+                autoReferencePriceDisplay.textContent = 'Auto when saved';
+                autoReferencePriceDisplay.classList.add('ghosted-text');
+            }
+        }
+    } catch(e) { console.warn('Auto Details: Failed to populate auto fields', e); }
 
     showModal(shareFormSection);
     shareNameInput.focus();
@@ -6343,7 +6371,7 @@ async function initializeAppLogic() {
     if (shareDetailModal) shareDetailModal.style.setProperty('display', 'none', 'important');
     if (addWatchlistModal) addWatchlistModal.style.setProperty('display', 'none', 'important');
     if (manageWatchlistModal) manageWatchlistModal.style.setProperty('display', 'none', 'important');
-    if (customDialogModal) customDialogModal.style.setProperty('display', 'none', 'important');
+    // customDialogModal removed
     if (calculatorModal) calculatorModal.style.setProperty('display', 'none', 'important');
     if (shareContextMenu) shareContextMenu.style.setProperty('display', 'none', 'important');
     if (targetHitIconBtn) targetHitIconBtn.style.display = 'none'; // Ensure icon is hidden initially via inline style
@@ -6936,7 +6964,7 @@ async function initializeAppLogic() {
 
         // General modal closing logic (for other modals)
         if (event.target === shareDetailModal || event.target === dividendCalculatorModal ||
-            event.target === shareFormSection || event.target === customDialogModal ||
+            event.target === shareFormSection ||
             event.target === calculatorModal || event.target === addWatchlistModal ||
             event.target === manageWatchlistModal || event.target === alertPanel ||
             event.target === cashAssetFormModal || event.target === cashAssetDetailModal ||
