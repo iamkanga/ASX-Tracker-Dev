@@ -856,7 +856,9 @@
             where: where,
             getDocs: getDocs,
             deleteField: FieldValue.delete,
-            writeBatch: writeBatch
+            writeBatch: writeBatch,
+            // Expose serverTimestamp for consistent time fields
+            serverTimestamp: FieldValue.serverTimestamp
         } : null;
         
         window.authFunctions = firebaseInitialized ? {

@@ -1109,6 +1109,48 @@ function setIconDisabled(element, isDisabled) {
     }
 }
 
+// Phase 2 helper: create or update a per-share alert document for the current user
+async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
+    if (!db || !currentUserId || !window.firestore) {
+        console.warn('Alerts: Firestore not available; skipping alert upsert.');
+        return;
+    }
+    // Collection path: artifacts/{appId}/users/{userId}/alerts
+    const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+    // We'll use a deterministic doc id per share to keep one alert document per share
+    const alertDocId = shareId; // 1:1 mapping; adjust if multiple alerts per share later
+    const alertDocRef = window.firestore.doc(alertsCol, alertDocId);
+
+    // Interpret UI intent and direction
+    // Intent: buy when direction is below; sell when direction is above (can extend later to explicit intent buttons)
+    const direction = (shareData && shareData.targetDirection) === 'above' ? 'above' : 'below';
+    let intent = 'buy';
+    try {
+        const buyActive = !!(typeof targetIntentBuyBtn !== 'undefined' && targetIntentBuyBtn && targetIntentBuyBtn.classList.contains('is-active'));
+        const sellActive = !!(typeof targetIntentSellBtn !== 'undefined' && targetIntentSellBtn && targetIntentSellBtn.classList.contains('is-active'));
+        intent = buyActive && !sellActive ? 'buy' : (sellActive && !buyActive ? 'sell' : (direction === 'above' ? 'sell' : 'buy'));
+    } catch(_) {
+        intent = direction === 'above' ? 'sell' : 'buy';
+    }
+
+    const payload = {
+        shareId: shareId,
+        shareCode: String(shareCode || '').toUpperCase(),
+        userId: currentUserId,
+        appId: currentAppId,
+        intent: intent, // 'buy' | 'sell'
+        direction: direction, // 'above' | 'below'
+        targetPrice: (typeof shareData?.targetPrice === 'number' && !isNaN(shareData.targetPrice)) ? shareData.targetPrice : null,
+    createdAt: isNew ? window.firestore.serverTimestamp() : undefined,
+    updatedAt: window.firestore.serverTimestamp(),
+        enabled: true
+    };
+
+    // Use setDoc with merge to avoid overwriting createdAt when updating
+    await window.firestore.setDoc(alertDocRef, payload, { merge: true });
+    logDebug('Alerts: Upserted alert for ' + shareCode + ' with intent ' + intent + ' and direction ' + direction + '.');
+}
+
 // Centralized Modal Closing Function
 function closeModals() {
     // Auto-save logic for share form
@@ -2804,6 +2846,12 @@ async function saveShareData(isSilent = false) {
         try {
             const shareDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
             await window.firestore.updateDoc(shareDocRef, shareData);
+            // Phase 2: Upsert alert document for this share (intent + direction)
+            try {
+                await upsertAlertForShare(selectedShareDocId, shareName, shareData, false);
+            } catch (e) {
+                console.error('Alerts: Failed to upsert alert for share update:', e);
+            }
             // Update local cache so reopening reflects new selections immediately
             try {
                 const idx = allSharesData.findIndex(s => s.id === selectedShareDocId);
@@ -2845,6 +2893,12 @@ async function saveShareData(isSilent = false) {
             const sharesColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             const newDocRef = await window.firestore.addDoc(sharesColRef, shareData);
             selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
+            // Phase 2: Create alert document for this new share (intent + direction)
+            try {
+                await upsertAlertForShare(selectedShareDocId, shareName, shareData, true);
+            } catch (e) {
+                console.error('Alerts: Failed to create alert for new share:', e);
+            }
             if (!isSilent) showCustomAlert('Share \'" + shareName + "\' added successfully!', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' added with ID: ' + newDocRef.id);
         originalShareData = getCurrentFormData(); // Update original data after successful save
