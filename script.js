@@ -1153,6 +1153,28 @@ async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
         payload.createdAt = window.firestore.serverTimestamp();
     }
 
+    // Compute initial targetHit status immediately so the listener can pick it up
+    try {
+        const codeUpper = String(shareCode || '').toUpperCase();
+        const lp = (typeof livePrices === 'object' && livePrices) ? livePrices[codeUpper] : null;
+        const latestLive = (lp && lp.live !== null && !isNaN(lp.live)) ? lp.live
+            : (lp && lp.lastLivePrice !== null && !isNaN(lp.lastLivePrice)) ? lp.lastLivePrice
+            : null;
+        const fallbackRef = (typeof shareData?.currentPrice === 'number' && !isNaN(shareData.currentPrice)) ? shareData.currentPrice : null;
+        const current = (latestLive !== null) ? latestLive : (fallbackRef !== null ? fallbackRef : null);
+        const tPrice = (typeof payload.targetPrice === 'number' && !isNaN(payload.targetPrice)) ? payload.targetPrice : null;
+        let isHit = false;
+        if (current !== null && tPrice !== null) {
+            isHit = direction === 'above' ? (current >= tPrice) : (current <= tPrice);
+        }
+        payload.targetHit = !!isHit;
+        payload.lastEvaluatedAt = window.firestore.serverTimestamp();
+    } catch (e) {
+        console.warn('Alerts: Failed to compute initial targetHit; defaulting to false.', e);
+        payload.targetHit = false;
+        payload.lastEvaluatedAt = window.firestore.serverTimestamp();
+    }
+
     // Use setDoc with merge to avoid overwriting createdAt when updating
     await window.firestore.setDoc(alertDocRef, payload, { merge: true });
     logDebug('Alerts: Upserted alert for ' + shareCode + ' with intent ' + intent + ' and direction ' + direction + '.');
