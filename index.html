@@ -429,105 +429,129 @@
             </div>
             
             <div class="modal-body-scrollable">
-                <!-- Watchlist and Code Selection (always at top) -->
-                <label for="shareWatchlistSelect">Assign to Watchlist:</label>
-                <select id="shareWatchlistSelect" class="dropdown-large" required style="display:none;">
-                    <option value="" disabled selected>Select a Watchlist</option>
-                </select>
-                <button id="shareWatchlistDropdownBtn" type="button" class="dropdown-large" aria-haspopup="listbox" aria-expanded="false">Select a Watchlist</button>
-                <div id="shareWatchlistCheckboxes" class="watchlist-checkbox-list app-hidden" aria-describedby="shareWatchlistHelp" role="listbox"></div>
-                <small id="shareWatchlistHelp" class="field-help-text">Select one or more watchlists (including Portfolio if applicable).</small>
+                <div id="shareFormAccordion" class="accordion">
+                    <!-- Core Details -->
+                    <div class="accordion-section open" data-section="core">
+                        <button type="button" class="accordion-toggle" aria-expanded="true" aria-controls="accordion-panel-core" id="accordion-header-core">
+                            <span class="accordion-title">Core Details</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-core" class="accordion-panel" role="region" aria-labelledby="accordion-header-core">
+                            <label for="shareWatchlistSelect">Assign to Watchlist:</label>
+                            <select id="shareWatchlistSelect" class="dropdown-large" required style="display:none;">
+                                <option value="" disabled selected>Select a Watchlist</option>
+                            </select>
+                            <button id="shareWatchlistDropdownBtn" type="button" class="dropdown-large" aria-haspopup="listbox" aria-expanded="false">Select a Watchlist</button>
+                            <div id="shareWatchlistCheckboxes" class="watchlist-checkbox-list app-hidden" aria-describedby="shareWatchlistHelp" role="listbox"></div>
+                            <small id="shareWatchlistHelp" class="field-help-text">Select one or more watchlists (including Portfolio if applicable).</small>
 
-                <label for="shareName">Code:</label>
-                <div class="search-input-container">
-                    <input type="text" id="shareName" placeholder="e.g., BHP" autocomplete="off" required>
-                    <div id="shareNameSuggestions" class="autocomplete-suggestions"></div>
-                </div>
+                            <label for="shareName">Code:</label>
+                            <div class="search-input-container">
+                                <input type="text" id="shareName" placeholder="e.g., BHP" autocomplete="off" required>
+                                <div id="shareNameSuggestions" class="autocomplete-suggestions"></div>
+                            </div>
 
-                <!-- Portfolio/Share Details Section (all grouped for clarity and extensibility) -->
-                <div class="portfolio-details-section" style="margin-top: 24px; padding: 16px; border: 1px solid var(--ghosted-text,#ccc); border-radius: 8px; background: var(--modal-bg,#f9f9f9);">
-                    <!-- Portfolio-specific fields (required for portfolio tracking) -->
-                    <div class="portfolio-inputs-group" style="margin-bottom: 18px;">
-                        <label for="portfolioShares">Number of Shares Purchased:</label>
-                        <input type="number" id="portfolioShares" min="0" step="1" placeholder="e.g., 1000">
-
-                        <label for="portfolioAvgPrice">Average Purchase Price ($):</label>
-                        <input type="number" id="portfolioAvgPrice" min="0" step="0.01" placeholder="e.g., 23.45">
+                            <!-- Live Price (optional) -->
+                            <div id="addShareLivePriceDisplay" class="live-price-display-section" style="display:none;"></div>
+                        </div>
                     </div>
 
-                    <!-- Share-specific fields (apply to both portfolio and watchlist entries) -->
-                    <label for="shareRating">Star Rating:</label>
-                    <select id="shareRating" class="dropdown-large">
-                        <option value="0" selected>No Rating</option>
-                        <option value="1">⭐ 1 Star</option>
-                        <option value="2">⭐⭐ 2 Stars</option>
-                        <option value="3">⭐⭐⭐ 3 Stars</option>
-                        <option value="4">⭐⭐⭐⭐ 4 Stars</option>
-                        <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
-                    </select>
+                    <!-- Portfolio Tracking -->
+                    <div class="accordion-section" data-section="portfolio">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-portfolio" id="accordion-header-portfolio">
+                            <span class="accordion-title">Portfolio Tracking</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-portfolio" class="accordion-panel" role="region" aria-labelledby="accordion-header-portfolio">
+                            <label for="portfolioShares">Number of Shares Purchased:</label>
+                            <input type="number" id="portfolioShares" min="0" step="1" placeholder="e.g., 1000">
 
-                    <!-- Live Price Display (optional, shown if available) -->
-                    <div id="addShareLivePriceDisplay" class="live-price-display-section" style="display: none;"></div>
+                            <label for="portfolioAvgPrice">Average Purchase Price ($):</label>
+                            <input type="number" id="portfolioAvgPrice" min="0" step="0.01" placeholder="e.g., 23.45">
 
-                    <!-- Target Price and Direction -->
-                    <div class="form-group-with-toggle">
-                        <label for="targetPrice" class="target-price-label">Target Price ($):</label>
+                            <label for="shareRating">Star Rating:</label>
+                            <select id="shareRating" class="dropdown-large">
+                                <option value="0" selected>No Rating</option>
+                                <option value="1">⭐ 1 Star</option>
+                                <option value="2">⭐⭐ 2 Stars</option>
+                                <option value="3">⭐⭐⭐ 3 Stars</option>
+                                <option value="4">⭐⭐⭐⭐ 4 Stars</option>
+                                <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
+                            </select>
 
-                        <!-- Modern segmented toggles (UI) -->
-                        <div class="toggle-row" aria-label="Alert configuration">
-                            <div class="segmented-toggle intent-toggle" role="group" aria-label="Intent">
-                                <button type="button" id="targetIntentBuyBtn" class="toggle-segment intent buy is-active" aria-pressed="true">Buy</button>
-                                <button type="button" id="targetIntentSellBtn" class="toggle-segment intent sell" aria-pressed="false">Sell</button>
-                            </div>
-                            <div class="segmented-toggle direction-toggle" role="group" aria-label="Direction">
-                                <button type="button" id="targetDirAboveBtn" class="toggle-segment dir above" aria-pressed="false">Above</button>
-                                <button type="button" id="targetDirBelowBtn" class="toggle-segment dir below is-active" aria-pressed="true">Below</button>
-                            </div>
-                        </div>
-
-                        <!-- Keep legacy checkboxes for state/persistence; hidden from view -->
-                        <div class="visually-hidden">
-                            <div class="target-checkbox-grid">
-                                <div class="target-checkbox-row">
-                                    <label class="checkbox-label" for="targetBuyCheckbox">
-                                        <input type="checkbox" id="targetBuyCheckbox" class="modern-checkbox" disabled>
-                                        Buy
-                                    </label>
-                                    <label class="checkbox-label" for="targetAboveCheckbox">
-                                        <input type="checkbox" id="targetAboveCheckbox" class="modern-checkbox">
-                                        Above
-                                    </label>
+                            <div class="form-group-with-toggle">
+                                <label for="targetPrice" class="target-price-label">Target Price ($):</label>
+                                <div class="toggle-row" aria-label="Alert configuration">
+                                    <div class="segmented-toggle intent-toggle" role="group" aria-label="Intent">
+                                        <button type="button" id="targetIntentBuyBtn" class="toggle-segment intent buy is-active" aria-pressed="true">Buy</button>
+                                        <button type="button" id="targetIntentSellBtn" class="toggle-segment intent sell" aria-pressed="false">Sell</button>
+                                    </div>
+                                    <div class="segmented-toggle direction-toggle" role="group" aria-label="Direction">
+                                        <button type="button" id="targetDirAboveBtn" class="toggle-segment dir above" aria-pressed="false">Above</button>
+                                        <button type="button" id="targetDirBelowBtn" class="toggle-segment dir below is-active" aria-pressed="true">Below</button>
+                                    </div>
                                 </div>
-                                <div class="target-checkbox-row">
-                                    <label class="checkbox-label" for="targetSellCheckbox">
-                                        <input type="checkbox" id="targetSellCheckbox" class="modern-checkbox" disabled>
-                                        Sell
-                                    </label>
-                                    <label class="checkbox-label" for="targetBelowCheckbox">
-                                        <input type="checkbox" id="targetBelowCheckbox" class="modern-checkbox" checked>
-                                        Below
-                                    </label>
+                                <div class="visually-hidden">
+                                    <div class="target-checkbox-grid">
+                                        <div class="target-checkbox-row">
+                                            <label class="checkbox-label" for="targetBuyCheckbox">
+                                                <input type="checkbox" id="targetBuyCheckbox" class="modern-checkbox" disabled>
+                                                Buy
+                                            </label>
+                                            <label class="checkbox-label" for="targetAboveCheckbox">
+                                                <input type="checkbox" id="targetAboveCheckbox" class="modern-checkbox">
+                                                Above
+                                            </label>
+                                        </div>
+                                        <div class="target-checkbox-row">
+                                            <label class="checkbox-label" for="targetSellCheckbox">
+                                                <input type="checkbox" id="targetSellCheckbox" class="modern-checkbox" disabled>
+                                                Sell
+                                            </label>
+                                            <label class="checkbox-label" for="targetBelowCheckbox">
+                                                <input type="checkbox" id="targetBelowCheckbox" class="modern-checkbox" checked>
+                                                Below
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
+                                <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
                             </div>
-                        </div>
 
-                        <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
+                            <label for="currentPrice">Reference Price ($):</label>
+                            <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
+                        </div>
                     </div>
 
-                    <!-- Price and Dividend Details -->
-                    <label for="currentPrice">Reference Price ($):</label>
-                    <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
+                    <!-- Dividends -->
+                    <div class="accordion-section" data-section="dividends">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-dividends" id="accordion-header-dividends">
+                            <span class="accordion-title">Dividends</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-dividends" class="accordion-panel" role="region" aria-labelledby="accordion-header-dividends">
+                            <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
+                            <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
 
-                    <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
-                    <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
+                            <label for="frankingCredits">Franking Credits (%):</label>
+                            <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
+                        </div>
+                    </div>
 
-                    <label for="frankingCredits">Franking Credits (%):</label>
-                    <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
-
-                    <!-- Comments Section (optional, can add multiple) -->
-                    <div class="comments-form-container">
-                        <h3>Comments <span id="addCommentSectionBtn" class="add-section-icon"><i class="fas fa-plus"></i></span></h3>
-                        <div id="dynamicCommentsArea">
+                    <!-- Comments -->
+                    <div class="accordion-section" data-section="comments">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-comments" id="accordion-header-comments">
+                            <span class="accordion-title">Comments</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-comments" class="accordion-panel" role="region" aria-labelledby="accordion-header-comments">
+                            <div class="comments-form-container">
+                                <div class="comments-header-row">
+                                    <h3>Comments</h3>
+                                    <span id="addCommentSectionBtn" class="add-section-icon" title="Add Comment"><i class="fas fa-plus"></i></span>
+                                </div>
+                                <div id="dynamicCommentsArea"></div>
+                            </div>
                         </div>
                     </div>
                 </div>

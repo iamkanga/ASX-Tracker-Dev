@@ -1495,6 +1495,52 @@ function getShareDisplayData(share) {
 }
 // --- UI State Management Functions ---
 
+// Accordion (Share Form) Initialization
+function initShareFormAccordion() {
+    const accordionRoot = document.getElementById('shareFormAccordion');
+    if (!accordionRoot) return;
+    const sections = Array.from(accordionRoot.querySelectorAll('.accordion-section'));
+    sections.forEach(section => {
+        const toggleBtn = section.querySelector('.accordion-toggle');
+        const panel = section.querySelector('.accordion-panel');
+        if (!toggleBtn || !panel) return;
+        toggleBtn.addEventListener('click', () => toggleAccordionSection(section));
+        // Ensure ARIA states reflect initial .open class
+        const isOpen = section.classList.contains('open');
+        toggleBtn.setAttribute('aria-expanded', String(isOpen));
+        panel.hidden = !isOpen;
+    });
+}
+
+function toggleAccordionSection(section) {
+    if (!section) return;
+    const isCurrentlyOpen = section.classList.contains('open');
+    const toggleBtn = section.querySelector('.accordion-toggle');
+    const panel = section.querySelector('.accordion-panel');
+    if (!toggleBtn || !panel) return;
+    if (isCurrentlyOpen) {
+        section.classList.remove('open');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        panel.hidden = true;
+    } else {
+        section.classList.add('open');
+        toggleBtn.setAttribute('aria-expanded', 'true');
+        panel.hidden = false;
+    }
+}
+
+// Ensure accordion initialized when share form modal is shown
+const originalShowModal = typeof showModal === 'function' ? showModal : null;
+if (originalShowModal) {
+    window.showModal = function(modalEl) {
+        originalShowModal(modalEl);
+        if (modalEl === shareFormSection) {
+            // Delay init slightly to allow dynamic content (suggestions etc.)
+            requestAnimationFrame(initShareFormAccordion);
+        }
+    };
+}
+
 /**
  * Adds a single share to the desktop table view.
  * @param {object} share The share object to add.

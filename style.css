@@ -3798,6 +3798,37 @@ table td.live-price-cell.negative-change {
     padding-bottom: 20px;
 }
 
+/* Accordion (Share Form) */
+.accordion { display:flex; flex-direction:column; gap:12px; }
+.accordion-section { border:1px solid var(--border-color); border-radius:10px; background:var(--card-bg); box-shadow:0 2px 4px rgba(0,0,0,0.04); overflow:hidden; transition: border-color .25s, box-shadow .25s; }
+.accordion-section.open { border-color: var(--accent-color,#a49393); box-shadow:0 3px 10px rgba(0,0,0,0.08); }
+.accordion-toggle { all:unset; cursor:pointer; display:flex; align-items:center; justify-content:space-between; width:100%; padding:14px 16px; box-sizing:border-box; font-size:0.98rem; font-weight:600; color:var(--text-color); position:relative; }
+.accordion-toggle:focus-visible { outline:2px solid var(--accent-color,#a49393); outline-offset:2px; border-radius:4px; }
+.accordion-title { pointer-events:none; }
+.accordion-caret { width:16px; height:16px; position:relative; display:inline-block; }
+.accordion-caret::before { content:""; position:absolute; inset:0; margin:auto; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:9px solid var(--text-color); transition: transform .28s ease; transform-origin:center; }
+.accordion-section.open .accordion-caret::before { transform: rotate(180deg); }
+.accordion-panel { display:grid; grid-template-rows:0fr; transition:grid-template-rows .32s ease, padding .25s ease; padding:0 16px; }
+.accordion-section.open > .accordion-panel { grid-template-rows:1fr; padding:4px 16px 16px; }
+.accordion-panel > * { overflow:hidden; }
+/* Subtle divider between sections */
+.accordion-section + .accordion-section { margin-top:2px; }
+/* Hover / active states */
+.accordion-section:not(.open) .accordion-toggle:hover { background:var(--table-row-hover-bg,#f5f7fa); }
+body.dark-theme .accordion-section { background: var(--card-bg,#2a2a2a); }
+body.dark-theme .accordion-section:not(.open) .accordion-toggle:hover { background:#333; }
+/* Comments header within accordion */
+.comments-header-row { display:flex; align-items:center; justify-content:space-between; margin:0 0 6px; }
+.add-section-icon { cursor:pointer; color:var(--icon-action-color); display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; transition: background .2s, color .2s; }
+.add-section-icon:hover { background:var(--table-row-hover-bg,#f0f4f5); }
+body.dark-theme .add-section-icon:hover { background:#3a3a3a; }
+/* Reduce spacing of inputs inside accordion for tighter layout */
+.accordion-panel label { margin-top:12px; }
+.accordion-panel label:first-child { margin-top:4px; }
+/* Live price display inside core details */
+#addShareLivePriceDisplay { margin-top:8px; }
+
+
 .modal-content h2 {
     margin-top: 0;
     margin-bottom: 20px;
