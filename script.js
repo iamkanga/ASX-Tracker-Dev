@@ -4713,11 +4713,15 @@ function updateTargetHitBanner() {
     const displayCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
     if (displayCount > 0 && !targetHitIconDismissed) {
         targetHitIconCount.textContent = String(displayCount);
+        // Ensure the icon is visible even if other styles attempted to hide it
         targetHitIconBtn.classList.remove('app-hidden');
-        targetHitIconCount.style.display = 'block';
+        targetHitIconBtn.style.display = 'inline-flex';
+        targetHitIconCount.style.display = 'flex';
         logDebug('Target Alert: Showing icon: ' + displayCount + ' triggered alerts.');
     } else {
+        // Hide the icon explicitly
         targetHitIconBtn.classList.add('app-hidden');
+        targetHitIconBtn.style.display = 'none';
         targetHitIconCount.style.display = 'none';
         logDebug('Target Alert: No triggered alerts or icon dismissed; hiding icon.');
     }
