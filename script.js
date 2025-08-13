@@ -591,6 +591,66 @@ const formCompanyName = document.getElementById('formCompanyName'); // NEW: Comp
 const saveShareBtn = document.getElementById('saveShareBtn');
 const deleteShareBtn = document.getElementById('deleteShareBtn');
 const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
+// Centralized single-code snapshot handling
+let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
+async function updateAddFormLiveSnapshot(code) {
+    try {
+        if (!code || !GOOGLE_APPS_SCRIPT_URL || !addShareLivePriceDisplay) return;
+        const reqId = ++_latestAddFormSnapshotReq;
+        const upper = String(code).toUpperCase();
+        addShareLivePriceDisplay.dataset.loading = 'true';
+        // Lightweight loading indicator (optional)
+        addShareLivePriceDisplay.style.display = 'block';
+        addShareLivePriceDisplay.innerHTML = '<div class="mini-loading">Loading...</div>';
+        const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        if (reqId !== _latestAddFormSnapshotReq) return; // stale
+        if (!Array.isArray(data) || data.length === 0) { addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">No price data.</p>'; return; }
+        let row = data.find(r => {
+            const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
+            return c && String(c).toUpperCase().trim() === upper;
+        }) || data[0];
+        if (row && row !== data[0] && DEBUG_MODE) logDebug('Snapshot: matched exact row for', upper);
+        if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode||row.Code).toUpperCase().trim() !== upper && DEBUG_MODE) {
+            logDebug('Snapshot: exact match not found, using first row', { requested: upper, first: row.ASXCode||row.Code });
+        }
+        const live = parseFloat(row.LivePrice ?? row['Live Price'] ?? row.live ?? row.price ?? row.Last ?? row.LastPrice ?? row['Last Price'] ?? row.LastTrade ?? row['Last Trade']);
+        const prev = parseFloat(row.PrevClose ?? row['Prev Close'] ?? row.prevClose ?? row.prev ?? row['Previous Close'] ?? row.Close ?? row['Last Close']);
+        const pe = parseFloat(row.PE ?? row['PE Ratio'] ?? row.pe);
+        const hi = parseFloat(row.High52 ?? row['High52'] ?? row['High 52'] ?? row['52WeekHigh'] ?? row['52 High']);
+        const lo = parseFloat(row.Low52 ?? row['Low52'] ?? row['Low 52'] ?? row['52WeekLow'] ?? row['52 Low']);
+        const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
+        const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
+        const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
+        // Guard against user switching code mid-flight
+        if (shareNameInput && shareNameInput.value.toUpperCase().trim() !== upper) {
+            if (DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: shareNameInput.value });
+            return;
+        }
+        addShareLivePriceDisplay.innerHTML = `
+            <div class="fifty-two-week-row">
+                <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
+                <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
+            </div>
+            <div class="live-price-main-row">
+                <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
+                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${change.toFixed(2)} (${pct.toFixed(2)}%)` : 'N/A'}</span>
+            </div>
+            <div class="pe-ratio-row">
+                <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? pe.toFixed(2) : 'N/A'}</span>
+            </div>`;
+        addShareLivePriceDisplay.style.display = 'block';
+        addShareLivePriceDisplay.removeAttribute('data-loading');
+    } catch (e) {
+        if (DEBUG_MODE) console.warn('Snapshot: failed for', code, e);
+        if (addShareLivePriceDisplay) {
+            addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">Price unavailable.</p>';
+            addShareLivePriceDisplay.style.display = 'block';
+            addShareLivePriceDisplay.removeAttribute('data-loading');
+        }
+    }
+}
 const shareNameInput = document.getElementById('shareName');
 // Removed manual Reference Price input; currentPrice now auto-captured
 const targetPriceInput = document.getElementById('targetPrice');
@@ -4261,43 +4321,7 @@ function renderAsxCodeButtons() {
                     if (formCompanyName) formCompanyName.textContent = company;
                     checkFormDirtyState();
                     // Fetch a single-stock snapshot to render the small live panel
-                    if (typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined') {
-                        const url = `${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(code)}&_ts=${Date.now()}`;
-                        fetch(url)
-                            .then(r => r.ok ? r.json() : null)
-                            .then(data => {
-                                if (!data) return;
-                                // Some endpoints may return multiple rows; pick the one matching the code
-                                const rows = Array.isArray(data) ? data : [];
-                                const stock = rows.find(row => {
-                                    const raw = row.ASXCode || row.ASX_Code || row['ASX Code'] || row.Code || row.code;
-                                    return String(raw || '').toUpperCase().trim() === code;
-                                }) || rows[0] || null;
-                                if (!stock || !addShareLivePriceDisplay) return;
-                                const live = parseFloat(stock.LivePrice ?? stock['Live Price'] ?? stock.live ?? stock.price ?? stock.Last ?? stock.LastPrice ?? stock['Last Price'] ?? stock.LastTrade ?? stock['Last Trade']);
-                                const prev = parseFloat(stock.PrevClose ?? stock['Prev Close'] ?? stock.prevClose ?? stock.prev ?? stock['Previous Close'] ?? stock.Close ?? stock['Last Close']);
-                                const pe = parseFloat(stock.PE ?? stock['PE Ratio'] ?? stock.pe);
-                                const hi = parseFloat(stock.High52 ?? stock['High52'] ?? stock['High 52'] ?? stock['52WeekHigh'] ?? stock['52 High']);
-                                const lo = parseFloat(stock.Low52 ?? stock['Low52'] ?? stock['Low 52'] ?? stock['52WeekLow'] ?? stock['52 Low']);
-                                const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
-                                const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
-                                const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
-                                addShareLivePriceDisplay.innerHTML = `
-                                    <div class="fifty-two-week-row">
-                                        <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
-                                        <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
-                                    </div>
-                                    <div class="live-price-main-row">
-                                        <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
-                                        <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${change.toFixed(2)} (${pct.toFixed(2)}%)` : 'N/A'}</span>
-                                    </div>
-                                    <div class="pe-ratio-row">
-                                        <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? pe.toFixed(2) : 'N/A'}</span>
-                                    </div>`;
-                                addShareLivePriceDisplay.style.display = 'block';
-                            })
-                            .catch(()=>{});
-                    }
+                    updateAddFormLiveSnapshot(code);
                 }
             } catch(_) {}
         });
@@ -4543,28 +4567,9 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 }
                 // Render live snapshot into addShareLivePriceDisplay (robust key fallbacks)
                 try {
-                    if (addShareLivePriceDisplay) {
-                        const liveVal = parseFloat(stockData.LivePrice ?? stockData['Live Price'] ?? stockData.live ?? stockData.price ?? stockData.Last ?? stockData.LastPrice ?? stockData['Last Price']);
-                        const prevVal = parseFloat(stockData.PrevClose ?? stockData['Prev Close'] ?? stockData.prevClose ?? stockData.prev ?? stockData['Previous Close'] ?? stockData.Close ?? stockData['Last Close']);
-                        const peVal = parseFloat(stockData.PE ?? stockData['PE Ratio'] ?? stockData.pe);
-                        const hiVal = parseFloat(stockData.High52 ?? stockData['High52'] ?? stockData['High 52'] ?? stockData['52WeekHigh'] ?? stockData['52 High']);
-                        const loVal = parseFloat(stockData.Low52 ?? stockData['Low52'] ?? stockData['Low 52'] ?? stockData['52WeekLow'] ?? stockData['52 Low']);
-                        const change = (!isNaN(liveVal) && !isNaN(prevVal)) ? (liveVal - prevVal) : null;
-                        const pct = (!isNaN(liveVal) && !isNaN(prevVal) && prevVal !== 0) ? ((liveVal - prevVal) / prevVal) * 100 : null;
-                        const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
-                        addShareLivePriceDisplay.innerHTML = `
-                            <div class="fifty-two-week-row">
-                                <span class="fifty-two-week-value low">Low: ${!isNaN(loVal) ? formatMoney(loVal) : 'N/A'}</span>
-                                <span class="fifty-two-week-value high">High: ${!isNaN(hiVal) ? formatMoney(hiVal) : 'N/A'}</span>
-                            </div>
-                            <div class="live-price-main-row">
-                                <span class="live-price-large ${priceClass}">${!isNaN(liveVal) ? formatMoney(liveVal) : 'N/A'}</span>
-                                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${change.toFixed(2)} (${pct.toFixed(2)}%)` : 'N/A'}</span>
-                            </div>
-                            <div class="pe-ratio-row">
-                                <span class="pe-ratio-value">P/E: ${!isNaN(peVal) ? peVal.toFixed(2) : 'N/A'}</span>
-                            </div>`;
-                        addShareLivePriceDisplay.style.display = 'block';
+                    // Use the ASX code for snapshot fetch; shareName holds the company name.
+                    if (currentSearchShareData && currentSearchShareData.shareCode) {
+                        updateAddFormLiveSnapshot(currentSearchShareData.shareCode);
                     }
                 } catch(_) {}
                 // Finally show the form if not visible
@@ -6707,50 +6712,7 @@ async function initializeAppLogic() {
 
             // Fetch live snapshot for the selected code to show context in the form and prefill price
             try {
-                if (!GOOGLE_APPS_SCRIPT_URL) return; // Safety
-                // Add cache-busting to avoid stale universal price re-use
-                const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${code}&_ts=${Date.now()}`);
-                if (!resp.ok) return;
-                const data = await resp.json();
-                if (!Array.isArray(data) || data.length === 0) return;
-                // Robust row match by code (multiple possible key names)
-                const upper = code.toUpperCase();
-                let matched = data.find(r => {
-                    const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
-                    return c && String(c).toUpperCase().trim() === upper;
-                });
-                if (!matched) {
-                    matched = data[0];
-                    logDebug('Live Snapshot (applyShareCodeSelection): No exact code match in dataset; fell back to first row.', { requested: upper, sampleKeys: Object.keys(data[0]||{}) });
-                }
-                const live = parseFloat(matched.LivePrice ?? matched['Live Price'] ?? matched.live ?? matched.price ?? matched.Last ?? matched.LastPrice ?? matched['Last Price']);
-                const prev = parseFloat(matched.PrevClose ?? matched['Prev Close'] ?? matched.prevClose ?? matched.prev ?? matched['Previous Close'] ?? matched.Close ?? matched['Last Close']);
-                const pe = parseFloat(matched.PE ?? matched['PE Ratio'] ?? matched.pe);
-                const hi = parseFloat(matched.High52 ?? matched['High52'] ?? matched['High 52'] ?? matched['52WeekHigh'] ?? matched['52 High']);
-                const lo = parseFloat(matched.Low52 ?? matched['Low52'] ?? matched['Low 52'] ?? matched['52WeekLow'] ?? matched['52 Low']);
-
-                // Prefill Entered Price if empty
-                // Removed auto inserting into currentPrice input (field removed)
-                // Render a compact live display panel
-                if (addShareLivePriceDisplay) {
-                    const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
-                    const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
-                    const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
-            addShareLivePriceDisplay.innerHTML = `
-                        <div class="fifty-two-week-row">
-                <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
-                <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
-                        </div>
-                        <div class="live-price-main-row">
-                <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
-                            <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${change.toFixed(2)} (${pct.toFixed(2)}%)` : 'N/A'}</span>
-                        </div>
-                        <div class="pe-ratio-row">
-                            <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? pe.toFixed(2) : 'N/A'}</span>
-                        </div>
-                    `;
-                    addShareLivePriceDisplay.style.display = 'block';
-                }
+                updateAddFormLiveSnapshot(code);
             } catch { /* ignore transient errors */ }
         }
 
@@ -6868,6 +6830,8 @@ async function initializeAppLogic() {
                                 showModal(shareFormSection);
                                 if (shareNameInput) shareNameInput.focus();
                                 checkFormDirtyState();
+                                // Kick off snapshot fetch centrally
+                                updateAddFormLiveSnapshot(stock.code);
                             }
                         } catch(e) { console.warn('QuickAdd: Failed to open form from search suggestion', e); }
                         // Continue with full fetch & detailed snapshot (will also auto-populate if new)
