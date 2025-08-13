@@ -645,6 +645,17 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
         try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
         applyAsxButtonsState();
         console.log('[ASX Toggle] Toggled. Expanded=', asxButtonsExpanded);
+        // Schedule padding adjustment after the CSS transition window
+        // Transition duration in CSS: 300-400ms; allow a buffer
+        setTimeout(adjustMainContentPadding, 450);
+        // A second safety call in case the first fires mid-transition
+        setTimeout(adjustMainContentPadding, 700);
+    });
+    // Also adjust precisely on transition end of the container
+    asxCodeButtonsContainer.addEventListener('transitionend', (ev) => {
+        if (ev.propertyName === 'max-height' || ev.propertyName === 'padding' || ev.propertyName === 'opacity') {
+            adjustMainContentPadding();
+        }
     });
 }
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
