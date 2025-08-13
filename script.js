@@ -704,6 +704,7 @@ const deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
 const exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
 const refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
 const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
+const shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
 const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection'); 
 const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
 const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
@@ -2239,9 +2240,8 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         return;
     }
 
-    // Make it multi-select to support assigning a share to multiple watchlists
+    // Prepare native select (hidden) as multi-select for data binding; UI uses checkboxes
     try { shareWatchlistSelect.multiple = true; } catch(e) {}
-    // Always start with placeholder (disabled)
     shareWatchlistSelect.innerHTML = '<option value="" disabled>Select a Watchlist</option>';
 
     // Always include Portfolio as a special option
@@ -2322,7 +2322,7 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         disableDropdown = false; // Always allow changing watchlist when editing
     }
 
-    // Apply the determined selection(s) and disabled state
+    // Apply the determined selection(s) and disabled state to native select
     if (preselectedIds.length > 0) {
         Array.from(shareWatchlistSelect.options).forEach(option => {
             option.selected = preselectedIds.includes(option.value);
@@ -2342,8 +2342,51 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         }
     });
 
-    // Add event listener for dirty state checking on this dropdown
-    shareWatchlistSelect.addEventListener('change', checkFormDirtyState);
+    // Build checkbox UI list reflecting the same options
+    if (shareWatchlistCheckboxes) {
+        // Clear existing
+        shareWatchlistCheckboxes.innerHTML = '';
+        const makeItem = (id, label) => {
+            const wrapper = document.createElement('label');
+            wrapper.className = 'checkbox-label';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'modern-checkbox watchlist-checkbox';
+            cb.value = id;
+            cb.checked = preselectedIds.length > 0 ? preselectedIds.includes(id) : (id === selectedOptionId && !!selectedOptionId);
+            cb.addEventListener('change', () => {
+                // Sync to hidden select
+                const vals = Array.from(shareWatchlistCheckboxes.querySelectorAll('input.watchlist-checkbox:checked')).map(x => x.value);
+                Array.from(shareWatchlistSelect.options).forEach(opt => { opt.selected = vals.includes(opt.value); });
+                // Legacy single-select value fallback for save paths reading .value
+                if (vals.length > 0) {
+                    shareWatchlistSelect.value = vals[0];
+                } else {
+                    shareWatchlistSelect.value = '';
+                }
+                checkFormDirtyState();
+            });
+            wrapper.appendChild(cb);
+            const text = document.createTextNode(' ' + label);
+            wrapper.appendChild(text);
+            return wrapper;
+        };
+        // Recreate list in same order as select (skip disabled placeholder)
+        const opts = Array.from(shareWatchlistSelect.options).filter(o => o.value !== '');
+        opts.forEach(o => {
+            // Skip any cashBank option defensively
+            if (o.value === CASH_BANK_WATCHLIST_ID) return;
+            shareWatchlistCheckboxes.appendChild(makeItem(o.value, o.textContent || o.innerText || o.value));
+        });
+    }
+
+    // Listen for native select change too (in case of programmatic changes)
+    shareWatchlistSelect.addEventListener('change', () => {
+        if (!shareWatchlistCheckboxes) return;
+        const selected = Array.from(shareWatchlistSelect.options).filter(o => o.selected).map(o => o.value);
+        shareWatchlistCheckboxes.querySelectorAll('input.watchlist-checkbox').forEach(cb => { cb.checked = selected.includes(cb.value); });
+        checkFormDirtyState();
+    });
 }
 
 function showEditFormForSelectedShare(shareIdToEdit = null) {
@@ -2461,15 +2504,13 @@ function getCurrentFormData() {
         // Get the selected star rating as a number
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0,
         comments: comments,
-        // Include the selected watchlist ID (legacy) and plural for future multi-select support
-        watchlistId: shareWatchlistSelect ? shareWatchlistSelect.value : null,
+        // Include legacy single value and the plural array; use checkbox UI as source of truth
+        watchlistId: shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null,
         watchlistIds: (() => {
-            const el = document.getElementById('shareWatchlistSelect');
-            if (!el) return null;
-            // If the control becomes multi-select, capture all selected values; else, single value array
-            const selected = Array.from(el.selectedOptions || []).map(o => o.value).filter(Boolean);
-            if (selected.length > 0) return selected;
-            const single = el.value || null;
+            const els = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
+            const vals = Array.from(els).map(x => x.value).filter(Boolean);
+            if (vals.length > 0) return vals;
+            const single = shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null;
             return single ? [single] : null;
         })(),
         // Portfolio fields
@@ -6652,7 +6693,7 @@ async function initializeAppLogic() {
                             }
                             setTimeout(() => {
                                 if (!window._userAuthenticated && splashSignInBtn) {
-                                    updateSplashSignInButtonState('retry', 'Try again');
+                                    updateSplashSignInButtonState('retry', 'Try again (will use popup)');
                                 }
                             }, 4000);
                         }

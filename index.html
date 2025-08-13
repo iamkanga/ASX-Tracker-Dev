@@ -418,9 +418,11 @@
             <div class="modal-body-scrollable">
                 <!-- Watchlist and Code Selection (always at top) -->
                 <label for="shareWatchlistSelect">Assign to Watchlist:</label>
-                <select id="shareWatchlistSelect" class="dropdown-large" required>
+                <select id="shareWatchlistSelect" class="dropdown-large" required style="display:none;">
                     <option value="" disabled selected>Select a Watchlist</option>
                 </select>
+                <div id="shareWatchlistCheckboxes" class="watchlist-checkbox-list" aria-describedby="shareWatchlistHelp"></div>
+                <small id="shareWatchlistHelp" class="field-help-text">Select one or more watchlists (including Portfolio if applicable).</small>
 
                 <label for="shareName">Code:</label>
                 <div class="search-input-container">
