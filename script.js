@@ -974,12 +974,6 @@ async function fetchLivePricesAndUpdateUI() {
  */
 async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID) && !(opts && opts.forceLiveFetch)) {
-        logDebug('Live Price: Skipped (cash view).');
-        window._livePricesLoaded = true;
-        hideSplashScreenIfReady();
-        return;
-    }
     try {
         // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
         const url = typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' ? GOOGLE_APPS_SCRIPT_URL : (typeof appsScriptUrl !== 'undefined' ? appsScriptUrl : null);
@@ -1020,8 +1014,14 @@ async function fetchLivePrices(opts = {}) {
             if (!code) return;
             if (needed && !needed.has(code)) { filtered++; return; }
 
-            const liveParsed = numOrNull(item.LivePrice || item['Live Price'] || item.live || item.price);
-            const prevParsed = numOrNull(item.PrevClose || item['Prev Close'] || item.previous || item.prev || item.prevClose);
+            const liveParsed = numOrNull(
+                item.LivePrice || item['Live Price'] || item.live || item.price ||
+                item.Last || item['Last Price'] || item.LastPrice || item['Last Trade'] || item.LastTrade
+            );
+            const prevParsed = numOrNull(
+                item.PrevClose || item['Prev Close'] || item.previous || item.prev || item.prevClose ||
+                item['Previous Close'] || item.Close || item['Last Close']
+            );
             const peParsed = numOrNull(item.PE || item['PE Ratio'] || item.pe);
             const high52Parsed = numOrNull(item.High52 || item['High52'] || item['High 52'] || item['52WeekHigh'] || item['52 High']);
             const low52Parsed = numOrNull(item.Low52 || item['Low52'] || item['Low 52'] || item['52WeekLow'] || item['52 Low']);
@@ -4242,6 +4242,47 @@ function renderAsxCodeButtons() {
             asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b=>b.classList.remove('active'));
             btn.classList.add('active');
             scrollToShare(code);
+            // NEW: If the Add/Edit Share form is open, also populate the code field and show a quick live snapshot
+            try {
+                const formVisible = shareFormSection && shareFormSection.style.display !== 'none' && !shareFormSection.classList.contains('app-hidden');
+                if (formVisible && shareNameInput) {
+                    const company = Array.isArray(allAsxCodes) ? (allAsxCodes.find(c => c.code === code)?.name || '') : '';
+                    shareNameInput.value = code;
+                    if (formCompanyName) formCompanyName.textContent = company;
+                    checkFormDirtyState();
+                    // Fetch a single-stock snapshot to render the small live panel
+                    if (typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined') {
+                        fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${code}`)
+                            .then(r => r.ok ? r.json() : null)
+                            .then(data => {
+                                const stock = Array.isArray(data) && data[0] ? data[0] : null;
+                                if (!stock || !addShareLivePriceDisplay) return;
+                                const live = parseFloat(stock.LivePrice ?? stock.live ?? stock.price);
+                                const prev = parseFloat(stock.PrevClose ?? stock.prevClose ?? stock.prev);
+                                const pe = parseFloat(stock.PE ?? stock['PE Ratio']);
+                                const hi = parseFloat(stock.High52 ?? stock['High52'] ?? stock['High 52'] ?? stock['52WeekHigh']);
+                                const lo = parseFloat(stock.Low52 ?? stock['Low52'] ?? stock['Low 52'] ?? stock['52WeekLow']);
+                                const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
+                                const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
+                                const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
+                                addShareLivePriceDisplay.innerHTML = `
+                                    <div class="fifty-two-week-row">
+                                        <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
+                                        <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
+                                    </div>
+                                    <div class="live-price-main-row">
+                                        <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
+                                        <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${change.toFixed(2)} (${pct.toFixed(2)}%)` : 'N/A'}</span>
+                                    </div>
+                                    <div class="pe-ratio-row">
+                                        <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? pe.toFixed(2) : 'N/A'}</span>
+                                    </div>`;
+                                addShareLivePriceDisplay.style.display = 'block';
+                            })
+                            .catch(()=>{});
+                    }
+                }
+            } catch(_) {}
         });
         asxCodeButtonsContainer.__delegated = true;
     }
