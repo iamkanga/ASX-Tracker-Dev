@@ -10,6 +10,8 @@
 }
 
 /* --- Phase 1: Modern segmented toggles for Intent/Direction --- */
+.autofill-pulse { animation: autofillPulse 0.9s ease-in-out 1; position:relative; }
+@keyframes autofillPulse { 0% { box-shadow:0 0 0 0 var(--accent-color,#a49393);} 60% { box-shadow:0 0 0 6px rgba(164,147,147,0);} 100% { box-shadow:0 0 0 0 rgba(164,147,147,0);} }
 .toggle-row { display:flex; gap:10px; align-items:center; margin: 6px 0 10px; }
 .segmented-toggle { display:inline-flex; border:1px solid var(--border-color, #d0d0d0); border-radius:10px; overflow:hidden; background:var(--card-bg,#fff); }
 .segmented-toggle .toggle-segment { padding:8px 14px; border:none; background:transparent; color:var(--text-color,#222); font-weight:600; cursor:pointer; transition: background .18s, color .18s, box-shadow .18s; }

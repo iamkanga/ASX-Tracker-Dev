@@ -6807,9 +6807,52 @@ async function initializeAppLogic() {
                     div.dataset.code = stock.code; // Store the code for easy access
                     div.dataset.name = stock.name; // Store the company name
                     div.addEventListener('click', () => {
-                        asxSearchInput.value = stock.code; // Set input to selected code
+                        // Immediate quick-add workflow: open form (edit if existing, else new) BEFORE async fetch
+                        asxSearchInput.value = stock.code; // Reflect selection in input for clarity
                         asxSuggestions.classList.remove('active'); // Hide suggestions
-                        displayStockDetailsInSearchModal(stock.code); // Display details for selected stock
+                        try {
+                            const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === stock.code);
+                            if (existingShare) {
+                                hideModal(stockSearchModal);
+                                showEditFormForSelectedShare(existingShare.id);
+                            } else {
+                                // Open a fresh Add New Share form optimistically
+                                hideModal(stockSearchModal);
+                                clearForm();
+                                formTitle.textContent = 'Add New Share';
+                                selectedShareDocId = null;
+                                if (shareNameInput) {
+                                    shareNameInput.value = stock.code;
+                                    // Brief highlight to confirm autofill
+                                    shareNameInput.classList.add('autofill-pulse');
+                                    setTimeout(()=> shareNameInput.classList.remove('autofill-pulse'), 900);
+                                }
+                                if (formCompanyName) formCompanyName.textContent = stock.name || '';
+                                // Default intent/direction only if unset
+                                try {
+                                    if (targetIntentBuyBtn && targetIntentSellBtn) {
+                                        targetIntentBuyBtn.classList.add('is-active');
+                                        targetIntentBuyBtn.setAttribute('aria-pressed','true');
+                                        targetIntentSellBtn.classList.remove('is-active');
+                                        targetIntentSellBtn.setAttribute('aria-pressed','false');
+                                    }
+                                    if (targetAboveCheckbox && targetBelowCheckbox) { targetAboveCheckbox.checked = false; targetBelowCheckbox.checked = true; }
+                                    if (targetDirAboveBtn && targetDirBelowBtn) {
+                                        targetDirAboveBtn.classList.remove('is-active'); targetDirAboveBtn.setAttribute('aria-pressed','false');
+                                        targetDirBelowBtn.classList.add('is-active'); targetDirBelowBtn.setAttribute('aria-pressed','true');
+                                    }
+                                } catch(_){}
+                                populateShareWatchlistSelect(null, true);
+                                if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
+                                    addCommentSection(commentsFormContainer);
+                                }
+                                showModal(shareFormSection);
+                                if (shareNameInput) shareNameInput.focus();
+                                checkFormDirtyState();
+                            }
+                        } catch(e) { console.warn('QuickAdd: Failed to open form from search suggestion', e); }
+                        // Continue with full fetch & detailed snapshot (will also auto-populate if new)
+                        displayStockDetailsInSearchModal(stock.code);
                     });
                     asxSuggestions.appendChild(div);
                 });
