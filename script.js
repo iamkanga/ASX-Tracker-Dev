@@ -1320,6 +1320,8 @@ function closeModals() {
 
 // Toast-based lightweight alert; keeps API but renders a toast instead of blocking modal
 function showCustomAlert(message, duration = 3000, type = 'info') {
+    // Enforce minimum on-screen time of 3000ms unless explicitly sticky (0)
+    const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
     try {
         const container = document.getElementById('toastContainer');
         if (container) {
@@ -1332,7 +1334,7 @@ function showCustomAlert(message, duration = 3000, type = 'info') {
             toast.querySelector('.close').addEventListener('click', remove);
             container.appendChild(toast);
             requestAnimationFrame(()=> toast.classList.add('show'));
-            if (duration && duration > 0) setTimeout(remove, duration);
+        if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
             return;
         }
     } catch (e) { console.warn('Toast render failed, falling back to modal alert.', e); }
@@ -1348,7 +1350,7 @@ function showCustomAlert(message, duration = 3000, type = 'info') {
     dialogButtonsContainer.style.display = 'none';
     showModal(customDialogModal);
     if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); }
-    autoDismissTimeout = setTimeout(() => { hideModal(customDialogModal); autoDismissTimeout = null; }, duration);
+    autoDismissTimeout = setTimeout(() => { hideModal(customDialogModal); autoDismissTimeout = null; }, effectiveDuration || 3000);
 }
 
 // ToastManager: centralized API
@@ -1358,6 +1360,8 @@ const ToastManager = (() => {
         const root = container();
         if (!root) return null;
         const { message, type = 'info', duration = 2000, actions = [] } = opts || {};
+        // Enforce minimum 3000ms for auto-dismiss unless explicitly sticky (0)
+        const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
@@ -1381,7 +1385,7 @@ const ToastManager = (() => {
         });
         root.appendChild(toast);
         requestAnimationFrame(()=> toast.classList.add('show'));
-        if (duration && duration > 0) setTimeout(remove, duration);
+        if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
         return { el: toast, close: remove };
     };
     return {

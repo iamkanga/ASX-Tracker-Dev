@@ -1,7 +1,7 @@
 // Service Worker Version: 1.0.8
 
 // Cache name for the current version of the service worker
-const CACHE_NAME = 'share-watchlist-v1.0.17'; // Bump to deliver toast fixes and target icon robustness
+const CACHE_NAME = 'share-watchlist-v1.0.18'; // Bump to deliver toast min-duration clamp
 
 // List of essential application assets to precache
 const CACHED_ASSETS = [
