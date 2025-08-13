@@ -2673,11 +2673,11 @@ async function saveShareData(isSilent = false) {
         return; 
     }
 
-    const selectedWatchlistIdForSave = shareWatchlistSelect ? shareWatchlistSelect.value : null;
+    // Source of truth: checkbox UI; keep hidden select for legacy fallback
+    const selectedWatchlistIdForSave = shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null;
     const selectedWatchlistIdsForSave = (() => {
-        const el = document.getElementById('shareWatchlistSelect');
-        if (!el) return null;
-        const vals = Array.from(el.selectedOptions || []).map(o => o.value).filter(Boolean);
+        const cbs = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
+        const vals = Array.from(cbs).map(cb => cb.value).filter(Boolean);
         if (vals.length > 0) return vals;
         return selectedWatchlistIdForSave ? [selectedWatchlistIdForSave] : null;
     })();
@@ -2748,6 +2748,13 @@ async function saveShareData(isSilent = false) {
         try {
             const shareDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
             await window.firestore.updateDoc(shareDocRef, shareData);
+            // Update local cache so reopening reflects new selections immediately
+            try {
+                const idx = allSharesData.findIndex(s => s.id === selectedShareDocId);
+                if (idx !== -1) {
+                    allSharesData[idx] = { ...allSharesData[idx], ...shareData };
+                }
+            } catch(_) {}
             if (!isSilent) showCustomAlert('Share \'' + shareName + '\' updated successfully!', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' (ID: ' + selectedShareDocId + ') updated.');
         originalShareData = getCurrentFormData(); // Update original data after successful save
@@ -2780,6 +2787,8 @@ async function saveShareData(isSilent = false) {
             const sharesColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             const newDocRef = await window.firestore.addDoc(sharesColRef, shareData);
             selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
+            // Update local cache
+            try { allSharesData.push({ id: selectedShareDocId, ...shareData }); } catch(_) {}
             if (!isSilent) showCustomAlert('Share \'' + shareName + '\' added successfully!', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' added with ID: ' + newDocRef.id);
         originalShareData = getCurrentFormData(); // Update original data after successful save
@@ -6556,6 +6565,7 @@ async function initializeAppLogic() {
         splashSignInBtn.setAttribute('data-bound','true');
         splashSignInBtn.addEventListener('click', async () => {
             logDebug('Auth: Splash Screen Sign-In Button Clicked.');
+            try { localStorage.removeItem('authPopupFallbackTried'); } catch(_) {}
             const currentAuth = window.firebaseAuth;
             if (!currentAuth || !window.authFunctions) {
                 console.warn('Auth: Auth service not ready or functions not loaded. Cannot process splash sign-in.');
@@ -6604,8 +6614,8 @@ async function initializeAppLogic() {
                 console.log('[Auth Env]', { isMobile, isStandalonePWA, isIOS, isAndroid, isMobileChrome, isFileProtocol, preferRedirect, forceRedirectOverride, origin: window.location.origin });
                 // If a prior redirect returned without a user, prefer popup on next try
                 const redirectPreviouslyFailed = (()=>{ try { return localStorage.getItem('authRedirectReturnedNoUser') === '1'; } catch(_) { return false; } })();
-                const useRedirect = preferRedirect && !redirectPreviouslyFailed;
-                if (useRedirect && window.authFunctions.signInWithRedirect) {
+                const useRedirect = preferRedirect && !redirectPreviouslyFailed && !!window.authFunctions.signInWithRedirect;
+                if (useRedirect) {
                     try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
                     // Switch to session persistence for mobile/redirect to survive incognito/storage quirks
                     try {
@@ -6759,7 +6769,7 @@ async function initializeAppLogic() {
                                 } else if (!window._userAuthenticated) {
                                     if (splashSignInBtn) updateSplashSignInButtonState('retry', 'Try again (will use popup)');
                                 }
-                            }, 4000);
+                            }, 3000);
                         }
                         try { localStorage.setItem('authRedirectReturnedNoUser','1'); } catch(_) {}
                         try { localStorage.removeItem('authRedirectAttempted'); } catch(_) {}
