@@ -807,8 +807,27 @@ window.addEventListener('popstate', ()=>{
     const last = popAppStateEntry();
     if (!last) return;
     if (last.type === 'modal') {
-    // Use centralized close to enable restoration (e.g., return to Alerts modal)
-    closeModals();
+        // Smart modal back: hide current modal and restore the previous one (if any)
+        const currentModal = last.ref && last.ref.nodeType === 1 ? last.ref : (last.ref ? document.getElementById(last.ref.id || last.ref) : null);
+        // Targeted auto-save when backing out of the Share Form modal
+        if (currentModal && shareFormSection && currentModal === shareFormSection) {
+            try { autoSaveShareFormOnClose(); } catch(e) { console.warn('Auto-save on back (share form) failed', e); }
+        }
+        if (currentModal && typeof hideModal === 'function') {
+            hideModal(currentModal);
+        } else {
+            // Fallback: hide all if we cannot resolve the modal element
+            closeModals();
+            return;
+        }
+        // Peek previous stack entry; if it is also a modal, show it without pushing history
+        const prev = appBackStack[appBackStack.length - 1];
+        if (prev && prev.type === 'modal') {
+            const prevModal = prev.ref && prev.ref.nodeType === 1 ? prev.ref : (prev.ref ? document.getElementById(prev.ref.id || prev.ref) : null);
+            if (prevModal) {
+                try { showModalNoHistory(prevModal); } catch(e) { console.warn('Failed to restore previous modal on back', e); }
+            }
+        }
     } else if (last.type === 'sidebar') {
         // Use the unified closer to fully reset layout, overlay, and scroll locks
         if (typeof toggleAppSidebar === 'function') {
@@ -1162,6 +1181,15 @@ function closeModals() {
             showModal(targetHitDetailsModal);
         }
         wasShareDetailOpenedFromTargetAlerts = false;
+    }
+
+    // Restore Share Detail modal if Edit form was opened from it
+    if (wasEditOpenedFromShareDetail) {
+        logDebug('Restoring Share Detail modal after closing edit modal.');
+        if (shareDetailModal) {
+            showModal(shareDetailModal);
+        }
+        wasEditOpenedFromShareDetail = false;
     }
 }
 
@@ -1994,10 +2022,39 @@ function showModal(modalElement) {
     }
 }
 
+// Helper: Show modal without pushing a new browser/history state (used for modal-to-modal back restore)
+function showModalNoHistory(modalElement) {
+    if (!modalElement) return;
+    modalElement.style.setProperty('display', 'flex', 'important');
+    modalElement.scrollTop = 0;
+    const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+    if (scrollableContent) scrollableContent.scrollTop = 0;
+    logDebug('Modal (no-history): Showing modal: ' + modalElement.id);
+}
+
 function hideModal(modalElement) {
     if (modalElement) {
         modalElement.style.setProperty('display', 'none', 'important');
         logDebug('Modal: Hiding modal: ' + modalElement.id);
+    }
+}
+
+// Extracted: auto-save logic for the share form so we can call it on back as well
+function autoSaveShareFormOnClose() {
+    if (!(shareFormSection && shareFormSection.style.display !== 'none')) return;
+    const currentData = getCurrentFormData();
+    const isShareNameValid = currentData.shareName.trim() !== '';
+    if (selectedShareDocId) {
+        if (originalShareData && !areShareDataEqual(originalShareData, currentData)) {
+            logDebug('Auto-Save: Unsaved changes detected for existing share (back). Attempting silent save.');
+            saveShareData(true);
+        }
+    } else {
+        const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
+        if (isShareNameValid && isWatchlistSelected) {
+            logDebug('Auto-Save: New share with valid fields (back). Attempting silent save.');
+            saveShareData(true);
+        }
     }
 }
 
@@ -6763,6 +6820,10 @@ if (sortSelect) {
                 console.warn('Edit Share From Detail: Edit button was disabled, preventing action.');
                 return;
             }
+            // Mark that the edit form was opened from share details so back restores it
+            wasEditOpenedFromShareDetail = true;
+            // Ensure the details modal is recorded just before we open the edit modal
+            try { pushAppStateEntry('modal', shareDetailModal); } catch(_) {}
             // Close the detail modal first to avoid overlay conflicts, then open the edit form
             hideModal(shareDetailModal);
             if (typeof showEditFormForSelectedShare === 'function') {
