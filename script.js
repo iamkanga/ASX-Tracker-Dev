@@ -3932,7 +3932,8 @@ function renderWatchlist() {
         refreshLivePricesBtn.classList.add('app-hidden');
         toggleCompactViewBtn.classList.add('app-hidden');
         asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
-        targetHitIconBtn.classList.add('app-hidden'); // Ensure hidden in cash view
+    // Hide in cash view via inline style to avoid class conflicts
+    if (targetHitIconBtn) targetHitIconBtn.style.display = 'none';
         exportWatchlistBtn.classList.add('app-hidden');
         stopLivePriceUpdates();
         updateAddHeaderButton();
@@ -4745,9 +4746,8 @@ function updateTargetHitBanner() {
         } catch (_) {}
 
         targetHitIconCount.textContent = String(displayCount);
-        // Ensure the icon is visible even if other styles attempted to hide it
-        targetHitIconBtn.classList.remove('app-hidden');
-        targetHitIconBtn.style.display = 'inline-flex';
+    // Ensure the icon is visible via inline style only (no app-hidden class toggling)
+    targetHitIconBtn.style.display = 'inline-flex';
         targetHitIconCount.style.display = 'flex';
 
         // Diagnostics: capture state after applying changes
@@ -4757,9 +4757,8 @@ function updateTargetHitBanner() {
 
         logDebug('Target Alert: Showing icon: ' + displayCount + ' triggered alerts.');
     } else {
-        // Hide the icon explicitly
-        targetHitIconBtn.classList.add('app-hidden');
-        targetHitIconBtn.style.display = 'none';
+    // Hide the icon explicitly via inline style only (no app-hidden class toggling)
+    targetHitIconBtn.style.display = 'none';
         targetHitIconCount.style.display = 'none';
         logDebug('Target Alert: No triggered alerts or icon dismissed; hiding icon.');
     }
@@ -6201,7 +6200,7 @@ async function initializeAppLogic() {
     if (customDialogModal) customDialogModal.style.setProperty('display', 'none', 'important');
     if (calculatorModal) calculatorModal.style.setProperty('display', 'none', 'important');
     if (shareContextMenu) shareContextMenu.style.setProperty('display', 'none', 'important');
-    if (targetHitIconBtn) targetHitIconBtn.classList.add('app-hidden'); // Ensure icon is hidden initially via class
+    if (targetHitIconBtn) targetHitIconBtn.style.display = 'none'; // Ensure icon is hidden initially via inline style
     if (alertPanel) alertPanel.style.display = 'none'; // NEW: Ensure alert panel is hidden initially
     // NEW: Hide cash asset modals initially
     if (cashAssetFormModal) cashAssetFormModal.style.setProperty('display', 'none', 'important');
