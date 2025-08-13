@@ -478,6 +478,8 @@ let currentContextMenuShareId = null; // Stores the ID of the share that opened 
 let originalShareData = null; // Stores the original share data when editing for dirty state check
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
 let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
+// Guard against unintended re-opening of the Share Edit modal shortly after save
+let suppressShareFormReopen = false;
 
 // App version (single source of truth for display)
 const APP_VERSION = 'v0.1.5';
@@ -2439,6 +2441,10 @@ function updateWatchlistDropdownButton() {
 }
 
 function showEditFormForSelectedShare(shareIdToEdit = null) {
+    if (suppressShareFormReopen) {
+        logDebug('Share Form: Suppression active; blocking unintended reopen.');
+        return;
+    }
     const targetShareId = shareIdToEdit || selectedShareDocId;
 
     if (!targetShareId) {
@@ -2755,7 +2761,7 @@ async function saveShareData(isSilent = false) {
                     allSharesData[idx] = { ...allSharesData[idx], ...shareData };
                 }
             } catch(_) {}
-            if (!isSilent) showCustomAlert('Share \'' + shareName + '\' updated successfully!', 1500);
+            if (!isSilent) showCustomAlert('Share \'" + shareName + "\' updated successfully!', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' (ID: ' + selectedShareDocId + ') updated.');
         originalShareData = getCurrentFormData(); // Update original data after successful save
         setIconDisabled(saveShareBtn, true); // Disable save button after saving
@@ -2764,6 +2770,8 @@ async function saveShareData(isSilent = false) {
             shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
             shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
         }
+        // Prevent any stray observers from reopening the form immediately after save
+        if (!isSilent) { suppressShareFormReopen = true; setTimeout(()=>{ suppressShareFormReopen = false; }, 8000); }
         deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
             // NEW: Explicitly hide the share form modal immediately and deselect the share
             if (!isSilent && shareFormSection) {
@@ -2789,7 +2797,7 @@ async function saveShareData(isSilent = false) {
             selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
             // Update local cache
             try { allSharesData.push({ id: selectedShareDocId, ...shareData }); } catch(_) {}
-            if (!isSilent) showCustomAlert('Share \'' + shareName + '\' added successfully!', 1500);
+            if (!isSilent) showCustomAlert('Share \'" + shareName + "\' added successfully!', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' added with ID: ' + newDocRef.id);
         originalShareData = getCurrentFormData(); // Update original data after successful save
         setIconDisabled(saveShareBtn, true); // Disable save button after saving
@@ -2798,6 +2806,8 @@ async function saveShareData(isSilent = false) {
             shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
             shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
         }
+        // Prevent any stray observers from reopening the form immediately after save
+        if (!isSilent) { suppressShareFormReopen = true; setTimeout(()=>{ suppressShareFormReopen = false; }, 8000); }
         deselectCurrentShare(); // Deselect newly added share BEFORE fetching live prices
             // NEW: Explicitly hide the share form modal immediately and deselect the share
             if (!isSilent && shareFormSection) {
