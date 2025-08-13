@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!portfolioListContainer) return;
 
         // Filter for shares assigned to the Portfolio
-        const portfolioShares = allSharesData.filter(s => s.watchlistId === 'portfolio');
+    const portfolioShares = allSharesData.filter(s => shareBelongsTo(s, 'portfolio'));
         if (portfolioShares.length === 0) {
             portfolioListContainer.innerHTML = '<p>No shares in your portfolio yet.</p>';
             return;
@@ -417,6 +417,14 @@ let currentUserId = null;
 let currentAppId;
 let selectedShareDocId = null;
 let allSharesData = []; // Kept in sync by the onSnapshot listener
+// Helper: normalize and check membership for multi-watchlist support with backward compatibility
+function shareBelongsTo(share, watchlistId) {
+    if (!share) return false;
+    if (Array.isArray(share.watchlistIds)) {
+        return share.watchlistIds.includes(watchlistId);
+    }
+    return share.watchlistId === watchlistId;
+}
 let currentDialogCallback = null;
 let autoDismissTimeout = null;
 let lastTapTime = 0;
@@ -888,8 +896,15 @@ if (!sidebarOverlay) {
 }
 
 const formInputs = [
-    shareNameInput, currentPriceInput, targetPriceInput,
-    dividendAmountInput, frankingCreditsInput, shareRatingSelect
+    shareNameInput,
+    currentPriceInput,
+    targetPriceInput,
+    dividendAmountInput,
+    frankingCreditsInput,
+    // Include portfolio-specific fields so Save enables when they change
+    document.getElementById('portfolioShares'),
+    document.getElementById('portfolioAvgPrice'),
+    shareRatingSelect
 ];
 
 // NEW: Form inputs for Cash Asset Modal
@@ -2224,8 +2239,10 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         return;
     }
 
-    // Always start with placeholder
-    shareWatchlistSelect.innerHTML = '<option value="" disabled selected>Select a Watchlist</option>';
+    // Make it multi-select to support assigning a share to multiple watchlists
+    try { shareWatchlistSelect.multiple = true; } catch(e) {}
+    // Always start with placeholder (disabled)
+    shareWatchlistSelect.innerHTML = '<option value="" disabled>Select a Watchlist</option>';
 
     // Always include Portfolio as a special option
     const PORTFOLIO_WATCHLIST_ID = 'portfolio';
@@ -2246,7 +2263,8 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         shareWatchlistSelect.appendChild(option);
     });
 
-    let selectedOptionId = ''; // Variable to hold the ID of the option we want to select
+    let preselectedIds = []; // For multi-select
+    let selectedOptionId = ''; // For legacy single-select scenarios
     let disableDropdown = false; // Variable to control if dropdown should be disabled
 
     if (isNewShare) {
@@ -2255,12 +2273,21 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         disableDropdown = false; // Always allow user to select a watchlist
         logDebug('Share Form: New share: Watchlist selector forced to blank placeholder, enabled for user selection.');
     } else { // Editing an existing share
+        // If editing, prefer the share's existing watchlistIds array if present
+        if (selectedShareDocId) {
+            const s = allSharesData.find(w => w.id === selectedShareDocId);
+            if (s && Array.isArray(s.watchlistIds) && s.watchlistIds.length) {
+                preselectedIds = s.watchlistIds.slice();
+            }
+        }
         // Always honor 'portfolio' explicitly even if userWatchlists doesn't include it
         if (currentShareWatchlistId === 'portfolio') {
             selectedOptionId = 'portfolio';
+            if (!preselectedIds.includes('portfolio')) preselectedIds.push('portfolio');
             logDebug('Share Form: Editing share: Detected portfolio watchlist, pre-selecting Portfolio.');
         } else if (currentShareWatchlistId && stockWatchlists.some(wl => wl.id === currentShareWatchlistId)) {
             selectedOptionId = currentShareWatchlistId;
+            if (currentShareWatchlistId && !preselectedIds.includes(currentShareWatchlistId)) preselectedIds.push(currentShareWatchlistId);
             logDebug('Share Form: Editing share: Pre-selected to existing share\'s watchlist: ' + selectedOptionId);
         } else if (currentShareWatchlistId) {
             // If the original watchlist isn't in the filtered stock lists, inject a temporary option to preserve it
@@ -2271,6 +2298,7 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
                 opt.textContent = original.name + ' (original)';
                 shareWatchlistSelect.appendChild(opt);
                 selectedOptionId = original.id;
+                if (original.id && !preselectedIds.includes(original.id)) preselectedIds.push(original.id);
                 console.warn('Share Form: Editing share: Original watchlist not in stock list; temporarily added original to dropdown.');
             } else {
                 // Unknown/removed list or Cash; require explicit user choice instead of defaulting silently
@@ -2281,6 +2309,7 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
             // No original ID on the share; default to current view if it's Portfolio, else leave blank
             if (Array.isArray(currentSelectedWatchlistIds) && currentSelectedWatchlistIds[0] === 'portfolio') {
                 selectedOptionId = 'portfolio';
+                if (!preselectedIds.includes('portfolio')) preselectedIds.push('portfolio');
                 logDebug('Share Form: Editing share: No original watchlist; defaulting to current view Portfolio.');
             } else {
                 selectedOptionId = '';
@@ -2293,17 +2322,23 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         disableDropdown = false; // Always allow changing watchlist when editing
     }
 
-    // Apply the determined selection and disabled state
-    shareWatchlistSelect.value = selectedOptionId;
+    // Apply the determined selection(s) and disabled state
+    if (preselectedIds.length > 0) {
+        Array.from(shareWatchlistSelect.options).forEach(option => {
+            option.selected = preselectedIds.includes(option.value);
+        });
+    } else {
+        shareWatchlistSelect.value = selectedOptionId;
+    }
     shareWatchlistSelect.disabled = disableDropdown;
 
     // Explicitly set the 'selected' attribute on the option for visual update reliability
     // This loop is crucial to ensure the visual selection is correctly applied.
     Array.from(shareWatchlistSelect.options).forEach(option => {
-        if (option.value === selectedOptionId) {
-            option.selected = true;
+        if (preselectedIds.length > 0) {
+            option.selected = preselectedIds.includes(option.value);
         } else {
-            option.selected = false;
+            option.selected = (option.value === selectedOptionId);
         }
     });
 
@@ -2426,8 +2461,17 @@ function getCurrentFormData() {
         // Get the selected star rating as a number
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0,
         comments: comments,
-        // Include the selected watchlist ID from the new dropdown
+        // Include the selected watchlist ID (legacy) and plural for future multi-select support
         watchlistId: shareWatchlistSelect ? shareWatchlistSelect.value : null,
+        watchlistIds: (() => {
+            const el = document.getElementById('shareWatchlistSelect');
+            if (!el) return null;
+            // If the control becomes multi-select, capture all selected values; else, single value array
+            const selected = Array.from(el.selectedOptions || []).map(o => o.value).filter(Boolean);
+            if (selected.length > 0) return selected;
+            const single = el.value || null;
+            return single ? [single] : null;
+        })(),
         // Portfolio fields
         portfolioShares: isNaN(portfolioSharesVal) ? null : Math.trunc(portfolioSharesVal),
         portfolioAvgPrice: isNaN(portfolioAvgPriceVal) ? null : portfolioAvgPriceVal
@@ -2456,6 +2500,14 @@ function areShareDataEqual(data1, data2) {
             return false;
         }
     }
+    // Compare watchlistIds arrays if present (order-insensitive)
+    const a = Array.isArray(data1.watchlistIds) ? [...data1.watchlistIds].sort() : null;
+    const b = Array.isArray(data2.watchlistIds) ? [...data2.watchlistIds].sort() : null;
+    if ((a && !b) || (!a && b)) return false;
+    if (a && b) {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) { if (a[i] !== b[i]) return false; }
+    }
 
     if (data1.comments.length !== data2.comments.length) {
         return false;
@@ -2478,7 +2530,13 @@ function areShareDataEqual(data1, data2) {
 function checkFormDirtyState() {
     const currentData = getCurrentFormData();
     const isShareNameValid = currentData.shareName.trim() !== '';
-    const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
+    const isWatchlistSelected = (() => {
+        if (!shareWatchlistSelect) return false;
+        if (shareWatchlistSelect.multiple) {
+            return Array.from(shareWatchlistSelect.selectedOptions || []).some(o => o.value && o.value !== '');
+        }
+        return shareWatchlistSelect.value !== '';
+    })();
 
     let canSave = isShareNameValid;
 
@@ -2526,6 +2584,13 @@ async function saveShareData(isSilent = false) {
     }
 
     const selectedWatchlistIdForSave = shareWatchlistSelect ? shareWatchlistSelect.value : null;
+    const selectedWatchlistIdsForSave = (() => {
+        const el = document.getElementById('shareWatchlistSelect');
+        if (!el) return null;
+        const vals = Array.from(el.selectedOptions || []).map(o => o.value).filter(Boolean);
+        if (vals.length > 0) return vals;
+        return selectedWatchlistIdForSave ? [selectedWatchlistIdForSave] : null;
+    })();
     // For new shares from 'All Shares' view, force watchlist selection
     if (!selectedShareDocId && currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
         if (!selectedWatchlistIdForSave || selectedWatchlistIdForSave === '') { // Check for empty string too
@@ -2569,6 +2634,7 @@ async function saveShareData(isSilent = false) {
         comments: comments,
         // Use the selected watchlist from the modal dropdown
     watchlistId: selectedWatchlistIdForSave,
+    watchlistIds: selectedWatchlistIdsForSave,
     // Portfolio fields (optional)
     portfolioShares: (() => { const el = document.getElementById('portfolioShares'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : Math.trunc(v); })(),
     portfolioAvgPrice: (() => { const el = document.getElementById('portfolioAvgPrice'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : v; })(),
@@ -3537,7 +3603,7 @@ function renderWatchlist() {
             sharesToRender = [...allSharesData];
             logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
         } else if (currentSelectedWatchlistIds.length === 1) {
-            sharesToRender = allSharesData.filter(share => currentSelectedWatchlistIds.includes(share.watchlistId));
+            sharesToRender = allSharesData.filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
             logDebug('Render: Displaying shares from watchlist: ' + selectedWatchlistId);
         } else {
             logDebug('Render: No specific stock watchlists selected or multiple selected, showing empty state.');
@@ -3643,7 +3709,7 @@ function renderAsxCodeButtons() {
     if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) { 
         sharesForButtons = [...allSharesData];
     } else {
-        sharesForButtons = allSharesData.filter(share => currentSelectedWatchlistIds.includes(share.watchlistId));
+        sharesForButtons = allSharesData.filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
     }
 
     sharesForButtons.forEach(share => {
@@ -4414,7 +4480,7 @@ function updateTargetHitBanner() {
         }
         // If a specific watchlist is selected, check if the target-hit share is in it
         if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
-            return share.watchlistId === currentSelectedWatchlistIds[0];
+            return shareBelongsTo(share, currentSelectedWatchlistIds[0]);
         }
         return false; // No target hits in cash view or multiple watchlists selected (defaulting to no highlight for now)
     });
@@ -5481,7 +5547,7 @@ function exportWatchlistToCSV() {
             sharesToExport = [...allSharesData];
             exportFileNamePrefix = 'all_shares';
         } else {
-            sharesToExport = allSharesData.filter(share => share.watchlistId === selectedWatchlistId);
+            sharesToExport = allSharesData.filter(share => shareBelongsTo(share, selectedWatchlistId));
             const wl = userWatchlists.find(w => w.id === selectedWatchlistId);
             if (wl) { exportFileNamePrefix = wl.name; }
         }
@@ -7527,7 +7593,11 @@ function showTargetHitDetailsModal() {
                     <span class="live-price-display ${priceClass}">$${currentLivePrice.toFixed(2)}</span>
                 </div>
                 <p>Target: <strong>$${targetPrice !== null && !isNaN(targetPrice) ? targetPrice.toFixed(2) : 'N/A'}</strong></p>
-                <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
+                <p>Watchlist: <strong>${(() => {
+                    const ids = Array.isArray(share.watchlistIds) && share.watchlistIds.length ? share.watchlistIds : (share.watchlistId ? [share.watchlistId] : []);
+                    const names = ids.map(id => userWatchlists.find(w => w.id === id)?.name).filter(Boolean);
+                    return names.length ? names.join(', ') : 'N/A';
+                })()}</strong></p>
             `;
             targetHitSharesList.appendChild(targetHitItem);
 
