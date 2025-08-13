@@ -6569,6 +6569,8 @@ async function initializeAppLogic() {
         }
     } catch(_) {}
 
+    const splashUsePopupBtn = document.getElementById('splashUsePopupBtn');
+
     if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
         let splashSignInRetryTimer = null;
         let splashSignInInProgress = false;
@@ -6736,6 +6738,48 @@ async function initializeAppLogic() {
         });
     }
 
+    // Explicit popup fallback button for cases where redirect returned no user or user prefers popup
+    if (splashUsePopupBtn && splashUsePopupBtn.getAttribute('data-bound') !== 'true') {
+        splashUsePopupBtn.setAttribute('data-bound','true');
+        splashUsePopupBtn.addEventListener('click', async () => {
+            logDebug('Auth: Splash Use-Popup button clicked.');
+            try {
+                const currentAuth = window.firebaseAuth;
+                if (!currentAuth || !window.authFunctions) {
+                    showCustomAlert('Authentication service not ready. Please try again.');
+                    return;
+                }
+                const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
+                const resolver = window.authFunctions.browserPopupRedirectResolver;
+                try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
+                // Prefer local persistence for popup flows
+                try {
+                    if (window.authFunctions.setPersistence && window.authFunctions.browserLocalPersistence) {
+                        await window.authFunctions.setPersistence(currentAuth, window.authFunctions.browserLocalPersistence);
+                        logDebug('Auth: Persistence set to browserLocalPersistence for popup flow.');
+                    }
+                } catch(e) { console.warn('Auth: Failed to set local persistence for popup.', e); }
+                if (resolver) {
+                    await window.authFunctions.signInWithPopup(currentAuth, provider, resolver);
+                } else {
+                    await window.authFunctions.signInWithPopup(currentAuth, provider);
+                }
+            } catch (e) {
+                console.warn('Auth: Popup fallback failed:', e);
+                const code = e && e.code ? String(e.code) : '';
+                if (code === 'auth/popup-blocked') {
+                    showCustomAlert('Popup blocked. Please allow popups or use the main button.');
+                } else if (code === 'auth/unauthorized-domain') {
+                    showCustomAlert('Unauthorized domain. Fix settings in Firebase.');
+                } else if (code === 'auth/popup-closed-by-user') {
+                    showCustomAlert('Popup closed before completing sign-in.');
+                } else {
+                    showCustomAlert('Popup sign-in failed. Please try again.');
+                }
+            }
+        });
+    }
+
     // Handle redirect sign-in result (e.g., mobile flow)
     try {
         if (window.authFunctions && window.authFunctions.getRedirectResult && window.firebaseAuth) {
@@ -6755,31 +6799,13 @@ async function initializeAppLogic() {
                             updateSplashSignInButtonState('error', 'Open in Safari');
                             showCustomAlert('On iOS when installed to Home Screen, Google sign-in may not return a session. Please open this app in Safari and sign in.');
                         } else {
-                            // Grace period, then attempt an automatic popup fallback once
-                            if (typeof updateSplashSignInButtonState === 'function') {
-                                updateSplashSignInButtonState('loading', 'Completing sign-in…');
+                            // Show an explicit "Use popup instead" button to avoid double account chooser
+                            if (splashUsePopupBtn) {
+                                splashUsePopupBtn.style.display = 'inline-flex';
                             }
-                            setTimeout(async () => {
-                                const alreadyTriedPopup = (()=>{ try { return localStorage.getItem('authPopupFallbackTried') === '1'; } catch(_) { return false; } })();
-                                if (!window._userAuthenticated && !alreadyTriedPopup && window.authFunctions && window.firebaseAuth) {
-                                    try {
-                                        localStorage.setItem('authPopupFallbackTried','1');
-                                        const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
-                                        const resolver = window.authFunctions.browserPopupRedirectResolver;
-                                        if (resolver) {
-                                            await window.authFunctions.signInWithPopup(window.firebaseAuth, provider, resolver);
-                                        } else {
-                                            await window.authFunctions.signInWithPopup(window.firebaseAuth, provider);
-                                        }
-                                        return; // success will flow into onAuthStateChanged
-                                    } catch (e) {
-                                        // If popup fails, surface a clear retry
-                                        if (splashSignInBtn) updateSplashSignInButtonState('retry', 'Try again');
-                                    }
-                                } else if (!window._userAuthenticated) {
-                                    if (splashSignInBtn) updateSplashSignInButtonState('retry', 'Try again (will use popup)');
-                                }
-                            }, 3000);
+                            if (typeof updateSplashSignInButtonState === 'function') {
+                                updateSplashSignInButtonState('retry', 'Try again');
+                            }
                         }
                         try { localStorage.setItem('authRedirectReturnedNoUser','1'); } catch(_) {}
                         try { localStorage.removeItem('authRedirectAttempted'); } catch(_) {}
@@ -6798,6 +6824,7 @@ async function initializeAppLogic() {
                         showCustomAlert('Sign-in not supported in this environment. On iOS, open in Safari (not PWA) or use a hosted URL.');
                     } else {
                         updateSplashSignInButtonState('retry', 'Try again');
+                        if (splashUsePopupBtn) splashUsePopupBtn.style.display = 'inline-flex';
                     }
                 }
             });
