@@ -5039,6 +5039,12 @@ body.dark-theme .target-hit-details-modal .modal-content {
     color: var(--label-color);
 }
 
+/* Muted alert items: subtle visual de-emphasis */
+.target-hit-item.muted {
+    opacity: 0.6;
+    filter: grayscale(18%);
+}
+
 .alert-panel.open {
     opacity: 1;
     transform: translateY(0);

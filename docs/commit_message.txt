@@ -1,1 +1,1 @@
-Fix: Dividend calculator Investment Value select rendering + remove stray dot; bump CSS to v0.1.5 and update SW precache
+Feature: Complete Notification Hub (alerts listener, badge, mute/unmute); add muted alert styling; bump CSS to v0.1.7

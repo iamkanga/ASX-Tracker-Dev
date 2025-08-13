@@ -1,86 +1,61 @@
-2025-08-12 Session Summary
+2025-08-13 Session Summary (Enhanced)
 
-**Key Issues Addressed/Discussed:**
+1) Conversation Overview
+- Primary Objectives
+    - Replace legacy target price notifications with a modern, intuitive, professionally styled alert system.
+    - Develop in stages: Phase 1 (UI/UX) first, Phase 2 (logic & Firestore) after validation.
+    - Fix “Save disabled for new share” and “Duplicate share after save.”
+    - Persist alert settings on save using serverTimestamp for createdAt/updatedAt.
+    - Read triggered alerts from Firestore, populate Notification Hub, update badge, and support mute/unmute per alert.
+- Session Context
+    - Phase 1 UI/UX completed; save/duplicate bugs fixed; SW cache bumped.
+    - Phase 2: Wrote alerts on save (upsert), added real-time listener for triggered alerts; wired Notification Hub and badge; added mute/unmute.
 
-*   **CORS Errors:** Significant problems with CORS when the backend App Script returns `null` or `N/A` values, causing display issues. This is a major recurring issue that needs a robust solution.
-*   **UI & Theming:**
-    *   **Resolved:** The blue text for ASX codes has been successfully changed to a coffee color.
-    *   **Resolved:** Portfolio Profit/Loss cards now use theme variable --card-bg (no black fallback). Fixed in style.css by defining :root --card-bg and removing dark fallbacks on .ps-card and .portfolio-card.
-*   **Dynamic Elements & State:**
-    *   **Outstanding:** The watchlist view does not reposition correctly when the ASX code buttons are opened or closed.
-    *   **Outstanding:** The dynamic title bar is not updating as expected, an issue carried over from previous sessions.
-    *   **Resolved:** ASX code buttons reinitialize after hard reload. Centralized visibility control in applyAsxButtonsState(); removed direct style overrides in renderAsxCodeButtons; reapplied state on DOM load and compact-mode changes.
-    *   **Outstanding:** Notifications require a manual refresh after hard reload. Will link first-live-load to updateTargetHitBanner automatically next.
-*   **CORS Errors:** Significant problems with CORS when the backend App Script returns `null` or `N/A` values, causing display issues. This is a major recurring issue that needs a robust solution.
-*   **CORS Errors:** Significant problems with CORS when the backend App Script returns `null` or `N/A`. Client now guards all fields (numOrNull, lastLivePrice/lastPrevClose fallbacks) and avoids throwing on empty/invalid arrays. Server should still send Access-Control-Allow-Origin and well-formed JSON.
-*   **Mobile Specific:**
-    *   **Outstanding:** A "Try Again" pop-up is incorrectly appearing and blocking the Google authorization sign-in button on mobile devices, even though the sign-in process itself is successful.
+2) Technical Foundation
+- PWA frontend: index.html, style.css, script.js; service worker for caching/versioning.
+- Firebase Web SDK v11.6.1: App/Auth/Firestore; serverTimestamp exported on window.firestore.
+- Data flow: Prices via Google Apps Script; alerts in Firestore drive Notification Hub.
+- Architecture: Snapshot-driven state, dedupe by id, merge writes preserve createdAt.
 
-**Previous Session Notes (for context):**
+3) Codebase Status
+- index.html
+    - Initializes Firebase/Auth/Firestore; exposes helpers and serverTimestamp; onAuthStateChanged wiring.
+- service-worker.js
+    - CACHE_NAME share-watchlist-v1.0.13; precaches style.css?v=0.1.6; skips dynamic APIs; cleans old caches.
+- script.js
+    - Helpers: dedupeSharesById.
+    - Loading: real-time listeners for shares and cash categories.
+    - Live prices: fetchLivePrices updates livePrices and triggers re-renders.
+    - Alerts persistence: upsertAlertForShare writes one alerts doc per share with intent/direction/targetPrice/enabled and serverTimestamp for createdAt/updatedAt (merge preserves createdAt).
+    - Alerts consumption: loadTriggeredAlertsListener listens for targetHit == true; splits into enabled vs muted; updates badge and modal if open.
+    - Controls: toggleAlertEnabled updates enabled and updatedAt; updateTargetHitBanner reflects enabled count; showTargetHitDetailsModal renders Active and Muted sections with Mute/Unmute.
+    - Auth lifecycle: starts/stops alerts listener on sign-in/out.
 
-2025-08-12
-- Header UX: Made whole title clickable, pointer cursor, and green keyboard-only focus ring.
-- Sidebar: Initialize closed on desktop after reload.
-- Notifications: Restore persisted alert count on DOMContentLoaded and post-auth before live prices load.
-- Title sync: Ensure header title updates after restoring lastSelectedView; resolve from userWatchlists if select text missing.
-- Minor: Bound click handler to title container for reliable activation area.
+4) Problem Resolution
+- Save disabled for new share: Fixed gating by wiring new toggles to save state.
+- Duplicate share after save: Removed optimistic local push; dedupe on snapshot and render; bumped SW cache.
+- Timestamps: Switched to serverTimestamp for createdAt/updatedAt; merge to preserve createdAt.
+- Notification alignment: Badge and Notification Hub now derived from alerts snapshots, not transient price calc.
 
-2025-08-12 Issue Status Recap (user feedback):
-1 Watchlist picker not opening (desktop/mobile) - NOT RESOLVED
-2 Title container width not reduced - NOT RESOLVED
-3 Chevron not collapsing ASX buttons - NOT RESOLVED
-4 Arrow border removal - NOT RESOLVED
-5 Title border/focus styling dissatisfaction - NOT RESOLVED
-6 Edit button in detail modal broken (was formatUserDecimalStrict) - NOT RESOLVED
-7 Comma formatting incomplete - PARTIAL
-8 Back button behavior (sidebar/modals) - NOT RESOLVED
-9 First tap outside sidebar still triggers underlying UI - NOT RESOLVED
-10 Coffee theme mostly OK - LIKELY RESOLVED
-11 Arrow default state clarification not needed
-12 Portfolio bleed fixed - RESOLVED
-13 Initial code buttons visibility relevance - N/A
-14 Dark mode picker contrast - RESOLVED
-15 Google sign-in popup warning accepted - RESOLVED
-16 (implicit) Title span clickable width on mobile still over-sensitive per user - NOT RESOLVED
-17 aria-expanded sync (user unsure) - TO VERIFY
-20 Number formatting in edit form inputs (user unclear) - TO DEFINE
+5) Progress Tracking
+- Completed
+    - Phase 1 UI/UX and Notification Hub; bug fixes; SW cache bump.
+    - Alert persistence (serverTimestamp) and alert-driven UI with mute/unmute.
+- Optional / Pending
+    - Add CSS treatment for muted alerts (visual distinction).
+    - Consider Firestore indexes for future composite queries.
+- Validation
+    - Syntax checks pass; runtime wiring verified; cache version up-to-date.
 
-Next focus (planned): 1,2,3,4,5,6,8,9 plus finalize 7 strategy.
+6) Active Work State
+- App shows real-time triggered alerts; badge reflects enabled alerts; users can mute/unmute alerts in the Notification Hub.
+- Muted styling is a low-risk UI enhancement if desired.
 
-Conversation handoff (compact): Dividend calculator UI fix, PWA hygiene, prior UI/behavior changes
+7) Recent Operations
+- Implemented alerts listener, refactored banner count, added toggleAlertEnabled, and updated modal rendering with Mute/Unmute.
+- Confirmed serverTimestamp export in index.html and consumption in script.js.
+- Verified service worker cache and stylesheet versioning; performed syntax smoke checks (no errors).
 
-Latest issue and fix
-- Problem: Dividend calculator "Investment Value" select rendered incorrectly and a stray dot appeared between Franked Yield and Investment Value.
-- Root cause: Malformed CSS selectors for calculator fields (missing leading "." on .calc-input-group rules) and no explicit hr styling inside the calculator modal.
-- Fixes:
-	- style.css: Corrected .calc-input-group input/select selectors (desktop and mobile sections). Added scoped separator: #dividendCalculatorModal hr { border-top: 1px solid var(--border-color); border: 0; margin: 10px 0; }.
-	- index.html: Bumped stylesheet reference to style.css?v=0.1.5.
-	- service-worker.js: Updated precache list to include ./style.css?v=0.1.5; skipWaiting/clients.claim already in place. Cache name remains share-watchlist-v1.0.8.
-- Status: Changes saved and precache updated. Pending verification on devices to confirm normal select rendering and no stray dot. No JS logic changes; calculations unaffected.
-
-Key prior improvements (context)
-- UI polish: Version badge placement, company name under code, standardized pure #FF0000/#00FF00 for numbers and borders.
-- Watchlist layout and icons refined for desktop/mobile.
-- Market closed behavior: Automatic Sydney-time checks with informational banner only (no global ghosting; compact view uses subtle background tint).
-- Share Details modal: Restored live price, 52-week high/low, and P/E; unique container to avoid selector conflicts.
-- PWA: Versioned assets, updated SW with precache discipline, skipWaiting and clients.claim to reduce stale clients.
-
-Files involved
-- index.html: Dividend calculator markup and CSS link now style.css?v=0.1.5.
-- style.css: Fixed .calc-input-group selectors; added hr styling scoped to the calculator modal.
-- service-worker.js: Precaches ./style.css?v=0.1.5; cache name share-watchlist-v1.0.8 unchanged.
-- script.js: Calculator bindings intact; no changes required for this UI bug.
-
-Quality gates (quick)
-- Build: N/A (static site).
-- Type/Lint: N/A.
-- Smoke: Requires runtime check to validate dropdown rendering and separator on both desktop and mobile.
-
-Requirements coverage
-- “Fix dividend calculator select rendering and remove stray dot”: Done (CSS selector corrections + modal-scoped hr style).
-- “Keep app colors pure red/green; restore modal metrics; auto market-close handling with banner only”: Done previously.
-- “Ensure updates reach clients under SW”: Done (asset version bump + SW precache update); may optionally bump cache name if propagation lags.
-
-Next steps
-- Verify on-device the calculator modal: confirm proper Investment Value dropdown, no stray dot, and Estimated Annual Dividend updates as selection/inputs change.
-- If any clients lag receiving CSS, consider bumping CACHE_NAME to a new version to force a clean install.
+8) Continuation Plan
+- If desired, add a subtle style for muted alerts in CSS (e.g., reduced opacity/grayscale) to visually differentiate them.
+- Monitor real-time behavior; add Firestore indexes if query patterns evolve.
