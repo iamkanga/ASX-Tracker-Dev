@@ -962,7 +962,7 @@ async function fetchLivePricesAndUpdateUI() {
     // You may have a function like showLoadingIndicator();
     
     // Call the newly updated live price fetch function
-    await fetchLivePrices();
+    await fetchLivePrices({ cacheBust: true });
 
     // Hide the loading state
     // You may have a function like hideLoadingIndicator();
@@ -976,9 +976,14 @@ async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
     try {
         // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
-        const url = typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' ? GOOGLE_APPS_SCRIPT_URL : (typeof appsScriptUrl !== 'undefined' ? appsScriptUrl : null);
-        if (!url) throw new Error('Apps Script URL not defined');
-        const response = await fetch(url, { cache: 'no-store' }); // no-store to avoid stale cached 302 chain
+    const baseUrl = typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' ? GOOGLE_APPS_SCRIPT_URL : (typeof appsScriptUrl !== 'undefined' ? appsScriptUrl : null);
+    if (!baseUrl) throw new Error('Apps Script URL not defined');
+    // Optional query params: cacheBust, stockCode support
+    const qs = new URLSearchParams();
+    if (opts && opts.cacheBust) qs.set('_ts', Date.now().toString());
+    if (opts && opts.stockCode) qs.set('stockCode', String(opts.stockCode).toUpperCase());
+    const url = qs.toString() ? (baseUrl + (baseUrl.includes('?') ? '&' : '?') + qs.toString()) : baseUrl;
+    const response = await fetch(url, { cache: 'no-store' }); // no-store to avoid stale cached 302 chain
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
         if (!Array.isArray(data)) {
@@ -1006,7 +1011,7 @@ async function fetchLivePrices(opts = {}) {
             return null;
         };
 
-        data.forEach(item => {
+    data.forEach(item => {
             if (!item) return;
             const codeRaw = item.ASXCode || item.ASX_Code || item['ASX Code'] || item.Code || item.code;
             if (!codeRaw) return; // no code
@@ -2478,6 +2483,11 @@ function clearForm() {
         addShareLivePriceDisplay.style.display = 'none';
         addShareLivePriceDisplay.innerHTML = '';
     }
+    // Reset auto displays in Other Details
+    try {
+        if (autoEntryDateDisplay) { autoEntryDateDisplay.textContent = 'Auto when saved'; autoEntryDateDisplay.classList.add('ghosted-text'); }
+        if (autoReferencePriceDisplay) { autoReferencePriceDisplay.textContent = 'Auto when saved'; autoReferencePriceDisplay.classList.add('ghosted-text'); }
+    } catch(_) {}
     selectedShareDocId = null;
     originalShareData = null; // IMPORTANT: Reset original data to prevent auto-save of cancelled edits
     if (deleteShareBtn) {
@@ -4252,16 +4262,23 @@ function renderAsxCodeButtons() {
                     checkFormDirtyState();
                     // Fetch a single-stock snapshot to render the small live panel
                     if (typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined') {
-                        fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${code}`)
+                        const url = `${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(code)}&_ts=${Date.now()}`;
+                        fetch(url)
                             .then(r => r.ok ? r.json() : null)
                             .then(data => {
-                                const stock = Array.isArray(data) && data[0] ? data[0] : null;
+                                if (!data) return;
+                                // Some endpoints may return multiple rows; pick the one matching the code
+                                const rows = Array.isArray(data) ? data : [];
+                                const stock = rows.find(row => {
+                                    const raw = row.ASXCode || row.ASX_Code || row['ASX Code'] || row.Code || row.code;
+                                    return String(raw || '').toUpperCase().trim() === code;
+                                }) || rows[0] || null;
                                 if (!stock || !addShareLivePriceDisplay) return;
-                                const live = parseFloat(stock.LivePrice ?? stock.live ?? stock.price);
-                                const prev = parseFloat(stock.PrevClose ?? stock.prevClose ?? stock.prev);
-                                const pe = parseFloat(stock.PE ?? stock['PE Ratio']);
-                                const hi = parseFloat(stock.High52 ?? stock['High52'] ?? stock['High 52'] ?? stock['52WeekHigh']);
-                                const lo = parseFloat(stock.Low52 ?? stock['Low52'] ?? stock['Low 52'] ?? stock['52WeekLow']);
+                                const live = parseFloat(stock.LivePrice ?? stock['Live Price'] ?? stock.live ?? stock.price ?? stock.Last ?? stock.LastPrice ?? stock['Last Price'] ?? stock.LastTrade ?? stock['Last Trade']);
+                                const prev = parseFloat(stock.PrevClose ?? stock['Prev Close'] ?? stock.prevClose ?? stock.prev ?? stock['Previous Close'] ?? stock.Close ?? stock['Last Close']);
+                                const pe = parseFloat(stock.PE ?? stock['PE Ratio'] ?? stock.pe);
+                                const hi = parseFloat(stock.High52 ?? stock['High52'] ?? stock['High 52'] ?? stock['52WeekHigh'] ?? stock['52 High']);
+                                const lo = parseFloat(stock.Low52 ?? stock['Low52'] ?? stock['Low 52'] ?? stock['52WeekLow'] ?? stock['52 Low']);
                                 const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
                                 const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
                                 const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
@@ -4959,13 +4976,9 @@ function startLivePriceUpdates() {
         clearInterval(livePriceFetchInterval);
         logDebug('Live Price: Cleared existing live price interval.');
     }
-    // Only start fetching if not in cash view
-    if (!currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-        livePriceFetchInterval = setInterval(fetchLivePrices, LIVE_PRICE_FETCH_INTERVAL_MS); // Only set the interval
-        logDebug('Live Price: Started live price updates every ' + (LIVE_PRICE_FETCH_INTERVAL_MS / 1000 / 60) + ' minutes.');
-    } else {
-        logDebug('Live Price: Not starting live price updates because "Cash & Assets" is selected.'); // UPDATED TEXT
-    }
+    // Always start periodic fetching to keep global live prices fresh regardless of current view
+    livePriceFetchInterval = setInterval(() => fetchLivePrices({ cacheBust: true }), LIVE_PRICE_FETCH_INTERVAL_MS);
+    logDebug('Live Price: Started live price updates every ' + (LIVE_PRICE_FETCH_INTERVAL_MS / 1000 / 60) + ' minutes.');
 }
 
 /**
@@ -8200,7 +8213,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 await loadTriggeredAlertsListener();
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
-                await fetchLivePrices({ forceLiveFetch: !forcedOnce });
+                await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
                 try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true'); } catch(e) {}
                 startLivePriceUpdates();
 
