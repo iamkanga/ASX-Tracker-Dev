@@ -4712,11 +4712,23 @@ function updateTargetHitBanner() {
 
     const displayCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
     if (displayCount > 0 && !targetHitIconDismissed) {
+        // Diagnostics: capture state before applying changes
+        try {
+            console.log('[Diag] targetHitIconBtn element:', targetHitIconBtn);
+            console.log('[Diag] BEFORE - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
+        } catch (_) {}
+
         targetHitIconCount.textContent = String(displayCount);
         // Ensure the icon is visible even if other styles attempted to hide it
         targetHitIconBtn.classList.remove('app-hidden');
         targetHitIconBtn.style.display = 'inline-flex';
         targetHitIconCount.style.display = 'flex';
+
+        // Diagnostics: capture state after applying changes
+        try {
+            console.log('[Diag] AFTER - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
+        } catch (_) {}
+
         logDebug('Target Alert: Showing icon: ' + displayCount + ' triggered alerts.');
     } else {
         // Hide the icon explicitly
