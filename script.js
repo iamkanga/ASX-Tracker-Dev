@@ -2655,9 +2655,17 @@ function checkFormDirtyState() {
     const currentData = getCurrentFormData();
     const isShareNameValid = currentData.shareName.trim() !== '';
     const isWatchlistSelected = (() => {
+        // Prefer the Phase 1 checkbox UI if present
+        const checkedCbs = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
+        if (checkedCbs && checkedCbs.length > 0) return true;
+
+        // Fallback to native select state
         if (!shareWatchlistSelect) return false;
         if (shareWatchlistSelect.multiple) {
-            return Array.from(shareWatchlistSelect.selectedOptions || []).some(o => o.value && o.value !== '');
+            // Some browsers don’t populate selectedOptions reliably when updated programmatically; check option.selected
+            const anySelected = Array.from(shareWatchlistSelect.options || []).some(o => o.selected && o.value && o.value !== '');
+            if (anySelected) return true;
+            return !!(shareWatchlistSelect.value && shareWatchlistSelect.value !== '');
         }
         return shareWatchlistSelect.value !== '';
     })();
