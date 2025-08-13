@@ -6579,12 +6579,16 @@ async function initializeAppLogic() {
                             updateSplashSignInButtonState('error', 'Open in Safari');
                             showCustomAlert('On iOS when installed to Home Screen, Google sign-in may not return a session. Please open this app in Safari and sign in.');
                         } else {
-                            // Wait briefly to allow onAuthStateChanged to deliver the user before showing retry
+                            // Wait longer to allow onAuthStateChanged to deliver the user before showing retry
+                            // Keep the button in loading state during this grace period
+                            if (typeof updateSplashSignInButtonState === 'function') {
+                                updateSplashSignInButtonState('loading', 'Completing sign-in…');
+                            }
                             setTimeout(() => {
                                 if (!window._userAuthenticated && splashSignInBtn) {
                                     updateSplashSignInButtonState('retry', 'Try again');
                                 }
-                            }, 1500);
+                            }, 4000);
                         }
                         try { localStorage.setItem('authRedirectReturnedNoUser','1'); } catch(_) {}
                         try { localStorage.removeItem('authRedirectAttempted'); } catch(_) {}
@@ -7583,6 +7587,12 @@ document.addEventListener('DOMContentLoaded', function() {
         splashScreenReady = true; // Mark splash screen as ready
         document.body.style.overflow = 'hidden'; // Prevent scrolling of underlying content
         logDebug('Splash Screen: Displayed on DOMContentLoaded, body overflow hidden.');
+        // If we are returning from a redirect attempt, keep the button in loading state while we complete sign-in
+        try {
+            if (localStorage.getItem('authRedirectAttempted') === '1' && typeof updateSplashSignInButtonState === 'function') {
+                updateSplashSignInButtonState('loading', 'Completing sign-in…');
+            }
+        } catch(_) {}
     } else {
         console.warn('Splash Screen: Splash screen element not found. App will start without it.');
         // If splash screen not found, set flags to true and hide the splash screen logic.
@@ -7632,6 +7642,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
                 logDebug('AuthState: User email: ' + user.email);
+                try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
                 // Use dynamic update instead of hard-coded label so it reflects current selection
                 updateMainTitle();
                 logDebug('AuthState: Dynamic title initialized via updateMainTitle().');
