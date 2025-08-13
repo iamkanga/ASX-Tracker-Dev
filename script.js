@@ -520,6 +520,7 @@ let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
 
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
+let unsubscribeAlerts = null; // NEW: Holds the unsubscribe function for Firestore alerts listener
 
 // NEW: Global variable to store shares that have hit their target price
 let sharesAtTargetPrice = [];
@@ -4692,64 +4693,38 @@ function stopLivePriceUpdates() {
 
 // NEW: Function to update the target hit notification icon
 function updateTargetHitBanner() {
-    // Collect ALL shares that have hit their target price, regardless of current watchlist view
-    sharesAtTargetPrice = allSharesData.filter(share => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        // Ensure livePriceData exists and has targetHit property
-        // The check against `currentSelectedWatchlistIds` is removed here to show ALL alerts globally
-        return livePriceData && livePriceData.targetHit;
-    });
-
-    if (!targetHitIconBtn || !targetHitIconCount) {
-        console.warn('Target Alert: Target hit icon elements not found. Cannot update icon.');
-        return;
-    }
-
-    // Only show the icon if there are shares at target AND the icon hasn't been manually dismissed
-    // (The cash view check is removed here, as the icon should represent ALL stock alerts globally)
+    // Now driven by alerts from Firestore; sharesAtTargetPrice is set by the alerts listener
     if (!targetHitIconBtn || !targetHitIconCount || !watchlistSelect || !sortSelect) {
-        console.warn('Target Alert: Target hit icon elements or dropdowns not found. Cannot update banner/highlights.');
+        console.warn('Target Alert: UI elements missing. Cannot update banner/highlights.');
         return;
     }
 
-    // Determine if any shares at target price are currently being displayed in the selected stock watchlist(s)
-    const currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
-        // If "All Shares" is selected, any target hit applies
-        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
-            return true;
-        }
-        // If a specific watchlist is selected, check if the target-hit share is in it
+    // Determine if any triggered shares belong to the currently selected watchlist(s)
+    const currentViewHasTargetHits = (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []).some(share => {
+        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) return true;
         if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
             return shareBelongsTo(share, currentSelectedWatchlistIds[0]);
         }
-        return false; // No target hits in cash view or multiple watchlists selected (defaulting to no highlight for now)
+        return false;
     });
 
-    // Update the fixed bottom-left icon
-    const liveLoaded = livePrices && Object.keys(livePrices).length > 0;
-    let displayCount = sharesAtTargetPrice.length;
-    if (!liveLoaded && lastKnownTargetCount > 0 && !targetHitIconDismissed) {
-        // Keep showing previous count until live data arrives to avoid the perception of dismissal
-        displayCount = lastKnownTargetCount;
-    }
+    const displayCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
     if (displayCount > 0 && !targetHitIconDismissed) {
         targetHitIconCount.textContent = String(displayCount);
         targetHitIconBtn.classList.remove('app-hidden');
         targetHitIconCount.style.display = 'block';
-        logDebug('Target Alert: Showing icon: ' + displayCount + ' shares hit target (liveLoaded=' + liveLoaded + ').');
+        logDebug('Target Alert: Showing icon: ' + displayCount + ' triggered alerts.');
     } else {
         targetHitIconBtn.classList.add('app-hidden');
         targetHitIconCount.style.display = 'none';
-        logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
+        logDebug('Target Alert: No triggered alerts or icon dismissed; hiding icon.');
     }
 
-    // Update last known count when we have live data
-    if (liveLoaded) {
-        lastKnownTargetCount = sharesAtTargetPrice.length;
-        try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch(e) {}
-    }
+    // Persist last known count for early UI restore
+    lastKnownTargetCount = displayCount;
+    try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch(e) {}
 
-    // Apply/remove border to watchlist and sort dropdowns if the *current view* has target hits
+    // Highlight dropdowns if the current view has target hits
     if (currentViewHasTargetHits && !targetHitIconDismissed) {
         watchlistSelect.classList.add('target-hit-border');
         sortSelect.classList.add('target-hit-border');
@@ -4758,6 +4733,57 @@ function updateTargetHitBanner() {
         watchlistSelect.classList.remove('target-hit-border');
         sortSelect.classList.remove('target-hit-border');
         logDebug('Target Alert: Watchlist and Sort dropdowns unhighlighted.');
+    }
+}
+
+// NEW: Real-time alerts listener to populate sharesAtTargetPrice from Firestore
+async function loadTriggeredAlertsListener() {
+    if (unsubscribeAlerts) {
+        try { unsubscribeAlerts(); } catch(_) {}
+        unsubscribeAlerts = null;
+        logDebug('Firestore Listener: Unsubscribed from previous alerts listener.');
+    }
+    if (!db || !currentUserId || !window.firestore) {
+        console.warn('Alerts: Firestore DB, User ID, or Firestore functions not available. Clearing triggered alerts.');
+        sharesAtTargetPrice = [];
+        updateTargetHitBanner();
+        return;
+    }
+    try {
+        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        // Filter for triggered alerts; additional local filter will enforce enabled !== false
+        const q = window.firestore.query(alertsCol, window.firestore.where('targetHit', '==', true));
+        unsubscribeAlerts = window.firestore.onSnapshot(q, (querySnapshot) => {
+            const triggeredShares = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data() || {};
+                if (data.enabled === false) return; // respect disabled alerts
+                const shareId = data.shareId || doc.id;
+                const shareCode = (data.shareCode || '').toUpperCase();
+                // Try to hydrate from current shares data for richer UI; fallback to a minimal stub
+                let share = allSharesData.find(s => s.id === shareId) || allSharesData.find(s => String(s.shareName || '').toUpperCase() === shareCode);
+                if (!share) {
+                    share = {
+                        id: shareId,
+                        shareName: shareCode || '(Unknown)'.toUpperCase(),
+                        targetPrice: (typeof data.targetPrice === 'number' && !isNaN(data.targetPrice)) ? data.targetPrice : null,
+                        watchlistIds: []
+                    };
+                }
+                triggeredShares.push(share);
+            });
+            sharesAtTargetPrice = dedupeSharesById(triggeredShares);
+            updateTargetHitBanner();
+            // If the notification hub is open, refresh its contents
+            if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
+                showTargetHitDetailsModal();
+            }
+        }, (error) => {
+            console.error('Firestore Listener: Error listening to alerts:', error);
+        });
+        logDebug('Alerts: Real-time alerts listener set up.');
+    } catch (error) {
+        console.error('Alerts: Error setting up alerts listener:', error);
     }
 }
 
@@ -7878,6 +7904,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // This ensures the initial view is correctly sorted by percentage change if selected.
                 await loadUserWatchlistsAndSettings();
                 try { ensureTitleStructure(); } catch(e) {}
+                // Start alerts listener (triggered alerts -> Notification Hub)
+                await loadTriggeredAlertsListener();
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
                 await fetchLivePrices({ forceLiveFetch: !forcedOnce });
@@ -7934,6 +7962,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     unsubscribeCashCategories();
                     unsubscribeCashCategories = null;
                     logDebug('Firestore Listener: Unsubscribed from cash categories listener on logout.');
+                }
+                if (unsubscribeAlerts) { // NEW: Unsubscribe from alerts
+                    try { unsubscribeAlerts(); } catch(_) {}
+                    unsubscribeAlerts = null;
+                    logDebug('Firestore Listener: Unsubscribed from alerts listener on logout.');
                 }
                 stopLivePriceUpdates();
                 
