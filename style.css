@@ -138,8 +138,11 @@ function makeFilesAvailableToSourceControlCSS() {
     --asx-button-text: #333;
     --asx-button-active-bg: #007bff;
     --asx-button-active-text: #fff;
-    --success-color: #00FF00;
-    --danger-color: #FF0000;
+    /* Brand palette and mappings */
+    --brand-red: #E74C3C;   /* Alizarin */
+    --brand-green: #2ECC71; /* Emerald */
+    --success-color: var(--brand-green);
+    --danger-color: var(--brand-red);
     --warning-color: #ffc107;
     --info-color: #17a2b8;
     --link-color: #007bff;
@@ -153,8 +156,8 @@ function makeFilesAvailableToSourceControlCSS() {
     --menu-button-active-text: #fff;
     --placeholder-text: #6c757d;
     --ghosted-text: #888;
-    --danger-button-bg: #FF0000;
-    --danger-button-hover-bg: #FF0000;
+    --danger-button-bg: var(--brand-red);
+    --danger-button-hover-bg: var(--brand-red);
     --secondary-button-bg: #6c757d;
     --secondary-button-hover-bg: #545b62;
     --google-auth-btn-bg: #FFFFFF;
@@ -167,13 +170,13 @@ function makeFilesAvailableToSourceControlCSS() {
     /* Icon/button colors tuned to coffee accent */
     --icon-action-color: var(--accent-color);
     --icon-action-hover-color: #8a7f7f; /* slightly darker coffee */
-    --icon-danger-color: #FF0000;
-    --icon-danger-hover-color: #FF0000;
+    --icon-danger-color: var(--brand-red);
+    --icon-danger-hover-color: var(--brand-red);
     --calc-num-btn-bg: #f0f0f0;
     --calc-num-btn-text: #333;
     --calc-num-btn-hover-bg: #e0e0e0;
-    --price-up-color: #00FF00;
-    --price-down-color: #FF0000;
+    --price-up-color: var(--brand-green);
+    --price-down-color: var(--brand-red);
     --price-neutral-color: #6c757d;
     --live-price-section-bg: rgba(0, 123, 255, 0.05); /* Subtle blue tint */
     --live-price-positive-bg: rgba(40, 167, 69, 0.1); /* Faint green */
@@ -183,9 +186,10 @@ function makeFilesAvailableToSourceControlCSS() {
     --target-alert-text: #a49393; /* Coffee color for target-hit ASX code in modals */
     --target-alert-border: #007bff;
     --target-banner-height: 40px; /* This variable is now effectively unused for the banner, but kept for other potential uses */
-    ---green-color: #00FF00; /* Standard green for general use */
-    --green-color-dark: #00FF00; /* Unify hover green */
-    --green-color-dark-rgb: 0, 255, 0; /* RGB for #00FF00 for pulsing effect */
+    /* General green used in components */
+    --green-color: var(--brand-green);
+    --green-color-dark: var(--brand-green);
+    --green-color-dark-rgb: 46, 204, 113; /* RGB for #2ECC71 for pulsing effect */
     /* NEW: Alert System Colors */
     --alert-icon-bg: #dc3545; /* Red for the chat box icon */
     --alert-icon-text: #fff;
@@ -194,7 +198,7 @@ function makeFilesAvailableToSourceControlCSS() {
     --alert-panel-border: #c9d2d4;
     --alert-item-bg: #ffffff;
     --alert-item-hover-bg: #f0f4f5;
-    --alert-dismiss-btn-color: #00FF00; /* Green for dismiss */
+    --alert-dismiss-btn-color: var(--brand-green); /* Green for dismiss */
     --alert-snooze-btn-color: #17a2b8; /* Info blue for snooze */
     --snooze-options-bg: #ffffff;
     --snooze-options-border: #b0b8bb;
@@ -205,8 +209,8 @@ function makeFilesAvailableToSourceControlCSS() {
     --cash-border-color: #c9d2d4;
     --cash-total-bg: #a49393; /* standardized coffee fill */
     --cash-total-text: #ffffff; /* maintain contrast over coffee fill */
-    --cash-button-bg: #00FF00; /* Green for add */
-    --cash-button-hover-bg: #00FF00;
+    --cash-button-bg: var(--brand-green); /* Green for add */
+    --cash-button-hover-bg: var(--brand-green);
     --cash-primary-button-bg: #007bff; /* Blue for save */
     --cash-primary-button-hover-bg: #0056b3;
     --cash-delete-icon-color: #dc3545;
@@ -247,8 +251,8 @@ body.dark-theme {
     --asx-button-hover-bg: #5a5a5a; /* Lighter gray for ASX button hover */
     --asx-button-active-bg: #888888; /* Even lighter gray for active ASX button */
     --asx-button-active-text: #ffffff; /* White text for active ASX button */
-    --success-color: #00FF00;
-    --danger-color: #FF0000; /* Keep red for danger */
+    --success-color: var(--brand-green);
+    --danger-color: var(--brand-red);
     --warning-color: #f39c12; /* Keep orange for warning */
     --info-color: #3498db; /* Keep blue for info */
     --link-color: #99ccff; /* Lighter blue for links */
@@ -260,17 +264,17 @@ body.dark-theme {
     --menu-button-hover-bg: #444444; /* Dark gray for menu button hover */
     --placeholder-text: #aaaaaa;
     --ghosted-text: #888888; /* Medium gray for ghosted text */
-    --danger-button-bg: #FF0000;
-    --danger-button-hover-bg: #FF0000;
+    --danger-button-bg: var(--brand-red);
+    --danger-button-hover-bg: var(--brand-red);
     --icon-action-color: var(--accent-color); /* Coffee accent in dark as well */
     --icon-action-hover-color: #c8bebe; /* lighter coffee for contrast on dark */
-    --icon-danger-color: #FF0000;
-    --icon-danger-hover-color: #FF0000;
+    --icon-danger-color: var(--brand-red);
+    --icon-danger-hover-color: var(--brand-red);
     --calc-num-btn-bg: #555555; /* Gray for calculator number buttons */
     --calc-num-btn-text: #e0e0e0;
     --calc-num-btn-hover-bg: #6a6a6a;
-    --price-up-color: #00FF00; /* Pure green */
-    --price-down-color: #FF0000; /* Pure red */
+    --price-up-color: var(--brand-green);
+    --price-down-color: var(--brand-red);
     --price-neutral-color: #888888; /* Gray for neutral price */
     --live-price-section-bg: rgba(68, 68, 68, 0.1); /* Very subtle dark gray tint */
     --live-price-positive-bg: rgba(46, 204, 113, 0.1); /* Faint green */
@@ -280,17 +284,17 @@ body.dark-theme {
     --target-alert-text: #ffffff; /* White text for target alert */
     --target-alert-border: #888888; /* Gray border for target alert */
     --target-banner-height: 40px;
-    --green-color: #00FF00; /* Pure green */
-    --green-color-dark: #00FF00; /* Unify hover */
-    --green-color-dark-rgb: 0, 255, 0; /* RGB for #00FF00 */
+    --green-color: var(--brand-green);
+    --green-color-dark: var(--brand-green);
+    --green-color-dark-rgb: 46, 204, 113; /* RGB for #2ECC71 */
     /* UPDATED: Cash & Assets Section Colors (Dark Theme) */
     --cash-section-bg: #282828;
     --cash-card-bg: #333333;
     --cash-border-color: #555555;
     --cash-total-bg: #a49393; /* coffee fill in dark theme for consistency */
     --cash-total-text: #ffffff;
-    --cash-button-bg: #00FF00; /* Pure green */
-    --cash-button-hover-bg: #00FF00; /* Pure green hover */
+    --cash-button-bg: var(--brand-green);
+    --cash-button-hover-bg: var(--brand-green);
     --cash-primary-button-bg: #555555; /* Gray primary button */
     --cash-primary-button-hover-bg: #6a6a6a; /* Gray primary button hover */
     --cash-delete-icon-color: #e74c3c; /* Keep red */
@@ -2503,6 +2507,7 @@ h1#dynamicWatchlistTitle {
     padding: 0 15px; /* Keep horizontal padding, but vertical is 0 */
     opacity: 0;
     border-top: none; /* Hide border when collapsed */
+    pointer-events: none; /* prevent interacting while collapsed */
 }
 
 /* Compact view: allow buttons to show; JS controls visibility. Enable horizontal scroll for tight space. */
@@ -2518,7 +2523,19 @@ h1#dynamicWatchlistTitle {
     padding: 10px 15px;
     opacity: 1;
     border-top: 1px solid var(--border-color); /* Show border when expanded */
+    pointer-events: auto;
 }
+
+/* Toast notifications */
+.toast-container { position: fixed; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 10px; z-index: 2000; pointer-events: none; }
+.toast { min-width: 240px; max-width: 360px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.12); padding: 10px 12px; display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(-8px); transition: opacity .2s ease, transform .2s ease; pointer-events: auto; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast .icon { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; flex: 0 0 22px; }
+.toast.success .icon { background: var(--brand-green); }
+.toast.error .icon { background: var(--brand-red); }
+.toast.info .icon { background: var(--accent-color); }
+.toast .message { flex: 1 1 auto; font-size: 0.95rem; line-height: 1.3; }
+.toast .close { background: transparent; border: none; color: inherit; cursor: pointer; font-size: 1rem; padding: 4px; }
 
 /* New
 
@@ -3031,12 +3048,12 @@ table tbody tr:not(.selected):hover {
 }
 
 /* Ensure positive/negative colors apply clearly in portfolio cells */
-#portfolioSection .portfolio-table td.positive { color: #00FF00 !important; font-weight: 700; }
-#portfolioSection .portfolio-table td.negative { color: #FF0000 !important; font-weight: 700; }
+#portfolioSection .portfolio-table td.positive { color: var(--price-up-color) !important; font-weight: 700; }
+#portfolioSection .portfolio-table td.negative { color: var(--price-down-color) !important; font-weight: 700; }
 /* Row-level color cue */
-#portfolioSection .portfolio-table tr.positive td.code-cell { color:#00FF00 !important; font-weight:700; }
+#portfolioSection .portfolio-table tr.positive td.code-cell { color: var(--price-up-color) !important; font-weight:700; }
 #portfolioSection .portfolio-table tr.negative td.code-cell { color:#FF4D4D !important; font-weight:700; }
-#portfolioSection .portfolio-table tr.portfolio-total-row.positive td { color:#00FF00; }
+#portfolioSection .portfolio-table tr.portfolio-total-row.positive td { color: var(--price-up-color); }
 #portfolioSection .portfolio-table tr.portfolio-total-row.negative td { color:#FF4D4D; }
 
 /* Specific alignment tweaks: value column left aligned for readability */
@@ -3290,7 +3307,7 @@ table td .live-price-value {
 .mobile-card h3.positive,     /* For ASX code in mobile card */
 .live-price-large.positive,   /* For live price in mobile card/modal */
 .asx-code-btn.positive {      /* For ASX code buttons */
-    color: #00FF00 !important; /* Strong green */
+    color: var(--price-up-color) !important; /* Strong green */
 }
 
 .negative,
@@ -3299,7 +3316,7 @@ table td .live-price-value {
 .mobile-card h3.negative,
 .live-price-large.negative,
 .asx-code-btn.negative {
-    color: #FF0000 !important; /* Strong red, matches delete bin */
+    color: var(--price-down-color) !important; /* Strong red, matches delete bin */
 }
 
 .neutral,

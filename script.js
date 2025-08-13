@@ -616,15 +616,9 @@ function applyAsxButtonsState() {
     if (shouldShow) {
         asxCodeButtonsContainer.classList.add('expanded');
         asxCodeButtonsContainer.classList.remove('app-hidden');
-    asxCodeButtonsContainer.style.display = 'flex';
-    asxCodeButtonsContainer.style.overflowX = 'auto';
-    asxCodeButtonsContainer.style.webkitOverflowScrolling = 'touch';
-        asxCodeButtonsContainer.style.pointerEvents = 'auto';
         asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
     } else {
         asxCodeButtonsContainer.classList.remove('expanded');
-        asxCodeButtonsContainer.style.pointerEvents = 'none';
-        asxCodeButtonsContainer.style.display = 'none';
         asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
     }
     // Chevron visibility and state
@@ -1313,28 +1307,37 @@ function closeModals() {
     }
 }
 
-// Custom Dialog (Alert) Function
-function showCustomAlert(message, duration = 1000) {
+// Toast-based lightweight alert; keeps API but renders a toast instead of blocking modal
+function showCustomAlert(message, duration = 1000, type = 'info') {
+    try {
+        const container = document.getElementById('toastContainer');
+        if (container) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.setAttribute('role', 'status');
+            toast.innerHTML = `<span class="icon"></span><div class="message"></div><button class="close" aria-label="Dismiss">×</button>`;
+            toast.querySelector('.message').textContent = message;
+            const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
+            toast.querySelector('.close').addEventListener('click', remove);
+            container.appendChild(toast);
+            requestAnimationFrame(()=> toast.classList.add('show'));
+            if (duration && duration > 0) setTimeout(remove, duration);
+            return;
+        }
+    } catch (e) { console.warn('Toast render failed, falling back to modal alert.', e); }
+    // Fallback to existing modal if container missing
     const confirmBtn = document.getElementById('customDialogConfirmBtn');
     const cancelBtn = document.getElementById('customDialogCancelBtn');
     const dialogButtonsContainer = document.querySelector('#customDialogModal .custom-dialog-buttons');
-
-    logDebug('showCustomAlert: confirmBtn found: ' + !!confirmBtn + ', cancelBtn found: ' + !!cancelBtn + ', dialogButtonsContainer found: ' + !!dialogButtonsContainer);
-
     if (!customDialogModal || !customDialogMessage || !confirmBtn || !cancelBtn || !dialogButtonsContainer) {
-        console.error('Custom dialog elements not found. Cannot show alert.');
         console.log('ALERT (fallback): ' + message);
         return;
     }
     customDialogMessage.textContent = message;
-
-    dialogButtonsContainer.style.display = 'none'; // Explicitly hide the container
-    logDebug('showCustomAlert: dialogButtonsContainer display set to: ' + dialogButtonsContainer.style.display);
-
+    dialogButtonsContainer.style.display = 'none';
     showModal(customDialogModal);
     if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); }
     autoDismissTimeout = setTimeout(() => { hideModal(customDialogModal); autoDismissTimeout = null; }, duration);
-    logDebug('Alert: Showing alert: "' + message + '"');
 }
 
 // Date Formatting Helper Functions (Australian Style)
