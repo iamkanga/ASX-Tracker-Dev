@@ -1144,10 +1144,14 @@ async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
         intent: intent, // 'buy' | 'sell'
         direction: direction, // 'above' | 'below'
         targetPrice: (typeof shareData?.targetPrice === 'number' && !isNaN(shareData.targetPrice)) ? shareData.targetPrice : null,
-    createdAt: isNew ? window.firestore.serverTimestamp() : undefined,
-    updatedAt: window.firestore.serverTimestamp(),
+        // createdAt added below only when isNew to avoid undefined writes
+        updatedAt: window.firestore.serverTimestamp(),
         enabled: true
     };
+
+    if (isNew) {
+        payload.createdAt = window.firestore.serverTimestamp();
+    }
 
     // Use setDoc with merge to avoid overwriting createdAt when updating
     await window.firestore.setDoc(alertDocRef, payload, { merge: true });
