@@ -1319,7 +1319,7 @@ function closeModals() {
 }
 
 // Toast-based lightweight alert; keeps API but renders a toast instead of blocking modal
-function showCustomAlert(message, duration = 1000, type = 'info') {
+function showCustomAlert(message, duration = 3000, type = 'info') {
     try {
         const container = document.getElementById('toastContainer');
         if (container) {
@@ -1385,9 +1385,9 @@ const ToastManager = (() => {
         return { el: toast, close: remove };
     };
     return {
-        info: (message, duration=2000) => makeToast({ message, type:'info', duration }),
-        success: (message, duration=2000) => makeToast({ message, type:'success', duration }),
-        error: (message, duration=2500) => makeToast({ message, type:'error', duration }),
+    info: (message, duration=3000) => makeToast({ message, type:'info', duration }),
+    success: (message, duration=3000) => makeToast({ message, type:'success', duration }),
+    error: (message, duration=3000) => makeToast({ message, type:'error', duration }),
         confirm: (message, { confirmText='Yes', cancelText='No', onConfirm, onCancel } = {}) => {
             return makeToast({
                 message,
@@ -4824,8 +4824,9 @@ function updateTargetHitBanner() {
             console.log('[Diag] BEFORE - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
         } catch (_) {}
 
-        targetHitIconCount.textContent = String(displayCount);
-    // Ensure the icon is visible via inline style only (no app-hidden class toggling)
+    targetHitIconCount.textContent = String(displayCount);
+    // Ensure visibility and remove any hidden class
+    targetHitIconBtn.classList.remove('app-hidden');
     targetHitIconBtn.style.display = 'inline-flex';
         targetHitIconCount.style.display = 'flex';
 
@@ -4836,7 +4837,8 @@ function updateTargetHitBanner() {
 
         logDebug('Target Alert: Showing icon: ' + displayCount + ' triggered alerts.');
     } else {
-    // Hide the icon explicitly via inline style only (no app-hidden class toggling)
+    // Hide the icon explicitly via inline style and class
+    targetHitIconBtn.classList.add('app-hidden');
     targetHitIconBtn.style.display = 'none';
         targetHitIconCount.style.display = 'none';
         logDebug('Target Alert: No triggered alerts or icon dismissed; hiding icon.');
