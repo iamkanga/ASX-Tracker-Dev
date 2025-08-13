@@ -4378,7 +4378,16 @@ async function displayStockDetailsInSearchModal(asxCode) {
             return;
         }
 
-        const stockData = data[0]; // Assuming the first item is the relevant one
+        // Prefer exact match row (some endpoints may return array with additional rows)
+        const upperReq = asxCode.toUpperCase();
+        let stockData = data.find(r => {
+            const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
+            return c && String(c).toUpperCase().trim() === upperReq;
+        });
+        if (!stockData) {
+            stockData = data[0];
+            logDebug('Search Modal: No exact code match; using first row as fallback.', { requested: upperReq, firstKeys: Object.keys(data[0]||{}) });
+        }
         // Ensure CompanyName defaults to an empty string if not provided by the Apps Script
         stockData.CompanyName = stockData.CompanyName || "";
 
@@ -6699,16 +6708,26 @@ async function initializeAppLogic() {
             // Fetch live snapshot for the selected code to show context in the form and prefill price
             try {
                 if (!GOOGLE_APPS_SCRIPT_URL) return; // Safety
-                const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${code}`);
+                // Add cache-busting to avoid stale universal price re-use
+                const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${code}&_ts=${Date.now()}`);
                 if (!resp.ok) return;
                 const data = await resp.json();
-                const stock = Array.isArray(data) && data[0] ? data[0] : null;
-                if (!stock) return;
-                const live = parseFloat(stock.LivePrice);
-                const prev = parseFloat(stock.PrevClose);
-                const pe = parseFloat(stock.PE);
-                const hi = parseFloat(stock.High52);
-                const lo = parseFloat(stock.Low52);
+                if (!Array.isArray(data) || data.length === 0) return;
+                // Robust row match by code (multiple possible key names)
+                const upper = code.toUpperCase();
+                let matched = data.find(r => {
+                    const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
+                    return c && String(c).toUpperCase().trim() === upper;
+                });
+                if (!matched) {
+                    matched = data[0];
+                    logDebug('Live Snapshot (applyShareCodeSelection): No exact code match in dataset; fell back to first row.', { requested: upper, sampleKeys: Object.keys(data[0]||{}) });
+                }
+                const live = parseFloat(matched.LivePrice ?? matched['Live Price'] ?? matched.live ?? matched.price ?? matched.Last ?? matched.LastPrice ?? matched['Last Price']);
+                const prev = parseFloat(matched.PrevClose ?? matched['Prev Close'] ?? matched.prevClose ?? matched.prev ?? matched['Previous Close'] ?? matched.Close ?? matched['Last Close']);
+                const pe = parseFloat(matched.PE ?? matched['PE Ratio'] ?? matched.pe);
+                const hi = parseFloat(matched.High52 ?? matched['High52'] ?? matched['High 52'] ?? matched['52WeekHigh'] ?? matched['52 High']);
+                const lo = parseFloat(matched.Low52 ?? matched['Low52'] ?? matched['Low 52'] ?? matched['52WeekLow'] ?? matched['52 Low']);
 
                 // Prefill Entered Price if empty
                 // Removed auto inserting into currentPrice input (field removed)
