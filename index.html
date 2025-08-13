@@ -447,7 +447,7 @@
 
                             <label for="shareName">Code:</label>
                             <div class="search-input-container">
-                                <input type="text" id="shareName" placeholder="e.g., BHP" autocomplete="off" required>
+                                <input type="text" id="shareName" placeholder="e.g. BHP" autocomplete="off" required>
                                 <div id="shareNameSuggestions" class="autocomplete-suggestions"></div>
                             </div>
 
@@ -464,10 +464,10 @@
                         </button>
                         <div id="accordion-panel-portfolio" class="accordion-panel" role="region" aria-labelledby="accordion-header-portfolio">
                             <label for="portfolioShares">Number of Shares Purchased:</label>
-                            <input type="number" id="portfolioShares" min="0" step="1" placeholder="e.g., 1000">
+                            <input type="number" id="portfolioShares" min="0" step="1" placeholder="1000" class="smart-ph">
 
                             <label for="portfolioAvgPrice">Average Purchase Price ($):</label>
-                            <input type="number" id="portfolioAvgPrice" min="0" step="0.01" placeholder="e.g., 23.45">
+                            <input type="number" id="portfolioAvgPrice" min="0" step="0.01" placeholder="23.45" class="smart-ph">
 
                             <label for="shareRating">Star Rating:</label>
                             <select id="shareRating" class="dropdown-large">
@@ -515,11 +515,11 @@
                                         </div>
                                     </div>
                                 </div>
-                                <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
+                                <input type="number" id="targetPrice" step="0.01" placeholder="25.50" class="smart-ph">
                             </div>
 
                             <label for="currentPrice">Reference Price ($):</label>
-                            <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
+                            <input type="number" id="currentPrice" step="0.01" placeholder="25.50" class="smart-ph">
                         </div>
                     </div>
 
@@ -531,10 +531,10 @@
                         </button>
                         <div id="accordion-panel-dividends" class="accordion-panel" role="region" aria-labelledby="accordion-header-dividends">
                             <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
-                            <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
+                            <input type="number" id="dividendAmount" step="0.001" placeholder="1.250" class="smart-ph">
 
                             <label for="frankingCredits">Franking Credits (%):</label>
-                            <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
+                            <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="70 (for 70%)" class="smart-ph">
                         </div>
                     </div>
 

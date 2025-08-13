@@ -1,7 +1,7 @@
 // Service Worker Version: 1.0.8
 
 // Cache name for the current version of the service worker
-const CACHE_NAME = 'share-watchlist-v1.0.22'; // Bump for share detail dashboard restructure
+const CACHE_NAME = 'share-watchlist-v1.0.23'; // Bump for smart placeholders & watchlist pulse cue
 
 // List of essential application assets to precache
 const CACHED_ASSETS = [

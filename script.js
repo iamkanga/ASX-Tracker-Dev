@@ -1519,6 +1519,44 @@ function initShareFormAccordion(force = false) {
     root.dataset.accordionInit = 'true';
 }
 
+// Watchlist pulse guidance
+function updateWatchlistPulse(isNewShareContext = false) {
+    if (!shareWatchlistDropdownBtn || !shareWatchlistSelect) return;
+    const selected = Array.from(shareWatchlistCheckboxes?.querySelectorAll('input[type="checkbox"]:checked') || []).length > 0 || (shareWatchlistSelect.value && shareWatchlistSelect.value !== '');
+    if (isNewShareContext && !selected) {
+        shareWatchlistDropdownBtn.classList.add('watchlist-pulse');
+    } else {
+        shareWatchlistDropdownBtn.classList.remove('watchlist-pulse');
+    }
+}
+
+// Hook into existing populateShareWatchlistSelect to reapply pulse after population
+const originalPopulateShareWatchlistSelect = typeof populateShareWatchlistSelect === 'function' ? populateShareWatchlistSelect : null;
+if (originalPopulateShareWatchlistSelect) {
+    window.populateShareWatchlistSelect = function(currentShareWatchlistId = null, isNewShare = true) {
+        const res = originalPopulateShareWatchlistSelect(currentShareWatchlistId, isNewShare);
+        // Defer to ensure DOM checkboxes inserted
+        setTimeout(() => updateWatchlistPulse(isNewShare), 30);
+        return res;
+    };
+}
+
+// Monitor checkbox changes
+document.addEventListener('change', (e) => {
+    if (!shareWatchlistDropdownBtn) return;
+    if (e.target && shareWatchlistCheckboxes && shareWatchlistCheckboxes.contains(e.target)) {
+        updateWatchlistPulse(true); // assume add flow while editing selection
+    }
+});
+
+// Remove pulse once dropdown is opened and a selection likely imminent
+if (shareWatchlistDropdownBtn) {
+    shareWatchlistDropdownBtn.addEventListener('click', () => {
+        // Brief delay in case menu opens and user immediately picks
+        setTimeout(() => updateWatchlistPulse(true), 500);
+    });
+}
+
 function toggleAccordionSection(section) {
     const toggleBtn = section.querySelector('.accordion-toggle');
     if (!toggleBtn) return;
