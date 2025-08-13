@@ -524,6 +524,8 @@ let unsubscribeAlerts = null; // NEW: Holds the unsubscribe function for Firesto
 
 // NEW: Global variable to store shares that have hit their target price
 let sharesAtTargetPrice = [];
+// NEW: Also track triggered but muted alerts so users can unmute from the hub
+let sharesAtTargetPriceMuted = [];
 // NEW: Remember last shown alert count to avoid icon flicker on reload while prices are loading (persisted)
 let lastKnownTargetCount = 0;
 try {
@@ -4754,10 +4756,10 @@ async function loadTriggeredAlertsListener() {
         // Filter for triggered alerts; additional local filter will enforce enabled !== false
         const q = window.firestore.query(alertsCol, window.firestore.where('targetHit', '==', true));
         unsubscribeAlerts = window.firestore.onSnapshot(q, (querySnapshot) => {
-            const triggeredShares = [];
+            const enabledShares = [];
+            const mutedShares = [];
             querySnapshot.forEach((doc) => {
                 const data = doc.data() || {};
-                if (data.enabled === false) return; // respect disabled alerts
                 const shareId = data.shareId || doc.id;
                 const shareCode = (data.shareCode || '').toUpperCase();
                 // Try to hydrate from current shares data for richer UI; fallback to a minimal stub
@@ -4770,9 +4772,16 @@ async function loadTriggeredAlertsListener() {
                         watchlistIds: []
                     };
                 }
-                triggeredShares.push(share);
+                // Attach a hint of enabled state for rendering decisions
+                share.__alertEnabled = (data.enabled !== false);
+                if (share.__alertEnabled) {
+                    enabledShares.push(share);
+                } else {
+                    mutedShares.push(share);
+                }
             });
-            sharesAtTargetPrice = dedupeSharesById(triggeredShares);
+            sharesAtTargetPrice = dedupeSharesById(enabledShares);
+            sharesAtTargetPriceMuted = dedupeSharesById(mutedShares);
             updateTargetHitBanner();
             // If the notification hub is open, refresh its contents
             if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
@@ -4784,6 +4793,23 @@ async function loadTriggeredAlertsListener() {
         logDebug('Alerts: Real-time alerts listener set up.');
     } catch (error) {
         console.error('Alerts: Error setting up alerts listener:', error);
+    }
+}
+
+// NEW: Helper to enable/disable a specific alert for a share
+async function toggleAlertEnabled(shareId, enabled) {
+    try {
+        if (!db || !currentUserId || !window.firestore) throw new Error('Firestore not available');
+        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        const alertDocRef = window.firestore.doc(alertsCol, shareId);
+        await window.firestore.updateDoc(alertDocRef, {
+            enabled: !!enabled,
+            updatedAt: window.firestore.serverTimestamp()
+        });
+        showCustomAlert(enabled ? 'Alert unmuted' : 'Alert muted', 1000);
+    } catch (e) {
+        console.error('Alerts: Failed to toggle enabled for share ' + shareId, e);
+        showCustomAlert('Failed to update alert. Please try again.', 1500);
     }
 }
 
@@ -7727,55 +7753,67 @@ function showTargetHitDetailsModal() {
         showCustomAlert('Error displaying target hit details. Please try again.', 2000);
         return;
     }
-
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-    if (sharesAtTargetPrice.length === 0) {
+    const makeItem = (share, isMuted) => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        const currentLivePrice = (livePriceData && livePriceData.live !== null && !isNaN(livePriceData.live)) ? livePriceData.live : null;
+        const targetPrice = share.targetPrice;
+        const priceClass = (currentLivePrice !== null && targetPrice != null && !isNaN(targetPrice) && currentLivePrice >= targetPrice) ? 'positive' : 'negative';
+        const item = document.createElement('div');
+        item.classList.add('target-hit-item');
+        if (isMuted) item.classList.add('muted');
+        item.dataset.shareId = share.id;
+        item.innerHTML = `
+            <div class="target-hit-item-header">
+                <span class="share-name-code ${priceClass}">${share.shareName}</span>
+                <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + currentLivePrice.toFixed(2)) : ''}</span>
+            </div>
+            <p>Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? Number(targetPrice).toFixed(2) : 'N/A'}</strong></p>
+            <div class="target-hit-actions">
+                <button class="button secondary-buttons toggle-alert-btn" data-share-id="${share.id}">${isMuted ? 'Unmute' : 'Mute'}</button>
+            </div>
+        `;
+        // Click to open share details
+        item.addEventListener('click', (e) => {
+            // If the click is on the toggle button, don't navigate
+            if (e.target && e.target.classList && e.target.classList.contains('toggle-alert-btn')) return;
+            const sid = item.dataset.shareId;
+            if (sid) {
+                wasShareDetailOpenedFromTargetAlerts = true;
+                hideModal(targetHitDetailsModal);
+                selectShare(sid);
+                showShareDetails();
+            }
+        });
+        // Mute/unmute button
+        const toggleBtn = item.querySelector('.toggle-alert-btn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await toggleAlertEnabled(share.id, isMuted); // if currently muted -> enable; if enabled -> disable
+            });
+        }
+        return item;
+    };
+
+    const hasEnabled = sharesAtTargetPrice.length > 0;
+    const hasMuted = Array.isArray(sharesAtTargetPriceMuted) && sharesAtTargetPriceMuted.length > 0;
+    if (!hasEnabled && !hasMuted) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
     } else {
-        sharesAtTargetPrice.forEach(share => {
-            const livePriceData = livePrices[share.shareName.toUpperCase()];
-            if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
-                // Skip if live price data is unavailable or invalid
-                return;
-            }
-
-            const currentLivePrice = livePriceData.live;
-            const targetPrice = share.targetPrice;
-            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative'; // Determine color based on whether it passed target up or down
-
-            const targetHitItem = document.createElement('div');
-            targetHitItem.classList.add('target-hit-item');
-            targetHitItem.dataset.shareId = share.id; // Add data attribute for potential future interaction
-
-            targetHitItem.innerHTML = `
-                <div class="target-hit-item-header">
-                    <span class="share-name-code ${priceClass}">${share.shareName}</span>
-                    <span class="live-price-display ${priceClass}">$${currentLivePrice.toFixed(2)}</span>
-                </div>
-                <p>Target: <strong>$${targetPrice !== null && !isNaN(targetPrice) ? targetPrice.toFixed(2) : 'N/A'}</strong></p>
-                <p>Watchlist: <strong>${(() => {
-                    const ids = Array.isArray(share.watchlistIds) && share.watchlistIds.length ? share.watchlistIds : (share.watchlistId ? [share.watchlistId] : []);
-                    const names = ids.map(id => userWatchlists.find(w => w.id === id)?.name).filter(Boolean);
-                    return names.length ? names.join(', ') : 'N/A';
-                })()}</strong></p>
-            `;
-            targetHitSharesList.appendChild(targetHitItem);
-
-            // NEW: Add click listener to make the item clickable
-            targetHitItem.addEventListener('click', () => {
-                const clickedShareId = targetHitItem.dataset.shareId;
-                if (clickedShareId) {
-                    // Set the flag to true so the back button knows to return here
-                    wasShareDetailOpenedFromTargetAlerts = true;
-                    // FIX: Hide the current (alerts) modal before showing the share detail modal.
-                    // The `closeModals()` function will restore the alerts modal when the share detail modal is closed.
-                    hideModal(targetHitDetailsModal);
-                    selectShare(clickedShareId); // Select the share
-                    showShareDetails(); // Open the share details modal for the clicked share
-                }
-            });
-        });
+        if (hasEnabled) {
+            const enabledHeader = document.createElement('h3');
+            enabledHeader.textContent = 'Active Alerts';
+            targetHitSharesList.appendChild(enabledHeader);
+            sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
+        }
+        if (hasMuted) {
+            const mutedHeader = document.createElement('h3');
+            mutedHeader.textContent = 'Muted Alerts';
+            targetHitSharesList.appendChild(mutedHeader);
+            sharesAtTargetPriceMuted.forEach(share => targetHitSharesList.appendChild(makeItem(share, true)));
+        }
     }
 
     showModal(targetHitDetailsModal);
