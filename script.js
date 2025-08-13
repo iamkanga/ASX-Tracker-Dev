@@ -705,6 +705,7 @@ const exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
 const refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
 const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
 const shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
+const shareWatchlistDropdownBtn = document.getElementById('shareWatchlistDropdownBtn');
 const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection'); 
 const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
 const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
@@ -2364,6 +2365,8 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
                 } else {
                     shareWatchlistSelect.value = '';
                 }
+                // Update dropdown button label and collapse after selection for compact UX
+                updateWatchlistDropdownButton();
                 checkFormDirtyState();
             });
             wrapper.appendChild(cb);
@@ -2380,13 +2383,59 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         });
     }
 
+    // Initialize dropdown button label/state
+    if (shareWatchlistDropdownBtn) {
+        updateWatchlistDropdownButton();
+        shareWatchlistDropdownBtn.setAttribute('aria-expanded', 'false');
+        // Toggle panel like a dropdown
+        shareWatchlistDropdownBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isOpen = !shareWatchlistCheckboxes.classList.contains('app-hidden');
+            if (isOpen) {
+                shareWatchlistCheckboxes.classList.add('app-hidden');
+                shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
+            } else {
+                shareWatchlistCheckboxes.classList.remove('app-hidden');
+                shareWatchlistDropdownBtn.setAttribute('aria-expanded','true');
+                // Optional: position under button if needed via CSS
+            }
+        };
+        // Close when clicking outside
+        document.addEventListener('click', (evt) => {
+            if (!shareWatchlistCheckboxes || shareWatchlistCheckboxes.classList.contains('app-hidden')) return;
+            const within = shareWatchlistCheckboxes.contains(evt.target) || shareWatchlistDropdownBtn.contains(evt.target);
+            if (!within) {
+                shareWatchlistCheckboxes.classList.add('app-hidden');
+                shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
+            }
+        });
+    }
+
     // Listen for native select change too (in case of programmatic changes)
     shareWatchlistSelect.addEventListener('change', () => {
         if (!shareWatchlistCheckboxes) return;
         const selected = Array.from(shareWatchlistSelect.options).filter(o => o.selected).map(o => o.value);
         shareWatchlistCheckboxes.querySelectorAll('input.watchlist-checkbox').forEach(cb => { cb.checked = selected.includes(cb.value); });
+        updateWatchlistDropdownButton();
         checkFormDirtyState();
     });
+}
+
+function updateWatchlistDropdownButton() {
+    if (!shareWatchlistDropdownBtn) return;
+    const selectedCbs = shareWatchlistCheckboxes ? Array.from(shareWatchlistCheckboxes.querySelectorAll('input.watchlist-checkbox:checked')) : [];
+    if (selectedCbs.length === 0) {
+        shareWatchlistDropdownBtn.textContent = 'Select a Watchlist';
+        return;
+    }
+    // Prefer showing up to 2 names then a count
+    const names = selectedCbs.map(cb => {
+        const id = cb.value;
+        const opt = Array.from(shareWatchlistSelect.options).find(o => o.value === id);
+        return opt ? (opt.textContent || opt.innerText || id) : id;
+    });
+    const display = names.length <= 2 ? names.join(', ') : (names.slice(0,2).join(', ') + ` +${names.length-2}`);
+    shareWatchlistDropdownBtn.textContent = display;
 }
 
 function showEditFormForSelectedShare(shareIdToEdit = null) {
@@ -6686,14 +6735,29 @@ async function initializeAppLogic() {
                             updateSplashSignInButtonState('error', 'Open in Safari');
                             showCustomAlert('On iOS when installed to Home Screen, Google sign-in may not return a session. Please open this app in Safari and sign in.');
                         } else {
-                            // Wait longer to allow onAuthStateChanged to deliver the user before showing retry
-                            // Keep the button in loading state during this grace period
+                            // Grace period, then attempt an automatic popup fallback once
                             if (typeof updateSplashSignInButtonState === 'function') {
                                 updateSplashSignInButtonState('loading', 'Completing sign-in…');
                             }
-                            setTimeout(() => {
-                                if (!window._userAuthenticated && splashSignInBtn) {
-                                    updateSplashSignInButtonState('retry', 'Try again (will use popup)');
+                            setTimeout(async () => {
+                                const alreadyTriedPopup = (()=>{ try { return localStorage.getItem('authPopupFallbackTried') === '1'; } catch(_) { return false; } })();
+                                if (!window._userAuthenticated && !alreadyTriedPopup && window.authFunctions && window.firebaseAuth) {
+                                    try {
+                                        localStorage.setItem('authPopupFallbackTried','1');
+                                        const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
+                                        const resolver = window.authFunctions.browserPopupRedirectResolver;
+                                        if (resolver) {
+                                            await window.authFunctions.signInWithPopup(window.firebaseAuth, provider, resolver);
+                                        } else {
+                                            await window.authFunctions.signInWithPopup(window.firebaseAuth, provider);
+                                        }
+                                        return; // success will flow into onAuthStateChanged
+                                    } catch (e) {
+                                        // If popup fails, surface a clear retry
+                                        if (splashSignInBtn) updateSplashSignInButtonState('retry', 'Try again');
+                                    }
+                                } else if (!window._userAuthenticated) {
+                                    if (splashSignInBtn) updateSplashSignInButtonState('retry', 'Try again (will use popup)');
                                 }
                             }, 4000);
                         }
