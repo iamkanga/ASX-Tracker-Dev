@@ -1193,20 +1193,28 @@ function closeModals() {
         asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn.active').forEach(btn=>btn.classList.remove('active'));
     }
 
-    // Restore Target Price Alerts modal if share detail was opened from it
+    // Restore Target Price Alerts modal if share detail was opened from it (only if a share remains selected)
     if (wasShareDetailOpenedFromTargetAlerts) {
-        logDebug('Restoring Target Price Alerts modal after closing share detail modal.');
-        if (targetHitDetailsModal) {
-            showModal(targetHitDetailsModal);
+        if (selectedShareDocId) {
+            logDebug('Restoring Target Price Alerts modal after closing share detail modal.');
+            if (targetHitDetailsModal) {
+                showModal(targetHitDetailsModal);
+            }
+        } else {
+            logDebug('Skipping restore of Target Price Alerts modal because no share is selected.');
         }
         wasShareDetailOpenedFromTargetAlerts = false;
     }
 
-    // Restore Share Detail modal if Edit form was opened from it
+    // Restore Share Detail modal only if it was the source AND a share is still selected
     if (wasEditOpenedFromShareDetail) {
-        logDebug('Restoring Share Detail modal after closing edit modal.');
-        if (shareDetailModal) {
-            showModal(shareDetailModal);
+        if (selectedShareDocId) {
+            logDebug('Restoring Share Detail modal after closing edit modal.');
+            if (shareDetailModal) {
+                showModal(shareDetailModal);
+            }
+        } else {
+            logDebug('Skipping restore of Share Detail modal because no share is selected.');
         }
         wasEditOpenedFromShareDetail = false;
     }
@@ -6803,6 +6811,9 @@ async function initializeAppLogic() {
                             if (splashUsePopupBtn) {
                                 splashUsePopupBtn.style.display = 'inline-flex';
                             }
+                            if (splashSignInBtn) {
+                                splashSignInBtn.style.display = 'none';
+                            }
                             if (typeof updateSplashSignInButtonState === 'function') {
                                 updateSplashSignInButtonState('retry', 'Try again');
                             }
@@ -6825,6 +6836,7 @@ async function initializeAppLogic() {
                     } else {
                         updateSplashSignInButtonState('retry', 'Try again');
                         if (splashUsePopupBtn) splashUsePopupBtn.style.display = 'inline-flex';
+                        if (splashSignInBtn) splashSignInBtn.style.display = 'none';
                     }
                 }
             });
