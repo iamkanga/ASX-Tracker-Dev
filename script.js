@@ -4824,11 +4824,17 @@ function updateTargetHitBanner() {
             console.log('[Diag] BEFORE - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
         } catch (_) {}
 
-    targetHitIconCount.textContent = String(displayCount);
-    // Ensure visibility and remove any hidden class
-    targetHitIconBtn.classList.remove('app-hidden');
-    targetHitIconBtn.style.display = 'inline-flex';
+        targetHitIconCount.textContent = String(displayCount);
+        // Ensure visibility: drop any hidden class first, then set display
+        targetHitIconBtn.classList.remove('app-hidden');
+        targetHitIconCount.classList && targetHitIconCount.classList.remove('app-hidden');
+        targetHitIconBtn.style.display = 'inline-flex';
         targetHitIconCount.style.display = 'flex';
+        // Double-ensure after layout settles (guards against another late add)
+        requestAnimationFrame(() => {
+            targetHitIconBtn.classList.remove('app-hidden');
+            targetHitIconCount.classList && targetHitIconCount.classList.remove('app-hidden');
+        });
 
         // Diagnostics: capture state after applying changes
         try {
@@ -4840,7 +4846,8 @@ function updateTargetHitBanner() {
     // Hide the icon explicitly via inline style and class
     targetHitIconBtn.classList.add('app-hidden');
     targetHitIconBtn.style.display = 'none';
-        targetHitIconCount.style.display = 'none';
+    targetHitIconCount.classList && targetHitIconCount.classList.add('app-hidden');
+    targetHitIconCount.style.display = 'none';
         logDebug('Target Alert: No triggered alerts or icon dismissed; hiding icon.');
     }
 
