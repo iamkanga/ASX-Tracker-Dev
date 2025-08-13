@@ -728,6 +728,12 @@ const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn
 // NEW: Target Direction Checkbox UI Elements
 const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
 const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
+// New Phase 1 segmented toggle buttons (UI-only)
+const targetIntentBuyBtn = document.getElementById('targetIntentBuyBtn');
+const targetIntentSellBtn = document.getElementById('targetIntentSellBtn');
+const targetDirAboveBtn = document.getElementById('targetDirAboveBtn');
+const targetDirBelowBtn = document.getElementById('targetDirBelowBtn');
+let userManuallyOverrodeDirection = false; // reset per form open
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
 const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
@@ -2479,12 +2485,24 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? formatUserDecimalStrict(shareToEdit.currentPrice) : '';
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimalStrict(shareToEdit.targetPrice) : '';
     
+    // Reset toggle state helpers
+    userManuallyOverrodeDirection = false;
     // Set the correct state for the new target direction checkboxes
     if (targetAboveCheckbox && targetBelowCheckbox) {
         // Default to 'below' if not set
         const savedTargetDirection = shareToEdit.targetDirection || 'below';
         targetAboveCheckbox.checked = (savedTargetDirection === 'above');
         targetBelowCheckbox.checked = (savedTargetDirection === 'below');
+        // Sync segmented buttons to match saved state
+        try {
+            const isAbove = (savedTargetDirection === 'above');
+            if (targetDirAboveBtn && targetDirBelowBtn) {
+                targetDirAboveBtn.classList.toggle('is-active', isAbove);
+                targetDirAboveBtn.setAttribute('aria-pressed', String(isAbove));
+                targetDirBelowBtn.classList.toggle('is-active', !isAbove);
+                targetDirBelowBtn.setAttribute('aria-pressed', String(!isAbove));
+            }
+        } catch(_) {}
     }
 
     if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? formatUserDecimalStrict(shareToEdit.dividendAmount) : '';
@@ -4104,10 +4122,30 @@ async function displayStockDetailsInSearchModal(asxCode) {
             actionButton.addEventListener('click', () => {
                 hideModal(stockSearchModal); // Close search modal
                 clearForm(); // Clear share form
+                userManuallyOverrodeDirection = false;
                 formTitle.textContent = 'Add New Share'; // Set title for new share
                 shareNameInput.value = currentSearchShareData.shareName; // Pre-fill code
                 currentPriceInput.value = !isNaN(currentSearchShareData.currentPrice) ? currentSearchShareData.currentPrice.toFixed(2) : ''; // Pre-fill live price
                 populateShareWatchlistSelect(null, true); // Populate and enable watchlist select for new share
+                // Default toggles to Buy+Below
+                try {
+                    if (targetIntentBuyBtn && targetIntentSellBtn) {
+                        targetIntentBuyBtn.classList.add('is-active');
+                        targetIntentBuyBtn.setAttribute('aria-pressed', 'true');
+                        targetIntentSellBtn.classList.remove('is-active');
+                        targetIntentSellBtn.setAttribute('aria-pressed', 'false');
+                    }
+                    if (targetAboveCheckbox && targetBelowCheckbox) {
+                        targetAboveCheckbox.checked = false;
+                        targetBelowCheckbox.checked = true;
+                    }
+                    if (targetDirAboveBtn && targetDirBelowBtn) {
+                        targetDirAboveBtn.classList.remove('is-active');
+                        targetDirAboveBtn.setAttribute('aria-pressed', 'false');
+                        targetDirBelowBtn.classList.add('is-active');
+                        targetDirBelowBtn.setAttribute('aria-pressed', 'true');
+                    }
+                } catch(_) {}
                 addCommentSection(commentsFormContainer); // Add initial empty comment section
                 showModal(shareFormSection); // Show add/edit modal
                 checkFormDirtyState(); // Check dirty state for the new share form
@@ -5393,6 +5431,25 @@ function handleAddShareClick() {
     logDebug('UI: Add Share button clicked (contextual).');
     clearForm();
     formTitle.textContent = 'Add New Share';
+    userManuallyOverrodeDirection = false;
+    try {
+        if (targetIntentBuyBtn && targetIntentSellBtn) {
+            targetIntentBuyBtn.classList.add('is-active');
+            targetIntentBuyBtn.setAttribute('aria-pressed', 'true');
+            targetIntentSellBtn.classList.remove('is-active');
+            targetIntentSellBtn.setAttribute('aria-pressed', 'false');
+        }
+        if (targetAboveCheckbox && targetBelowCheckbox) {
+            targetAboveCheckbox.checked = false;
+            targetBelowCheckbox.checked = true;
+        }
+        if (targetDirAboveBtn && targetDirBelowBtn) {
+            targetDirAboveBtn.classList.remove('is-active');
+            targetDirAboveBtn.setAttribute('aria-pressed', 'false');
+            targetDirBelowBtn.classList.add('is-active');
+            targetDirBelowBtn.setAttribute('aria-pressed', 'true');
+        }
+    } catch(_) {}
     if (deleteShareBtn) { deleteShareBtn.classList.add('hidden'); }
     populateShareWatchlistSelect(null, true); // true indicates new share
     showModal(shareFormSection);
@@ -6357,12 +6414,23 @@ async function initializeAppLogic() {
         }
     });
 
-    // NEW: Add event listeners for target direction checkboxes to make them mutually exclusive
+    // Phase 1: Direction toggles + legacy checkboxes mutual exclusivity and sync
+    const syncDirButtonsFromCheckboxes = () => {
+        if (!targetDirAboveBtn || !targetDirBelowBtn) return;
+        const isAbove = !!(targetAboveCheckbox && targetAboveCheckbox.checked);
+        targetDirAboveBtn.classList.toggle('is-active', isAbove);
+        targetDirAboveBtn.setAttribute('aria-pressed', String(isAbove));
+        const isBelow = !isAbove;
+        targetDirBelowBtn.classList.toggle('is-active', isBelow);
+        targetDirBelowBtn.setAttribute('aria-pressed', String(isBelow));
+    };
+
     if (targetAboveCheckbox && targetBelowCheckbox) {
         targetAboveCheckbox.addEventListener('change', () => {
             if (targetAboveCheckbox.checked) {
                 targetBelowCheckbox.checked = false;
             }
+            syncDirButtonsFromCheckboxes();
             checkFormDirtyState();
         });
 
@@ -6370,8 +6438,62 @@ async function initializeAppLogic() {
             if (targetBelowCheckbox.checked) {
                 targetAboveCheckbox.checked = false;
             }
+            syncDirButtonsFromCheckboxes();
             checkFormDirtyState();
         });
+    }
+
+    // Wire UI segmented direction buttons -> legacy checkboxes
+    if (targetDirAboveBtn && targetDirBelowBtn && targetAboveCheckbox && targetBelowCheckbox) {
+        targetDirAboveBtn.addEventListener('click', () => {
+            userManuallyOverrodeDirection = true;
+            targetAboveCheckbox.checked = true;
+            targetBelowCheckbox.checked = false;
+            syncDirButtonsFromCheckboxes();
+            checkFormDirtyState();
+        });
+        targetDirBelowBtn.addEventListener('click', () => {
+            userManuallyOverrodeDirection = true;
+            targetAboveCheckbox.checked = false;
+            targetBelowCheckbox.checked = true;
+            syncDirButtonsFromCheckboxes();
+            checkFormDirtyState();
+        });
+        // Initial sync
+        syncDirButtonsFromCheckboxes();
+    }
+
+    // Wire Intent buttons: set defaults when user hasn’t manually overridden
+    if (targetIntentBuyBtn && targetIntentSellBtn) {
+        const setIntentUI = (intent) => {
+            const isBuy = intent === 'buy';
+            targetIntentBuyBtn.classList.toggle('is-active', isBuy);
+            targetIntentBuyBtn.setAttribute('aria-pressed', String(isBuy));
+            targetIntentSellBtn.classList.toggle('is-active', !isBuy);
+            targetIntentSellBtn.setAttribute('aria-pressed', String(!isBuy));
+        };
+        targetIntentBuyBtn.addEventListener('click', () => {
+            setIntentUI('buy');
+            if (!userManuallyOverrodeDirection && targetAboveCheckbox && targetBelowCheckbox) {
+                // Buy defaults to Below
+                targetAboveCheckbox.checked = false;
+                targetBelowCheckbox.checked = true;
+                syncDirButtonsFromCheckboxes();
+                checkFormDirtyState();
+            }
+        });
+        targetIntentSellBtn.addEventListener('click', () => {
+            setIntentUI('sell');
+            if (!userManuallyOverrodeDirection && targetAboveCheckbox && targetBelowCheckbox) {
+                // Sell defaults to Above
+                targetAboveCheckbox.checked = true;
+                targetBelowCheckbox.checked = false;
+                syncDirButtonsFromCheckboxes();
+                checkFormDirtyState();
+            }
+        });
+        // Default to Buy on load
+        setIntentUI('buy');
     }
     
     // NEW: Add event listeners for cash asset form inputs for dirty state checking (2.1)

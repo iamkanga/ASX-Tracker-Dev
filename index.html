@@ -6,7 +6,7 @@
     <title>Share Watchlist (Updated)</title>
     <link rel="icon" href="favicon.png" type="image/png">
 
-    <link rel="stylesheet" href="style.css?v=0.1.5">
+    <link rel="stylesheet" href="style.css?v=0.1.6">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
@@ -470,28 +470,45 @@
                     <!-- Target Price and Direction -->
                     <div class="form-group-with-toggle">
                         <label for="targetPrice" class="target-price-label">Target Price ($):</label>
-                        <div class="target-checkbox-grid">
-                            <div class="target-checkbox-row">
-                                <label class="checkbox-label" for="targetBuyCheckbox">
-                                    <input type="checkbox" id="targetBuyCheckbox" class="modern-checkbox" disabled>
-                                    Buy
-                                </label>
-                                <label class="checkbox-label" for="targetAboveCheckbox">
-                                    <input type="checkbox" id="targetAboveCheckbox" class="modern-checkbox">
-                                    Above
-                                </label>
+
+                        <!-- Modern segmented toggles (UI) -->
+                        <div class="toggle-row" aria-label="Alert configuration">
+                            <div class="segmented-toggle intent-toggle" role="group" aria-label="Intent">
+                                <button type="button" id="targetIntentBuyBtn" class="toggle-segment intent buy is-active" aria-pressed="true">Buy</button>
+                                <button type="button" id="targetIntentSellBtn" class="toggle-segment intent sell" aria-pressed="false">Sell</button>
                             </div>
-                            <div class="target-checkbox-row">
-                                <label class="checkbox-label" for="targetSellCheckbox">
-                                    <input type="checkbox" id="targetSellCheckbox" class="modern-checkbox" disabled>
-                                    Sell
-                                </label>
-                                <label class="checkbox-label" for="targetBelowCheckbox">
-                                    <input type="checkbox" id="targetBelowCheckbox" class="modern-checkbox" checked>
-                                    Below
-                                </label>
+                            <div class="segmented-toggle direction-toggle" role="group" aria-label="Direction">
+                                <button type="button" id="targetDirAboveBtn" class="toggle-segment dir above" aria-pressed="false">Above</button>
+                                <button type="button" id="targetDirBelowBtn" class="toggle-segment dir below is-active" aria-pressed="true">Below</button>
                             </div>
                         </div>
+
+                        <!-- Keep legacy checkboxes for state/persistence; hidden from view -->
+                        <div class="visually-hidden">
+                            <div class="target-checkbox-grid">
+                                <div class="target-checkbox-row">
+                                    <label class="checkbox-label" for="targetBuyCheckbox">
+                                        <input type="checkbox" id="targetBuyCheckbox" class="modern-checkbox" disabled>
+                                        Buy
+                                    </label>
+                                    <label class="checkbox-label" for="targetAboveCheckbox">
+                                        <input type="checkbox" id="targetAboveCheckbox" class="modern-checkbox">
+                                        Above
+                                    </label>
+                                </div>
+                                <div class="target-checkbox-row">
+                                    <label class="checkbox-label" for="targetSellCheckbox">
+                                        <input type="checkbox" id="targetSellCheckbox" class="modern-checkbox" disabled>
+                                        Sell
+                                    </label>
+                                    <label class="checkbox-label" for="targetBelowCheckbox">
+                                        <input type="checkbox" id="targetBelowCheckbox" class="modern-checkbox" checked>
+                                        Below
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
                         <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
                     </div>
 
@@ -681,7 +698,7 @@
     <div id="targetHitDetailsModal" class="modal target-hit-details-modal">
         <div class="modal-content">
             <div class="modal-header-with-icon">
-                <h2 id="targetHitModalTitle">Target Price Alerts</h2>
+                <h2 id="targetHitModalTitle">Notifications</h2>
                 </div>
             
             <div class="modal-body-scrollable">

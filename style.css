@@ -9,6 +9,22 @@
   }
 }
 
+/* --- Phase 1: Modern segmented toggles for Intent/Direction --- */
+.toggle-row { display:flex; gap:10px; align-items:center; margin: 6px 0 10px; }
+.segmented-toggle { display:inline-flex; border:1px solid var(--border-color, #d0d0d0); border-radius:10px; overflow:hidden; background:var(--card-bg,#fff); }
+.segmented-toggle .toggle-segment { padding:8px 14px; border:none; background:transparent; color:var(--text-color,#222); font-weight:600; cursor:pointer; transition: background .18s, color .18s, box-shadow .18s; }
+.segmented-toggle .toggle-segment + .toggle-segment { border-left:1px solid var(--border-color, #d0d0d0); }
+.segmented-toggle .toggle-segment.is-active { background:var(--accent-color,#a49393); color:#fff; box-shadow: inset 0 0 0 999px rgba(255,255,255,0.05); }
+.intent-toggle .toggle-segment.buy.is-active { background: var(--green-color, #2e7d32); }
+.intent-toggle .toggle-segment.sell.is-active { background: var(--red-color, #c62828); }
+.direction-toggle .toggle-segment.above.is-active { background: var(--green-color, #2e7d32); }
+.direction-toggle .toggle-segment.below.is-active { background: var(--red-color, #c62828); }
+@media (hover:hover) {
+    .segmented-toggle .toggle-segment:hover { background: var(--hover-bg,#f5f7fa); }
+}
+
+/* Utility: hide visually but keep accessible to screen readers */
+.visually-hidden { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 /* Helper function for source control in style.css (for documentation only, not executable in CSS) */
 /*
 let sourceControlMakeAvailableCountCSS = 0;
