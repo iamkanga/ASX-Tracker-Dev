@@ -5519,60 +5519,7 @@ function showCashCategoryDetailsModal(assetId) {
     logDebug('Details: Displayed details for cash asset: ' + asset.name + ' (ID: ' + assetId + ')');
 }
 
-// Custom Confirm Dialog Function (Now unused for deletions, but kept for potential future use)
-function showCustomConfirm(message, callback) {
-    const confirmBtn = document.getElementById('customDialogConfirmBtn');
-    const cancelBtn = document.getElementById('customDialogCancelBtn');
-    const dialogButtonsContainer = document.querySelector('#customDialogModal .custom-dialog-buttons');
-
-    logDebug('showCustomConfirm: confirmBtn found: ' + !!confirmBtn + ', cancelBtn found: ' + !!cancelBtn + ', dialogButtonsContainer found: ' + !!dialogButtonsContainer);
-
-    if (!customDialogModal || !customDialogMessage || !confirmBtn || !cancelBtn || !dialogButtonsContainer) {
-        console.error('Custom dialog elements not found. Cannot show confirm.');
-        console.log('CONFIRM (fallback): ' + message);
-        callback(window.confirm(message)); // Fallback to native confirm
-        return;
-    }
-    customDialogMessage.textContent = message;
-
-    dialogButtonsContainer.style.display = 'flex'; // Explicitly show the container
-    logDebug('showCustomConfirm: dialogButtonsContainer display set to: ' + dialogButtonsContainer.style.display);
-
-    setIconDisabled(confirmBtn, false); // Enable the confirm button
-    setIconDisabled(cancelBtn, false); // Enable the cancel button
-
-    showModal(customDialogModal);
-
-    // Remove any existing 'click' listeners to prevent multiple firings
-    const oldConfirmListener = confirmBtn._currentClickListener;
-    if (oldConfirmListener) {
-        confirmBtn.removeEventListener('click', oldConfirmListener);
-    }
-    const oldCancelListener = cancelBtn._currentClickListener;
-    if (oldCancelListener) {
-        cancelBtn.removeEventListener('click', oldCancelListener);
-    }
-
-    const onConfirm = () => {
-        hideModal(customDialogModal);
-        callback(true);
-        logDebug('Confirm: User confirmed.');
-    };
-
-    const onCancel = () => {
-        hideModal(customDialogModal);
-        callback(false);
-        logDebug('Confirm: User cancelled.');
-    };
-
-    confirmBtn.addEventListener('click', onConfirm);
-    confirmBtn._currentClickListener = onConfirm; // Store reference
-
-    cancelBtn.addEventListener('click', onCancel);
-    cancelBtn._currentClickListener = onCancel; // Store reference
-
-    logDebug('Confirm: Showing confirm: "' + message + '"');
-}
+// (Removed legacy modal-based showCustomConfirm; migrated to toast confirm above)
 
 /**
  * Updates the main title of the app based on the currently selected watchlist.
