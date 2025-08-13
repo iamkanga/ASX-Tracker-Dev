@@ -417,6 +417,8 @@ let currentUserId = null;
 let currentAppId;
 let selectedShareDocId = null;
 let allSharesData = []; // Kept in sync by the onSnapshot listener
+// Prevent duplicate sign-in attempts
+let authInProgress = false;
 // Helper: normalize and check membership for multi-watchlist support with backward compatibility
 function shareBelongsTo(share, watchlistId) {
     if (!share) return false;
@@ -2831,6 +2833,10 @@ async function saveShareData(isSilent = false) {
             if (!isSilent) showCustomAlert('Error adding share: ' + error.message);
         }
     }
+    // Clear any sticky id on details modal so nothing reopens unexpectedly
+    try {
+        if (shareDetailModal && shareDetailModal.dataset) delete shareDetailModal.dataset.shareId;
+    } catch(_) {}
     if (!isSilent) closeModals(); // Only close if not a silent save
 }
 
@@ -2873,6 +2879,11 @@ function showShareDetails() {
         }
         // Force visibility
         modalCompanyName.style.setProperty('display', 'block', 'important');
+    }
+
+    // Persist the selected share id on the modal so Edit can recover it if selection is cleared
+    if (shareDetailModal) {
+        try { shareDetailModal.dataset.shareId = selectedShareDocId; } catch(_) {}
     }
 
     // Get live price data for this share to check target hit status
@@ -6535,34 +6546,7 @@ async function initializeAppLogic() {
     // Google Auth Button (Sign In/Out) - This button is removed from index.html.
     // Its functionality is now handled by splashSignInBtn.
 
-    // NEW: Splash Screen Sign-In Button
-    // Helper to update splash sign-in button UI states for better desktop UX
-    function updateSplashSignInButtonState(state, detail) {
-        if (!splashSignInBtn) return;
-        const span = splashSignInBtn.querySelector('span');
-        switch (state) {
-            case 'idle':
-                splashSignInBtn.disabled = false;
-                if (span) span.textContent = 'Sign in with Google';
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-                break;
-            case 'loading':
-                splashSignInBtn.disabled = true;
-                if (span) span.textContent = 'Signing in…';
-                if (splashKangarooIcon) splashKangarooIcon.classList.add('pulsing');
-                break;
-            case 'retry':
-                splashSignInBtn.disabled = false;
-                if (span) span.textContent = detail || 'Try again (popup blocked?)';
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-                break;
-            case 'error':
-                splashSignInBtn.disabled = false;
-                if (span) span.textContent = detail || 'Retry Sign-In';
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-                break;
-        }
-    }
+    // NEW: Simplified Splash Sign-In: popup-only with in-progress guard
 
     // Early environment safety check: mobile + file:// cannot perform Google auth
     try {
@@ -6577,20 +6561,16 @@ async function initializeAppLogic() {
         }
     } catch(_) {}
 
-    const splashUsePopupBtn = document.getElementById('splashUsePopupBtn');
-
     if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
         let splashSignInRetryTimer = null;
         let splashSignInInProgress = false;
         splashSignInBtn.setAttribute('data-bound','true');
         splashSignInBtn.addEventListener('click', async () => {
             logDebug('Auth: Splash Screen Sign-In Button Clicked.');
-            try { localStorage.removeItem('authPopupFallbackTried'); } catch(_) {}
             const currentAuth = window.firebaseAuth;
             if (!currentAuth || !window.authFunctions) {
                 console.warn('Auth: Auth service not ready or functions not loaded. Cannot process splash sign-in.');
                 showCustomAlert('Authentication service not ready. Please try again in a moment.');
-                updateSplashSignInButtonState('error', 'Retry (service not ready)');
                 return;
             }
             try {
@@ -6599,249 +6579,39 @@ async function initializeAppLogic() {
                     return;
                 }
                 splashSignInInProgress = true;
-                updateSplashSignInButtonState('loading');
+                // Visual feedback
+                if (splashKangarooIcon) splashKangarooIcon.classList.add('pulsing');
+                splashSignInBtn.disabled = true;
                 // Always create a fresh provider per attempt to avoid stale customParameters
                 const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
                 if (!provider) {
                     console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
                     showCustomAlert('Authentication service not ready. Firebase script missing.');
-                    updateSplashSignInButtonState('error', 'Retry (init issue)');
                     splashSignInInProgress = false;
                     return;
                 }
                 try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
-
-                // No auto-retry timer: keep loading state until success or real error
-                if (splashSignInRetryTimer) { clearTimeout(splashSignInRetryTimer); splashSignInRetryTimer = null; }
-
-                // Configure provider UX hints: only force account selection for redirect flows
-                // Prefer popup on desktop; force redirect on mobile Chrome (prevents popup blocked)
-                const ua = navigator.userAgent || navigator.vendor || '';
-                const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-                const isStandalonePWA = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || (window.navigator && window.navigator.standalone === true);
-                const isIOS = /iPhone|iPad|iPod/i.test(ua);
-                const isAndroid = /Android/i.test(ua);
-                const isMobileChrome = (/CriOS|Chrome\/[0-9.]+/i.test(ua) && (isAndroid || isIOS));
-                const isFileProtocol = (window.location && window.location.protocol === 'file:');
-                const forceRedirectOverride = (() => { try { return localStorage.getItem('forceRedirectAuth') === 'true' || localStorage.getItem('forceRedirectAuthDesktop') === 'true'; } catch(_) { return false; } })();
-                // Prefer redirect on mobile/PWA/file://; use popup on desktop http(s). Allow overrides via localStorage.
-                const preferRedirect = forceRedirectOverride || (isMobile || isStandalonePWA || isIOS || isMobileChrome || isFileProtocol);
-                try {
-                    if (preferRedirect) {
-                        provider.setCustomParameters({ prompt: 'select_account' });
-                    }
-                } catch(_) {}
-                console.log('[Auth Env]', { isMobile, isStandalonePWA, isIOS, isAndroid, isMobileChrome, isFileProtocol, preferRedirect, forceRedirectOverride, origin: window.location.origin });
-                // If a prior redirect returned without a user, prefer popup on next try
-                const redirectPreviouslyFailed = (()=>{ try { return localStorage.getItem('authRedirectReturnedNoUser') === '1'; } catch(_) { return false; } })();
-                const useRedirect = preferRedirect && !redirectPreviouslyFailed && !!window.authFunctions.signInWithRedirect;
-                if (useRedirect) {
-                    try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
-                    // Switch to session persistence for mobile/redirect to survive incognito/storage quirks
-                    try {
-                        if (window.authFunctions.setPersistence && window.authFunctions.browserSessionPersistence) {
-                            await window.authFunctions.setPersistence(currentAuth, window.authFunctions.browserSessionPersistence);
-                            logDebug('Auth: Persistence set to browserSessionPersistence for redirect flow.');
-                        }
-                    } catch(e) { console.warn('Auth: Failed to set session persistence before redirect.', e); }
-                    const resolver = window.authFunctions.browserPopupRedirectResolver;
-                    if (resolver) {
-                        await window.authFunctions.signInWithRedirect(currentAuth, provider, resolver);
-                    } else {
-                        await window.authFunctions.signInWithRedirect(currentAuth, provider);
-                    }
-                    return; // onAuthStateChanged will run after redirect
-                } else {
-                    // Desktop or environments where popup is allowed
-                    const resolver = window.authFunctions.browserPopupRedirectResolver;
-                    if (resolver) {
-                        await window.authFunctions.signInWithPopup(currentAuth, provider, resolver);
-                    } else {
-                        await window.authFunctions.signInWithPopup(currentAuth, provider);
-                    }
-                }
-                logDebug('Auth: Google Sign-In successful from splash screen.');
-                if (splashSignInRetryTimer) {
-                    clearTimeout(splashSignInRetryTimer);
-                    splashSignInRetryTimer = null;
-                }
-                // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
-            }
-            catch (error) {
-                if (splashSignInRetryTimer) {
-                    clearTimeout(splashSignInRetryTimer);
-                    splashSignInRetryTimer = null;
-                }
-                console.error('Auth: Google Sign-In failed from splash screen:', { code: error.code, message: error.message });
-                let userMsg = 'Google Sign-In failed';
-                if (error.code === 'auth/popup-blocked') {
-                    userMsg = 'Popup blocked by browser. Switching to redirect…';
-                    // Automatically fallback to redirect on popup-blocked
-                    try {
-                        const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
-                        try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
-                        try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
-                        try {
-                            if (window.authFunctions.setPersistence && window.authFunctions.browserSessionPersistence) {
-                                await window.authFunctions.setPersistence(window.firebaseAuth, window.authFunctions.browserSessionPersistence);
-                                logDebug('Auth: Persistence set to browserSessionPersistence (popup-blocked fallback).');
-                            }
-                        } catch(e) { console.warn('Auth: Failed to set session persistence in popup-blocked fallback.', e); }
-                        const resolver = window.authFunctions.browserPopupRedirectResolver;
-                        if (resolver) {
-                            await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider, resolver);
-                        } else {
-                            await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
-                        }
-                        return;
-                    } catch (e2) {
-                        updateSplashSignInButtonState('retry', 'Retry (allow popup)');
-                        splashSignInInProgress = false;
-                    }
-                } else if (error.code === 'auth/operation-not-supported-in-this-environment') {
-                    userMsg = 'This environment blocks popups. Switching to redirect…';
-                    try {
-                        const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
-                        try { provider.setCustomParameters({ prompt: 'select_account' }); } catch(_) {}
-                        try { localStorage.setItem('authRedirectAttempted','1'); } catch(_) {}
-                        try {
-                            if (window.authFunctions.setPersistence && window.authFunctions.browserSessionPersistence) {
-                                await window.authFunctions.setPersistence(window.firebaseAuth, window.authFunctions.browserSessionPersistence);
-                                logDebug('Auth: Persistence set to browserSessionPersistence (unsupported env fallback).');
-                            }
-                        } catch(e) { console.warn('Auth: Failed to set session persistence in unsupported env fallback.', e); }
-                        const resolver = window.authFunctions.browserPopupRedirectResolver;
-                        if (resolver) {
-                            await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider, resolver);
-                        } else {
-                            await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
-                        }
-                        return;
-                    } catch (e3) {
-                        updateSplashSignInButtonState('retry', 'Retry (unsupported env)');
-                        splashSignInInProgress = false;
-                    }
-                } else if (error.code === 'auth/unauthorized-domain') {
-                    userMsg = 'Unauthorized domain for OAuth. Add this domain to Firebase Auth > Authorized domains.';
-                    updateSplashSignInButtonState('error', 'Check Firebase Auth domains');
-                    splashSignInInProgress = false;
-                } else if (error.code === 'auth/popup-closed-by-user') {
-                    userMsg = 'Popup closed. Click retry.';
-                    updateSplashSignInButtonState('retry', 'Retry (popup closed)');
-                    splashSignInInProgress = false;
-                } else if (error.code === 'auth/cancelled-popup-request') {
-                    userMsg = 'Popup request cancelled. Try again.';
-                    updateSplashSignInButtonState('retry', 'Retry sign-in');
-                    splashSignInInProgress = false;
-                } else if (error.code === 'auth/network-request-failed') {
-                    userMsg = 'Network error. Check your internet connection and try again.';
-                    updateSplashSignInButtonState('retry', 'Retry (network)');
-                    splashSignInInProgress = false;
-                } else {
-                    updateSplashSignInButtonState('error', 'Retry Sign-In');
-                    splashSignInInProgress = false;
-                }
-                showCustomAlert(userMsg + ': ' + error.message);
-            }
-        });
-    }
-
-    // Explicit popup fallback button for cases where redirect returned no user or user prefers popup
-    if (splashUsePopupBtn && splashUsePopupBtn.getAttribute('data-bound') !== 'true') {
-        splashUsePopupBtn.setAttribute('data-bound','true');
-        splashUsePopupBtn.addEventListener('click', async () => {
-            logDebug('Auth: Splash Use-Popup button clicked.');
-            try {
-                const currentAuth = window.firebaseAuth;
-                if (!currentAuth || !window.authFunctions) {
-                    showCustomAlert('Authentication service not ready. Please try again.');
-                    return;
-                }
-                const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
+                // Popup only
                 const resolver = window.authFunctions.browserPopupRedirectResolver;
-                try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
-                // Prefer local persistence for popup flows
-                try {
-                    if (window.authFunctions.setPersistence && window.authFunctions.browserLocalPersistence) {
-                        await window.authFunctions.setPersistence(currentAuth, window.authFunctions.browserLocalPersistence);
-                        logDebug('Auth: Persistence set to browserLocalPersistence for popup flow.');
-                    }
-                } catch(e) { console.warn('Auth: Failed to set local persistence for popup.', e); }
                 if (resolver) {
                     await window.authFunctions.signInWithPopup(currentAuth, provider, resolver);
                 } else {
                     await window.authFunctions.signInWithPopup(currentAuth, provider);
                 }
-            } catch (e) {
-                console.warn('Auth: Popup fallback failed:', e);
-                const code = e && e.code ? String(e.code) : '';
-                if (code === 'auth/popup-blocked') {
-                    showCustomAlert('Popup blocked. Please allow popups or use the main button.');
-                } else if (code === 'auth/unauthorized-domain') {
-                    showCustomAlert('Unauthorized domain. Fix settings in Firebase.');
-                } else if (code === 'auth/popup-closed-by-user') {
-                    showCustomAlert('Popup closed before completing sign-in.');
-                } else {
-                    showCustomAlert('Popup sign-in failed. Please try again.');
-                }
+                logDebug('Auth: Google Sign-In successful from splash screen.');
+                // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
+            }
+            catch (error) {
+                console.error('Auth: Google Sign-In failed from splash screen:', { code: error.code, message: error.message });
+                showCustomAlert('Google Sign-In failed: ' + error.message);
+                splashSignInInProgress = false;
+                splashSignInBtn.disabled = false;
+                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
             }
         });
     }
 
-    // Handle redirect sign-in result (e.g., mobile flow)
-    try {
-        if (window.authFunctions && window.authFunctions.getRedirectResult && window.firebaseAuth) {
-            const resolver = window.authFunctions.browserPopupRedirectResolver;
-            window.authFunctions.getRedirectResult(window.firebaseAuth, resolver).then(async (result) => {
-                if (result && result.user) {
-                    logDebug('Auth: getRedirectResult returned user; redirect sign-in completed.');
-                    try { localStorage.removeItem('authRedirectAttempted'); } catch(_) {}
-                    try { localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
-                } else {
-                    // No result returned after redirect; if we attempted a redirect, hint the user
-                    const attempted = (()=>{ try { return localStorage.getItem('authRedirectAttempted') === '1'; } catch(_) { return false; } })();
-                    if (attempted) {
-                        const ua = navigator.userAgent || '';
-                        const isiOSPWA = /iPhone|iPad|iPod/i.test(ua) && ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true);
-                        if (isiOSPWA) {
-                            updateSplashSignInButtonState('error', 'Open in Safari');
-                            showCustomAlert('On iOS when installed to Home Screen, Google sign-in may not return a session. Please open this app in Safari and sign in.');
-                        } else {
-                            // Show an explicit "Use popup instead" button to avoid double account chooser
-                            if (splashUsePopupBtn) {
-                                splashUsePopupBtn.style.display = 'inline-flex';
-                            }
-                            if (splashSignInBtn) {
-                                splashSignInBtn.style.display = 'none';
-                            }
-                            if (typeof updateSplashSignInButtonState === 'function') {
-                                updateSplashSignInButtonState('retry', 'Try again');
-                            }
-                        }
-                        try { localStorage.setItem('authRedirectReturnedNoUser','1'); } catch(_) {}
-                        try { localStorage.removeItem('authRedirectAttempted'); } catch(_) {}
-                    }
-                }
-            }).catch((err) => {
-                console.warn('Auth: getRedirectResult error:', err);
-                if (splashSignInBtn) {
-                    // Map common mobile errors to actionable messages
-                    const code = err && err.code ? String(err.code) : '';
-                    if (code === 'auth/unauthorized-domain') {
-                        updateSplashSignInButtonState('error', 'Fix domain settings');
-                        showCustomAlert('Sign-in blocked: unauthorized domain. Add your app URL to Firebase Auth > Authorized domains.');
-                    } else if (code === 'auth/operation-not-supported-in-this-environment') {
-                        updateSplashSignInButtonState('error', 'Open in browser');
-                        showCustomAlert('Sign-in not supported in this environment. On iOS, open in Safari (not PWA) or use a hosted URL.');
-                    } else {
-                        updateSplashSignInButtonState('retry', 'Try again');
-                        if (splashUsePopupBtn) splashUsePopupBtn.style.display = 'inline-flex';
-                        if (splashSignInBtn) splashSignInBtn.style.display = 'none';
-                    }
-                }
-            });
-        }
-    } catch(e) { /* ignore */ }
+    // Removed redirect handling entirely: popup-only auth
 
     // NEW: Event listener for the top 'X' close button in the Target Hit Details Modal
     if (targetHitModalCloseTopBtn) {
@@ -7053,6 +6823,11 @@ if (sortSelect) {
             if (editShareFromDetailBtn.classList.contains('is-disabled-icon')) {
                 console.warn('Edit Share From Detail: Edit button was disabled, preventing action.');
                 return;
+            }
+            // Ensure selectedShareDocId exists even if selection was cleared after save/render
+            if (!selectedShareDocId && shareDetailModal && shareDetailModal.dataset && shareDetailModal.dataset.shareId) {
+                selectedShareDocId = shareDetailModal.dataset.shareId;
+                logDebug('Share Details: Restored selectedShareDocId from modal dataset: ' + selectedShareDocId);
             }
             // Mark that the edit form was opened from share details so back restores it
             wasEditOpenedFromShareDetail = true;
