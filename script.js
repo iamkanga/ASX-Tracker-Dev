@@ -1500,6 +1500,15 @@ function initShareFormAccordion() {
     const accordionRoot = document.getElementById('shareFormAccordion');
     if (!accordionRoot) return;
     const sections = Array.from(accordionRoot.querySelectorAll('.accordion-section'));
+    // Ensure only Core (data-section="core") is open by default
+    sections.forEach(sec => {
+        const isCore = sec.getAttribute('data-section') === 'core';
+        if (isCore) {
+            sec.classList.add('open');
+        } else {
+            sec.classList.remove('open');
+        }
+    });
     sections.forEach(section => {
         const toggleBtn = section.querySelector('.accordion-toggle');
         const panel = section.querySelector('.accordion-panel');
@@ -1508,7 +1517,7 @@ function initShareFormAccordion() {
         // Ensure ARIA states reflect initial .open class
         const isOpen = section.classList.contains('open');
         toggleBtn.setAttribute('aria-expanded', String(isOpen));
-        panel.hidden = !isOpen;
+        // Using max-height CSS transition; no hidden attribute (avoid layout jumps)
     });
 }
 
@@ -1521,11 +1530,15 @@ function toggleAccordionSection(section) {
     if (isCurrentlyOpen) {
         section.classList.remove('open');
         toggleBtn.setAttribute('aria-expanded', 'false');
-        panel.hidden = true;
     } else {
         section.classList.add('open');
         toggleBtn.setAttribute('aria-expanded', 'true');
-        panel.hidden = false;
+        // Scroll new section header into view on narrow screens for usability
+        if (window.innerWidth < 650) {
+            setTimeout(() => {
+                try { toggleBtn.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
+            }, 20);
+        }
     }
 }
 

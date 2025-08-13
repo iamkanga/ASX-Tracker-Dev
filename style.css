@@ -3808,9 +3808,8 @@ table td.live-price-cell.negative-change {
 .accordion-caret { width:16px; height:16px; position:relative; display:inline-block; }
 .accordion-caret::before { content:""; position:absolute; inset:0; margin:auto; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:9px solid var(--text-color); transition: transform .28s ease; transform-origin:center; }
 .accordion-section.open .accordion-caret::before { transform: rotate(180deg); }
-.accordion-panel { display:grid; grid-template-rows:0fr; transition:grid-template-rows .32s ease, padding .25s ease; padding:0 16px; }
-.accordion-section.open > .accordion-panel { grid-template-rows:1fr; padding:4px 16px 16px; }
-.accordion-panel > * { overflow:hidden; }
+.accordion-panel { max-height:0; overflow:hidden; transition:max-height .35s ease, padding .25s ease; padding:0 16px; }
+.accordion-section.open > .accordion-panel { max-height:1200px; padding:4px 16px 16px; }
 /* Subtle divider between sections */
 .accordion-section + .accordion-section { margin-top:2px; }
 /* Hover / active states */
