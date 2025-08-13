@@ -427,6 +427,20 @@ function shareBelongsTo(share, watchlistId) {
     }
     return share.watchlistId === watchlistId;
 }
+
+// Helper: ensure we don't render duplicates when transient optimistic updates or race conditions occur
+function dedupeSharesById(items) {
+    try {
+        const map = new Map();
+        for (const it of items || []) {
+            if (it && it.id) map.set(it.id, it);
+        }
+        return Array.from(map.values());
+    } catch (e) {
+        console.warn('Dedupe: Failed to dedupe shares by id:', e);
+        return Array.isArray(items) ? items : [];
+    }
+}
 let currentDialogCallback = null;
 let autoDismissTimeout = null;
 let lastTapTime = 0;
@@ -2831,8 +2845,6 @@ async function saveShareData(isSilent = false) {
             const sharesColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             const newDocRef = await window.firestore.addDoc(sharesColRef, shareData);
             selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
-            // Update local cache
-            try { allSharesData.push({ id: selectedShareDocId, ...shareData }); } catch(_) {}
             if (!isSilent) showCustomAlert('Share \'" + shareName + "\' added successfully!', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' added with ID: ' + newDocRef.id);
         originalShareData = getCurrentFormData(); // Update original data after successful save
@@ -3754,10 +3766,10 @@ function renderWatchlist() {
         let sharesToRender = [];
 
         if (selectedWatchlistId === ALL_SHARES_ID) {
-            sharesToRender = [...allSharesData];
+            sharesToRender = dedupeSharesById(allSharesData);
             logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
         } else if (currentSelectedWatchlistIds.length === 1) {
-            sharesToRender = allSharesData.filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
+            sharesToRender = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
             logDebug('Render: Displaying shares from watchlist: ' + selectedWatchlistId);
         } else {
             logDebug('Render: No specific stock watchlists selected or multiple selected, showing empty state.');
@@ -3861,9 +3873,9 @@ function renderAsxCodeButtons() {
     
     let sharesForButtons = [];
     if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) { 
-        sharesForButtons = [...allSharesData];
+        sharesForButtons = dedupeSharesById(allSharesData);
     } else {
-        sharesForButtons = allSharesData.filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
+        sharesForButtons = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
     }
 
     sharesForButtons.forEach(share => {
@@ -4823,7 +4835,7 @@ async function loadShares() {
                 fetchedShares.push(share);
             });
 
-            allSharesData = fetchedShares;
+            allSharesData = dedupeSharesById(fetchedShares);
             logDebug('Shares: Shares data updated from snapshot. Total shares: ' + allSharesData.length);
             
             // AGGRESSIVE FIX: Force apply current sort order after data loads

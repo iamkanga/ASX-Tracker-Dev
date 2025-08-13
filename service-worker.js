@@ -1,7 +1,7 @@
 // Service Worker Version: 1.0.7
 
 // Cache name for the current version of the service worker
-const CACHE_NAME = 'share-watchlist-v1.0.12'; // Bumped to pick up Save-enable fix
+const CACHE_NAME = 'share-watchlist-v1.0.13'; // Bumped to pick up duplicate-fix
 
 // List of essential application assets to precache
 const CACHED_ASSETS = [
