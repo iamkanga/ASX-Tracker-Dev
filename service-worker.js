@@ -1,7 +1,7 @@
 // Service Worker Version: 1.0.8
 
 // Cache name for the current version of the service worker
-const CACHE_NAME = 'share-watchlist-v1.0.15'; // Bump to pick up brand palette, ASX toggle, and toast styles
+const CACHE_NAME = 'share-watchlist-v1.0.16'; // Bump to pick up full Toast API and confirm migration
 
 // List of essential application assets to precache
 const CACHED_ASSETS = [

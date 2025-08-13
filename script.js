@@ -1351,6 +1351,71 @@ function showCustomAlert(message, duration = 1000, type = 'info') {
     autoDismissTimeout = setTimeout(() => { hideModal(customDialogModal); autoDismissTimeout = null; }, duration);
 }
 
+// ToastManager: centralized API
+const ToastManager = (() => {
+    const container = () => document.getElementById('toastContainer');
+    const makeToast = (opts) => {
+        const root = container();
+        if (!root) return null;
+        const { message, type = 'info', duration = 2000, actions = [] } = opts || {};
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        const iconHTML = `<span class="icon"></span>`;
+        const msgHTML = `<div class="message"></div>`;
+        const actionsHTML = actions.length ? `<div class="actions">${actions.map(a=>`<button class=\"btn ${a.variant||''}\">${a.label}</button>`).join('')}</div>` : '';
+        const closeHTML = `<button class="close" aria-label="Dismiss">×</button>`;
+        toast.innerHTML = `${iconHTML}${msgHTML}${actionsHTML}${closeHTML}`;
+        toast.querySelector('.message').textContent = message || '';
+        const closeBtn = toast.querySelector('.close');
+        const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
+        closeBtn.addEventListener('click', remove);
+        // Wire actions
+        const actionBtns = toast.querySelectorAll('.actions .btn');
+        actionBtns.forEach((btn, idx) => {
+            const cfg = actions[idx];
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                try { cfg && typeof cfg.onClick === 'function' && cfg.onClick(); } finally { remove(); }
+            });
+        });
+        root.appendChild(toast);
+        requestAnimationFrame(()=> toast.classList.add('show'));
+        if (duration && duration > 0) setTimeout(remove, duration);
+        return { el: toast, close: remove };
+    };
+    return {
+        info: (message, duration=2000) => makeToast({ message, type:'info', duration }),
+        success: (message, duration=2000) => makeToast({ message, type:'success', duration }),
+        error: (message, duration=2500) => makeToast({ message, type:'error', duration }),
+        confirm: (message, { confirmText='Yes', cancelText='No', onConfirm, onCancel } = {}) => {
+            return makeToast({
+                message,
+                type: 'info',
+                duration: 0, // sticky until action
+                actions: [
+                    { label: confirmText, variant: 'primary', onClick: () => { onConfirm && onConfirm(true); } },
+                    { label: cancelText, variant: 'danger', onClick: () => { onCancel && onCancel(false); } }
+                ]
+            });
+        }
+    };
+})();
+
+// Migrate confirm dialog to toast confirm (non-blocking UX)
+function showCustomConfirm(message, callback) {
+    const res = ToastManager.confirm(message, {
+        confirmText: 'Yes',
+        cancelText: 'No',
+        onConfirm: () => callback(true),
+        onCancel: () => callback(false)
+    });
+    if (!res) {
+        // Fallback to native confirm if container missing
+        callback(window.confirm(message));
+    }
+}
+
 // Date Formatting Helper Functions (Australian Style)
 function formatDate(dateString) {
     if (!dateString) return '';
