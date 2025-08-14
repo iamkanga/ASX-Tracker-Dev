@@ -73,34 +73,6 @@ function onLivePricesUpdated() {
                 renderPortfolioList();
             }
         }
-        // Refresh movement + target-hit classes post-render to avoid transient removal
-        try {
-            Object.keys(livePrices||{}).forEach(code => {
-                const upper = code.toUpperCase();
-                const lp = livePrices[upper]; if (!lp) return;
-                const change = (lp.live!=null && lp.prevClose!=null && !isNaN(lp.live) && !isNaN(lp.prevClose)) ? (lp.live - lp.prevClose) : 0;
-                // Table row
-                if (typeof shareTableBody !== 'undefined' && shareTableBody) {
-                    const row = Array.from(shareTableBody.querySelectorAll('tr')).find(r => (r.querySelector('.share-code-display')||{}).textContent === upper);
-                    if (row) {
-                        row.classList.remove('positive-change-row','negative-change-row','neutral-change-row');
-                        if (change > 0) row.classList.add('positive-change-row');
-                        else if (change < 0) row.classList.add('negative-change-row');
-                        else row.classList.add('neutral-change-row');
-                        if (lp.targetHit && !targetHitIconDismissed) row.classList.add('target-hit-alert');
-                    }
-                }
-                // Mobile card
-                const card = document.querySelector('.mobile-card[data-doc-id] span.share-code[data-code="' + upper + '"]')?.closest('.mobile-card');
-                if (card) {
-                    card.classList.remove('positive-change-card','negative-change-card','neutral-change-card');
-                    if (change > 0) card.classList.add('positive-change-card');
-                    else if (change < 0) card.classList.add('negative-change-card');
-                    else card.classList.add('neutral-change-card');
-                    if (lp.targetHit && !targetHitIconDismissed) card.classList.add('target-hit-alert');
-                }
-            });
-        } catch(_e) { /* ignore visual refresh issues */ }
     } catch (e) {
         console.error('Live Price: onLivePricesUpdated error:', e);
     }
@@ -1713,7 +1685,7 @@ function addShareToTable(share) {
     const companyName = companyInfo ? companyInfo.name : '';
 
     row.innerHTML = `
-    <td class="code-cell">
+        <td>
             <span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>
             ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
         </td>
@@ -1810,16 +1782,6 @@ function addShareToMobileCards(share) {
 
     const card = document.createElement('div');
     card.classList.add('mobile-card');
-    // Movement background classes
-    try {
-        const lp = livePrices[share.shareName.toUpperCase()];
-        let change = null;
-        if (lp && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) change = lp.live - lp.prevClose;
-        card.classList.remove('positive-change-card','negative-change-card','neutral-change-card');
-        if (change > 0) card.classList.add('positive-change-card');
-        else if (change < 0) card.classList.add('negative-change-card');
-        else card.classList.add('neutral-change-card');
-    } catch(_) {}
     card.dataset.docId = share.id;
 
     // Check if target price is hit for this share
@@ -2145,7 +2107,7 @@ function updateOrCreateShareTableRow(share) {
     const companyName = companyInfo ? companyInfo.name : '';
 
     row.innerHTML = `
-    <td class="code-cell">
+        <td>
             <span class="share-code-display ${priceClass}">${share.shareName || ''}</span>
             ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
         </td>
@@ -2179,15 +2141,6 @@ function updateOrCreateShareMobileCard(share) {
     if (!card) {
         card = document.createElement('div');
         card.classList.add('mobile-card');
-        try {
-            const lp = livePrices[share.shareName.toUpperCase()];
-            let change = null;
-            if (lp && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) change = lp.live - lp.prevClose;
-            card.classList.remove('positive-change-card','negative-change-card','neutral-change-card');
-            if (change > 0) card.classList.add('positive-change-card');
-            else if (change < 0) card.classList.add('negative-change-card');
-            else card.classList.add('neutral-change-card');
-        } catch(_) {}
         card.dataset.docId = share.id;
         // Add event listeners only once when the card is created
         card.addEventListener('click', () => {
@@ -4527,9 +4480,6 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 <div class="external-link-item">
                     <a id="searchModalCommSecLink" href="#" target="_blank" class="external-link">View on CommSec.com.au <i class="fas fa-external-link-alt"></i></a>
                 </div>
-                <div class="external-link-item">
-                    <a id="searchModalGoogleFinanceLink" href="#" target="_blank" class="external-link">View on Google Finance <i class="fas fa-external-link-alt"></i></a>
-                </div>
                 <p class="ghosted-text external-links-note">Login may be required for some data sources.</p>
             </div>
         `;
@@ -4541,14 +4491,12 @@ async function displayStockDetailsInSearchModal(asxCode) {
         const searchModalFoolLink = document.getElementById('searchModalFoolLink');
         const searchModalListcorpLink = document.getElementById('searchModalListcorpLink');
         const searchModalCommSecLink = document.getElementById('searchModalCommSecLink');
-    const searchModalGoogleFinanceLink = document.getElementById('searchModalGoogleFinanceLink');
 
         if (searchModalNewsLink) searchModalNewsLink.href = `https://news.google.com/search?q=${encodedAsxCode}%20ASX&hl=en-AU&gl=AU&ceid=AU%3Aen`;
         if (searchModalMarketIndexLink) searchModalMarketIndexLink.href = `https://www.marketindex.com.au/asx/${asxCode.toLowerCase()}`;
         if (searchModalFoolLink) searchModalFoolLink.href = `https://www.fool.com.au/quote/${asxCode}/`; // Assuming Fool URL structure
         if (searchModalListcorpLink) searchModalListcorpLink.href = `https://www.listcorp.com/asx/${asxCode.toLowerCase()}`;
         if (searchModalCommSecLink) searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
-    if (searchModalGoogleFinanceLink) searchModalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${asxCode.toUpperCase()}:ASX`;
 
         // Store the fetched data for potential adding/editing (normalize code property fallbacks)
         const resolvedCode = stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode;
