@@ -587,10 +587,10 @@ async function updateAddFormLiveSnapshot(code) {
             </div>
             <div class="live-price-main-row">
                 <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
-                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${change.toFixed(2)} (${pct.toFixed(2)}%)` : 'N/A'}</span>
+                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${formatAdaptivePrice(change)} (${formatAdaptivePercent(pct)}%)` : 'N/A'}</span>
             </div>
             <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? pe.toFixed(2) : 'N/A'}</span>
+                <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? formatAdaptivePrice(pe) : 'N/A'}</span>
             </div>`;
         addShareLivePriceDisplay.style.display = 'block';
         addShareLivePriceDisplay.removeAttribute('data-loading');
@@ -850,7 +850,7 @@ function formatAdaptivePrice(value) {
 }
 function formatAdaptivePercent(pct) {
     if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
-    return Number(pct).toFixed(2);
+    return formatAdaptivePercent(pct);
 }
 
 // Fallback for missing formatUserDecimalStrict (called in edit form population)
@@ -1489,7 +1489,7 @@ function getShareDisplayData(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-    peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A';
+    peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A';
     high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A';
     low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A';
 
@@ -1500,13 +1500,13 @@ function getShareDisplayData(share) {
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             }
@@ -1686,9 +1686,9 @@ function addShareToTable(share) {
                     const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
                     const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
                     if (frankingCredits > 0 && frankedYield > 0) {
-                        return frankedYield.toFixed(2) + '% (F)';
+                        return formatAdaptivePercent(frankedYield) + '% (F)';
                     } else if (unfrankedYield > 0) {
-                        return unfrankedYield.toFixed(2) + '% (U)';
+                        return formatAdaptivePercent(unfrankedYield) + '% (U)';
                     }
                     return '';
                 })()
@@ -1769,25 +1769,25 @@ function addShareToMobileCards(share) {
     if (isMarketOpen) {
             // Show live data if market is open, or if market is closed but toggle is ON
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
             }
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : ''); // Set class for card
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             }
         } else {
             // Market closed and toggle is OFF, show zero change
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
             cardPriceChangeClass = ''; // No tint/line for neutral or market closed
@@ -1816,18 +1816,18 @@ function addShareToMobileCards(share) {
     if (isMarketOpen) {
             // Show live data if market is open, or if market is closed but toggle is ON
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
             }
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         } else {
