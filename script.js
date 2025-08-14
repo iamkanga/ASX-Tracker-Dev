@@ -79,31 +79,46 @@ function sortSharesByPercentageChange(shares) {
     });
 }
 
-// Lean live prices hook: only resort when sort actually depends on live data
+// AGGRESSIVE FIX: After live prices update, forcefully re-sort and re-render if sort order is percentage change
 function onLivePricesUpdated() {
-    try {
-        if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
-            sortShares();
-        } else {
-            // Just re-render to reflect new price values
-            renderWatchlist();
-        }
+    // AGGRESSIVE FIX: Always resort regardless of current sort order to ensure data consistency
+    if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
+        logDebug('AGGRESSIVE SORT: Force resorting shares by percentage change after live prices update');
+        // Re-sort shares and re-render
+        let sortedShares = sortSharesByPercentageChange(allSharesData);
+        if (currentSortOrder === 'percentageChange-asc') sortedShares.reverse();
+        
+        // AGGRESSIVE: Force the allSharesData to the sorted order
+        allSharesData.length = 0; // Clear the array
+        allSharesData.push(...sortedShares); // Re-populate with sorted data
+        
+        // Force re-render after sorting
+        renderWatchlist();
+        // If the Portfolio view is visible, update it too
         if (typeof renderPortfolioList === 'function') {
             const section = document.getElementById('portfolioSection');
             if (section && section.style.display !== 'none') {
                 renderPortfolioList();
             }
         }
-    } catch (e) {
-        console.error('Live Price: onLivePricesUpdated error:', e);
+    } else {
+        // Still render to update UI with new prices
+        renderWatchlist();
+        // Update portfolio view if active
+        if (typeof renderPortfolioList === 'function') {
+            const section = document.getElementById('portfolioSection');
+            if (section && section.style.display !== 'none') {
+                renderPortfolioList();
+            }
+        }
     }
 }
 
-// Compatibility stub (legacy callsites may invoke)
+// AGGRESSIVE FIX: Force apply current sort order after data loads
 function forceApplyCurrentSort() {
-    if (currentSortOrder) {
-        // No aggressive re-sort; rely on user interactions & targeted resort triggers
-        return;
+    if (currentSortOrder && currentSortOrder !== '') {
+        logDebug('AGGRESSIVE SORT: Force applying current sort order: ' + currentSortOrder);
+        sortShares();
     }
 }
 
@@ -154,11 +169,9 @@ document.addEventListener('DOMContentLoaded', function () {
             // If Portfolio is selected, show portfolio view
             if (watchlistSelect.value === 'portfolio') {
                 showPortfolioView();
-                try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e){}
             } else {
                 // Default: show normal watchlist view
                 showWatchlistView();
-                try { localStorage.setItem('lastSelectedView', watchlistSelect.value); } catch(e){}
             }
             updateMainButtonsState(true);
         });
@@ -171,20 +184,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const portfolioSection = document.createElement('div');
             portfolioSection.id = 'portfolioSection';
             portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<h2>Portfolio</h2><div class="portfolio-scroll-wrapper"><div id="portfolioListContainer">Loading portfolio...</div></div>';
+            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
             mainContainer.appendChild(portfolioSection);
         }
         stockWatchlistSection.style.display = 'none';
         // Ensure selection state reflects Portfolio for downstream filters (e.g., ASX buttons)
         currentSelectedWatchlistIds = ['portfolio'];
-        // Reflect in dropdown if present
-        if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
-            if (watchlistSelect.value !== 'portfolio') {
-                watchlistSelect.value = 'portfolio';
-            }
-        }
-        // Persist user intent
-        try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e) {}
         let portfolioSection = document.getElementById('portfolioSection');
         portfolioSection.style.display = 'block';
         renderPortfolioList();
@@ -240,15 +245,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return (typeof n === 'number' && !isNaN(n)) ? n.toFixed(2) + '%' : '';
         }
 
-    let totalValue = 0;
-    let totalPL = 0;
-    let totalCostBasis = 0; // sum of shares * avgPrice for total % calc
-    // Build desktop/table HTML
-    let htmlTable = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg<br>Price</th><th>Live</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
-    // Build mobile cards markup
-    let cards = [];
-    let profitPLSum = 0; // sum of positive P/L
-    let lossPLSum = 0;   // sum of negative P/L (will stay negative)
+        let totalValue = 0;
+        let totalPL = 0;
+        let html = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg Price</th><th>Current Price</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
         portfolioShares.forEach(share => {
             const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
                 ? Math.trunc(Number(share.portfolioShares))
@@ -257,105 +256,40 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? Number(share.portfolioAvgPrice)
                 : '';
             const priceNow = getDisplayPrice(share);
-            // Determine if we used live (market open), lastLive (market closed), or fallback user price
-            let priceMode = 'manual';
-            const codeKey = (share.shareName || '').toUpperCase();
-            const lpObj = livePrices ? livePrices[codeKey] : null;
-            if (lpObj) {
-                const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
-                if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceMode = 'live';
-                else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceMode = 'last';
-            }
-            // DAILY CHANGE (on-the-day) vs overall P/L: compute day change using live vs prevClose (fallback to last fetched)
-            let dailyChangeClass = 'neutral';
-            if (lpObj) {
-                const latestLive = (lpObj.live !== null && !isNaN(lpObj.live)) ? Number(lpObj.live) : (lpObj.lastLivePrice ?? null);
-                const latestPrev = (lpObj.prevClose !== null && !isNaN(lpObj.prevClose)) ? Number(lpObj.prevClose) : (lpObj.lastPrevClose ?? null);
-                if (latestLive !== null && latestPrev !== null && !isNaN(latestLive) && !isNaN(latestPrev)) {
-                    const dayChange = latestLive - latestPrev;
-                    if (dayChange > 0) dailyChangeClass = 'positive'; else if (dayChange < 0) dailyChangeClass = 'negative';
-                }
-            }
             const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
             if (typeof rowValue === 'number') totalValue += rowValue;
             const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number')
                 ? (priceNow - avgPrice) * shares
                 : null;
-            if (typeof shares === 'number' && typeof avgPrice === 'number') {
-                totalCostBasis += (shares * avgPrice);
-            }
             if (typeof rowPL === 'number') totalPL += rowPL;
-            if (typeof rowPL === 'number') {
-                if (rowPL > 0) profitPLSum += rowPL; else if (rowPL < 0) lossPLSum += rowPL;
-            }
             const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number')
                 ? ((priceNow - avgPrice) / avgPrice) * 100
                 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
-            const badge = ''; // remove textual badge for cleaner look on mobile & table
-            const priceColorClass = priceMode === 'live' ? 'live-price' : (priceMode === 'last' ? 'last-price' : 'manual-price');
-            const priceCell = (priceNow !== null && priceNow !== undefined) ? ('<span class="price-value '+priceColorClass+'">' + fmtMoney(priceNow) + '</span>') : '';
 
-            // Row colored by DAILY change, P/L cells individually colored by overall P/L (plClass)
-            htmlTable += `<tr data-doc-id="${share.id}" class="${dailyChangeClass}">
-                <td class="code-cell">${share.shareName || ''}</td>
-                <td class="num-cell shares-cell">${shares !== '' ? shares : ''}</td>
-                <td class="num-cell avg-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
-                <td class="num-cell live-cell ${priceMode} liveprice-cell">${priceCell}</td>
-                <td class="num-cell value-cell">${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
-                <td class="num-cell pl-cell ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
-                <td class="num-cell plpct-cell ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
+            html += `<tr data-doc-id="${share.id}">
+                <td>${share.shareName || ''}</td>
+                <td>${shares !== '' ? shares : ''}</td>
+                <td>${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
+                <td>${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</td>
+                <td>${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
+                <td class="${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
+                <td class="${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
             </tr>`;
-
-            // Mobile card variant
-    const card = `<div class="portfolio-card ${dailyChangeClass}" data-doc-id="${share.id}">
-                <div class="pc-row top">
-            <div class="pc-code ${dailyChangeClass}">${share.shareName || ''}</div>
-            <div class="pc-live ${priceMode}"><span class="val ${priceColorClass}">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
-            <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
-                </div>
-                <div class="pc-row mid">
-                    <div class="pc-shares">${shares !== '' ? shares : ''} @ ${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</div>
-                    <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
-                </div>
-                <div class="pc-row bottom ${plClass}">
-                    <div class="pc-pl-label">P/L</div>
-                    <div class="pc-pl-val">${rowPL !== null ? fmtMoney(rowPL) : ''}</div>
-                </div>
-            </div>`;
-            cards.push(card);
         });
         // Total row
         const totalPLClass = totalPL > 0 ? 'positive' : (totalPL < 0 ? 'negative' : 'neutral');
-        const totalPLPct = (totalCostBasis > 0 && typeof totalPL === 'number') ? (totalPL / totalCostBasis) * 100 : 0;
-        htmlTable += `<tr class="portfolio-total-row ${totalPLClass}">
+        html += `<tr class="portfolio-total-row">
             <td colspan="4" style="text-align:right;font-weight:600;">Total</td>
             <td style="font-weight:700;">${fmtMoney(totalValue)}</td>
             <td class="${totalPLClass}" style="font-weight:700;">${fmtMoney(totalPL)}</td>
-            <td class="${totalPLClass}" style="font-weight:700;">${fmtPct(totalPLPct)}</td>
+            <td></td>
         </tr>`;
-        htmlTable += '</tbody></table>';
-        const totalsCard = `<div class="portfolio-card total ${totalPLClass} wide">
-            <div class="pc-row top"><div class="pc-code">Totals</div></div>
-            <div class="pc-row mid"><div class="pc-value-label">Value</div><div class="pc-value">${fmtMoney(totalValue)}</div></div>
-            <div class="pc-row bottom ${totalPLClass}"><div class="pc-pl-label">P/L</div><div class="pc-pl-val">${fmtMoney(totalPL)}</div></div>
-        </div>`;
-    const totalPLPctDisplay = (totalCostBasis > 0) ? fmtPct((totalPL / totalCostBasis) * 100) : '0.00%';
-        const profitLossSummary = `<div class="portfolio-summary-bar two-cards">
-            <div class="ps-card profit highlight">
-                <div class="ps-label">Profit</div>
-                <div class="ps-value">${fmtMoney(profitPLSum)}</div>
-            </div>
-            <div class="ps-card loss highlight">
-                <div class="ps-label">Loss</div>
-                <div class="ps-value">${fmtMoney(Math.abs(lossPLSum))}</div>
-            </div>
-        </div>`;
-    const htmlCards = `<div class="portfolio-cards">${cards.join('')}<div class="totals-footer-wrapper">${totalsCard}</div></div>`;
-        portfolioListContainer.innerHTML = profitLossSummary + htmlTable + htmlCards;
+        html += '</tbody></table>';
+        portfolioListContainer.innerHTML = html;
 
         // Make portfolio rows interactive: click to open details; right-click to open context menu
-    const rows = portfolioListContainer.querySelectorAll('table.portfolio-table tbody tr, .portfolio-cards .portfolio-card');
+        const rows = portfolioListContainer.querySelectorAll('table.portfolio-table tbody tr');
         rows.forEach(row => {
             if (row.classList.contains('portfolio-total-row')) return; // skip totals
             const docId = row.getAttribute('data-doc-id');
@@ -412,8 +346,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // from the <script type="module"> block in index.html.
 
 // --- GLOBAL VARIABLES ---
-let DEBUG_MODE = false; // Quiet by default; enable via window.toggleDebug(true)
-window.toggleDebug = (on) => { DEBUG_MODE = !!on; console.log('Debug mode', DEBUG_MODE ? 'ENABLED' : 'DISABLED'); };
+const DEBUG_MODE = true; // Set to 'true' to enable debug logging for troubleshooting Portfolio dropdown
 
 // Custom logging function to control verbosity
 function logDebug(message, ...optionalParams) {
@@ -449,17 +382,6 @@ const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
 const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
 let userWatchlists = []; // Stores all watchlists for the user
 let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
-// Restore last selected view (persisted)
-try {
-    const lastView = localStorage.getItem('lastSelectedView');
-    if (lastView === 'portfolio') {
-        currentSelectedWatchlistIds = ['portfolio'];
-        // Defer actual DOM switch until initial data load completes; hook into data load readiness
-        window.addEventListener('load', () => {
-            setTimeout(() => { if (typeof showPortfolioView === 'function') showPortfolioView(); }, 300);
-        });
-    }
-} catch(e) { /* ignore */ }
 const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
 const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
 let currentSortOrder = 'entryDate-desc'; // Default sort order
@@ -474,7 +396,10 @@ const APP_VERSION = 'v0.1.4';
 
 
 // Live Price Data
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
+// IMPORTANT: This URL is the exact string provided in your initial script.js file.
+// If CORS errors persist, the solution is to redeploy your Google Apps Script with "Anyone, even anonymous" access
+// and then update this constant with the NEW URL provided by Google Apps Script.
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzktFj2KTZ7Z77L6XOIo0zxjmN-nVvEE2cuq_iZFQLZjT4lnli3pILhH15H9AzNWL0/exec'; // This is your NEW development Apps Script URL
 let livePrices = {}; // Stores live price data: {ASX_CODE: {live: price, prevClose: price, PE: value, High52: value, Low52: value, targetHit: boolean, lastLivePrice: value, lastPrevClose: value}} 
 let livePriceFetchInterval = null; // To hold the interval ID for live price updates
 const LIVE_PRICE_FETCH_INTERVAL_MS = 5 * 60 * 1000; // Fetch every 5 minutes
@@ -721,133 +646,23 @@ const cashFormInputs = [
 
 
 // --- GLOBAL HELPER FUNCTIONS ---
-const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
 
-async function fetchLivePricesAndUpdateUI() {
-    logDebug('UI: Refresh Live Prices button clicked.');
-    // Show a loading state if needed
-    // You may have a function like showLoadingIndicator();
-    
-    // Call the newly updated live price fetch function
-    await fetchLivePrices();
-
-    // Hide the loading state
-    // You may have a function like hideLoadingIndicator();
-}
-
-/**
- * Fetches live price data from the Google Apps Script Web App.
- * Updates the `livePrices` global object.
- */
-async function fetchLivePrices() {
-    logDebug('Live Price: Fetching from Apps Script...');
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-        logDebug('Live Price: Skipped (cash view).');
-        window._livePricesLoaded = true;
-        hideSplashScreenIfReady();
-        return;
-    }
-    try {
-        // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
-        const url = typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' ? GOOGLE_APPS_SCRIPT_URL : (typeof appsScriptUrl !== 'undefined' ? appsScriptUrl : null);
-        if (!url) throw new Error('Apps Script URL not defined');
-        const response = await fetch(url, { cache: 'no-store' }); // no-store to avoid stale cached 302 chain
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        const data = await response.json();
-        if (!Array.isArray(data)) {
-            console.warn('Live Price: Response not an array, got:', data);
-            window._livePricesLoaded = true; hideSplashScreenIfReady(); return;
-        }
-        if (DEBUG_MODE && data[0]) console.log('Live Price: Sample keys', Object.keys(data[0]));
-
-        const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
-        const needed = haveShares ? new Set(allSharesData.filter(s => s && s.shareName).map(s => s.shareName.toUpperCase())) : null;
-        const LOG_LIMIT = 30;
-        let skipped = 0, skippedLogged = 0, accepted = 0, surrogate = 0, filtered = 0;
-        const newLivePrices = {};
-
-        // Helper: normalize numeric fields; treat null / undefined / '' / '#N/A' as null
-        const numOrNull = v => {
-            if (v === null || v === undefined) return null;
-            if (typeof v === 'string') {
-                const t = v.trim();
-                if (!t || t.toUpperCase() === '#N/A') return null;
-                const parsed = parseFloat(t.replace(/,/g,''));
-                return isNaN(parsed) ? null : parsed;
-            }
-            if (typeof v === 'number') return isNaN(v) ? null : v;
-            return null;
-        };
-
-        data.forEach(item => {
-            if (!item) return;
-            const codeRaw = item.ASXCode || item.ASX_Code || item['ASX Code'] || item.Code || item.code;
-            if (!codeRaw) return; // no code
-            const code = String(codeRaw).toUpperCase().trim();
-            if (!code) return;
-            if (needed && !needed.has(code)) { filtered++; return; }
-
-            const liveParsed = numOrNull(item.LivePrice || item['Live Price'] || item.live || item.price);
-            const prevParsed = numOrNull(item.PrevClose || item['Prev Close'] || item.previous || item.prev || item.prevClose);
-            const peParsed = numOrNull(item.PE || item['PE Ratio'] || item.pe);
-            const high52Parsed = numOrNull(item.High52 || item['High52'] || item['High 52'] || item['52WeekHigh'] || item['52 High']);
-            const low52Parsed = numOrNull(item.Low52 || item['Low52'] || item['Low 52'] || item['52WeekLow'] || item['52 Low']);
-
-            const hasLive = liveParsed !== null;
-            const hasPrev = prevParsed !== null;
-            const effectiveLive = hasLive ? liveParsed : (hasPrev ? prevParsed : NaN);
-            if (isNaN(effectiveLive)) {
-                skipped++; if (DEBUG_MODE && skippedLogged < LOG_LIMIT) { console.warn('Live Price skip (no usable price)', code, item); skippedLogged++; }
-                return;
-            }
-            if (!hasLive && hasPrev) surrogate++;
-            accepted++;
-
-            // Target evaluation
-            const shareData = haveShares ? allSharesData.find(s => s && s.shareName && s.shareName.toUpperCase() === code) : null;
-            const targetPrice = shareData && !isNaN(parseFloat(shareData.targetPrice)) ? parseFloat(shareData.targetPrice) : undefined;
-            const dir = shareData && shareData.targetDirection ? shareData.targetDirection : 'below';
-            let hit = false;
-            if (targetPrice !== undefined) {
-                hit = dir === 'above' ? (effectiveLive >= targetPrice) : (effectiveLive <= targetPrice);
-            }
-
-            const companyName = (item.CompanyName || item['Company Name'] || item.Name || item.name || '').toString().trim() || null;
-            if (companyName && Array.isArray(allAsxCodes) && !allAsxCodes.some(c => c.code === code)) {
-                allAsxCodes.push({ code, name: companyName });
-            }
-
-            newLivePrices[code] = {
-                live: effectiveLive,
-                prevClose: hasPrev ? prevParsed : null,
-                PE: peParsed,
-                High52: high52Parsed,
-                Low52: low52Parsed,
-                targetHit: hit,
-                lastLivePrice: effectiveLive,
-                lastPrevClose: hasPrev ? prevParsed : null,
-                surrogateFromPrevClose: (!hasLive && hasPrev) || undefined,
-                companyName: companyName || undefined
-            };
-        });
-
-        livePrices = newLivePrices;
-        if (DEBUG_MODE) {
-            const parts = [`accepted=${accepted}`];
-            if (surrogate) parts.push(`surrogate=${surrogate}`);
-            if (skipped) parts.push(`skipped=${skipped}`);
-            if (filtered) parts.push(`filtered=${filtered}`);
-            if (skipped > LOG_LIMIT) parts.push(`skippedNotLogged=${skipped - LOG_LIMIT}`);
-            console.log('Live Price: Summary ' + parts.join(', '));
-        }
-        onLivePricesUpdated();
-        window._livePricesLoaded = true;
-        hideSplashScreenIfReady();
-        updateTargetHitBanner();
-    } catch (e) {
-        console.error('Live Price: Fetch error', e);
-        window._livePricesLoaded = true;
-        hideSplashScreenIfReady();
+// Helper to format decimals: always show 2 decimals, show 3 only if user entered it
+function formatUserDecimalStrict(value) {
+    if (value === null || isNaN(value)) return '';
+    let str = value.toString();
+    if (!str.includes('.')) return value.toFixed(2); // No decimals entered
+    let [intPart, decPart] = str.split('.');
+    if (decPart.length === 3) {
+        // User entered 3 decimals
+        return intPart + '.' + decPart;
+    } else if (decPart.length === 2) {
+        return intPart + '.' + decPart;
+    } else if (decPart.length === 1) {
+        return intPart + '.' + decPart.padEnd(2, '0');
+    } else {
+        // More than 3 decimals, round to 3
+        return Number(value).toFixed(3);
     }
 }
 
@@ -3093,8 +2908,8 @@ function renderWatchlist() {
         if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
         // Update title
         if (mainTitle) mainTitle.textContent = 'Portfolio';
-    // Show sort dropdown in portfolio too
-    sortSelect.classList.remove('app-hidden');
+        // Hide/disable stock-only controls
+        sortSelect.classList.add('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
         toggleCompactViewBtn.classList.add('app-hidden');
         exportWatchlistBtn.classList.remove('app-hidden'); // Allow export if desired
@@ -3268,22 +3083,19 @@ function renderAsxCodeButtons() {
         // Determine price change class for the button
         let buttonPriceChangeClass = '';
         const livePriceData = livePrices[asxCode.toUpperCase()];
-        if (livePriceData) {
-            // Fallback logic: use current values else last fetched values
-            const latestLive = (livePriceData.live !== null && !isNaN(livePriceData.live)) ? livePriceData.live : (livePriceData.lastLivePrice ?? null);
-            const latestPrev = (livePriceData.prevClose !== null && !isNaN(livePriceData.prevClose)) ? livePriceData.prevClose : (livePriceData.lastPrevClose ?? null);
-            if (latestLive !== null && latestPrev !== null && !isNaN(latestLive) && !isNaN(latestPrev)) {
-                const change = latestLive - latestPrev;
-                if (change > 0) buttonPriceChangeClass = 'positive'; else if (change < 0) buttonPriceChangeClass = 'negative'; else buttonPriceChangeClass = 'neutral';
+        if (livePriceData && livePriceData.live !== null && livePriceData.prevClose !== null && !isNaN(livePriceData.live) && !isNaN(livePriceData.prevClose)) {
+            const change = livePriceData.live - livePriceData.prevClose;
+            if (change > 0) {
+                buttonPriceChangeClass = 'positive';
+            } else if (change < 0) {
+                buttonPriceChangeClass = 'negative';
+            } else {
+                buttonPriceChangeClass = 'neutral';
             }
         }
         // Apply color class based on price change
         if (buttonPriceChangeClass) {
             button.classList.add(buttonPriceChangeClass);
-        }
-        // Additional context class when in portfolio for stronger theme coloring
-        if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] === 'portfolio') {
-            button.classList.add('portfolio-context');
         }
 
         // Add target-hit-border class if this ASX code has a target hit AND not dismissed
@@ -3571,14 +3383,30 @@ async function loadAsxCodesFromCSV() {
  * @returns {boolean} True if the ASX is open, false otherwise.
  */
 function isAsxMarketOpen() {
-    // Manual override support: localStorage key 'marketStatusOverride' can be 'open' or 'closed'
-    try {
-        const override = localStorage.getItem('marketStatusOverride');
-        if (override === 'open') return true;
-        if (override === 'closed') return false;
-    } catch (e) { /* ignore */ }
-    // Simplified: treat market as open by default per user preference (always show live styling)
-    // Optionally, you can reintroduce custom windows here.
+    const now = new Date();
+    // Get current date and time in Sydney timezone
+    const sydneyDate = new Date(now.toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
+    const dayOfWeek = sydneyDate.getDay(); // Sunday: 0, Monday: 1, ..., Saturday: 6
+    const hours = sydneyDate.getHours();
+    const minutes = sydneyDate.getMinutes();
+
+    // The market is considered "closed" from Monday at 12:01 AM until Thursday at 12:01 AM.
+    // This means it is closed on Monday (after 00:00), Tuesday, and Wednesday, and for the first minute of Thursday.
+
+    // It's closed on Monday (after 12:00 AM), Tuesday, or Wednesday.
+    if ((dayOfWeek === 1 && (hours > 0 || minutes > 0)) || dayOfWeek === 2 || dayOfWeek === 3) {
+        logDebug('Market Status: Market is closed (custom hours).');
+        return false;
+    }
+
+    // It's closed for the first minute of Thursday (00:00).
+    if (dayOfWeek === 4 && hours === 0 && minutes === 0) {
+        logDebug('Market Status: Market is closed (custom hours).');
+        return false;
+    }
+
+    // For all other times, the market is open.
+    logDebug('Market Status: Market is open (custom hours).');
     return true;
 }
 function calculateFrankedYield(dividendAmount, currentPrice, frankingCreditsPercentage) {
@@ -3914,6 +3742,98 @@ async function loadUserWatchlistsAndSettings() {
 }
 
 /**
+ * Fetches live price data from the Google Apps Script Web App.
+ * Updates the `livePrices` global object.
+ */
+async function fetchLivePrices() {
+    console.log('Live Price: Attempting to fetch live prices...');
+    // Only fetch live prices if a stock-related watchlist is selected
+    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+        console.log('Live Price: Skipping live price fetch because "Cash & Assets" is selected.');
+        window._livePricesLoaded = true; // Mark as loaded even if skipped for splash screen
+        hideSplashScreenIfReady();
+        return;
+    }
+
+    try {
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL); 
+        if (!response.ok) {
+            throw new Error('HTTP error! status: ' + response.status);
+        }
+        const data = await response.json();
+        console.log('Live Price: Raw data received:', data); 
+
+        const newLivePrices = {};
+        data.forEach(item => {
+            const asxCode = String(item.ASXCode).toUpperCase();
+            const livePrice = parseFloat(item.LivePrice);
+            const prevClose = parseFloat(item.PrevClose); 
+            const pe = parseFloat(item.PE);
+            const high52 = parseFloat(item.High52);
+            const low52 = parseFloat(item.Low52);
+
+    if (asxCode && livePrice !== null && !isNaN(livePrice)) {
+    // Find the corresponding share in allSharesData to get its targetPrice
+    const shareData = allSharesData.find(s => s.shareName.toUpperCase() === asxCode);
+    // Ensure targetPrice is parsed as a number, handling null/undefined/NaN
+    const targetPrice = shareData && shareData.targetPrice !== null && !isNaN(parseFloat(shareData.targetPrice))
+        ? parseFloat(shareData.targetPrice)
+        : undefined;
+
+    // Determine if target is hit based on targetDirection (new field) or default to 'below' for old shares
+            // Ensure shareData exists and has targetDirection, otherwise default to 'below'
+            const targetDirection = shareData && shareData.targetDirection ? shareData.targetDirection : 'below'; 
+
+            let isTargetHit = false;
+            if (targetPrice !== undefined && livePrice !== null && !isNaN(livePrice)) { // Only check if targetPrice and livePrice are valid
+                if (targetDirection === 'above') {
+                    isTargetHit = (livePrice >= targetPrice);
+                } else { // 'below' or any other unexpected value, including older shares
+                    isTargetHit = (livePrice <= targetPrice);
+                }
+            }
+
+    newLivePrices[asxCode] = {
+        live: livePrice,
+        prevClose: isNaN(prevClose) ? null : prevClose,
+        PE: isNaN(pe) ? null : pe,
+        High52: isNaN(high52) ? null : high52,
+        Low52: isNaN(low52) ? null : low52,
+        targetHit: isTargetHit,
+        // Store the fetched live and prevClose prices for use when market is closed
+        lastLivePrice: livePrice,
+        lastPrevClose: isNaN(prevClose) ? null : prevClose
+    };
+} else {
+    if (DEBUG_MODE) {
+        console.warn('Live Price: Skipping item due to missing ASX code or invalid price:', item);
+    }
+}
+        });
+        livePrices = newLivePrices;
+        console.log('Live Price: Live prices updated:', livePrices);
+        
+        // AGGRESSIVE FIX: Explicitly call onLivePricesUpdated to ensure proper sorting
+        onLivePricesUpdated();
+        
+        // AGGRESSIVE FIX: Force apply current sort order after live prices load
+        forceApplyCurrentSort();
+        
+        // After fetching new prices, always re-sort and re-render the watchlist.
+        // This ensures all data, including percentage changes, is correctly displayed.
+        sortShares();
+        adjustMainContentPadding(); 
+        window._livePricesLoaded = true;
+        hideSplashScreenIfReady();
+        updateTargetHitBanner(); // Explicitly update banner after prices are fresh
+    } catch (error) {
+        console.error('Live Price: Error fetching live prices:', error);
+        // NEW: Hide splash screen on error
+        hideSplashScreen();
+    }
+}
+
+/**
  * Starts the periodic fetching of live prices.
  */
 function startLivePriceUpdates() {
@@ -4077,13 +3997,6 @@ function hideSplashScreenIfReady() {
         if (splashScreenReady) { // Ensure splash screen itself is ready to be hidden
             logDebug('Splash Screen: All data loaded and ready. Hiding splash screen.');
             hideSplashScreen();
-            // If user last viewed portfolio, ensure portfolio view is shown now that data is ready
-            try {
-                const lastView = localStorage.getItem('lastSelectedView');
-                if (lastView === 'portfolio' && typeof showPortfolioView === 'function') {
-                    showPortfolioView();
-                }
-            } catch(e) {}
         } else {
             logDebug('Splash Screen: Data loaded, but splash screen not yet marked as ready. Will hide when ready.');
         }
@@ -5855,92 +5768,40 @@ async function initializeAppLogic() {
     // Its functionality is now handled by splashSignInBtn.
 
     // NEW: Splash Screen Sign-In Button
-    // Helper to update splash sign-in button UI states for better desktop UX
-    function updateSplashSignInButtonState(state, detail) {
-        if (!splashSignInBtn) return;
-        const span = splashSignInBtn.querySelector('span');
-        switch (state) {
-            case 'idle':
-                splashSignInBtn.disabled = false;
-                if (span) span.textContent = 'Sign in with Google';
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-                break;
-            case 'loading':
-                splashSignInBtn.disabled = true;
-                if (span) span.textContent = 'Signing in…';
-                if (splashKangarooIcon) splashKangarooIcon.classList.add('pulsing');
-                break;
-            case 'retry':
-                splashSignInBtn.disabled = false;
-                if (span) span.textContent = detail || 'Try again (popup blocked?)';
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-                break;
-            case 'error':
-                splashSignInBtn.disabled = false;
-                if (span) span.textContent = detail || 'Retry Sign-In';
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-                break;
-        }
-    }
-
     if (splashSignInBtn) {
-        let splashSignInRetryTimer = null;
         splashSignInBtn.addEventListener('click', async () => {
             logDebug('Auth: Splash Screen Sign-In Button Clicked.');
             const currentAuth = window.firebaseAuth;
             if (!currentAuth || !window.authFunctions) {
                 console.warn('Auth: Auth service not ready or functions not loaded. Cannot process splash sign-in.');
                 showCustomAlert('Authentication service not ready. Please try again in a moment.');
-                updateSplashSignInButtonState('error', 'Retry (service not ready)');
                 return;
             }
             try {
-                updateSplashSignInButtonState('loading');
+                // Start pulsing animation immediately on click
+                if (splashKangarooIcon) {
+                    splashKangarooIcon.classList.add('pulsing');
+                    logDebug('Splash Screen: Started pulsing animation on sign-in click.');
+                }
+                splashSignInBtn.disabled = true; // Disable button to prevent multiple clicks
+                
                 const provider = window.authFunctions.GoogleAuthProviderInstance;
                 if (!provider) {
                     console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
-                    showCustomAlert('Authentication service not ready. Firebase script missing.');
-                    updateSplashSignInButtonState('error', 'Retry (init issue)');
+                    showCustomAlert('Authentication service not ready. Please ensure Firebase module script is loaded.');
+                    splashSignInBtn.disabled = false; // Re-enable on error
+                    if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing'); // Stop animation on error
                     return;
                 }
-
-                // Start timeout to auto-enable retry if popup blocked or user closes it silently
-                if (splashSignInRetryTimer) clearTimeout(splashSignInRetryTimer);
-                splashSignInRetryTimer = setTimeout(() => {
-                    if (!window._userAuthenticated) {
-                        logDebug('Auth: Sign-in timeout elapsed without auth state change. Enabling retry.');
-                        updateSplashSignInButtonState('retry');
-                    }
-                }, 7000);
-
                 await window.authFunctions.signInWithPopup(currentAuth, provider);
                 logDebug('Auth: Google Sign-In successful from splash screen.');
-                if (splashSignInRetryTimer) {
-                    clearTimeout(splashSignInRetryTimer);
-                    splashSignInRetryTimer = null;
-                }
-                // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
+                // The onAuthStateChanged listener will handle hiding the splash screen
             }
             catch (error) {
-                if (splashSignInRetryTimer) {
-                    clearTimeout(splashSignInRetryTimer);
-                    splashSignInRetryTimer = null;
-                }
                 console.error('Auth: Google Sign-In failed from splash screen: ' + error.message);
-                let userMsg = 'Google Sign-In failed';
-                if (error.code === 'auth/popup-blocked') {
-                    userMsg = 'Popup blocked by browser. Allow popups & retry.';
-                    updateSplashSignInButtonState('retry', 'Retry (allow popup)');
-                } else if (error.code === 'auth/popup-closed-by-user') {
-                    userMsg = 'Popup closed. Click retry.';
-                    updateSplashSignInButtonState('retry', 'Retry (popup closed)');
-                } else if (error.code === 'auth/cancelled-popup-request') {
-                    userMsg = 'Popup request cancelled. Try again.';
-                    updateSplashSignInButtonState('retry', 'Retry sign-in');
-                } else {
-                    updateSplashSignInButtonState('error');
-                }
-                showCustomAlert(userMsg + ': ' + error.message);
+                showCustomAlert('Google Sign-In failed: ' + error.message);
+                splashSignInBtn.disabled = false; // Re-enable on error
+                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing'); // Stop animation on error
             }
         });
     }
@@ -6961,22 +6822,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
-                // After essential data loaded, restore last view (portfolio or watchlist) unless user already interacted
-                try {
-                    const lastView = localStorage.getItem('lastSelectedView');
-                    if (lastView === 'portfolio') {
-                        showPortfolioView();
-                    } else if (lastView && lastView !== 'portfolio' && typeof watchlistSelect !== 'undefined' && watchlistSelect) {
-                        // Attempt to set dropdown so renderWatchlist picks correct list
-                        const opt = Array.from(watchlistSelect.options).find(o => o.value === lastView);
-                        if (opt) {
-                            watchlistSelect.value = lastView;
-                            // Ensure internal selection array updated (mimic change)
-                            currentSelectedWatchlistIds = [lastView];
-                            renderWatchlist();
-                        }
-                    }
-                } catch(e) {}
             }
 
             else {
