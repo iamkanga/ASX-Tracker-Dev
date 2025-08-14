@@ -543,6 +543,7 @@ const formCompanyName = document.getElementById('formCompanyName'); // NEW: Comp
 const saveShareBtn = document.getElementById('saveShareBtn');
 const deleteShareBtn = document.getElementById('deleteShareBtn');
 const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
+const currentPriceInput = document.getElementById('currentPrice'); // Reference (reinstated) to Reference Price input
 // Centralized single-code snapshot handling
 let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
 async function updateAddFormLiveSnapshot(code) {
@@ -579,6 +580,10 @@ async function updateAddFormLiveSnapshot(code) {
         if (shareNameInput && shareNameInput.value.toUpperCase().trim() !== upper) {
             if (DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: shareNameInput.value });
             return;
+        }
+        // Prefill reference price field with latest live price (always override for accuracy)
+        if (!isNaN(live) && currentPriceInput) {
+            currentPriceInput.value = Number(live).toFixed(2);
         }
         addShareLivePriceDisplay.innerHTML = `
             <div class="fifty-two-week-row">
@@ -6695,61 +6700,11 @@ async function initializeAppLogic() {
         let currentSuggestions = []; // Stores the current filtered suggestions
         // Helper to centralize quick-add behavior and reduce duplication.
         function quickAddFromSearch(code, name) {
+            // Two-step workflow enforcement: only display research; don't open Add Share modal here.
             if (!code) return;
-            window.lastSelectedSearchCode = code; // Track for fallback observer
-            try {
-                const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === code);
-                hideModal(stockSearchModal);
-                if (existingShare) {
-                    showEditFormForSelectedShare(existingShare.id);
-                } else {
-                    clearForm();
-                    formTitle.textContent = 'Add New Share';
-                    selectedShareDocId = null;
-                    if (shareNameInput) {
-                        shareNameInput.value = code;
-                        shareNameInput.classList.add('autofill-pulse');
-                        setTimeout(()=> shareNameInput && shareNameInput.classList.remove('autofill-pulse'), 900);
-                    }
-                    if (formCompanyName) formCompanyName.textContent = name || '';
-                    populateShareWatchlistSelect(null, true);
-                    if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
-                        addCommentSection(commentsFormContainer);
-                    }
-                    showModal(shareFormSection);
-                    if (shareNameInput) shareNameInput.focus();
-                    checkFormDirtyState();
-                    updateAddFormLiveSnapshot(code);
-                    // Install a short-lived MutationObserver to enforce autofill if something clears it
-                    try {
-                        if (shareNameInput && typeof MutationObserver !== 'undefined') {
-                            let enforceCount = 0;
-                            const mo = new MutationObserver(() => {
-                                if (!shareNameInput.value && window.lastSelectedSearchCode) {
-                                    shareNameInput.value = window.lastSelectedSearchCode;
-                                    if (formCompanyName && (!formCompanyName.textContent || formCompanyName.textContent === '')) {
-                                        formCompanyName.textContent = name || '';
-                                    }
-                                }
-                                if (++enforceCount > 5) { mo.disconnect(); }
-                            });
-                            mo.observe(shareNameInput, { attributes:true, attributeFilter:['value'] });
-                            // Safety cleanup after 3s
-                            setTimeout(()=> mo.disconnect(), 3000);
-                        }
-                    } catch(_) {}
-                }
-                // Post-hide verification fallback (rare race where value not applied)
-                setTimeout(() => {
-                    if (shareFormSection && !shareFormSection.classList.contains('app-hidden') && shareNameInput && shareNameInput.value.trim() !== code) {
-                        console.warn('[QuickAdd] Fallback applied to enforce code in input');
-                        shareNameInput.value = code;
-                        if (formCompanyName && (!formCompanyName.textContent || formCompanyName.textContent === '')) {
-                            formCompanyName.textContent = name || '';
-                        }
-                    }
-                }, 60);
-            } catch(err) { console.warn('QuickAddFromSearch failed', err); }
+            window.lastSelectedSearchCode = code;
+            // Simply trigger the research detail rendering; button inside detail view will open Add Share.
+            displayStockDetailsInSearchModal(code);
         }
 
         asxSearchInput.addEventListener('input', () => {
@@ -6784,7 +6739,6 @@ async function initializeAppLogic() {
                         asxSearchInput.value = stock.code;
                         asxSuggestions.classList.remove('active');
                         quickAddFromSearch(stock.code, stock.name);
-                        displayStockDetailsInSearchModal(stock.code);
                     };
                     div.addEventListener('pointerdown', handler, { passive: false });
                     div.addEventListener('mousedown', handler, { passive: false });
@@ -6871,7 +6825,6 @@ async function initializeAppLogic() {
                 asxSearchInput.value = code;
                 asxSuggestions.classList.remove('active');
                 quickAddFromSearch(code, name);
-                displayStockDetailsInSearchModal(code);
             });
         }
 
