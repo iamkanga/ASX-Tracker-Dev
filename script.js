@@ -65,7 +65,6 @@ function onLivePricesUpdated() {
         if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
             sortShares();
         } else {
-            // Just re-render to reflect new price values
             renderWatchlist();
         }
         if (typeof renderPortfolioList === 'function') {
@@ -77,17 +76,10 @@ function onLivePricesUpdated() {
     } catch (e) {
         console.error('Live Price: onLivePricesUpdated error:', e);
     }
-    portfolioShares.forEach(row => {
+}
 
 // Compatibility stub (legacy callsites may invoke)
-function forceApplyCurrentSort() {
-    if (currentSortOrder) {
-        // No aggressive re-sort; rely on user interactions & targeted resort triggers
-        return;
-    }
-}
-            row.addEventListener('touchstart', () => { selectedElementForTap = row; }, { passive: true });
-            row.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
+function forceApplyCurrentSort() { /* legacy no-op retained */ }
 document.addEventListener('DOMContentLoaded', function () {
     // --- Watchlist logic moved to watchlist.js ---
     // Import and call watchlist functions
