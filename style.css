@@ -278,6 +278,10 @@ table tbody tr.target-hit-alert,
 .mobile-card.target-hit-alert,
 .mobile-share-cards.compact-view .mobile-card.target-hit-alert,
 .portfolio-card.target-hit-alert { border:4px solid var(--accent-color) !important; animation: targetHitPulseBorder 2.2s ease-in-out infinite; box-sizing:border-box; border-radius:10px; }
+.target-hit-alert { will-change: box-shadow, border-color; }
+/* Ensure compact view target-hit matches full 4px spec (remove legacy 2px override) */
+.mobile-share-cards.compact-view .mobile-card.target-hit-alert { border-width:4px; }
+
 
 /* Remove side-only borders when target-hit applies (force full border clarity) */
 table tbody tr.target-hit-alert { border-left:4px solid var(--accent-color) !important; border-right:4px solid var(--accent-color) !important; }
@@ -2321,7 +2325,7 @@ body.dark-theme .external-links-grid .external-link { background:var(--card-bg);
 /* Thicker target-hit border refinement */
 .mobile-card.target-hit-alert, 
 .portfolio-card.target-hit-alert, 
-tr.target-hit-alert { 
+tr.target-hit-alert {
     border:2px solid var(--green-color,#2ECC71) !important; 
     box-shadow:0 0 0 2px var(--green-color,#2ECC71) inset; 
 }
@@ -2331,7 +2335,7 @@ tr.target-hit-alert {
     outline:2px solid var(--green-color,#2ECC71); outline-offset:0; 
 }
 /* Compact view ensure full border retained */
-.mobile-share-cards.compact-view .mobile-card.target-hit-alert { border-width:2px; }
+/* Removed legacy 2px compact override (now unified at 4px) */
 @media (max-width:600px){
     .share-detail-sections { grid-template-columns:1fr; }
     .share-detail-sections .detail-card { padding:12px 14px 14px; }
@@ -3291,7 +3295,7 @@ table tbody tr.target-hit-alert,
 /* Removed old target-hit shadow; new border handled globally */
 .mobile-card.target-hit-alert, 
 .portfolio-card.target-hit-alert, 
-tr.target-hit-alert { 
+tr.target-hit-alert {
     position: relative; 
     outline: none; 
     border-radius: 6px; 
