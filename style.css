@@ -5193,6 +5193,13 @@ body.dark-theme .target-hit-details-modal .modal-content {
 .target-hit-item-header .thi-left { display:flex; flex-direction:column; gap:2px; }
 .target-hit-item-header .toggle-alert-btn { margin-left:auto; white-space:nowrap; align-self:flex-start; }
 .target-hit-item .target-line { margin:0 0 2px 0; }
+/* New Notification Hub item grid layout */
+.target-hit-item-grid { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:start; }
+.target-hit-item-grid .col-left { display:flex; flex-direction:column; gap:4px; }
+.target-hit-item-grid .col-right { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+.target-hit-item-grid .live-price-display { font-size:1.05em; font-weight:700; }
+.target-hit-item-grid .toggle-alert-btn.tiny-toggle { font-size:0.70rem; padding:4px 8px; border:1px solid var(--border-color); background:var(--card-bg); color:var(--text-color); border-radius:6px; cursor:pointer; line-height:1.1; }
+.target-hit-item-grid .toggle-alert-btn.tiny-toggle:hover { background:var(--button-hover-bg); color:#fff; }
 
 .target-hit-item .share-name-code {
     font-size: 1.1em;

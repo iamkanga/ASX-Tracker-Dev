@@ -3378,6 +3378,32 @@ function showShareDetails() {
         }
     }
 
+    /* Hide empty sections for a cleaner view */
+    try {
+        // Dividends section: assume elements with IDs dividendAmountDisplay, frankingCreditsDisplay and wrapper dividendSection
+        const dividendSection = document.getElementById('dividendSection');
+        const dividendAmountDisplay = document.getElementById('dividendAmountDisplay');
+        const frankingCreditsDisplay = document.getElementById('frankingCreditsDisplay');
+        const hasDividend = share.dividendAmount && !isNaN(Number(share.dividendAmount)) && Number(share.dividendAmount) !== 0;
+        const hasFranking = share.frankingCredits && !isNaN(Number(share.frankingCredits)) && Number(share.frankingCredits) !== 0;
+        if (dividendSection) {
+            if (!hasDividend && !hasFranking) {
+                dividendSection.style.display = 'none';
+            } else {
+                dividendSection.style.display = '';
+            }
+        }
+        if (dividendAmountDisplay) dividendAmountDisplay.textContent = hasDividend ? ('$' + Number(share.dividendAmount).toFixed(3)) : '';
+        if (frankingCreditsDisplay) frankingCreditsDisplay.textContent = hasFranking ? (Number(share.frankingCredits) + '%') : '';
+
+        // Comments section: assume wrapper with ID commentsSection and comments array on share
+        const commentsSection = document.getElementById('commentsSection');
+        if (commentsSection) {
+            const hasComments = Array.isArray(share.comments) && share.comments.some(c => c && (c.text || c.comment));
+            commentsSection.style.display = hasComments ? '' : 'none';
+        }
+    } catch(e) { console.warn('Hide Empty Sections: issue applying visibility', e); }
+
     modalTargetPrice.innerHTML = `
         ${targetNotificationMessage ? `<span class="ghosted-text">${targetNotificationMessage}</span>` : ''}
         ${targetNotificationMessage && displayTargetPrice ? ' ' : ''} ${displayTargetPrice}
@@ -4535,8 +4561,10 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 clearForm(); // Start clean add flow
                 userManuallyOverrodeDirection = false;
                 formTitle.textContent = 'Add New Share'; // Set title for new share
-                if (shareNameInput) shareNameInput.value = currentSearchShareData.shareCode; // Pre-fill code
-                if (formCompanyName) formCompanyName.textContent = currentSearchShareData.companyName || '';
+                if (currentSearchShareData) {
+                    if (shareNameInput) shareNameInput.value = currentSearchShareData.shareCode || currentSearchShareData.shareName || '';
+                    if (formCompanyName) formCompanyName.textContent = currentSearchShareData.companyName || '';
+                }
                 populateShareWatchlistSelect(null, true); // Populate and enable watchlist select for new share
                 // Default toggles to Buy+Below
                 try {
@@ -8106,14 +8134,16 @@ function showTargetHitDetailsModal() {
         if (isMuted) item.classList.add('muted');
         item.dataset.shareId = share.id;
         item.innerHTML = `
-            <div class="target-hit-item-header">
-                <div class="thi-left">
+            <div class="target-hit-item-grid">
+                <div class="col-left">
                     <span class="share-name-code ${priceClass}">${share.shareName}</span>
-                    <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
+                    <span class="target-price-line">Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? formatAdaptivePrice(Number(targetPrice)) : 'N/A'}</strong></span>
                 </div>
-                <button class="button secondary-buttons toggle-alert-btn" data-share-id="${share.id}" title="${isMuted ? 'Unmute Alert' : 'Mute Alert'}">${isMuted ? 'Unmute' : 'Mute'}</button>
+                <div class="col-right">
+                    <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
+                    <button class="toggle-alert-btn tiny-toggle" data-share-id="${share.id}" title="${isMuted ? 'Unmute Alert' : 'Mute Alert'}">${isMuted ? 'Unmute' : 'Mute'}</button>
+                </div>
             </div>
-            <p class="target-line">Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? formatAdaptivePrice(Number(targetPrice)) : 'N/A'}</strong></p>
         `;
         // Click to open share details
         item.addEventListener('click', (e) => {
