@@ -136,7 +136,8 @@ function makeFilesAvailableToSourceControlCSS() {
     /* Light Theme (Default) */
     --background-color: #eef2f3;
     --text-color: #333;
-    --header-bg: #d9e2f4;
+    /* Header adopts coffee tone for default theme */
+    --header-bg: #b8a7a7; /* slightly lighter coffee bar */
     --card-bg: #ffffff; /* Base card background for light theme (ensures P/L cards follow theme) */
     --accent-color: #a49393; /* coffee accent (standardized selection fill) */
     --border-color: #c9d2d4;
@@ -2349,6 +2350,17 @@ body.sidebar-active {
     flex-direction: column; /* Stack children vertically */
     padding: 15px 20px 0; /* Removed padding-bottom, will be determined by content + gap */
     gap: 10px; /* Space between header rows */
+}
+
+/* Neutral / no-change card styling (muted coffee fill) */
+.mobile-card.neutral, .mobile-card .neutral-change, .mobile-card.neutral-change, .mobile-card .price-neutral, .mobile-card.price-neutral {
+    background: linear-gradient(135deg, #efe9e9 0%, #e4dada 100%);
+    border: 1px solid #d3c6c6;
+}
+
+/* Optional subtle style for neutral price change badge inside cards */
+.mobile-card .price-change.neutral, .price-change.neutral {
+    color: var(--price-neutral-color);
 }
 
 /* Adjust main content padding to account for fixed header - REMOVED FROM CSS, NOW HANDLED BY JS */

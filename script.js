@@ -2179,9 +2179,12 @@ function updateOrCreateShareMobileCard(share) {
 
     // Apply card-specific price change class
     // Remove previous price change classes before adding current one
-    card.classList.remove('positive-change-card', 'negative-change-card');
+    card.classList.remove('positive-change-card', 'negative-change-card', 'neutral');
     if (cardPriceChangeClass) {
         card.classList.add(cardPriceChangeClass);
+    } else if (priceClass === 'neutral') {
+        // Tag neutral cards for muted coffee fill styling
+        card.classList.add('neutral');
     }
 
     const dividendAmount = Number(share.dividendAmount) || 0;
@@ -3407,7 +3410,8 @@ function showShareDetails() {
     if (modalMarketIndexLink && share.shareName) {
         const marketIndexUrl = 'https://www.marketindex.com.au/asx/' + share.shareName.toLowerCase();
         modalMarketIndexLink.href = marketIndexUrl;
-        modalMarketIndexLink.innerHTML = 'View ' + share.shareName.toUpperCase() + ' on MarketIndex.com.au <i class="fas fa-external-link-alt"></i>';
+    // Text no longer includes the ASX code per spec; keep consistent "View on ..." prefix
+    modalMarketIndexLink.innerHTML = 'View on MarketIndex.com.au <i class="fas fa-external-link-alt"></i>';
         modalMarketIndexLink.style.display = 'inline-flex';
         setIconDisabled(modalMarketIndexLink, false);
     } else if (modalMarketIndexLink) {
@@ -6685,6 +6689,45 @@ async function initializeAppLogic() {
     // NEW: Autocomplete Search Input Listeners for Stock Search Modal (Consolidated & Corrected)
     if (asxSearchInput) {
         let currentSuggestions = []; // Stores the current filtered suggestions
+        // Helper to centralize quick-add behavior and reduce duplication.
+        function quickAddFromSearch(code, name) {
+            if (!code) return;
+            try {
+                const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === code);
+                hideModal(stockSearchModal);
+                if (existingShare) {
+                    showEditFormForSelectedShare(existingShare.id);
+                } else {
+                    clearForm();
+                    formTitle.textContent = 'Add New Share';
+                    selectedShareDocId = null;
+                    if (shareNameInput) {
+                        shareNameInput.value = code;
+                        shareNameInput.classList.add('autofill-pulse');
+                        setTimeout(()=> shareNameInput && shareNameInput.classList.remove('autofill-pulse'), 900);
+                    }
+                    if (formCompanyName) formCompanyName.textContent = name || '';
+                    populateShareWatchlistSelect(null, true);
+                    if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
+                        addCommentSection(commentsFormContainer);
+                    }
+                    showModal(shareFormSection);
+                    if (shareNameInput) shareNameInput.focus();
+                    checkFormDirtyState();
+                    updateAddFormLiveSnapshot(code);
+                }
+                // Post-hide verification fallback (rare race where value not applied)
+                setTimeout(() => {
+                    if (shareFormSection && !shareFormSection.classList.contains('app-hidden') && shareNameInput && shareNameInput.value.trim() !== code) {
+                        console.warn('[QuickAdd] Fallback applied to enforce code in input');
+                        shareNameInput.value = code;
+                        if (formCompanyName && (!formCompanyName.textContent || formCompanyName.textContent === '')) {
+                            formCompanyName.textContent = name || '';
+                        }
+                    }
+                }, 60);
+            } catch(err) { console.warn('QuickAddFromSearch failed', err); }
+        }
 
         asxSearchInput.addEventListener('input', () => {
             const query = asxSearchInput.value.trim().toUpperCase();
@@ -6705,66 +6748,27 @@ async function initializeAppLogic() {
             ).slice(0, 10); // Limit to top 10 suggestions
 
             if (currentSuggestions.length > 0) {
-                currentSuggestions.forEach((stock, index) => {
+                currentSuggestions.forEach((stock) => {
                     const div = document.createElement('div');
                     div.classList.add('suggestion-item');
                     div.textContent = `${stock.code} - ${stock.name}`;
-                    div.dataset.code = stock.code; // Store the code for easy access
-                    div.dataset.name = stock.name; // Store the company name
-                    div.addEventListener('click', () => {
-                            console.log('[Autocomplete] Click suggestion', stock.code, stock.name);
-                        // Immediate quick-add workflow: open form (edit if existing, else new) BEFORE async fetch
-                        asxSearchInput.value = stock.code; // Reflect selection in input for clarity
-                        asxSuggestions.classList.remove('active'); // Hide suggestions
-                        try {
-                            const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === stock.code);
-                            if (existingShare) {
-                                hideModal(stockSearchModal);
-                                showEditFormForSelectedShare(existingShare.id);
-                            } else {
-                                // Open a fresh Add New Share form optimistically
-                                hideModal(stockSearchModal);
-                                clearForm();
-                                formTitle.textContent = 'Add New Share';
-                                selectedShareDocId = null;
-                                if (shareNameInput) {
-                                    shareNameInput.value = stock.code;
-                                    // Brief highlight to confirm autofill
-                                    shareNameInput.classList.add('autofill-pulse');
-                                    setTimeout(()=> shareNameInput.classList.remove('autofill-pulse'), 900);
-                                }
-                                if (formCompanyName) formCompanyName.textContent = stock.name || '';
-                                // Default intent/direction only if unset
-                                try {
-                                    if (targetIntentBuyBtn && targetIntentSellBtn) {
-                                        targetIntentBuyBtn.classList.add('is-active');
-                                        targetIntentBuyBtn.setAttribute('aria-pressed','true');
-                                        targetIntentSellBtn.classList.remove('is-active');
-                                        targetIntentSellBtn.setAttribute('aria-pressed','false');
-                                    }
-                                    if (targetAboveCheckbox && targetBelowCheckbox) { targetAboveCheckbox.checked = false; targetBelowCheckbox.checked = true; }
-                                    if (targetDirAboveBtn && targetDirBelowBtn) {
-                                        targetDirAboveBtn.classList.remove('is-active'); targetDirAboveBtn.setAttribute('aria-pressed','false');
-                                        targetDirBelowBtn.classList.add('is-active'); targetDirBelowBtn.setAttribute('aria-pressed','true');
-                                    }
-                                } catch(_){}
-                                populateShareWatchlistSelect(null, true);
-                                if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
-                                    addCommentSection(commentsFormContainer);
-                                }
-                                showModal(shareFormSection);
-                                if (shareNameInput) shareNameInput.focus();
-                                checkFormDirtyState();
-                                // Kick off snapshot fetch centrally
-                                updateAddFormLiveSnapshot(stock.code);
-                            }
-                        } catch(e) { console.warn('QuickAdd: Failed to open form from search suggestion', e); }
-                        // Continue with full fetch & detailed snapshot (will also auto-populate if new)
+                    div.dataset.code = stock.code;
+                    div.dataset.name = stock.name;
+                    // Use pointerdown/mousedown to capture before blur/hide
+                    const handler = (ev) => {
+                        ev.preventDefault();
+                        console.log('[Autocomplete] Select suggestion', stock.code, stock.name);
+                        asxSearchInput.value = stock.code;
+                        asxSuggestions.classList.remove('active');
+                        quickAddFromSearch(stock.code, stock.name);
                         displayStockDetailsInSearchModal(stock.code);
-                    });
+                    };
+                    div.addEventListener('pointerdown', handler, { passive: false });
+                    div.addEventListener('mousedown', handler, { passive: false });
+                    div.addEventListener('click', handler); // fallback
                     asxSuggestions.appendChild(div);
                 });
-                asxSuggestions.classList.add('active'); // Show suggestions
+                asxSuggestions.classList.add('active');
             } else {
                 asxSuggestions.classList.remove('active'); // Hide suggestions if no matches
                 searchResultDisplay.innerHTML = '<p class="initial-message">No matching stocks found.</p>';
@@ -6826,32 +6830,7 @@ async function initializeAppLogic() {
                 const name = header.getAttribute('data-name');
                 console.log('[Autocomplete] Header fallback click', code, name);
                 if (!code) return;
-                try {
-                    const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === code.toUpperCase());
-                    if (existingShare) {
-                        hideModal(stockSearchModal);
-                        showEditFormForSelectedShare(existingShare.id);
-                    } else {
-                        hideModal(stockSearchModal);
-                        clearForm();
-                        formTitle.textContent = 'Add New Share';
-                        selectedShareDocId = null;
-                        if (shareNameInput) shareNameInput.value = code;
-                        if (formCompanyName) formCompanyName.textContent = name || '';
-                        if (shareNameInput) {
-                            shareNameInput.classList.add('autofill-pulse');
-                            setTimeout(()=> shareNameInput.classList.remove('autofill-pulse'), 900);
-                        }
-                        populateShareWatchlistSelect(null, true);
-                        if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
-                            addCommentSection(commentsFormContainer);
-                        }
-                        showModal(shareFormSection);
-                        if (shareNameInput) shareNameInput.focus();
-                        checkFormDirtyState();
-                        updateAddFormLiveSnapshot(code);
-                    }
-                } catch(err) { console.warn('Search header quick-add failed', err); }
+                quickAddFromSearch(code, name);
             });
         }
 
@@ -6868,32 +6847,7 @@ async function initializeAppLogic() {
                 const stock = { code, name };
                 asxSearchInput.value = code;
                 asxSuggestions.classList.remove('active');
-                try {
-                    const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === code);
-                    if (existingShare) {
-                        hideModal(stockSearchModal);
-                        showEditFormForSelectedShare(existingShare.id);
-                    } else {
-                        hideModal(stockSearchModal);
-                        clearForm();
-                        formTitle.textContent = 'Add New Share';
-                        selectedShareDocId = null;
-                        if (shareNameInput) {
-                            shareNameInput.value = code;
-                            shareNameInput.classList.add('autofill-pulse');
-                            setTimeout(()=> shareNameInput.classList.remove('autofill-pulse'), 900);
-                        }
-                        if (formCompanyName) formCompanyName.textContent = name || '';
-                        populateShareWatchlistSelect(null, true);
-                        if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
-                            addCommentSection(commentsFormContainer);
-                        }
-                        showModal(shareFormSection);
-                        if (shareNameInput) shareNameInput.focus();
-                        checkFormDirtyState();
-                        updateAddFormLiveSnapshot(code);
-                    }
-                } catch(err) { console.warn('Delegated suggestion click failed', err); }
+                quickAddFromSearch(code, name);
                 displayStockDetailsInSearchModal(code);
             });
         }
