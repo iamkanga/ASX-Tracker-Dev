@@ -1527,6 +1527,22 @@ function getShareDisplayData(share) {
         }
     }
 
+    // Apply movement background classes consistently
+    try {
+        let changeVal = null;
+        if (livePriceData) {
+            if (livePriceData.live != null && livePriceData.prevClose != null && !isNaN(livePriceData.live) && !isNaN(livePriceData.prevClose)) {
+                changeVal = livePriceData.live - livePriceData.prevClose;
+            } else if (livePriceData.lastLivePrice != null && livePriceData.lastPrevClose != null && !isNaN(livePriceData.lastLivePrice) && !isNaN(livePriceData.lastPrevClose)) {
+                changeVal = livePriceData.lastLivePrice - livePriceData.lastPrevClose;
+            }
+        }
+        row.classList.remove('positive-change-row','negative-change-row','neutral-change-row');
+        if (changeVal > 0) row.classList.add('positive-change-row');
+        else if (changeVal < 0) row.classList.add('negative-change-row');
+        else row.classList.add('neutral-change-row');
+    } catch(_) {}
+
     return {
         displayLivePrice,
         displayPriceChange,
@@ -1705,6 +1721,17 @@ function addShareToTable(share) {
         </td>
     `;
 
+    // Apply movement class (positive/negative/neutral)
+    try {
+        const lp = livePrices[share.shareName.toUpperCase()];
+        let change = null;
+        if (lp && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) change = lp.live - lp.prevClose;
+        row.classList.remove('positive-change-row','negative-change-row','neutral-change-row');
+        if (change > 0) row.classList.add('positive-change-row');
+        else if (change < 0) row.classList.add('negative-change-row');
+        else row.classList.add('neutral-change-row');
+    } catch(_) {}
+
     // Add long press / context menu for desktop
     let touchStartTime = 0;
     row.addEventListener('touchstart', (e) => {
@@ -1785,14 +1812,14 @@ function addShareToMobileCards(share) {
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
                 displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : ''); // Set class for card
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card'); // Include neutral class
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
                 displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
             }
         } else {
             // Market closed and toggle is OFF, show zero change
@@ -2163,13 +2190,13 @@ function updateOrCreateShareMobileCard(share) {
                     const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
                     displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                     priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
                 } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                     const change = lastFetchedLive - lastFetchedPrevClose;
                     const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
                     displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                     priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
                 }
             } else {
                 displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
@@ -2188,7 +2215,7 @@ function updateOrCreateShareMobileCard(share) {
 
     // Apply card-specific price change class
     // Remove previous price change classes before adding current one
-    card.classList.remove('positive-change-card', 'negative-change-card', 'neutral');
+    card.classList.remove('positive-change-card', 'negative-change-card', 'neutral-change-card');
     if (cardPriceChangeClass) {
         card.classList.add(cardPriceChangeClass);
     } else if (priceClass === 'neutral') {

@@ -260,6 +260,11 @@ table tbody tr.negative-change-row:not(.target-hit-alert),
 table tbody tr.neutral-change-row:not(.target-hit-alert),
 .mobile-card.neutral-change-card:not(.target-hit-alert) { background: var(--watch-bg-neutral); }
 
+/* Side borders for movement states */
+table tbody tr.positive-change-row:not(.target-hit-alert) { border-left:4px solid var(--brand-green); border-right:4px solid var(--brand-green); }
+table tbody tr.negative-change-row:not(.target-hit-alert) { border-left:4px solid var(--brand-red); border-right:4px solid var(--brand-red); }
+table tbody tr.neutral-change-row:not(.target-hit-alert) { border-left:4px solid var(--accent-color); border-right:4px solid var(--accent-color); }
+
 /* Ensure borders for all three states are consistent thickness */
 table tbody tr.positive-change-row:not(.target-hit-alert),
 table tbody tr.negative-change-row:not(.target-hit-alert),
