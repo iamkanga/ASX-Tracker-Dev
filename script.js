@@ -4445,7 +4445,8 @@ async function displayStockDetailsInSearchModal(asxCode) {
         // Store the fetched data for potential adding/editing (normalize code property fallbacks)
         const resolvedCode = stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode;
         currentSearchShareData = {
-            shareName: String(resolvedCode || '').toUpperCase(),
+            shareName: String(resolvedCode || '').toUpperCase(), // legacy consumers
+            shareCode: String(resolvedCode || '').toUpperCase(),  // explicit code key for clarity
             companyName: stockData.CompanyName,
             currentPrice: currentLivePrice,
             targetPrice: null,
@@ -4456,78 +4457,15 @@ async function displayStockDetailsInSearchModal(asxCode) {
             watchlistId: null
         };
 
-        // AUTO-POPULATE / OPEN FORM LOGIC
-        try {
-            const alreadyEditing = !!selectedShareDocId;
-            if (existingShare) {
-                // If the code already exists, seamlessly open its edit form (unless already open for that share)
-                if (!alreadyEditing || selectedShareDocId !== existingShare.id) {
-                    hideModal(stockSearchModal);
-                    showEditFormForSelectedShare(existingShare.id);
-                }
-            } else {
-                // New share path: open (or update) the Add New Share form immediately for faster workflow
-                hideModal(stockSearchModal);
-                // Clear only if we are not already in a fresh new-share form state
-                if (selectedShareDocId) {
-                    // Was editing something else; start a clean add flow
-                    clearForm();
-                } else if (formTitle && formTitle.textContent !== 'Add New Share') {
-                    clearForm();
-                }
-                // Ensure form baseline state
-                formTitle.textContent = 'Add New Share';
-                selectedShareDocId = null; // ensure new
-                if (shareNameInput) shareNameInput.value = currentSearchShareData.shareName;
-                if (formCompanyName) formCompanyName.textContent = currentSearchShareData.companyName || '';
-                // Prefill default intent (Buy/Below) only if nothing chosen yet
-                try {
-                    if (targetIntentBuyBtn && targetIntentSellBtn && !targetIntentBuyBtn.classList.contains('is-active') && !targetIntentSellBtn.classList.contains('is-active')) {
-                        targetIntentBuyBtn.classList.add('is-active');
-                        targetIntentBuyBtn.setAttribute('aria-pressed','true');
-                        targetIntentSellBtn.classList.remove('is-active');
-                        targetIntentSellBtn.setAttribute('aria-pressed','false');
-                    }
-                    if (targetAboveCheckbox && targetBelowCheckbox && !targetAboveCheckbox.checked && !targetBelowCheckbox.checked) {
-                        targetAboveCheckbox.checked = false; targetBelowCheckbox.checked = true;
-                    }
-                    if (targetDirAboveBtn && targetDirBelowBtn && !targetDirAboveBtn.classList.contains('is-active') && !targetDirBelowBtn.classList.contains('is-active')) {
-                        targetDirAboveBtn.classList.remove('is-active'); targetDirAboveBtn.setAttribute('aria-pressed','false');
-                        targetDirBelowBtn.classList.add('is-active'); targetDirBelowBtn.setAttribute('aria-pressed','true');
-                    }
-                } catch(_) {}
-                // Populate watchlist selector (new share context)
-                populateShareWatchlistSelect(null, true);
-                // Add initial blank comment section if none exists
-                if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
-                    addCommentSection(commentsFormContainer);
-                }
-                // Render live snapshot into addShareLivePriceDisplay (robust key fallbacks)
-                try {
-                    // Use the ASX code for snapshot fetch; shareName holds the company name.
-                    if (currentSearchShareData && currentSearchShareData.shareCode) {
-                        updateAddFormLiveSnapshot(currentSearchShareData.shareCode);
-                    }
-                } catch(_) {}
-                // Finally show the form if not visible
-                if (shareFormSection && (shareFormSection.style.display === 'none' || shareFormSection.classList.contains('app-hidden'))) {
-                    showModal(shareFormSection);
-                }
-                // Focus code input for immediate target price entry
-                if (shareNameInput) shareNameInput.focus();
-                // Recompute dirty state now populated
-                checkFormDirtyState();
-            }
-        } catch (autoErr) {
-            console.warn('Search AutoFill: Failed to auto-populate form from search selection', autoErr);
-        }
+        // Two-step workflow: DO NOT auto-open add/edit form here.
+        // User must click the action button rendered below.
 
-    // Render action buttons (kept for explicit user intent, though auto-open logic above already populated form)
+    // Render action button (explicit user intent only)
         const actionButton = document.createElement('button');
         actionButton.classList.add('button', 'primary-button'); // Apply base button styles
         
         if (existingShare) {
-            actionButton.textContent = 'Add Share to ASX Tracker'; // Changed text
+            actionButton.textContent = 'Edit Share in Tracker';
             actionButton.addEventListener('click', () => {
                 hideModal(stockSearchModal); // Close search modal
                 // If the user clicks "Add Share to ASX Tracker" for an existing share,
@@ -4538,11 +4476,11 @@ async function displayStockDetailsInSearchModal(asxCode) {
             actionButton.textContent = 'Add Share to ASX Tracker'; // Changed text to be consistent for new shares
             actionButton.addEventListener('click', () => {
                 hideModal(stockSearchModal); // Close search modal
-                clearForm(); // Clear share form
+                clearForm(); // Start clean add flow
                 userManuallyOverrodeDirection = false;
                 formTitle.textContent = 'Add New Share'; // Set title for new share
-                shareNameInput.value = currentSearchShareData.shareName; // Pre-fill code
-                // currentPriceInput removed; no prefill needed
+                if (shareNameInput) shareNameInput.value = currentSearchShareData.shareCode; // Pre-fill code
+                if (formCompanyName) formCompanyName.textContent = currentSearchShareData.companyName || '';
                 populateShareWatchlistSelect(null, true); // Populate and enable watchlist select for new share
                 // Default toggles to Buy+Below
                 try {
@@ -4563,9 +4501,14 @@ async function displayStockDetailsInSearchModal(asxCode) {
                         targetDirBelowBtn.setAttribute('aria-pressed', 'true');
                     }
                 } catch(_) {}
-                addCommentSection(commentsFormContainer); // Add initial empty comment section
+                if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
+                    addCommentSection(commentsFormContainer); // Add initial empty comment section
+                }
+                // Fetch snapshot to prefill reference price & live view
+                try { updateAddFormLiveSnapshot(currentSearchShareData.shareCode); } catch(_) {}
                 showModal(shareFormSection); // Show add/edit modal
-                checkFormDirtyState(); // Check dirty state for the new share form
+                if (targetPriceInput) targetPriceInput.focus();
+                checkFormDirtyState(); // Recompute dirty state
             });
         }
         searchModalActionButtons.appendChild(actionButton);
@@ -6669,9 +6612,15 @@ async function initializeAppLogic() {
                 div.classList.add('suggestion-item');
                 div.textContent = `${s.code} - ${s.name}`;
                 div.dataset.code = s.code;
-                div.addEventListener('click', () => {
-                    applyShareCodeSelection(s.code, s.name);
-                });
+                // Use pointerdown for earlier capture (prevents blur race) plus click fallback
+                const handler = () => applyShareCodeSelection(s.code, s.name);
+                div.addEventListener('pointerdown', handler, { once: true });
+                div.addEventListener('click', (e) => {
+                    // If pointerdown already fired, ignore
+                    if (div.__applied) return; 
+                    handler();
+                }, { once: true });
+                div.__applied = false;
                 shareNameSuggestions.appendChild(div);
             });
             shareNameSuggestions.classList.add('active');
@@ -6683,6 +6632,15 @@ async function initializeAppLogic() {
                 if (shareNameSuggestions) shareNameSuggestions.classList.remove('active');
                 const asxCode = shareNameInput.value.trim().toUpperCase();
                 if (!asxCode && formCompanyName) formCompanyName.textContent = '';
+                // Post-blur validation: if a code was intended (from lastSearch) but input empty, restore
+                if (!asxCode && window.lastSelectedSearchCode) {
+                    const fallback = String(window.lastSelectedSearchCode).toUpperCase();
+                    if (fallback.length >= 2) {
+                        shareNameInput.value = fallback;
+                        const match = (allAsxCodes||[]).find(s=>s.code===fallback);
+                        if (match && formCompanyName) formCompanyName.textContent = match.name || '';
+                    }
+                }
             }, 100);
         });
     }
