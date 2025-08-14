@@ -832,6 +832,17 @@ const searchModalCloseButton = document.querySelector('.search-close-button'); /
 // NEW: Global variable for storing loaded ASX code data from CSV
 let allAsxCodes = []; // { code: 'BHP', name: 'BHP Group Ltd' }
 let currentSelectedSuggestionIndex = -1; // For keyboard navigation in autocomplete
+let shareNameAutocompleteBound = false; // Prevent duplicate binding
+
+function initializeShareNameAutocomplete(force=false){
+    if (shareNameAutocompleteBound && !force) return;
+    if (!shareNameInput || !shareNameSuggestions) return;
+    // If already has an input listener tagged, skip unless force
+    if (shareNameInput.dataset.autocompleteBound && !force) return;
+    shareNameInput.dataset.autocompleteBound = '1';
+    shareNameAutocompleteBound = true;
+    // Listeners are already defined further below (conditional block). This function can serve as a future hook.
+}
 let currentSearchShareData = null; // Stores data of the currently displayed stock in search modal
 const splashKangarooIcon = document.getElementById('splashKangarooIcon');
 const splashSignInBtn = document.getElementById('splashSignInBtn');
@@ -2694,69 +2705,49 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         }
     });
 
-    // Build checkbox UI list reflecting the same options
-    if (shareWatchlistCheckboxes) {
-        // Clear existing
-        shareWatchlistCheckboxes.innerHTML = '';
-        const makeItem = (id, label) => {
-            const wrapper = document.createElement('label');
-            wrapper.className = 'checkbox-label';
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.className = 'modern-checkbox watchlist-checkbox';
-            cb.value = id;
-            cb.checked = preselectedIds.length > 0 ? preselectedIds.includes(id) : (id === selectedOptionId && !!selectedOptionId);
-            cb.addEventListener('change', () => {
-                // Sync to hidden select
-                const vals = Array.from(shareWatchlistCheckboxes.querySelectorAll('input.watchlist-checkbox:checked')).map(x => x.value);
-                Array.from(shareWatchlistSelect.options).forEach(opt => { opt.selected = vals.includes(opt.value); });
-                // Legacy single-select value fallback for save paths reading .value
-                if (vals.length > 0) {
-                    shareWatchlistSelect.value = vals[0];
-                } else {
-                    shareWatchlistSelect.value = '';
-                }
-                // Update dropdown button label and collapse after selection for compact UX
+    // Build enhanced toggle list
+    if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
+        shareWatchlistEnhanced.innerHTML = '';
+        const opts = Array.from(shareWatchlistSelect.options).filter(o => o.value !== '' && o.value !== CASH_BANK_WATCHLIST_ID);
+        const selectedSet = new Set(preselectedIds.length ? preselectedIds : (selectedOptionId ? [selectedOptionId] : []));
+        opts.forEach(o => {
+            const item = document.createElement('div');
+            item.className = 'watchlist-enhanced-item';
+            const checked = selectedSet.has(o.value);
+            item.innerHTML = `
+                <span class="watchlist-enhanced-name">${o.textContent || o.value}</span>
+                <label class="watchlist-toggle" aria-label="Toggle ${o.textContent || o.value}">
+                    <input type="checkbox" value="${o.value}" ${checked ? 'checked' : ''}>
+                    <span class="watchlist-toggle-track"><span class="watchlist-toggle-thumb"></span></span>
+                </label>`;
+            const input = item.querySelector('input');
+            input.addEventListener('change', () => {
+                const toggled = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
+                Array.from(shareWatchlistSelect.options).forEach(opt => { opt.selected = toggled.includes(opt.value); });
+                shareWatchlistSelect.value = toggled[0] || '';
                 updateWatchlistDropdownButton();
                 checkFormDirtyState();
             });
-            wrapper.appendChild(cb);
-            const text = document.createTextNode(' ' + label);
-            wrapper.appendChild(text);
-            return wrapper;
-        };
-        // Recreate list in same order as select (skip disabled placeholder)
-        const opts = Array.from(shareWatchlistSelect.options).filter(o => o.value !== '');
-        opts.forEach(o => {
-            // Skip any cashBank option defensively
-            if (o.value === CASH_BANK_WATCHLIST_ID) return;
-            shareWatchlistCheckboxes.appendChild(makeItem(o.value, o.textContent || o.innerText || o.value));
+            shareWatchlistEnhanced.appendChild(item);
         });
     }
 
     // Initialize dropdown button label/state
     if (shareWatchlistDropdownBtn) {
         updateWatchlistDropdownButton();
-        shareWatchlistDropdownBtn.setAttribute('aria-expanded', 'false');
-        // Toggle panel like a dropdown
+        shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
         shareWatchlistDropdownBtn.onclick = (e) => {
             e.stopPropagation();
-            const isOpen = !shareWatchlistCheckboxes.classList.contains('app-hidden');
-            if (isOpen) {
-                shareWatchlistCheckboxes.classList.add('app-hidden');
-                shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
-            } else {
-                shareWatchlistCheckboxes.classList.remove('app-hidden');
-                shareWatchlistDropdownBtn.setAttribute('aria-expanded','true');
-                // Optional: position under button if needed via CSS
-            }
+            if (!shareWatchlistEnhanced) return;
+            const isOpen = shareWatchlistEnhanced.style.display === 'block';
+            shareWatchlistEnhanced.style.display = isOpen ? 'none' : 'block';
+            shareWatchlistDropdownBtn.setAttribute('aria-expanded', String(!isOpen));
         };
-        // Close when clicking outside
         document.addEventListener('click', (evt) => {
-            if (!shareWatchlistCheckboxes || shareWatchlistCheckboxes.classList.contains('app-hidden')) return;
-            const within = shareWatchlistCheckboxes.contains(evt.target) || shareWatchlistDropdownBtn.contains(evt.target);
+            if (!shareWatchlistEnhanced || shareWatchlistEnhanced.style.display !== 'block') return;
+            const within = shareWatchlistEnhanced.contains(evt.target) || shareWatchlistDropdownBtn.contains(evt.target);
             if (!within) {
-                shareWatchlistCheckboxes.classList.add('app-hidden');
+                shareWatchlistEnhanced.style.display='none';
                 shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
             }
         });
@@ -2764,9 +2755,9 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
 
     // Listen for native select change too (in case of programmatic changes)
     shareWatchlistSelect.addEventListener('change', () => {
-        if (!shareWatchlistCheckboxes) return;
+        if (!shareWatchlistEnhanced) return;
         const selected = Array.from(shareWatchlistSelect.options).filter(o => o.selected).map(o => o.value);
-        shareWatchlistCheckboxes.querySelectorAll('input.watchlist-checkbox').forEach(cb => { cb.checked = selected.includes(cb.value); });
+        shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = selected.includes(cb.value); });
         updateWatchlistDropdownButton();
         checkFormDirtyState();
     });
@@ -2774,19 +2765,16 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
 
 function updateWatchlistDropdownButton() {
     if (!shareWatchlistDropdownBtn) return;
-    const selectedCbs = shareWatchlistCheckboxes ? Array.from(shareWatchlistCheckboxes.querySelectorAll('input.watchlist-checkbox:checked')) : [];
-    if (selectedCbs.length === 0) {
-        shareWatchlistDropdownBtn.textContent = 'Select a Watchlist';
-        return;
+    let selected = [];
+    if (shareWatchlistEnhanced) {
+        selected = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
     }
-    // Prefer showing up to 2 names then a count
-    const names = selectedCbs.map(cb => {
-        const id = cb.value;
+    if (selected.length === 0) { shareWatchlistDropdownBtn.textContent = 'Select Watchlists'; return; }
+    const names = selected.map(id => {
         const opt = Array.from(shareWatchlistSelect.options).find(o => o.value === id);
         return opt ? (opt.textContent || opt.innerText || id) : id;
     });
-    const display = names.length <= 2 ? names.join(', ') : (names.slice(0,2).join(', ') + ` +${names.length-2}`);
-    shareWatchlistDropdownBtn.textContent = display;
+    shareWatchlistDropdownBtn.textContent = names.length <=2 ? names.join(', ') : names.slice(0,2).join(', ') + ' +' + (names.length-2);
 }
 
 function showEditFormForSelectedShare(shareIdToEdit = null) {
@@ -3075,6 +3063,12 @@ async function saveShareData(isSilent = false) {
     // Source of truth: checkbox UI; keep hidden select for legacy fallback
     const selectedWatchlistIdForSave = shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null;
     const selectedWatchlistIdsForSave = (() => {
+        // Prefer enhanced toggle list
+        if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
+            const toggled = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(x => x.value).filter(Boolean);
+            if (toggled.length > 0) return toggled;
+        }
+        // Fallback legacy checkbox container
         const cbs = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
         const vals = Array.from(cbs).map(cb => cb.value).filter(Boolean);
         if (vals.length > 0) return vals;
