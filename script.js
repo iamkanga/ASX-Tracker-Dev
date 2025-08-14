@@ -2368,6 +2368,10 @@ function showModal(modalElement) {
         if (scrollableContent) {
             scrollableContent.scrollTop = 0;
         }
+        // Defensive: ensure autocomplete listeners intact when opening Add Share form
+        if (modalElement.id === 'shareFormSection') {
+            try { if (typeof initializeShareNameAutocomplete === 'function') initializeShareNameAutocomplete(true); } catch(_) {}
+        }
         logDebug('Modal: Showing modal: ' + modalElement.id);
     }
 }
@@ -4454,7 +4458,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
         // Construct the display HTML
         searchResultDisplay.innerHTML = `
             <div class="text-center mb-4">
-                <h3 class="${searchModalTitleClasses}">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
+                <h3 class="${searchModalTitleClasses} search-modal-code-header" data-code="${stockData.ASXCode || ''}" data-name="${stockData.CompanyName || ''}" title="Click to populate Add Share form">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
                 <span class="text-sm text-gray-500">${stockData.CompanyName ? '' : '(Company Name N/A)'}</span>
             </div>
             <div class="live-price-display-section">
@@ -6891,6 +6895,43 @@ async function initializeAppLogic() {
                 asxSuggestions.classList.remove('active');
             }
         });
+
+        // Delegated fallback: clicking the code header in search results populates form
+        if (searchResultDisplay) {
+            searchResultDisplay.addEventListener('click', (e) => {
+                const header = e.target.closest('.search-modal-code-header');
+                if (!header) return;
+                const code = header.getAttribute('data-code');
+                const name = header.getAttribute('data-name');
+                if (!code) return;
+                try {
+                    const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === code.toUpperCase());
+                    if (existingShare) {
+                        hideModal(stockSearchModal);
+                        showEditFormForSelectedShare(existingShare.id);
+                    } else {
+                        hideModal(stockSearchModal);
+                        clearForm();
+                        formTitle.textContent = 'Add New Share';
+                        selectedShareDocId = null;
+                        if (shareNameInput) shareNameInput.value = code;
+                        if (formCompanyName) formCompanyName.textContent = name || '';
+                        if (shareNameInput) {
+                            shareNameInput.classList.add('autofill-pulse');
+                            setTimeout(()=> shareNameInput.classList.remove('autofill-pulse'), 900);
+                        }
+                        populateShareWatchlistSelect(null, true);
+                        if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
+                            addCommentSection(commentsFormContainer);
+                        }
+                        showModal(shareFormSection);
+                        if (shareNameInput) shareNameInput.focus();
+                        checkFormDirtyState();
+                        updateAddFormLiveSnapshot(code);
+                    }
+                } catch(err) { console.warn('Search header quick-add failed', err); }
+            });
+        }
 
         function updateSelectedSuggestion(items) {
             items.forEach((item, index) => {
