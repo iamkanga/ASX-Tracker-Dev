@@ -1878,16 +1878,25 @@ function addShareToMobileCards(share) {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     const companyName = companyInfo ? companyInfo.name : '';
 
+    // Build directional arrow for displayPriceChange (keep underlying displayPriceChange variable intact for accessibility if needed)
+    let arrowSymbol = '';
+    if (/^[-+]?\d/.test(displayPriceChange)) { /* heuristic; actual change variable exists above but reused */ }
+    try {
+        const matchChange = /([-+]?\d*[\d.,]*)(?:\s*\(|$)/.exec(displayPriceChange);
+        // We already computed priceClass; use that for arrow
+        arrowSymbol = priceClass === 'positive' ? '▲' : (priceClass === 'negative' ? '▼' : '');
+    } catch(_) {}
+    const enrichedPriceChange = arrowSymbol ? `${arrowSymbol} ${displayPriceChange}` : displayPriceChange;
     card.innerHTML = `
-        <h3 class="${priceClass}">${share.shareName || ''}</h3>
+        <h3 class="neutral-code-text">${share.shareName || ''}</h3>
         <div class="live-price-display-section">
             <div class="fifty-two-week-row">
                 <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
                 <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
             </div>
             <div class="live-price-main-row">
-                <span class="live-price-large ${priceClass}">${displayLivePrice}</span>
-                <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
+                <span class="live-price-large neutral-code-text">${displayLivePrice}</span>
+                <span class="price-change-large ${priceClass}">${enrichedPriceChange}</span>
             </div>
             ${companyName ? `<p class="modal-company-name-display" style="margin-top: 2px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
             <div class="pe-ratio-row">
@@ -4464,7 +4473,8 @@ async function displayStockDetailsInSearchModal(asxCode) {
             if (!isNaN(previousClosePrice) && previousClosePrice !== null) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                priceChangeText = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                const arrow = change > 0 ? '▲' : (change < 0 ? '▼' : '');
+                priceChangeText = `${arrow} ${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         }
@@ -4481,9 +4491,10 @@ async function displayStockDetailsInSearchModal(asxCode) {
         }
 
         // Construct the display HTML
+        const resolvedDisplayCode = (stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode || '').toUpperCase();
         searchResultDisplay.innerHTML = `
             <div class="text-center mb-4">
-                <h3 class="${searchModalTitleClasses} search-modal-code-header" data-code="${stockData.ASXCode || ''}" data-name="${stockData.CompanyName || ''}" data-company="${stockData.CompanyName || ''}" title="Click to populate Add Share form">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
+                <h3 class="${searchModalTitleClasses} search-modal-code-header" data-code="${resolvedDisplayCode}" data-name="${stockData.CompanyName || ''}" data-company="${stockData.CompanyName || ''}" title="Click to populate Add Share form">${resolvedDisplayCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
                 <span class="text-sm text-gray-500">${stockData.CompanyName ? '' : '(Company Name N/A)'}</span>
                 ${DEBUG_MODE ? `<div class="debug-keys">Keys: ${(Object.keys(stockData||{})).slice(0,25).join(', ')}</div>` : ''}
             </div>
@@ -4493,9 +4504,9 @@ async function displayStockDetailsInSearchModal(asxCode) {
                     <h3 class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? formatMoney(high52Week) : 'N/A'}</h3>
                 </div>
                 <div class="live-price-main-row">
-                    <h2 class="modal-share-name ${priceClass}">${displayPrice}</h2>
-                    <span class="price-change-large ${priceClass}">${priceChangeText}</span>
-                </div>
+                        <h2 class="modal-share-name neutral-code-text">${displayPrice}</h2>
+                        <span class="price-change-large ${priceClass}">${priceChangeText}</span>
+                    </div>
                 <div class="pe-ratio-row">
                     <h3 class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A'}</h3>
                 </div>

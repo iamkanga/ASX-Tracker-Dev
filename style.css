@@ -3622,19 +3622,34 @@ table td.live-price-cell.negative-change {
     margin-bottom: 5px; /* Space below this row */
 }
 
+/* Live price + code: always neutral theme text color */
+.live-price-display-section .live-price-large,
+.neutral-code-text { color: var(--text-color) !important; }
 .live-price-display-section .live-price-large {
-    font-size: 1.4em; /* Size is correct as per user, ensure color applies */
-    font-weight: 800; /* Much bolder */
-    color: var(--text-color); /* Default, will be overridden by .positive/.negative */
-    line-height: 1; /* Prevent extra line height */
+    font-size: 1.4em;
+    font-weight: 800;
+    line-height: 1;
 }
 
+/* Price change pill with dark saturated background */
 .live-price-display-section .price-change-large {
-    font-size: 0.8em; /* Smaller for percentage change */
+    font-size: 0.9em;
     font-weight: 700;
     white-space: nowrap;
-    margin-left: 10px; /* Space between price and change */
+    margin-left: 10px;
+    padding: 4px 8px 4px 8px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: .25px;
 }
+.price-change-large.positive { background: linear-gradient(135deg,#093e1c,#065a29); color: var(--brand-green) !important; }
+.price-change-large.negative { background: linear-gradient(135deg,#4a0f0f,#6a1b1b); color: var(--brand-red) !important; }
+.price-change-large.neutral { background: linear-gradient(135deg,#1f1f1f,#3a3a3a); color: var(--text-color) !important; }
+
+/* Larger arrow sizing inside pill (inherit current font-size, arrow is part of text) */
+.price-change-large { font-variant-numeric: tabular-nums; }
 
 /* New: Row for P/E Ratio */
 .pe-ratio-row {
