@@ -437,20 +437,20 @@
                             <span class="accordion-caret" aria-hidden="true"></span>
                         </button>
                         <div id="accordion-panel-core" class="accordion-panel" role="region" aria-labelledby="accordion-header-core">
-                            <label for="shareWatchlistSelect">Assign to Watchlist:</label>
-                            <select id="shareWatchlistSelect" class="dropdown-large" required style="display:none;">
-                                <option value="" disabled selected>Select a Watchlist</option>
-                            </select>
-                            <button id="shareWatchlistDropdownBtn" type="button" class="dropdown-large" aria-haspopup="listbox" aria-expanded="false">Select a Watchlist</button>
-                            <div id="shareWatchlistCheckboxes" class="watchlist-checkbox-list app-hidden" aria-describedby="shareWatchlistHelp" role="listbox"></div>
-                            <small id="shareWatchlistHelp" class="field-help-text">Select one or more watchlists (including Portfolio if applicable).</small>
-
-                            <label for="shareName">Code:</label>
+                                <label for="shareName">ASX Code:</label>
                             <div class="search-input-container">
                                 <input type="text" id="shareName" placeholder="e.g. BHP" autocomplete="off" required>
                                 <div id="shareNameSuggestions" class="autocomplete-suggestions"></div>
                             </div>
                             <div id="addShareLivePriceDisplay" class="live-price-display-section" style="display:none;"></div>
+
+                                <label for="shareWatchlistSelect" style="margin-top:14px;">Assign to Watchlist:</label>
+                                <select id="shareWatchlistSelect" class="dropdown-large" required style="display:none;">
+                                    <option value="" disabled selected>Select a Watchlist</option>
+                                </select>
+                                <button id="shareWatchlistDropdownBtn" type="button" class="dropdown-large" aria-haspopup="listbox" aria-expanded="false">Select a Watchlist</button>
+                                <div id="shareWatchlistCheckboxes" class="watchlist-checkbox-list app-hidden" aria-describedby="shareWatchlistHelp" role="listbox"></div>
+                                <small id="shareWatchlistHelp" class="field-help-text">Select one or more watchlists (including Portfolio if applicable).</small>
                         </div>
                     </div>
                     <!-- Portfolio Holdings -->
