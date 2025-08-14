@@ -2258,10 +2258,38 @@ body.dark-theme .detail-row { border-bottom:1px dashed rgba(255,255,255,0.1); }
 .detail-label { font-weight:500; color:var(--label-color); flex:0 0 auto; }
 .detail-value { font-weight:600; color:var(--text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .external-links-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap:10px 14px; margin-top:4px; }
-.external-links-grid .external-link { display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:500; padding:8px 10px; background:var(--asx-button-bg); border:none; border-radius:8px; text-decoration:none; color:var(--text-color); transition: background .18s, color .18s; box-shadow:0 1px 2px rgba(0,0,0,0.08); }
-body.dark-theme .external-links-grid .external-link { background:#333; }
-.external-links-grid .external-link:hover { background:var(--asx-button-hover-bg); }
+/* Unified Research Links styling */
+.external-links-grid .external-link { 
+    display:inline-flex; align-items:center; gap:6px; 
+    font-size:0.9rem; font-weight:700; 
+    padding:8px 12px; background:var(--card-bg); 
+    border:1px solid var(--border-color); border-radius:10px; 
+    text-decoration:none; color:var(--accent-color,#a49393); 
+    transition: background .18s, color .18s, box-shadow .18s, border-color .18s; 
+    box-shadow:0 1px 2px rgba(0,0,0,0.06);
+}
+body.dark-theme .external-links-grid .external-link { background:var(--card-bg); }
+.external-links-grid .external-link:hover { 
+    background:var(--button-hover-bg,#8d7f7f); 
+    color:#fff; border-color:var(--button-hover-bg,#8d7f7f); 
+    box-shadow:0 2px 6px rgba(0,0,0,0.18);
+}
+.external-links-grid .primary-news-link { font-weight:800; }
 .commsec-link-wrapper { display:flex; flex-direction:column; gap:2px; }
+/* Thicker target-hit border refinement */
+.mobile-card.target-hit-alert, 
+.portfolio-card.target-hit-alert, 
+tr.target-hit-alert { 
+    border:2px solid var(--green-color,#2ECC71) !important; 
+    box-shadow:0 0 0 2px var(--green-color,#2ECC71) inset; 
+}
+/* Toggle button / enhanced watchlist item target hit outline */
+.asx-code-buttons-container button.asx-code-btn.target-hit, 
+.watchlist-enhanced-item.target-hit { 
+    outline:2px solid var(--green-color,#2ECC71); outline-offset:0; 
+}
+/* Compact view ensure full border retained */
+.mobile-share-cards.compact-view .mobile-card.target-hit-alert { border-width:2px; }
 @media (max-width:600px){
     .share-detail-sections { grid-template-columns:1fr; }
     .share-detail-sections .detail-card { padding:12px 14px 14px; }

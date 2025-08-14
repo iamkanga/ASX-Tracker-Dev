@@ -77,7 +77,7 @@ function onLivePricesUpdated() {
     } catch (e) {
         console.error('Live Price: onLivePricesUpdated error:', e);
     }
-}
+    portfolioShares.forEach(row => {
 
 // Compatibility stub (legacy callsites may invoke)
 function forceApplyCurrentSort() {
@@ -86,8 +86,8 @@ function forceApplyCurrentSort() {
         return;
     }
 }
-
-// --- Automatic market status handling (Sydney time) ---
+            row.addEventListener('touchstart', () => { selectedElementForTap = row; }, { passive: true });
+            row.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
 document.addEventListener('DOMContentLoaded', function () {
     // --- Watchlist logic moved to watchlist.js ---
     // Import and call watchlist functions
@@ -238,23 +238,23 @@ document.addEventListener('DOMContentLoaded', function () {
     let lossPLSum = 0;   // sum of negative P/L (will stay negative)
         portfolioShares.forEach(share => {
             const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
-                ? Math.trunc(Number(share.portfolioShares))
-                : '';
+                ? Math.trunc(Number(share.portfolioShares)) : '';
             const avgPrice = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)))
-                ? Number(share.portfolioAvgPrice)
-                : '';
-            const priceNow = getDisplayPrice(share);
-            // Determine if we used live (market open), lastLive (market closed), or fallback user price
-            let priceMode = 'manual';
-            const codeKey = (share.shareName || '').toUpperCase();
-            const lpObj = livePrices ? livePrices[codeKey] : null;
+                ? Number(share.portfolioAvgPrice) : null;
+            const code = (share.shareName || '').toUpperCase();
+            const lpObj = livePrices ? livePrices[code] : undefined;
+            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+            let priceNow = null;
             if (lpObj) {
-                const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
-                if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceMode = 'live';
-                else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceMode = 'last';
+                if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceNow = Number(lpObj.live);
+                else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceNow = Number(lpObj.lastLivePrice);
             }
-            // DAILY CHANGE (on-the-day) vs overall P/L: compute day change using live vs prevClose (fallback to last fetched)
-            let dailyChangeClass = 'neutral';
+            if (priceNow === null || isNaN(priceNow)) {
+                if (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice))) {
+                    priceNow = Number(share.currentPrice);
+                }
+            }
+            let dailyChangeClass = '';
             if (lpObj) {
                 const latestLive = (lpObj.live !== null && !isNaN(lpObj.live)) ? Number(lpObj.live) : (lpObj.lastLivePrice ?? null);
                 const latestPrev = (lpObj.prevClose !== null && !isNaN(lpObj.prevClose)) ? Number(lpObj.prevClose) : (lpObj.lastPrevClose ?? null);
@@ -265,41 +265,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
             if (typeof rowValue === 'number') totalValue += rowValue;
-            const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number')
-                ? (priceNow - avgPrice) * shares
-                : null;
-            if (typeof shares === 'number' && typeof avgPrice === 'number') {
-                totalCostBasis += (shares * avgPrice);
-            }
-            if (typeof rowPL === 'number') totalPL += rowPL;
+            const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
+            if (typeof shares === 'number' && typeof avgPrice === 'number') totalCostBasis += (shares * avgPrice);
             if (typeof rowPL === 'number') {
+                totalPL += rowPL;
                 if (rowPL > 0) profitPLSum += rowPL; else if (rowPL < 0) lossPLSum += rowPL;
             }
-            const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number')
-                ? ((priceNow - avgPrice) / avgPrice) * 100
-                : null;
+            const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
-            const badge = ''; // remove textual badge for cleaner look on mobile & table
-            const priceColorClass = priceMode === 'live' ? 'live-price' : (priceMode === 'last' ? 'last-price' : 'manual-price');
+            const priceColorClass = marketOpen ? 'live-price' : 'last-price';
             const priceCell = (priceNow !== null && priceNow !== undefined) ? ('<span class="price-value '+priceColorClass+'">' + fmtMoney(priceNow) + '</span>') : '';
-
-            // Row colored by DAILY change, P/L cells individually colored by overall P/L (plClass)
             htmlTable += `<tr data-doc-id="${share.id}" class="${dailyChangeClass}">
                 <td class="code-cell">${share.shareName || ''}</td>
                 <td class="num-cell shares-cell">${shares !== '' ? formatWithCommas(shares) : ''}</td>
                 <td class="num-cell avg-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
-                <td class="num-cell live-cell ${priceMode} liveprice-cell">${priceCell}</td>
+                <td class="num-cell live-cell ${marketOpen ? 'live' : 'last'} liveprice-cell">${priceCell}</td>
                 <td class="num-cell value-cell">${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
                 <td class="num-cell pl-cell ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
                 <td class="num-cell plpct-cell ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
             </tr>`;
-
-            // Mobile card variant
-    const card = `<div class="portfolio-card ${dailyChangeClass}" data-doc-id="${share.id}">
+            const card = `<div class="portfolio-card ${dailyChangeClass}" data-doc-id="${share.id}">
                 <div class="pc-row top">
-            <div class="pc-code ${dailyChangeClass}">${share.shareName || ''}</div>
-            <div class="pc-live ${priceMode}"><span class="val ${priceColorClass}">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
-            <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
+                    <div class="pc-code ${dailyChangeClass}">${share.shareName || ''}</div>
+                    <div class="pc-live ${marketOpen ? 'live' : 'last'}"><span class="val ${priceColorClass}">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
+                    <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
                 </div>
                 <div class="pc-row mid">
                     <div class="pc-shares">${shares !== '' ? shares : ''} @ ${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</div>
@@ -358,38 +347,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     showContextMenu(e, docId);
                 }
             });
-            // Touch long-press to open context menu on mobile
-            let touchStartTime = 0;
-            row.addEventListener('touchstart', (e) => {
-                touchStartTime = Date.now();
-                selectedElementForTap = row;
-                touchStartX = e.touches[0].clientX;
-                touchStartY = e.touches[0].clientY;
-                longPressTimer = setTimeout(() => {
-                    if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                        selectShare(docId);
-                        showContextMenu(e, docId);
-                        e.preventDefault();
-                    }
-                }, LONG_PRESS_THRESHOLD);
-            }, { passive: false });
-            row.addEventListener('touchmove', (e) => {
-                const currentX = e.touches[0].clientX;
-                const currentY = e.touches[0].clientY;
-                const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
-                if (dist > TOUCH_MOVE_THRESHOLD) {
-                    clearTimeout(longPressTimer);
-                    touchStartTime = 0;
-                }
-            });
-            row.addEventListener('touchend', () => {
-                clearTimeout(longPressTimer);
-                if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === row) {
-                    // Short tap handled by click event
-                }
-                touchStartTime = 0;
-                selectedElementForTap = null;
-            });
+            // Mobile long-press disabled: passive touch handlers only
+            row.addEventListener('touchstart', () => { selectedElementForTap = row; }, { passive: true });
+            row.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
         });
     };
 });
@@ -447,7 +407,7 @@ let lastTapTime = 0;
 let tapTimeout;
 let selectedElementForTap = null;
 let longPressTimer;
-const LONG_PRESS_THRESHOLD = 500; // Time in ms for long press detection
+const LONG_PRESS_THRESHOLD = 500; // Time in ms for long press detection (desktop only; mobile long-press disabled)
 let touchStartX = 0;
 let touchStartY = 0;
 const TOUCH_MOVE_THRESHOLD = 10; // Pixels for touch movement to cancel long press
@@ -887,6 +847,18 @@ function formatPercent(val, opts = {}) {
     // Show whole number when no fractional component (e.g., 100 instead of 100.00)
     if (Math.abs(n % 1) < 1e-9) return n.toFixed(0) + '%';
     return n.toFixed(maxDecimals) + '%';
+}
+
+// Lean wrappers for adaptive decimals outside of currency symbol contexts
+function formatAdaptivePrice(value) {
+    if (value === null || value === undefined || isNaN(value)) return '0.00';
+    const absVal = Math.abs(Number(value));
+    const decimals = absVal !== 0 && absVal < 0.01 ? 3 : 2;
+    return Number(value).toFixed(decimals);
+}
+function formatAdaptivePercent(pct) {
+    if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
+    return Number(pct).toFixed(2);
 }
 
 // Fallback for missing formatUserDecimalStrict (called in edit form population)
@@ -1735,19 +1707,10 @@ function addShareToTable(share) {
     // Add long press / context menu for desktop
     let touchStartTime = 0;
     row.addEventListener('touchstart', (e) => {
+        // Mobile long-hold disabled intentionally: do nothing special
         touchStartTime = Date.now();
-        selectedElementForTap = row; // Store the element that started the touch
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-
-        longPressTimer = setTimeout(() => {
-            if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                selectShare(share.id); // Select the share first
-                showContextMenu(e, share.id);
-                e.preventDefault(); // Prevent default browser context menu
-            }
-        }, LONG_PRESS_THRESHOLD);
-    }, { passive: false });
+        selectedElementForTap = row;
+    }, { passive: true });
 
     row.addEventListener('touchmove', (e) => {
         const currentX = e.touches[0].clientX;
@@ -1950,20 +1913,11 @@ function addShareToMobileCards(share) {
 
     // Add long press / context menu for mobile
     let touchStartTime = 0;
-    card.addEventListener('touchstart', (e) => {
+    card.addEventListener('touchstart', () => {
+        // Long-hold disabled
         touchStartTime = Date.now();
-        selectedElementForTap = card; // Store the element that started the touch
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-
-        longPressTimer = setTimeout(() => {
-            if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                selectShare(share.id); // Select the share first
-                showContextMenu(e, share.id);
-                e.preventDefault(); // Prevent default browser context menu
-            }
-        }, LONG_PRESS_THRESHOLD);
-    }, { passive: false });
+        selectedElementForTap = card;
+    }, { passive: true });
 
     card.addEventListener('touchmove', (e) => {
         const currentX = e.touches[0].clientX;
@@ -2167,40 +2121,10 @@ function updateOrCreateShareMobileCard(share) {
             showShareDetails();
         });
 
-        let touchStartTime = 0;
-        card.addEventListener('touchstart', (e) => {
-            touchStartTime = Date.now();
-            selectedElementForTap = card;
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-
-            longPressTimer = setTimeout(() => {
-                if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                    selectShare(share.id);
-                    showContextMenu(e, share.id);
-                    e.preventDefault();
-                }
-            }, LONG_PRESS_THRESHOLD);
-        }, { passive: false });
-
-        card.addEventListener('touchmove', (e) => {
-            const currentX = e.touches[0].clientX;
-            const currentY = e.touches[0].clientY;
-            const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
-            if (dist > TOUCH_MOVE_THRESHOLD) {
-                clearTimeout(longPressTimer);
-                touchStartTime = 0;
-            }
-        });
-
-        card.addEventListener('touchend', () => {
-            clearTimeout(longPressTimer);
-            if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === card) {
-                // Short tap handled by click event
-            }
-            touchStartTime = 0;
-            selectedElementForTap = null;
-        });
+    // Mobile long-press disabled: we intentionally do NOT attach context-menu touch handlers.
+    // Simple tap already handled by click listener above; no-op touch listeners keep scroll smooth.
+    card.addEventListener('touchstart', () => { selectedElementForTap = card; }, { passive: true });
+    card.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
 
         mobileShareCardsContainer.appendChild(card); // Append new cards at the end, sorting will reorder virtually
         logDebug('Mobile Cards: Created new card for share ' + share.shareName + '.');
@@ -2229,36 +2153,36 @@ function updateOrCreateShareMobileCard(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-    if (isMarketOpen) {
-            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
-            }
-            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
-                const change = currentLivePrice - previousClosePrice;
-                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
-            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                const change = lastFetchedLive - lastFetchedPrevClose;
-                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
-            }
-        } else {
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
-            if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                const change = lastFetchedLive - lastFetchedPrevClose;
-                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+        if (isMarketOpen) {
+                if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                    displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
+                }
+                if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                    const change = currentLivePrice - previousClosePrice;
+                    const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
+                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+                } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                    const change = lastFetchedLive - lastFetchedPrevClose;
+                    const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+                }
             } else {
-                displayPriceChange = '0.00 (0.00%)';
-                priceClass = 'neutral';
+                displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
+                if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                    const change = lastFetchedLive - lastFetchedPrevClose;
+                    const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                } else {
+                    displayPriceChange = '0.00 (0.00%)';
+                    priceClass = 'neutral';
+                }
+                cardPriceChangeClass = '';
             }
-            cardPriceChangeClass = '';
-        }
     }
 
     // Apply card-specific price change class
