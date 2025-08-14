@@ -381,7 +381,7 @@
                             <th>Code</th>
                             <th>Live Price</th>
                             <th>Target Price</th>
-                            <th>Reference Price</th>
+                            <th>Entry Price</th>
                             <th>Rating</th>
                             <th>Dividends</th>
                         </tr>
@@ -543,7 +543,7 @@
                         </button>
                         <div id="accordion-panel-other" class="accordion-panel" role="region" aria-labelledby="accordion-header-other">
                             <p class="static-field"><strong>Entry Date:</strong> <span id="autoEntryDateDisplay" class="ghosted-text">Auto when saved</span></p>
-                            <p class="static-field"><strong>Reference Price:</strong> <span id="autoReferencePriceDisplay" class="ghosted-text">Auto when saved</span></p>
+                            <p class="static-field"><strong>Entry Price:</strong> <span id="autoReferencePriceDisplay" class="ghosted-text">Auto when saved</span></p>
                         </div>
                     </div>
                     <!-- Comments -->
@@ -586,9 +586,7 @@
                     <section class="detail-card" data-section="investment">
                         <h3 class="detail-card-title">Investment</h3>
                         <div id="modalLivePriceDisplaySection" class="live-price-display-section"></div>
-                        <div class="detail-row"><span class="detail-label">Reference Price</span><span id="modalEnteredPrice" class="detail-value"></span></div>
-                        <div class="detail-row"><span class="detail-label">Entry Date</span><span id="modalEntryDate" class="detail-value"></span></div>
-                        <div class="detail-row"><span class="detail-label">Star Rating</span><span id="modalStarRating" class="detail-value"></span></div>
+                        <!-- Moved entry details to dedicated section below comments -->
                     </section>
                     <section class="detail-card" data-section="alerts">
                         <h3 class="detail-card-title">Alerts</h3>
@@ -608,15 +606,22 @@
                     <section class="detail-card full-span" data-section="links">
                         <h3 class="detail-card-title">Research & Links</h3>
                         <div class="external-links-grid">
+                            <a id="modalGoogleFinanceLink" href="#" target="_blank" class="external-link">Google Finance <i class="fas fa-external-link-alt"></i></a>
                             <a id="modalMarketIndexLink" href="#" target="_blank" class="external-link">MarketIndex Profile <i class="fas fa-external-link-alt"></i></a>
                             <a id="modalNewsLink" href="#" target="_blank" class="external-link">Latest News <i class="fas fa-external-link-alt"></i></a>
                             <a id="modalFoolLink" href="#" target="_blank" class="external-link">Motley Fool Coverage <i class="fas fa-external-link-alt"></i></a>
                             <a id="modalListcorpLink" href="#" target="_blank" class="external-link">Listcorp Profile <i class="fas fa-external-link-alt"></i></a>
                             <span class="commsec-link-wrapper">
-                                <a id="modalCommSecLink" href="#" target="_blank" class="external-link">CommSec Quote <i class="fas fa-external-link-alt"></i></a>
+                                <a id="modalCommSecLink" href="#" target="_blank" class="external-link">View on CommSec.com.au <i class="fas fa-external-link-alt"></i></a>
                                 <p id="commSecLoginMessage" class="ghosted-text commsec-message">Requires CommSec login per session</p>
                             </span>
                         </div>
+                    </section>
+                    <section class="detail-card full-span" data-section="entry-meta">
+                        <h3 class="detail-card-title">Entry Details</h3>
+                        <div class="detail-row"><span class="detail-label">Entry Price</span><span id="modalEnteredPrice" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Entry Date</span><span id="modalEntryDate" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Star Rating</span><span id="modalStarRating" class="detail-value"></span></div>
                     </section>
                 </div>
             </div>

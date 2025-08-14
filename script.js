@@ -3522,17 +3522,27 @@ function showShareDetails() {
         setIconDisabled(modalListcorpLink, true);
     }
 
-    // CommSec.com.au Link (DYNAMIC)
+    // CommSec.com.au Link (DYNAMIC) + Google Finance
     if (modalCommSecLink && share.shareName) {
-        // Use the required URL format: https://www2.commsec.com.au/quotes/summary?stockCode=AMP&exchangeCode=ASX
         const commsecUrl = `https://www2.commsec.com.au/quotes/summary?stockCode=${encodeURIComponent(share.shareName)}&exchangeCode=ASX`;
-    modalCommSecLink.href = commsecUrl;
-    modalCommSecLink.innerHTML = 'View on commsec.com.au <i class="fas fa-external-link-alt"></i>';
+        modalCommSecLink.href = commsecUrl;
+        modalCommSecLink.innerHTML = 'View on CommSec.com.au <i class="fas fa-external-link-alt"></i>';
         modalCommSecLink.style.display = 'inline-flex';
         setIconDisabled(modalCommSecLink, false);
     } else if (modalCommSecLink) {
         modalCommSecLink.style.display = 'none';
         setIconDisabled(modalCommSecLink, true);
+    }
+
+    if (typeof modalGoogleFinanceLink !== 'undefined') {
+        try {
+            if (modalGoogleFinanceLink && share.shareName) {
+                modalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${share.shareName.toUpperCase()}:ASX?hl=en`;
+                modalGoogleFinanceLink.style.display = 'inline-flex';
+            } else if (modalGoogleFinanceLink) {
+                modalGoogleFinanceLink.style.display = 'none';
+            }
+        } catch(_) {}
     }
 
     if (modalCommSecLink && commSecLoginMessage) {
@@ -6786,6 +6796,7 @@ async function initializeAppLogic() {
                     div.dataset.code = stock.code; // Store the code for easy access
                     div.dataset.name = stock.name; // Store the company name
                     div.addEventListener('click', () => {
+                            console.log('[Autocomplete] Click suggestion', stock.code, stock.name);
                         // Immediate quick-add workflow: open form (edit if existing, else new) BEFORE async fetch
                         asxSearchInput.value = stock.code; // Reflect selection in input for clarity
                         asxSuggestions.classList.remove('active'); // Hide suggestions
@@ -6897,6 +6908,7 @@ async function initializeAppLogic() {
                 if (!header) return;
                 const code = header.getAttribute('data-code');
                 const name = header.getAttribute('data-name');
+                console.log('[Autocomplete] Header fallback click', code, name);
                 if (!code) return;
                 try {
                     const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === code.toUpperCase());
@@ -6924,6 +6936,49 @@ async function initializeAppLogic() {
                         updateAddFormLiveSnapshot(code);
                     }
                 } catch(err) { console.warn('Search header quick-add failed', err); }
+            });
+        }
+
+        // Global delegated listener on container to catch any missed clicks (safety net)
+        if (asxSuggestions) {
+            asxSuggestions.addEventListener('click', (e) => {
+                const item = e.target.closest('.suggestion-item');
+                if (!item) return;
+                const code = item.dataset.code;
+                const name = item.dataset.name;
+                console.log('[Autocomplete] Delegated suggestion click', code, name);
+                if (!code) return;
+                // Simulate normal path if direct listener failed
+                const stock = { code, name };
+                asxSearchInput.value = code;
+                asxSuggestions.classList.remove('active');
+                try {
+                    const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === code);
+                    if (existingShare) {
+                        hideModal(stockSearchModal);
+                        showEditFormForSelectedShare(existingShare.id);
+                    } else {
+                        hideModal(stockSearchModal);
+                        clearForm();
+                        formTitle.textContent = 'Add New Share';
+                        selectedShareDocId = null;
+                        if (shareNameInput) {
+                            shareNameInput.value = code;
+                            shareNameInput.classList.add('autofill-pulse');
+                            setTimeout(()=> shareNameInput.classList.remove('autofill-pulse'), 900);
+                        }
+                        if (formCompanyName) formCompanyName.textContent = name || '';
+                        populateShareWatchlistSelect(null, true);
+                        if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
+                            addCommentSection(commentsFormContainer);
+                        }
+                        showModal(shareFormSection);
+                        if (shareNameInput) shareNameInput.focus();
+                        checkFormDirtyState();
+                        updateAddFormLiveSnapshot(code);
+                    }
+                } catch(err) { console.warn('Delegated suggestion click failed', err); }
+                displayStockDetailsInSearchModal(code);
             });
         }
 
