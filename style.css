@@ -3643,6 +3643,22 @@ table td.live-price-cell.negative-change {
     letter-spacing: .25px;
     padding: 0 4px; /* slight breathing room so background sits tight to glyphs */
 }
+
+/* Enlarged primary header icons */
+#hamburgerBtn, #addShareHeaderBtn { font-size: 1.9rem; width: 48px; height: 48px; display:inline-flex; align-items:center; justify-content:center; }
+#hamburgerBtn svg, #addShareHeaderBtn svg { width:32px; height:32px; }
+
+/* Modal action icons (generic) */
+.modal-container .icon-btn, .modal-container .close-button, .modal-container .delete-icon, .modal-container .edit-icon, .modal-container .save-icon {
+        font-size: 1.4rem !important;
+        width: 42px;
+        height: 42px;
+}
+
+/* Centered single-line login note on mobile */
+@media (max-width: 768px) {
+    #commSecLoginMessage { text-align:center; display:block; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:4px 0 0 0 !important; }
+}
 .price-change-large.positive { background: linear-gradient(135deg,#062d15,#06411f); color: var(--brand-green) !important; }
 .price-change-large.negative { background: linear-gradient(135deg,#310a0a,#541414); color: var(--brand-red) !important; }
 .price-change-large.neutral { background: linear-gradient(135deg,#111,#222); color: var(--text-color) !important; }

@@ -667,6 +667,8 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
         setTimeout(adjustMainContentPadding, 450);
         // A second safety call in case the first fires mid-transition
         setTimeout(adjustMainContentPadding, 700);
+    // New: Always scroll to top smoothly after toggling for visibility of top cards
+    try { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); } catch(_) { window.scrollTo(0,0); }
     });
     // Also adjust precisely on transition end of the container
     asxCodeButtonsContainer.addEventListener('transitionend', (ev) => {
