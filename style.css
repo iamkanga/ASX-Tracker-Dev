@@ -198,12 +198,18 @@ function makeFilesAvailableToSourceControlCSS() {
     --price-down-color: var(--brand-red);
     --price-neutral-color: #6c757d;
     --live-price-section-bg: rgba(0, 123, 255, 0.05); /* Subtle blue tint */
-    --live-price-positive-bg: rgba(40, 167, 69, 0.1); /* Faint green */
-    --live-price-negative-bg: rgba(220, 53, 69, 0.1); /* Faint red */
+    --live-price-positive-bg: rgba(46, 204, 113, 0.12); /* Restored subtle green */
+    --live-price-negative-bg: rgba(231, 76, 60, 0.12); /* Restored subtle red */
+    --live-price-neutral-bg: rgba(164, 147, 147, 0.10); /* Muted coffee for unchanged */
+    --watch-bg-positive: rgba(46,204,113,0.10);
+    --watch-bg-negative: rgba(231,76,60,0.10);
+    --watch-bg-neutral: rgba(164,147,147,0.10);
+    --target-hit-border-color: var(--accent-color); /* Coffee hue border */
+    --target-hit-border-width: 3px; /* Thicker border for target hits */
     --comment-title-bg: rgba(0, 0, 0, 0.05); /* Subtle background for comment titles */
     --target-alert-bg: #e0f7fa; /* Light blue for target hit alert */
     --target-alert-text: #a49393; /* Coffee color for target-hit ASX code in modals */
-    --target-alert-border: #a49393;
+    --target-alert-border: var(--accent-color);
     --target-banner-height: 40px; /* This variable is now effectively unused for the banner, but kept for other potential uses */
     /* General green used in components */
     --green-color: var(--brand-green);
@@ -245,6 +251,27 @@ function makeFilesAvailableToSourceControlCSS() {
     border-top: 1px solid var(--border-color, #c9d2d4);
     background: var(--app-bg, #fff);
 }
+
+/* Restored subtle movement background hues for watchlist rows & mobile cards */
+table tbody tr.positive-change-row:not(.target-hit-alert),
+.mobile-card.positive-change-card:not(.target-hit-alert) { background: var(--watch-bg-positive); }
+table tbody tr.negative-change-row:not(.target-hit-alert),
+.mobile-card.negative-change-card:not(.target-hit-alert) { background: var(--watch-bg-negative); }
+table tbody tr.neutral-change-row:not(.target-hit-alert),
+.mobile-card.neutral-change-card:not(.target-hit-alert) { background: var(--watch-bg-neutral); }
+
+/* Ensure borders for all three states are consistent thickness */
+table tbody tr.positive-change-row:not(.target-hit-alert),
+table tbody tr.negative-change-row:not(.target-hit-alert),
+table tbody tr.neutral-change-row:not(.target-hit-alert) { border-left: 4px solid transparent; border-right:4px solid transparent; }
+
+/* Target hit border refinement (coffee tone, thicker) */
+table tbody tr.target-hit-alert,
+.mobile-card.target-hit-alert,
+.portfolio-card.target-hit-alert { border: var(--target-hit-border-width) solid var(--target-hit-border-color) !important; }
+
+/* Neutral override if no change numeric class applied */
+.mobile-card:not(.positive-change-card):not(.negative-change-card):not(.target-hit-alert) { background: var(--watch-bg-neutral); }
 
 /* Removed global ghosting when market is closed. Watchlist, borders, and ASX code buttons stay full color. */
 
@@ -3264,14 +3291,15 @@ table tbody tr:not(.selected):hover {
 
 /* NEW: Target hit alert styling for table rows and mobile cards */
 table tbody tr.target-hit-alert,
-.mobile-card.target-hit-alert {
-    border: 2px solid var(--green-color) !important; /* Force a full 2px green border */
-    box-shadow: 0 0 8px rgba(var(--green-color-dark-rgb), 0.5); /* Subtle glow for emphasis */
-    animation: pulse-alert 1.5s infinite alternate; /* Subtle pulsing animation */
-    /* Keep the subtle background from the alert theme, but ensure border is dominant */
-    background-color: var(--target-alert-bg); 
+/* Removed old target-hit shadow; new border handled globally */
+.mobile-card.target-hit-alert, 
+.portfolio-card.target-hit-alert, 
+tr.target-hit-alert { 
+    position: relative; 
+    outline: none; 
+    border-radius: 6px; 
+    box-shadow: none; 
 }
-
 /* Ensure text color applies to children */
 table tbody tr.target-hit-alert td,
 .mobile-card.target-hit-alert h3,

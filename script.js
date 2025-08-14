@@ -4453,7 +4453,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 <div class="external-link-item">
                     <a id="searchModalCommSecLink" href="#" target="_blank" class="external-link">View on CommSec.com.au <i class="fas fa-external-link-alt"></i></a>
                 </div>
-                <p class="ghosted-text commsec-message">Requires single CommSec login per session</p>
+                <p class="ghosted-text external-links-note">Login may be required for some data sources.</p>
             </div>
         `;
 
