@@ -5190,15 +5190,29 @@ async function loadTriggeredAlertsListener() {
 
 // NEW: Helper to enable/disable a specific alert for a share
 // Toggle alert enabled flag (if currently enabled -> disable; if disabled -> enable)
-async function toggleAlertEnabled(shareId, currentIsMuted) {
+async function toggleAlertEnabled(shareId) {
     try {
         if (!db || !currentUserId || !window.firestore) throw new Error('Firestore not available');
         const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
         const alertDocRef = window.firestore.doc(alertsCol, shareId);
-    // currentIsMuted === true means document.enabled === false
-    const newEnabled = !!currentIsMuted; // if muted -> true (unmute); if not muted -> false (mute)
-    await window.firestore.updateDoc(alertDocRef, { enabled: newEnabled, updatedAt: window.firestore.serverTimestamp() });
-    showCustomAlert(newEnabled ? 'Alert unmuted' : 'Alert muted', 1000);
+        // Fetch current state (gracefully handle missing doc by creating one)
+        let currentEnabled = true; // default enabled if field missing
+        try {
+            const snap = await window.firestore.getDoc(alertDocRef);
+            if (snap.exists()) {
+                const data = snap.data();
+                currentEnabled = (data.enabled !== false); // undefined => true
+            } else {
+                // If doc missing, create baseline alert doc shell so user can mute/unmute going forward
+                await window.firestore.setDoc(alertDocRef, { enabled: true, createdAt: window.firestore.serverTimestamp(), updatedAt: window.firestore.serverTimestamp() }, { merge: true });
+                currentEnabled = true;
+            }
+        } catch(fetchErr) {
+            console.warn('Alerts: Could not fetch current alert doc for toggle; assuming enabled.', fetchErr);
+        }
+        const newEnabled = !currentEnabled; // invert
+        await window.firestore.setDoc(alertDocRef, { enabled: newEnabled, updatedAt: window.firestore.serverTimestamp() }, { merge: true });
+        showCustomAlert(newEnabled ? 'Alert unmuted' : 'Alert muted', 1000);
     } catch (e) {
         console.error('Alerts: Failed to toggle enabled for share ' + shareId, e);
         showCustomAlert('Failed to update alert. Please try again.', 1500);
@@ -8156,7 +8170,7 @@ function showTargetHitDetailsModal() {
         if (toggleBtn) {
             toggleBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                await toggleAlertEnabled(share.id, isMuted);
+                await toggleAlertEnabled(share.id);
             });
         }
         return item;
