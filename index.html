@@ -6,7 +6,7 @@
     <title>Share Watchlist (Updated)</title>
     <link rel="icon" href="favicon.png" type="image/png">
 
-    <link rel="stylesheet" href="style.css?v=0.1.5">
+    <link rel="stylesheet" href="style.css?v=0.1.7">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
@@ -125,8 +125,53 @@
             }
         }
     </style>
+        <style>
+        /* Dynamic Watchlist Title + Sort Row */
+    .watchlist-title-bar-row, .sort-line-row { display:flex; align-items:center; justify-content:center; width:100%; }
+    .watchlist-dynamic-title { margin:4px 0 2px; font-size:1.85rem; font-weight:650; cursor:pointer; text-align:center; line-height:1.1; flex:0 1 auto; width:auto; outline:none; }
+    #dynamicWatchlistTitleText { cursor:pointer; display:inline-block; padding:0 4px; border-radius:4px; pointer-events:auto; }
+    #dynamicWatchlistTitle { user-select:none; pointer-events:auto; }
+    /* Keyboard-only focus ring should be green; suppress mouse focus ring */
+    #dynamicWatchlistTitleText:focus { outline:none; }
+    #dynamicWatchlistTitleText:focus-visible { outline:2px solid var(--green-color); outline-offset:2px; }
+        .watchlist-dynamic-title:focus { outline:none; }
+    .sort-line-row { gap:12px; font-size:0.9rem; margin-bottom:6px; }
+        .current-sort-display { min-height:1.2em; font-weight:500; }
+    /* Subtle triangle toggle: two chevrons forming minimal arrow */
+    /* Reworked subtle chevron toggle (single arrow) */
+    .asx-toggle-triangle { position:relative; width:30px; height:26px; background:transparent; border:none !important; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; -webkit-tap-highlight-color: transparent; }
+    .asx-toggle-triangle::before { content:""; width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-top:10px solid var(--text-color); transition:transform .28s ease; transform-origin:center; }
+    .asx-toggle-triangle.expanded::before { transform:rotate(180deg); }
+    .asx-toggle-triangle::after { display:none; }
+    /* Remove mouse/touch focus ring but keep keyboard focus-visible */
+    .asx-toggle-triangle:focus { outline:none; }
+    .asx-toggle-triangle:focus-visible { outline:2px solid var(--accent-color,#a49393); outline-offset:2px; border-radius:4px; }
+    .asx-toggle-triangle:active { outline:none; }
+    @media (hover:hover){ .asx-toggle-triangle:hover::before, .asx-toggle-triangle:hover::after { opacity:1; } }
+        /* Watchlist picker modal */
+        .watchlist-picker-list { display:flex; flex-direction:column; gap:6px; margin:12px 0; }
+    .watchlist-picker-list .picker-item { padding:10px 12px; border:1px solid var(--border-color,#d0d0d0); border-radius:6px; cursor:pointer; background:var(--card-bg,#fff); color:var(--text-color); font-size:0.95rem; display:flex; justify-content:space-between; align-items:center; transition:background .18s,color .18s,border-color .18s; }
+    .watchlist-picker-list .picker-item.active { background:var(--accent-color,#a49393); color:#fff; border-color:var(--accent-color,#a49393); font-weight:600; box-shadow:0 0 0 2px rgba(255,255,255,0.18) inset; }
+    .watchlist-picker-list .picker-item:hover { background:var(--hover-bg,#f5f7fa); }
+    /* Dark theme override (assumes a body.dark or body.dark-theme class if present) */
+    body.dark .watchlist-picker-list .picker-item { background:var(--card-bg,#222); border-color:var(--border-color,#444); }
+    body.dark .watchlist-picker-list .picker-item:hover { background:#2e2e2e; }
+    body.dark .watchlist-picker-list .picker-item.active { background:var(--accent-color,#a49393); color:#fff; border-color:var(--accent-color,#a49393); box-shadow:0 0 0 2px rgba(0,0,0,0.4) inset; }
+        .modal-content.watchlist-picker { max-width:400px; width:94%; }
+        .modal-actions { text-align:right; margin-top:8px; }
+        @media (max-width:600px){
+            .watchlist-dynamic-title { font-size:1.25rem; }
+            .sort-line-row { gap:10px; }
+            .code-buttons-toggle { font-size:0.8rem; }
+        }
+    /* Flash highlight for scrolled share */
+    .flash-highlight { animation: flashFade 1.2s ease-in-out; }
+    @keyframes flashFade { 0% { box-shadow:0 0 0 3px var(--accent-color,#a49393); } 50% { box-shadow:0 0 0 1px var(--accent-color,#a49393); } 100% { box-shadow:none; } }
+        </style>
 </head>
 <body>
+    <!-- Toast notifications container (single instance) -->
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
     <div id="splashScreen" class="splash-screen">
         <img id="splashKangarooIcon" src="Kangaicon.jpg" alt="Kangaroo App Icon" class="splash-icon">
         <button id="splashSignInBtn" class="google-auth-btn">
@@ -140,41 +185,52 @@
             </svg>
             <span>Sign in with Google</span>
         </button>
+                <button id="splashUsePopupBtn" class="google-auth-btn" style="display:none; margin-top: 12px; background:#ffffff10; border:1px solid #ffffff40;">
+                        <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; opacity: 0.85;">
+                                <g fill="none" fill-rule="evenodd">
+                                    <path d="M17.64 9.2045c0-.6381-.0573-1.2518-.1682-1.8409H9v3.4818h4.8441c-.2086 1.125-.8441 2.0782-1.7777 2.7218v2.2591h2.9082c1.7018-1.5668 2.6841-3.8736 2.6841-6.6218z" fill="#4285F4"></path>
+                                    <path d="M9 18c2.43 0 4.47-.8064 5.96-2.1818l-2.9082-2.2591c-.8064.5409-1.8409.8618-3.0518.8618-2.3455 0-4.3291-1.5818-5.0359-3.7164H.9545v2.3318C2.4545 16.1373 5.4818 18 9 18z" fill="#34A853"></path>
+                                    <path d="M3.9641 10.71c-.1818-.5409-.2864-1.1164-.2864-1.71s.1045-1.1691.2864-1.71V4.9582H.9545C.3477 6.1718 0 7.5477 0 9s.3477 2.8282.9545 4.0418L3.9641 10.71z" fill="#FBBC05"></path>
+                                    <path d="M9 3.5782c1.3227 0 2.5091.4555 3.44 1.3455l2.5818-2.5818C13.4636.8918 11.4273 0 9 0 5.4818 0 2.4545 1.8627.9545 4.9582L3.9641 7.29C4.6709 5.1545 6.6545 3.5782 9 3.5782z" fill="#EA4335"></path>
+                                </g>
+                        </svg>
+                        <span>Use popup instead</span>
+                </button>
     </div>
 
     <header id="appHeader" class="app-hidden">
-        <div class="header-top-row">
-            <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left">
+    <div class="header-top-row single-dynamic-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
                 <i class="fas fa-bars"></i>
             </button>
-            <h1 id="mainTitle">Share Watchlist</h1>
-            <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right">
+            <!-- Single dynamic clickable title acts as the only title bar -->
+            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
+            <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right icon-button" aria-label="Add Share">
                 <i class="fas fa-plus"></i>
             </button>
         </div>
-
-        <div class="watchlist-controls-row">
-            <div class="controls-flex-row no-gap">
-                <select id="watchlistSelect" class="dropdown-large left-rounded">
-                    <option value="" disabled selected>Watch List</option>
-                    <option value="cashBank">Cash & Assets</option> 
-                </select>
-                <select id="sortSelect" class="dropdown-large right-rounded">
-                    <!-- Options are rendered dynamically by script.js -->
-                </select>
-                <div class="toggle-asx-buttons-group">
-                    <button id="toggleAsxButtonsBtn" class="header-action-btn" title="Toggle ASX Code Buttons">
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                </div>
-            </div>
+        <!-- Sort row with subtle arrow toggle -->
+        <div id="sortLine" class="sort-line-row">
+            <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
+            <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer"></button>
         </div>
+        <select id="watchlistSelect" style="display:none"></select>
     <!-- Market status banner (shown automatically when market is closed) -->
     <div id="marketStatusBanner" class="market-status-banner app-hidden" aria-live="polite"></div>
         
         <div id="asxCodeButtonsContainer" class="asx-code-buttons-container">
             </div>
     </header>
+        <!-- Watchlist selection modal -->
+        <div id="watchlistPickerModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="watchlistPickerTitle">
+            <div class="modal-content watchlist-picker">
+                <h3 id="watchlistPickerTitle">Select Watchlist</h3>
+                <div id="watchlistPickerList" class="watchlist-picker-list"></div>
+                <div class="modal-actions">
+                        <button id="closeWatchlistPickerBtn" class="header-action-btn">Close</button>
+                </div>
+            </div>
+        </div>
 
     <nav id="appSidebar" class="app-sidebar">
         <button id="closeMenuBtn" class="close-menu-btn">X</button>
@@ -325,7 +381,7 @@
                             <th>Code</th>
                             <th>Live Price</th>
                             <th>Target Price</th>
-                            <th>Reference Price</th>
+                            <th>Entry Price</th>
                             <th>Rating</th>
                             <th>Dividends</th>
                         </tr>
@@ -351,7 +407,7 @@
         </div>
     </main>
 
-    <button id="targetHitIconBtn" class="icon-button target-hit-fixed-btn app-hidden" title="View Target Price Alerts">
+    <button id="targetHitIconBtn" class="icon-button target-hit-fixed-btn" title="View Target Price Alerts">
         <img src="notification_icon.png" alt="Notifications">
         <span id="targetHitIconCount" class="badge">0</span>
     </button>
@@ -373,85 +429,137 @@
             </div>
             
             <div class="modal-body-scrollable">
-                <!-- Watchlist and Code Selection (always at top) -->
-                <label for="shareWatchlistSelect">Assign to Watchlist:</label>
-                <select id="shareWatchlistSelect" class="dropdown-large" required>
-                    <option value="" disabled selected>Select a Watchlist</option>
-                </select>
-
-                <label for="shareName">Code:</label>
-                <div class="search-input-container">
-                    <input type="text" id="shareName" placeholder="e.g., BHP" autocomplete="off" required>
-                    <div id="shareNameSuggestions" class="autocomplete-suggestions"></div>
-                </div>
-
-                <!-- Portfolio/Share Details Section (all grouped for clarity and extensibility) -->
-                <div class="portfolio-details-section" style="margin-top: 24px; padding: 16px; border: 1px solid var(--ghosted-text,#ccc); border-radius: 8px; background: var(--modal-bg,#f9f9f9);">
-                    <!-- Portfolio-specific fields (required for portfolio tracking) -->
-                    <div class="portfolio-inputs-group" style="margin-bottom: 18px;">
-                        <label for="portfolioShares">Number of Shares Purchased:</label>
-                        <input type="number" id="portfolioShares" min="0" step="1" placeholder="e.g., 1000">
-
-                        <label for="portfolioAvgPrice">Average Purchase Price ($):</label>
-                        <input type="number" id="portfolioAvgPrice" min="0" step="0.01" placeholder="e.g., 23.45">
-                    </div>
-
-                    <!-- Share-specific fields (apply to both portfolio and watchlist entries) -->
-                    <label for="shareRating">Star Rating:</label>
-                    <select id="shareRating" class="dropdown-large">
-                        <option value="0" selected>No Rating</option>
-                        <option value="1">⭐ 1 Star</option>
-                        <option value="2">⭐⭐ 2 Stars</option>
-                        <option value="3">⭐⭐⭐ 3 Stars</option>
-                        <option value="4">⭐⭐⭐⭐ 4 Stars</option>
-                        <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
-                    </select>
-
-                    <!-- Live Price Display (optional, shown if available) -->
-                    <div id="addShareLivePriceDisplay" class="live-price-display-section" style="display: none;"></div>
-
-                    <!-- Target Price and Direction -->
-                    <div class="form-group-with-toggle">
-                        <label for="targetPrice" class="target-price-label">Target Price ($):</label>
-                        <div class="target-checkbox-grid">
-                            <div class="target-checkbox-row">
-                                <label class="checkbox-label" for="targetBuyCheckbox">
-                                    <input type="checkbox" id="targetBuyCheckbox" class="modern-checkbox" disabled>
-                                    Buy
-                                </label>
-                                <label class="checkbox-label" for="targetAboveCheckbox">
-                                    <input type="checkbox" id="targetAboveCheckbox" class="modern-checkbox">
-                                    Above
-                                </label>
+                <div id="shareFormAccordion" class="accordion">
+                    <!-- Core Info -->
+                    <div class="accordion-section open" data-section="core">
+                        <button type="button" class="accordion-toggle" aria-expanded="true" aria-controls="accordion-panel-core" id="accordion-header-core">
+                            <span class="accordion-title">Core Info</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-core" class="accordion-panel" role="region" aria-labelledby="accordion-header-core">
+                                <label for="shareName">ASX Code:</label>
+                            <div class="search-input-container">
+                                <input type="text" id="shareName" placeholder="e.g. BHP" autocomplete="off" required>
+                                <div id="shareNameSuggestions" class="autocomplete-suggestions"></div>
                             </div>
-                            <div class="target-checkbox-row">
-                                <label class="checkbox-label" for="targetSellCheckbox">
-                                    <input type="checkbox" id="targetSellCheckbox" class="modern-checkbox" disabled>
-                                    Sell
-                                </label>
-                                <label class="checkbox-label" for="targetBelowCheckbox">
-                                    <input type="checkbox" id="targetBelowCheckbox" class="modern-checkbox" checked>
-                                    Below
-                                </label>
+                            <div id="addShareLivePriceDisplay" class="live-price-display-section" style="display:none;"></div>
+
+                                <label for="shareWatchlistSelect" style="margin-top:14px;">Assign to Watchlist:</label>
+                                <select id="shareWatchlistSelect" class="dropdown-large" required style="display:none;">
+                                    <option value="" disabled selected>Select a Watchlist</option>
+                                </select>
+                                <button id="shareWatchlistDropdownBtn" type="button" class="dropdown-large" aria-haspopup="listbox" aria-expanded="false">Select Watchlists</button>
+                                <div id="shareWatchlistEnhanced" class="watchlist-enhanced-list" role="listbox"></div>
+                        </div>
+                    </div>
+                    <!-- Portfolio Holdings -->
+                    <div class="accordion-section" data-section="portfolio">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-portfolio" id="accordion-header-portfolio">
+                            <span class="accordion-title">Portfolio Holdings</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-portfolio" class="accordion-panel" role="region" aria-labelledby="accordion-header-portfolio">
+                            <label for="portfolioShares">Number of Shares:</label>
+                            <input type="number" id="portfolioShares" min="0" step="1" placeholder="1000" class="smart-ph">
+
+                            <label for="portfolioAvgPrice">Average Purchase Price ($):</label>
+                            <input type="number" id="portfolioAvgPrice" min="0" step="0.01" placeholder="23.45" class="smart-ph">
+                        </div>
+                    </div>
+                    <!-- Target & Rating -->
+                    <div class="accordion-section" data-section="target">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-target" id="accordion-header-target">
+                            <span class="accordion-title">Target & Rating</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-target" class="accordion-panel" role="region" aria-labelledby="accordion-header-target">
+                            <label for="shareRating">Star Rating:</label>
+                            <select id="shareRating" class="dropdown-large">
+                                <option value="0" selected>No Rating</option>
+                                <option value="1">⭐ 1 Star</option>
+                                <option value="2">⭐⭐ 2 Stars</option>
+                                <option value="3">⭐⭐⭐ 3 Stars</option>
+                                <option value="4">⭐⭐⭐⭐ 4 Stars</option>
+                                <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
+                            </select>
+                            <div class="form-group-with-toggle">
+                                <label for="targetPrice" class="target-price-label">Target Price ($):</label>
+                                <div class="toggle-row" aria-label="Alert configuration">
+                                    <div class="segmented-toggle intent-toggle" role="group" aria-label="Intent">
+                                        <button type="button" id="targetIntentBuyBtn" class="toggle-segment intent buy is-active" aria-pressed="true">Buy</button>
+                                        <button type="button" id="targetIntentSellBtn" class="toggle-segment intent sell" aria-pressed="false">Sell</button>
+                                    </div>
+                                    <div class="segmented-toggle direction-toggle" role="group" aria-label="Direction">
+                                        <button type="button" id="targetDirAboveBtn" class="toggle-segment dir above" aria-pressed="false">Above</button>
+                                        <button type="button" id="targetDirBelowBtn" class="toggle-segment dir below is-active" aria-pressed="true">Below</button>
+                                    </div>
+                                </div>
+                                <div class="visually-hidden">
+                                    <div class="target-checkbox-grid">
+                                        <div class="target-checkbox-row">
+                                            <label class="checkbox-label" for="targetBuyCheckbox">
+                                                <input type="checkbox" id="targetBuyCheckbox" class="modern-checkbox" disabled>
+                                                Buy
+                                            </label>
+                                            <label class="checkbox-label" for="targetAboveCheckbox">
+                                                <input type="checkbox" id="targetAboveCheckbox" class="modern-checkbox">
+                                                Above
+                                            </label>
+                                        </div>
+                                        <div class="target-checkbox-row">
+                                            <label class="checkbox-label" for="targetSellCheckbox">
+                                                <input type="checkbox" id="targetSellCheckbox" class="modern-checkbox" disabled>
+                                                Sell
+                                            </label>
+                                            <label class="checkbox-label" for="targetBelowCheckbox">
+                                                <input type="checkbox" id="targetBelowCheckbox" class="modern-checkbox" checked>
+                                                Below
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="number" id="targetPrice" step="0.01" placeholder="25.50" class="smart-ph">
                             </div>
                         </div>
-                        <input type="number" id="targetPrice" step="0.01" placeholder="e.g., 25.50">
                     </div>
-
-                    <!-- Price and Dividend Details -->
-                    <label for="currentPrice">Reference Price ($):</label>
-                    <input type="number" id="currentPrice" step="0.01" placeholder="e.g., 25.50">
-
-                    <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
-                    <input type="number" id="dividendAmount" step="0.001" placeholder="e.g., 1.250">
-
-                    <label for="frankingCredits">Franking Credits (%):</label>
-                    <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
-
-                    <!-- Comments Section (optional, can add multiple) -->
-                    <div class="comments-form-container">
-                        <h3>Comments <span id="addCommentSectionBtn" class="add-section-icon"><i class="fas fa-plus"></i></span></h3>
-                        <div id="dynamicCommentsArea">
+                    <!-- Dividends -->
+                    <div class="accordion-section" data-section="dividends">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-dividends" id="accordion-header-dividends">
+                            <span class="accordion-title">Dividends</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-dividends" class="accordion-panel" role="region" aria-labelledby="accordion-header-dividends">
+                            <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
+                            <input type="number" id="dividendAmount" step="0.001" placeholder="1.250" class="smart-ph">
+                            <label for="frankingCredits">Franking Credits (%):</label>
+                            <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="70 (for 70%)" class="smart-ph">
+                        </div>
+                    </div>
+                    <!-- Other Details (auto populated, read-only display) -->
+                    <div class="accordion-section" data-section="other">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-other" id="accordion-header-other">
+                            <span class="accordion-title">Other Details</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-other" class="accordion-panel" role="region" aria-labelledby="accordion-header-other">
+                            <p class="static-field"><strong>Entry Date:</strong> <span id="autoEntryDateDisplay" class="ghosted-text">Auto when saved</span></p>
+                            <p class="static-field"><strong>Entry Price:</strong> <span id="autoReferencePriceDisplay" class="ghosted-text">Auto when saved</span></p>
+                        </div>
+                    </div>
+                    <!-- Comments -->
+                    <div class="accordion-section" data-section="comments">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-comments" id="accordion-header-comments">
+                            <span class="accordion-title">Comments</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-comments" class="accordion-panel" role="region" aria-labelledby="accordion-header-comments">
+                            <div class="comments-form-container">
+                                <div class="comments-header-row">
+                                    <h3>Comments</h3>
+                                    <span id="addCommentSectionBtn" class="add-section-icon" title="Add Comment"><i class="fas fa-plus"></i></span>
+                                </div>
+                                <div id="dynamicCommentsArea"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -474,40 +582,47 @@
             </div>
             
             <div class="modal-body-scrollable">
-                <div id="modalLivePriceDisplaySection" class="live-price-display-section">
-                    </div>
-
-                <p><strong>Reference Price:</strong> <span id="modalEnteredPrice"></span></p>
-                <p><strong>Target Price:</strong> <span id="modalTargetPrice"></span></p>
-                <p><strong>Dividend Amount:</strong> <span id="modalDividendAmount"></span></p>
-                <p><strong>Franking Credits:</strong> <span id="modalFrankingCredits"></span></p>
-                <p><strong>Unfranked Yield:</strong> <span id="modalUnfrankedYield"></span></p>
-                <p><strong>Franked Yield:</strong> <span id="modalFrankedYield"></span></p>
-                <p><strong>Entry Date:</strong> <span id="modalEntryDate"></span></p>
-                <p><strong>Star Rating:</strong> <span id="modalStarRating"></span></p>
-
-                <div id="modalCommentsContainer" class="modal-comments-sections">
-                    <h3>Comments</h3>
-                    </div>
-
-                <div class="external-links-section">
-                    <h3>External Links</h3>
-                    <div class="external-link-item">
-                        <a id="modalNewsLink" href="#" target="_blank" class="external-link">View News <i class="fas fa-external-link-alt"></i></a>
-                    </div>
-                    <div class="external-link-item">
-                        <a id="modalMarketIndexLink" href="#" target="_blank" class="external-link">View on MarketIndex.com.au <i class="fas fa-external-link-alt"></i></a>
-                    </div>
-                    <div class="external-link-item">
-                        <a id="modalFoolLink" href="#" target="_blank" class="external-link">View on Fool.com.au <i class="fas fa-external-link-alt"></i></a>
-                    </div>
-                    <div class="external-link-item">
-                    <a id="modalListcorpLink" href="#" target="_blank" class="external-link">View on Listcorp.com <i class="fas fa-external-link-alt"></i></a>
-                </div>
-                    <div class="external-link-item">
-                        <a id="modalCommSecLink" href="#" target="_blank" class="external-link">View on commsec.com.au <i class="fas fa-external-link-alt"></i></a>
-                        <p id="commSecLoginMessage" class="ghosted-text commsec-message">Requires CommSec login per session</p>
-                    </div>
+                <div class="share-detail-sections">
+                    <section class="detail-card" data-section="investment">
+                        <h3 class="detail-card-title">Investment</h3>
+                        <div id="modalLivePriceDisplaySection" class="live-price-display-section"></div>
+                        <!-- Moved entry details to dedicated section below comments -->
+                    </section>
+                    <section class="detail-card" data-section="alerts">
+                        <h3 class="detail-card-title">Alerts</h3>
+                        <div class="detail-row"><span class="detail-label">Target Price</span><span id="modalTargetPrice" class="detail-value"></span></div>
+                    </section>
+                    <section class="detail-card" data-section="dividends">
+                        <h3 class="detail-card-title">Dividends & Yield</h3>
+                        <div class="detail-row"><span class="detail-label">Dividend Amount</span><span id="modalDividendAmount" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Franking Credits</span><span id="modalFrankingCredits" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Unfranked Yield</span><span id="modalUnfrankedYield" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Franked Yield</span><span id="modalFrankedYield" class="detail-value"></span></div>
+                    </section>
+                    <section class="detail-card full-span" data-section="comments">
+                        <h3 class="detail-card-title">Comments</h3>
+                        <div id="modalCommentsContainer" class="modal-comments-sections"></div>
+                    </section>
+                    <section class="detail-card full-span" data-section="links">
+                        <h3 class="detail-card-title">Research Links</h3>
+                        <div class="external-links-grid">
+                            <a id="modalNewsLink" href="#" target="_blank" class="external-link primary-news-link">View News <i class="fas fa-external-link-alt"></i></a>
+                            <a id="modalGoogleFinanceLink" href="#" target="_blank" class="external-link">View on Google Finance <i class="fas fa-external-link-alt"></i></a>
+                            <a id="modalMarketIndexLink" href="#" target="_blank" class="external-link">View on Market Index <i class="fas fa-external-link-alt"></i></a>
+                            <a id="modalFoolLink" href="#" target="_blank" class="external-link">View on Motley Fool <i class="fas fa-external-link-alt"></i></a>
+                            <a id="modalListcorpLink" href="#" target="_blank" class="external-link">View on Listcorp <i class="fas fa-external-link-alt"></i></a>
+                            <span class="commsec-link-wrapper">
+                                <a id="modalCommSecLink" href="#" target="_blank" class="external-link">View on CommSec.com.au <i class="fas fa-external-link-alt"></i></a>
+                                <p id="commSecLoginMessage" class="ghosted-text commsec-message">Requires CommSec login per session</p>
+                            </span>
+                        </div>
+                    </section>
+                    <section class="detail-card full-span" data-section="entry-meta">
+                        <h3 class="detail-card-title">Entry Details</h3>
+                        <div class="detail-row"><span class="detail-label">Entry Price</span><span id="modalEnteredPrice" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Entry Date</span><span id="modalEntryDate" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Star Rating</span><span id="modalStarRating" class="detail-value"></span></div>
+                    </section>
                 </div>
             </div>
         </div>
@@ -611,20 +726,11 @@
         </div>
     </div>
 
-    <div id="customDialogModal" class="modal">
-        <div class="modal-content">
-            <p id="customDialogMessage"></p>
-            <div class="custom-dialog-buttons">
-                <span id="customDialogConfirmBtn" class="modal-action-icon" title="Yes"><i class="fas fa-check-circle"></i></span>
-                <span id="customDialogCancelBtn" class="modal-action-icon danger" title="No"><i class="fas fa-times-circle"></i></span>
-            </div>
-        </div>
-    </div>
 
     <div id="targetHitDetailsModal" class="modal target-hit-details-modal">
         <div class="modal-content">
             <div class="modal-header-with-icon">
-                <h2 id="targetHitModalTitle">Target Price Alerts</h2>
+                <h2 id="targetHitModalTitle">Notifications</h2>
                 </div>
             
             <div class="modal-body-scrollable">
@@ -634,7 +740,7 @@
             </div>
             <div class="modal-action-buttons-footer">
                 <button id="alertModalMinimizeBtn" class="button secondary-buttons">Minimize</button>
-                <button id="alertModalDismissAllBtn" class="button danger-button">Dismiss All</button>
+                <button id="alertModalDismissAllBtn" class="button secondary-buttons">Dismiss All</button>
             </div>
         </div>
     </div>
@@ -724,8 +830,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, FieldValue, deleteField, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence, browserPopupRedirectResolver } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp, deleteField, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // YOUR FIREBASE CONFIGURATION - Replace with your actual Firebase project config
         const firebaseConfig = {
@@ -781,17 +887,26 @@
             query: query,
             where: where,
             getDocs: getDocs,
-            deleteField: FieldValue.delete,
-            writeBatch: writeBatch
+            deleteField: deleteField,
+            writeBatch: writeBatch,
+            // Expose serverTimestamp for consistent time fields
+            serverTimestamp: serverTimestamp
         } : null;
         
         window.authFunctions = firebaseInitialized ? {
             GoogleAuthProviderInstance: new GoogleAuthProvider(),
+            createGoogleProvider: () => new GoogleAuthProvider(),
             signInAnonymously: signInAnonymously,
             signInWithCustomToken: signInWithCustomToken,
             signInWithPopup: signInWithPopup,
+            signInWithRedirect: signInWithRedirect,
+            getRedirectResult: getRedirectResult,
             signOut: signOut,
-            onAuthStateChanged: onAuthStateChanged
+            onAuthStateChanged: onAuthStateChanged,
+            setPersistence: setPersistence,
+            browserLocalPersistence: browserLocalPersistence,
+            browserSessionPersistence: browserSessionPersistence,
+            browserPopupRedirectResolver: browserPopupRedirectResolver
         } : null;
 
         document.addEventListener('DOMContentLoaded', async function() {

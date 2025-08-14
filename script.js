@@ -8,38 +8,18 @@ function pushAppState(stateObj = {}, title = '', url = '') {
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
-    // NEW: First, check if the sidebar is open and close it.
-    // This should be the first check, as the sidebar can be open on top of the main view.
+    // Let the unified stack-based handler manage modals. Only handle sidebar here.
     if (window.appSidebar && window.appSidebar.classList.contains('open')) {
         if (window.toggleAppSidebar) {
             window.toggleAppSidebar(false); // Explicitly close the sidebar
         }
         return; // Exit after handling the sidebar
     }
-
-    // Always close the topmost open modal, one at a time, never dismissing the browser until all modals are closed
-    const modals = [
-        window.shareFormSection,
-        window.shareDetailModal,
-        window.targetHitDetailsModal,
-        window.cashAssetFormModal,
-        window.cashAssetDetailModal,
-        window.customDialogModal,
-        window.calculatorModal,
-        window.dividendCalculatorModal,
-        window.addWatchlistModal,
-        window.manageWatchlistModal,
-        window.stockSearchModal,
-        window.alertPanel
-    ];
-    for (const modal of modals) {
-        if (modal && modal.style.display !== 'none') {
-            if (window.closeModals) closeModals();
-            return; // Exit after handling the first open modal
-        }
-    }
-    // If no modals or sidebar are open, allow default browser back (exit app)
+    // Defer modal handling to the stack popstate handler below.
 });
+// Keep main content padding in sync with header height changes (e.g., viewport resize)
+window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
+document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
 // The previous patch has been removed as the root cause of the UI issues,
@@ -85,7 +65,6 @@ function onLivePricesUpdated() {
         if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
             sortShares();
         } else {
-            // Just re-render to reflect new price values
             renderWatchlist();
         }
         if (typeof renderPortfolioList === 'function') {
@@ -100,19 +79,14 @@ function onLivePricesUpdated() {
 }
 
 // Compatibility stub (legacy callsites may invoke)
-function forceApplyCurrentSort() {
-    if (currentSortOrder) {
-        // No aggressive re-sort; rely on user interactions & targeted resort triggers
-        return;
-    }
-}
-
-// --- Automatic market status handling (Sydney time) ---
+function forceApplyCurrentSort() { /* legacy no-op retained */ }
 document.addEventListener('DOMContentLoaded', function () {
     // --- Watchlist logic moved to watchlist.js ---
     // Import and call watchlist functions
     if (window.watchlistModule) {
         window.watchlistModule.renderWatchlistSelect();
+    // If we have a persisted lastKnownTargetCount, ensure the notification icon restores pre-live-load
+    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
         window.watchlistModule.populateShareWatchlistSelect();
         window.watchlistModule.ensurePortfolioOptionPresent();
         setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
@@ -183,11 +157,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 watchlistSelect.value = 'portfolio';
             }
         }
-        // Persist user intent
+    // Persist user intent
         try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e) {}
         let portfolioSection = document.getElementById('portfolioSection');
         portfolioSection.style.display = 'block';
-        renderPortfolioList();
+    renderPortfolioList();
+    // Keep header text in sync
+    try { updateMainTitle(); } catch(e) {}
+    // Ensure sort options and alerts are correct for Portfolio view
+    try { renderSortSelect(); } catch(e) {}
+    try { updateTargetHitBanner(); } catch(e) {}
         if (typeof renderAsxCodeButtons === 'function') {
             if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
             renderAsxCodeButtons();
@@ -197,7 +176,11 @@ document.addEventListener('DOMContentLoaded', function () {
         // Hide portfolio section if present, show normal stock watchlist section
         let portfolioSection = document.getElementById('portfolioSection');
         if (portfolioSection) portfolioSection.style.display = 'none';
-        stockWatchlistSection.style.display = '';
+    stockWatchlistSection.style.display = '';
+    stockWatchlistSection.classList.remove('app-hidden');
+    // Also ensure the table and mobile containers are restored from any previous hide
+    if (tableContainer) tableContainer.style.display = '';
+    if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = '';
     };
     // Render portfolio list (uses live prices when available)
     window.renderPortfolioList = function() {
@@ -205,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!portfolioListContainer) return;
 
         // Filter for shares assigned to the Portfolio
-        const portfolioShares = allSharesData.filter(s => s.watchlistId === 'portfolio');
+    const portfolioShares = allSharesData.filter(s => shareBelongsTo(s, 'portfolio'));
         if (portfolioShares.length === 0) {
             portfolioListContainer.innerHTML = '<p>No shares in your portfolio yet.</p>';
             return;
@@ -233,12 +216,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return price;
         }
 
-        function fmtMoney(n) {
-            return (typeof n === 'number' && !isNaN(n)) ? '$' + n.toFixed(2) : '';
-        }
-        function fmtPct(n) {
-            return (typeof n === 'number' && !isNaN(n)) ? n.toFixed(2) + '%' : '';
-        }
+    function fmtMoney(n) { return formatMoney(n); }
+    function fmtPct(n) { return formatPercent(n); }
 
     let totalValue = 0;
     let totalPL = 0;
@@ -251,23 +230,23 @@ document.addEventListener('DOMContentLoaded', function () {
     let lossPLSum = 0;   // sum of negative P/L (will stay negative)
         portfolioShares.forEach(share => {
             const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
-                ? Math.trunc(Number(share.portfolioShares))
-                : '';
+                ? Math.trunc(Number(share.portfolioShares)) : '';
             const avgPrice = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)))
-                ? Number(share.portfolioAvgPrice)
-                : '';
-            const priceNow = getDisplayPrice(share);
-            // Determine if we used live (market open), lastLive (market closed), or fallback user price
-            let priceMode = 'manual';
-            const codeKey = (share.shareName || '').toUpperCase();
-            const lpObj = livePrices ? livePrices[codeKey] : null;
+                ? Number(share.portfolioAvgPrice) : null;
+            const code = (share.shareName || '').toUpperCase();
+            const lpObj = livePrices ? livePrices[code] : undefined;
+            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+            let priceNow = null;
             if (lpObj) {
-                const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
-                if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceMode = 'live';
-                else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceMode = 'last';
+                if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceNow = Number(lpObj.live);
+                else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceNow = Number(lpObj.lastLivePrice);
             }
-            // DAILY CHANGE (on-the-day) vs overall P/L: compute day change using live vs prevClose (fallback to last fetched)
-            let dailyChangeClass = 'neutral';
+            if (priceNow === null || isNaN(priceNow)) {
+                if (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice))) {
+                    priceNow = Number(share.currentPrice);
+                }
+            }
+            let dailyChangeClass = '';
             if (lpObj) {
                 const latestLive = (lpObj.live !== null && !isNaN(lpObj.live)) ? Number(lpObj.live) : (lpObj.lastLivePrice ?? null);
                 const latestPrev = (lpObj.prevClose !== null && !isNaN(lpObj.prevClose)) ? Number(lpObj.prevClose) : (lpObj.lastPrevClose ?? null);
@@ -278,41 +257,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
             if (typeof rowValue === 'number') totalValue += rowValue;
-            const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number')
-                ? (priceNow - avgPrice) * shares
-                : null;
-            if (typeof shares === 'number' && typeof avgPrice === 'number') {
-                totalCostBasis += (shares * avgPrice);
-            }
-            if (typeof rowPL === 'number') totalPL += rowPL;
+            const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
+            if (typeof shares === 'number' && typeof avgPrice === 'number') totalCostBasis += (shares * avgPrice);
             if (typeof rowPL === 'number') {
+                totalPL += rowPL;
                 if (rowPL > 0) profitPLSum += rowPL; else if (rowPL < 0) lossPLSum += rowPL;
             }
-            const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number')
-                ? ((priceNow - avgPrice) / avgPrice) * 100
-                : null;
+            const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
-            const badge = ''; // remove textual badge for cleaner look on mobile & table
-            const priceColorClass = priceMode === 'live' ? 'live-price' : (priceMode === 'last' ? 'last-price' : 'manual-price');
+            const priceColorClass = marketOpen ? 'live-price' : 'last-price';
             const priceCell = (priceNow !== null && priceNow !== undefined) ? ('<span class="price-value '+priceColorClass+'">' + fmtMoney(priceNow) + '</span>') : '';
-
-            // Row colored by DAILY change, P/L cells individually colored by overall P/L (plClass)
             htmlTable += `<tr data-doc-id="${share.id}" class="${dailyChangeClass}">
                 <td class="code-cell">${share.shareName || ''}</td>
-                <td class="num-cell shares-cell">${shares !== '' ? shares : ''}</td>
+                <td class="num-cell shares-cell">${shares !== '' ? formatWithCommas(shares) : ''}</td>
                 <td class="num-cell avg-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
-                <td class="num-cell live-cell ${priceMode} liveprice-cell">${priceCell}</td>
+                <td class="num-cell live-cell ${marketOpen ? 'live' : 'last'} liveprice-cell">${priceCell}</td>
                 <td class="num-cell value-cell">${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
                 <td class="num-cell pl-cell ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
                 <td class="num-cell plpct-cell ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
             </tr>`;
-
-            // Mobile card variant
-    const card = `<div class="portfolio-card ${dailyChangeClass}" data-doc-id="${share.id}">
+            const card = `<div class="portfolio-card ${dailyChangeClass}" data-doc-id="${share.id}">
                 <div class="pc-row top">
-            <div class="pc-code ${dailyChangeClass}">${share.shareName || ''}</div>
-            <div class="pc-live ${priceMode}"><span class="val ${priceColorClass}">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
-            <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
+                    <div class="pc-code ${dailyChangeClass}">${share.shareName || ''}</div>
+                    <div class="pc-live ${marketOpen ? 'live' : 'last'}"><span class="val ${priceColorClass}">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
+                    <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
                 </div>
                 <div class="pc-row mid">
                     <div class="pc-shares">${shares !== '' ? shares : ''} @ ${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</div>
@@ -371,38 +339,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     showContextMenu(e, docId);
                 }
             });
-            // Touch long-press to open context menu on mobile
-            let touchStartTime = 0;
-            row.addEventListener('touchstart', (e) => {
-                touchStartTime = Date.now();
-                selectedElementForTap = row;
-                touchStartX = e.touches[0].clientX;
-                touchStartY = e.touches[0].clientY;
-                longPressTimer = setTimeout(() => {
-                    if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                        selectShare(docId);
-                        showContextMenu(e, docId);
-                        e.preventDefault();
-                    }
-                }, LONG_PRESS_THRESHOLD);
-            }, { passive: false });
-            row.addEventListener('touchmove', (e) => {
-                const currentX = e.touches[0].clientX;
-                const currentY = e.touches[0].clientY;
-                const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
-                if (dist > TOUCH_MOVE_THRESHOLD) {
-                    clearTimeout(longPressTimer);
-                    touchStartTime = 0;
-                }
-            });
-            row.addEventListener('touchend', () => {
-                clearTimeout(longPressTimer);
-                if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === row) {
-                    // Short tap handled by click event
-                }
-                touchStartTime = 0;
-                selectedElementForTap = null;
-            });
+            // Mobile long-press disabled: passive touch handlers only
+            row.addEventListener('touchstart', () => { selectedElementForTap = row; }, { passive: true });
+            row.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
         });
     };
 });
@@ -430,13 +369,37 @@ let currentUserId = null;
 let currentAppId;
 let selectedShareDocId = null;
 let allSharesData = []; // Kept in sync by the onSnapshot listener
+// Prevent duplicate sign-in attempts
+let authInProgress = false;
+// Helper: normalize and check membership for multi-watchlist support with backward compatibility
+function shareBelongsTo(share, watchlistId) {
+    if (!share) return false;
+    if (Array.isArray(share.watchlistIds)) {
+        return share.watchlistIds.includes(watchlistId);
+    }
+    return share.watchlistId === watchlistId;
+}
+
+// Helper: ensure we don't render duplicates when transient optimistic updates or race conditions occur
+function dedupeSharesById(items) {
+    try {
+        const map = new Map();
+        for (const it of items || []) {
+            if (it && it.id) map.set(it.id, it);
+        }
+        return Array.from(map.values());
+    } catch (e) {
+        console.warn('Dedupe: Failed to dedupe shares by id:', e);
+        return Array.isArray(items) ? items : [];
+    }
+}
 let currentDialogCallback = null;
 let autoDismissTimeout = null;
 let lastTapTime = 0;
 let tapTimeout;
 let selectedElementForTap = null;
 let longPressTimer;
-const LONG_PRESS_THRESHOLD = 500; // Time in ms for long press detection
+const LONG_PRESS_THRESHOLD = 500; // Time in ms for long press detection (desktop only; mobile long-press disabled)
 let touchStartX = 0;
 let touchStartY = 0;
 const TOUCH_MOVE_THRESHOLD = 10; // Pixels for touch movement to cancel long press
@@ -449,28 +412,45 @@ const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
 const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
 let userWatchlists = []; // Stores all watchlists for the user
 let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
+// Initialize dismissal and sort state from localStorage as early as possible to avoid flashes/defaults
+try { targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true'; } catch(e) {}
 // Restore last selected view (persisted)
 try {
     const lastView = localStorage.getItem('lastSelectedView');
     if (lastView === 'portfolio') {
         currentSelectedWatchlistIds = ['portfolio'];
+    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
         // Defer actual DOM switch until initial data load completes; hook into data load readiness
         window.addEventListener('load', () => {
             setTimeout(() => { if (typeof showPortfolioView === 'function') showPortfolioView(); }, 300);
         });
+
+    // Keep header and alerts consistent after portfolio render
+    try { updateMainTitle(); } catch(e) {}
+    try { ensureTitleStructure(); } catch(e) {}
+    try { updateTargetHitBanner(); } catch(e) {}
+    } else if (lastView && lastView !== 'portfolio') {
+        currentSelectedWatchlistIds = [lastView];
+        if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = lastView; }
+        try { updateMainTitle(); } catch(e) {}
+        try { ensureTitleStructure(); } catch(e) {}
+        try { updateTargetHitBanner(); } catch(e) {}
     }
 } catch(e) { /* ignore */ }
 const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
 const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
 let currentSortOrder = 'entryDate-desc'; // Default sort order
+try { const lsSort = localStorage.getItem('lastSortOrder'); if (lsSort) { currentSortOrder = lsSort; } } catch(e) {}
 let contextMenuOpen = false; // To track if the custom context menu is open
 let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
 let originalShareData = null; // Stores the original share data when editing for dirty state check
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
 let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
+// Guard against unintended re-opening of the Share Edit modal shortly after save
+let suppressShareFormReopen = false;
 
 // App version (single source of truth for display)
-const APP_VERSION = 'v0.1.4';
+const APP_VERSION = 'v0.1.5';
 
 
 // Live Price Data
@@ -492,9 +472,18 @@ let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
 
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
+let unsubscribeAlerts = null; // NEW: Holds the unsubscribe function for Firestore alerts listener
 
 // NEW: Global variable to store shares that have hit their target price
 let sharesAtTargetPrice = [];
+// NEW: Also track triggered but muted alerts so users can unmute from the hub
+let sharesAtTargetPriceMuted = [];
+// NEW: Remember last shown alert count to avoid icon flicker on reload while prices are loading (persisted)
+let lastKnownTargetCount = 0;
+try {
+    const persisted = parseInt(localStorage.getItem('lastKnownTargetCount') || '0', 10);
+    if (!isNaN(persisted) && persisted > 0) lastKnownTargetCount = persisted;
+} catch(e) {}
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 let currentMobileViewMode = 'default'; 
@@ -508,6 +497,12 @@ function applyCompactViewMode() {
             mobileShareCardsContainer.classList.remove('compact-view');
         }
     }
+    // Re-apply ASX buttons visibility since compact view hides them
+    if (typeof applyAsxButtonsState === 'function') {
+        applyAsxButtonsState();
+    }
+    // Adjust layout after view mode change
+    requestAnimationFrame(adjustMainContentPadding);
 }
 
 // NEW: Global variable to track if the target hit icon is dismissed for the current session
@@ -516,6 +511,8 @@ let targetHitIconDismissed = false;
 
 // Tracks if share detail modal was opened from alerts
 let wasShareDetailOpenedFromTargetAlerts = false;
+// Track if the edit form was opened from the share detail modal, so back can return to detail
+let wasEditOpenedFromShareDetail = false;
 
 // NEW: Global variable to store cash categories data
 let userCashCategories = [];
@@ -532,7 +529,7 @@ const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 // Copilot: No-op change to trigger source control detection
 const appHeader = document.getElementById('appHeader'); // Reference to the main header
 const mainContainer = document.querySelector('main.container'); // Reference to the main content container
-const mainTitle = document.getElementById('mainTitle');
+// mainTitle removed in favour of dynamicWatchlistTitle only
 const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
 const newShareBtn = document.getElementById('newShareBtn');
 const standardCalcBtn = document.getElementById('standardCalcBtn');
@@ -546,8 +543,68 @@ const formCompanyName = document.getElementById('formCompanyName'); // NEW: Comp
 const saveShareBtn = document.getElementById('saveShareBtn');
 const deleteShareBtn = document.getElementById('deleteShareBtn');
 const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
+// Centralized single-code snapshot handling
+let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
+async function updateAddFormLiveSnapshot(code) {
+    try {
+        if (!code || !GOOGLE_APPS_SCRIPT_URL || !addShareLivePriceDisplay) return;
+        const reqId = ++_latestAddFormSnapshotReq;
+        const upper = String(code).toUpperCase();
+        addShareLivePriceDisplay.dataset.loading = 'true';
+        // Lightweight loading indicator (optional)
+        addShareLivePriceDisplay.style.display = 'block';
+        addShareLivePriceDisplay.innerHTML = '<div class="mini-loading">Loading...</div>';
+        const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        if (reqId !== _latestAddFormSnapshotReq) return; // stale
+        if (!Array.isArray(data) || data.length === 0) { addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">No price data.</p>'; return; }
+        let row = data.find(r => {
+            const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
+            return c && String(c).toUpperCase().trim() === upper;
+        }) || data[0];
+        if (row && row !== data[0] && DEBUG_MODE) logDebug('Snapshot: matched exact row for', upper);
+        if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode||row.Code).toUpperCase().trim() !== upper && DEBUG_MODE) {
+            logDebug('Snapshot: exact match not found, using first row', { requested: upper, first: row.ASXCode||row.Code });
+        }
+        const live = parseFloat(row.LivePrice ?? row['Live Price'] ?? row.live ?? row.price ?? row.Last ?? row.LastPrice ?? row['Last Price'] ?? row.LastTrade ?? row['Last Trade']);
+        const prev = parseFloat(row.PrevClose ?? row['Prev Close'] ?? row.prevClose ?? row.prev ?? row['Previous Close'] ?? row.Close ?? row['Last Close']);
+        const pe = parseFloat(row.PE ?? row['PE Ratio'] ?? row.pe);
+        const hi = parseFloat(row.High52 ?? row['High52'] ?? row['High 52'] ?? row['52WeekHigh'] ?? row['52 High']);
+        const lo = parseFloat(row.Low52 ?? row['Low52'] ?? row['Low 52'] ?? row['52WeekLow'] ?? row['52 Low']);
+        const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
+        const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
+        const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
+        // Guard against user switching code mid-flight
+        if (shareNameInput && shareNameInput.value.toUpperCase().trim() !== upper) {
+            if (DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: shareNameInput.value });
+            return;
+        }
+        addShareLivePriceDisplay.innerHTML = `
+            <div class="fifty-two-week-row">
+                <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
+                <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
+            </div>
+            <div class="live-price-main-row">
+                <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
+                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${formatAdaptivePrice(change)} (${formatAdaptivePercent(pct)}%)` : 'N/A'}</span>
+            </div>
+            <div class="pe-ratio-row">
+                <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? formatAdaptivePrice(pe) : 'N/A'}</span>
+            </div>`;
+        addShareLivePriceDisplay.style.display = 'block';
+        addShareLivePriceDisplay.removeAttribute('data-loading');
+    } catch (e) {
+        if (DEBUG_MODE) console.warn('Snapshot: failed for', code, e);
+        if (addShareLivePriceDisplay) {
+            addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">Price unavailable.</p>';
+            addShareLivePriceDisplay.style.display = 'block';
+            addShareLivePriceDisplay.removeAttribute('data-loading');
+        }
+    }
+}
 const shareNameInput = document.getElementById('shareName');
-const currentPriceInput = document.getElementById('currentPrice');
+// Removed manual Reference Price input; currentPrice now auto-captured
 const targetPriceInput = document.getElementById('targetPrice');
 const dividendAmountInput = document.getElementById('dividendAmount');
 const frankingCreditsInput = document.getElementById('frankingCredits');
@@ -556,16 +613,62 @@ const commentsFormContainer = document.getElementById('dynamicCommentsArea');
 const modalStarRating = document.getElementById('modalStarRating');
 
 // --- ASX Code Toggle Button Functionality ---
-if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
-  toggleAsxButtonsBtn.addEventListener('click', function () {
-    asxCodeButtonsContainer.classList.toggle('expanded');
-    // Optionally, toggle the arrow direction
-    const icon = toggleAsxButtonsBtn.querySelector('i');
-    if (icon) {
-      icon.classList.toggle('fa-chevron-down');
-      icon.classList.toggle('fa-chevron-up');
+// Persisted ASX code buttons expanded state
+let asxButtonsExpanded = false;
+try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 'true') asxButtonsExpanded = true; } catch(e) {}
+
+function applyAsxButtonsState() {
+    if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
+    const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
+    // If there are no buttons, never show and hide chevron
+    const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
+    // In compact mode, still allow showing the buttons (they can be horizontally scrollable)
+    const shouldShow = !!hasButtons && asxButtonsExpanded;
+
+    if (shouldShow) {
+        asxCodeButtonsContainer.classList.add('expanded');
+        asxCodeButtonsContainer.classList.remove('app-hidden');
+        asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
+    } else {
+        asxCodeButtonsContainer.classList.remove('expanded');
+        asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
     }
-  });
+    // Chevron visibility and state
+    if (!hasButtons) {
+        toggleAsxButtonsBtn.style.display = 'none';
+        toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
+        toggleAsxButtonsBtn.classList.remove('expanded');
+        toggleAsxButtonsBtn.setAttribute('aria-pressed', 'false');
+    } else {
+        toggleAsxButtonsBtn.style.display = '';
+        toggleAsxButtonsBtn.removeAttribute('aria-disabled');
+    toggleAsxButtonsBtn.classList.toggle('expanded', shouldShow);
+        toggleAsxButtonsBtn.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
+    }
+    // After any state change, adjust content padding to account for header height change
+    // Use rAF to wait for styles/transition to apply
+    requestAnimationFrame(adjustMainContentPadding);
+}
+
+if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
+    applyAsxButtonsState();
+    toggleAsxButtonsBtn.addEventListener('click', () => {
+        asxButtonsExpanded = !asxButtonsExpanded;
+        try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
+        applyAsxButtonsState();
+        console.log('[ASX Toggle] Toggled. Expanded=', asxButtonsExpanded);
+        // Schedule padding adjustment after the CSS transition window
+        // Transition duration in CSS: 300-400ms; allow a buffer
+        setTimeout(adjustMainContentPadding, 450);
+        // A second safety call in case the first fires mid-transition
+        setTimeout(adjustMainContentPadding, 700);
+    });
+    // Also adjust precisely on transition end of the container
+    asxCodeButtonsContainer.addEventListener('transitionend', (ev) => {
+        if (ev.propertyName === 'max-height' || ev.propertyName === 'padding' || ev.propertyName === 'opacity') {
+            adjustMainContentPadding();
+        }
+    });
 }
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
 const shareTableBody = document.querySelector('#shareTable tbody');
@@ -591,6 +694,9 @@ const modalFoolLink = document.getElementById('modalFoolLink');
 const modalListcorpLink = document.getElementById('modalListcorpLink'); // NEW: Reference for Listcorp link
 const modalCommSecLink = document.getElementById('modalCommSecLink');
 const commSecLoginMessage = document.getElementById('commSecLoginMessage');
+// NEW: Auto (read-only) fields in Other Details section of Share Form
+const autoEntryDateDisplay = document.getElementById('autoEntryDateDisplay');
+const autoReferencePriceDisplay = document.getElementById('autoReferencePriceDisplay');
 const dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
 const calcCloseButton = document.querySelector('.calc-close-button');
 const calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
@@ -601,13 +707,19 @@ const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
 const investmentValueSelect = document.getElementById('investmentValueSelect');
 const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
 const sortSelect = document.getElementById('sortSelect');
-const customDialogModal = document.getElementById('customDialogModal');
-const customDialogMessage = document.getElementById('customDialogMessage');
+// Legacy customDialogModal removed; toast system fully replaces it.
 const calculatorModal = document.getElementById('calculatorModal');
 const calculatorInput = document.getElementById('calculatorInput');
 const calculatorResult = document.getElementById('calculatorResult');
 const calculatorButtons = document.querySelector('.calculator-buttons');
 const watchlistSelect = document.getElementById('watchlistSelect');
+// Dynamic watchlist title + picker modal + sort display (new UI layer)
+const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
+const dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
+const watchlistPickerModal = document.getElementById('watchlistPickerModal');
+const watchlistPickerList = document.getElementById('watchlistPickerList');
+const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
+// Removed legacy currentSortDisplay element (text summary of sort) now that dropdown itself is visible
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 const colorThemeSelect = document.getElementById('colorThemeSelect');
 const revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
@@ -632,6 +744,8 @@ const deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
 const exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
 const refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
 const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
+const shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
+const shareWatchlistDropdownBtn = document.getElementById('shareWatchlistDropdownBtn');
 const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection'); 
 const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
 const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
@@ -650,6 +764,12 @@ const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn
 // NEW: Target Direction Checkbox UI Elements
 const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
 const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
+// New Phase 1 segmented toggle buttons (UI-only)
+const targetIntentBuyBtn = document.getElementById('targetIntentBuyBtn');
+const targetIntentSellBtn = document.getElementById('targetIntentSellBtn');
+const targetDirAboveBtn = document.getElementById('targetDirAboveBtn');
+const targetDirBelowBtn = document.getElementById('targetDirBelowBtn');
+let userManuallyOverrodeDirection = false; // reset per form open
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
 const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
@@ -664,6 +784,17 @@ const searchModalCloseButton = document.querySelector('.search-close-button'); /
 // NEW: Global variable for storing loaded ASX code data from CSV
 let allAsxCodes = []; // { code: 'BHP', name: 'BHP Group Ltd' }
 let currentSelectedSuggestionIndex = -1; // For keyboard navigation in autocomplete
+let shareNameAutocompleteBound = false; // Prevent duplicate binding
+
+function initializeShareNameAutocomplete(force=false){
+    if (shareNameAutocompleteBound && !force) return;
+    if (!shareNameInput || !shareNameSuggestions) return;
+    // If already has an input listener tagged, skip unless force
+    if (shareNameInput.dataset.autocompleteBound && !force) return;
+    shareNameInput.dataset.autocompleteBound = '1';
+    shareNameAutocompleteBound = true;
+    // Listeners are already defined further below (conditional block). This function can serve as a future hook.
+}
 let currentSearchShareData = null; // Stores data of the currently displayed stock in search modal
 const splashKangarooIcon = document.getElementById('splashKangarooIcon');
 const splashSignInBtn = document.getElementById('splashSignInBtn');
@@ -674,6 +805,140 @@ const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: 
 
 // NEW: Cash & Assets UI Elements (1)
 const stockWatchlistSection = document.getElementById('stockWatchlistSection');
+// Generic number formatting helper (adds commas to large numbers while preserving decimals)
+function formatWithCommas(value) {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'number') return value.toLocaleString(undefined, { maximumFractionDigits: 8 });
+    const str = value.toString();
+    if (!/^[-+]?\d*(\.\d+)?$/.test(str)) return value; // not a plain number string
+    const parts = str.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+}
+
+// Global helpers for consistent numeric formatting across the UI
+function formatMoney(val, opts = {}) {
+    const { hideZero = false, decimals } = opts; // if decimals supplied explicitly, override adaptive logic
+    if (val === null || val === undefined) return '';
+    const n = Number(val);
+    if (!isFinite(n)) return '';
+    if (hideZero && n === 0) return '';
+    // Adaptive decimals: < 1 cent show 3 decimals (e.g., $0.005), otherwise 2.
+    const useDecimals = (typeof decimals === 'number') ? decimals : (Math.abs(n) < 0.01 && n !== 0 ? 3 : 2);
+    const fixed = n.toFixed(useDecimals);
+    const parts = fixed.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return '$' + parts.join('.');
+}
+
+function formatPercent(val, opts = {}) {
+    const { maxDecimals = 2 } = opts; // allow specifying maximum decimals
+    if (val === null || val === undefined) return '';
+    const n = Number(val);
+    if (!isFinite(n)) return '';
+    // Show whole number when no fractional component (e.g., 100 instead of 100.00)
+    if (Math.abs(n % 1) < 1e-9) return n.toFixed(0) + '%';
+    return n.toFixed(maxDecimals) + '%';
+}
+
+// Lean wrappers for adaptive decimals outside of currency symbol contexts
+function formatAdaptivePrice(value) {
+    if (value === null || value === undefined || isNaN(value)) return '0.00';
+    const absVal = Math.abs(Number(value));
+    const decimals = absVal !== 0 && absVal < 0.01 ? 3 : 2;
+    return Number(value).toFixed(decimals);
+}
+function formatAdaptivePercent(pct) {
+    if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
+    const n = Number(pct);
+    const abs = Math.abs(n);
+    // Use 3 decimals for very small magnitudes (under 0.1%), else 2
+    const decimals = (abs > 0 && abs < 0.1) ? 3 : 2;
+    return n.toFixed(decimals);
+}
+
+// Fallback for missing formatUserDecimalStrict (called in edit form population)
+if (typeof window.formatUserDecimalStrict !== 'function') {
+    window.formatUserDecimalStrict = function(v){
+        if (v === null || v === undefined || v === '') return '';
+        const num = Number(v);
+        if (isNaN(num)) return '';
+        // Keep up to 4 decimals if needed, trim trailing zeros
+        let str = num.toFixed(4); // start with 4
+        str = str.replace(/\.0+$/,'');
+        str = str.replace(/(\.\d*[1-9])0+$/,'$1');
+        return str;
+    };
+}
+
+// ----- Lightweight Back Stack Handling (limit to 2 states) -----
+const appBackStack = [];
+function pushAppStateEntry(type, ref) {
+    appBackStack.push({type, ref});
+    if (appBackStack.length > 2) appBackStack.shift();
+}
+function popAppStateEntry() { return appBackStack.pop(); }
+
+// Hook sidebar open
+if (hamburgerBtn && appSidebar) {
+    hamburgerBtn.addEventListener('click', ()=>{ pushAppStateEntry('sidebar','sidebar'); });
+}
+// Override showModal to push (wrap existing if not already wrapped)
+if (!window.__origShowModalForBack) {
+    window.__origShowModalForBack = showModal;
+    showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
+}
+
+window.addEventListener('popstate', ()=>{
+    // Not using deep browser history here; rely on our own stack
+    const last = popAppStateEntry();
+    if (!last) return;
+    if (last.type === 'modal') {
+        // Smart modal back: hide current modal and restore the previous one (if any)
+        const currentModal = last.ref && last.ref.nodeType === 1 ? last.ref : (last.ref ? document.getElementById(last.ref.id || last.ref) : null);
+        // Targeted auto-save when backing out of the Share Form modal
+        if (currentModal && shareFormSection && currentModal === shareFormSection) {
+            try { autoSaveShareFormOnClose(); } catch(e) { console.warn('Auto-save on back (share form) failed', e); }
+        }
+        if (currentModal && typeof hideModal === 'function') {
+            hideModal(currentModal);
+        } else {
+            // Fallback: hide all if we cannot resolve the modal element
+            closeModals();
+            return;
+        }
+        // Peek previous stack entry; if it is also a modal, show it without pushing history
+        const prev = appBackStack[appBackStack.length - 1];
+        if (prev && prev.type === 'modal') {
+            const prevModal = prev.ref && prev.ref.nodeType === 1 ? prev.ref : (prev.ref ? document.getElementById(prev.ref.id || prev.ref) : null);
+            if (prevModal) {
+                try { showModalNoHistory(prevModal); } catch(e) { console.warn('Failed to restore previous modal on back', e); }
+            }
+        }
+    } else if (last.type === 'sidebar') {
+        // Use the unified closer to fully reset layout, overlay, and scroll locks
+        if (typeof toggleAppSidebar === 'function') {
+            toggleAppSidebar(false);
+        } else if (appSidebar) {
+            // Fallback: ensure classes and styles are reset to avoid layout gaps
+            appSidebar.classList.remove('open');
+            document.body.classList.remove('sidebar-active');
+            document.body.style.overflow = '';
+            if (typeof sidebarOverlay !== 'undefined' && sidebarOverlay) {
+                sidebarOverlay.classList.remove('open');
+                sidebarOverlay.style.pointerEvents = 'none';
+            }
+        }
+    }
+});
+
+// Hardware / browser back key mapping (mobile)
+window.addEventListener('keydown', e=>{
+    if (e.key === 'Escape') {
+        const last = appBackStack[appBackStack.length-1];
+        if (last) { e.preventDefault(); history.back(); }
+    }
+});
 const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
 const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
 const addCashCategoryBtn = document.getElementById('addCashCategoryBtn'); // This will be removed or repurposed
@@ -710,8 +975,15 @@ if (!sidebarOverlay) {
 }
 
 const formInputs = [
-    shareNameInput, currentPriceInput, targetPriceInput,
-    dividendAmountInput, frankingCreditsInput, shareRatingSelect
+    shareNameInput,
+    // currentPriceInput removed (auto mode)
+    targetPriceInput,
+    dividendAmountInput,
+    frankingCreditsInput,
+    // Include portfolio-specific fields so Save enables when they change
+    document.getElementById('portfolioShares'),
+    document.getElementById('portfolioAvgPrice'),
+    shareRatingSelect
 ];
 
 // NEW: Form inputs for Cash Asset Modal
@@ -729,7 +1001,7 @@ async function fetchLivePricesAndUpdateUI() {
     // You may have a function like showLoadingIndicator();
     
     // Call the newly updated live price fetch function
-    await fetchLivePrices();
+    await fetchLivePrices({ cacheBust: true });
 
     // Hide the loading state
     // You may have a function like hideLoadingIndicator();
@@ -739,19 +1011,18 @@ async function fetchLivePricesAndUpdateUI() {
  * Fetches live price data from the Google Apps Script Web App.
  * Updates the `livePrices` global object.
  */
-async function fetchLivePrices() {
+async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-        logDebug('Live Price: Skipped (cash view).');
-        window._livePricesLoaded = true;
-        hideSplashScreenIfReady();
-        return;
-    }
     try {
         // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
-        const url = typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' ? GOOGLE_APPS_SCRIPT_URL : (typeof appsScriptUrl !== 'undefined' ? appsScriptUrl : null);
-        if (!url) throw new Error('Apps Script URL not defined');
-        const response = await fetch(url, { cache: 'no-store' }); // no-store to avoid stale cached 302 chain
+    const baseUrl = typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' ? GOOGLE_APPS_SCRIPT_URL : (typeof appsScriptUrl !== 'undefined' ? appsScriptUrl : null);
+    if (!baseUrl) throw new Error('Apps Script URL not defined');
+    // Optional query params: cacheBust, stockCode support
+    const qs = new URLSearchParams();
+    if (opts && opts.cacheBust) qs.set('_ts', Date.now().toString());
+    if (opts && opts.stockCode) qs.set('stockCode', String(opts.stockCode).toUpperCase());
+    const url = qs.toString() ? (baseUrl + (baseUrl.includes('?') ? '&' : '?') + qs.toString()) : baseUrl;
+    const response = await fetch(url, { cache: 'no-store' }); // no-store to avoid stale cached 302 chain
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
         if (!Array.isArray(data)) {
@@ -779,7 +1050,7 @@ async function fetchLivePrices() {
             return null;
         };
 
-        data.forEach(item => {
+    data.forEach(item => {
             if (!item) return;
             const codeRaw = item.ASXCode || item.ASX_Code || item['ASX Code'] || item.Code || item.code;
             if (!codeRaw) return; // no code
@@ -787,8 +1058,14 @@ async function fetchLivePrices() {
             if (!code) return;
             if (needed && !needed.has(code)) { filtered++; return; }
 
-            const liveParsed = numOrNull(item.LivePrice || item['Live Price'] || item.live || item.price);
-            const prevParsed = numOrNull(item.PrevClose || item['Prev Close'] || item.previous || item.prev || item.prevClose);
+            const liveParsed = numOrNull(
+                item.LivePrice || item['Live Price'] || item.live || item.price ||
+                item.Last || item['Last Price'] || item.LastPrice || item['Last Trade'] || item.LastTrade
+            );
+            const prevParsed = numOrNull(
+                item.PrevClose || item['Prev Close'] || item.previous || item.prev || item.prevClose ||
+                item['Previous Close'] || item.Close || item['Last Close']
+            );
             const peParsed = numOrNull(item.PE || item['PE Ratio'] || item.pe);
             const high52Parsed = numOrNull(item.High52 || item['High52'] || item['High 52'] || item['52WeekHigh'] || item['52 High']);
             const low52Parsed = numOrNull(item.Low52 || item['Low52'] || item['Low 52'] || item['52WeekLow'] || item['52 Low']);
@@ -851,35 +1128,6 @@ async function fetchLivePrices() {
     }
 }
 
-// Single-stock snapshot fetcher used by both Add New Share modal and Search modal.
-// Normalizes the response into a consistent shape or returns null on failure.
-async function fetchSingleStockSnapshot(code) {
-    if (!code || !GOOGLE_APPS_SCRIPT_URL) return null;
-    try {
-        const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(code)}`);
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const data = await resp.json();
-        const raw = Array.isArray(data) && data[0] ? data[0] : null;
-        if (!raw) return null;
-        const parseNum = v => {
-            const n = parseFloat(v);
-            return isNaN(n) ? null : n;
-        };
-        return {
-            code: (raw.ASXCode || raw.ASX_Code || raw.Code || code || '').toUpperCase(),
-            companyName: raw.CompanyName || raw.Name || raw['Company Name'] || '',
-            live: parseNum(raw.LivePrice),
-            prevClose: parseNum(raw.PrevClose),
-            pe: parseNum(raw.PE),
-            high52: parseNum(raw.High52),
-            low52: parseNum(raw.Low52)
-        };
-    } catch (e) {
-        console.warn('fetchSingleStockSnapshot: failed for', code, e);
-        return null;
-    }
-}
-
 /**
  * Dynamically adjusts the top padding of the main content area
  * to prevent it from being hidden by the fixed header.
@@ -917,6 +1165,74 @@ function setIconDisabled(element, isDisabled) {
     } else {
         element.classList.remove('is-disabled-icon');
     }
+}
+
+// Phase 2 helper: create or update a per-share alert document for the current user
+async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
+    if (!db || !currentUserId || !window.firestore) {
+        console.warn('Alerts: Firestore not available; skipping alert upsert.');
+        return;
+    }
+    // Collection path: artifacts/{appId}/users/{userId}/alerts
+    const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+    // We'll use a deterministic doc id per share to keep one alert document per share
+    const alertDocId = shareId; // 1:1 mapping; adjust if multiple alerts per share later
+    const alertDocRef = window.firestore.doc(alertsCol, alertDocId);
+
+    // Interpret UI intent and direction
+    // Intent: buy when direction is below; sell when direction is above (can extend later to explicit intent buttons)
+    const direction = (shareData && shareData.targetDirection) === 'above' ? 'above' : 'below';
+    let intent = 'buy';
+    try {
+        const buyActive = !!(typeof targetIntentBuyBtn !== 'undefined' && targetIntentBuyBtn && targetIntentBuyBtn.classList.contains('is-active'));
+        const sellActive = !!(typeof targetIntentSellBtn !== 'undefined' && targetIntentSellBtn && targetIntentSellBtn.classList.contains('is-active'));
+        intent = buyActive && !sellActive ? 'buy' : (sellActive && !buyActive ? 'sell' : (direction === 'above' ? 'sell' : 'buy'));
+    } catch(_) {
+        intent = direction === 'above' ? 'sell' : 'buy';
+    }
+
+    const payload = {
+        shareId: shareId,
+        shareCode: String(shareCode || '').toUpperCase(),
+        userId: currentUserId,
+        appId: currentAppId,
+        intent: intent, // 'buy' | 'sell'
+        direction: direction, // 'above' | 'below'
+        targetPrice: (typeof shareData?.targetPrice === 'number' && !isNaN(shareData.targetPrice)) ? shareData.targetPrice : null,
+        // createdAt added below only when isNew to avoid undefined writes
+        updatedAt: window.firestore.serverTimestamp(),
+        enabled: true
+    };
+
+    if (isNew) {
+        payload.createdAt = window.firestore.serverTimestamp();
+    }
+
+    // Compute initial targetHit status immediately so the listener can pick it up
+    try {
+        const codeUpper = String(shareCode || '').toUpperCase();
+        const lp = (typeof livePrices === 'object' && livePrices) ? livePrices[codeUpper] : null;
+        const latestLive = (lp && lp.live !== null && !isNaN(lp.live)) ? lp.live
+            : (lp && lp.lastLivePrice !== null && !isNaN(lp.lastLivePrice)) ? lp.lastLivePrice
+            : null;
+        const fallbackRef = (typeof shareData?.currentPrice === 'number' && !isNaN(shareData.currentPrice)) ? shareData.currentPrice : null;
+        const current = (latestLive !== null) ? latestLive : (fallbackRef !== null ? fallbackRef : null);
+        const tPrice = (typeof payload.targetPrice === 'number' && !isNaN(payload.targetPrice)) ? payload.targetPrice : null;
+        let isHit = false;
+        if (current !== null && tPrice !== null) {
+            isHit = direction === 'above' ? (current >= tPrice) : (current <= tPrice);
+        }
+        payload.targetHit = !!isHit;
+        payload.lastEvaluatedAt = window.firestore.serverTimestamp();
+    } catch (e) {
+        console.warn('Alerts: Failed to compute initial targetHit; defaulting to false.', e);
+        payload.targetHit = false;
+        payload.lastEvaluatedAt = window.firestore.serverTimestamp();
+    }
+
+    // Use setDoc with merge to avoid overwriting createdAt when updating
+    await window.firestore.setDoc(alertDocRef, payload, { merge: true });
+    logDebug('Alerts: Upserted alert for ' + shareCode + ' with intent ' + intent + ' and direction ' + direction + '.');
 }
 
 // Centralized Modal Closing Function
@@ -1020,38 +1336,127 @@ function closeModals() {
     if (alertPanel) hideModal(alertPanel);
     logDebug('Modal: All modals closed.');
 
-    // Restore Target Price Alerts modal if share detail was opened from it
+    // Clear any lingering active highlight on ASX code buttons when closing modals
+    if (asxCodeButtonsContainer) {
+        asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn.active').forEach(btn=>btn.classList.remove('active'));
+    }
+
+    // Restore Target Price Alerts modal if share detail was opened from it (only if a share remains selected)
     if (wasShareDetailOpenedFromTargetAlerts) {
-        logDebug('Restoring Target Price Alerts modal after closing share detail modal.');
-        if (targetHitDetailsModal) {
-            showModal(targetHitDetailsModal);
+        if (selectedShareDocId) {
+            logDebug('Restoring Target Price Alerts modal after closing share detail modal.');
+            if (targetHitDetailsModal) {
+                showModal(targetHitDetailsModal);
+            }
+        } else {
+            logDebug('Skipping restore of Target Price Alerts modal because no share is selected.');
         }
         wasShareDetailOpenedFromTargetAlerts = false;
     }
+
+    // Restore Share Detail modal only if it was the source AND a share is still selected
+    if (wasEditOpenedFromShareDetail) {
+        if (selectedShareDocId) {
+            logDebug('Restoring Share Detail modal after closing edit modal.');
+            if (shareDetailModal) {
+                showModal(shareDetailModal);
+            }
+        } else {
+            logDebug('Skipping restore of Share Detail modal because no share is selected.');
+        }
+        wasEditOpenedFromShareDetail = false;
+    }
 }
 
-// Custom Dialog (Alert) Function
-function showCustomAlert(message, duration = 1000) {
-    const confirmBtn = document.getElementById('customDialogConfirmBtn');
-    const cancelBtn = document.getElementById('customDialogCancelBtn');
-    const dialogButtonsContainer = document.querySelector('#customDialogModal .custom-dialog-buttons');
+// Toast-based lightweight alert; keeps API but renders a toast instead of blocking modal
+function showCustomAlert(message, duration = 3000, type = 'info') {
+    // Enforce minimum on-screen time of 3000ms unless explicitly sticky (0)
+    const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
+    try {
+        const container = document.getElementById('toastContainer');
+        if (container) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.setAttribute('role', 'status');
+            toast.innerHTML = `<span class="icon"></span><div class="message"></div><button class="close" aria-label="Dismiss">×</button>`;
+            toast.querySelector('.message').textContent = message;
+            const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
+            toast.querySelector('.close').addEventListener('click', remove);
+            container.appendChild(toast);
+            requestAnimationFrame(()=> toast.classList.add('show'));
+            if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
+            return;
+        }
+    } catch (e) { console.warn('Toast render failed, using alert fallback.', e); }
+    // Minimal fallback
+    try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
+}
 
-    logDebug('showCustomAlert: confirmBtn found: ' + !!confirmBtn + ', cancelBtn found: ' + !!cancelBtn + ', dialogButtonsContainer found: ' + !!dialogButtonsContainer);
+// ToastManager: centralized API
+const ToastManager = (() => {
+    const container = () => document.getElementById('toastContainer');
+    const makeToast = (opts) => {
+        const root = container();
+        if (!root) return null;
+        const { message, type = 'info', duration = 2000, actions = [] } = opts || {};
+        // Enforce minimum 3000ms for auto-dismiss unless explicitly sticky (0)
+        const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        const iconHTML = `<span class="icon"></span>`;
+        const msgHTML = `<div class="message"></div>`;
+        const actionsHTML = actions.length ? `<div class="actions">${actions.map(a=>`<button class=\"btn ${a.variant||''}\">${a.label}</button>`).join('')}</div>` : '';
+        const closeHTML = `<button class="close" aria-label="Dismiss">×</button>`;
+        toast.innerHTML = `${iconHTML}${msgHTML}${actionsHTML}${closeHTML}`;
+        toast.querySelector('.message').textContent = message || '';
+        const closeBtn = toast.querySelector('.close');
+        const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
+        closeBtn.addEventListener('click', remove);
+        // Wire actions
+        const actionBtns = toast.querySelectorAll('.actions .btn');
+        actionBtns.forEach((btn, idx) => {
+            const cfg = actions[idx];
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                try { cfg && typeof cfg.onClick === 'function' && cfg.onClick(); } finally { remove(); }
+            });
+        });
+        root.appendChild(toast);
+        requestAnimationFrame(()=> toast.classList.add('show'));
+        if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
+        return { el: toast, close: remove };
+    };
+    return {
+    info: (message, duration=3000) => makeToast({ message, type:'info', duration }),
+    success: (message, duration=3000) => makeToast({ message, type:'success', duration }),
+    error: (message, duration=3000) => makeToast({ message, type:'error', duration }),
+        confirm: (message, { confirmText='Yes', cancelText='No', onConfirm, onCancel } = {}) => {
+            return makeToast({
+                message,
+                type: 'info',
+                duration: 0, // sticky until action
+                actions: [
+                    { label: confirmText, variant: 'primary', onClick: () => { onConfirm && onConfirm(true); } },
+                    { label: cancelText, variant: 'danger', onClick: () => { onCancel && onCancel(false); } }
+                ]
+            });
+        }
+    };
+})();
 
-    if (!customDialogModal || !customDialogMessage || !confirmBtn || !cancelBtn || !dialogButtonsContainer) {
-        console.error('Custom dialog elements not found. Cannot show alert.');
-        console.log('ALERT (fallback): ' + message);
-        return;
+// Migrate confirm dialog to toast confirm (non-blocking UX)
+function showCustomConfirm(message, callback) {
+    const res = ToastManager.confirm(message, {
+        confirmText: 'Yes',
+        cancelText: 'No',
+        onConfirm: () => callback(true),
+        onCancel: () => callback(false)
+    });
+    if (!res) {
+        // Fallback to native confirm if container missing
+        callback(window.confirm(message));
     }
-    customDialogMessage.textContent = message;
-
-    dialogButtonsContainer.style.display = 'none'; // Explicitly hide the container
-    logDebug('showCustomAlert: dialogButtonsContainer display set to: ' + dialogButtonsContainer.style.display);
-
-    showModal(customDialogModal);
-    if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); }
-    autoDismissTimeout = setTimeout(() => { hideModal(customDialogModal); autoDismissTimeout = null; }, duration);
-    logDebug('Alert: Showing alert: "' + message + '"');
 }
 
 // Date Formatting Helper Functions (Australian Style)
@@ -1088,29 +1493,29 @@ function getShareDisplayData(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-        peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A';
-        high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? '$' + livePriceData.High52.toFixed(2) : 'N/A';
-        low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A';
+    peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A';
+    high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A';
+    low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A';
 
     if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+                displayLivePrice = formatMoney(currentLivePrice);
             }
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             }
         } else {
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? formatMoney(lastFetchedLive) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
             cardPriceChangeClass = '';
@@ -1128,6 +1533,93 @@ function getShareDisplayData(share) {
     };
 }
 // --- UI State Management Functions ---
+
+// Accordion (Share Form) Initialization
+function initShareFormAccordion(force = false) {
+    const root = document.getElementById('shareFormAccordion');
+    if (!root) return;
+    if (root.dataset.accordionInit && !force) return; // idempotent
+    const sections = root.querySelectorAll('.accordion-section');
+    sections.forEach(sec => {
+        const isCore = sec.getAttribute('data-section') === 'core';
+        if (isCore) sec.classList.add('open'); else sec.classList.remove('open');
+        const toggleBtn = sec.querySelector('.accordion-toggle');
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', String(isCore));
+    });
+    // Event delegation for reliability
+    root.addEventListener('click', (e) => {
+        const header = e.target.closest('.accordion-toggle');
+        if (!header || !root.contains(header)) return;
+        e.preventDefault();
+        const section = header.closest('.accordion-section');
+        if (!section) return;
+        toggleAccordionSection(section);
+    });
+    root.dataset.accordionInit = 'true';
+}
+
+// Watchlist pulse guidance
+function updateWatchlistPulse(isNewShareContext = false) {
+    if (!shareWatchlistDropdownBtn || !shareWatchlistSelect) return;
+    const selected = Array.from(shareWatchlistCheckboxes?.querySelectorAll('input[type="checkbox"]:checked') || []).length > 0 || (shareWatchlistSelect.value && shareWatchlistSelect.value !== '');
+    if (isNewShareContext && !selected) {
+        shareWatchlistDropdownBtn.classList.add('watchlist-pulse');
+    } else {
+        shareWatchlistDropdownBtn.classList.remove('watchlist-pulse');
+    }
+}
+
+// Hook into existing populateShareWatchlistSelect to reapply pulse after population
+const originalPopulateShareWatchlistSelect = typeof populateShareWatchlistSelect === 'function' ? populateShareWatchlistSelect : null;
+if (originalPopulateShareWatchlistSelect) {
+    window.populateShareWatchlistSelect = function(currentShareWatchlistId = null, isNewShare = true) {
+        const res = originalPopulateShareWatchlistSelect(currentShareWatchlistId, isNewShare);
+        // Defer to ensure DOM checkboxes inserted
+        setTimeout(() => updateWatchlistPulse(isNewShare), 30);
+        return res;
+    };
+}
+
+// Monitor checkbox changes
+document.addEventListener('change', (e) => {
+    if (!shareWatchlistDropdownBtn) return;
+    if (e.target && shareWatchlistCheckboxes && shareWatchlistCheckboxes.contains(e.target)) {
+        updateWatchlistPulse(true); // assume add flow while editing selection
+    }
+});
+
+// Remove pulse once dropdown is opened and a selection likely imminent
+if (shareWatchlistDropdownBtn) {
+    shareWatchlistDropdownBtn.addEventListener('click', () => {
+        // Brief delay in case menu opens and user immediately picks
+        setTimeout(() => updateWatchlistPulse(true), 500);
+    });
+}
+
+function toggleAccordionSection(section) {
+    const toggleBtn = section.querySelector('.accordion-toggle');
+    if (!toggleBtn) return;
+    const opening = !section.classList.contains('open');
+    section.classList.toggle('open');
+    toggleBtn.setAttribute('aria-expanded', String(opening));
+    if (opening && window.innerWidth < 650) {
+        setTimeout(() => {
+            try { toggleBtn.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
+        }, 30);
+    }
+}
+
+// Initialize accordion when DOM ready; also on modal open via observer fallback
+document.addEventListener('DOMContentLoaded', () => {
+    initShareFormAccordion();
+});
+
+// MutationObserver safety net: if form content is replaced dynamically later
+const accordionObserver = new MutationObserver(() => {
+    const root = document.getElementById('shareFormAccordion');
+    if (root && !root.dataset.accordionInit) initShareFormAccordion(true);
+});
+try { accordionObserver.observe(document.body, { childList: true, subtree: true }); } catch(e) {}
 
 /**
  * Adds a single share to the desktop table view.
@@ -1180,8 +1672,8 @@ function addShareToTable(share) {
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
+        <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
+    <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
         </td>
@@ -1198,9 +1690,9 @@ function addShareToTable(share) {
                     const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
                     const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
                     if (frankingCredits > 0 && frankedYield > 0) {
-                        return frankedYield.toFixed(2) + '% (F)';
+                        return formatAdaptivePercent(frankedYield) + '% (F)';
                     } else if (unfrankedYield > 0) {
-                        return unfrankedYield.toFixed(2) + '% (U)';
+                        return formatAdaptivePercent(unfrankedYield) + '% (U)';
                     }
                     return '';
                 })()
@@ -1211,19 +1703,10 @@ function addShareToTable(share) {
     // Add long press / context menu for desktop
     let touchStartTime = 0;
     row.addEventListener('touchstart', (e) => {
+        // Mobile long-hold disabled intentionally: do nothing special
         touchStartTime = Date.now();
-        selectedElementForTap = row; // Store the element that started the touch
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-
-        longPressTimer = setTimeout(() => {
-            if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                selectShare(share.id); // Select the share first
-                showContextMenu(e, share.id);
-                e.preventDefault(); // Prevent default browser context menu
-            }
-        }, LONG_PRESS_THRESHOLD);
-    }, { passive: false });
+        selectedElementForTap = row;
+    }, { passive: true });
 
     row.addEventListener('touchmove', (e) => {
         const currentX = e.touches[0].clientX;
@@ -1290,25 +1773,25 @@ function addShareToMobileCards(share) {
     if (isMarketOpen) {
             // Show live data if market is open, or if market is closed but toggle is ON
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
             }
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : ''); // Set class for card
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             }
         } else {
             // Market closed and toggle is OFF, show zero change
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
             cardPriceChangeClass = ''; // No tint/line for neutral or market closed
@@ -1337,23 +1820,23 @@ function addShareToMobileCards(share) {
     if (isMarketOpen) {
             // Show live data if market is open, or if market is closed but toggle is ON
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
             }
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         } else {
             // Market closed and toggle is OFF, show zero change
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
         }
@@ -1367,8 +1850,8 @@ function addShareToMobileCards(share) {
         <h3 class="${priceClass}">${share.shareName || ''}</h3>
         <div class="live-price-display-section">
             <div class="fifty-two-week-row">
-                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A'}</span>
-                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? '$' + livePriceData.High52.toFixed(2) : 'N/A'}</span>
+                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
+                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
             </div>
             <div class="live-price-main-row">
                 <span class="live-price-large ${priceClass}">${displayLivePrice}</span>
@@ -1376,11 +1859,11 @@ function addShareToMobileCards(share) {
             </div>
             ${companyName ? `<p class="modal-company-name-display" style="margin-top: 2px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
             <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
+                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
             </div>
         </div>
-        <p class="data-row"><span class="label-text">Reference Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</span></p>
-        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</span></p>
+    <p class="data-row"><span class="label-text">Reference Price:</span><span class="data-value">${formatMoney(Number(share.currentPrice), { hideZero: true })}</span></p>
+    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${formatMoney(Number(share.targetPrice), { hideZero: true })}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
@@ -1407,9 +1890,9 @@ function addShareToMobileCards(share) {
                     const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
 
                     if (frankingCredits > 0 && frankedYield > 0) {
-                        return frankedYield.toFixed(2) + '% (Franked)'; // Display franked yield with (Franked)
+                        return formatAdaptivePercent(frankedYield) + '% (Franked)';
                     } else if (unfrankedYield > 0) {
-                        return unfrankedYield.toFixed(2) + '% (Unfranked)'; // Display unfranked yield with (Unfranked)
+                        return formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
                     }
                     return ''; // No valid yield or yield is 0, display empty string
                 })()
@@ -1426,20 +1909,11 @@ function addShareToMobileCards(share) {
 
     // Add long press / context menu for mobile
     let touchStartTime = 0;
-    card.addEventListener('touchstart', (e) => {
+    card.addEventListener('touchstart', () => {
+        // Long-hold disabled
         touchStartTime = Date.now();
-        selectedElementForTap = card; // Store the element that started the touch
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-
-        longPressTimer = setTimeout(() => {
-            if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                selectShare(share.id); // Select the share first
-                showContextMenu(e, share.id);
-                e.preventDefault(); // Prevent default browser context menu
-            }
-        }, LONG_PRESS_THRESHOLD);
-    }, { passive: false });
+        selectedElementForTap = card;
+    }, { passive: true });
 
     card.addEventListener('touchmove', (e) => {
         const currentX = e.touches[0].clientX;
@@ -1557,21 +2031,21 @@ function updateOrCreateShareTableRow(share) {
 
     if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
             }
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         } else {
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
         }
@@ -1590,9 +2064,9 @@ function updateOrCreateShareTableRow(share) {
         const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
         const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
         if (frankingCredits > 0 && frankedYield > 0) {
-            return frankedYield.toFixed(2) + '% (F)';
+            return formatAdaptivePercent(frankedYield) + '% (F)';
         } else if (unfrankedYield > 0) {
-            return unfrankedYield.toFixed(2) + '% (U)';
+            return formatAdaptivePercent(unfrankedYield) + '% (U)';
         }
         return ''; // No valid yield or yield is 0, display empty string
     })();
@@ -1609,8 +2083,8 @@ function updateOrCreateShareTableRow(share) {
             <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
             <span class="price-change ${priceClass}">${displayPriceChange}</span>
         </td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</td>
-        <td class="numeric-data-cell">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</td>
+    <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
+    <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
         </td>
@@ -1643,40 +2117,10 @@ function updateOrCreateShareMobileCard(share) {
             showShareDetails();
         });
 
-        let touchStartTime = 0;
-        card.addEventListener('touchstart', (e) => {
-            touchStartTime = Date.now();
-            selectedElementForTap = card;
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-
-            longPressTimer = setTimeout(() => {
-                if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
-                    selectShare(share.id);
-                    showContextMenu(e, share.id);
-                    e.preventDefault();
-                }
-            }, LONG_PRESS_THRESHOLD);
-        }, { passive: false });
-
-        card.addEventListener('touchmove', (e) => {
-            const currentX = e.touches[0].clientX;
-            const currentY = e.touches[0].clientY;
-            const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
-            if (dist > TOUCH_MOVE_THRESHOLD) {
-                clearTimeout(longPressTimer);
-                touchStartTime = 0;
-            }
-        });
-
-        card.addEventListener('touchend', () => {
-            clearTimeout(longPressTimer);
-            if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === card) {
-                // Short tap handled by click event
-            }
-            touchStartTime = 0;
-            selectedElementForTap = null;
-        });
+    // Mobile long-press disabled: we intentionally do NOT attach context-menu touch handlers.
+    // Simple tap already handled by click listener above; no-op touch listeners keep scroll smooth.
+    card.addEventListener('touchstart', () => { selectedElementForTap = card; }, { passive: true });
+    card.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
 
         mobileShareCardsContainer.appendChild(card); // Append new cards at the end, sorting will reorder virtually
         logDebug('Mobile Cards: Created new card for share ' + share.shareName + '.');
@@ -1705,43 +2149,46 @@ function updateOrCreateShareMobileCard(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-    if (isMarketOpen) {
-            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
-            }
-            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
-                const change = currentLivePrice - previousClosePrice;
-                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
-            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                const change = lastFetchedLive - lastFetchedPrevClose;
-                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
-            }
-        } else {
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
-            if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                const change = lastFetchedLive - lastFetchedPrevClose;
-                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+        if (isMarketOpen) {
+                if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                    displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
+                }
+                if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                    const change = currentLivePrice - previousClosePrice;
+                    const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
+                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+                } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                    const change = lastFetchedLive - lastFetchedPrevClose;
+                    const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+                }
             } else {
-                displayPriceChange = '0.00 (0.00%)';
-                priceClass = 'neutral';
+                displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
+                if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                    const change = lastFetchedLive - lastFetchedPrevClose;
+                    const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                } else {
+                    displayPriceChange = '0.00 (0.00%)';
+                    priceClass = 'neutral';
+                }
+                cardPriceChangeClass = '';
             }
-            cardPriceChangeClass = '';
-        }
     }
 
     // Apply card-specific price change class
     // Remove previous price change classes before adding current one
-    card.classList.remove('positive-change-card', 'negative-change-card');
+    card.classList.remove('positive-change-card', 'negative-change-card', 'neutral');
     if (cardPriceChangeClass) {
         card.classList.add(cardPriceChangeClass);
+    } else if (priceClass === 'neutral') {
+        // Tag neutral cards for muted coffee fill styling
+        card.classList.add('neutral');
     }
 
     const dividendAmount = Number(share.dividendAmount) || 0;
@@ -1757,9 +2204,9 @@ function updateOrCreateShareMobileCard(share) {
         const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
         const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
         if (frankingCredits > 0 && frankedYield > 0) {
-            return frankedYield.toFixed(2) + '% (Franked)';
+            return formatAdaptivePercent(frankedYield) + '% (Franked)';
         } else if (unfrankedYield > 0) {
-            return unfrankedYield.toFixed(2) + '% (Unfranked)';
+            return formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
         }
         return ''; // No valid yield or yield is 0, display empty string
     })();
@@ -1773,8 +2220,8 @@ function updateOrCreateShareMobileCard(share) {
         <h3 class="${priceClass}">${share.shareName || ''}</h3>
         <div class="live-price-display-section">
             <div class="fifty-two-week-row">
-                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? '$' + livePriceData.Low52.toFixed(2) : 'N/A'}</span>
-                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? '$' + livePriceData.High52.toFixed(2) : 'N/A'}</span>
+                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
+                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
             </div>
             <div class="live-price-main-row">
                 <span class="live-price-large ${priceClass}">${displayLivePrice}</span>
@@ -1782,11 +2229,11 @@ function updateOrCreateShareMobileCard(share) {
             </div>
             ${companyName ? `<p class="modal-company-name-display" style="margin-top: 2px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
             <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
+                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
             </div>
         </div>
-        <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</span></p>
-        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</span></p>
+    <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
+    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.targetPrice))}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
@@ -1855,14 +2302,47 @@ function showModal(modalElement) {
         if (scrollableContent) {
             scrollableContent.scrollTop = 0;
         }
+        // Defensive: ensure autocomplete listeners intact when opening Add Share form
+        if (modalElement.id === 'shareFormSection') {
+            try { if (typeof initializeShareNameAutocomplete === 'function') initializeShareNameAutocomplete(true); } catch(_) {}
+        }
         logDebug('Modal: Showing modal: ' + modalElement.id);
     }
+}
+
+// Helper: Show modal without pushing a new browser/history state (used for modal-to-modal back restore)
+function showModalNoHistory(modalElement) {
+    if (!modalElement) return;
+    modalElement.style.setProperty('display', 'flex', 'important');
+    modalElement.scrollTop = 0;
+    const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+    if (scrollableContent) scrollableContent.scrollTop = 0;
+    logDebug('Modal (no-history): Showing modal: ' + modalElement.id);
 }
 
 function hideModal(modalElement) {
     if (modalElement) {
         modalElement.style.setProperty('display', 'none', 'important');
         logDebug('Modal: Hiding modal: ' + modalElement.id);
+    }
+}
+
+// Extracted: auto-save logic for the share form so we can call it on back as well
+function autoSaveShareFormOnClose() {
+    if (!(shareFormSection && shareFormSection.style.display !== 'none')) return;
+    const currentData = getCurrentFormData();
+    const isShareNameValid = currentData.shareName.trim() !== '';
+    if (selectedShareDocId) {
+        if (originalShareData && !areShareDataEqual(originalShareData, currentData)) {
+            logDebug('Auto-Save: Unsaved changes detected for existing share (back). Attempting silent save.');
+            saveShareData(true);
+        }
+    } else {
+        const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
+        if (isShareNameValid && isWatchlistSelected) {
+            logDebug('Auto-Save: New share with valid fields (back). Attempting silent save.');
+            saveShareData(true);
+        }
     }
 }
 
@@ -2001,6 +2481,11 @@ function clearForm() {
         addShareLivePriceDisplay.style.display = 'none';
         addShareLivePriceDisplay.innerHTML = '';
     }
+    // Reset auto displays in Other Details
+    try {
+        if (autoEntryDateDisplay) { autoEntryDateDisplay.textContent = 'Auto when saved'; autoEntryDateDisplay.classList.add('ghosted-text'); }
+        if (autoReferencePriceDisplay) { autoReferencePriceDisplay.textContent = 'Auto when saved'; autoReferencePriceDisplay.classList.add('ghosted-text'); }
+    } catch(_) {}
     selectedShareDocId = null;
     originalShareData = null; // IMPORTANT: Reset original data to prevent auto-save of cancelled edits
     if (deleteShareBtn) {
@@ -2014,6 +2499,15 @@ function clearForm() {
     }
     setIconDisabled(saveShareBtn, true); // Save button disabled on clear
     logDebug('Form: Form fields cleared and selectedShareDocId reset. saveShareBtn disabled.');
+    // Reset auto details read-only placeholders
+    if (autoEntryDateDisplay) {
+        autoEntryDateDisplay.textContent = 'Auto when saved';
+        autoEntryDateDisplay.classList.add('ghosted-text');
+    }
+    if (autoReferencePriceDisplay) {
+        autoReferencePriceDisplay.textContent = 'Auto when saved';
+        autoReferencePriceDisplay.classList.add('ghosted-text');
+    }
 }
 
 /**
@@ -2032,8 +2526,9 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         return;
     }
 
-    // Always start with placeholder
-    shareWatchlistSelect.innerHTML = '<option value="" disabled selected>Select a Watchlist</option>';
+    // Prepare native select (hidden) as multi-select for data binding; UI uses checkboxes
+    try { shareWatchlistSelect.multiple = true; } catch(e) {}
+    shareWatchlistSelect.innerHTML = '<option value="" disabled>Select a Watchlist</option>';
 
     // Always include Portfolio as a special option
     const PORTFOLIO_WATCHLIST_ID = 'portfolio';
@@ -2054,7 +2549,8 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         shareWatchlistSelect.appendChild(option);
     });
 
-    let selectedOptionId = ''; // Variable to hold the ID of the option we want to select
+    let preselectedIds = []; // For multi-select
+    let selectedOptionId = ''; // For legacy single-select scenarios
     let disableDropdown = false; // Variable to control if dropdown should be disabled
 
     if (isNewShare) {
@@ -2063,38 +2559,152 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         disableDropdown = false; // Always allow user to select a watchlist
         logDebug('Share Form: New share: Watchlist selector forced to blank placeholder, enabled for user selection.');
     } else { // Editing an existing share
-        if (currentShareWatchlistId && stockWatchlists.some(wl => wl.id === currentShareWatchlistId)) {
+        // If editing, prefer the share's existing watchlistIds array if present
+        if (selectedShareDocId) {
+            const s = allSharesData.find(w => w.id === selectedShareDocId);
+            if (s && Array.isArray(s.watchlistIds) && s.watchlistIds.length) {
+                preselectedIds = s.watchlistIds.slice();
+            }
+        }
+        // Always honor 'portfolio' explicitly even if userWatchlists doesn't include it
+        if (currentShareWatchlistId === 'portfolio') {
+            selectedOptionId = 'portfolio';
+            if (!preselectedIds.includes('portfolio')) preselectedIds.push('portfolio');
+            logDebug('Share Form: Editing share: Detected portfolio watchlist, pre-selecting Portfolio.');
+        } else if (currentShareWatchlistId && stockWatchlists.some(wl => wl.id === currentShareWatchlistId)) {
             selectedOptionId = currentShareWatchlistId;
+            if (currentShareWatchlistId && !preselectedIds.includes(currentShareWatchlistId)) preselectedIds.push(currentShareWatchlistId);
             logDebug('Share Form: Editing share: Pre-selected to existing share\'s watchlist: ' + selectedOptionId);
+        } else if (currentShareWatchlistId) {
+            // If the original watchlist isn't in the filtered stock lists, inject a temporary option to preserve it
+            const original = userWatchlists.find(wl => wl.id === currentShareWatchlistId);
+            if (original && original.id !== CASH_BANK_WATCHLIST_ID) {
+                const opt = document.createElement('option');
+                opt.value = original.id;
+                opt.textContent = original.name + ' (original)';
+                shareWatchlistSelect.appendChild(opt);
+                selectedOptionId = original.id;
+                if (original.id && !preselectedIds.includes(original.id)) preselectedIds.push(original.id);
+                console.warn('Share Form: Editing share: Original watchlist not in stock list; temporarily added original to dropdown.');
+            } else {
+                // Unknown/removed list or Cash; require explicit user choice instead of defaulting silently
+                selectedOptionId = '';
+                console.warn('Share Form: Editing share: Original watchlist missing or not applicable. Please select a watchlist.');
+            }
         } else if (stockWatchlists.length > 0) {
-            selectedOptionId = stockWatchlists[0].id;
-            console.warn('Share Form: Editing share: Original watchlist not found, defaulted to first available stock watchlist.');
+            // No original ID on the share; default to current view if it's Portfolio, else leave blank
+            if (Array.isArray(currentSelectedWatchlistIds) && currentSelectedWatchlistIds[0] === 'portfolio') {
+                selectedOptionId = 'portfolio';
+                if (!preselectedIds.includes('portfolio')) preselectedIds.push('portfolio');
+                logDebug('Share Form: Editing share: No original watchlist; defaulting to current view Portfolio.');
+            } else {
+                selectedOptionId = '';
+                logDebug('Share Form: Editing share: No original watchlist set; leaving blank for user to choose.');
+            }
         } else {
-            selectedOptionId = ''; // No watchlists available
+            selectedOptionId = '';
             console.warn('Share Form: Editing share: No stock watchlists available to select.');
         }
         disableDropdown = false; // Always allow changing watchlist when editing
     }
 
-    // Apply the determined selection and disabled state
-    shareWatchlistSelect.value = selectedOptionId;
+    // Apply the determined selection(s) and disabled state to native select
+    if (preselectedIds.length > 0) {
+        Array.from(shareWatchlistSelect.options).forEach(option => {
+            option.selected = preselectedIds.includes(option.value);
+        });
+    } else {
+        shareWatchlistSelect.value = selectedOptionId;
+    }
     shareWatchlistSelect.disabled = disableDropdown;
 
     // Explicitly set the 'selected' attribute on the option for visual update reliability
     // This loop is crucial to ensure the visual selection is correctly applied.
     Array.from(shareWatchlistSelect.options).forEach(option => {
-        if (option.value === selectedOptionId) {
-            option.selected = true;
+        if (preselectedIds.length > 0) {
+            option.selected = preselectedIds.includes(option.value);
         } else {
-            option.selected = false;
+            option.selected = (option.value === selectedOptionId);
         }
     });
 
-    // Add event listener for dirty state checking on this dropdown
-    shareWatchlistSelect.addEventListener('change', checkFormDirtyState);
+    // Build enhanced toggle list
+    if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
+        shareWatchlistEnhanced.innerHTML = '';
+        const opts = Array.from(shareWatchlistSelect.options).filter(o => o.value !== '' && o.value !== CASH_BANK_WATCHLIST_ID);
+        const selectedSet = new Set(preselectedIds.length ? preselectedIds : (selectedOptionId ? [selectedOptionId] : []));
+        opts.forEach(o => {
+            const item = document.createElement('div');
+            item.className = 'watchlist-enhanced-item';
+            const checked = selectedSet.has(o.value);
+            item.innerHTML = `
+                <span class="watchlist-enhanced-name">${o.textContent || o.value}</span>
+                <label class="watchlist-toggle" aria-label="Toggle ${o.textContent || o.value}">
+                    <input type="checkbox" value="${o.value}" ${checked ? 'checked' : ''}>
+                    <span class="watchlist-toggle-track"><span class="watchlist-toggle-thumb"></span></span>
+                </label>`;
+            const input = item.querySelector('input');
+            input.addEventListener('change', () => {
+                const toggled = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
+                Array.from(shareWatchlistSelect.options).forEach(opt => { opt.selected = toggled.includes(opt.value); });
+                shareWatchlistSelect.value = toggled[0] || '';
+                updateWatchlistDropdownButton();
+                checkFormDirtyState();
+            });
+            shareWatchlistEnhanced.appendChild(item);
+        });
+    }
+
+    // Initialize dropdown button label/state
+    if (shareWatchlistDropdownBtn) {
+        updateWatchlistDropdownButton();
+        shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
+        shareWatchlistDropdownBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (!shareWatchlistEnhanced) return;
+            const isOpen = shareWatchlistEnhanced.style.display === 'block';
+            shareWatchlistEnhanced.style.display = isOpen ? 'none' : 'block';
+            shareWatchlistDropdownBtn.setAttribute('aria-expanded', String(!isOpen));
+        };
+        document.addEventListener('click', (evt) => {
+            if (!shareWatchlistEnhanced || shareWatchlistEnhanced.style.display !== 'block') return;
+            const within = shareWatchlistEnhanced.contains(evt.target) || shareWatchlistDropdownBtn.contains(evt.target);
+            if (!within) {
+                shareWatchlistEnhanced.style.display='none';
+                shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
+            }
+        });
+    }
+
+    // Listen for native select change too (in case of programmatic changes)
+    shareWatchlistSelect.addEventListener('change', () => {
+        if (!shareWatchlistEnhanced) return;
+        const selected = Array.from(shareWatchlistSelect.options).filter(o => o.selected).map(o => o.value);
+        shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = selected.includes(cb.value); });
+        updateWatchlistDropdownButton();
+        checkFormDirtyState();
+    });
+}
+
+function updateWatchlistDropdownButton() {
+    if (!shareWatchlistDropdownBtn) return;
+    let selected = [];
+    if (shareWatchlistEnhanced) {
+        selected = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
+    }
+    if (selected.length === 0) { shareWatchlistDropdownBtn.textContent = 'Select Watchlists'; return; }
+    const names = selected.map(id => {
+        const opt = Array.from(shareWatchlistSelect.options).find(o => o.value === id);
+        return opt ? (opt.textContent || opt.innerText || id) : id;
+    });
+    shareWatchlistDropdownBtn.textContent = names.length <=2 ? names.join(', ') : names.slice(0,2).join(', ') + ' +' + (names.length-2);
 }
 
 function showEditFormForSelectedShare(shareIdToEdit = null) {
+    if (suppressShareFormReopen) {
+        logDebug('Share Form: Suppression active; blocking unintended reopen.');
+        return;
+    }
     const targetShareId = shareIdToEdit || selectedShareDocId;
 
     if (!targetShareId) {
@@ -2116,15 +2726,27 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     }
 
     if (shareNameInput) shareNameInput.value = shareToEdit.shareName || '';
-    if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? formatUserDecimalStrict(shareToEdit.currentPrice) : '';
+    // Removed setting manual currentPrice input (field no longer present)
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimalStrict(shareToEdit.targetPrice) : '';
     
+    // Reset toggle state helpers
+    userManuallyOverrodeDirection = false;
     // Set the correct state for the new target direction checkboxes
     if (targetAboveCheckbox && targetBelowCheckbox) {
         // Default to 'below' if not set
         const savedTargetDirection = shareToEdit.targetDirection || 'below';
         targetAboveCheckbox.checked = (savedTargetDirection === 'above');
         targetBelowCheckbox.checked = (savedTargetDirection === 'below');
+        // Sync segmented buttons to match saved state
+        try {
+            const isAbove = (savedTargetDirection === 'above');
+            if (targetDirAboveBtn && targetDirBelowBtn) {
+                targetDirAboveBtn.classList.toggle('is-active', isAbove);
+                targetDirAboveBtn.setAttribute('aria-pressed', String(isAbove));
+                targetDirBelowBtn.classList.toggle('is-active', !isAbove);
+                targetDirBelowBtn.setAttribute('aria-pressed', String(!isAbove));
+            }
+        } catch(_) {}
     }
 
     if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? formatUserDecimalStrict(shareToEdit.dividendAmount) : '';
@@ -2169,6 +2791,30 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     setIconDisabled(saveShareBtn, true); // Save button disabled initially for editing
     logDebug('showEditFormForSelectedShare: saveShareBtn initially disabled for dirty check.');
 
+    // Populate read-only auto fields (Entry Date & Reference Price)
+    try {
+        if (autoEntryDateDisplay) {
+            const ed = shareToEdit.entryDate ? formatDate(shareToEdit.entryDate) : '';
+            if (ed) {
+                autoEntryDateDisplay.textContent = ed;
+                autoEntryDateDisplay.classList.remove('ghosted-text');
+            } else {
+                autoEntryDateDisplay.textContent = 'Auto when saved';
+                autoEntryDateDisplay.classList.add('ghosted-text');
+            }
+        }
+        if (autoReferencePriceDisplay) {
+            const rp = (shareToEdit.currentPrice !== undefined && shareToEdit.currentPrice !== null && !isNaN(Number(shareToEdit.currentPrice))) ? Number(shareToEdit.currentPrice) : null;
+            if (rp !== null) {
+                autoReferencePriceDisplay.textContent = formatMoney(rp);
+                autoReferencePriceDisplay.classList.remove('ghosted-text');
+            } else {
+                autoReferencePriceDisplay.textContent = 'Auto when saved';
+                autoReferencePriceDisplay.classList.add('ghosted-text');
+            }
+        }
+    } catch(e) { console.warn('Auto Details: Failed to populate auto fields', e); }
+
     showModal(shareFormSection);
     shareNameInput.focus();
     logDebug('Form: Opened edit form for share: ' + shareToEdit.shareName + ' (ID: ' + selectedShareDocId + ')');
@@ -2200,7 +2846,7 @@ function getCurrentFormData() {
 
     return {
         shareName: shareNameInput?.value?.trim().toUpperCase() || '',
-        currentPrice: parseFloat(currentPriceInput?.value),
+    currentPrice: null, // Will be auto-derived when saving new/updated share
         targetPrice: parseFloat(targetPriceInput?.value),
         // UPDATED: Get targetDirection from the new checkboxes
         targetDirection: targetAboveCheckbox?.checked ? 'above' : 'below',
@@ -2209,8 +2855,15 @@ function getCurrentFormData() {
         // Get the selected star rating as a number
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0,
         comments: comments,
-        // Include the selected watchlist ID from the new dropdown
-        watchlistId: shareWatchlistSelect ? shareWatchlistSelect.value : null,
+        // Include legacy single value and the plural array; use checkbox UI as source of truth
+        watchlistId: shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null,
+        watchlistIds: (() => {
+            const els = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
+            const vals = Array.from(els).map(x => x.value).filter(Boolean);
+            if (vals.length > 0) return vals;
+            const single = shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null;
+            return single ? [single] : null;
+        })(),
         // Portfolio fields
         portfolioShares: isNaN(portfolioSharesVal) ? null : Math.trunc(portfolioSharesVal),
         portfolioAvgPrice: isNaN(portfolioAvgPriceVal) ? null : portfolioAvgPriceVal
@@ -2239,6 +2892,14 @@ function areShareDataEqual(data1, data2) {
             return false;
         }
     }
+    // Compare watchlistIds arrays if present (order-insensitive)
+    const a = Array.isArray(data1.watchlistIds) ? [...data1.watchlistIds].sort() : null;
+    const b = Array.isArray(data2.watchlistIds) ? [...data2.watchlistIds].sort() : null;
+    if ((a && !b) || (!a && b)) return false;
+    if (a && b) {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) { if (a[i] !== b[i]) return false; }
+    }
 
     if (data1.comments.length !== data2.comments.length) {
         return false;
@@ -2261,7 +2922,21 @@ function areShareDataEqual(data1, data2) {
 function checkFormDirtyState() {
     const currentData = getCurrentFormData();
     const isShareNameValid = currentData.shareName.trim() !== '';
-    const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
+    const isWatchlistSelected = (() => {
+        // Prefer the Phase 1 checkbox UI if present
+        const checkedCbs = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
+        if (checkedCbs && checkedCbs.length > 0) return true;
+
+        // Fallback to native select state
+        if (!shareWatchlistSelect) return false;
+        if (shareWatchlistSelect.multiple) {
+            // Some browsers don’t populate selectedOptions reliably when updated programmatically; check option.selected
+            const anySelected = Array.from(shareWatchlistSelect.options || []).some(o => o.selected && o.value && o.value !== '');
+            if (anySelected) return true;
+            return !!(shareWatchlistSelect.value && shareWatchlistSelect.value !== '');
+        }
+        return shareWatchlistSelect.value !== '';
+    })();
 
     let canSave = isShareNameValid;
 
@@ -2308,7 +2983,20 @@ async function saveShareData(isSilent = false) {
         return; 
     }
 
-    const selectedWatchlistIdForSave = shareWatchlistSelect ? shareWatchlistSelect.value : null;
+    // Source of truth: checkbox UI; keep hidden select for legacy fallback
+    const selectedWatchlistIdForSave = shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null;
+    const selectedWatchlistIdsForSave = (() => {
+        // Prefer enhanced toggle list
+        if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
+            const toggled = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(x => x.value).filter(Boolean);
+            if (toggled.length > 0) return toggled;
+        }
+        // Fallback legacy checkbox container
+        const cbs = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
+        const vals = Array.from(cbs).map(cb => cb.value).filter(Boolean);
+        if (vals.length > 0) return vals;
+        return selectedWatchlistIdForSave ? [selectedWatchlistIdForSave] : null;
+    })();
     // For new shares from 'All Shares' view, force watchlist selection
     if (!selectedShareDocId && currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
         if (!selectedWatchlistIdForSave || selectedWatchlistIdForSave === '') { // Check for empty string too
@@ -2323,7 +3011,16 @@ async function saveShareData(isSilent = false) {
     }
 
 
-    const currentPrice = parseFloat(currentPriceInput.value);
+    // Auto-capture live or fallback current price (no manual input)
+    let currentPrice = NaN;
+    try {
+        const liveData = livePrices[shareName.toUpperCase()];
+        if (liveData && typeof liveData.live === 'number' && !isNaN(liveData.live)) {
+            currentPrice = liveData.live;
+        } else if (liveData && typeof liveData.lastLivePrice === 'number' && !isNaN(liveData.lastLivePrice)) {
+            currentPrice = liveData.lastLivePrice;
+        }
+    } catch(_) {}
     const targetPrice = parseFloat(targetPriceInput.value);
     const dividendAmount = parseFloat(dividendAmountInput.value);
     const frankingCredits = parseFloat(frankingCreditsInput.value);
@@ -2343,7 +3040,7 @@ async function saveShareData(isSilent = false) {
 
     const shareData = {
         shareName: shareName,
-        currentPrice: isNaN(currentPrice) ? null : currentPrice,
+        currentPrice: isNaN(currentPrice) ? null : currentPrice, // auto derived above
         targetPrice: isNaN(targetPrice) ? null : targetPrice,
         // UPDATED: Save the selected target direction from the new checkboxes
         targetDirection: targetAboveCheckbox.checked ? 'above' : 'below',
@@ -2352,6 +3049,7 @@ async function saveShareData(isSilent = false) {
         comments: comments,
         // Use the selected watchlist from the modal dropdown
     watchlistId: selectedWatchlistIdForSave,
+    watchlistIds: selectedWatchlistIdsForSave,
     // Portfolio fields (optional)
     portfolioShares: (() => { const el = document.getElementById('portfolioShares'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : Math.trunc(v); })(),
     portfolioAvgPrice: (() => { const el = document.getElementById('portfolioAvgPrice'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : v; })(),
@@ -2375,7 +3073,20 @@ async function saveShareData(isSilent = false) {
         try {
             const shareDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
             await window.firestore.updateDoc(shareDocRef, shareData);
-            if (!isSilent) showCustomAlert('Share \'' + shareName + '\' updated successfully!', 1500);
+            // Phase 2: Upsert alert document for this share (intent + direction)
+            try {
+                await upsertAlertForShare(selectedShareDocId, shareName, shareData, false);
+            } catch (e) {
+                console.error('Alerts: Failed to upsert alert for share update:', e);
+            }
+            // Update local cache so reopening reflects new selections immediately
+            try {
+                const idx = allSharesData.findIndex(s => s.id === selectedShareDocId);
+                if (idx !== -1) {
+                    allSharesData[idx] = { ...allSharesData[idx], ...shareData };
+                }
+            } catch(_) {}
+            if (!isSilent) showCustomAlert('Share \'" + shareName + "\' updated successfully!', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' (ID: ' + selectedShareDocId + ') updated.');
         originalShareData = getCurrentFormData(); // Update original data after successful save
         setIconDisabled(saveShareBtn, true); // Disable save button after saving
@@ -2384,6 +3095,8 @@ async function saveShareData(isSilent = false) {
             shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
             shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
         }
+        // Prevent any stray observers from reopening the form immediately after save
+        if (!isSilent) { suppressShareFormReopen = true; setTimeout(()=>{ suppressShareFormReopen = false; }, 8000); }
         deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
             // NEW: Explicitly hide the share form modal immediately and deselect the share
             if (!isSilent && shareFormSection) {
@@ -2400,6 +3113,17 @@ async function saveShareData(isSilent = false) {
         }
     } else {
         shareData.entryDate = new Date().toISOString();
+        // If currentPrice still null attempt a late grab (race with live fetch)
+        if (shareData.currentPrice === null) {
+            try {
+                const liveDataLate = livePrices[shareName.toUpperCase()];
+                if (liveDataLate && typeof liveDataLate.live === 'number' && !isNaN(liveDataLate.live)) {
+                    shareData.currentPrice = liveDataLate.live;
+                } else if (liveDataLate && typeof liveDataLate.lastLivePrice === 'number' && !isNaN(liveDataLate.lastLivePrice)) {
+                    shareData.currentPrice = liveDataLate.lastLivePrice;
+                }
+            } catch(_) {}
+        }
         shareData.lastFetchedPrice = shareData.currentPrice;
         shareData.previousFetchedPrice = shareData.currentPrice;
 
@@ -2407,7 +3131,13 @@ async function saveShareData(isSilent = false) {
             const sharesColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             const newDocRef = await window.firestore.addDoc(sharesColRef, shareData);
             selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
-            if (!isSilent) showCustomAlert('Share \'' + shareName + '\' added successfully!', 1500);
+            // Phase 2: Create alert document for this new share (intent + direction)
+            try {
+                await upsertAlertForShare(selectedShareDocId, shareName, shareData, true);
+            } catch (e) {
+                console.error('Alerts: Failed to create alert for new share:', e);
+            }
+            if (!isSilent) showCustomAlert('Share \'" + shareName + "\' added successfully!', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' added with ID: ' + newDocRef.id);
         originalShareData = getCurrentFormData(); // Update original data after successful save
         setIconDisabled(saveShareBtn, true); // Disable save button after saving
@@ -2416,6 +3146,8 @@ async function saveShareData(isSilent = false) {
             shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
             shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
         }
+        // Prevent any stray observers from reopening the form immediately after save
+        if (!isSilent) { suppressShareFormReopen = true; setTimeout(()=>{ suppressShareFormReopen = false; }, 8000); }
         deselectCurrentShare(); // Deselect newly added share BEFORE fetching live prices
             // NEW: Explicitly hide the share form modal immediately and deselect the share
             if (!isSilent && shareFormSection) {
@@ -2431,6 +3163,10 @@ async function saveShareData(isSilent = false) {
             if (!isSilent) showCustomAlert('Error adding share: ' + error.message);
         }
     }
+    // Clear any sticky id on details modal so nothing reopens unexpectedly
+    try {
+        if (shareDetailModal && shareDetailModal.dataset) delete shareDetailModal.dataset.shareId;
+    } catch(_) {}
     if (!isSilent) closeModals(); // Only close if not a silent save
 }
 
@@ -2473,6 +3209,11 @@ function showShareDetails() {
         }
         // Force visibility
         modalCompanyName.style.setProperty('display', 'block', 'important');
+    }
+
+    // Persist the selected share id on the modal so Edit can recover it if selection is cleared
+    if (shareDetailModal) {
+        try { shareDetailModal.dataset.shareId = selectedShareDocId; } catch(_) {}
     }
 
     // Get live price data for this share to check target hit status
@@ -2527,12 +3268,12 @@ function showShareDetails() {
 
         const lowSpan = document.createElement('h3');
         lowSpan.classList.add('fifty-two-week-value', 'low'); // New classes
-        lowSpan.textContent = 'Low: ' + (low52Week !== undefined && low52Week !== null && !isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A');
+    lowSpan.textContent = 'Low: ' + (low52Week !== undefined && low52Week !== null && !isNaN(low52Week) ? formatMoney(low52Week) : 'N/A');
         fiftyTwoWeekRow.appendChild(lowSpan);
 
         const highSpan = document.createElement('h3');
         highSpan.classList.add('fifty-two-week-value', 'high'); // New classes
-        highSpan.textContent = 'High: ' + (high52Week !== undefined && high52Week !== null && !isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A');
+    highSpan.textContent = 'High: ' + (high52Week !== undefined && high52Week !== null && !isNaN(high52Week) ? formatMoney(high52Week) : 'N/A');
         fiftyTwoWeekRow.appendChild(highSpan);
 
         modalLivePriceDisplaySection.appendChild(fiftyTwoWeekRow);
@@ -2550,7 +3291,7 @@ function showShareDetails() {
         modalLivePriceDisplaySection.appendChild(livePriceRow);
 
         if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) {
-            currentModalLivePriceLarge.textContent = '$' + livePrice.toFixed(2);
+            currentModalLivePriceLarge.textContent = '$' + formatAdaptivePrice(livePrice);
             currentModalLivePriceLarge.style.display = 'inline';
         } else {
             currentModalLivePriceLarge.textContent = 'N/A';
@@ -2566,9 +3307,9 @@ function showShareDetails() {
             const priceChangeSpan = document.createElement('span');
             priceChangeSpan.classList.add('price-change'); // Keep base class for coloring, color already applied to parent
             if (change > 0) {
-                priceChangeSpan.textContent = '(+$' + change.toFixed(2) + ' / +' + percentageChange.toFixed(2) + '%)';
+                priceChangeSpan.textContent = '(+$' + formatAdaptivePrice(change) + ' / +' + formatAdaptivePercent(percentageChange) + '%)';
             } else if (change < 0) {
-                priceChangeSpan.textContent = '(-$' + Math.abs(change).toFixed(2) + ' / ' + percentageChange.toFixed(2) + '%)'; // percentageChange is already negative
+                priceChangeSpan.textContent = '(-$' + formatAdaptivePrice(Math.abs(change)) + ' / ' + formatAdaptivePercent(percentageChange) + '%)'; // percentageChange is already negative
             } else {
                 priceChangeSpan.textContent = '($0.00 / 0.00%)';
             }
@@ -2584,7 +3325,7 @@ function showShareDetails() {
         peRow.classList.add('pe-ratio-row'); // New class for styling
         const peSpan = document.createElement('h3');
         peSpan.classList.add('pe-ratio-value'); // New class
-        peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A');
+    peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A');
         peRow.appendChild(peSpan);
         modalLivePriceDisplaySection.appendChild(peRow);
     }
@@ -2614,17 +3355,17 @@ function showShareDetails() {
     const displayDividendAmount = Number(share.dividendAmount);
     const displayFrankingCredits = Number(share.frankingCredits);
 
-    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(displayDividendAmount);
+    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(displayDividendAmount);
     modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? val.toFixed(1) + '%' : '')(displayFrankingCredits);
 
     const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
     const unfrankedYield = calculateUnfrankedYield(displayDividendAmount, priceForYield); 
     // Display unfranked yield only if it's not null/NaN AND not 0
-    modalUnfrankedYieldSpan.textContent = unfrankedYield !== null && !isNaN(unfrankedYield) && unfrankedYield !== 0 ? unfrankedYield.toFixed(2) + '%' : '';
+    modalUnfrankedYieldSpan.textContent = unfrankedYield !== null && !isNaN(unfrankedYield) && unfrankedYield !== 0 ? formatAdaptivePercent(unfrankedYield) + '%' : '';
 
     const frankedYield = calculateFrankedYield(displayDividendAmount, priceForYield, displayFrankingCredits);
     // Display franked yield only if it's not null/NaN AND not 0
-    modalFrankedYieldSpan.textContent = frankedYield !== null && !isNaN(frankedYield) && frankedYield !== 0 ? frankedYield.toFixed(2) + '%' : '';
+    modalFrankedYieldSpan.textContent = frankedYield !== null && !isNaN(frankedYield) && frankedYield !== 0 ? formatAdaptivePercent(frankedYield) + '%' : '';
 
     // Populate Entry Date after Franked Yield
     modalEntryDate.textContent = formatDate(share.entryDate) || 'N/A';
@@ -2673,7 +3414,8 @@ function showShareDetails() {
     if (modalMarketIndexLink && share.shareName) {
         const marketIndexUrl = 'https://www.marketindex.com.au/asx/' + share.shareName.toLowerCase();
         modalMarketIndexLink.href = marketIndexUrl;
-        modalMarketIndexLink.innerHTML = 'View ' + share.shareName.toUpperCase() + ' on MarketIndex.com.au <i class="fas fa-external-link-alt"></i>';
+    // Text no longer includes the ASX code per spec; keep consistent "View on ..." prefix
+    modalMarketIndexLink.innerHTML = 'View on MarketIndex.com.au <i class="fas fa-external-link-alt"></i>';
         modalMarketIndexLink.style.display = 'inline-flex';
         setIconDisabled(modalMarketIndexLink, false);
     } else if (modalMarketIndexLink) {
@@ -2704,17 +3446,27 @@ function showShareDetails() {
         setIconDisabled(modalListcorpLink, true);
     }
 
-    // CommSec.com.au Link (DYNAMIC)
+    // CommSec.com.au Link (DYNAMIC) + Google Finance
     if (modalCommSecLink && share.shareName) {
-        // Use the required URL format: https://www2.commsec.com.au/quotes/summary?stockCode=AMP&exchangeCode=ASX
         const commsecUrl = `https://www2.commsec.com.au/quotes/summary?stockCode=${encodeURIComponent(share.shareName)}&exchangeCode=ASX`;
-    modalCommSecLink.href = commsecUrl;
-    modalCommSecLink.innerHTML = 'View on commsec.com.au <i class="fas fa-external-link-alt"></i>';
+        modalCommSecLink.href = commsecUrl;
+        modalCommSecLink.innerHTML = 'View on CommSec.com.au <i class="fas fa-external-link-alt"></i>';
         modalCommSecLink.style.display = 'inline-flex';
         setIconDisabled(modalCommSecLink, false);
     } else if (modalCommSecLink) {
         modalCommSecLink.style.display = 'none';
         setIconDisabled(modalCommSecLink, true);
+    }
+
+    if (typeof modalGoogleFinanceLink !== 'undefined') {
+        try {
+            if (modalGoogleFinanceLink && share.shareName) {
+                modalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${share.shareName.toUpperCase()}:ASX?hl=en`;
+                modalGoogleFinanceLink.style.display = 'inline-flex';
+            } else if (modalGoogleFinanceLink) {
+                modalGoogleFinanceLink.style.display = 'none';
+            }
+        } catch(_) {}
     }
 
     if (modalCommSecLink && commSecLoginMessage) {
@@ -2977,11 +3729,26 @@ function renderWatchlistSelect() {
     if (desiredWatchlistId && Array.from(watchlistSelect.options).some(opt => opt.value === desiredWatchlistId)) {
         watchlistSelect.value = desiredWatchlistId;
     } else {
-        // Fallback: If the desired watchlist is not found (e.g., deleted, or first load with no preference),
-        // default to "All Shares".
-        watchlistSelect.value = ALL_SHARES_ID;
-        currentSelectedWatchlistIds = [ALL_SHARES_ID]; // Ensure currentSelectedWatchlistIds is consistent
-        logDebug('UI Update: Watchlist select defaulted to All Shares as desired ID was not found.');
+        // Fallback: Prefer the last selected view from localStorage if valid, especially for 'portfolio'
+        try {
+            const lsView = localStorage.getItem('lastSelectedView');
+            const hasOption = lsView && Array.from(watchlistSelect.options).some(opt => opt.value === lsView);
+            if (hasOption) {
+                watchlistSelect.value = lsView;
+                currentSelectedWatchlistIds = [lsView];
+                logDebug('UI Update: Watchlist select applied lastSelectedView from localStorage: ' + lsView);
+            } else {
+                // Default to All Shares only if no valid preference is found
+                watchlistSelect.value = ALL_SHARES_ID;
+                currentSelectedWatchlistIds = [ALL_SHARES_ID];
+                logDebug('UI Update: Watchlist select defaulted to All Shares as desired ID was not found.');
+            }
+        } catch(e) {
+            // On any error, default to All Shares
+            watchlistSelect.value = ALL_SHARES_ID;
+            currentSelectedWatchlistIds = [ALL_SHARES_ID];
+            logDebug('UI Update: Watchlist select defaulted to All Shares due to error reading localStorage.');
+        }
     }
     logDebug('UI Update: Watchlist select dropdown rendered. Selected value: ' + watchlistSelect.value);
     updateMainTitle(); // Update main title based on newly selected watchlist
@@ -2990,8 +3757,8 @@ function renderWatchlistSelect() {
 
 function renderSortSelect() {
         if (!sortSelect) { console.error('renderSortSelect: sortSelect element not found.'); return; }
-        // Store the currently selected value before clearing
-        const currentSelectedSortValue = sortSelect.value;
+    // Store the currently selected value before clearing (used as a fallback)
+    const currentSelectedSortValue = sortSelect.value;
 
         // Set the initial placeholder text to "Sort List"
         sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
@@ -3044,8 +3811,12 @@ function renderSortSelect() {
             defaultSortValue = 'name-asc'; // Default for cash
         }
 
-        // Try to re-select the previously selected value if it's still valid for the current view
-        if (currentSelectedSortValue && Array.from(sortSelect.options).some(option => option.value === currentSelectedSortValue)) {
+        // Prefer an explicitly set currentSortOrder if it's valid for this view
+        const optionValues = Array.from(sortSelect.options).map(o => o.value);
+        if (currentSortOrder && optionValues.includes(currentSortOrder)) {
+            sortSelect.value = currentSortOrder;
+            logDebug('Sort: Applied currentSortOrder: ' + currentSortOrder);
+        } else if (currentSelectedSortValue && optionValues.includes(currentSelectedSortValue)) {
             sortSelect.value = currentSelectedSortValue;
             currentSortOrder = currentSelectedSortValue;
             logDebug('Sort: Applied previously selected sort order: ' + currentSortOrder);
@@ -3056,8 +3827,133 @@ function renderSortSelect() {
             logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
         }
 
-        logDebug('UI Update: Sort select rendered. Sort select disabled: ' + sortSelect.disabled);
+    logDebug('UI Update: Sort select rendered. Sort select disabled: ' + sortSelect.disabled);
     }
+
+
+function openWatchlistPicker() {
+    if (!watchlistPickerModal || !watchlistPickerList) {
+        console.warn('Watchlist Picker: Modal elements not found. modal?', !!watchlistPickerModal, ' list?', !!watchlistPickerList);
+        return;
+    }
+    console.log('[WatchlistPicker] Opening picker...');
+    watchlistPickerList.innerHTML='';
+    const items=[];
+    items.push({id:ALL_SHARES_ID,name:'All Shares'});
+    items.push({id:'portfolio',name:'Portfolio'});
+    userWatchlists.filter(w=>w.id!==ALL_SHARES_ID && w.id!==CASH_BANK_WATCHLIST_ID).forEach(w=>items.push(w));
+    items.push({id:CASH_BANK_WATCHLIST_ID,name:'Cash & Assets'});
+    items.forEach(it=>{
+        const div=document.createElement('div');
+        div.className='picker-item'+(currentSelectedWatchlistIds[0]===it.id?' active':'');
+        div.textContent=it.name;
+        div.tabIndex=0;
+        div.onclick=()=>{
+            console.log('[WatchlistPicker] Selecting watchlist', it.id);
+            currentSelectedWatchlistIds=[it.id];
+            if (watchlistSelect) watchlistSelect.value=it.id; // sync hidden select
+            try { localStorage.setItem('lastSelectedView', it.id); } catch(e) {}
+            // Persist to Firestore as well for cross-device restore
+            try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
+            updateMainTitle();
+            renderSortSelect();
+            renderWatchlist();
+            try { updateAddHeaderButton(); updateSidebarAddButtonContext(); } catch(e) {}
+            toggleCodeButtonsArrow();
+            try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); watchlistPickerModal.style.display='none'; }
+            if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false');
+            if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus();
+        };
+        div.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); div.click(); } };
+        watchlistPickerList.appendChild(div);
+    });
+    // Use centralized modal open so history/back works consistently
+    try {
+        showModal(watchlistPickerModal);
+    } catch(e) {
+        // Fallback if showModal is unavailable for some reason
+        watchlistPickerModal.classList.remove('app-hidden');
+        watchlistPickerModal.style.display='flex';
+    }
+    console.log('[WatchlistPicker] Modal shown. Item count:', watchlistPickerList.children.length);
+}
+function toggleCodeButtonsArrow() {
+    if (!toggleAsxButtonsBtn) return;
+    const current=currentSelectedWatchlistIds[0];
+    if (current===CASH_BANK_WATCHLIST_ID) {
+    toggleAsxButtonsBtn.style.display='none';
+    if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.add('app-hidden'); asxCodeButtonsContainer.style.display='none'; }
+    } else {
+    toggleAsxButtonsBtn.style.display='';
+    if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.remove('app-hidden'); if (asxButtonsExpanded) asxCodeButtonsContainer.style.display='flex'; }
+        applyAsxButtonsState();
+    }
+}
+if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
+    const openPicker = () => {
+        // If the sidebar (hamburger menu) is open, close it and do not open the picker on this click
+        if (appSidebar && appSidebar.classList.contains('open')) {
+            if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false);
+            return;
+        }
+        openWatchlistPicker();
+        if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','true');
+        setTimeout(()=>{
+            const listEl = document.getElementById('watchlistPickerList');
+            const first = listEl && listEl.querySelector('.picker-item');
+            if (first) first.focus();
+        },30);
+    };
+    // Bind to the narrow span to keep the click target tight
+    const clickable = dynamicWatchlistTitleText || dynamicWatchlistTitle;
+    if (clickable && clickable.getAttribute('data-picker-bound') !== 'true') {
+        clickable.addEventListener('click', openPicker);
+        clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
+        clickable.setAttribute('role','button');
+        clickable.setAttribute('data-picker-bound','true');
+    }
+}
+if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ const modalEl=document.getElementById('watchlistPickerModal'); if (modalEl) { try { hideModal(modalEl); } catch(_) { modalEl.classList.add('app-hidden'); } } if (dynamicWatchlistTitle) { dynamicWatchlistTitle.setAttribute('aria-expanded','false'); } if (dynamicWatchlistTitleText) { dynamicWatchlistTitleText.focus(); } });
+window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape' && watchlistPickerModal && watchlistPickerModal.style.display!=='none' && !watchlistPickerModal.classList.contains('app-hidden')){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
+
+// Wrap loadUserWatchlistsAndSettings to refresh new UI parts after data load
+const __origLoadUserWatchlistsAndSettings = loadUserWatchlistsAndSettings;
+loadUserWatchlistsAndSettings = async function() {
+    await __origLoadUserWatchlistsAndSettings();
+    updateMainTitle();
+    renderSortSelect();
+    toggleCodeButtonsArrow();
+};
+
+// Late-binding helper to ensure header interactions are wired when DOM is ready
+function bindHeaderInteractiveElements() {
+    const titleEl = document.getElementById('dynamicWatchlistTitle');
+    const textEl = document.getElementById('dynamicWatchlistTitleText');
+    // Bind only to the inner span for a narrower click target
+    const clickable = textEl || titleEl;
+    if (clickable && clickable.getAttribute('data-picker-bound') !== 'true') {
+        const openPicker = () => {
+            openWatchlistPicker();
+            if (titleEl) titleEl.setAttribute('aria-expanded','true');
+            setTimeout(()=>{
+                const listEl = document.getElementById('watchlistPickerList');
+                const first = listEl && listEl.querySelector('.picker-item');
+                if (first) first.focus();
+            },30);
+        };
+        clickable.addEventListener('click', openPicker);
+        clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
+        clickable.setAttribute('role','button');
+        clickable.setAttribute('data-picker-bound','true');
+    }
+    const closeBtn = document.getElementById('closeWatchlistPickerBtn');
+    const pickerModal = document.getElementById('watchlistPickerModal');
+    if (closeBtn && closeBtn.getAttribute('data-close-bound') !== 'true') {
+        closeBtn.addEventListener('click', ()=>{ if (pickerModal) pickerModal.classList.add('app-hidden'); if (titleEl) { titleEl.setAttribute('aria-expanded','false'); } if (textEl) textEl.focus(); });
+        closeBtn.setAttribute('data-close-bound','true');
+    }
+}
 
 /**
  * Renders the watchlist based on the currentSelectedWatchlistIds. (1)
@@ -3121,7 +4017,7 @@ function renderWatchlist() {
         if (tableContainer) tableContainer.style.display = 'none';
         if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
         // Update title
-        if (mainTitle) mainTitle.textContent = 'Portfolio';
+    // Title handled by updateMainTitle
     // Show sort dropdown in portfolio too
     sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
@@ -3131,6 +4027,9 @@ function renderWatchlist() {
         if (typeof renderPortfolioList === 'function') {
             renderPortfolioList();
         }
+    // Update sort options and alerts for portfolio view as well
+    try { renderSortSelect(); } catch(e) {}
+    try { updateTargetHitBanner(); } catch(e) {}
         // Also render ASX code buttons for portfolio shares
         if (typeof renderAsxCodeButtons === 'function') {
             renderAsxCodeButtons();
@@ -3138,17 +4037,24 @@ function renderWatchlist() {
         adjustMainContentPadding();
         return;
     } else if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
+    // Hide portfolio section if it exists from previous view
+    const existingPortfolio = document.getElementById('portfolioSection');
+    if (existingPortfolio) existingPortfolio.style.display='none';
         // Stock Watchlist Logic
         stockWatchlistSection.classList.remove('app-hidden');
+        // IMPORTANT: Also clear any inline display:none applied by showPortfolioView
+        if (typeof stockWatchlistSection.style !== 'undefined') {
+            stockWatchlistSection.style.display = '';
+        }
         const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
         if (selectedWatchlistId === ALL_SHARES_ID) {
-            mainTitle.textContent = 'All Shares';
+            // Title handled by updateMainTitle
         } else if (selectedWatchlist) {
-            mainTitle.textContent = selectedWatchlist.name;
+            // Title handled by updateMainTitle
         } else if (selectedWatchlistId === 'portfolio') {
-            mainTitle.textContent = 'Portfolio';
+            // Title handled by updateMainTitle
         } else {
-            mainTitle.textContent = 'Share Watchlist';
+            // Title handled by updateMainTitle
         }
 
         // Show stock-specific UI elements
@@ -3163,10 +4069,10 @@ function renderWatchlist() {
         let sharesToRender = [];
 
         if (selectedWatchlistId === ALL_SHARES_ID) {
-            sharesToRender = [...allSharesData];
+            sharesToRender = dedupeSharesById(allSharesData);
             logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
         } else if (currentSelectedWatchlistIds.length === 1) {
-            sharesToRender = allSharesData.filter(share => currentSelectedWatchlistIds.includes(share.watchlistId));
+            sharesToRender = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
             logDebug('Render: Displaying shares from watchlist: ' + selectedWatchlistId);
         } else {
             logDebug('Render: No specific stock watchlists selected or multiple selected, showing empty state.');
@@ -3238,13 +4144,16 @@ function renderWatchlist() {
     } else {
         // Cash & Assets section Logic
         cashAssetsSection.classList.remove('app-hidden');
-        mainTitle.textContent = 'Cash & Assets';
+    const existingPortfolio2 = document.getElementById('portfolioSection');
+    if (existingPortfolio2) existingPortfolio2.style.display='none';
+    // Title handled by updateMainTitle
         renderCashCategories();
         sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
         toggleCompactViewBtn.classList.add('app-hidden');
         asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
-        targetHitIconBtn.classList.add('app-hidden'); // Ensure hidden in cash view
+    // Hide in cash view via inline style to avoid class conflicts
+    if (targetHitIconBtn) targetHitIconBtn.style.display = 'none';
         exportWatchlistBtn.classList.add('app-hidden');
         stopLivePriceUpdates();
         updateAddHeaderButton();
@@ -3256,6 +4165,9 @@ function renderWatchlist() {
     renderSortSelect(); // Moved here to ensure it updates for both stock and cash views
     updateMainButtonsState(!!currentUserId); // Ensure button states (like Edit Watchlist) are correct for the current view
     adjustMainContentPadding();
+    try { updateMainTitle(); } catch(e) {}
+    try { ensureTitleStructure(); } catch(e) {}
+    try { updateTargetHitBanner(); } catch(e) {}
 }
 
 function renderAsxCodeButtons() {
@@ -3265,9 +4177,9 @@ function renderAsxCodeButtons() {
     
     let sharesForButtons = [];
     if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) { 
-        sharesForButtons = [...allSharesData];
+        sharesForButtons = dedupeSharesById(allSharesData);
     } else {
-        sharesForButtons = allSharesData.filter(share => currentSelectedWatchlistIds.includes(share.watchlistId));
+        sharesForButtons = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
     }
 
     sharesForButtons.forEach(share => {
@@ -3277,15 +4189,10 @@ function renderAsxCodeButtons() {
     });
 
     if (uniqueAsxCodes.size === 0) {
-        asxCodeButtonsContainer.style.display = 'none';
-        logDebug('UI: No unique ASX codes found for current view. Hiding ASX buttons container.');
-    } else {
-        // Only show if not in compact view mode
-        if (currentMobileViewMode !== 'compact') {
-            asxCodeButtonsContainer.style.display = 'flex';
-        } else {
-            asxCodeButtonsContainer.style.display = 'none';
-        }
+        // Let centralized state handler control visibility; just clear contents
+        logDebug('UI: No unique ASX codes found for current view.');
+        applyAsxButtonsState();
+        return;
     }
     const sortedAsxCodes = Array.from(uniqueAsxCodes).sort();
     sortedAsxCodes.forEach(asxCode => {
@@ -3324,15 +4231,37 @@ function renderAsxCodeButtons() {
         }
 
         asxCodeButtonsContainer.appendChild(button);
-        button.addEventListener('click', (event) => {
-            logDebug('ASX Button Click: Button for ' + asxCode + ' clicked.');
-            const clickedCode = event.target.dataset.asxCode;
-            scrollToShare(clickedCode);
-        });
     });
+    // Remove any lingering active state on rebuild
+    asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b=>b.classList.remove('active'));
+    // Delegated click handler (single)
+    if (!asxCodeButtonsContainer.__delegated) {
+        asxCodeButtonsContainer.addEventListener('click', (e) => {
+            const btn = e.target.closest('button.asx-code-btn');
+            if (!btn) return;
+            const code = btn.dataset.asxCode;
+            logDebug('ASX Button Click (delegated): ' + code);
+            asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b=>b.classList.remove('active'));
+            btn.classList.add('active');
+            scrollToShare(code);
+            // NEW: If the Add/Edit Share form is open, also populate the code field and show a quick live snapshot
+            try {
+                const formVisible = shareFormSection && shareFormSection.style.display !== 'none' && !shareFormSection.classList.contains('app-hidden');
+                if (formVisible && shareNameInput) {
+                    const company = Array.isArray(allAsxCodes) ? (allAsxCodes.find(c => c.code === code)?.name || '') : '';
+                    shareNameInput.value = code;
+                    if (formCompanyName) formCompanyName.textContent = company;
+                    checkFormDirtyState();
+                    // Fetch a single-stock snapshot to render the small live panel
+                    updateAddFormLiveSnapshot(code);
+                }
+            } catch(_) {}
+        });
+        asxCodeButtonsContainer.__delegated = true;
+    }
     logDebug('UI: Rendered ' + sortedAsxCodes.length + ' code buttons.');
-    // NEW: Adjust padding after rendering buttons, as their presence affects header height
-    adjustMainContentPadding();
+    // Re-apply visibility state centrally and adjust padding via applyAsxButtonsState()
+    applyAsxButtonsState();
 }
 
 function scrollToShare(asxCode) {
@@ -3386,7 +4315,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
     currentSearchShareData = null; // Reset previous data
 
     try {
-        const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${asxCode}`);
+    const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${asxCode}&_ts=${Date.now()}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -3405,7 +4334,16 @@ async function displayStockDetailsInSearchModal(asxCode) {
             return;
         }
 
-        const stockData = data[0]; // Assuming the first item is the relevant one
+        // Prefer exact match row (some endpoints may return array with additional rows)
+        const upperReq = asxCode.toUpperCase();
+        let stockData = data.find(r => {
+            const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
+            return c && String(c).toUpperCase().trim() === upperReq;
+        });
+        if (!stockData) {
+            stockData = data[0];
+            logDebug('Search Modal: No exact code match; using first row as fallback.', { requested: upperReq, firstKeys: Object.keys(data[0]||{}) });
+        }
         // Ensure CompanyName defaults to an empty string if not provided by the Apps Script
         stockData.CompanyName = stockData.CompanyName || "";
 
@@ -3425,11 +4363,11 @@ async function displayStockDetailsInSearchModal(asxCode) {
         let displayPrice = 'N/A';
 
         if (!isNaN(currentLivePrice) && currentLivePrice !== null) {
-            displayPrice = `$${currentLivePrice.toFixed(2)}`;
+            displayPrice = `$${formatAdaptivePrice(currentLivePrice)}`;
             if (!isNaN(previousClosePrice) && previousClosePrice !== null) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                priceChangeText = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceChangeText = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         }
@@ -3448,20 +4386,20 @@ async function displayStockDetailsInSearchModal(asxCode) {
         // Construct the display HTML
         searchResultDisplay.innerHTML = `
             <div class="text-center mb-4">
-                <h3 class="${searchModalTitleClasses}">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
+                <h3 class="${searchModalTitleClasses} search-modal-code-header" data-code="${stockData.ASXCode || ''}" data-name="${stockData.CompanyName || ''}" title="Click to populate Add Share form">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
                 <span class="text-sm text-gray-500">${stockData.CompanyName ? '' : '(Company Name N/A)'}</span>
             </div>
             <div class="live-price-display-section">
                 <div class="fifty-two-week-row">
-                    <h3 class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? '$' + low52Week.toFixed(2) : 'N/A'}</h3>
-                    <h3 class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? '$' + high52Week.toFixed(2) : 'N/A'}</h3>
+                    <h3 class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? formatMoney(low52Week) : 'N/A'}</h3>
+                    <h3 class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? formatMoney(high52Week) : 'N/A'}</h3>
                 </div>
                 <div class="live-price-main-row">
                     <h2 class="modal-share-name ${priceClass}">${displayPrice}</h2>
                     <span class="price-change-large ${priceClass}">${priceChangeText}</span>
                 </div>
                 <div class="pe-ratio-row">
-                    <h3 class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A'}</h3>
+                    <h3 class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A'}</h3>
                 </div>
             </div>
             <div class="external-links-section">
@@ -3499,20 +4437,87 @@ async function displayStockDetailsInSearchModal(asxCode) {
         if (searchModalListcorpLink) searchModalListcorpLink.href = `https://www.listcorp.com/asx/${asxCode.toLowerCase()}`;
         if (searchModalCommSecLink) searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
 
-        // Store the fetched data for potential adding/editing
+        // Store the fetched data for potential adding/editing (normalize code property fallbacks)
+        const resolvedCode = stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode;
         currentSearchShareData = {
-            shareName: stockData.ASXCode,
+            shareName: String(resolvedCode || '').toUpperCase(),
             companyName: stockData.CompanyName,
-            currentPrice: currentLivePrice, // Use current live price as initial entered price
-            targetPrice: null, // Default null
-            dividendAmount: null, // Default null
-            frankingCredits: null, // Default null
-            starRating: 0, // Default 0
-            comments: [], // Default empty array
-            watchlistId: null // To be selected when adding
+            currentPrice: currentLivePrice,
+            targetPrice: null,
+            dividendAmount: null,
+            frankingCredits: null,
+            starRating: 0,
+            comments: [],
+            watchlistId: null
         };
 
-        // Render action buttons
+        // AUTO-POPULATE / OPEN FORM LOGIC
+        try {
+            const alreadyEditing = !!selectedShareDocId;
+            if (existingShare) {
+                // If the code already exists, seamlessly open its edit form (unless already open for that share)
+                if (!alreadyEditing || selectedShareDocId !== existingShare.id) {
+                    hideModal(stockSearchModal);
+                    showEditFormForSelectedShare(existingShare.id);
+                }
+            } else {
+                // New share path: open (or update) the Add New Share form immediately for faster workflow
+                hideModal(stockSearchModal);
+                // Clear only if we are not already in a fresh new-share form state
+                if (selectedShareDocId) {
+                    // Was editing something else; start a clean add flow
+                    clearForm();
+                } else if (formTitle && formTitle.textContent !== 'Add New Share') {
+                    clearForm();
+                }
+                // Ensure form baseline state
+                formTitle.textContent = 'Add New Share';
+                selectedShareDocId = null; // ensure new
+                if (shareNameInput) shareNameInput.value = currentSearchShareData.shareName;
+                if (formCompanyName) formCompanyName.textContent = currentSearchShareData.companyName || '';
+                // Prefill default intent (Buy/Below) only if nothing chosen yet
+                try {
+                    if (targetIntentBuyBtn && targetIntentSellBtn && !targetIntentBuyBtn.classList.contains('is-active') && !targetIntentSellBtn.classList.contains('is-active')) {
+                        targetIntentBuyBtn.classList.add('is-active');
+                        targetIntentBuyBtn.setAttribute('aria-pressed','true');
+                        targetIntentSellBtn.classList.remove('is-active');
+                        targetIntentSellBtn.setAttribute('aria-pressed','false');
+                    }
+                    if (targetAboveCheckbox && targetBelowCheckbox && !targetAboveCheckbox.checked && !targetBelowCheckbox.checked) {
+                        targetAboveCheckbox.checked = false; targetBelowCheckbox.checked = true;
+                    }
+                    if (targetDirAboveBtn && targetDirBelowBtn && !targetDirAboveBtn.classList.contains('is-active') && !targetDirBelowBtn.classList.contains('is-active')) {
+                        targetDirAboveBtn.classList.remove('is-active'); targetDirAboveBtn.setAttribute('aria-pressed','false');
+                        targetDirBelowBtn.classList.add('is-active'); targetDirBelowBtn.setAttribute('aria-pressed','true');
+                    }
+                } catch(_) {}
+                // Populate watchlist selector (new share context)
+                populateShareWatchlistSelect(null, true);
+                // Add initial blank comment section if none exists
+                if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
+                    addCommentSection(commentsFormContainer);
+                }
+                // Render live snapshot into addShareLivePriceDisplay (robust key fallbacks)
+                try {
+                    // Use the ASX code for snapshot fetch; shareName holds the company name.
+                    if (currentSearchShareData && currentSearchShareData.shareCode) {
+                        updateAddFormLiveSnapshot(currentSearchShareData.shareCode);
+                    }
+                } catch(_) {}
+                // Finally show the form if not visible
+                if (shareFormSection && (shareFormSection.style.display === 'none' || shareFormSection.classList.contains('app-hidden'))) {
+                    showModal(shareFormSection);
+                }
+                // Focus code input for immediate target price entry
+                if (shareNameInput) shareNameInput.focus();
+                // Recompute dirty state now populated
+                checkFormDirtyState();
+            }
+        } catch (autoErr) {
+            console.warn('Search AutoFill: Failed to auto-populate form from search selection', autoErr);
+        }
+
+    // Render action buttons (kept for explicit user intent, though auto-open logic above already populated form)
         const actionButton = document.createElement('button');
         actionButton.classList.add('button', 'primary-button'); // Apply base button styles
         
@@ -3529,10 +4534,30 @@ async function displayStockDetailsInSearchModal(asxCode) {
             actionButton.addEventListener('click', () => {
                 hideModal(stockSearchModal); // Close search modal
                 clearForm(); // Clear share form
+                userManuallyOverrodeDirection = false;
                 formTitle.textContent = 'Add New Share'; // Set title for new share
                 shareNameInput.value = currentSearchShareData.shareName; // Pre-fill code
-                currentPriceInput.value = !isNaN(currentSearchShareData.currentPrice) ? currentSearchShareData.currentPrice.toFixed(2) : ''; // Pre-fill live price
+                // currentPriceInput removed; no prefill needed
                 populateShareWatchlistSelect(null, true); // Populate and enable watchlist select for new share
+                // Default toggles to Buy+Below
+                try {
+                    if (targetIntentBuyBtn && targetIntentSellBtn) {
+                        targetIntentBuyBtn.classList.add('is-active');
+                        targetIntentBuyBtn.setAttribute('aria-pressed', 'true');
+                        targetIntentSellBtn.classList.remove('is-active');
+                        targetIntentSellBtn.setAttribute('aria-pressed', 'false');
+                    }
+                    if (targetAboveCheckbox && targetBelowCheckbox) {
+                        targetAboveCheckbox.checked = false;
+                        targetBelowCheckbox.checked = true;
+                    }
+                    if (targetDirAboveBtn && targetDirBelowBtn) {
+                        targetDirAboveBtn.classList.remove('is-active');
+                        targetDirAboveBtn.setAttribute('aria-pressed', 'false');
+                        targetDirBelowBtn.classList.add('is-active');
+                        targetDirBelowBtn.setAttribute('aria-pressed', 'true');
+                    }
+                } catch(_) {}
                 addCommentSection(commentsFormContainer); // Add initial empty comment section
                 showModal(shareFormSection); // Show add/edit modal
                 checkFormDirtyState(); // Check dirty state for the new share form
@@ -3779,8 +4804,20 @@ async function saveSortOrderPreference(sortOrder) {
     logDebug('Sort Debug: currentUserId: ' + currentUserId);
     logDebug('Sort Debug: window.firestore: ' + (window.firestore ? 'Available' : 'Not Available'));
 
+    // Always persist to localStorage as an offline-friendly backup
+    try {
+        if (sortOrder) {
+            localStorage.setItem('lastSortOrder', sortOrder);
+        } else {
+            localStorage.removeItem('lastSortOrder');
+        }
+        logDebug('Sort: Saved sort order to localStorage: ' + sortOrder);
+    } catch (e) {
+        console.warn('Sort: Failed to write sort order to localStorage:', e);
+    }
+
     if (!db || !currentUserId || !window.firestore) {
-        console.warn('Sort: Cannot save sort order preference: DB, User ID, or Firestore functions not available. Skipping save.');
+        console.warn('Sort: Cannot save sort order preference: DB, User ID, or Firestore functions not available. Skipping cloud save.');
         return;
     }
     const userProfileDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
@@ -3851,8 +4888,9 @@ async function loadUserWatchlistsAndSettings() {
 
             if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
                 // Filter out invalid or non-existent watchlists from loaded preferences
+                // Treat 'portfolio' as a valid special view alongside All Shares and Cash & Assets
                 currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id => 
-                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || userWatchlists.some(wl => wl.id === id)
+                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
                 );
                 logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
             } else {
@@ -3861,6 +4899,18 @@ async function loadUserWatchlistsAndSettings() {
         } else {
             logDebug('User Settings: User profile settings not found. Will determine default watchlist selection.');
         }
+
+        // Prefer local device's last selected view if available and valid
+        try {
+            const lsView = localStorage.getItem('lastSelectedView');
+            if (lsView) {
+                const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || userWatchlists.some(wl => wl.id === lsView);
+                if (isValid) {
+                    currentSelectedWatchlistIds = [lsView];
+                    logDebug('User Settings: Overriding selection with localStorage lastSelectedView: ' + lsView);
+                }
+            }
+        } catch(e) { /* ignore */ }
 
         // Determine final currentSelectedWatchlistIds if not set or invalid after loading/filtering
         if (!currentSelectedWatchlistIds || currentSelectedWatchlistIds.length === 0) {
@@ -3882,22 +4932,21 @@ async function loadUserWatchlistsAndSettings() {
             populateShareWatchlistSelect();
         }
 
-        // Apply saved sort order or default
-        if (currentUserId && savedSortOrder && Array.from(sortSelect.options).some(option => option.value === savedSortOrder)) {
-            sortSelect.value = savedSortOrder;
-            // AGGRESSIVE FIX: Ensure currentSortOrder is updated to match the saved sort
-            currentSortOrder = savedSortOrder;
-            logDebug('Sort: Applied saved sort order: ' + currentSortOrder);
+        // Apply saved sort preference to currentSortOrder; let renderSortSelect enforce it after options are built
+        let candidateSort = savedSortOrder;
+        if (!candidateSort) {
+            try { candidateSort = localStorage.getItem('lastSortOrder') || null; } catch (e) { candidateSort = null; }
+            if (candidateSort) logDebug('Sort: Loaded sort order from localStorage fallback: ' + candidateSort);
+        }
+        if (candidateSort) {
+            currentSortOrder = candidateSort;
+            logDebug('Sort: Using saved sort order: ' + currentSortOrder);
         } else {
             // Set to default sort for the current view type
-            let defaultSortValue = 'entryDate-desc';
-            if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-                defaultSortValue = 'name-asc';
-            }
-            currentSortOrder = defaultSortValue;
-            logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
+            currentSortOrder = currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'entryDate-desc';
+            logDebug('Sort: No saved sort order found, defaulting to: ' + currentSortOrder);
         }
-        renderSortSelect(); // Re-render sort options based on selected watchlist type
+        renderSortSelect(); // Build options, then apply currentSortOrder
 
         // Apply saved theme or default
         if (savedTheme) {
@@ -3930,6 +4979,15 @@ async function loadUserWatchlistsAndSettings() {
         // Initial render based on selected watchlist (stock or cash)
         renderWatchlist(); // This will now correctly display based on the initial currentSelectedWatchlistIds
 
+        // Strong enforcement: if the last view was Portfolio, ensure Portfolio is shown now
+        try {
+            const lsViewFinal = localStorage.getItem('lastSelectedView');
+            if (lsViewFinal === 'portfolio' && typeof showPortfolioView === 'function') {
+                showPortfolioView();
+                logDebug('User Settings: Enforced Portfolio view after initial render.');
+            }
+        } catch(e) { /* ignore */ }
+
         window._appDataLoaded = true;
         hideSplashScreenIfReady();
 
@@ -3950,13 +5008,9 @@ function startLivePriceUpdates() {
         clearInterval(livePriceFetchInterval);
         logDebug('Live Price: Cleared existing live price interval.');
     }
-    // Only start fetching if not in cash view
-    if (!currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-        livePriceFetchInterval = setInterval(fetchLivePrices, LIVE_PRICE_FETCH_INTERVAL_MS); // Only set the interval
-        logDebug('Live Price: Started live price updates every ' + (LIVE_PRICE_FETCH_INTERVAL_MS / 1000 / 60) + ' minutes.');
-    } else {
-        logDebug('Live Price: Not starting live price updates because "Cash & Assets" is selected.'); // UPDATED TEXT
-    }
+    // Always start periodic fetching to keep global live prices fresh regardless of current view
+    livePriceFetchInterval = setInterval(() => fetchLivePrices({ cacheBust: true }), LIVE_PRICE_FETCH_INTERVAL_MS);
+    logDebug('Live Price: Started live price updates every ' + (LIVE_PRICE_FETCH_INTERVAL_MS / 1000 / 60) + ' minutes.');
 }
 
 /**
@@ -3972,52 +5026,61 @@ function stopLivePriceUpdates() {
 
 // NEW: Function to update the target hit notification icon
 function updateTargetHitBanner() {
-    // Collect ALL shares that have hit their target price, regardless of current watchlist view
-    sharesAtTargetPrice = allSharesData.filter(share => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        // Ensure livePriceData exists and has targetHit property
-        // The check against `currentSelectedWatchlistIds` is removed here to show ALL alerts globally
-        return livePriceData && livePriceData.targetHit;
-    });
-
-    if (!targetHitIconBtn || !targetHitIconCount) {
-        console.warn('Target Alert: Target hit icon elements not found. Cannot update icon.');
-        return;
-    }
-
-    // Only show the icon if there are shares at target AND the icon hasn't been manually dismissed
-    // (The cash view check is removed here, as the icon should represent ALL stock alerts globally)
+    // Now driven by alerts from Firestore; sharesAtTargetPrice is set by the alerts listener
     if (!targetHitIconBtn || !targetHitIconCount || !watchlistSelect || !sortSelect) {
-        console.warn('Target Alert: Target hit icon elements or dropdowns not found. Cannot update banner/highlights.');
+        console.warn('Target Alert: UI elements missing. Cannot update banner/highlights.');
         return;
     }
 
-    // Determine if any shares at target price are currently being displayed in the selected stock watchlist(s)
-    const currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
-        // If "All Shares" is selected, any target hit applies
-        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
-            return true;
-        }
-        // If a specific watchlist is selected, check if the target-hit share is in it
+    // Determine if any triggered shares belong to the currently selected watchlist(s)
+    const currentViewHasTargetHits = (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []).some(share => {
+        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) return true;
         if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
-            return share.watchlistId === currentSelectedWatchlistIds[0];
+            return shareBelongsTo(share, currentSelectedWatchlistIds[0]);
         }
-        return false; // No target hits in cash view or multiple watchlists selected (defaulting to no highlight for now)
+        return false;
     });
 
-    // Update the fixed bottom-left icon
-    if (sharesAtTargetPrice.length > 0 && !targetHitIconDismissed) {
-        targetHitIconCount.textContent = sharesAtTargetPrice.length;
-        targetHitIconBtn.classList.remove('app-hidden'); // Show the icon via class
-        targetHitIconCount.style.display = 'block'; // Show the count badge
-        logDebug('Target Alert: Showing icon: ' + sharesAtTargetPrice.length + ' shares hit target (global check).');
+    const displayCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
+    if (displayCount > 0 && !targetHitIconDismissed) {
+        // Diagnostics: capture state before applying changes
+        try {
+            console.log('[Diag] targetHitIconBtn element:', targetHitIconBtn);
+            console.log('[Diag] BEFORE - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
+        } catch (_) {}
+
+        targetHitIconCount.textContent = String(displayCount);
+        // Ensure visibility: drop any hidden class first, then set display
+        targetHitIconBtn.classList.remove('app-hidden');
+        targetHitIconCount.classList && targetHitIconCount.classList.remove('app-hidden');
+        targetHitIconBtn.style.display = 'inline-flex';
+        targetHitIconCount.style.display = 'flex';
+        // Double-ensure after layout settles (guards against another late add)
+        requestAnimationFrame(() => {
+            targetHitIconBtn.classList.remove('app-hidden');
+            targetHitIconCount.classList && targetHitIconCount.classList.remove('app-hidden');
+        });
+
+        // Diagnostics: capture state after applying changes
+        try {
+            console.log('[Diag] AFTER - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
+        } catch (_) {}
+
+        logDebug('Target Alert: Showing icon: ' + displayCount + ' triggered alerts.');
     } else {
-        targetHitIconBtn.classList.add('app-hidden'); // Hide the icon via class
-        targetHitIconCount.style.display = 'none'; // Hide the count badge
-        logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
+    // Hide the icon explicitly via inline style and class
+    targetHitIconBtn.classList.add('app-hidden');
+    targetHitIconBtn.style.display = 'none';
+    targetHitIconCount.classList && targetHitIconCount.classList.add('app-hidden');
+    targetHitIconCount.style.display = 'none';
+        logDebug('Target Alert: No triggered alerts or icon dismissed; hiding icon.');
     }
 
-    // Apply/remove border to watchlist and sort dropdowns if the *current view* has target hits
+    // Persist last known count for early UI restore
+    lastKnownTargetCount = displayCount;
+    try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch(e) {}
+
+    // Highlight dropdowns if the current view has target hits
     if (currentViewHasTargetHits && !targetHitIconDismissed) {
         watchlistSelect.classList.add('target-hit-border');
         sortSelect.classList.add('target-hit-border');
@@ -4026,6 +5089,81 @@ function updateTargetHitBanner() {
         watchlistSelect.classList.remove('target-hit-border');
         sortSelect.classList.remove('target-hit-border');
         logDebug('Target Alert: Watchlist and Sort dropdowns unhighlighted.');
+    }
+}
+
+// NEW: Real-time alerts listener to populate sharesAtTargetPrice from Firestore
+async function loadTriggeredAlertsListener() {
+    if (unsubscribeAlerts) {
+        try { unsubscribeAlerts(); } catch(_) {}
+        unsubscribeAlerts = null;
+        logDebug('Firestore Listener: Unsubscribed from previous alerts listener.');
+    }
+    if (!db || !currentUserId || !window.firestore) {
+        console.warn('Alerts: Firestore DB, User ID, or Firestore functions not available. Clearing triggered alerts.');
+        sharesAtTargetPrice = [];
+        updateTargetHitBanner();
+        return;
+    }
+    try {
+        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        // Filter for triggered alerts; additional local filter will enforce enabled !== false
+        const q = window.firestore.query(alertsCol, window.firestore.where('targetHit', '==', true));
+        unsubscribeAlerts = window.firestore.onSnapshot(q, (querySnapshot) => {
+            const enabledShares = [];
+            const mutedShares = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data() || {};
+                const shareId = data.shareId || doc.id;
+                const shareCode = (data.shareCode || '').toUpperCase();
+                // Try to hydrate from current shares data for richer UI; fallback to a minimal stub
+                let share = allSharesData.find(s => s.id === shareId) || allSharesData.find(s => String(s.shareName || '').toUpperCase() === shareCode);
+                if (!share) {
+                    share = {
+                        id: shareId,
+                        shareName: shareCode || '(Unknown)'.toUpperCase(),
+                        targetPrice: (typeof data.targetPrice === 'number' && !isNaN(data.targetPrice)) ? data.targetPrice : null,
+                        watchlistIds: []
+                    };
+                }
+                // Attach a hint of enabled state for rendering decisions
+                share.__alertEnabled = (data.enabled !== false);
+                if (share.__alertEnabled) {
+                    enabledShares.push(share);
+                } else {
+                    mutedShares.push(share);
+                }
+            });
+            sharesAtTargetPrice = dedupeSharesById(enabledShares);
+            sharesAtTargetPriceMuted = dedupeSharesById(mutedShares);
+            updateTargetHitBanner();
+            // If the notification hub is open, refresh its contents
+            if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
+                showTargetHitDetailsModal();
+            }
+        }, (error) => {
+            console.error('Firestore Listener: Error listening to alerts:', error);
+        });
+        logDebug('Alerts: Real-time alerts listener set up.');
+    } catch (error) {
+        console.error('Alerts: Error setting up alerts listener:', error);
+    }
+}
+
+// NEW: Helper to enable/disable a specific alert for a share
+async function toggleAlertEnabled(shareId, enabled) {
+    try {
+        if (!db || !currentUserId || !window.firestore) throw new Error('Firestore not available');
+        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        const alertDocRef = window.firestore.doc(alertsCol, shareId);
+        await window.firestore.updateDoc(alertDocRef, {
+            enabled: !!enabled,
+            updatedAt: window.firestore.serverTimestamp()
+        });
+        showCustomAlert(enabled ? 'Alert unmuted' : 'Alert muted', 1000);
+    } catch (e) {
+        console.error('Alerts: Failed to toggle enabled for share ' + shareId, e);
+        showCustomAlert('Failed to update alert. Please try again.', 1500);
     }
 }
 
@@ -4157,7 +5295,7 @@ async function loadShares() {
                 fetchedShares.push(share);
             });
 
-            allSharesData = fetchedShares;
+            allSharesData = dedupeSharesById(fetchedShares);
             logDebug('Shares: Shares data updated from snapshot. Total shares: ' + allSharesData.length);
             
             // AGGRESSIVE FIX: Force apply current sort order after data loads
@@ -4285,10 +5423,12 @@ function renderCashCategories() {
         categoryItem.appendChild(categoryHeader); // Attach header directly
 
         // Balance Display (3.1)
-        const balanceDisplay = document.createElement('span');
-        balanceDisplay.classList.add('category-balance-display');
-        balanceDisplay.textContent = '$' + (Number(category.balance) !== null && !isNaN(Number(category.balance)) ? Number(category.balance).toFixed(2) : '0.00');
-        categoryItem.appendChild(balanceDisplay);
+    const balanceDisplay = document.createElement('span');
+    balanceDisplay.classList.add('category-balance-display');
+    // Use shared money formatter for commas and currency symbol
+    const balNum = Number(category.balance);
+    balanceDisplay.textContent = formatMoney(!isNaN(balNum) ? balNum : 0);
+    categoryItem.appendChild(balanceDisplay);
 
         // Add click listener for details modal (2.2)
         categoryItem.addEventListener('click', () => {
@@ -4360,9 +5500,9 @@ function calculateTotalCash() {
         }
     });
     if (totalCashDisplay) {
-        totalCashDisplay.textContent = '$' + total.toFixed(2);
+    totalCashDisplay.textContent = formatMoney(total);
     }
-    logDebug('Cash Categories: Total cash calculated: $' + total.toFixed(2));
+    logDebug('Cash Categories: Total cash calculated: $' + formatAdaptivePrice(total));
 }
 
 // NEW: Cash Asset Form Modal Functions (2.1)
@@ -4378,7 +5518,7 @@ function showAddEditCashCategoryModal(assetIdToEdit = null) {
         }
         cashFormTitle.textContent = 'Edit Cash Asset';
         cashAssetNameInput.value = assetToEdit.name || '';
-        cashAssetBalanceInput.value = Number(assetToEdit.balance) !== null && !isNaN(Number(assetToEdit.balance)) ? Number(assetToEdit.balance).toFixed(2) : '';
+    cashAssetBalanceInput.value = Number(assetToEdit.balance) !== null && !isNaN(Number(assetToEdit.balance)) ? formatAdaptivePrice(Number(assetToEdit.balance)) : '';
         setIconDisabled(deleteCashAssetBtn, false); // Enable delete button for existing asset
         
         // Populate comments for editing
@@ -4578,7 +5718,7 @@ function showCashCategoryDetailsModal(assetId) {
 
     modalCashAssetName.textContent = asset.name || 'N/A';
     detailCashAssetName.textContent = asset.name || 'N/A';
-    detailCashAssetBalance.textContent = '$' + (Number(asset.balance) !== null && !isNaN(Number(asset.balance)) ? Number(asset.balance).toFixed(2) : '0.00');
+    detailCashAssetBalance.textContent = formatMoney((Number(asset.balance) !== null && !isNaN(Number(asset.balance)) ? Number(asset.balance) : 0));
     detailCashAssetLastUpdated.textContent = formatDate(asset.lastUpdated) || 'N/A';
 
     // Display comments in details modal
@@ -4613,78 +5753,71 @@ function showCashCategoryDetailsModal(assetId) {
     logDebug('Details: Displayed details for cash asset: ' + asset.name + ' (ID: ' + assetId + ')');
 }
 
-// Custom Confirm Dialog Function (Now unused for deletions, but kept for potential future use)
-function showCustomConfirm(message, callback) {
-    const confirmBtn = document.getElementById('customDialogConfirmBtn');
-    const cancelBtn = document.getElementById('customDialogCancelBtn');
-    const dialogButtonsContainer = document.querySelector('#customDialogModal .custom-dialog-buttons');
-
-    logDebug('showCustomConfirm: confirmBtn found: ' + !!confirmBtn + ', cancelBtn found: ' + !!cancelBtn + ', dialogButtonsContainer found: ' + !!dialogButtonsContainer);
-
-    if (!customDialogModal || !customDialogMessage || !confirmBtn || !cancelBtn || !dialogButtonsContainer) {
-        console.error('Custom dialog elements not found. Cannot show confirm.');
-        console.log('CONFIRM (fallback): ' + message);
-        callback(window.confirm(message)); // Fallback to native confirm
-        return;
-    }
-    customDialogMessage.textContent = message;
-
-    dialogButtonsContainer.style.display = 'flex'; // Explicitly show the container
-    logDebug('showCustomConfirm: dialogButtonsContainer display set to: ' + dialogButtonsContainer.style.display);
-
-    setIconDisabled(confirmBtn, false); // Enable the confirm button
-    setIconDisabled(cancelBtn, false); // Enable the cancel button
-
-    showModal(customDialogModal);
-
-    // Remove any existing 'click' listeners to prevent multiple firings
-    const oldConfirmListener = confirmBtn._currentClickListener;
-    if (oldConfirmListener) {
-        confirmBtn.removeEventListener('click', oldConfirmListener);
-    }
-    const oldCancelListener = cancelBtn._currentClickListener;
-    if (oldCancelListener) {
-        cancelBtn.removeEventListener('click', oldCancelListener);
-    }
-
-    const onConfirm = () => {
-        hideModal(customDialogModal);
-        callback(true);
-        logDebug('Confirm: User confirmed.');
-    };
-
-    const onCancel = () => {
-        hideModal(customDialogModal);
-        callback(false);
-        logDebug('Confirm: User cancelled.');
-    };
-
-    confirmBtn.addEventListener('click', onConfirm);
-    confirmBtn._currentClickListener = onConfirm; // Store reference
-
-    cancelBtn.addEventListener('click', onCancel);
-    cancelBtn._currentClickListener = onCancel; // Store reference
-
-    logDebug('Confirm: Showing confirm: "' + message + '"');
-}
+// (Removed legacy modal-based showCustomConfirm; migrated to toast confirm above)
 
 /**
  * Updates the main title of the app based on the currently selected watchlist.
  */
 function updateMainTitle() {
-    if (!mainTitle || !watchlistSelect) return;
-
-    const selectedValue = watchlistSelect.value;
-    const selectedText = watchlistSelect.options[watchlistSelect.selectedIndex].textContent;
-
-    if (selectedValue === ALL_SHARES_ID) {
-        mainTitle.textContent = 'All Shares';
-    } else if (selectedValue === CASH_BANK_WATCHLIST_ID) {
-        mainTitle.textContent = 'Cash & Assets'; // UPDATED TEXT
-    } else {
-        mainTitle.textContent = selectedText;
+    if (!watchlistSelect) {
+        // Fallback: derive from currentSelectedWatchlistIds if dropdown not mounted yet
+        const fallbackId = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
+        let fallbackText = 'Share Watchlist';
+        if (fallbackId === ALL_SHARES_ID) fallbackText = 'All Shares';
+        else if (fallbackId === CASH_BANK_WATCHLIST_ID) fallbackText = 'Cash & Assets';
+        else if (fallbackId === 'portfolio') fallbackText = 'Portfolio';
+        else if (fallbackId) {
+            const wl = userWatchlists.find(w=>w.id===fallbackId);
+            if (wl) fallbackText = wl.name;
+        }
+        if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = fallbackText;
+        else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = fallbackText;
+        return;
     }
-    logDebug('UI: Main title updated to: ' + mainTitle.textContent);
+    const selectedValue = watchlistSelect.value;
+    const selectedText = watchlistSelect.selectedIndex >=0 ? (watchlistSelect.options[watchlistSelect.selectedIndex]?.textContent || '') : '';
+    let titleText;
+    if (selectedValue === ALL_SHARES_ID) titleText = 'All Shares';
+    else if (selectedValue === CASH_BANK_WATCHLIST_ID) titleText = 'Cash & Assets';
+    else if (selectedValue === 'portfolio') titleText = 'Portfolio';
+    else {
+        // Prefer the select option text if available; otherwise resolve from userWatchlists by id
+        if (selectedText && selectedText.trim()) {
+            titleText = selectedText.trim();
+        } else {
+            const wl = userWatchlists && Array.isArray(userWatchlists) ? userWatchlists.find(w => w.id === selectedValue) : null;
+            titleText = (wl && wl.name) ? wl.name : 'Share Watchlist';
+        }
+    }
+    if (dynamicWatchlistTitleText) {
+        dynamicWatchlistTitleText.textContent = titleText;
+    } else if (dynamicWatchlistTitle) {
+        dynamicWatchlistTitle.textContent = titleText;
+    }
+    logDebug('UI: Dynamic title updated to: ' + titleText);
+}
+
+// Ensure the dynamic title uses a narrow clickable span and not the whole header
+function ensureTitleStructure() {
+    const titleEl = document.getElementById('dynamicWatchlistTitle');
+    if (!titleEl) return;
+    let textEl = document.getElementById('dynamicWatchlistTitleText');
+    if (!textEl) {
+        // Create the inner span and move any existing text into it
+        textEl = document.createElement('span');
+        textEl.id = 'dynamicWatchlistTitleText';
+        textEl.tabIndex = 0;
+        textEl.textContent = titleEl.textContent && titleEl.textContent.trim() ? titleEl.textContent.trim() : 'Share Watchlist';
+        // Clear and append
+        while (titleEl.firstChild) titleEl.removeChild(titleEl.firstChild);
+        titleEl.appendChild(textEl);
+    }
+    // Constrain click target: disable container pointer events, allow only span
+    try {
+        titleEl.style.pointerEvents = 'none';
+        textEl.style.pointerEvents = 'auto';
+        textEl.setAttribute('role','button');
+    } catch(e) {}
 }
 
 /**
@@ -4725,6 +5858,25 @@ function handleAddShareClick() {
     logDebug('UI: Add Share button clicked (contextual).');
     clearForm();
     formTitle.textContent = 'Add New Share';
+    userManuallyOverrodeDirection = false;
+    try {
+        if (targetIntentBuyBtn && targetIntentSellBtn) {
+            targetIntentBuyBtn.classList.add('is-active');
+            targetIntentBuyBtn.setAttribute('aria-pressed', 'true');
+            targetIntentSellBtn.classList.remove('is-active');
+            targetIntentSellBtn.setAttribute('aria-pressed', 'false');
+        }
+        if (targetAboveCheckbox && targetBelowCheckbox) {
+            targetAboveCheckbox.checked = false;
+            targetBelowCheckbox.checked = true;
+        }
+        if (targetDirAboveBtn && targetDirBelowBtn) {
+            targetDirAboveBtn.classList.remove('is-active');
+            targetDirAboveBtn.setAttribute('aria-pressed', 'false');
+            targetDirBelowBtn.classList.add('is-active');
+            targetDirBelowBtn.setAttribute('aria-pressed', 'true');
+        }
+    } catch(_) {}
     if (deleteShareBtn) { deleteShareBtn.classList.add('hidden'); }
     populateShareWatchlistSelect(null, true); // true indicates new share
     showModal(shareFormSection);
@@ -5007,7 +6159,7 @@ function exportWatchlistToCSV() {
             sharesToExport = [...allSharesData];
             exportFileNamePrefix = 'all_shares';
         } else {
-            sharesToExport = allSharesData.filter(share => share.watchlistId === selectedWatchlistId);
+            sharesToExport = allSharesData.filter(share => shareBelongsTo(share, selectedWatchlistId));
             const wl = userWatchlists.find(w => w.id === selectedWatchlistId);
             if (wl) { exportFileNamePrefix = wl.name; }
         }
@@ -5046,7 +6198,7 @@ function exportWatchlistToCSV() {
             prevClosePrice !== undefined && prevClosePrice !== null && !isNaN(prevClosePrice)) {
             const change = livePrice - prevClosePrice;
             const percentageChange = (prevClosePrice !== 0 && !isNaN(prevClosePrice)) ? (change / prevClosePrice) * 100 : 0;
-            priceChange = change.toFixed(2) + ' (' + percentageChange.toFixed(2) + '%)'; // Include percentage in CSV
+            priceChange = formatAdaptivePrice(change) + ' (' + formatAdaptivePercent(percentageChange) + '%)'; // Include percentage in CSV
         }
 
         const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
@@ -5056,14 +6208,14 @@ function exportWatchlistToCSV() {
 
         const row = [
             share.shareName || '',
-            (!isNaN(enteredPriceNum) && enteredPriceNum !== null) ? enteredPriceNum.toFixed(2) : '',
-            (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice.toFixed(2) : '',
+            (!isNaN(enteredPriceNum) && enteredPriceNum !== null) ? formatAdaptivePrice(enteredPriceNum) : '',
+            (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? formatAdaptivePrice(livePrice) : '',
             priceChange, // Now includes the calculated price change
-            (!isNaN(targetPriceNum) && targetPriceNum !== null) ? targetPriceNum.toFixed(2) : '',
+            (!isNaN(targetPriceNum) && targetPriceNum !== null) ? formatAdaptivePrice(targetPriceNum) : '',
             (!isNaN(dividendAmountNum) && dividendAmountNum !== null) ? dividendAmountNum.toFixed(3) : '',
             (!isNaN(frankingCreditsNum) && frankingCreditsNum !== null) ? frankingCreditsNum.toFixed(1) : '',
-            unfrankedYield !== null && !isNaN(unfrankedYield) ? unfrankedYield.toFixed(2) : '0.00', // Ensure numerical output
-            frankedYield !== null && !isNaN(frankedYield) ? frankedYield.toFixed(2) : '0.00', // Ensure numerical output
+            unfrankedYield !== null && !isNaN(unfrankedYield) ? formatAdaptivePercent(unfrankedYield) : '0.00', // Ensure numerical output
+            frankedYield !== null && !isNaN(frankedYield) ? formatAdaptivePercent(frankedYield) : '0.00', // Ensure numerical output
             formatDate(share.entryDate) || ''
         ];
         csvRows.push(row.map(escapeCsvValue).join(','));
@@ -5305,10 +6457,10 @@ async function initializeAppLogic() {
     if (shareDetailModal) shareDetailModal.style.setProperty('display', 'none', 'important');
     if (addWatchlistModal) addWatchlistModal.style.setProperty('display', 'none', 'important');
     if (manageWatchlistModal) manageWatchlistModal.style.setProperty('display', 'none', 'important');
-    if (customDialogModal) customDialogModal.style.setProperty('display', 'none', 'important');
+    // customDialogModal removed
     if (calculatorModal) calculatorModal.style.setProperty('display', 'none', 'important');
     if (shareContextMenu) shareContextMenu.style.setProperty('display', 'none', 'important');
-    if (targetHitIconBtn) targetHitIconBtn.classList.add('app-hidden'); // Ensure icon is hidden initially via class
+    if (targetHitIconBtn) targetHitIconBtn.style.display = 'none'; // Ensure icon is hidden initially via inline style
     if (alertPanel) alertPanel.style.display = 'none'; // NEW: Ensure alert panel is hidden initially
     // NEW: Hide cash asset modals initially
     if (cashAssetFormModal) cashAssetFormModal.style.setProperty('display', 'none', 'important');
@@ -5365,7 +6517,7 @@ async function initializeAppLogic() {
     // Insert a tiny version badge to the right of the title and keep it there
     try {
         const ensureBadge = () => {
-            const title = document.getElementById('mainTitle');
+            const title = document.getElementById('dynamicWatchlistTitle');
             if (!title) return;
             let badge = document.getElementById('appVersionBadge');
             if (!badge) {
@@ -5373,26 +6525,21 @@ async function initializeAppLogic() {
                 badge.id = 'appVersionBadge';
                 badge.textContent = APP_VERSION;
                 badge.style.marginLeft = '8px';
-                badge.style.fontSize = '0.85rem';
+                badge.style.fontSize = '0.75rem';
+                badge.style.fontWeight = '400';
                 badge.style.color = 'var(--ghosted-text, #888)';
                 badge.style.verticalAlign = 'middle';
+                badge.style.letterSpacing = '0.5px';
             }
-            if (badge.parentElement !== title) {
-                // Append inside the title so it appears directly to the right of the text
-                title.appendChild(badge);
-            }
+            if (badge.parentElement !== title) title.appendChild(badge);
         };
-        // Initial placement
         ensureBadge();
-        // Re-attach if other code replaces the title contents
-        const titleEl = document.getElementById('mainTitle');
+        const titleEl = document.getElementById('dynamicWatchlistTitle');
         if (titleEl && typeof MutationObserver !== 'undefined') {
             const mo = new MutationObserver(() => ensureBadge());
             mo.observe(titleEl, { childList: true });
         }
-    } catch (e) {
-        console.warn('Version badge insert failed:', e);
-    }
+    } catch(e){ console.warn('Version badge insert failed:', e); }
 
     // NEW: Load saved mobile view mode preference
     const savedMobileViewMode = localStorage.getItem('currentMobileViewMode');
@@ -5490,51 +6637,15 @@ async function initializeAppLogic() {
             shareNameInput.value = code;
             if (formCompanyName) formCompanyName.textContent = name || '';
             if (shareNameSuggestions) shareNameSuggestions.classList.remove('active');
-            // Show loading skeleton in live display immediately for user feedback
-            if (addShareLivePriceDisplay) {
-                addShareLivePriceDisplay.style.display = 'block';
-                addShareLivePriceDisplay.innerHTML = '<div class="mini-loader"></div><span class="ghosted-text">Loading live data...</span>';
-            }
+            // Optionally move focus to next field for quicker entry
+            const next = targetPriceInput;
+            if (next) next.focus();
             checkFormDirtyState();
 
-            // Fetch snapshot (debounced logic not required – user explicitly selected)
-            const snapshot = await fetchSingleStockSnapshot(code);
-            if (!snapshot) {
-                if (addShareLivePriceDisplay) {
-                    addShareLivePriceDisplay.innerHTML = '<span class="ghosted-text">Live data unavailable.</span>';
-                }
-                return;
-            }
-            const { live, prevClose: prev, pe, high52: hi, low52: lo, companyName } = snapshot;
-            if (companyName && formCompanyName && !formCompanyName.textContent) {
-                formCompanyName.textContent = companyName;
-            }
-            // Always prefill current price with latest live if valid (even if user started typing another code)
-            if (currentPriceInput && !isNaN(live)) {
-                currentPriceInput.value = live.toFixed(2);
-            }
-            // Compute change metrics
-            const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
-            const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
-            const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
-            if (addShareLivePriceDisplay) {
-                addShareLivePriceDisplay.innerHTML = `
-                    <div class="fifty-two-week-row">
-                        <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? '$' + lo.toFixed(2) : 'N/A'}</span>
-                        <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? '$' + hi.toFixed(2) : 'N/A'}</span>
-                    </div>
-                    <div class="live-price-main-row">
-                        <span class="live-price-large ${priceClass}">${!isNaN(live) ? '$' + live.toFixed(2) : 'N/A'}</span>
-                        <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${change.toFixed(2)} (${pct.toFixed(2)}%)` : 'N/A'}</span>
-                    </div>
-                    <div class="pe-ratio-row">
-                        <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? pe.toFixed(2) : 'N/A'}</span>
-                    </div>
-                `;
-            }
-            // Move focus to next field to speed up entry
-            const next = currentPriceInput && document.activeElement === shareNameInput ? targetPriceInput : null;
-            if (next) next.focus();
+            // Fetch live snapshot for the selected code to show context in the form and prefill price
+            try {
+                updateAddFormLiveSnapshot(code);
+            } catch { /* ignore transient errors */ }
         }
 
         function renderShareNameSuggestions(query) {
@@ -5582,6 +6693,64 @@ async function initializeAppLogic() {
     // NEW: Autocomplete Search Input Listeners for Stock Search Modal (Consolidated & Corrected)
     if (asxSearchInput) {
         let currentSuggestions = []; // Stores the current filtered suggestions
+        // Helper to centralize quick-add behavior and reduce duplication.
+        function quickAddFromSearch(code, name) {
+            if (!code) return;
+            window.lastSelectedSearchCode = code; // Track for fallback observer
+            try {
+                const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === code);
+                hideModal(stockSearchModal);
+                if (existingShare) {
+                    showEditFormForSelectedShare(existingShare.id);
+                } else {
+                    clearForm();
+                    formTitle.textContent = 'Add New Share';
+                    selectedShareDocId = null;
+                    if (shareNameInput) {
+                        shareNameInput.value = code;
+                        shareNameInput.classList.add('autofill-pulse');
+                        setTimeout(()=> shareNameInput && shareNameInput.classList.remove('autofill-pulse'), 900);
+                    }
+                    if (formCompanyName) formCompanyName.textContent = name || '';
+                    populateShareWatchlistSelect(null, true);
+                    if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
+                        addCommentSection(commentsFormContainer);
+                    }
+                    showModal(shareFormSection);
+                    if (shareNameInput) shareNameInput.focus();
+                    checkFormDirtyState();
+                    updateAddFormLiveSnapshot(code);
+                    // Install a short-lived MutationObserver to enforce autofill if something clears it
+                    try {
+                        if (shareNameInput && typeof MutationObserver !== 'undefined') {
+                            let enforceCount = 0;
+                            const mo = new MutationObserver(() => {
+                                if (!shareNameInput.value && window.lastSelectedSearchCode) {
+                                    shareNameInput.value = window.lastSelectedSearchCode;
+                                    if (formCompanyName && (!formCompanyName.textContent || formCompanyName.textContent === '')) {
+                                        formCompanyName.textContent = name || '';
+                                    }
+                                }
+                                if (++enforceCount > 5) { mo.disconnect(); }
+                            });
+                            mo.observe(shareNameInput, { attributes:true, attributeFilter:['value'] });
+                            // Safety cleanup after 3s
+                            setTimeout(()=> mo.disconnect(), 3000);
+                        }
+                    } catch(_) {}
+                }
+                // Post-hide verification fallback (rare race where value not applied)
+                setTimeout(() => {
+                    if (shareFormSection && !shareFormSection.classList.contains('app-hidden') && shareNameInput && shareNameInput.value.trim() !== code) {
+                        console.warn('[QuickAdd] Fallback applied to enforce code in input');
+                        shareNameInput.value = code;
+                        if (formCompanyName && (!formCompanyName.textContent || formCompanyName.textContent === '')) {
+                            formCompanyName.textContent = name || '';
+                        }
+                    }
+                }, 60);
+            } catch(err) { console.warn('QuickAddFromSearch failed', err); }
+        }
 
         asxSearchInput.addEventListener('input', () => {
             const query = asxSearchInput.value.trim().toUpperCase();
@@ -5602,20 +6771,27 @@ async function initializeAppLogic() {
             ).slice(0, 10); // Limit to top 10 suggestions
 
             if (currentSuggestions.length > 0) {
-                currentSuggestions.forEach((stock, index) => {
+                currentSuggestions.forEach((stock) => {
                     const div = document.createElement('div');
                     div.classList.add('suggestion-item');
                     div.textContent = `${stock.code} - ${stock.name}`;
-                    div.dataset.code = stock.code; // Store the code for easy access
-                    div.dataset.name = stock.name; // Store the company name
-                    div.addEventListener('click', () => {
-                        asxSearchInput.value = stock.code; // Set input to selected code
-                        asxSuggestions.classList.remove('active'); // Hide suggestions
-                        displayStockDetailsInSearchModal(stock.code); // Display details for selected stock
-                    });
+                    div.dataset.code = stock.code;
+                    div.dataset.name = stock.name;
+                    // Use pointerdown/mousedown to capture before blur/hide
+                    const handler = (ev) => {
+                        ev.preventDefault();
+                        console.log('[Autocomplete] Select suggestion', stock.code, stock.name);
+                        asxSearchInput.value = stock.code;
+                        asxSuggestions.classList.remove('active');
+                        quickAddFromSearch(stock.code, stock.name);
+                        displayStockDetailsInSearchModal(stock.code);
+                    };
+                    div.addEventListener('pointerdown', handler, { passive: false });
+                    div.addEventListener('mousedown', handler, { passive: false });
+                    div.addEventListener('click', handler); // fallback
                     asxSuggestions.appendChild(div);
                 });
-                asxSuggestions.classList.add('active'); // Show suggestions
+                asxSuggestions.classList.add('active');
             } else {
                 asxSuggestions.classList.remove('active'); // Hide suggestions if no matches
                 searchResultDisplay.innerHTML = '<p class="initial-message">No matching stocks found.</p>';
@@ -5668,6 +6844,37 @@ async function initializeAppLogic() {
             }
         });
 
+        // Delegated fallback: clicking the code header in search results populates form
+        if (searchResultDisplay) {
+            searchResultDisplay.addEventListener('click', (e) => {
+                const header = e.target.closest('.search-modal-code-header');
+                if (!header) return;
+                const code = header.getAttribute('data-code');
+                const name = header.getAttribute('data-name');
+                console.log('[Autocomplete] Header fallback click', code, name);
+                if (!code) return;
+                quickAddFromSearch(code, name);
+            });
+        }
+
+        // Global delegated listener on container to catch any missed clicks (safety net)
+        if (asxSuggestions) {
+            asxSuggestions.addEventListener('click', (e) => {
+                const item = e.target.closest('.suggestion-item');
+                if (!item) return;
+                const code = item.dataset.code;
+                const name = item.dataset.name;
+                console.log('[Autocomplete] Delegated suggestion click', code, name);
+                if (!code) return;
+                // Simulate normal path if direct listener failed
+                const stock = { code, name };
+                asxSearchInput.value = code;
+                asxSuggestions.classList.remove('active');
+                quickAddFromSearch(code, name);
+                displayStockDetailsInSearchModal(code);
+            });
+        }
+
         function updateSelectedSuggestion(items) {
             items.forEach((item, index) => {
                 if (index === currentSelectedSuggestionIndex) {
@@ -5695,12 +6902,23 @@ async function initializeAppLogic() {
         }
     });
 
-    // NEW: Add event listeners for target direction checkboxes to make them mutually exclusive
+    // Phase 1: Direction toggles + legacy checkboxes mutual exclusivity and sync
+    const syncDirButtonsFromCheckboxes = () => {
+        if (!targetDirAboveBtn || !targetDirBelowBtn) return;
+        const isAbove = !!(targetAboveCheckbox && targetAboveCheckbox.checked);
+        targetDirAboveBtn.classList.toggle('is-active', isAbove);
+        targetDirAboveBtn.setAttribute('aria-pressed', String(isAbove));
+        const isBelow = !isAbove;
+        targetDirBelowBtn.classList.toggle('is-active', isBelow);
+        targetDirBelowBtn.setAttribute('aria-pressed', String(isBelow));
+    };
+
     if (targetAboveCheckbox && targetBelowCheckbox) {
         targetAboveCheckbox.addEventListener('change', () => {
             if (targetAboveCheckbox.checked) {
                 targetBelowCheckbox.checked = false;
             }
+            syncDirButtonsFromCheckboxes();
             checkFormDirtyState();
         });
 
@@ -5708,8 +6926,62 @@ async function initializeAppLogic() {
             if (targetBelowCheckbox.checked) {
                 targetAboveCheckbox.checked = false;
             }
+            syncDirButtonsFromCheckboxes();
             checkFormDirtyState();
         });
+    }
+
+    // Wire UI segmented direction buttons -> legacy checkboxes
+    if (targetDirAboveBtn && targetDirBelowBtn && targetAboveCheckbox && targetBelowCheckbox) {
+        targetDirAboveBtn.addEventListener('click', () => {
+            userManuallyOverrodeDirection = true;
+            targetAboveCheckbox.checked = true;
+            targetBelowCheckbox.checked = false;
+            syncDirButtonsFromCheckboxes();
+            checkFormDirtyState();
+        });
+        targetDirBelowBtn.addEventListener('click', () => {
+            userManuallyOverrodeDirection = true;
+            targetAboveCheckbox.checked = false;
+            targetBelowCheckbox.checked = true;
+            syncDirButtonsFromCheckboxes();
+            checkFormDirtyState();
+        });
+        // Initial sync
+        syncDirButtonsFromCheckboxes();
+    }
+
+    // Wire Intent buttons: set defaults when user hasn’t manually overridden
+    if (targetIntentBuyBtn && targetIntentSellBtn) {
+        const setIntentUI = (intent) => {
+            const isBuy = intent === 'buy';
+            targetIntentBuyBtn.classList.toggle('is-active', isBuy);
+            targetIntentBuyBtn.setAttribute('aria-pressed', String(isBuy));
+            targetIntentSellBtn.classList.toggle('is-active', !isBuy);
+            targetIntentSellBtn.setAttribute('aria-pressed', String(!isBuy));
+        };
+        targetIntentBuyBtn.addEventListener('click', () => {
+            setIntentUI('buy');
+            if (!userManuallyOverrodeDirection && targetAboveCheckbox && targetBelowCheckbox) {
+                // Buy defaults to Below
+                targetAboveCheckbox.checked = false;
+                targetBelowCheckbox.checked = true;
+                syncDirButtonsFromCheckboxes();
+                checkFormDirtyState();
+            }
+        });
+        targetIntentSellBtn.addEventListener('click', () => {
+            setIntentUI('sell');
+            if (!userManuallyOverrodeDirection && targetAboveCheckbox && targetBelowCheckbox) {
+                // Sell defaults to Above
+                targetAboveCheckbox.checked = true;
+                targetBelowCheckbox.checked = false;
+                syncDirButtonsFromCheckboxes();
+                checkFormDirtyState();
+            }
+        });
+        // Default to Buy on load
+        setIntentUI('buy');
     }
     
     // NEW: Add event listeners for cash asset form inputs for dirty state checking (2.1)
@@ -5841,7 +7113,7 @@ async function initializeAppLogic() {
 
         // General modal closing logic (for other modals)
         if (event.target === shareDetailModal || event.target === dividendCalculatorModal ||
-            event.target === shareFormSection || event.target === customDialogModal ||
+            event.target === shareFormSection ||
             event.target === calculatorModal || event.target === addWatchlistModal ||
             event.target === manageWatchlistModal || event.target === alertPanel ||
             event.target === cashAssetFormModal || event.target === cashAssetDetailModal ||
@@ -5884,96 +7156,72 @@ async function initializeAppLogic() {
     // Google Auth Button (Sign In/Out) - This button is removed from index.html.
     // Its functionality is now handled by splashSignInBtn.
 
-    // NEW: Splash Screen Sign-In Button
-    // Helper to update splash sign-in button UI states for better desktop UX
-    function updateSplashSignInButtonState(state, detail) {
-        if (!splashSignInBtn) return;
-        const span = splashSignInBtn.querySelector('span');
-        switch (state) {
-            case 'idle':
-                splashSignInBtn.disabled = false;
-                if (span) span.textContent = 'Sign in with Google';
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-                break;
-            case 'loading':
-                splashSignInBtn.disabled = true;
-                if (span) span.textContent = 'Signing in…';
-                if (splashKangarooIcon) splashKangarooIcon.classList.add('pulsing');
-                break;
-            case 'retry':
-                splashSignInBtn.disabled = false;
-                if (span) span.textContent = detail || 'Try again (popup blocked?)';
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-                break;
-            case 'error':
-                splashSignInBtn.disabled = false;
-                if (span) span.textContent = detail || 'Retry Sign-In';
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-                break;
-        }
-    }
+    // NEW: Simplified Splash Sign-In: popup-only with in-progress guard
 
-    if (splashSignInBtn) {
+    // Early environment safety check: mobile + file:// cannot perform Google auth
+    try {
+        const precheckUA = navigator.userAgent || navigator.vendor || '';
+        const precheckIsMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(precheckUA);
+        const precheckIsFile = (window.location && window.location.protocol === 'file:');
+        if (splashSignInBtn && precheckIsMobile && precheckIsFile) {
+            updateSplashSignInButtonState('error', 'Open via web URL');
+            splashSignInBtn.disabled = true;
+            showCustomAlert('Mobile sign-in can’t run from a file:// URL. Please serve this app over http(s) (e.g., VS Code Live Server) and retry.');
+            console.warn('Auth Precheck: Blocking sign-in on mobile file:// context.');
+        }
+    } catch(_) {}
+
+    if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
         let splashSignInRetryTimer = null;
+        let splashSignInInProgress = false;
+        splashSignInBtn.setAttribute('data-bound','true');
         splashSignInBtn.addEventListener('click', async () => {
             logDebug('Auth: Splash Screen Sign-In Button Clicked.');
             const currentAuth = window.firebaseAuth;
             if (!currentAuth || !window.authFunctions) {
                 console.warn('Auth: Auth service not ready or functions not loaded. Cannot process splash sign-in.');
                 showCustomAlert('Authentication service not ready. Please try again in a moment.');
-                updateSplashSignInButtonState('error', 'Retry (service not ready)');
                 return;
             }
             try {
-                updateSplashSignInButtonState('loading');
-                const provider = window.authFunctions.GoogleAuthProviderInstance;
+                if (splashSignInInProgress) {
+                    console.warn('Auth: Sign-in already in progress; ignoring duplicate click.');
+                    return;
+                }
+                splashSignInInProgress = true;
+                // Visual feedback
+                if (splashKangarooIcon) splashKangarooIcon.classList.add('pulsing');
+                splashSignInBtn.disabled = true;
+                // Always create a fresh provider per attempt to avoid stale customParameters
+                const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
                 if (!provider) {
                     console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
                     showCustomAlert('Authentication service not ready. Firebase script missing.');
-                    updateSplashSignInButtonState('error', 'Retry (init issue)');
+                    splashSignInInProgress = false;
                     return;
                 }
-
-                // Start timeout to auto-enable retry if popup blocked or user closes it silently
-                if (splashSignInRetryTimer) clearTimeout(splashSignInRetryTimer);
-                splashSignInRetryTimer = setTimeout(() => {
-                    if (!window._userAuthenticated) {
-                        logDebug('Auth: Sign-in timeout elapsed without auth state change. Enabling retry.');
-                        updateSplashSignInButtonState('retry');
-                    }
-                }, 7000);
-
-                await window.authFunctions.signInWithPopup(currentAuth, provider);
-                logDebug('Auth: Google Sign-In successful from splash screen.');
-                if (splashSignInRetryTimer) {
-                    clearTimeout(splashSignInRetryTimer);
-                    splashSignInRetryTimer = null;
+                try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
+                // Popup only
+                const resolver = window.authFunctions.browserPopupRedirectResolver;
+                if (resolver) {
+                    await window.authFunctions.signInWithPopup(currentAuth, provider, resolver);
+                } else {
+                    await window.authFunctions.signInWithPopup(currentAuth, provider);
                 }
+                logDebug('Auth: Google Sign-In successful from splash screen.');
                 // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
             }
             catch (error) {
-                if (splashSignInRetryTimer) {
-                    clearTimeout(splashSignInRetryTimer);
-                    splashSignInRetryTimer = null;
-                }
-                console.error('Auth: Google Sign-In failed from splash screen: ' + error.message);
-                let userMsg = 'Google Sign-In failed';
-                if (error.code === 'auth/popup-blocked') {
-                    userMsg = 'Popup blocked by browser. Allow popups & retry.';
-                    updateSplashSignInButtonState('retry', 'Retry (allow popup)');
-                } else if (error.code === 'auth/popup-closed-by-user') {
-                    userMsg = 'Popup closed. Click retry.';
-                    updateSplashSignInButtonState('retry', 'Retry (popup closed)');
-                } else if (error.code === 'auth/cancelled-popup-request') {
-                    userMsg = 'Popup request cancelled. Try again.';
-                    updateSplashSignInButtonState('retry', 'Retry sign-in');
-                } else {
-                    updateSplashSignInButtonState('error');
-                }
-                showCustomAlert(userMsg + ': ' + error.message);
+                console.error('Auth: Google Sign-In failed from splash screen:', { code: error.code, message: error.message });
+                showCustomAlert('Google Sign-In failed: ' + error.message);
+                splashSignInInProgress = false;
+                splashSignInBtn.disabled = false;
+                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
             }
         });
     }
+
+    // Removed redirect handling entirely: popup-only auth
 
     // NEW: Event listener for the top 'X' close button in the Target Hit Details Modal
     if (targetHitModalCloseTopBtn) {
@@ -5997,6 +7245,7 @@ async function initializeAppLogic() {
         alertModalDismissAllBtn.addEventListener('click', () => {
             targetHitIconDismissed = true; // Mark as dismissed for the session
             localStorage.setItem('targetHitIconDismissed', 'true'); // Save dismissal preference
+            try { localStorage.setItem('lastKnownTargetCount', '0'); } catch(e) {}
             // No need to explicitly hide the bubble here, updateTargetHitBanner will handle it.
             updateTargetHitBanner(); // Update the bubble (will hide it if no alerts and dismissed)
             hideModal(targetHitDetailsModal); // Close the modal
@@ -6064,6 +7313,8 @@ async function initializeAppLogic() {
                 // NEW: Reset targetHitIconDismissed and clear localStorage entry on logout for a fresh start on next login
                 targetHitIconDismissed = false; 
                 localStorage.removeItem('targetHitIconDismissed');
+                try { localStorage.removeItem('forcedLiveFetchOnce'); } catch(e) {}
+                try { localStorage.setItem('lastKnownTargetCount', '0'); } catch(e) {}
 
             }
             catch (error) {
@@ -6183,8 +7434,20 @@ if (sortSelect) {
                 console.warn('Edit Share From Detail: Edit button was disabled, preventing action.');
                 return;
             }
+            // Ensure selectedShareDocId exists even if selection was cleared after save/render
+            if (!selectedShareDocId && shareDetailModal && shareDetailModal.dataset && shareDetailModal.dataset.shareId) {
+                selectedShareDocId = shareDetailModal.dataset.shareId;
+                logDebug('Share Details: Restored selectedShareDocId from modal dataset: ' + selectedShareDocId);
+            }
+            // Mark that the edit form was opened from share details so back restores it
+            wasEditOpenedFromShareDetail = true;
+            // Ensure the details modal is recorded just before we open the edit modal
+            try { pushAppStateEntry('modal', shareDetailModal); } catch(_) {}
+            // Close the detail modal first to avoid overlay conflicts, then open the edit form
             hideModal(shareDetailModal);
-            showEditFormForSelectedShare();
+            if (typeof showEditFormForSelectedShare === 'function') {
+                showEditFormForSelectedShare();
+            }
         });
     }
 
@@ -6449,9 +7712,9 @@ if (sortSelect) {
         const frankedYield = calculateFrankedYield(dividendAmount, currentPrice, frankingCredits);
         const estimatedDividend = estimateDividendIncome(investmentValue, dividendAmount, currentPrice);
         
-        calcUnfrankedYieldSpan.textContent = unfrankedYield !== null ? unfrankedYield.toFixed(2) + '%' : '-';
-        calcFrankedYieldSpan.textContent = frankedYield !== null ? frankedYield.toFixed(2) + '%' : '-';
-        calcEstimatedDividend.textContent = estimatedDividend !== null ? '$' + estimatedDividend.toFixed(2) : '-';
+    calcUnfrankedYieldSpan.textContent = unfrankedYield !== null ? formatAdaptivePercent(unfrankedYield) + '%' : '-';
+    calcFrankedYieldSpan.textContent = frankedYield !== null ? formatAdaptivePercent(frankedYield) + '%' : '-';
+    calcEstimatedDividend.textContent = estimatedDividend !== null ? '$' + formatAdaptivePrice(estimatedDividend) : '-';
     }
 
     // Standard Calculator Button
@@ -6658,12 +7921,12 @@ if (sortSelect) {
             sidebarOverlay: !!sidebarOverlay
         });
         
-        // Ensure initial state is correct for desktop
+        // Ensure initial state is correct: always start CLOSED after reload
         if (window.innerWidth > 768) {
-            document.body.classList.add('sidebar-active'); // Sidebar active on desktop by default
-            sidebarOverlay.style.pointerEvents = 'none'; // Overlay non-interactive on desktop
-            appSidebar.classList.add('open'); // Keep sidebar open by default on desktop
-            logDebug('Sidebar: Desktop: Sidebar initialized as open.');
+            document.body.classList.remove('sidebar-active'); // Do not shift body on load
+            sidebarOverlay.style.pointerEvents = 'none'; // Overlay non-interactive on desktop when closed
+            appSidebar.classList.remove('open'); // Start closed on desktop too
+            logDebug('Sidebar: Desktop: Sidebar initialized as closed.');
         } else {
             document.body.classList.remove('sidebar-active'); // No shift on mobile
             sidebarOverlay.style.pointerEvents = 'auto'; // Overlay interactive on mobile
@@ -6852,51 +8115,67 @@ function showTargetHitDetailsModal() {
         showCustomAlert('Error displaying target hit details. Please try again.', 2000);
         return;
     }
-
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-    if (sharesAtTargetPrice.length === 0) {
+    const makeItem = (share, isMuted) => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        const currentLivePrice = (livePriceData && livePriceData.live !== null && !isNaN(livePriceData.live)) ? livePriceData.live : null;
+        const targetPrice = share.targetPrice;
+        const priceClass = (currentLivePrice !== null && targetPrice != null && !isNaN(targetPrice) && currentLivePrice >= targetPrice) ? 'positive' : 'negative';
+        const item = document.createElement('div');
+        item.classList.add('target-hit-item');
+        if (isMuted) item.classList.add('muted');
+        item.dataset.shareId = share.id;
+        item.innerHTML = `
+            <div class="target-hit-item-header">
+                <span class="share-name-code ${priceClass}">${share.shareName}</span>
+                <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
+            </div>
+            <p>Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? formatAdaptivePrice(Number(targetPrice)) : 'N/A'}</strong></p>
+            <div class="target-hit-actions">
+                <button class="button secondary-buttons toggle-alert-btn" data-share-id="${share.id}">${isMuted ? 'Unmute' : 'Mute'}</button>
+            </div>
+        `;
+        // Click to open share details
+        item.addEventListener('click', (e) => {
+            // If the click is on the toggle button, don't navigate
+            if (e.target && e.target.classList && e.target.classList.contains('toggle-alert-btn')) return;
+            const sid = item.dataset.shareId;
+            if (sid) {
+                wasShareDetailOpenedFromTargetAlerts = true;
+                hideModal(targetHitDetailsModal);
+                selectShare(sid);
+                showShareDetails();
+            }
+        });
+        // Mute/unmute button
+        const toggleBtn = item.querySelector('.toggle-alert-btn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await toggleAlertEnabled(share.id, isMuted); // if currently muted -> enable; if enabled -> disable
+            });
+        }
+        return item;
+    };
+
+    const hasEnabled = sharesAtTargetPrice.length > 0;
+    const hasMuted = Array.isArray(sharesAtTargetPriceMuted) && sharesAtTargetPriceMuted.length > 0;
+    if (!hasEnabled && !hasMuted) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
     } else {
-        sharesAtTargetPrice.forEach(share => {
-            const livePriceData = livePrices[share.shareName.toUpperCase()];
-            if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
-                // Skip if live price data is unavailable or invalid
-                return;
-            }
-
-            const currentLivePrice = livePriceData.live;
-            const targetPrice = share.targetPrice;
-            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative'; // Determine color based on whether it passed target up or down
-
-            const targetHitItem = document.createElement('div');
-            targetHitItem.classList.add('target-hit-item');
-            targetHitItem.dataset.shareId = share.id; // Add data attribute for potential future interaction
-
-            targetHitItem.innerHTML = `
-                <div class="target-hit-item-header">
-                    <span class="share-name-code ${priceClass}">${share.shareName}</span>
-                    <span class="live-price-display ${priceClass}">$${currentLivePrice.toFixed(2)}</span>
-                </div>
-                <p>Target: <strong>$${targetPrice !== null && !isNaN(targetPrice) ? targetPrice.toFixed(2) : 'N/A'}</strong></p>
-                <p>Watchlist: <strong>${userWatchlists.find(w => w.id === share.watchlistId)?.name || 'N/A'}</strong></p>
-            `;
-            targetHitSharesList.appendChild(targetHitItem);
-
-            // NEW: Add click listener to make the item clickable
-            targetHitItem.addEventListener('click', () => {
-                const clickedShareId = targetHitItem.dataset.shareId;
-                if (clickedShareId) {
-                    // Set the flag to true so the back button knows to return here
-                    wasShareDetailOpenedFromTargetAlerts = true;
-                    // FIX: Hide the current (alerts) modal before showing the share detail modal.
-                    // The `closeModals()` function will restore the alerts modal when the share detail modal is closed.
-                    hideModal(targetHitDetailsModal);
-                    selectShare(clickedShareId); // Select the share
-                    showShareDetails(); // Open the share details modal for the clicked share
-                }
-            });
-        });
+        if (hasEnabled) {
+            const enabledHeader = document.createElement('h3');
+            enabledHeader.textContent = 'Active Alerts';
+            targetHitSharesList.appendChild(enabledHeader);
+            sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
+        }
+        if (hasMuted) {
+            const mutedHeader = document.createElement('h3');
+            mutedHeader.textContent = 'Muted Alerts';
+            targetHitSharesList.appendChild(mutedHeader);
+            sharesAtTargetPriceMuted.forEach(share => targetHitSharesList.appendChild(makeItem(share, true)));
+        }
     }
 
     showModal(targetHitDetailsModal);
@@ -6914,10 +8193,16 @@ if (targetHitIconBtn) {
 document.addEventListener('DOMContentLoaded', function() {
     logDebug('script.js DOMContentLoaded fired.');
 
+    // Ensure header interactive bindings are attached even on first load
+    try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
+    // Early notification restore from persisted count
+    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
+
     // Ensure Edit Current Watchlist button updates when watchlist selection changes
     if (watchlistSelect) {
         watchlistSelect.addEventListener('change', function() {
             updateMainButtonsState(true);
+            try { updateMainTitle(); } catch(e) {}
         });
     }
     // NEW: Initialize splash screen related flags
@@ -6933,6 +8218,12 @@ document.addEventListener('DOMContentLoaded', function() {
         splashScreenReady = true; // Mark splash screen as ready
         document.body.style.overflow = 'hidden'; // Prevent scrolling of underlying content
         logDebug('Splash Screen: Displayed on DOMContentLoaded, body overflow hidden.');
+        // If we are returning from a redirect attempt, keep the button in loading state while we complete sign-in
+        try {
+            if (localStorage.getItem('authRedirectAttempted') === '1' && typeof updateSplashSignInButtonState === 'function') {
+                updateSplashSignInButtonState('loading', 'Completing sign-in…');
+            }
+        } catch(_) {}
     } else {
         console.warn('Splash Screen: Splash screen element not found. App will start without it.');
         // If splash screen not found, set flags to true and hide the splash screen logic.
@@ -6958,13 +8249,34 @@ document.addEventListener('DOMContentLoaded', function() {
         window._firebaseInitialized = true; // Mark Firebase as initialized
         logDebug('Firebase Ready: DB, Auth, and AppId assigned from window. Setting up auth state listener.');
 
-        window.authFunctions.onAuthStateChanged(auth, async (user) => {
+        // Ensure persistence is set once
+        try {
+            if (window.authFunctions.setPersistence) {
+                const ua = navigator.userAgent || navigator.vendor || '';
+                const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+                const targetPersistence = isMobile && window.authFunctions.browserSessionPersistence
+                    ? window.authFunctions.browserSessionPersistence
+                    : window.authFunctions.browserLocalPersistence;
+                if (targetPersistence) {
+                    window.authFunctions
+                        .setPersistence(auth, targetPersistence)
+                        .then(() => logDebug('Auth: Persistence set to ' + (targetPersistence === window.authFunctions.browserSessionPersistence ? 'browserSessionPersistence' : 'browserLocalPersistence') + '.'))
+                        .catch((e) => console.warn('Auth: Failed to set persistence, continuing with default.', e));
+                }
+            }
+        } catch (e) {
+            console.warn('Auth: Failed to set persistence (outer), continuing with default.', e);
+        }
+
+    window.authFunctions.onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
                 logDebug('AuthState: User email: ' + user.email);
-                mainTitle.textContent = 'ASX Tracker';
-                logDebug('AuthState: Main title set to ASX Tracker.');
+                try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
+                // Use dynamic update instead of hard-coded label so it reflects current selection
+                updateMainTitle();
+                logDebug('AuthState: Dynamic title initialized via updateMainTitle().');
                 updateMainButtonsState(true);
                 window._userAuthenticated = true; // Mark user as authenticated
 
@@ -6976,17 +8288,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 adjustMainContentPadding();
 
+                        // Ensure header click bindings are attached after header becomes visible
+                        try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind after auth show', e); }
+
                 if (splashKangarooIcon) {
                     splashKangarooIcon.classList.add('pulsing');
                     logDebug('Splash Screen: Started pulsing animation after sign-in.');
                 }
 
                 targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
+                // Immediately reflect any persisted target count before live data loads
+                try { updateTargetHitBanner(); } catch(e) { console.warn('Auth early Target Alert restore failed', e); }
 
                 // Load user data, then do an initial fetch of live prices before setting the update interval.
                 // This ensures the initial view is correctly sorted by percentage change if selected.
                 await loadUserWatchlistsAndSettings();
-                await fetchLivePrices();
+                try { ensureTitleStructure(); } catch(e) {}
+                // Start alerts listener (triggered alerts -> Notification Hub)
+                await loadTriggeredAlertsListener();
+                // On first auth load, force one live fetch even if starting in Cash view to restore alerts
+                const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
+                await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
+                try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true'); } catch(e) {}
                 startLivePriceUpdates();
 
                 allAsxCodes = await loadAsxCodesFromCSV();
@@ -7004,6 +8327,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Ensure internal selection array updated (mimic change)
                             currentSelectedWatchlistIds = [lastView];
                             renderWatchlist();
+                            // Ensure the header reflects the restored selection
+                            try { updateMainTitle(); } catch(e) {}
+                        } else {
+                            // Fallback: default to All Shares if stored view isn't present
+                            watchlistSelect.value = ALL_SHARES_ID;
+                            currentSelectedWatchlistIds = [ALL_SHARES_ID];
+                            renderWatchlist();
+                            try { updateMainTitle(); } catch(e) {}
                         }
                     }
                 } catch(e) {}
@@ -7011,7 +8342,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             else {
                 currentUserId = null;
-                mainTitle.textContent = 'Share Watchlist';
+                // Reset title safely using the inner span, do not expand click target
+                try { ensureTitleStructure(); const t = document.getElementById('dynamicWatchlistTitleText'); if (t) t.textContent = 'Share Watchlist'; } catch(e) {}
                 logDebug('AuthState: User signed out.');
                 updateMainButtonsState(false);
                 clearShareList();
@@ -7030,6 +8362,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     unsubscribeCashCategories();
                     unsubscribeCashCategories = null;
                     logDebug('Firestore Listener: Unsubscribed from cash categories listener on logout.');
+                }
+                if (unsubscribeAlerts) { // NEW: Unsubscribe from alerts
+                    try { unsubscribeAlerts(); } catch(_) {}
+                    unsubscribeAlerts = null;
+                    logDebug('Firestore Listener: Unsubscribed from alerts listener on logout.');
                 }
                 stopLivePriceUpdates();
                 
@@ -7080,6 +8417,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // Call renderWatchlist here to ensure correct mobile card rendering after auth state is set
             renderWatchlist();
+            try { ensureTitleStructure(); } catch(e) {}
             // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
         });
     } else {

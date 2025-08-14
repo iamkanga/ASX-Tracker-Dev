@@ -9,6 +9,39 @@
   }
 }
 
+/* --- Phase 1: Modern segmented toggles for Intent/Direction --- */
+/* Enhanced Watchlist Selector */
+.watchlist-enhanced-list { display:none; margin:8px 0 4px; padding:8px 10px; border:1px solid var(--border-color); border-radius:8px; background:var(--card-bg); max-height:240px; overflow-y:auto; }
+.watchlist-enhanced-item { display:flex; align-items:center; justify-content:space-between; padding:6px 4px; border-bottom:1px solid var(--border-color); gap:10px; }
+.watchlist-enhanced-item:last-child { border-bottom:none; }
+.watchlist-enhanced-name { font-size:0.92rem; font-weight:500; color:var(--text-color); flex:1; }
+.watchlist-toggle { position:relative; width:44px; height:22px; cursor:pointer; }
+.watchlist-toggle input { opacity:0; width:0; height:0; position:absolute; }
+.watchlist-toggle-track { position:absolute; top:0; left:0; right:0; bottom:0; background:#c94b4b; border-radius:22px; transition:background .25s; box-shadow:inset 0 0 0 1px var(--border-color); }
+.watchlist-toggle-thumb { position:absolute; top:2px; left:3px; width:18px; height:18px; background:#fff; border-radius:50%; transition: transform .25s; box-shadow:0 1px 2px rgba(0,0,0,0.35); }
+.watchlist-toggle input:checked + .watchlist-toggle-track { background:#2e7d32; }
+.watchlist-toggle input:checked + .watchlist-toggle-track .watchlist-toggle-thumb { transform: translateX(20px); }
+.watchlist-enhanced-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+.watchlist-enhanced-actions button { padding:6px 12px; font-size:0.8rem; border-radius:6px; cursor:pointer; border:1px solid var(--border-color); background:var(--button-bg); color:var(--button-text); }
+.watchlist-enhanced-actions button.secondary { background:var(--card-bg); color:var(--text-color); }
+.watchlist-enhanced-actions button:hover { background:var(--button-hover-bg); }
+.autofill-pulse { animation: autofillPulse 0.9s ease-in-out 1; position:relative; }
+@keyframes autofillPulse { 0% { box-shadow:0 0 0 0 var(--accent-color,#a49393);} 60% { box-shadow:0 0 0 6px rgba(164,147,147,0);} 100% { box-shadow:0 0 0 0 rgba(164,147,147,0);} }
+.toggle-row { display:flex; gap:10px; align-items:center; margin: 6px 0 10px; }
+.segmented-toggle { display:inline-flex; border:1px solid var(--border-color, #d0d0d0); border-radius:10px; overflow:hidden; background:var(--card-bg,#fff); }
+.segmented-toggle .toggle-segment { padding:8px 14px; border:none; background:transparent; color:var(--text-color,#222); font-weight:600; cursor:pointer; transition: background .18s, color .18s, box-shadow .18s; }
+.segmented-toggle .toggle-segment + .toggle-segment { border-left:1px solid var(--border-color, #d0d0d0); }
+.segmented-toggle .toggle-segment.is-active { background:var(--accent-color,#a49393); color:#fff; box-shadow: inset 0 0 0 999px rgba(255,255,255,0.05); }
+.intent-toggle .toggle-segment.buy.is-active { background: var(--green-color, #2e7d32); }
+.intent-toggle .toggle-segment.sell.is-active { background: var(--red-color, #c62828); }
+.direction-toggle .toggle-segment.above.is-active { background: var(--green-color, #2e7d32); }
+.direction-toggle .toggle-segment.below.is-active { background: var(--red-color, #c62828); }
+@media (hover:hover) {
+    .segmented-toggle .toggle-segment:hover { background: var(--hover-bg,#f5f7fa); }
+}
+
+/* Utility: hide visually but keep accessible to screen readers */
+.visually-hidden { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 /* Helper function for source control in style.css (for documentation only, not executable in CSS) */
 /*
 let sourceControlMakeAvailableCountCSS = 0;
@@ -103,12 +136,15 @@ function makeFilesAvailableToSourceControlCSS() {
     /* Light Theme (Default) */
     --background-color: #eef2f3;
     --text-color: #333;
-    --header-bg: #d9e2f4;
-    --card-bg: #ffffff;
+    /* Header adopts coffee tone for default theme */
+    --header-bg: #b8a7a7; /* slightly lighter coffee bar */
+    --card-bg: #ffffff; /* Base card background for light theme (ensures P/L cards follow theme) */
+    --accent-color: #a49393; /* coffee accent (standardized selection fill) */
     --border-color: #c9d2d4;
-    --button-bg: #007bff;
+    /* Standardized coffee palette replacing previous blue */
+    --button-bg: #a49393;
     --button-text: #fff;
-    --button-hover-bg: #0056b3;
+    --button-hover-bg: #8d7f7f;
     --input-bg: #fff;
     --input-border: #b0b8bb;
     --input-placeholder-color: #6c757d;
@@ -119,25 +155,28 @@ function makeFilesAvailableToSourceControlCSS() {
     --asx-button-bg: #e2e8ea;
     --asx-button-hover-bg: #d0d7d9;
     --asx-button-text: #333;
-    --asx-button-active-bg: #007bff;
+    --asx-button-active-bg: #a49393;
     --asx-button-active-text: #fff;
-    --success-color: #00FF00;
-    --danger-color: #FF0000;
+    /* Brand palette and mappings */
+    --brand-red: #E74C3C;   /* Alizarin */
+    --brand-green: #2ECC71; /* Emerald */
+    --success-color: var(--brand-green);
+    --danger-color: var(--brand-red);
     --warning-color: #ffc107;
     --info-color: #17a2b8;
-    --link-color: #007bff;
-    --link-hover-color: #0056b3;
+    --link-color: #a49393;
+    --link-hover-color: #8d7f7f;
     --sidebar-bg: #f8f9fa;
     --sidebar-text: #333;
     --sidebar-border: #c9d2d4;
     --menu-button-bg: transparent;
     --menu-button-hover-bg: #e9ecef;
-    --menu-button-active-bg: #007bff;
+    --menu-button-active-bg: #a49393;
     --menu-button-active-text: #fff;
     --placeholder-text: #6c757d;
     --ghosted-text: #888;
-    --danger-button-bg: #FF0000;
-    --danger-button-hover-bg: #FF0000;
+    --danger-button-bg: var(--brand-red);
+    --danger-button-hover-bg: var(--brand-red);
     --secondary-button-bg: #6c757d;
     --secondary-button-hover-bg: #545b62;
     --google-auth-btn-bg: #FFFFFF;
@@ -147,27 +186,29 @@ function makeFilesAvailableToSourceControlCSS() {
     --shadow-color: rgba(0, 0, 0, 0.15);
     --sidebar-width: 280px;
     --close-sidebar-btn-color: #666;
-    --icon-action-color: #007bff;
-    --icon-action-hover-color: #0056b3;
-    --icon-danger-color: #FF0000;
-    --icon-danger-hover-color: #FF0000;
+    /* Icon/button colors tuned to coffee accent */
+    --icon-action-color: var(--accent-color);
+    --icon-action-hover-color: #8a7f7f; /* slightly darker coffee */
+    --icon-danger-color: var(--brand-red);
+    --icon-danger-hover-color: var(--brand-red);
     --calc-num-btn-bg: #f0f0f0;
     --calc-num-btn-text: #333;
     --calc-num-btn-hover-bg: #e0e0e0;
-    --price-up-color: #00FF00;
-    --price-down-color: #FF0000;
+    --price-up-color: var(--brand-green);
+    --price-down-color: var(--brand-red);
     --price-neutral-color: #6c757d;
     --live-price-section-bg: rgba(0, 123, 255, 0.05); /* Subtle blue tint */
     --live-price-positive-bg: rgba(40, 167, 69, 0.1); /* Faint green */
     --live-price-negative-bg: rgba(220, 53, 69, 0.1); /* Faint red */
     --comment-title-bg: rgba(0, 0, 0, 0.05); /* Subtle background for comment titles */
     --target-alert-bg: #e0f7fa; /* Light blue for target hit alert */
-    --target-alert-text: #0056b3; /* Darker blue for target hit text */
-    --target-alert-border: #007bff;
+    --target-alert-text: #a49393; /* Coffee color for target-hit ASX code in modals */
+    --target-alert-border: #a49393;
     --target-banner-height: 40px; /* This variable is now effectively unused for the banner, but kept for other potential uses */
-    ---green-color: #00FF00; /* Standard green for general use */
-    --green-color-dark: #00FF00; /* Unify hover green */
-    --green-color-dark-rgb: 0, 255, 0; /* RGB for #00FF00 for pulsing effect */
+    /* General green used in components */
+    --green-color: var(--brand-green);
+    --green-color-dark: var(--brand-green);
+    --green-color-dark-rgb: 46, 204, 113; /* RGB for #2ECC71 for pulsing effect */
     /* NEW: Alert System Colors */
     --alert-icon-bg: #dc3545; /* Red for the chat box icon */
     --alert-icon-text: #fff;
@@ -176,7 +217,7 @@ function makeFilesAvailableToSourceControlCSS() {
     --alert-panel-border: #c9d2d4;
     --alert-item-bg: #ffffff;
     --alert-item-hover-bg: #f0f4f5;
-    --alert-dismiss-btn-color: #00FF00; /* Green for dismiss */
+    --alert-dismiss-btn-color: var(--brand-green); /* Green for dismiss */
     --alert-snooze-btn-color: #17a2b8; /* Info blue for snooze */
     --snooze-options-bg: #ffffff;
     --snooze-options-border: #b0b8bb;
@@ -185,14 +226,14 @@ function makeFilesAvailableToSourceControlCSS() {
     --cash-section-bg: #f8f9fa;
     --cash-card-bg: #ffffff;
     --cash-border-color: #c9d2d4;
-    --cash-total-bg: #e0f7fa;
-    --cash-total-text: #0056b3;
-    --cash-button-bg: #00FF00; /* Green for add */
-    --cash-button-hover-bg: #00FF00;
-    --cash-primary-button-bg: #007bff; /* Blue for save */
-    --cash-primary-button-hover-bg: #0056b3;
+    --cash-total-bg: #a49393; /* standardized coffee fill */
+    --cash-total-text: #ffffff; /* maintain contrast over coffee fill */
+    --cash-button-bg: var(--brand-green); /* Green for add */
+    --cash-button-hover-bg: var(--brand-green);
+    --cash-primary-button-bg: #a49393; /* Coffee tone for save */
+    --cash-primary-button-hover-bg: #8d7f7f;
     --cash-delete-icon-color: #dc3545;
-    --cash-edit-icon-color: #007bff;
+    --cash-edit-icon-color: #a49393;
 }
 
 /* Market status banner */
@@ -229,8 +270,8 @@ body.dark-theme {
     --asx-button-hover-bg: #5a5a5a; /* Lighter gray for ASX button hover */
     --asx-button-active-bg: #888888; /* Even lighter gray for active ASX button */
     --asx-button-active-text: #ffffff; /* White text for active ASX button */
-    --success-color: #00FF00;
-    --danger-color: #FF0000; /* Keep red for danger */
+    --success-color: var(--brand-green);
+    --danger-color: var(--brand-red);
     --warning-color: #f39c12; /* Keep orange for warning */
     --info-color: #3498db; /* Keep blue for info */
     --link-color: #99ccff; /* Lighter blue for links */
@@ -242,17 +283,17 @@ body.dark-theme {
     --menu-button-hover-bg: #444444; /* Dark gray for menu button hover */
     --placeholder-text: #aaaaaa;
     --ghosted-text: #888888; /* Medium gray for ghosted text */
-    --danger-button-bg: #FF0000;
-    --danger-button-hover-bg: #FF0000;
-    --icon-action-color: #cccccc; /* Light gray for action icons */
-    --icon-action-hover-color: #ffffff; /* White for action icon hover */
-    --icon-danger-color: #FF0000;
-    --icon-danger-hover-color: #FF0000;
+    --danger-button-bg: var(--brand-red);
+    --danger-button-hover-bg: var(--brand-red);
+    --icon-action-color: var(--accent-color); /* Coffee accent in dark as well */
+    --icon-action-hover-color: #c8bebe; /* lighter coffee for contrast on dark */
+    --icon-danger-color: var(--brand-red);
+    --icon-danger-hover-color: var(--brand-red);
     --calc-num-btn-bg: #555555; /* Gray for calculator number buttons */
     --calc-num-btn-text: #e0e0e0;
     --calc-num-btn-hover-bg: #6a6a6a;
-    --price-up-color: #00FF00; /* Pure green */
-    --price-down-color: #FF0000; /* Pure red */
+    --price-up-color: var(--brand-green);
+    --price-down-color: var(--brand-red);
     --price-neutral-color: #888888; /* Gray for neutral price */
     --live-price-section-bg: rgba(68, 68, 68, 0.1); /* Very subtle dark gray tint */
     --live-price-positive-bg: rgba(46, 204, 113, 0.1); /* Faint green */
@@ -262,17 +303,17 @@ body.dark-theme {
     --target-alert-text: #ffffff; /* White text for target alert */
     --target-alert-border: #888888; /* Gray border for target alert */
     --target-banner-height: 40px;
-    --green-color: #00FF00; /* Pure green */
-    --green-color-dark: #00FF00; /* Unify hover */
-    --green-color-dark-rgb: 0, 255, 0; /* RGB for #00FF00 */
+    --green-color: var(--brand-green);
+    --green-color-dark: var(--brand-green);
+    --green-color-dark-rgb: 46, 204, 113; /* RGB for #2ECC71 */
     /* UPDATED: Cash & Assets Section Colors (Dark Theme) */
     --cash-section-bg: #282828;
     --cash-card-bg: #333333;
     --cash-border-color: #555555;
-    --cash-total-bg: #444444;
-    --cash-total-text: #e0e0e0;
-    --cash-button-bg: #00FF00; /* Pure green */
-    --cash-button-hover-bg: #00FF00; /* Pure green hover */
+    --cash-total-bg: #a49393; /* coffee fill in dark theme for consistency */
+    --cash-total-text: #ffffff;
+    --cash-button-bg: var(--brand-green);
+    --cash-button-hover-bg: var(--brand-green);
     --cash-primary-button-bg: #555555; /* Gray primary button */
     --cash-primary-button-hover-bg: #6a6a6a; /* Gray primary button hover */
     --cash-delete-icon-color: #e74c3c; /* Keep red */
@@ -306,8 +347,8 @@ body.theme-bold-1 { /* Ocean Blue */
     --ghosted-text: #a8dadc;
     --danger-button-bg: #FF0000;
     --danger-button-hover-bg: #FF0000;
-    --icon-action-color: #00b4d8;
-    --icon-action-hover-color: #0096c7;
+    --icon-action-color: var(--accent-color);
+    --icon-action-hover-color: #8a7f7f;
     --icon-danger-color: #FF0000;
     --icon-danger-hover-color: #FF0000;
     --calc-num-btn-bg: #007f8c;
@@ -375,8 +416,8 @@ body.theme-bold-2 { /* Forest Green */
     --ghosted-text: #d4e3c9;
     --danger-button-bg: #FF0000;
     --danger-button-hover-bg: #FF0000;
-    --icon-action-color: #a7c957;
-    --icon-action-hover-color: #8ba84a;
+    --icon-action-color: var(--accent-color);
+    --icon-action-hover-color: #8a7f7f;
     --icon-danger-color: #FF0000;
     --icon-danger-hover-color: #FF0000;
     --calc-num-btn-bg: #5a855a;
@@ -444,8 +485,8 @@ body.theme-bold-3 { /* Sunset Orange */
     --ghosted-text: #ffd790;
     --danger-button-bg: #FF0000;
     --danger-button-hover-bg: #FF0000;
-    --icon-action-color: #ffc300;
-    --icon-action-hover-color: #e0ac00;
+    --icon-action-color: var(--accent-color);
+    --icon-action-hover-color: #8a7f7f;
     --icon-danger-color: #e63946;
     --icon-danger-hover-color: #c0392b;
     --calc-num-btn-bg: #f7b98d;
@@ -513,8 +554,8 @@ body.theme-bold-4 { /* Royal Purple */
     --ghosted-text: #e8d0ff;
     --danger-button-bg: #e74c3c;
     --danger-button-hover-bg: #c0392b;
-    --icon-action-color: #c77dff;
-    --icon-action-hover-color: #a842ff;
+    --icon-action-color: var(--accent-color);
+    --icon-action-hover-color: #8a7f7f;
     --icon-danger-color: #e74c3c;
     --icon-danger-hover-color: #c0392b;
     --calc-num-btn-bg: #9d4edd;
@@ -582,7 +623,7 @@ body.theme-bold-5 { /* Deep Red */
     --ghosted-text: #ffcccc;
     --danger-button-bg: #e74c3c;
     --danger-button-hover-bg: #c0392b;
-    --icon-action-color: #e74c3c;
+    --icon-action-color: var(--accent-color);
     --icon-action-hover-color: #c0392b;
     --icon-danger-color: #e74c3c;
     --icon-danger-hover-color: #c0392b;
@@ -2207,6 +2248,64 @@ table td .share-code-display { /* This class exists, just ensure its emphasis */
     text-align: right;
     flex-grow: 1; /* Allows value to take up remaining space */
 }
+/* Share Detail Dashboard Layout */
+.share-detail-sections { display:grid; grid-template-columns: repeat(auto-fit,minmax(230px,1fr)); gap:14px 16px; align-items:start; }
+.share-detail-sections .detail-card { background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:14px 16px 16px; box-shadow:0 2px 4px rgba(0,0,0,0.05); display:flex; flex-direction:column; gap:8px; min-height:0; }
+.share-detail-sections .detail-card.full-span { grid-column:1 / -1; }
+.detail-card-title { margin:0 0 4px; font-size:0.95rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--ghosted-text); }
+.detail-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:4px 0; font-size:0.9rem; border-bottom:1px dashed rgba(0,0,0,0.08); }
+body.dark-theme .detail-row { border-bottom:1px dashed rgba(255,255,255,0.1); }
+.detail-row:last-child { border-bottom:none; }
+.detail-label { font-weight:500; color:var(--label-color); flex:0 0 auto; }
+.detail-value { font-weight:600; color:var(--text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.external-links-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap:10px 14px; margin-top:4px; }
+/* Unified Research Links styling */
+.external-links-grid .external-link { 
+    display:inline-flex; align-items:center; gap:6px; 
+    font-size:0.9rem; font-weight:700; 
+    padding:8px 12px; background:var(--card-bg); 
+    border:1px solid var(--border-color); border-radius:10px; 
+    text-decoration:none; color:var(--accent-color,#a49393); 
+    transition: background .18s, color .18s, box-shadow .18s, border-color .18s; 
+    box-shadow:0 1px 2px rgba(0,0,0,0.06);
+}
+body.dark-theme .external-links-grid .external-link { background:var(--card-bg); }
+.external-links-grid .external-link:hover { 
+    background:var(--button-hover-bg,#8d7f7f); 
+    color:#fff; border-color:var(--button-hover-bg,#8d7f7f); 
+    box-shadow:0 2px 6px rgba(0,0,0,0.18);
+}
+.external-links-grid .primary-news-link { font-weight:800; }
+.commsec-link-wrapper { display:flex; flex-direction:column; gap:2px; }
+/* Thicker target-hit border refinement */
+.mobile-card.target-hit-alert, 
+.portfolio-card.target-hit-alert, 
+tr.target-hit-alert { 
+    border:2px solid var(--green-color,#2ECC71) !important; 
+    box-shadow:0 0 0 2px var(--green-color,#2ECC71) inset; 
+}
+/* Toggle button / enhanced watchlist item target hit outline */
+.asx-code-buttons-container button.asx-code-btn.target-hit, 
+.watchlist-enhanced-item.target-hit { 
+    outline:2px solid var(--green-color,#2ECC71); outline-offset:0; 
+}
+/* Compact view ensure full border retained */
+.mobile-share-cards.compact-view .mobile-card.target-hit-alert { border-width:2px; }
+@media (max-width:600px){
+    .share-detail-sections { grid-template-columns:1fr; }
+    .share-detail-sections .detail-card { padding:12px 14px 14px; }
+    .detail-row { font-size:0.88rem; }
+    .external-links-grid { grid-template-columns:1fr 1fr; }
+}
+/* Mobile full-screen calculator enhancements */
+@media (max-width:640px){
+    .calculator-modal-content { width:100%; max-width:none; height:100vh; border-radius:0; display:flex; flex-direction:column; }
+    .calculator-modal-content h2 { font-size:1.35rem; }
+    .calculator-display { flex:0 0 auto; padding:10px 12px; }
+    .calculator-buttons { flex:1; display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:12px; }
+    .calculator-buttons .calc-btn { font-size:1.15rem; padding:16px 0; }
+    .calculator-buttons .calc-btn.zero { grid-column: span 2; }
+}
 html {
     height: 100%; /* Ensure html takes full height */
     overflow-y: auto; /* Allow scrolling on html */
@@ -2253,6 +2352,17 @@ body.sidebar-active {
     gap: 10px; /* Space between header rows */
 }
 
+/* Neutral / no-change card styling (muted coffee fill) */
+.mobile-card.neutral, .mobile-card .neutral-change, .mobile-card.neutral-change, .mobile-card .price-neutral, .mobile-card.price-neutral {
+    background: linear-gradient(135deg, #efe9e9 0%, #e4dada 100%);
+    border: 1px solid #d3c6c6;
+}
+
+/* Optional subtle style for neutral price change badge inside cards */
+.mobile-card .price-change.neutral, .price-change.neutral {
+    color: var(--price-neutral-color);
+}
+
 /* Adjust main content padding to account for fixed header - REMOVED FROM CSS, NOW HANDLED BY JS */
 main.container {
     margin-top: 0; /* Ensure no extra margin pushes content down */
@@ -2275,18 +2385,25 @@ main.container {
     order: 1;
     margin-right: auto;
 }
-h1#mainTitle {
+/* Center the single dynamic title */
+h1#dynamicWatchlistTitle {
     order: 2;
-    flex: 0 1 auto;
-    margin: 0 auto;
-    left: 0;
-    right: 0;
-    position: absolute;
-    width: 100%;
+    flex: 1 1 auto;
+    margin: 0;
     text-align: center;
-    pointer-events: none;
+    font-size: 1.85rem;
+    font-weight: 650;
+    line-height: 1.1;
+    pointer-events: auto;
     z-index: 1;
+    outline: none; /* Remove default focus outline */
 }
+
+/* Accessible keyboard-only focus for dynamic title text/button */
+#dynamicWatchlistTitle:focus { outline: none; }
+#dynamicWatchlistTitle:focus-visible { outline: 2px solid var(--green-color); outline-offset: 2px; }
+#dynamicWatchlistTitleText:focus { outline: none; }
+#dynamicWatchlistTitleText:focus-visible { outline: 2px solid var(--green-color); outline-offset: 2px; }
 .header-action-btn-right {
     order: 3;
     margin-left: auto;
@@ -2478,12 +2595,14 @@ h1#mainTitle {
     padding: 0 15px; /* Keep horizontal padding, but vertical is 0 */
     opacity: 0;
     border-top: none; /* Hide border when collapsed */
+    pointer-events: none; /* prevent interacting while collapsed */
 }
 
-/* NEW: Hide ASX code buttons when compact view is active */
-/* Removed !important to allow JS to control display if needed, but CSS handles it by default */
+/* Compact view: allow buttons to show; JS controls visibility. Enable horizontal scroll for tight space. */
 .mobile-share-cards.compact-view + #asxCodeButtonsContainer {
-    display: none; 
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Expanded state for the container */
@@ -2492,7 +2611,23 @@ h1#mainTitle {
     padding: 10px 15px;
     opacity: 1;
     border-top: 1px solid var(--border-color); /* Show border when expanded */
+    pointer-events: auto;
 }
+
+/* Toast notifications */
+.toast-container { position: fixed; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 10px; z-index: 2000; pointer-events: none; }
+.toast { min-width: 240px; max-width: 360px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.12); padding: 10px 12px; display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(-8px); transition: opacity .2s ease, transform .2s ease; pointer-events: auto; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast .icon { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; flex: 0 0 22px; }
+.toast.success .icon { background: var(--brand-green); }
+.toast.error .icon { background: var(--brand-red); }
+.toast.info .icon { background: var(--accent-color); }
+.toast .message { flex: 1 1 auto; font-size: 0.95rem; line-height: 1.3; }
+.toast .close { background: transparent; border: none; color: inherit; cursor: pointer; font-size: 1rem; padding: 4px; }
+.toast .actions { display:flex; gap:8px; }
+.toast .btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 4px 8px; border-radius: 6px; font-size: 0.9rem; cursor: pointer; }
+.toast .btn.primary { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
+.toast .btn.danger { background: var(--brand-red); color: #fff; border-color: var(--brand-red); }
 
 /* New
 
@@ -2898,10 +3033,16 @@ input:checked + .slider:before {
 }
 
 .asx-code-btn.active {
-    background-color: var(--asx-button-active-bg);
-    color: var(--asx-button-active-text);
-    border-color: var(--asx-button-active-bg);
+    /* Border-only highlight using the current text color (set by positive/negative/neutral classes) */
+    background-color: transparent !important;
+    color: inherit; /* keep current text color */
+    border-color: currentColor !important;
+    box-shadow: 0 0 0 2px currentColor inset; /* subtle inner ring */
 }
+
+/* Keyboard focus-visible styling */
+.asx-code-btn:focus { outline: none; }
+.asx-code-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 
 /* Conditional green border for ASX code buttons that hit target */
 .asx-code-btn.asx-target-hit-border {
@@ -2999,12 +3140,12 @@ table tbody tr:not(.selected):hover {
 }
 
 /* Ensure positive/negative colors apply clearly in portfolio cells */
-#portfolioSection .portfolio-table td.positive { color: #00FF00 !important; font-weight: 700; }
-#portfolioSection .portfolio-table td.negative { color: #FF0000 !important; font-weight: 700; }
+#portfolioSection .portfolio-table td.positive { color: var(--price-up-color) !important; font-weight: 700; }
+#portfolioSection .portfolio-table td.negative { color: var(--price-down-color) !important; font-weight: 700; }
 /* Row-level color cue */
-#portfolioSection .portfolio-table tr.positive td.code-cell { color:#00FF00 !important; font-weight:700; }
+#portfolioSection .portfolio-table tr.positive td.code-cell { color: var(--price-up-color) !important; font-weight:700; }
 #portfolioSection .portfolio-table tr.negative td.code-cell { color:#FF4D4D !important; font-weight:700; }
-#portfolioSection .portfolio-table tr.portfolio-total-row.positive td { color:#00FF00; }
+#portfolioSection .portfolio-table tr.portfolio-total-row.positive td { color: var(--price-up-color); }
 #portfolioSection .portfolio-table tr.portfolio-total-row.negative td { color:#FF4D4D; }
 
 /* Specific alignment tweaks: value column left aligned for readability */
@@ -3023,7 +3164,7 @@ table tbody tr:not(.selected):hover {
     .portfolio-summary-bar.two-cards { flex-direction:row; }
     .portfolio-summary-bar.two-cards .ps-card { flex:1 1 0; min-width:0; }
 }
-.portfolio-summary-bar .ps-card { flex:1 1 140px; background:var(--card-bg,#1e1f26); border:1px solid var(--border-color); border-radius:10px; padding:12px 14px; position:relative; overflow:hidden; }
+.portfolio-summary-bar .ps-card { flex:1 1 140px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:10px; padding:12px 14px; position:relative; overflow:hidden; }
 .portfolio-summary-bar .ps-card.highlight { border-width:2px; }
 .portfolio-summary-bar .ps-card.profit.highlight { border-color:#00FF8C; }
 .portfolio-summary-bar .ps-card.loss.highlight { border-color:#FF2F2F; }
@@ -3170,7 +3311,7 @@ table tbody tr.target-hit-alert td,
 .portfolio-cards { display:none; }
 .portfolio-cards .portfolio-card { width:100%; }
 @media (min-width:821px){ .portfolio-cards .portfolio-card { width:auto; } }
-.portfolio-card { background: var(--card-bg, #1e1f26); border:1px solid var(--border-color, #333); border-radius:10px; padding:8px 10px; margin-bottom:8px; font-size:0.85rem; position:relative; transition:background 0.25s,border-color 0.25s; }
+.portfolio-card { background: var(--card-bg); border:1px solid var(--border-color); border-radius:10px; padding:8px 10px; margin-bottom:8px; font-size:0.85rem; position:relative; transition:background 0.25s,border-color 0.25s; }
 .portfolio-card:hover { background:rgba(255,255,255,0.03); }
 .portfolio-card.positive { box-shadow:0 0 0 1px rgba(0,200,120,0.15); }
 .portfolio-card.negative { box-shadow:0 0 0 1px rgba(255,80,80,0.15); }
@@ -3258,7 +3399,7 @@ table td .live-price-value {
 .mobile-card h3.positive,     /* For ASX code in mobile card */
 .live-price-large.positive,   /* For live price in mobile card/modal */
 .asx-code-btn.positive {      /* For ASX code buttons */
-    color: #00FF00 !important; /* Strong green */
+    color: var(--price-up-color) !important; /* Strong green */
 }
 
 .negative,
@@ -3267,7 +3408,7 @@ table td .live-price-value {
 .mobile-card h3.negative,
 .live-price-large.negative,
 .asx-code-btn.negative {
-    color: #FF0000 !important; /* Strong red, matches delete bin */
+    color: var(--price-down-color) !important; /* Strong red, matches delete bin */
 }
 
 .neutral,
@@ -3744,6 +3885,51 @@ table td.live-price-cell.negative-change {
 .add-share-modal-content .modal-body-scrollable {
     padding-bottom: 20px;
 }
+
+/* Accordion (Share Form) */
+.accordion { display:flex; flex-direction:column; gap:12px; }
+.accordion-section { border:1px solid var(--border-color); border-radius:10px; background:var(--card-bg); box-shadow:0 2px 4px rgba(0,0,0,0.04); overflow:hidden; transition: border-color .25s, box-shadow .25s; }
+.accordion-section.open { border-color: var(--accent-color,#a49393); box-shadow:0 3px 10px rgba(0,0,0,0.08); }
+.accordion-toggle { all:unset; cursor:pointer; display:flex; align-items:center; justify-content:space-between; width:100%; padding:14px 16px; box-sizing:border-box; font-size:0.98rem; font-weight:600; color:var(--text-color); position:relative; }
+.accordion-toggle:focus-visible { outline:2px solid var(--accent-color,#a49393); outline-offset:2px; border-radius:4px; }
+.accordion-title { pointer-events:none; }
+.accordion-caret { width:16px; height:16px; position:relative; display:inline-block; }
+.accordion-caret::before { content:""; position:absolute; inset:0; margin:auto; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:9px solid var(--text-color); transition: transform .28s ease; transform-origin:center; }
+.accordion-section.open .accordion-caret::before { transform: rotate(180deg); }
+.accordion-panel { max-height:0; overflow:hidden; transition:max-height .35s ease, padding .25s ease; padding:0 16px; }
+.accordion-section.open > .accordion-panel { max-height:1200px; padding:4px 16px 16px; }
+/* Subtle divider between sections */
+.accordion-section + .accordion-section { margin-top:2px; }
+/* Hover / active states */
+.accordion-section:not(.open) .accordion-toggle:hover { background:var(--table-row-hover-bg,#f5f7fa); }
+body.dark-theme .accordion-section { background: var(--card-bg,#2a2a2a); }
+body.dark-theme .accordion-section:not(.open) .accordion-toggle:hover { background:#333; }
+/* Comments header within accordion */
+.comments-header-row { display:flex; align-items:center; justify-content:space-between; margin:0 0 6px; }
+.add-section-icon { cursor:pointer; color:var(--icon-action-color); display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; transition: background .2s, color .2s; }
+.add-section-icon:hover { background:var(--table-row-hover-bg,#f0f4f5); }
+body.dark-theme .add-section-icon:hover { background:#3a3a3a; }
+/* Reduce spacing of inputs inside accordion for tighter layout */
+.accordion-panel label { margin-top:12px; }
+.accordion-panel label:first-child { margin-top:4px; }
+/* Live price display inside core details */
+#addShareLivePriceDisplay { margin-top:8px; }
+/* Pulsing cue for required watchlist selection */
+.watchlist-pulse {
+    position:relative;
+    animation: watchlistPulse 1.9s ease-in-out infinite;
+    border-color: var(--accent-color,#a49393) !important;
+    box-shadow: 0 0 0 0 rgba(164,147,147,0.55);
+}
+@keyframes watchlistPulse {
+    0% { box-shadow:0 0 0 0 rgba(164,147,147,0.55); }
+    50% { box-shadow:0 0 0 6px rgba(164,147,147,0); }
+    100% { box-shadow:0 0 0 0 rgba(164,147,147,0); }
+}
+/* Smart placeholder (fade when focused) */
+input.smart-ph::placeholder { color: var(--placeholder-text,#6c757d); opacity:0.9; transition: opacity .18s; }
+input.smart-ph:focus::placeholder { opacity:0.15; }
+
 
 .modal-content h2 {
     margin-top: 0;
@@ -4444,13 +4630,6 @@ table td.live-price-cell.negative-change {
     display: none; /* Hide these old containers */
 }
 
-/* Custom dialog buttons container - default is hidden, JS will set display: flex or none */
-.custom-dialog-buttons {
-    display: none; /* Hidden by default, JS will explicitly set to flex or none */
-    justify-content: center; /* Center the buttons */
-    gap: 15px; /* Space between buttons */
-    margin-top: 20px; /* Space above buttons */
-}
 
 /* REMOVED: Sticky footer for action icons - These are now in the header */
 .modal-content .sticky-footer {
@@ -4481,6 +4660,11 @@ table td.live-price-cell.negative-change {
     transform: translateY(-1px);
 }
 
+.modal-action-icon:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
 .modal-action-icon.danger {
     color: var(--icon-danger-color);
 }
@@ -4494,6 +4678,31 @@ table td.live-price-cell.negative-change {
 .modal-action-icon.secondary:hover {
     color: var(--secondary-button-hover-color);
     background-color: var(--menu-button-hover-bg);
+}
+
+/* Generic small round icon buttons (header, notifications, etc.) */
+.icon-button {
+    background: transparent;
+    border: none;
+    padding: 6px;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--icon-action-color);
+    border-radius: 50%;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+}
+
+.icon-button:hover {
+    background-color: var(--menu-button-hover-bg);
+    color: var(--icon-action-hover-color);
+}
+
+.icon-button:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
 }
 
 /* Share Details Modal Specifics */
@@ -4736,8 +4945,8 @@ table td.live-price-cell.negative-change {
     z-index: 99; /* Make sure it does not overlap */
     border: none; /* Remove borders */
     outline: none; /* Remove outline */
-    background-color: var(--button-bg); /* Set a background color */
-    color: white; /* Text color */
+    background-color: var(--accent-color); /* Coffee accent background */
+    color: #fff; /* Text color */
     cursor: pointer; /* Add a mouse pointer on hover */
     padding: 15px; /* Some padding */
     border-radius: 50%; /* Rounded corners */
@@ -4753,7 +4962,7 @@ table td.live-price-cell.negative-change {
 }
 
 #scrollToTopBtn:hover {
-    background-color: var(--button-hover-bg); /* Add a darker background on hover */
+    background-color: var(--accent-color); /* Keep accent on hover for consistency */
     transform: translateY(-2px);
 }
 
@@ -4977,6 +5186,12 @@ body.dark-theme .target-hit-details-modal .modal-content {
     color: var(--label-color);
 }
 
+/* Muted alert items: subtle visual de-emphasis */
+.target-hit-item.muted {
+    opacity: 0.6;
+    filter: grayscale(18%);
+}
+
 .alert-panel.open {
     opacity: 1;
     transform: translateY(0);
@@ -5128,14 +5343,17 @@ body.dark-theme .alert-item {
     transition: background-color 0.2s ease;
 }
 
-.alert-panel-footer .secondary-buttons {
-    background-color: var(--secondary-button-bg);
-    color: var(--button-text);
-    border: 1px solid var(--secondary-button-bg);
+/* Use coffee accent styling for secondary action buttons in both legacy alert panel and modal footers */
+.alert-panel-footer .secondary-buttons,
+.modal-action-buttons-footer .secondary-buttons {
+    background-color: var(--accent-color);
+    color: #fff;
+    border: 1px solid var(--accent-color);
 }
-.alert-panel-footer .secondary-buttons:hover {
-    background-color: var(--secondary-button-hover-bg);
-    border-color: var(--secondary-button-hover-bg);
+.alert-panel-footer .secondary-buttons:hover,
+.modal-action-buttons-footer .secondary-buttons:hover {
+    background-color: var(--icon-action-hover-color);
+    border-color: var(--icon-action-hover-color);
 }
 
 .no-alerts-message {
@@ -5209,13 +5427,7 @@ body.dark-theme .alert-item {
         width: auto !important;
     }
 
-    /* Restore the ASX code buttons container on desktop */
-    .asx-code-buttons-container {
-        max-height: 500px;
-        opacity: 1;
-        padding: 10px 15px;
-        border-top: 1px solid var(--border-color);
-    }
+    /* Note: do not force ASX buttons container open on desktop; JS controls state */
 }
 
 /* Hide most <p> tags in compact view to only show live price and change */
@@ -5374,7 +5586,7 @@ body.dark-theme .alert-item {
 
 #asxSearchInput:focus {
     border-color: var(--button-bg);
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    box-shadow: 0 0 0 2px rgba(164,147,147,0.35);
     outline: none;
 }
 
@@ -5887,8 +6099,7 @@ body.dark-theme .alert-item {
 
 
     .form-action-buttons,
-    .modal-action-buttons,
-    .custom-dialog-buttons {
+    .modal-action-buttons {
         gap: 5px;
         margin-top: 10px;
         padding-top: 8px;
