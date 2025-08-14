@@ -65,6 +65,7 @@ function onLivePricesUpdated() {
         if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
             sortShares();
         } else {
+            // Just re-render to reflect new price values
             renderWatchlist();
         }
         if (typeof renderPortfolioList === 'function') {
@@ -79,7 +80,14 @@ function onLivePricesUpdated() {
 }
 
 // Compatibility stub (legacy callsites may invoke)
-function forceApplyCurrentSort() { /* legacy no-op retained */ }
+function forceApplyCurrentSort() {
+    if (currentSortOrder) {
+        // No aggressive re-sort; rely on user interactions & targeted resort triggers
+        return;
+    }
+}
+
+// --- Automatic market status handling (Sydney time) ---
 document.addEventListener('DOMContentLoaded', function () {
     // --- Watchlist logic moved to watchlist.js ---
     // Import and call watchlist functions
@@ -230,23 +238,23 @@ document.addEventListener('DOMContentLoaded', function () {
     let lossPLSum = 0;   // sum of negative P/L (will stay negative)
         portfolioShares.forEach(share => {
             const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
-                ? Math.trunc(Number(share.portfolioShares)) : '';
+                ? Math.trunc(Number(share.portfolioShares))
+                : '';
             const avgPrice = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)))
-                ? Number(share.portfolioAvgPrice) : null;
-            const code = (share.shareName || '').toUpperCase();
-            const lpObj = livePrices ? livePrices[code] : undefined;
-            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
-            let priceNow = null;
+                ? Number(share.portfolioAvgPrice)
+                : '';
+            const priceNow = getDisplayPrice(share);
+            // Determine if we used live (market open), lastLive (market closed), or fallback user price
+            let priceMode = 'manual';
+            const codeKey = (share.shareName || '').toUpperCase();
+            const lpObj = livePrices ? livePrices[codeKey] : null;
             if (lpObj) {
-                if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceNow = Number(lpObj.live);
-                else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceNow = Number(lpObj.lastLivePrice);
+                const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+                if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceMode = 'live';
+                else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceMode = 'last';
             }
-            if (priceNow === null || isNaN(priceNow)) {
-                if (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice))) {
-                    priceNow = Number(share.currentPrice);
-                }
-            }
-            let dailyChangeClass = '';
+            // DAILY CHANGE (on-the-day) vs overall P/L: compute day change using live vs prevClose (fallback to last fetched)
+            let dailyChangeClass = 'neutral';
             if (lpObj) {
                 const latestLive = (lpObj.live !== null && !isNaN(lpObj.live)) ? Number(lpObj.live) : (lpObj.lastLivePrice ?? null);
                 const latestPrev = (lpObj.prevClose !== null && !isNaN(lpObj.prevClose)) ? Number(lpObj.prevClose) : (lpObj.lastPrevClose ?? null);
@@ -257,30 +265,41 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
             if (typeof rowValue === 'number') totalValue += rowValue;
-            const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
-            if (typeof shares === 'number' && typeof avgPrice === 'number') totalCostBasis += (shares * avgPrice);
+            const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number')
+                ? (priceNow - avgPrice) * shares
+                : null;
+            if (typeof shares === 'number' && typeof avgPrice === 'number') {
+                totalCostBasis += (shares * avgPrice);
+            }
+            if (typeof rowPL === 'number') totalPL += rowPL;
             if (typeof rowPL === 'number') {
-                totalPL += rowPL;
                 if (rowPL > 0) profitPLSum += rowPL; else if (rowPL < 0) lossPLSum += rowPL;
             }
-            const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
+            const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number')
+                ? ((priceNow - avgPrice) / avgPrice) * 100
+                : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
-            const priceColorClass = marketOpen ? 'live-price' : 'last-price';
+            const badge = ''; // remove textual badge for cleaner look on mobile & table
+            const priceColorClass = priceMode === 'live' ? 'live-price' : (priceMode === 'last' ? 'last-price' : 'manual-price');
             const priceCell = (priceNow !== null && priceNow !== undefined) ? ('<span class="price-value '+priceColorClass+'">' + fmtMoney(priceNow) + '</span>') : '';
+
+            // Row colored by DAILY change, P/L cells individually colored by overall P/L (plClass)
             htmlTable += `<tr data-doc-id="${share.id}" class="${dailyChangeClass}">
                 <td class="code-cell">${share.shareName || ''}</td>
                 <td class="num-cell shares-cell">${shares !== '' ? formatWithCommas(shares) : ''}</td>
                 <td class="num-cell avg-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
-                <td class="num-cell live-cell ${marketOpen ? 'live' : 'last'} liveprice-cell">${priceCell}</td>
+                <td class="num-cell live-cell ${priceMode} liveprice-cell">${priceCell}</td>
                 <td class="num-cell value-cell">${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
                 <td class="num-cell pl-cell ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
                 <td class="num-cell plpct-cell ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
             </tr>`;
-            const card = `<div class="portfolio-card ${dailyChangeClass}" data-doc-id="${share.id}">
+
+            // Mobile card variant
+    const card = `<div class="portfolio-card ${dailyChangeClass}" data-doc-id="${share.id}">
                 <div class="pc-row top">
-                    <div class="pc-code ${dailyChangeClass}">${share.shareName || ''}</div>
-                    <div class="pc-live ${marketOpen ? 'live' : 'last'}"><span class="val ${priceColorClass}">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
-                    <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
+            <div class="pc-code ${dailyChangeClass}">${share.shareName || ''}</div>
+            <div class="pc-live ${priceMode}"><span class="val ${priceColorClass}">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
+            <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
                 </div>
                 <div class="pc-row mid">
                     <div class="pc-shares">${shares !== '' ? shares : ''} @ ${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</div>
@@ -339,9 +358,38 @@ document.addEventListener('DOMContentLoaded', function () {
                     showContextMenu(e, docId);
                 }
             });
-            // Mobile long-press disabled: passive touch handlers only
-            row.addEventListener('touchstart', () => { selectedElementForTap = row; }, { passive: true });
-            row.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
+            // Touch long-press to open context menu on mobile
+            let touchStartTime = 0;
+            row.addEventListener('touchstart', (e) => {
+                touchStartTime = Date.now();
+                selectedElementForTap = row;
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                longPressTimer = setTimeout(() => {
+                    if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
+                        selectShare(docId);
+                        showContextMenu(e, docId);
+                        e.preventDefault();
+                    }
+                }, LONG_PRESS_THRESHOLD);
+            }, { passive: false });
+            row.addEventListener('touchmove', (e) => {
+                const currentX = e.touches[0].clientX;
+                const currentY = e.touches[0].clientY;
+                const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
+                if (dist > TOUCH_MOVE_THRESHOLD) {
+                    clearTimeout(longPressTimer);
+                    touchStartTime = 0;
+                }
+            });
+            row.addEventListener('touchend', () => {
+                clearTimeout(longPressTimer);
+                if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === row) {
+                    // Short tap handled by click event
+                }
+                touchStartTime = 0;
+                selectedElementForTap = null;
+            });
         });
     };
 });
@@ -379,27 +427,13 @@ function shareBelongsTo(share, watchlistId) {
     }
     return share.watchlistId === watchlistId;
 }
-
-// Helper: ensure we don't render duplicates when transient optimistic updates or race conditions occur
-function dedupeSharesById(items) {
-    try {
-        const map = new Map();
-        for (const it of items || []) {
-            if (it && it.id) map.set(it.id, it);
-        }
-        return Array.from(map.values());
-    } catch (e) {
-        console.warn('Dedupe: Failed to dedupe shares by id:', e);
-        return Array.isArray(items) ? items : [];
-    }
-}
 let currentDialogCallback = null;
 let autoDismissTimeout = null;
 let lastTapTime = 0;
 let tapTimeout;
 let selectedElementForTap = null;
 let longPressTimer;
-const LONG_PRESS_THRESHOLD = 500; // Time in ms for long press detection (desktop only; mobile long-press disabled)
+const LONG_PRESS_THRESHOLD = 500; // Time in ms for long press detection
 let touchStartX = 0;
 let touchStartY = 0;
 const TOUCH_MOVE_THRESHOLD = 10; // Pixels for touch movement to cancel long press
@@ -472,12 +506,9 @@ let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
 
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
-let unsubscribeAlerts = null; // NEW: Holds the unsubscribe function for Firestore alerts listener
 
 // NEW: Global variable to store shares that have hit their target price
 let sharesAtTargetPrice = [];
-// NEW: Also track triggered but muted alerts so users can unmute from the hub
-let sharesAtTargetPriceMuted = [];
 // NEW: Remember last shown alert count to avoid icon flicker on reload while prices are loading (persisted)
 let lastKnownTargetCount = 0;
 try {
@@ -543,68 +574,8 @@ const formCompanyName = document.getElementById('formCompanyName'); // NEW: Comp
 const saveShareBtn = document.getElementById('saveShareBtn');
 const deleteShareBtn = document.getElementById('deleteShareBtn');
 const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
-// Centralized single-code snapshot handling
-let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
-async function updateAddFormLiveSnapshot(code) {
-    try {
-        if (!code || !GOOGLE_APPS_SCRIPT_URL || !addShareLivePriceDisplay) return;
-        const reqId = ++_latestAddFormSnapshotReq;
-        const upper = String(code).toUpperCase();
-        addShareLivePriceDisplay.dataset.loading = 'true';
-        // Lightweight loading indicator (optional)
-        addShareLivePriceDisplay.style.display = 'block';
-        addShareLivePriceDisplay.innerHTML = '<div class="mini-loading">Loading...</div>';
-        const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`);
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const data = await resp.json();
-        if (reqId !== _latestAddFormSnapshotReq) return; // stale
-        if (!Array.isArray(data) || data.length === 0) { addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">No price data.</p>'; return; }
-        let row = data.find(r => {
-            const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
-            return c && String(c).toUpperCase().trim() === upper;
-        }) || data[0];
-        if (row && row !== data[0] && DEBUG_MODE) logDebug('Snapshot: matched exact row for', upper);
-        if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode||row.Code).toUpperCase().trim() !== upper && DEBUG_MODE) {
-            logDebug('Snapshot: exact match not found, using first row', { requested: upper, first: row.ASXCode||row.Code });
-        }
-        const live = parseFloat(row.LivePrice ?? row['Live Price'] ?? row.live ?? row.price ?? row.Last ?? row.LastPrice ?? row['Last Price'] ?? row.LastTrade ?? row['Last Trade']);
-        const prev = parseFloat(row.PrevClose ?? row['Prev Close'] ?? row.prevClose ?? row.prev ?? row['Previous Close'] ?? row.Close ?? row['Last Close']);
-        const pe = parseFloat(row.PE ?? row['PE Ratio'] ?? row.pe);
-        const hi = parseFloat(row.High52 ?? row['High52'] ?? row['High 52'] ?? row['52WeekHigh'] ?? row['52 High']);
-        const lo = parseFloat(row.Low52 ?? row['Low52'] ?? row['Low 52'] ?? row['52WeekLow'] ?? row['52 Low']);
-        const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
-        const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
-        const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
-        // Guard against user switching code mid-flight
-        if (shareNameInput && shareNameInput.value.toUpperCase().trim() !== upper) {
-            if (DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: shareNameInput.value });
-            return;
-        }
-        addShareLivePriceDisplay.innerHTML = `
-            <div class="fifty-two-week-row">
-                <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
-                <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
-            </div>
-            <div class="live-price-main-row">
-                <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
-                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${formatAdaptivePrice(change)} (${formatAdaptivePercent(pct)}%)` : 'N/A'}</span>
-            </div>
-            <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? formatAdaptivePrice(pe) : 'N/A'}</span>
-            </div>`;
-        addShareLivePriceDisplay.style.display = 'block';
-        addShareLivePriceDisplay.removeAttribute('data-loading');
-    } catch (e) {
-        if (DEBUG_MODE) console.warn('Snapshot: failed for', code, e);
-        if (addShareLivePriceDisplay) {
-            addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">Price unavailable.</p>';
-            addShareLivePriceDisplay.style.display = 'block';
-            addShareLivePriceDisplay.removeAttribute('data-loading');
-        }
-    }
-}
 const shareNameInput = document.getElementById('shareName');
-// Removed manual Reference Price input; currentPrice now auto-captured
+const currentPriceInput = document.getElementById('currentPrice');
 const targetPriceInput = document.getElementById('targetPrice');
 const dividendAmountInput = document.getElementById('dividendAmount');
 const frankingCreditsInput = document.getElementById('frankingCredits');
@@ -628,9 +599,15 @@ function applyAsxButtonsState() {
     if (shouldShow) {
         asxCodeButtonsContainer.classList.add('expanded');
         asxCodeButtonsContainer.classList.remove('app-hidden');
+    asxCodeButtonsContainer.style.display = 'flex';
+    asxCodeButtonsContainer.style.overflowX = 'auto';
+    asxCodeButtonsContainer.style.webkitOverflowScrolling = 'touch';
+        asxCodeButtonsContainer.style.pointerEvents = 'auto';
         asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
     } else {
         asxCodeButtonsContainer.classList.remove('expanded');
+        asxCodeButtonsContainer.style.pointerEvents = 'none';
+        asxCodeButtonsContainer.style.display = 'none';
         asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
     }
     // Chevron visibility and state
@@ -657,17 +634,6 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
         try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
         applyAsxButtonsState();
         console.log('[ASX Toggle] Toggled. Expanded=', asxButtonsExpanded);
-        // Schedule padding adjustment after the CSS transition window
-        // Transition duration in CSS: 300-400ms; allow a buffer
-        setTimeout(adjustMainContentPadding, 450);
-        // A second safety call in case the first fires mid-transition
-        setTimeout(adjustMainContentPadding, 700);
-    });
-    // Also adjust precisely on transition end of the container
-    asxCodeButtonsContainer.addEventListener('transitionend', (ev) => {
-        if (ev.propertyName === 'max-height' || ev.propertyName === 'padding' || ev.propertyName === 'opacity') {
-            adjustMainContentPadding();
-        }
     });
 }
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
@@ -694,9 +660,6 @@ const modalFoolLink = document.getElementById('modalFoolLink');
 const modalListcorpLink = document.getElementById('modalListcorpLink'); // NEW: Reference for Listcorp link
 const modalCommSecLink = document.getElementById('modalCommSecLink');
 const commSecLoginMessage = document.getElementById('commSecLoginMessage');
-// NEW: Auto (read-only) fields in Other Details section of Share Form
-const autoEntryDateDisplay = document.getElementById('autoEntryDateDisplay');
-const autoReferencePriceDisplay = document.getElementById('autoReferencePriceDisplay');
 const dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
 const calcCloseButton = document.querySelector('.calc-close-button');
 const calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
@@ -707,7 +670,8 @@ const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
 const investmentValueSelect = document.getElementById('investmentValueSelect');
 const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
 const sortSelect = document.getElementById('sortSelect');
-// Legacy customDialogModal removed; toast system fully replaces it.
+const customDialogModal = document.getElementById('customDialogModal');
+const customDialogMessage = document.getElementById('customDialogMessage');
 const calculatorModal = document.getElementById('calculatorModal');
 const calculatorInput = document.getElementById('calculatorInput');
 const calculatorResult = document.getElementById('calculatorResult');
@@ -764,12 +728,6 @@ const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn
 // NEW: Target Direction Checkbox UI Elements
 const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
 const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
-// New Phase 1 segmented toggle buttons (UI-only)
-const targetIntentBuyBtn = document.getElementById('targetIntentBuyBtn');
-const targetIntentSellBtn = document.getElementById('targetIntentSellBtn');
-const targetDirAboveBtn = document.getElementById('targetDirAboveBtn');
-const targetDirBelowBtn = document.getElementById('targetDirBelowBtn');
-let userManuallyOverrodeDirection = false; // reset per form open
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
 const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
@@ -784,17 +742,6 @@ const searchModalCloseButton = document.querySelector('.search-close-button'); /
 // NEW: Global variable for storing loaded ASX code data from CSV
 let allAsxCodes = []; // { code: 'BHP', name: 'BHP Group Ltd' }
 let currentSelectedSuggestionIndex = -1; // For keyboard navigation in autocomplete
-let shareNameAutocompleteBound = false; // Prevent duplicate binding
-
-function initializeShareNameAutocomplete(force=false){
-    if (shareNameAutocompleteBound && !force) return;
-    if (!shareNameInput || !shareNameSuggestions) return;
-    // If already has an input listener tagged, skip unless force
-    if (shareNameInput.dataset.autocompleteBound && !force) return;
-    shareNameInput.dataset.autocompleteBound = '1';
-    shareNameAutocompleteBound = true;
-    // Listeners are already defined further below (conditional block). This function can serve as a future hook.
-}
 let currentSearchShareData = null; // Stores data of the currently displayed stock in search modal
 const splashKangarooIcon = document.getElementById('splashKangarooIcon');
 const splashSignInBtn = document.getElementById('splashSignInBtn');
@@ -818,43 +765,23 @@ function formatWithCommas(value) {
 
 // Global helpers for consistent numeric formatting across the UI
 function formatMoney(val, opts = {}) {
-    const { hideZero = false, decimals } = opts; // if decimals supplied explicitly, override adaptive logic
+    const { hideZero = false, decimals = 2 } = opts;
     if (val === null || val === undefined) return '';
     const n = Number(val);
     if (!isFinite(n)) return '';
     if (hideZero && n === 0) return '';
-    // Adaptive decimals: < 1 cent show 3 decimals (e.g., $0.005), otherwise 2.
-    const useDecimals = (typeof decimals === 'number') ? decimals : (Math.abs(n) < 0.01 && n !== 0 ? 3 : 2);
-    const fixed = n.toFixed(useDecimals);
+    const fixed = n.toFixed(decimals);
     const parts = fixed.split('.');
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return '$' + parts.join('.');
 }
 
 function formatPercent(val, opts = {}) {
-    const { maxDecimals = 2 } = opts; // allow specifying maximum decimals
+    const { decimals = 2 } = opts;
     if (val === null || val === undefined) return '';
     const n = Number(val);
     if (!isFinite(n)) return '';
-    // Show whole number when no fractional component (e.g., 100 instead of 100.00)
-    if (Math.abs(n % 1) < 1e-9) return n.toFixed(0) + '%';
-    return n.toFixed(maxDecimals) + '%';
-}
-
-// Lean wrappers for adaptive decimals outside of currency symbol contexts
-function formatAdaptivePrice(value) {
-    if (value === null || value === undefined || isNaN(value)) return '0.00';
-    const absVal = Math.abs(Number(value));
-    const decimals = absVal !== 0 && absVal < 0.01 ? 3 : 2;
-    return Number(value).toFixed(decimals);
-}
-function formatAdaptivePercent(pct) {
-    if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
-    const n = Number(pct);
-    const abs = Math.abs(n);
-    // Use 3 decimals for very small magnitudes (under 0.1%), else 2
-    const decimals = (abs > 0 && abs < 0.1) ? 3 : 2;
-    return n.toFixed(decimals);
+    return n.toFixed(decimals) + '%';
 }
 
 // Fallback for missing formatUserDecimalStrict (called in edit form population)
@@ -976,7 +903,7 @@ if (!sidebarOverlay) {
 
 const formInputs = [
     shareNameInput,
-    // currentPriceInput removed (auto mode)
+    currentPriceInput,
     targetPriceInput,
     dividendAmountInput,
     frankingCreditsInput,
@@ -1001,7 +928,7 @@ async function fetchLivePricesAndUpdateUI() {
     // You may have a function like showLoadingIndicator();
     
     // Call the newly updated live price fetch function
-    await fetchLivePrices({ cacheBust: true });
+    await fetchLivePrices();
 
     // Hide the loading state
     // You may have a function like hideLoadingIndicator();
@@ -1013,16 +940,17 @@ async function fetchLivePricesAndUpdateUI() {
  */
 async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
+    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID) && !(opts && opts.forceLiveFetch)) {
+        logDebug('Live Price: Skipped (cash view).');
+        window._livePricesLoaded = true;
+        hideSplashScreenIfReady();
+        return;
+    }
     try {
         // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
-    const baseUrl = typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' ? GOOGLE_APPS_SCRIPT_URL : (typeof appsScriptUrl !== 'undefined' ? appsScriptUrl : null);
-    if (!baseUrl) throw new Error('Apps Script URL not defined');
-    // Optional query params: cacheBust, stockCode support
-    const qs = new URLSearchParams();
-    if (opts && opts.cacheBust) qs.set('_ts', Date.now().toString());
-    if (opts && opts.stockCode) qs.set('stockCode', String(opts.stockCode).toUpperCase());
-    const url = qs.toString() ? (baseUrl + (baseUrl.includes('?') ? '&' : '?') + qs.toString()) : baseUrl;
-    const response = await fetch(url, { cache: 'no-store' }); // no-store to avoid stale cached 302 chain
+        const url = typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' ? GOOGLE_APPS_SCRIPT_URL : (typeof appsScriptUrl !== 'undefined' ? appsScriptUrl : null);
+        if (!url) throw new Error('Apps Script URL not defined');
+        const response = await fetch(url, { cache: 'no-store' }); // no-store to avoid stale cached 302 chain
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const data = await response.json();
         if (!Array.isArray(data)) {
@@ -1050,7 +978,7 @@ async function fetchLivePrices(opts = {}) {
             return null;
         };
 
-    data.forEach(item => {
+        data.forEach(item => {
             if (!item) return;
             const codeRaw = item.ASXCode || item.ASX_Code || item['ASX Code'] || item.Code || item.code;
             if (!codeRaw) return; // no code
@@ -1058,14 +986,8 @@ async function fetchLivePrices(opts = {}) {
             if (!code) return;
             if (needed && !needed.has(code)) { filtered++; return; }
 
-            const liveParsed = numOrNull(
-                item.LivePrice || item['Live Price'] || item.live || item.price ||
-                item.Last || item['Last Price'] || item.LastPrice || item['Last Trade'] || item.LastTrade
-            );
-            const prevParsed = numOrNull(
-                item.PrevClose || item['Prev Close'] || item.previous || item.prev || item.prevClose ||
-                item['Previous Close'] || item.Close || item['Last Close']
-            );
+            const liveParsed = numOrNull(item.LivePrice || item['Live Price'] || item.live || item.price);
+            const prevParsed = numOrNull(item.PrevClose || item['Prev Close'] || item.previous || item.prev || item.prevClose);
             const peParsed = numOrNull(item.PE || item['PE Ratio'] || item.pe);
             const high52Parsed = numOrNull(item.High52 || item['High52'] || item['High 52'] || item['52WeekHigh'] || item['52 High']);
             const low52Parsed = numOrNull(item.Low52 || item['Low52'] || item['Low 52'] || item['52WeekLow'] || item['52 Low']);
@@ -1165,74 +1087,6 @@ function setIconDisabled(element, isDisabled) {
     } else {
         element.classList.remove('is-disabled-icon');
     }
-}
-
-// Phase 2 helper: create or update a per-share alert document for the current user
-async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
-    if (!db || !currentUserId || !window.firestore) {
-        console.warn('Alerts: Firestore not available; skipping alert upsert.');
-        return;
-    }
-    // Collection path: artifacts/{appId}/users/{userId}/alerts
-    const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-    // We'll use a deterministic doc id per share to keep one alert document per share
-    const alertDocId = shareId; // 1:1 mapping; adjust if multiple alerts per share later
-    const alertDocRef = window.firestore.doc(alertsCol, alertDocId);
-
-    // Interpret UI intent and direction
-    // Intent: buy when direction is below; sell when direction is above (can extend later to explicit intent buttons)
-    const direction = (shareData && shareData.targetDirection) === 'above' ? 'above' : 'below';
-    let intent = 'buy';
-    try {
-        const buyActive = !!(typeof targetIntentBuyBtn !== 'undefined' && targetIntentBuyBtn && targetIntentBuyBtn.classList.contains('is-active'));
-        const sellActive = !!(typeof targetIntentSellBtn !== 'undefined' && targetIntentSellBtn && targetIntentSellBtn.classList.contains('is-active'));
-        intent = buyActive && !sellActive ? 'buy' : (sellActive && !buyActive ? 'sell' : (direction === 'above' ? 'sell' : 'buy'));
-    } catch(_) {
-        intent = direction === 'above' ? 'sell' : 'buy';
-    }
-
-    const payload = {
-        shareId: shareId,
-        shareCode: String(shareCode || '').toUpperCase(),
-        userId: currentUserId,
-        appId: currentAppId,
-        intent: intent, // 'buy' | 'sell'
-        direction: direction, // 'above' | 'below'
-        targetPrice: (typeof shareData?.targetPrice === 'number' && !isNaN(shareData.targetPrice)) ? shareData.targetPrice : null,
-        // createdAt added below only when isNew to avoid undefined writes
-        updatedAt: window.firestore.serverTimestamp(),
-        enabled: true
-    };
-
-    if (isNew) {
-        payload.createdAt = window.firestore.serverTimestamp();
-    }
-
-    // Compute initial targetHit status immediately so the listener can pick it up
-    try {
-        const codeUpper = String(shareCode || '').toUpperCase();
-        const lp = (typeof livePrices === 'object' && livePrices) ? livePrices[codeUpper] : null;
-        const latestLive = (lp && lp.live !== null && !isNaN(lp.live)) ? lp.live
-            : (lp && lp.lastLivePrice !== null && !isNaN(lp.lastLivePrice)) ? lp.lastLivePrice
-            : null;
-        const fallbackRef = (typeof shareData?.currentPrice === 'number' && !isNaN(shareData.currentPrice)) ? shareData.currentPrice : null;
-        const current = (latestLive !== null) ? latestLive : (fallbackRef !== null ? fallbackRef : null);
-        const tPrice = (typeof payload.targetPrice === 'number' && !isNaN(payload.targetPrice)) ? payload.targetPrice : null;
-        let isHit = false;
-        if (current !== null && tPrice !== null) {
-            isHit = direction === 'above' ? (current >= tPrice) : (current <= tPrice);
-        }
-        payload.targetHit = !!isHit;
-        payload.lastEvaluatedAt = window.firestore.serverTimestamp();
-    } catch (e) {
-        console.warn('Alerts: Failed to compute initial targetHit; defaulting to false.', e);
-        payload.targetHit = false;
-        payload.lastEvaluatedAt = window.firestore.serverTimestamp();
-    }
-
-    // Use setDoc with merge to avoid overwriting createdAt when updating
-    await window.firestore.setDoc(alertDocRef, payload, { merge: true });
-    logDebug('Alerts: Upserted alert for ' + shareCode + ' with intent ' + intent + ' and direction ' + direction + '.');
 }
 
 // Centralized Modal Closing Function
@@ -1368,95 +1222,28 @@ function closeModals() {
     }
 }
 
-// Toast-based lightweight alert; keeps API but renders a toast instead of blocking modal
-function showCustomAlert(message, duration = 3000, type = 'info') {
-    // Enforce minimum on-screen time of 3000ms unless explicitly sticky (0)
-    const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
-    try {
-        const container = document.getElementById('toastContainer');
-        if (container) {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.setAttribute('role', 'status');
-            toast.innerHTML = `<span class="icon"></span><div class="message"></div><button class="close" aria-label="Dismiss">×</button>`;
-            toast.querySelector('.message').textContent = message;
-            const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
-            toast.querySelector('.close').addEventListener('click', remove);
-            container.appendChild(toast);
-            requestAnimationFrame(()=> toast.classList.add('show'));
-            if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
-            return;
-        }
-    } catch (e) { console.warn('Toast render failed, using alert fallback.', e); }
-    // Minimal fallback
-    try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
-}
+// Custom Dialog (Alert) Function
+function showCustomAlert(message, duration = 1000) {
+    const confirmBtn = document.getElementById('customDialogConfirmBtn');
+    const cancelBtn = document.getElementById('customDialogCancelBtn');
+    const dialogButtonsContainer = document.querySelector('#customDialogModal .custom-dialog-buttons');
 
-// ToastManager: centralized API
-const ToastManager = (() => {
-    const container = () => document.getElementById('toastContainer');
-    const makeToast = (opts) => {
-        const root = container();
-        if (!root) return null;
-        const { message, type = 'info', duration = 2000, actions = [] } = opts || {};
-        // Enforce minimum 3000ms for auto-dismiss unless explicitly sticky (0)
-        const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
-        const iconHTML = `<span class="icon"></span>`;
-        const msgHTML = `<div class="message"></div>`;
-        const actionsHTML = actions.length ? `<div class="actions">${actions.map(a=>`<button class=\"btn ${a.variant||''}\">${a.label}</button>`).join('')}</div>` : '';
-        const closeHTML = `<button class="close" aria-label="Dismiss">×</button>`;
-        toast.innerHTML = `${iconHTML}${msgHTML}${actionsHTML}${closeHTML}`;
-        toast.querySelector('.message').textContent = message || '';
-        const closeBtn = toast.querySelector('.close');
-        const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
-        closeBtn.addEventListener('click', remove);
-        // Wire actions
-        const actionBtns = toast.querySelectorAll('.actions .btn');
-        actionBtns.forEach((btn, idx) => {
-            const cfg = actions[idx];
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                try { cfg && typeof cfg.onClick === 'function' && cfg.onClick(); } finally { remove(); }
-            });
-        });
-        root.appendChild(toast);
-        requestAnimationFrame(()=> toast.classList.add('show'));
-        if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
-        return { el: toast, close: remove };
-    };
-    return {
-    info: (message, duration=3000) => makeToast({ message, type:'info', duration }),
-    success: (message, duration=3000) => makeToast({ message, type:'success', duration }),
-    error: (message, duration=3000) => makeToast({ message, type:'error', duration }),
-        confirm: (message, { confirmText='Yes', cancelText='No', onConfirm, onCancel } = {}) => {
-            return makeToast({
-                message,
-                type: 'info',
-                duration: 0, // sticky until action
-                actions: [
-                    { label: confirmText, variant: 'primary', onClick: () => { onConfirm && onConfirm(true); } },
-                    { label: cancelText, variant: 'danger', onClick: () => { onCancel && onCancel(false); } }
-                ]
-            });
-        }
-    };
-})();
+    logDebug('showCustomAlert: confirmBtn found: ' + !!confirmBtn + ', cancelBtn found: ' + !!cancelBtn + ', dialogButtonsContainer found: ' + !!dialogButtonsContainer);
 
-// Migrate confirm dialog to toast confirm (non-blocking UX)
-function showCustomConfirm(message, callback) {
-    const res = ToastManager.confirm(message, {
-        confirmText: 'Yes',
-        cancelText: 'No',
-        onConfirm: () => callback(true),
-        onCancel: () => callback(false)
-    });
-    if (!res) {
-        // Fallback to native confirm if container missing
-        callback(window.confirm(message));
+    if (!customDialogModal || !customDialogMessage || !confirmBtn || !cancelBtn || !dialogButtonsContainer) {
+        console.error('Custom dialog elements not found. Cannot show alert.');
+        console.log('ALERT (fallback): ' + message);
+        return;
     }
+    customDialogMessage.textContent = message;
+
+    dialogButtonsContainer.style.display = 'none'; // Explicitly hide the container
+    logDebug('showCustomAlert: dialogButtonsContainer display set to: ' + dialogButtonsContainer.style.display);
+
+    showModal(customDialogModal);
+    if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); }
+    autoDismissTimeout = setTimeout(() => { hideModal(customDialogModal); autoDismissTimeout = null; }, duration);
+    logDebug('Alert: Showing alert: "' + message + '"');
 }
 
 // Date Formatting Helper Functions (Australian Style)
@@ -1493,7 +1280,7 @@ function getShareDisplayData(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-    peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A';
+    peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A';
     high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A';
     low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A';
 
@@ -1504,13 +1291,13 @@ function getShareDisplayData(share) {
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             }
@@ -1533,93 +1320,6 @@ function getShareDisplayData(share) {
     };
 }
 // --- UI State Management Functions ---
-
-// Accordion (Share Form) Initialization
-function initShareFormAccordion(force = false) {
-    const root = document.getElementById('shareFormAccordion');
-    if (!root) return;
-    if (root.dataset.accordionInit && !force) return; // idempotent
-    const sections = root.querySelectorAll('.accordion-section');
-    sections.forEach(sec => {
-        const isCore = sec.getAttribute('data-section') === 'core';
-        if (isCore) sec.classList.add('open'); else sec.classList.remove('open');
-        const toggleBtn = sec.querySelector('.accordion-toggle');
-        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', String(isCore));
-    });
-    // Event delegation for reliability
-    root.addEventListener('click', (e) => {
-        const header = e.target.closest('.accordion-toggle');
-        if (!header || !root.contains(header)) return;
-        e.preventDefault();
-        const section = header.closest('.accordion-section');
-        if (!section) return;
-        toggleAccordionSection(section);
-    });
-    root.dataset.accordionInit = 'true';
-}
-
-// Watchlist pulse guidance
-function updateWatchlistPulse(isNewShareContext = false) {
-    if (!shareWatchlistDropdownBtn || !shareWatchlistSelect) return;
-    const selected = Array.from(shareWatchlistCheckboxes?.querySelectorAll('input[type="checkbox"]:checked') || []).length > 0 || (shareWatchlistSelect.value && shareWatchlistSelect.value !== '');
-    if (isNewShareContext && !selected) {
-        shareWatchlistDropdownBtn.classList.add('watchlist-pulse');
-    } else {
-        shareWatchlistDropdownBtn.classList.remove('watchlist-pulse');
-    }
-}
-
-// Hook into existing populateShareWatchlistSelect to reapply pulse after population
-const originalPopulateShareWatchlistSelect = typeof populateShareWatchlistSelect === 'function' ? populateShareWatchlistSelect : null;
-if (originalPopulateShareWatchlistSelect) {
-    window.populateShareWatchlistSelect = function(currentShareWatchlistId = null, isNewShare = true) {
-        const res = originalPopulateShareWatchlistSelect(currentShareWatchlistId, isNewShare);
-        // Defer to ensure DOM checkboxes inserted
-        setTimeout(() => updateWatchlistPulse(isNewShare), 30);
-        return res;
-    };
-}
-
-// Monitor checkbox changes
-document.addEventListener('change', (e) => {
-    if (!shareWatchlistDropdownBtn) return;
-    if (e.target && shareWatchlistCheckboxes && shareWatchlistCheckboxes.contains(e.target)) {
-        updateWatchlistPulse(true); // assume add flow while editing selection
-    }
-});
-
-// Remove pulse once dropdown is opened and a selection likely imminent
-if (shareWatchlistDropdownBtn) {
-    shareWatchlistDropdownBtn.addEventListener('click', () => {
-        // Brief delay in case menu opens and user immediately picks
-        setTimeout(() => updateWatchlistPulse(true), 500);
-    });
-}
-
-function toggleAccordionSection(section) {
-    const toggleBtn = section.querySelector('.accordion-toggle');
-    if (!toggleBtn) return;
-    const opening = !section.classList.contains('open');
-    section.classList.toggle('open');
-    toggleBtn.setAttribute('aria-expanded', String(opening));
-    if (opening && window.innerWidth < 650) {
-        setTimeout(() => {
-            try { toggleBtn.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
-        }, 30);
-    }
-}
-
-// Initialize accordion when DOM ready; also on modal open via observer fallback
-document.addEventListener('DOMContentLoaded', () => {
-    initShareFormAccordion();
-});
-
-// MutationObserver safety net: if form content is replaced dynamically later
-const accordionObserver = new MutationObserver(() => {
-    const root = document.getElementById('shareFormAccordion');
-    if (root && !root.dataset.accordionInit) initShareFormAccordion(true);
-});
-try { accordionObserver.observe(document.body, { childList: true, subtree: true }); } catch(e) {}
 
 /**
  * Adds a single share to the desktop table view.
@@ -1690,9 +1390,9 @@ function addShareToTable(share) {
                     const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
                     const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
                     if (frankingCredits > 0 && frankedYield > 0) {
-                        return formatAdaptivePercent(frankedYield) + '% (F)';
+                        return frankedYield.toFixed(2) + '% (F)';
                     } else if (unfrankedYield > 0) {
-                        return formatAdaptivePercent(unfrankedYield) + '% (U)';
+                        return unfrankedYield.toFixed(2) + '% (U)';
                     }
                     return '';
                 })()
@@ -1703,10 +1403,19 @@ function addShareToTable(share) {
     // Add long press / context menu for desktop
     let touchStartTime = 0;
     row.addEventListener('touchstart', (e) => {
-        // Mobile long-hold disabled intentionally: do nothing special
         touchStartTime = Date.now();
-        selectedElementForTap = row;
-    }, { passive: true });
+        selectedElementForTap = row; // Store the element that started the touch
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+
+        longPressTimer = setTimeout(() => {
+            if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
+                selectShare(share.id); // Select the share first
+                showContextMenu(e, share.id);
+                e.preventDefault(); // Prevent default browser context menu
+            }
+        }, LONG_PRESS_THRESHOLD);
+    }, { passive: false });
 
     row.addEventListener('touchmove', (e) => {
         const currentX = e.touches[0].clientX;
@@ -1773,25 +1482,25 @@ function addShareToMobileCards(share) {
     if (isMarketOpen) {
             // Show live data if market is open, or if market is closed but toggle is ON
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
+                displayLivePrice = '$' + currentLivePrice.toFixed(2);
             }
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : ''); // Set class for card
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             }
         } else {
             // Market closed and toggle is OFF, show zero change
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
             cardPriceChangeClass = ''; // No tint/line for neutral or market closed
@@ -1820,23 +1529,23 @@ function addShareToMobileCards(share) {
     if (isMarketOpen) {
             // Show live data if market is open, or if market is closed but toggle is ON
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
+                displayLivePrice = '$' + currentLivePrice.toFixed(2);
             }
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         } else {
             // Market closed and toggle is OFF, show zero change
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
         }
@@ -1859,7 +1568,7 @@ function addShareToMobileCards(share) {
             </div>
             ${companyName ? `<p class="modal-company-name-display" style="margin-top: 2px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
             <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
+                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
             </div>
         </div>
     <p class="data-row"><span class="label-text">Reference Price:</span><span class="data-value">${formatMoney(Number(share.currentPrice), { hideZero: true })}</span></p>
@@ -1890,9 +1599,9 @@ function addShareToMobileCards(share) {
                     const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
 
                     if (frankingCredits > 0 && frankedYield > 0) {
-                        return formatAdaptivePercent(frankedYield) + '% (Franked)';
+                        return frankedYield.toFixed(2) + '% (Franked)'; // Display franked yield with (Franked)
                     } else if (unfrankedYield > 0) {
-                        return formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
+                        return unfrankedYield.toFixed(2) + '% (Unfranked)'; // Display unfranked yield with (Unfranked)
                     }
                     return ''; // No valid yield or yield is 0, display empty string
                 })()
@@ -1909,11 +1618,20 @@ function addShareToMobileCards(share) {
 
     // Add long press / context menu for mobile
     let touchStartTime = 0;
-    card.addEventListener('touchstart', () => {
-        // Long-hold disabled
+    card.addEventListener('touchstart', (e) => {
         touchStartTime = Date.now();
-        selectedElementForTap = card;
-    }, { passive: true });
+        selectedElementForTap = card; // Store the element that started the touch
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+
+        longPressTimer = setTimeout(() => {
+            if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
+                selectShare(share.id); // Select the share first
+                showContextMenu(e, share.id);
+                e.preventDefault(); // Prevent default browser context menu
+            }
+        }, LONG_PRESS_THRESHOLD);
+    }, { passive: false });
 
     card.addEventListener('touchmove', (e) => {
         const currentX = e.touches[0].clientX;
@@ -2031,21 +1749,21 @@ function updateOrCreateShareTableRow(share) {
 
     if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
+                displayLivePrice = '$' + currentLivePrice.toFixed(2);
             }
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         } else {
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
         }
@@ -2064,9 +1782,9 @@ function updateOrCreateShareTableRow(share) {
         const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
         const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
         if (frankingCredits > 0 && frankedYield > 0) {
-            return formatAdaptivePercent(frankedYield) + '% (F)';
+            return frankedYield.toFixed(2) + '% (F)';
         } else if (unfrankedYield > 0) {
-            return formatAdaptivePercent(unfrankedYield) + '% (U)';
+            return unfrankedYield.toFixed(2) + '% (U)';
         }
         return ''; // No valid yield or yield is 0, display empty string
     })();
@@ -2117,10 +1835,40 @@ function updateOrCreateShareMobileCard(share) {
             showShareDetails();
         });
 
-    // Mobile long-press disabled: we intentionally do NOT attach context-menu touch handlers.
-    // Simple tap already handled by click listener above; no-op touch listeners keep scroll smooth.
-    card.addEventListener('touchstart', () => { selectedElementForTap = card; }, { passive: true });
-    card.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
+        let touchStartTime = 0;
+        card.addEventListener('touchstart', (e) => {
+            touchStartTime = Date.now();
+            selectedElementForTap = card;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+
+            longPressTimer = setTimeout(() => {
+                if (Date.now() - touchStartTime >= LONG_PRESS_THRESHOLD) {
+                    selectShare(share.id);
+                    showContextMenu(e, share.id);
+                    e.preventDefault();
+                }
+            }, LONG_PRESS_THRESHOLD);
+        }, { passive: false });
+
+        card.addEventListener('touchmove', (e) => {
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const dist = Math.sqrt(Math.pow(currentX - touchStartX, 2) + Math.pow(currentY - touchStartY, 2));
+            if (dist > TOUCH_MOVE_THRESHOLD) {
+                clearTimeout(longPressTimer);
+                touchStartTime = 0;
+            }
+        });
+
+        card.addEventListener('touchend', () => {
+            clearTimeout(longPressTimer);
+            if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === card) {
+                // Short tap handled by click event
+            }
+            touchStartTime = 0;
+            selectedElementForTap = null;
+        });
 
         mobileShareCardsContainer.appendChild(card); // Append new cards at the end, sorting will reorder virtually
         logDebug('Mobile Cards: Created new card for share ' + share.shareName + '.');
@@ -2149,46 +1897,43 @@ function updateOrCreateShareMobileCard(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-        if (isMarketOpen) {
-                if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                    displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
-                }
-                if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
-                    const change = currentLivePrice - previousClosePrice;
-                    const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
-                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
-                } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                    const change = lastFetchedLive - lastFetchedPrevClose;
-                    const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
-                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
-                }
-            } else {
-                displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
-                if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                    const change = lastFetchedLive - lastFetchedPrevClose;
-                    const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
-                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                } else {
-                    displayPriceChange = '0.00 (0.00%)';
-                    priceClass = 'neutral';
-                }
-                cardPriceChangeClass = '';
+    if (isMarketOpen) {
+            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                displayLivePrice = '$' + currentLivePrice.toFixed(2);
             }
+            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                const change = currentLivePrice - previousClosePrice;
+                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+            }
+        } else {
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+            } else {
+                displayPriceChange = '0.00 (0.00%)';
+                priceClass = 'neutral';
+            }
+            cardPriceChangeClass = '';
+        }
     }
 
     // Apply card-specific price change class
     // Remove previous price change classes before adding current one
-    card.classList.remove('positive-change-card', 'negative-change-card', 'neutral');
+    card.classList.remove('positive-change-card', 'negative-change-card');
     if (cardPriceChangeClass) {
         card.classList.add(cardPriceChangeClass);
-    } else if (priceClass === 'neutral') {
-        // Tag neutral cards for muted coffee fill styling
-        card.classList.add('neutral');
     }
 
     const dividendAmount = Number(share.dividendAmount) || 0;
@@ -2204,9 +1949,9 @@ function updateOrCreateShareMobileCard(share) {
         const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
         const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
         if (frankingCredits > 0 && frankedYield > 0) {
-            return formatAdaptivePercent(frankedYield) + '% (Franked)';
+            return frankedYield.toFixed(2) + '% (Franked)';
         } else if (unfrankedYield > 0) {
-            return formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
+            return unfrankedYield.toFixed(2) + '% (Unfranked)';
         }
         return ''; // No valid yield or yield is 0, display empty string
     })();
@@ -2229,11 +1974,11 @@ function updateOrCreateShareMobileCard(share) {
             </div>
             ${companyName ? `<p class="modal-company-name-display" style="margin-top: 2px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
             <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
+                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
             </div>
         </div>
-    <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
-    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.targetPrice))}</span></p>
+        <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</span></p>
+        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
@@ -2301,10 +2046,6 @@ function showModal(modalElement) {
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (scrollableContent) {
             scrollableContent.scrollTop = 0;
-        }
-        // Defensive: ensure autocomplete listeners intact when opening Add Share form
-        if (modalElement.id === 'shareFormSection') {
-            try { if (typeof initializeShareNameAutocomplete === 'function') initializeShareNameAutocomplete(true); } catch(_) {}
         }
         logDebug('Modal: Showing modal: ' + modalElement.id);
     }
@@ -2481,11 +2222,6 @@ function clearForm() {
         addShareLivePriceDisplay.style.display = 'none';
         addShareLivePriceDisplay.innerHTML = '';
     }
-    // Reset auto displays in Other Details
-    try {
-        if (autoEntryDateDisplay) { autoEntryDateDisplay.textContent = 'Auto when saved'; autoEntryDateDisplay.classList.add('ghosted-text'); }
-        if (autoReferencePriceDisplay) { autoReferencePriceDisplay.textContent = 'Auto when saved'; autoReferencePriceDisplay.classList.add('ghosted-text'); }
-    } catch(_) {}
     selectedShareDocId = null;
     originalShareData = null; // IMPORTANT: Reset original data to prevent auto-save of cancelled edits
     if (deleteShareBtn) {
@@ -2499,15 +2235,6 @@ function clearForm() {
     }
     setIconDisabled(saveShareBtn, true); // Save button disabled on clear
     logDebug('Form: Form fields cleared and selectedShareDocId reset. saveShareBtn disabled.');
-    // Reset auto details read-only placeholders
-    if (autoEntryDateDisplay) {
-        autoEntryDateDisplay.textContent = 'Auto when saved';
-        autoEntryDateDisplay.classList.add('ghosted-text');
-    }
-    if (autoReferencePriceDisplay) {
-        autoReferencePriceDisplay.textContent = 'Auto when saved';
-        autoReferencePriceDisplay.classList.add('ghosted-text');
-    }
 }
 
 /**
@@ -2628,49 +2355,69 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         }
     });
 
-    // Build enhanced toggle list
-    if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
-        shareWatchlistEnhanced.innerHTML = '';
-        const opts = Array.from(shareWatchlistSelect.options).filter(o => o.value !== '' && o.value !== CASH_BANK_WATCHLIST_ID);
-        const selectedSet = new Set(preselectedIds.length ? preselectedIds : (selectedOptionId ? [selectedOptionId] : []));
-        opts.forEach(o => {
-            const item = document.createElement('div');
-            item.className = 'watchlist-enhanced-item';
-            const checked = selectedSet.has(o.value);
-            item.innerHTML = `
-                <span class="watchlist-enhanced-name">${o.textContent || o.value}</span>
-                <label class="watchlist-toggle" aria-label="Toggle ${o.textContent || o.value}">
-                    <input type="checkbox" value="${o.value}" ${checked ? 'checked' : ''}>
-                    <span class="watchlist-toggle-track"><span class="watchlist-toggle-thumb"></span></span>
-                </label>`;
-            const input = item.querySelector('input');
-            input.addEventListener('change', () => {
-                const toggled = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
-                Array.from(shareWatchlistSelect.options).forEach(opt => { opt.selected = toggled.includes(opt.value); });
-                shareWatchlistSelect.value = toggled[0] || '';
+    // Build checkbox UI list reflecting the same options
+    if (shareWatchlistCheckboxes) {
+        // Clear existing
+        shareWatchlistCheckboxes.innerHTML = '';
+        const makeItem = (id, label) => {
+            const wrapper = document.createElement('label');
+            wrapper.className = 'checkbox-label';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'modern-checkbox watchlist-checkbox';
+            cb.value = id;
+            cb.checked = preselectedIds.length > 0 ? preselectedIds.includes(id) : (id === selectedOptionId && !!selectedOptionId);
+            cb.addEventListener('change', () => {
+                // Sync to hidden select
+                const vals = Array.from(shareWatchlistCheckboxes.querySelectorAll('input.watchlist-checkbox:checked')).map(x => x.value);
+                Array.from(shareWatchlistSelect.options).forEach(opt => { opt.selected = vals.includes(opt.value); });
+                // Legacy single-select value fallback for save paths reading .value
+                if (vals.length > 0) {
+                    shareWatchlistSelect.value = vals[0];
+                } else {
+                    shareWatchlistSelect.value = '';
+                }
+                // Update dropdown button label and collapse after selection for compact UX
                 updateWatchlistDropdownButton();
                 checkFormDirtyState();
             });
-            shareWatchlistEnhanced.appendChild(item);
+            wrapper.appendChild(cb);
+            const text = document.createTextNode(' ' + label);
+            wrapper.appendChild(text);
+            return wrapper;
+        };
+        // Recreate list in same order as select (skip disabled placeholder)
+        const opts = Array.from(shareWatchlistSelect.options).filter(o => o.value !== '');
+        opts.forEach(o => {
+            // Skip any cashBank option defensively
+            if (o.value === CASH_BANK_WATCHLIST_ID) return;
+            shareWatchlistCheckboxes.appendChild(makeItem(o.value, o.textContent || o.innerText || o.value));
         });
     }
 
     // Initialize dropdown button label/state
     if (shareWatchlistDropdownBtn) {
         updateWatchlistDropdownButton();
-        shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
+        shareWatchlistDropdownBtn.setAttribute('aria-expanded', 'false');
+        // Toggle panel like a dropdown
         shareWatchlistDropdownBtn.onclick = (e) => {
             e.stopPropagation();
-            if (!shareWatchlistEnhanced) return;
-            const isOpen = shareWatchlistEnhanced.style.display === 'block';
-            shareWatchlistEnhanced.style.display = isOpen ? 'none' : 'block';
-            shareWatchlistDropdownBtn.setAttribute('aria-expanded', String(!isOpen));
+            const isOpen = !shareWatchlistCheckboxes.classList.contains('app-hidden');
+            if (isOpen) {
+                shareWatchlistCheckboxes.classList.add('app-hidden');
+                shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
+            } else {
+                shareWatchlistCheckboxes.classList.remove('app-hidden');
+                shareWatchlistDropdownBtn.setAttribute('aria-expanded','true');
+                // Optional: position under button if needed via CSS
+            }
         };
+        // Close when clicking outside
         document.addEventListener('click', (evt) => {
-            if (!shareWatchlistEnhanced || shareWatchlistEnhanced.style.display !== 'block') return;
-            const within = shareWatchlistEnhanced.contains(evt.target) || shareWatchlistDropdownBtn.contains(evt.target);
+            if (!shareWatchlistCheckboxes || shareWatchlistCheckboxes.classList.contains('app-hidden')) return;
+            const within = shareWatchlistCheckboxes.contains(evt.target) || shareWatchlistDropdownBtn.contains(evt.target);
             if (!within) {
-                shareWatchlistEnhanced.style.display='none';
+                shareWatchlistCheckboxes.classList.add('app-hidden');
                 shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
             }
         });
@@ -2678,9 +2425,9 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
 
     // Listen for native select change too (in case of programmatic changes)
     shareWatchlistSelect.addEventListener('change', () => {
-        if (!shareWatchlistEnhanced) return;
+        if (!shareWatchlistCheckboxes) return;
         const selected = Array.from(shareWatchlistSelect.options).filter(o => o.selected).map(o => o.value);
-        shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = selected.includes(cb.value); });
+        shareWatchlistCheckboxes.querySelectorAll('input.watchlist-checkbox').forEach(cb => { cb.checked = selected.includes(cb.value); });
         updateWatchlistDropdownButton();
         checkFormDirtyState();
     });
@@ -2688,16 +2435,19 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
 
 function updateWatchlistDropdownButton() {
     if (!shareWatchlistDropdownBtn) return;
-    let selected = [];
-    if (shareWatchlistEnhanced) {
-        selected = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
+    const selectedCbs = shareWatchlistCheckboxes ? Array.from(shareWatchlistCheckboxes.querySelectorAll('input.watchlist-checkbox:checked')) : [];
+    if (selectedCbs.length === 0) {
+        shareWatchlistDropdownBtn.textContent = 'Select a Watchlist';
+        return;
     }
-    if (selected.length === 0) { shareWatchlistDropdownBtn.textContent = 'Select Watchlists'; return; }
-    const names = selected.map(id => {
+    // Prefer showing up to 2 names then a count
+    const names = selectedCbs.map(cb => {
+        const id = cb.value;
         const opt = Array.from(shareWatchlistSelect.options).find(o => o.value === id);
         return opt ? (opt.textContent || opt.innerText || id) : id;
     });
-    shareWatchlistDropdownBtn.textContent = names.length <=2 ? names.join(', ') : names.slice(0,2).join(', ') + ' +' + (names.length-2);
+    const display = names.length <= 2 ? names.join(', ') : (names.slice(0,2).join(', ') + ` +${names.length-2}`);
+    shareWatchlistDropdownBtn.textContent = display;
 }
 
 function showEditFormForSelectedShare(shareIdToEdit = null) {
@@ -2726,27 +2476,15 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     }
 
     if (shareNameInput) shareNameInput.value = shareToEdit.shareName || '';
-    // Removed setting manual currentPrice input (field no longer present)
+    if (currentPriceInput) currentPriceInput.value = Number(shareToEdit.currentPrice) !== null && !isNaN(Number(shareToEdit.currentPrice)) ? formatUserDecimalStrict(shareToEdit.currentPrice) : '';
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimalStrict(shareToEdit.targetPrice) : '';
     
-    // Reset toggle state helpers
-    userManuallyOverrodeDirection = false;
     // Set the correct state for the new target direction checkboxes
     if (targetAboveCheckbox && targetBelowCheckbox) {
         // Default to 'below' if not set
         const savedTargetDirection = shareToEdit.targetDirection || 'below';
         targetAboveCheckbox.checked = (savedTargetDirection === 'above');
         targetBelowCheckbox.checked = (savedTargetDirection === 'below');
-        // Sync segmented buttons to match saved state
-        try {
-            const isAbove = (savedTargetDirection === 'above');
-            if (targetDirAboveBtn && targetDirBelowBtn) {
-                targetDirAboveBtn.classList.toggle('is-active', isAbove);
-                targetDirAboveBtn.setAttribute('aria-pressed', String(isAbove));
-                targetDirBelowBtn.classList.toggle('is-active', !isAbove);
-                targetDirBelowBtn.setAttribute('aria-pressed', String(!isAbove));
-            }
-        } catch(_) {}
     }
 
     if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? formatUserDecimalStrict(shareToEdit.dividendAmount) : '';
@@ -2791,30 +2529,6 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     setIconDisabled(saveShareBtn, true); // Save button disabled initially for editing
     logDebug('showEditFormForSelectedShare: saveShareBtn initially disabled for dirty check.');
 
-    // Populate read-only auto fields (Entry Date & Reference Price)
-    try {
-        if (autoEntryDateDisplay) {
-            const ed = shareToEdit.entryDate ? formatDate(shareToEdit.entryDate) : '';
-            if (ed) {
-                autoEntryDateDisplay.textContent = ed;
-                autoEntryDateDisplay.classList.remove('ghosted-text');
-            } else {
-                autoEntryDateDisplay.textContent = 'Auto when saved';
-                autoEntryDateDisplay.classList.add('ghosted-text');
-            }
-        }
-        if (autoReferencePriceDisplay) {
-            const rp = (shareToEdit.currentPrice !== undefined && shareToEdit.currentPrice !== null && !isNaN(Number(shareToEdit.currentPrice))) ? Number(shareToEdit.currentPrice) : null;
-            if (rp !== null) {
-                autoReferencePriceDisplay.textContent = formatMoney(rp);
-                autoReferencePriceDisplay.classList.remove('ghosted-text');
-            } else {
-                autoReferencePriceDisplay.textContent = 'Auto when saved';
-                autoReferencePriceDisplay.classList.add('ghosted-text');
-            }
-        }
-    } catch(e) { console.warn('Auto Details: Failed to populate auto fields', e); }
-
     showModal(shareFormSection);
     shareNameInput.focus();
     logDebug('Form: Opened edit form for share: ' + shareToEdit.shareName + ' (ID: ' + selectedShareDocId + ')');
@@ -2846,7 +2560,7 @@ function getCurrentFormData() {
 
     return {
         shareName: shareNameInput?.value?.trim().toUpperCase() || '',
-    currentPrice: null, // Will be auto-derived when saving new/updated share
+        currentPrice: parseFloat(currentPriceInput?.value),
         targetPrice: parseFloat(targetPriceInput?.value),
         // UPDATED: Get targetDirection from the new checkboxes
         targetDirection: targetAboveCheckbox?.checked ? 'above' : 'below',
@@ -2923,17 +2637,9 @@ function checkFormDirtyState() {
     const currentData = getCurrentFormData();
     const isShareNameValid = currentData.shareName.trim() !== '';
     const isWatchlistSelected = (() => {
-        // Prefer the Phase 1 checkbox UI if present
-        const checkedCbs = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
-        if (checkedCbs && checkedCbs.length > 0) return true;
-
-        // Fallback to native select state
         if (!shareWatchlistSelect) return false;
         if (shareWatchlistSelect.multiple) {
-            // Some browsers don’t populate selectedOptions reliably when updated programmatically; check option.selected
-            const anySelected = Array.from(shareWatchlistSelect.options || []).some(o => o.selected && o.value && o.value !== '');
-            if (anySelected) return true;
-            return !!(shareWatchlistSelect.value && shareWatchlistSelect.value !== '');
+            return Array.from(shareWatchlistSelect.selectedOptions || []).some(o => o.value && o.value !== '');
         }
         return shareWatchlistSelect.value !== '';
     })();
@@ -2986,12 +2692,6 @@ async function saveShareData(isSilent = false) {
     // Source of truth: checkbox UI; keep hidden select for legacy fallback
     const selectedWatchlistIdForSave = shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null;
     const selectedWatchlistIdsForSave = (() => {
-        // Prefer enhanced toggle list
-        if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
-            const toggled = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(x => x.value).filter(Boolean);
-            if (toggled.length > 0) return toggled;
-        }
-        // Fallback legacy checkbox container
         const cbs = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
         const vals = Array.from(cbs).map(cb => cb.value).filter(Boolean);
         if (vals.length > 0) return vals;
@@ -3011,16 +2711,7 @@ async function saveShareData(isSilent = false) {
     }
 
 
-    // Auto-capture live or fallback current price (no manual input)
-    let currentPrice = NaN;
-    try {
-        const liveData = livePrices[shareName.toUpperCase()];
-        if (liveData && typeof liveData.live === 'number' && !isNaN(liveData.live)) {
-            currentPrice = liveData.live;
-        } else if (liveData && typeof liveData.lastLivePrice === 'number' && !isNaN(liveData.lastLivePrice)) {
-            currentPrice = liveData.lastLivePrice;
-        }
-    } catch(_) {}
+    const currentPrice = parseFloat(currentPriceInput.value);
     const targetPrice = parseFloat(targetPriceInput.value);
     const dividendAmount = parseFloat(dividendAmountInput.value);
     const frankingCredits = parseFloat(frankingCreditsInput.value);
@@ -3040,7 +2731,7 @@ async function saveShareData(isSilent = false) {
 
     const shareData = {
         shareName: shareName,
-        currentPrice: isNaN(currentPrice) ? null : currentPrice, // auto derived above
+        currentPrice: isNaN(currentPrice) ? null : currentPrice,
         targetPrice: isNaN(targetPrice) ? null : targetPrice,
         // UPDATED: Save the selected target direction from the new checkboxes
         targetDirection: targetAboveCheckbox.checked ? 'above' : 'below',
@@ -3073,12 +2764,6 @@ async function saveShareData(isSilent = false) {
         try {
             const shareDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
             await window.firestore.updateDoc(shareDocRef, shareData);
-            // Phase 2: Upsert alert document for this share (intent + direction)
-            try {
-                await upsertAlertForShare(selectedShareDocId, shareName, shareData, false);
-            } catch (e) {
-                console.error('Alerts: Failed to upsert alert for share update:', e);
-            }
             // Update local cache so reopening reflects new selections immediately
             try {
                 const idx = allSharesData.findIndex(s => s.id === selectedShareDocId);
@@ -3113,17 +2798,6 @@ async function saveShareData(isSilent = false) {
         }
     } else {
         shareData.entryDate = new Date().toISOString();
-        // If currentPrice still null attempt a late grab (race with live fetch)
-        if (shareData.currentPrice === null) {
-            try {
-                const liveDataLate = livePrices[shareName.toUpperCase()];
-                if (liveDataLate && typeof liveDataLate.live === 'number' && !isNaN(liveDataLate.live)) {
-                    shareData.currentPrice = liveDataLate.live;
-                } else if (liveDataLate && typeof liveDataLate.lastLivePrice === 'number' && !isNaN(liveDataLate.lastLivePrice)) {
-                    shareData.currentPrice = liveDataLate.lastLivePrice;
-                }
-            } catch(_) {}
-        }
         shareData.lastFetchedPrice = shareData.currentPrice;
         shareData.previousFetchedPrice = shareData.currentPrice;
 
@@ -3131,12 +2805,8 @@ async function saveShareData(isSilent = false) {
             const sharesColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             const newDocRef = await window.firestore.addDoc(sharesColRef, shareData);
             selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
-            // Phase 2: Create alert document for this new share (intent + direction)
-            try {
-                await upsertAlertForShare(selectedShareDocId, shareName, shareData, true);
-            } catch (e) {
-                console.error('Alerts: Failed to create alert for new share:', e);
-            }
+            // Update local cache
+            try { allSharesData.push({ id: selectedShareDocId, ...shareData }); } catch(_) {}
             if (!isSilent) showCustomAlert('Share \'" + shareName + "\' added successfully!', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' added with ID: ' + newDocRef.id);
         originalShareData = getCurrentFormData(); // Update original data after successful save
@@ -3291,7 +2961,7 @@ function showShareDetails() {
         modalLivePriceDisplaySection.appendChild(livePriceRow);
 
         if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) {
-            currentModalLivePriceLarge.textContent = '$' + formatAdaptivePrice(livePrice);
+            currentModalLivePriceLarge.textContent = '$' + livePrice.toFixed(2);
             currentModalLivePriceLarge.style.display = 'inline';
         } else {
             currentModalLivePriceLarge.textContent = 'N/A';
@@ -3307,9 +2977,9 @@ function showShareDetails() {
             const priceChangeSpan = document.createElement('span');
             priceChangeSpan.classList.add('price-change'); // Keep base class for coloring, color already applied to parent
             if (change > 0) {
-                priceChangeSpan.textContent = '(+$' + formatAdaptivePrice(change) + ' / +' + formatAdaptivePercent(percentageChange) + '%)';
+                priceChangeSpan.textContent = '(+$' + change.toFixed(2) + ' / +' + percentageChange.toFixed(2) + '%)';
             } else if (change < 0) {
-                priceChangeSpan.textContent = '(-$' + formatAdaptivePrice(Math.abs(change)) + ' / ' + formatAdaptivePercent(percentageChange) + '%)'; // percentageChange is already negative
+                priceChangeSpan.textContent = '(-$' + Math.abs(change).toFixed(2) + ' / ' + percentageChange.toFixed(2) + '%)'; // percentageChange is already negative
             } else {
                 priceChangeSpan.textContent = '($0.00 / 0.00%)';
             }
@@ -3325,7 +2995,7 @@ function showShareDetails() {
         peRow.classList.add('pe-ratio-row'); // New class for styling
         const peSpan = document.createElement('h3');
         peSpan.classList.add('pe-ratio-value'); // New class
-    peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A');
+        peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A');
         peRow.appendChild(peSpan);
         modalLivePriceDisplaySection.appendChild(peRow);
     }
@@ -3355,17 +3025,17 @@ function showShareDetails() {
     const displayDividendAmount = Number(share.dividendAmount);
     const displayFrankingCredits = Number(share.frankingCredits);
 
-    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(displayDividendAmount);
+    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(displayDividendAmount);
     modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? val.toFixed(1) + '%' : '')(displayFrankingCredits);
 
     const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
     const unfrankedYield = calculateUnfrankedYield(displayDividendAmount, priceForYield); 
     // Display unfranked yield only if it's not null/NaN AND not 0
-    modalUnfrankedYieldSpan.textContent = unfrankedYield !== null && !isNaN(unfrankedYield) && unfrankedYield !== 0 ? formatAdaptivePercent(unfrankedYield) + '%' : '';
+    modalUnfrankedYieldSpan.textContent = unfrankedYield !== null && !isNaN(unfrankedYield) && unfrankedYield !== 0 ? unfrankedYield.toFixed(2) + '%' : '';
 
     const frankedYield = calculateFrankedYield(displayDividendAmount, priceForYield, displayFrankingCredits);
     // Display franked yield only if it's not null/NaN AND not 0
-    modalFrankedYieldSpan.textContent = frankedYield !== null && !isNaN(frankedYield) && frankedYield !== 0 ? formatAdaptivePercent(frankedYield) + '%' : '';
+    modalFrankedYieldSpan.textContent = frankedYield !== null && !isNaN(frankedYield) && frankedYield !== 0 ? frankedYield.toFixed(2) + '%' : '';
 
     // Populate Entry Date after Franked Yield
     modalEntryDate.textContent = formatDate(share.entryDate) || 'N/A';
@@ -3414,8 +3084,7 @@ function showShareDetails() {
     if (modalMarketIndexLink && share.shareName) {
         const marketIndexUrl = 'https://www.marketindex.com.au/asx/' + share.shareName.toLowerCase();
         modalMarketIndexLink.href = marketIndexUrl;
-    // Text no longer includes the ASX code per spec; keep consistent "View on ..." prefix
-    modalMarketIndexLink.innerHTML = 'View on MarketIndex.com.au <i class="fas fa-external-link-alt"></i>';
+        modalMarketIndexLink.innerHTML = 'View ' + share.shareName.toUpperCase() + ' on MarketIndex.com.au <i class="fas fa-external-link-alt"></i>';
         modalMarketIndexLink.style.display = 'inline-flex';
         setIconDisabled(modalMarketIndexLink, false);
     } else if (modalMarketIndexLink) {
@@ -3446,27 +3115,17 @@ function showShareDetails() {
         setIconDisabled(modalListcorpLink, true);
     }
 
-    // CommSec.com.au Link (DYNAMIC) + Google Finance
+    // CommSec.com.au Link (DYNAMIC)
     if (modalCommSecLink && share.shareName) {
+        // Use the required URL format: https://www2.commsec.com.au/quotes/summary?stockCode=AMP&exchangeCode=ASX
         const commsecUrl = `https://www2.commsec.com.au/quotes/summary?stockCode=${encodeURIComponent(share.shareName)}&exchangeCode=ASX`;
-        modalCommSecLink.href = commsecUrl;
-        modalCommSecLink.innerHTML = 'View on CommSec.com.au <i class="fas fa-external-link-alt"></i>';
+    modalCommSecLink.href = commsecUrl;
+    modalCommSecLink.innerHTML = 'View on commsec.com.au <i class="fas fa-external-link-alt"></i>';
         modalCommSecLink.style.display = 'inline-flex';
         setIconDisabled(modalCommSecLink, false);
     } else if (modalCommSecLink) {
         modalCommSecLink.style.display = 'none';
         setIconDisabled(modalCommSecLink, true);
-    }
-
-    if (typeof modalGoogleFinanceLink !== 'undefined') {
-        try {
-            if (modalGoogleFinanceLink && share.shareName) {
-                modalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${share.shareName.toUpperCase()}:ASX?hl=en`;
-                modalGoogleFinanceLink.style.display = 'inline-flex';
-            } else if (modalGoogleFinanceLink) {
-                modalGoogleFinanceLink.style.display = 'none';
-            }
-        } catch(_) {}
     }
 
     if (modalCommSecLink && commSecLoginMessage) {
@@ -4069,10 +3728,10 @@ function renderWatchlist() {
         let sharesToRender = [];
 
         if (selectedWatchlistId === ALL_SHARES_ID) {
-            sharesToRender = dedupeSharesById(allSharesData);
+            sharesToRender = [...allSharesData];
             logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
         } else if (currentSelectedWatchlistIds.length === 1) {
-            sharesToRender = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
+            sharesToRender = allSharesData.filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
             logDebug('Render: Displaying shares from watchlist: ' + selectedWatchlistId);
         } else {
             logDebug('Render: No specific stock watchlists selected or multiple selected, showing empty state.');
@@ -4152,8 +3811,7 @@ function renderWatchlist() {
         refreshLivePricesBtn.classList.add('app-hidden');
         toggleCompactViewBtn.classList.add('app-hidden');
         asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
-    // Hide in cash view via inline style to avoid class conflicts
-    if (targetHitIconBtn) targetHitIconBtn.style.display = 'none';
+        targetHitIconBtn.classList.add('app-hidden'); // Ensure hidden in cash view
         exportWatchlistBtn.classList.add('app-hidden');
         stopLivePriceUpdates();
         updateAddHeaderButton();
@@ -4177,9 +3835,9 @@ function renderAsxCodeButtons() {
     
     let sharesForButtons = [];
     if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) { 
-        sharesForButtons = dedupeSharesById(allSharesData);
+        sharesForButtons = [...allSharesData];
     } else {
-        sharesForButtons = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
+        sharesForButtons = allSharesData.filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
     }
 
     sharesForButtons.forEach(share => {
@@ -4244,18 +3902,6 @@ function renderAsxCodeButtons() {
             asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b=>b.classList.remove('active'));
             btn.classList.add('active');
             scrollToShare(code);
-            // NEW: If the Add/Edit Share form is open, also populate the code field and show a quick live snapshot
-            try {
-                const formVisible = shareFormSection && shareFormSection.style.display !== 'none' && !shareFormSection.classList.contains('app-hidden');
-                if (formVisible && shareNameInput) {
-                    const company = Array.isArray(allAsxCodes) ? (allAsxCodes.find(c => c.code === code)?.name || '') : '';
-                    shareNameInput.value = code;
-                    if (formCompanyName) formCompanyName.textContent = company;
-                    checkFormDirtyState();
-                    // Fetch a single-stock snapshot to render the small live panel
-                    updateAddFormLiveSnapshot(code);
-                }
-            } catch(_) {}
         });
         asxCodeButtonsContainer.__delegated = true;
     }
@@ -4315,7 +3961,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
     currentSearchShareData = null; // Reset previous data
 
     try {
-    const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${asxCode}&_ts=${Date.now()}`);
+        const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${asxCode}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -4334,16 +3980,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
             return;
         }
 
-        // Prefer exact match row (some endpoints may return array with additional rows)
-        const upperReq = asxCode.toUpperCase();
-        let stockData = data.find(r => {
-            const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
-            return c && String(c).toUpperCase().trim() === upperReq;
-        });
-        if (!stockData) {
-            stockData = data[0];
-            logDebug('Search Modal: No exact code match; using first row as fallback.', { requested: upperReq, firstKeys: Object.keys(data[0]||{}) });
-        }
+        const stockData = data[0]; // Assuming the first item is the relevant one
         // Ensure CompanyName defaults to an empty string if not provided by the Apps Script
         stockData.CompanyName = stockData.CompanyName || "";
 
@@ -4363,11 +4000,11 @@ async function displayStockDetailsInSearchModal(asxCode) {
         let displayPrice = 'N/A';
 
         if (!isNaN(currentLivePrice) && currentLivePrice !== null) {
-            displayPrice = `$${formatAdaptivePrice(currentLivePrice)}`;
+            displayPrice = `$${currentLivePrice.toFixed(2)}`;
             if (!isNaN(previousClosePrice) && previousClosePrice !== null) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                priceChangeText = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                priceChangeText = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         }
@@ -4386,7 +4023,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
         // Construct the display HTML
         searchResultDisplay.innerHTML = `
             <div class="text-center mb-4">
-                <h3 class="${searchModalTitleClasses} search-modal-code-header" data-code="${stockData.ASXCode || ''}" data-name="${stockData.CompanyName || ''}" title="Click to populate Add Share form">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
+                <h3 class="${searchModalTitleClasses}">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
                 <span class="text-sm text-gray-500">${stockData.CompanyName ? '' : '(Company Name N/A)'}</span>
             </div>
             <div class="live-price-display-section">
@@ -4399,7 +4036,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
                     <span class="price-change-large ${priceClass}">${priceChangeText}</span>
                 </div>
                 <div class="pe-ratio-row">
-                    <h3 class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A'}</h3>
+                    <h3 class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A'}</h3>
                 </div>
             </div>
             <div class="external-links-section">
@@ -4437,87 +4074,20 @@ async function displayStockDetailsInSearchModal(asxCode) {
         if (searchModalListcorpLink) searchModalListcorpLink.href = `https://www.listcorp.com/asx/${asxCode.toLowerCase()}`;
         if (searchModalCommSecLink) searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
 
-        // Store the fetched data for potential adding/editing (normalize code property fallbacks)
-        const resolvedCode = stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode;
+        // Store the fetched data for potential adding/editing
         currentSearchShareData = {
-            shareName: String(resolvedCode || '').toUpperCase(),
+            shareName: stockData.ASXCode,
             companyName: stockData.CompanyName,
-            currentPrice: currentLivePrice,
-            targetPrice: null,
-            dividendAmount: null,
-            frankingCredits: null,
-            starRating: 0,
-            comments: [],
-            watchlistId: null
+            currentPrice: currentLivePrice, // Use current live price as initial entered price
+            targetPrice: null, // Default null
+            dividendAmount: null, // Default null
+            frankingCredits: null, // Default null
+            starRating: 0, // Default 0
+            comments: [], // Default empty array
+            watchlistId: null // To be selected when adding
         };
 
-        // AUTO-POPULATE / OPEN FORM LOGIC
-        try {
-            const alreadyEditing = !!selectedShareDocId;
-            if (existingShare) {
-                // If the code already exists, seamlessly open its edit form (unless already open for that share)
-                if (!alreadyEditing || selectedShareDocId !== existingShare.id) {
-                    hideModal(stockSearchModal);
-                    showEditFormForSelectedShare(existingShare.id);
-                }
-            } else {
-                // New share path: open (or update) the Add New Share form immediately for faster workflow
-                hideModal(stockSearchModal);
-                // Clear only if we are not already in a fresh new-share form state
-                if (selectedShareDocId) {
-                    // Was editing something else; start a clean add flow
-                    clearForm();
-                } else if (formTitle && formTitle.textContent !== 'Add New Share') {
-                    clearForm();
-                }
-                // Ensure form baseline state
-                formTitle.textContent = 'Add New Share';
-                selectedShareDocId = null; // ensure new
-                if (shareNameInput) shareNameInput.value = currentSearchShareData.shareName;
-                if (formCompanyName) formCompanyName.textContent = currentSearchShareData.companyName || '';
-                // Prefill default intent (Buy/Below) only if nothing chosen yet
-                try {
-                    if (targetIntentBuyBtn && targetIntentSellBtn && !targetIntentBuyBtn.classList.contains('is-active') && !targetIntentSellBtn.classList.contains('is-active')) {
-                        targetIntentBuyBtn.classList.add('is-active');
-                        targetIntentBuyBtn.setAttribute('aria-pressed','true');
-                        targetIntentSellBtn.classList.remove('is-active');
-                        targetIntentSellBtn.setAttribute('aria-pressed','false');
-                    }
-                    if (targetAboveCheckbox && targetBelowCheckbox && !targetAboveCheckbox.checked && !targetBelowCheckbox.checked) {
-                        targetAboveCheckbox.checked = false; targetBelowCheckbox.checked = true;
-                    }
-                    if (targetDirAboveBtn && targetDirBelowBtn && !targetDirAboveBtn.classList.contains('is-active') && !targetDirBelowBtn.classList.contains('is-active')) {
-                        targetDirAboveBtn.classList.remove('is-active'); targetDirAboveBtn.setAttribute('aria-pressed','false');
-                        targetDirBelowBtn.classList.add('is-active'); targetDirBelowBtn.setAttribute('aria-pressed','true');
-                    }
-                } catch(_) {}
-                // Populate watchlist selector (new share context)
-                populateShareWatchlistSelect(null, true);
-                // Add initial blank comment section if none exists
-                if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
-                    addCommentSection(commentsFormContainer);
-                }
-                // Render live snapshot into addShareLivePriceDisplay (robust key fallbacks)
-                try {
-                    // Use the ASX code for snapshot fetch; shareName holds the company name.
-                    if (currentSearchShareData && currentSearchShareData.shareCode) {
-                        updateAddFormLiveSnapshot(currentSearchShareData.shareCode);
-                    }
-                } catch(_) {}
-                // Finally show the form if not visible
-                if (shareFormSection && (shareFormSection.style.display === 'none' || shareFormSection.classList.contains('app-hidden'))) {
-                    showModal(shareFormSection);
-                }
-                // Focus code input for immediate target price entry
-                if (shareNameInput) shareNameInput.focus();
-                // Recompute dirty state now populated
-                checkFormDirtyState();
-            }
-        } catch (autoErr) {
-            console.warn('Search AutoFill: Failed to auto-populate form from search selection', autoErr);
-        }
-
-    // Render action buttons (kept for explicit user intent, though auto-open logic above already populated form)
+        // Render action buttons
         const actionButton = document.createElement('button');
         actionButton.classList.add('button', 'primary-button'); // Apply base button styles
         
@@ -4534,30 +4104,10 @@ async function displayStockDetailsInSearchModal(asxCode) {
             actionButton.addEventListener('click', () => {
                 hideModal(stockSearchModal); // Close search modal
                 clearForm(); // Clear share form
-                userManuallyOverrodeDirection = false;
                 formTitle.textContent = 'Add New Share'; // Set title for new share
                 shareNameInput.value = currentSearchShareData.shareName; // Pre-fill code
-                // currentPriceInput removed; no prefill needed
+                currentPriceInput.value = !isNaN(currentSearchShareData.currentPrice) ? currentSearchShareData.currentPrice.toFixed(2) : ''; // Pre-fill live price
                 populateShareWatchlistSelect(null, true); // Populate and enable watchlist select for new share
-                // Default toggles to Buy+Below
-                try {
-                    if (targetIntentBuyBtn && targetIntentSellBtn) {
-                        targetIntentBuyBtn.classList.add('is-active');
-                        targetIntentBuyBtn.setAttribute('aria-pressed', 'true');
-                        targetIntentSellBtn.classList.remove('is-active');
-                        targetIntentSellBtn.setAttribute('aria-pressed', 'false');
-                    }
-                    if (targetAboveCheckbox && targetBelowCheckbox) {
-                        targetAboveCheckbox.checked = false;
-                        targetBelowCheckbox.checked = true;
-                    }
-                    if (targetDirAboveBtn && targetDirBelowBtn) {
-                        targetDirAboveBtn.classList.remove('is-active');
-                        targetDirAboveBtn.setAttribute('aria-pressed', 'false');
-                        targetDirBelowBtn.classList.add('is-active');
-                        targetDirBelowBtn.setAttribute('aria-pressed', 'true');
-                    }
-                } catch(_) {}
                 addCommentSection(commentsFormContainer); // Add initial empty comment section
                 showModal(shareFormSection); // Show add/edit modal
                 checkFormDirtyState(); // Check dirty state for the new share form
@@ -5008,9 +4558,13 @@ function startLivePriceUpdates() {
         clearInterval(livePriceFetchInterval);
         logDebug('Live Price: Cleared existing live price interval.');
     }
-    // Always start periodic fetching to keep global live prices fresh regardless of current view
-    livePriceFetchInterval = setInterval(() => fetchLivePrices({ cacheBust: true }), LIVE_PRICE_FETCH_INTERVAL_MS);
-    logDebug('Live Price: Started live price updates every ' + (LIVE_PRICE_FETCH_INTERVAL_MS / 1000 / 60) + ' minutes.');
+    // Only start fetching if not in cash view
+    if (!currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+        livePriceFetchInterval = setInterval(fetchLivePrices, LIVE_PRICE_FETCH_INTERVAL_MS); // Only set the interval
+        logDebug('Live Price: Started live price updates every ' + (LIVE_PRICE_FETCH_INTERVAL_MS / 1000 / 60) + ' minutes.');
+    } else {
+        logDebug('Live Price: Not starting live price updates because "Cash & Assets" is selected.'); // UPDATED TEXT
+    }
 }
 
 /**
@@ -5026,61 +4580,64 @@ function stopLivePriceUpdates() {
 
 // NEW: Function to update the target hit notification icon
 function updateTargetHitBanner() {
-    // Now driven by alerts from Firestore; sharesAtTargetPrice is set by the alerts listener
-    if (!targetHitIconBtn || !targetHitIconCount || !watchlistSelect || !sortSelect) {
-        console.warn('Target Alert: UI elements missing. Cannot update banner/highlights.');
+    // Collect ALL shares that have hit their target price, regardless of current watchlist view
+    sharesAtTargetPrice = allSharesData.filter(share => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        // Ensure livePriceData exists and has targetHit property
+        // The check against `currentSelectedWatchlistIds` is removed here to show ALL alerts globally
+        return livePriceData && livePriceData.targetHit;
+    });
+
+    if (!targetHitIconBtn || !targetHitIconCount) {
+        console.warn('Target Alert: Target hit icon elements not found. Cannot update icon.');
         return;
     }
 
-    // Determine if any triggered shares belong to the currently selected watchlist(s)
-    const currentViewHasTargetHits = (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []).some(share => {
-        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) return true;
+    // Only show the icon if there are shares at target AND the icon hasn't been manually dismissed
+    // (The cash view check is removed here, as the icon should represent ALL stock alerts globally)
+    if (!targetHitIconBtn || !targetHitIconCount || !watchlistSelect || !sortSelect) {
+        console.warn('Target Alert: Target hit icon elements or dropdowns not found. Cannot update banner/highlights.');
+        return;
+    }
+
+    // Determine if any shares at target price are currently being displayed in the selected stock watchlist(s)
+    const currentViewHasTargetHits = sharesAtTargetPrice.some(share => {
+        // If "All Shares" is selected, any target hit applies
+        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
+            return true;
+        }
+        // If a specific watchlist is selected, check if the target-hit share is in it
         if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
             return shareBelongsTo(share, currentSelectedWatchlistIds[0]);
         }
-        return false;
+        return false; // No target hits in cash view or multiple watchlists selected (defaulting to no highlight for now)
     });
 
-    const displayCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
+    // Update the fixed bottom-left icon
+    const liveLoaded = livePrices && Object.keys(livePrices).length > 0;
+    let displayCount = sharesAtTargetPrice.length;
+    if (!liveLoaded && lastKnownTargetCount > 0 && !targetHitIconDismissed) {
+        // Keep showing previous count until live data arrives to avoid the perception of dismissal
+        displayCount = lastKnownTargetCount;
+    }
     if (displayCount > 0 && !targetHitIconDismissed) {
-        // Diagnostics: capture state before applying changes
-        try {
-            console.log('[Diag] targetHitIconBtn element:', targetHitIconBtn);
-            console.log('[Diag] BEFORE - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
-        } catch (_) {}
-
         targetHitIconCount.textContent = String(displayCount);
-        // Ensure visibility: drop any hidden class first, then set display
         targetHitIconBtn.classList.remove('app-hidden');
-        targetHitIconCount.classList && targetHitIconCount.classList.remove('app-hidden');
-        targetHitIconBtn.style.display = 'inline-flex';
-        targetHitIconCount.style.display = 'flex';
-        // Double-ensure after layout settles (guards against another late add)
-        requestAnimationFrame(() => {
-            targetHitIconBtn.classList.remove('app-hidden');
-            targetHitIconCount.classList && targetHitIconCount.classList.remove('app-hidden');
-        });
-
-        // Diagnostics: capture state after applying changes
-        try {
-            console.log('[Diag] AFTER - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
-        } catch (_) {}
-
-        logDebug('Target Alert: Showing icon: ' + displayCount + ' triggered alerts.');
+        targetHitIconCount.style.display = 'block';
+        logDebug('Target Alert: Showing icon: ' + displayCount + ' shares hit target (liveLoaded=' + liveLoaded + ').');
     } else {
-    // Hide the icon explicitly via inline style and class
-    targetHitIconBtn.classList.add('app-hidden');
-    targetHitIconBtn.style.display = 'none';
-    targetHitIconCount.classList && targetHitIconCount.classList.add('app-hidden');
-    targetHitIconCount.style.display = 'none';
-        logDebug('Target Alert: No triggered alerts or icon dismissed; hiding icon.');
+        targetHitIconBtn.classList.add('app-hidden');
+        targetHitIconCount.style.display = 'none';
+        logDebug('Target Alert: No shares hit target or icon is dismissed. Hiding icon.');
     }
 
-    // Persist last known count for early UI restore
-    lastKnownTargetCount = displayCount;
-    try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch(e) {}
+    // Update last known count when we have live data
+    if (liveLoaded) {
+        lastKnownTargetCount = sharesAtTargetPrice.length;
+        try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch(e) {}
+    }
 
-    // Highlight dropdowns if the current view has target hits
+    // Apply/remove border to watchlist and sort dropdowns if the *current view* has target hits
     if (currentViewHasTargetHits && !targetHitIconDismissed) {
         watchlistSelect.classList.add('target-hit-border');
         sortSelect.classList.add('target-hit-border');
@@ -5089,81 +4646,6 @@ function updateTargetHitBanner() {
         watchlistSelect.classList.remove('target-hit-border');
         sortSelect.classList.remove('target-hit-border');
         logDebug('Target Alert: Watchlist and Sort dropdowns unhighlighted.');
-    }
-}
-
-// NEW: Real-time alerts listener to populate sharesAtTargetPrice from Firestore
-async function loadTriggeredAlertsListener() {
-    if (unsubscribeAlerts) {
-        try { unsubscribeAlerts(); } catch(_) {}
-        unsubscribeAlerts = null;
-        logDebug('Firestore Listener: Unsubscribed from previous alerts listener.');
-    }
-    if (!db || !currentUserId || !window.firestore) {
-        console.warn('Alerts: Firestore DB, User ID, or Firestore functions not available. Clearing triggered alerts.');
-        sharesAtTargetPrice = [];
-        updateTargetHitBanner();
-        return;
-    }
-    try {
-        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-        // Filter for triggered alerts; additional local filter will enforce enabled !== false
-        const q = window.firestore.query(alertsCol, window.firestore.where('targetHit', '==', true));
-        unsubscribeAlerts = window.firestore.onSnapshot(q, (querySnapshot) => {
-            const enabledShares = [];
-            const mutedShares = [];
-            querySnapshot.forEach((doc) => {
-                const data = doc.data() || {};
-                const shareId = data.shareId || doc.id;
-                const shareCode = (data.shareCode || '').toUpperCase();
-                // Try to hydrate from current shares data for richer UI; fallback to a minimal stub
-                let share = allSharesData.find(s => s.id === shareId) || allSharesData.find(s => String(s.shareName || '').toUpperCase() === shareCode);
-                if (!share) {
-                    share = {
-                        id: shareId,
-                        shareName: shareCode || '(Unknown)'.toUpperCase(),
-                        targetPrice: (typeof data.targetPrice === 'number' && !isNaN(data.targetPrice)) ? data.targetPrice : null,
-                        watchlistIds: []
-                    };
-                }
-                // Attach a hint of enabled state for rendering decisions
-                share.__alertEnabled = (data.enabled !== false);
-                if (share.__alertEnabled) {
-                    enabledShares.push(share);
-                } else {
-                    mutedShares.push(share);
-                }
-            });
-            sharesAtTargetPrice = dedupeSharesById(enabledShares);
-            sharesAtTargetPriceMuted = dedupeSharesById(mutedShares);
-            updateTargetHitBanner();
-            // If the notification hub is open, refresh its contents
-            if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
-                showTargetHitDetailsModal();
-            }
-        }, (error) => {
-            console.error('Firestore Listener: Error listening to alerts:', error);
-        });
-        logDebug('Alerts: Real-time alerts listener set up.');
-    } catch (error) {
-        console.error('Alerts: Error setting up alerts listener:', error);
-    }
-}
-
-// NEW: Helper to enable/disable a specific alert for a share
-async function toggleAlertEnabled(shareId, enabled) {
-    try {
-        if (!db || !currentUserId || !window.firestore) throw new Error('Firestore not available');
-        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-        const alertDocRef = window.firestore.doc(alertsCol, shareId);
-        await window.firestore.updateDoc(alertDocRef, {
-            enabled: !!enabled,
-            updatedAt: window.firestore.serverTimestamp()
-        });
-        showCustomAlert(enabled ? 'Alert unmuted' : 'Alert muted', 1000);
-    } catch (e) {
-        console.error('Alerts: Failed to toggle enabled for share ' + shareId, e);
-        showCustomAlert('Failed to update alert. Please try again.', 1500);
     }
 }
 
@@ -5295,7 +4777,7 @@ async function loadShares() {
                 fetchedShares.push(share);
             });
 
-            allSharesData = dedupeSharesById(fetchedShares);
+            allSharesData = fetchedShares;
             logDebug('Shares: Shares data updated from snapshot. Total shares: ' + allSharesData.length);
             
             // AGGRESSIVE FIX: Force apply current sort order after data loads
@@ -5502,7 +4984,7 @@ function calculateTotalCash() {
     if (totalCashDisplay) {
     totalCashDisplay.textContent = formatMoney(total);
     }
-    logDebug('Cash Categories: Total cash calculated: $' + formatAdaptivePrice(total));
+    logDebug('Cash Categories: Total cash calculated: $' + total.toFixed(2));
 }
 
 // NEW: Cash Asset Form Modal Functions (2.1)
@@ -5518,7 +5000,7 @@ function showAddEditCashCategoryModal(assetIdToEdit = null) {
         }
         cashFormTitle.textContent = 'Edit Cash Asset';
         cashAssetNameInput.value = assetToEdit.name || '';
-    cashAssetBalanceInput.value = Number(assetToEdit.balance) !== null && !isNaN(Number(assetToEdit.balance)) ? formatAdaptivePrice(Number(assetToEdit.balance)) : '';
+        cashAssetBalanceInput.value = Number(assetToEdit.balance) !== null && !isNaN(Number(assetToEdit.balance)) ? Number(assetToEdit.balance).toFixed(2) : '';
         setIconDisabled(deleteCashAssetBtn, false); // Enable delete button for existing asset
         
         // Populate comments for editing
@@ -5753,7 +5235,60 @@ function showCashCategoryDetailsModal(assetId) {
     logDebug('Details: Displayed details for cash asset: ' + asset.name + ' (ID: ' + assetId + ')');
 }
 
-// (Removed legacy modal-based showCustomConfirm; migrated to toast confirm above)
+// Custom Confirm Dialog Function (Now unused for deletions, but kept for potential future use)
+function showCustomConfirm(message, callback) {
+    const confirmBtn = document.getElementById('customDialogConfirmBtn');
+    const cancelBtn = document.getElementById('customDialogCancelBtn');
+    const dialogButtonsContainer = document.querySelector('#customDialogModal .custom-dialog-buttons');
+
+    logDebug('showCustomConfirm: confirmBtn found: ' + !!confirmBtn + ', cancelBtn found: ' + !!cancelBtn + ', dialogButtonsContainer found: ' + !!dialogButtonsContainer);
+
+    if (!customDialogModal || !customDialogMessage || !confirmBtn || !cancelBtn || !dialogButtonsContainer) {
+        console.error('Custom dialog elements not found. Cannot show confirm.');
+        console.log('CONFIRM (fallback): ' + message);
+        callback(window.confirm(message)); // Fallback to native confirm
+        return;
+    }
+    customDialogMessage.textContent = message;
+
+    dialogButtonsContainer.style.display = 'flex'; // Explicitly show the container
+    logDebug('showCustomConfirm: dialogButtonsContainer display set to: ' + dialogButtonsContainer.style.display);
+
+    setIconDisabled(confirmBtn, false); // Enable the confirm button
+    setIconDisabled(cancelBtn, false); // Enable the cancel button
+
+    showModal(customDialogModal);
+
+    // Remove any existing 'click' listeners to prevent multiple firings
+    const oldConfirmListener = confirmBtn._currentClickListener;
+    if (oldConfirmListener) {
+        confirmBtn.removeEventListener('click', oldConfirmListener);
+    }
+    const oldCancelListener = cancelBtn._currentClickListener;
+    if (oldCancelListener) {
+        cancelBtn.removeEventListener('click', oldCancelListener);
+    }
+
+    const onConfirm = () => {
+        hideModal(customDialogModal);
+        callback(true);
+        logDebug('Confirm: User confirmed.');
+    };
+
+    const onCancel = () => {
+        hideModal(customDialogModal);
+        callback(false);
+        logDebug('Confirm: User cancelled.');
+    };
+
+    confirmBtn.addEventListener('click', onConfirm);
+    confirmBtn._currentClickListener = onConfirm; // Store reference
+
+    cancelBtn.addEventListener('click', onCancel);
+    cancelBtn._currentClickListener = onCancel; // Store reference
+
+    logDebug('Confirm: Showing confirm: "' + message + '"');
+}
 
 /**
  * Updates the main title of the app based on the currently selected watchlist.
@@ -5858,25 +5393,6 @@ function handleAddShareClick() {
     logDebug('UI: Add Share button clicked (contextual).');
     clearForm();
     formTitle.textContent = 'Add New Share';
-    userManuallyOverrodeDirection = false;
-    try {
-        if (targetIntentBuyBtn && targetIntentSellBtn) {
-            targetIntentBuyBtn.classList.add('is-active');
-            targetIntentBuyBtn.setAttribute('aria-pressed', 'true');
-            targetIntentSellBtn.classList.remove('is-active');
-            targetIntentSellBtn.setAttribute('aria-pressed', 'false');
-        }
-        if (targetAboveCheckbox && targetBelowCheckbox) {
-            targetAboveCheckbox.checked = false;
-            targetBelowCheckbox.checked = true;
-        }
-        if (targetDirAboveBtn && targetDirBelowBtn) {
-            targetDirAboveBtn.classList.remove('is-active');
-            targetDirAboveBtn.setAttribute('aria-pressed', 'false');
-            targetDirBelowBtn.classList.add('is-active');
-            targetDirBelowBtn.setAttribute('aria-pressed', 'true');
-        }
-    } catch(_) {}
     if (deleteShareBtn) { deleteShareBtn.classList.add('hidden'); }
     populateShareWatchlistSelect(null, true); // true indicates new share
     showModal(shareFormSection);
@@ -6198,7 +5714,7 @@ function exportWatchlistToCSV() {
             prevClosePrice !== undefined && prevClosePrice !== null && !isNaN(prevClosePrice)) {
             const change = livePrice - prevClosePrice;
             const percentageChange = (prevClosePrice !== 0 && !isNaN(prevClosePrice)) ? (change / prevClosePrice) * 100 : 0;
-            priceChange = formatAdaptivePrice(change) + ' (' + formatAdaptivePercent(percentageChange) + '%)'; // Include percentage in CSV
+            priceChange = change.toFixed(2) + ' (' + percentageChange.toFixed(2) + '%)'; // Include percentage in CSV
         }
 
         const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
@@ -6208,14 +5724,14 @@ function exportWatchlistToCSV() {
 
         const row = [
             share.shareName || '',
-            (!isNaN(enteredPriceNum) && enteredPriceNum !== null) ? formatAdaptivePrice(enteredPriceNum) : '',
-            (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? formatAdaptivePrice(livePrice) : '',
+            (!isNaN(enteredPriceNum) && enteredPriceNum !== null) ? enteredPriceNum.toFixed(2) : '',
+            (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice.toFixed(2) : '',
             priceChange, // Now includes the calculated price change
-            (!isNaN(targetPriceNum) && targetPriceNum !== null) ? formatAdaptivePrice(targetPriceNum) : '',
+            (!isNaN(targetPriceNum) && targetPriceNum !== null) ? targetPriceNum.toFixed(2) : '',
             (!isNaN(dividendAmountNum) && dividendAmountNum !== null) ? dividendAmountNum.toFixed(3) : '',
             (!isNaN(frankingCreditsNum) && frankingCreditsNum !== null) ? frankingCreditsNum.toFixed(1) : '',
-            unfrankedYield !== null && !isNaN(unfrankedYield) ? formatAdaptivePercent(unfrankedYield) : '0.00', // Ensure numerical output
-            frankedYield !== null && !isNaN(frankedYield) ? formatAdaptivePercent(frankedYield) : '0.00', // Ensure numerical output
+            unfrankedYield !== null && !isNaN(unfrankedYield) ? unfrankedYield.toFixed(2) : '0.00', // Ensure numerical output
+            frankedYield !== null && !isNaN(frankedYield) ? frankedYield.toFixed(2) : '0.00', // Ensure numerical output
             formatDate(share.entryDate) || ''
         ];
         csvRows.push(row.map(escapeCsvValue).join(','));
@@ -6457,10 +5973,10 @@ async function initializeAppLogic() {
     if (shareDetailModal) shareDetailModal.style.setProperty('display', 'none', 'important');
     if (addWatchlistModal) addWatchlistModal.style.setProperty('display', 'none', 'important');
     if (manageWatchlistModal) manageWatchlistModal.style.setProperty('display', 'none', 'important');
-    // customDialogModal removed
+    if (customDialogModal) customDialogModal.style.setProperty('display', 'none', 'important');
     if (calculatorModal) calculatorModal.style.setProperty('display', 'none', 'important');
     if (shareContextMenu) shareContextMenu.style.setProperty('display', 'none', 'important');
-    if (targetHitIconBtn) targetHitIconBtn.style.display = 'none'; // Ensure icon is hidden initially via inline style
+    if (targetHitIconBtn) targetHitIconBtn.classList.add('app-hidden'); // Ensure icon is hidden initially via class
     if (alertPanel) alertPanel.style.display = 'none'; // NEW: Ensure alert panel is hidden initially
     // NEW: Hide cash asset modals initially
     if (cashAssetFormModal) cashAssetFormModal.style.setProperty('display', 'none', 'important');
@@ -6638,13 +6154,48 @@ async function initializeAppLogic() {
             if (formCompanyName) formCompanyName.textContent = name || '';
             if (shareNameSuggestions) shareNameSuggestions.classList.remove('active');
             // Optionally move focus to next field for quicker entry
-            const next = targetPriceInput;
+            const next = currentPriceInput || targetPriceInput;
             if (next) next.focus();
             checkFormDirtyState();
 
             // Fetch live snapshot for the selected code to show context in the form and prefill price
             try {
-                updateAddFormLiveSnapshot(code);
+                if (!GOOGLE_APPS_SCRIPT_URL) return; // Safety
+                const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${code}`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const stock = Array.isArray(data) && data[0] ? data[0] : null;
+                if (!stock) return;
+                const live = parseFloat(stock.LivePrice);
+                const prev = parseFloat(stock.PrevClose);
+                const pe = parseFloat(stock.PE);
+                const hi = parseFloat(stock.High52);
+                const lo = parseFloat(stock.Low52);
+
+                // Prefill Entered Price if empty
+                if (currentPriceInput && (currentPriceInput.value === '' || isNaN(parseFloat(currentPriceInput.value)))) {
+                    if (!isNaN(live)) currentPriceInput.value = live.toFixed(2);
+                }
+                // Render a compact live display panel
+                if (addShareLivePriceDisplay) {
+                    const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
+                    const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
+                    const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
+            addShareLivePriceDisplay.innerHTML = `
+                        <div class="fifty-two-week-row">
+                <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
+                <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
+                        </div>
+                        <div class="live-price-main-row">
+                <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
+                            <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${change.toFixed(2)} (${pct.toFixed(2)}%)` : 'N/A'}</span>
+                        </div>
+                        <div class="pe-ratio-row">
+                            <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? pe.toFixed(2) : 'N/A'}</span>
+                        </div>
+                    `;
+                    addShareLivePriceDisplay.style.display = 'block';
+                }
             } catch { /* ignore transient errors */ }
         }
 
@@ -6693,64 +6244,6 @@ async function initializeAppLogic() {
     // NEW: Autocomplete Search Input Listeners for Stock Search Modal (Consolidated & Corrected)
     if (asxSearchInput) {
         let currentSuggestions = []; // Stores the current filtered suggestions
-        // Helper to centralize quick-add behavior and reduce duplication.
-        function quickAddFromSearch(code, name) {
-            if (!code) return;
-            window.lastSelectedSearchCode = code; // Track for fallback observer
-            try {
-                const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === code);
-                hideModal(stockSearchModal);
-                if (existingShare) {
-                    showEditFormForSelectedShare(existingShare.id);
-                } else {
-                    clearForm();
-                    formTitle.textContent = 'Add New Share';
-                    selectedShareDocId = null;
-                    if (shareNameInput) {
-                        shareNameInput.value = code;
-                        shareNameInput.classList.add('autofill-pulse');
-                        setTimeout(()=> shareNameInput && shareNameInput.classList.remove('autofill-pulse'), 900);
-                    }
-                    if (formCompanyName) formCompanyName.textContent = name || '';
-                    populateShareWatchlistSelect(null, true);
-                    if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
-                        addCommentSection(commentsFormContainer);
-                    }
-                    showModal(shareFormSection);
-                    if (shareNameInput) shareNameInput.focus();
-                    checkFormDirtyState();
-                    updateAddFormLiveSnapshot(code);
-                    // Install a short-lived MutationObserver to enforce autofill if something clears it
-                    try {
-                        if (shareNameInput && typeof MutationObserver !== 'undefined') {
-                            let enforceCount = 0;
-                            const mo = new MutationObserver(() => {
-                                if (!shareNameInput.value && window.lastSelectedSearchCode) {
-                                    shareNameInput.value = window.lastSelectedSearchCode;
-                                    if (formCompanyName && (!formCompanyName.textContent || formCompanyName.textContent === '')) {
-                                        formCompanyName.textContent = name || '';
-                                    }
-                                }
-                                if (++enforceCount > 5) { mo.disconnect(); }
-                            });
-                            mo.observe(shareNameInput, { attributes:true, attributeFilter:['value'] });
-                            // Safety cleanup after 3s
-                            setTimeout(()=> mo.disconnect(), 3000);
-                        }
-                    } catch(_) {}
-                }
-                // Post-hide verification fallback (rare race where value not applied)
-                setTimeout(() => {
-                    if (shareFormSection && !shareFormSection.classList.contains('app-hidden') && shareNameInput && shareNameInput.value.trim() !== code) {
-                        console.warn('[QuickAdd] Fallback applied to enforce code in input');
-                        shareNameInput.value = code;
-                        if (formCompanyName && (!formCompanyName.textContent || formCompanyName.textContent === '')) {
-                            formCompanyName.textContent = name || '';
-                        }
-                    }
-                }, 60);
-            } catch(err) { console.warn('QuickAddFromSearch failed', err); }
-        }
 
         asxSearchInput.addEventListener('input', () => {
             const query = asxSearchInput.value.trim().toUpperCase();
@@ -6771,27 +6264,20 @@ async function initializeAppLogic() {
             ).slice(0, 10); // Limit to top 10 suggestions
 
             if (currentSuggestions.length > 0) {
-                currentSuggestions.forEach((stock) => {
+                currentSuggestions.forEach((stock, index) => {
                     const div = document.createElement('div');
                     div.classList.add('suggestion-item');
                     div.textContent = `${stock.code} - ${stock.name}`;
-                    div.dataset.code = stock.code;
-                    div.dataset.name = stock.name;
-                    // Use pointerdown/mousedown to capture before blur/hide
-                    const handler = (ev) => {
-                        ev.preventDefault();
-                        console.log('[Autocomplete] Select suggestion', stock.code, stock.name);
-                        asxSearchInput.value = stock.code;
-                        asxSuggestions.classList.remove('active');
-                        quickAddFromSearch(stock.code, stock.name);
-                        displayStockDetailsInSearchModal(stock.code);
-                    };
-                    div.addEventListener('pointerdown', handler, { passive: false });
-                    div.addEventListener('mousedown', handler, { passive: false });
-                    div.addEventListener('click', handler); // fallback
+                    div.dataset.code = stock.code; // Store the code for easy access
+                    div.dataset.name = stock.name; // Store the company name
+                    div.addEventListener('click', () => {
+                        asxSearchInput.value = stock.code; // Set input to selected code
+                        asxSuggestions.classList.remove('active'); // Hide suggestions
+                        displayStockDetailsInSearchModal(stock.code); // Display details for selected stock
+                    });
                     asxSuggestions.appendChild(div);
                 });
-                asxSuggestions.classList.add('active');
+                asxSuggestions.classList.add('active'); // Show suggestions
             } else {
                 asxSuggestions.classList.remove('active'); // Hide suggestions if no matches
                 searchResultDisplay.innerHTML = '<p class="initial-message">No matching stocks found.</p>';
@@ -6844,37 +6330,6 @@ async function initializeAppLogic() {
             }
         });
 
-        // Delegated fallback: clicking the code header in search results populates form
-        if (searchResultDisplay) {
-            searchResultDisplay.addEventListener('click', (e) => {
-                const header = e.target.closest('.search-modal-code-header');
-                if (!header) return;
-                const code = header.getAttribute('data-code');
-                const name = header.getAttribute('data-name');
-                console.log('[Autocomplete] Header fallback click', code, name);
-                if (!code) return;
-                quickAddFromSearch(code, name);
-            });
-        }
-
-        // Global delegated listener on container to catch any missed clicks (safety net)
-        if (asxSuggestions) {
-            asxSuggestions.addEventListener('click', (e) => {
-                const item = e.target.closest('.suggestion-item');
-                if (!item) return;
-                const code = item.dataset.code;
-                const name = item.dataset.name;
-                console.log('[Autocomplete] Delegated suggestion click', code, name);
-                if (!code) return;
-                // Simulate normal path if direct listener failed
-                const stock = { code, name };
-                asxSearchInput.value = code;
-                asxSuggestions.classList.remove('active');
-                quickAddFromSearch(code, name);
-                displayStockDetailsInSearchModal(code);
-            });
-        }
-
         function updateSelectedSuggestion(items) {
             items.forEach((item, index) => {
                 if (index === currentSelectedSuggestionIndex) {
@@ -6902,23 +6357,12 @@ async function initializeAppLogic() {
         }
     });
 
-    // Phase 1: Direction toggles + legacy checkboxes mutual exclusivity and sync
-    const syncDirButtonsFromCheckboxes = () => {
-        if (!targetDirAboveBtn || !targetDirBelowBtn) return;
-        const isAbove = !!(targetAboveCheckbox && targetAboveCheckbox.checked);
-        targetDirAboveBtn.classList.toggle('is-active', isAbove);
-        targetDirAboveBtn.setAttribute('aria-pressed', String(isAbove));
-        const isBelow = !isAbove;
-        targetDirBelowBtn.classList.toggle('is-active', isBelow);
-        targetDirBelowBtn.setAttribute('aria-pressed', String(isBelow));
-    };
-
+    // NEW: Add event listeners for target direction checkboxes to make them mutually exclusive
     if (targetAboveCheckbox && targetBelowCheckbox) {
         targetAboveCheckbox.addEventListener('change', () => {
             if (targetAboveCheckbox.checked) {
                 targetBelowCheckbox.checked = false;
             }
-            syncDirButtonsFromCheckboxes();
             checkFormDirtyState();
         });
 
@@ -6926,62 +6370,8 @@ async function initializeAppLogic() {
             if (targetBelowCheckbox.checked) {
                 targetAboveCheckbox.checked = false;
             }
-            syncDirButtonsFromCheckboxes();
             checkFormDirtyState();
         });
-    }
-
-    // Wire UI segmented direction buttons -> legacy checkboxes
-    if (targetDirAboveBtn && targetDirBelowBtn && targetAboveCheckbox && targetBelowCheckbox) {
-        targetDirAboveBtn.addEventListener('click', () => {
-            userManuallyOverrodeDirection = true;
-            targetAboveCheckbox.checked = true;
-            targetBelowCheckbox.checked = false;
-            syncDirButtonsFromCheckboxes();
-            checkFormDirtyState();
-        });
-        targetDirBelowBtn.addEventListener('click', () => {
-            userManuallyOverrodeDirection = true;
-            targetAboveCheckbox.checked = false;
-            targetBelowCheckbox.checked = true;
-            syncDirButtonsFromCheckboxes();
-            checkFormDirtyState();
-        });
-        // Initial sync
-        syncDirButtonsFromCheckboxes();
-    }
-
-    // Wire Intent buttons: set defaults when user hasn’t manually overridden
-    if (targetIntentBuyBtn && targetIntentSellBtn) {
-        const setIntentUI = (intent) => {
-            const isBuy = intent === 'buy';
-            targetIntentBuyBtn.classList.toggle('is-active', isBuy);
-            targetIntentBuyBtn.setAttribute('aria-pressed', String(isBuy));
-            targetIntentSellBtn.classList.toggle('is-active', !isBuy);
-            targetIntentSellBtn.setAttribute('aria-pressed', String(!isBuy));
-        };
-        targetIntentBuyBtn.addEventListener('click', () => {
-            setIntentUI('buy');
-            if (!userManuallyOverrodeDirection && targetAboveCheckbox && targetBelowCheckbox) {
-                // Buy defaults to Below
-                targetAboveCheckbox.checked = false;
-                targetBelowCheckbox.checked = true;
-                syncDirButtonsFromCheckboxes();
-                checkFormDirtyState();
-            }
-        });
-        targetIntentSellBtn.addEventListener('click', () => {
-            setIntentUI('sell');
-            if (!userManuallyOverrodeDirection && targetAboveCheckbox && targetBelowCheckbox) {
-                // Sell defaults to Above
-                targetAboveCheckbox.checked = true;
-                targetBelowCheckbox.checked = false;
-                syncDirButtonsFromCheckboxes();
-                checkFormDirtyState();
-            }
-        });
-        // Default to Buy on load
-        setIntentUI('buy');
     }
     
     // NEW: Add event listeners for cash asset form inputs for dirty state checking (2.1)
@@ -7113,7 +6503,7 @@ async function initializeAppLogic() {
 
         // General modal closing logic (for other modals)
         if (event.target === shareDetailModal || event.target === dividendCalculatorModal ||
-            event.target === shareFormSection ||
+            event.target === shareFormSection || event.target === customDialogModal ||
             event.target === calculatorModal || event.target === addWatchlistModal ||
             event.target === manageWatchlistModal || event.target === alertPanel ||
             event.target === cashAssetFormModal || event.target === cashAssetDetailModal ||
@@ -7712,9 +7102,9 @@ if (sortSelect) {
         const frankedYield = calculateFrankedYield(dividendAmount, currentPrice, frankingCredits);
         const estimatedDividend = estimateDividendIncome(investmentValue, dividendAmount, currentPrice);
         
-    calcUnfrankedYieldSpan.textContent = unfrankedYield !== null ? formatAdaptivePercent(unfrankedYield) + '%' : '-';
-    calcFrankedYieldSpan.textContent = frankedYield !== null ? formatAdaptivePercent(frankedYield) + '%' : '-';
-    calcEstimatedDividend.textContent = estimatedDividend !== null ? '$' + formatAdaptivePrice(estimatedDividend) : '-';
+        calcUnfrankedYieldSpan.textContent = unfrankedYield !== null ? unfrankedYield.toFixed(2) + '%' : '-';
+        calcFrankedYieldSpan.textContent = frankedYield !== null ? frankedYield.toFixed(2) + '%' : '-';
+        calcEstimatedDividend.textContent = estimatedDividend !== null ? '$' + estimatedDividend.toFixed(2) : '-';
     }
 
     // Standard Calculator Button
@@ -8115,67 +7505,55 @@ function showTargetHitDetailsModal() {
         showCustomAlert('Error displaying target hit details. Please try again.', 2000);
         return;
     }
+
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-    const makeItem = (share, isMuted) => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        const currentLivePrice = (livePriceData && livePriceData.live !== null && !isNaN(livePriceData.live)) ? livePriceData.live : null;
-        const targetPrice = share.targetPrice;
-        const priceClass = (currentLivePrice !== null && targetPrice != null && !isNaN(targetPrice) && currentLivePrice >= targetPrice) ? 'positive' : 'negative';
-        const item = document.createElement('div');
-        item.classList.add('target-hit-item');
-        if (isMuted) item.classList.add('muted');
-        item.dataset.shareId = share.id;
-        item.innerHTML = `
-            <div class="target-hit-item-header">
-                <span class="share-name-code ${priceClass}">${share.shareName}</span>
-                <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
-            </div>
-            <p>Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? formatAdaptivePrice(Number(targetPrice)) : 'N/A'}</strong></p>
-            <div class="target-hit-actions">
-                <button class="button secondary-buttons toggle-alert-btn" data-share-id="${share.id}">${isMuted ? 'Unmute' : 'Mute'}</button>
-            </div>
-        `;
-        // Click to open share details
-        item.addEventListener('click', (e) => {
-            // If the click is on the toggle button, don't navigate
-            if (e.target && e.target.classList && e.target.classList.contains('toggle-alert-btn')) return;
-            const sid = item.dataset.shareId;
-            if (sid) {
-                wasShareDetailOpenedFromTargetAlerts = true;
-                hideModal(targetHitDetailsModal);
-                selectShare(sid);
-                showShareDetails();
-            }
-        });
-        // Mute/unmute button
-        const toggleBtn = item.querySelector('.toggle-alert-btn');
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                await toggleAlertEnabled(share.id, isMuted); // if currently muted -> enable; if enabled -> disable
-            });
-        }
-        return item;
-    };
-
-    const hasEnabled = sharesAtTargetPrice.length > 0;
-    const hasMuted = Array.isArray(sharesAtTargetPriceMuted) && sharesAtTargetPriceMuted.length > 0;
-    if (!hasEnabled && !hasMuted) {
+    if (sharesAtTargetPrice.length === 0) {
         targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
     } else {
-        if (hasEnabled) {
-            const enabledHeader = document.createElement('h3');
-            enabledHeader.textContent = 'Active Alerts';
-            targetHitSharesList.appendChild(enabledHeader);
-            sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
-        }
-        if (hasMuted) {
-            const mutedHeader = document.createElement('h3');
-            mutedHeader.textContent = 'Muted Alerts';
-            targetHitSharesList.appendChild(mutedHeader);
-            sharesAtTargetPriceMuted.forEach(share => targetHitSharesList.appendChild(makeItem(share, true)));
-        }
+        sharesAtTargetPrice.forEach(share => {
+            const livePriceData = livePrices[share.shareName.toUpperCase()];
+            if (!livePriceData || livePriceData.live === null || isNaN(livePriceData.live)) {
+                // Skip if live price data is unavailable or invalid
+                return;
+            }
+
+            const currentLivePrice = livePriceData.live;
+            const targetPrice = share.targetPrice;
+            const priceClass = currentLivePrice >= targetPrice ? 'positive' : 'negative'; // Determine color based on whether it passed target up or down
+
+            const targetHitItem = document.createElement('div');
+            targetHitItem.classList.add('target-hit-item');
+            targetHitItem.dataset.shareId = share.id; // Add data attribute for potential future interaction
+
+            targetHitItem.innerHTML = `
+                <div class="target-hit-item-header">
+                    <span class="share-name-code ${priceClass}">${share.shareName}</span>
+                    <span class="live-price-display ${priceClass}">$${currentLivePrice.toFixed(2)}</span>
+                </div>
+                <p>Target: <strong>$${targetPrice !== null && !isNaN(targetPrice) ? targetPrice.toFixed(2) : 'N/A'}</strong></p>
+                <p>Watchlist: <strong>${(() => {
+                    const ids = Array.isArray(share.watchlistIds) && share.watchlistIds.length ? share.watchlistIds : (share.watchlistId ? [share.watchlistId] : []);
+                    const names = ids.map(id => userWatchlists.find(w => w.id === id)?.name).filter(Boolean);
+                    return names.length ? names.join(', ') : 'N/A';
+                })()}</strong></p>
+            `;
+            targetHitSharesList.appendChild(targetHitItem);
+
+            // NEW: Add click listener to make the item clickable
+            targetHitItem.addEventListener('click', () => {
+                const clickedShareId = targetHitItem.dataset.shareId;
+                if (clickedShareId) {
+                    // Set the flag to true so the back button knows to return here
+                    wasShareDetailOpenedFromTargetAlerts = true;
+                    // FIX: Hide the current (alerts) modal before showing the share detail modal.
+                    // The `closeModals()` function will restore the alerts modal when the share detail modal is closed.
+                    hideModal(targetHitDetailsModal);
+                    selectShare(clickedShareId); // Select the share
+                    showShareDetails(); // Open the share details modal for the clicked share
+                }
+            });
+        });
     }
 
     showModal(targetHitDetailsModal);
@@ -8304,11 +7682,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // This ensures the initial view is correctly sorted by percentage change if selected.
                 await loadUserWatchlistsAndSettings();
                 try { ensureTitleStructure(); } catch(e) {}
-                // Start alerts listener (triggered alerts -> Notification Hub)
-                await loadTriggeredAlertsListener();
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
-                await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
+                await fetchLivePrices({ forceLiveFetch: !forcedOnce });
                 try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true'); } catch(e) {}
                 startLivePriceUpdates();
 
@@ -8362,11 +7738,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     unsubscribeCashCategories();
                     unsubscribeCashCategories = null;
                     logDebug('Firestore Listener: Unsubscribed from cash categories listener on logout.');
-                }
-                if (unsubscribeAlerts) { // NEW: Unsubscribe from alerts
-                    try { unsubscribeAlerts(); } catch(_) {}
-                    unsubscribeAlerts = null;
-                    logDebug('Firestore Listener: Unsubscribed from alerts listener on logout.');
                 }
                 stopLivePriceUpdates();
                 
