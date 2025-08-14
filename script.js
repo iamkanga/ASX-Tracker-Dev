@@ -4341,14 +4341,18 @@ async function displayStockDetailsInSearchModal(asxCode) {
     }
         logDebug(`Search: Fetched details for ${asxCode}:`, data);
 
-        if (data.length === 0 || !data[0] || !data[0].ASXCode) {
-            // Check if the stock code actually exists in our allAsxCodes list.
-            // This helps differentiate between "no data from script" and "invalid ASX code".
-            const isValidAsxCode = allAsxCodes.some(s => s.code === asxCode.toUpperCase());
+        // Validate response contains at least one recognizable code key across any row
+        const CODE_KEYS = ['ASXCode','ASX_Code','ASX Code','Code','code'];
+        const hasAnyRowWithCode = Array.isArray(data) && data.some(r => CODE_KEYS.some(k => r && r[k]));
+        if (!Array.isArray(data) || data.length === 0 || !hasAnyRowWithCode) {
+            const isValidAsxCode = (allAsxCodes||[]).some(s => s.code === asxCode.toUpperCase());
             if (!isValidAsxCode) {
-                searchResultDisplay.innerHTML = `<p class="initial-message">ASX code "${asxCode}" not found in our database. Please check spelling.</p>`;
+                searchResultDisplay.innerHTML = `<p class="initial-message">ASX code "${asxCode}" not found in code list. Check spelling.</p>`;
             } else {
-                searchResultDisplay.innerHTML = `<p class="initial-message">No live data available for ${asxCode} from source. It might be delisted or the market is closed.</p>`;
+                if (DEBUG_MODE && data && data[0]) {
+                    console.warn('Search Modal: Unrecognized data shape, sample keys:', Object.keys(data[0]||{}));
+                }
+                searchResultDisplay.innerHTML = `<p class="initial-message">No live data available for ${asxCode} (source returned unrecognized structure).</p>`;
             }
             return;
         }
@@ -4417,6 +4421,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
             <div class="text-center mb-4">
                 <h3 class="${searchModalTitleClasses} search-modal-code-header" data-code="${stockData.ASXCode || ''}" data-name="${stockData.CompanyName || ''}" title="Click to populate Add Share form">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
                 <span class="text-sm text-gray-500">${stockData.CompanyName ? '' : '(Company Name N/A)'}</span>
+                ${DEBUG_MODE ? `<div class="debug-keys">Keys: ${(Object.keys(stockData||{})).slice(0,25).join(', ')}</div>` : ''}
             </div>
             <div class="live-price-display-section">
                 <div class="fifty-two-week-row">
