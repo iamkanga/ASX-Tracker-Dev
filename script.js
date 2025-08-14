@@ -1713,7 +1713,7 @@ function addShareToTable(share) {
     const companyName = companyInfo ? companyInfo.name : '';
 
     row.innerHTML = `
-        <td>
+    <td class="code-cell">
             <span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>
             ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
         </td>
@@ -2145,7 +2145,7 @@ function updateOrCreateShareTableRow(share) {
     const companyName = companyInfo ? companyInfo.name : '';
 
     row.innerHTML = `
-        <td>
+    <td class="code-cell">
             <span class="share-code-display ${priceClass}">${share.shareName || ''}</span>
             ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
         </td>
@@ -4527,6 +4527,9 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 <div class="external-link-item">
                     <a id="searchModalCommSecLink" href="#" target="_blank" class="external-link">View on CommSec.com.au <i class="fas fa-external-link-alt"></i></a>
                 </div>
+                <div class="external-link-item">
+                    <a id="searchModalGoogleFinanceLink" href="#" target="_blank" class="external-link">View on Google Finance <i class="fas fa-external-link-alt"></i></a>
+                </div>
                 <p class="ghosted-text external-links-note">Login may be required for some data sources.</p>
             </div>
         `;
@@ -4538,12 +4541,14 @@ async function displayStockDetailsInSearchModal(asxCode) {
         const searchModalFoolLink = document.getElementById('searchModalFoolLink');
         const searchModalListcorpLink = document.getElementById('searchModalListcorpLink');
         const searchModalCommSecLink = document.getElementById('searchModalCommSecLink');
+    const searchModalGoogleFinanceLink = document.getElementById('searchModalGoogleFinanceLink');
 
         if (searchModalNewsLink) searchModalNewsLink.href = `https://news.google.com/search?q=${encodedAsxCode}%20ASX&hl=en-AU&gl=AU&ceid=AU%3Aen`;
         if (searchModalMarketIndexLink) searchModalMarketIndexLink.href = `https://www.marketindex.com.au/asx/${asxCode.toLowerCase()}`;
         if (searchModalFoolLink) searchModalFoolLink.href = `https://www.fool.com.au/quote/${asxCode}/`; // Assuming Fool URL structure
         if (searchModalListcorpLink) searchModalListcorpLink.href = `https://www.listcorp.com/asx/${asxCode.toLowerCase()}`;
         if (searchModalCommSecLink) searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
+    if (searchModalGoogleFinanceLink) searchModalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${asxCode.toUpperCase()}:ASX`;
 
         // Store the fetched data for potential adding/editing (normalize code property fallbacks)
         const resolvedCode = stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode;

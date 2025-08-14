@@ -3452,6 +3452,14 @@ table td .share-code-display { /* New class for the ASX code span */
     font-weight: 700;
 }
 
+/* Ensure first (code) column and live price column keep natural vertical stacking without overlap */
+#shareTable td.code-cell { vertical-align: top; white-space: nowrap; }
+#shareTable td.live-price-cell { vertical-align: top; }
+/* Prevent unintended flex or block stacking issues if global styles apply */
+#shareTable td.live-price-cell span { display: inline-block; }
+/* Keep price-change on its own line for clarity */
+#shareTable td.live-price-cell .price-change { display: block; margin-left: 0; margin-top: 2px; }
+
 table td .live-price-value {
     font-size: 1.2em; /* Larger for the live price number */
     font-weight: 700;
