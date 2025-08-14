@@ -1888,17 +1888,17 @@ function addShareToMobileCards(share) {
     } catch(_) {}
     const enrichedPriceChange = arrowSymbol ? `${arrowSymbol} ${displayPriceChange}` : displayPriceChange;
     card.innerHTML = `
-        <h3 class="neutral-code-text">${share.shareName || ''}</h3>
         <div class="live-price-display-section">
+            <h3 class="neutral-code-text">${share.shareName || ''}</h3>
+            <span class="change-chevron ${priceClass}">${arrowSymbol || ''}</span>
+            <div class="live-price-main-row">
+                <span class="live-price-large neutral-code-text">${displayLivePrice}</span>
+            </div>
+            <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
             <div class="fifty-two-week-row">
                 <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
                 <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
             </div>
-            <div class="live-price-main-row">
-                <span class="live-price-large neutral-code-text">${displayLivePrice}</span>
-                <span class="price-change-large ${priceClass}">${enrichedPriceChange}</span>
-            </div>
-            ${companyName ? `<p class="modal-company-name-display" style="margin-top: 2px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
             <div class="pe-ratio-row">
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
             </div>
@@ -2257,18 +2257,19 @@ function updateOrCreateShareMobileCard(share) {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     const companyName = companyInfo ? companyInfo.name : '';
 
+    const arrowSymbol = priceClass === 'positive' ? '▲' : (priceClass === 'negative' ? '▼' : '');
     card.innerHTML = `
-        <h3 class="${priceClass}">${share.shareName || ''}</h3>
         <div class="live-price-display-section">
+            <h3 class="neutral-code-text">${share.shareName || ''}</h3>
+            <span class="change-chevron ${priceClass}">${arrowSymbol}</span>
+            <div class="live-price-main-row">
+                <span class="live-price-large neutral-code-text">${displayLivePrice}</span>
+            </div>
+            <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
             <div class="fifty-two-week-row">
                 <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
                 <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
             </div>
-            <div class="live-price-main-row">
-                <span class="live-price-large ${priceClass}">${displayLivePrice}</span>
-                <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
-            </div>
-            ${companyName ? `<p class="modal-company-name-display" style="margin-top: 2px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
             <div class="pe-ratio-row">
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
             </div>

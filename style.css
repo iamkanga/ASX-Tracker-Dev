@@ -3632,21 +3632,20 @@ table td.live-price-cell.negative-change {
 }
 
 /* Price change pill with dark saturated background */
+/* Price change (no pill container – background applied directly behind text) */
 .live-price-display-section .price-change-large {
     font-size: 0.9em;
     font-weight: 700;
     white-space: nowrap;
     margin-left: 10px;
-    padding: 4px 8px 4px 8px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
+    display: inline-block;
+    line-height: 1.1;
     letter-spacing: .25px;
+    padding: 0 4px; /* slight breathing room so background sits tight to glyphs */
 }
-.price-change-large.positive { background: linear-gradient(135deg,#093e1c,#065a29); color: var(--brand-green) !important; }
-.price-change-large.negative { background: linear-gradient(135deg,#4a0f0f,#6a1b1b); color: var(--brand-red) !important; }
-.price-change-large.neutral { background: linear-gradient(135deg,#1f1f1f,#3a3a3a); color: var(--text-color) !important; }
+.price-change-large.positive { background: linear-gradient(135deg,#062d15,#06411f); color: var(--brand-green) !important; }
+.price-change-large.negative { background: linear-gradient(135deg,#310a0a,#541414); color: var(--brand-red) !important; }
+.price-change-large.neutral { background: linear-gradient(135deg,#111,#222); color: var(--text-color) !important; }
 
 /* Larger arrow sizing inside pill (inherit current font-size, arrow is part of text) */
 .price-change-large { font-variant-numeric: tabular-nums; }
@@ -5439,21 +5438,37 @@ body.dark-theme .alert-item {
 }
 
 /* Ensure the live price display section remains visible and formatted */
+/* Compact view card core container now a 2x2 grid */
 .mobile-share-cards.compact-view .mobile-card .live-price-display-section {
-    background-color: transparent; /* Subtle green tinge only in compact view */
-    box-shadow: none; /* Remove shadow */
-    padding: 0; /* Remove padding */
-    margin-bottom: 0; /* Remove margin */
-    flex-direction: column; /* Keep content stacked */
-    align-items: center; /* Center the main price row within the section */
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    align-items: center;
+    justify-items: center;
+    row-gap: 2px;
 }
 
 /* NEW: Override for the main price/change row in compact view */
+/* live-price-main-row now only holds the live price (center cell spanning both columns) */
 .mobile-share-cards.compact-view .mobile-card .live-price-main-row {
-    flex-direction: column; /* Stack price and change vertically */
-    align-items: center;    /* Center them horizontally */
-    gap: 2px;               /* Add a small gap between price and change */
+    grid-column: 1 / span 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin: 0;
 }
+
+/* Code top-left */
+.mobile-share-cards.compact-view .mobile-card h3.neutral-code-text { grid-column: 1 / 1; grid-row: 1; justify-self: start; margin:0; }
+/* Chevron top-right */
+.mobile-share-cards.compact-view .mobile-card .change-chevron { grid-column: 2 / 2; grid-row: 1; justify-self: end; font-size:1.3em; font-weight:800; line-height:1; }
+/* Price change below live price centered spanning */
+.mobile-share-cards.compact-view .mobile-card .price-change-large { grid-column: 1 / span 2; grid-row: 3; margin-left:0; }
 
 /* Adjust font sizes for compact live price and change */
 .mobile-share-cards.compact-view .mobile-card .live-price-display-section .live-price-large {
@@ -5462,12 +5477,9 @@ body.dark-theme .alert-item {
 }
 
 .mobile-share-cards.compact-view .mobile-card .live-price-display-section .price-change-large {
-    font-size: 0.8em; /* Even smaller for percentage change */
+    font-size: 0.8em;
     font-weight: 700;
-    white-space: nowrap;
-    margin-left: 0; /* Remove margin from main price */
-    margin-top: 0; /* Use gap for spacing instead of margin */
-    display: inline-block; /* Ensure price change is visible in compact view */
+    margin-top:0;
 }
 
 /* Ensure the share name (h3) is concise and always visible */
