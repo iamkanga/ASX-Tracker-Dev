@@ -4409,8 +4409,30 @@ async function displayStockDetailsInSearchModal(asxCode) {
             stockData = data[0];
             logDebug('Search Modal: No exact code match; using first row as fallback.', { requested: upperReq, firstKeys: Object.keys(data[0]||{}) });
         }
-        // Ensure CompanyName defaults to an empty string if not provided by the Apps Script
-        stockData.CompanyName = stockData.CompanyName || "";
+        // Resolve company name robustly: treat blank / placeholder API values as missing then fall back to
+        // 1) existing share's stored name, 2) allAsxCodes mapping, else empty string.
+        (function resolveCompanyName(){
+            try {
+                let rawName = stockData.CompanyName;
+                if (typeof rawName === 'string') rawName = rawName.trim();
+                const codeForLookup = (
+                    stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] ||
+                    stockData.Code || stockData.code || asxCode || ''
+                ).toUpperCase();
+                const looksLikePlaceholder = !rawName || /^(-|N\/?A|N\\A)$/i.test(rawName);
+                if (looksLikePlaceholder) {
+                    // Existing share (already in watchlist) may have canonical companyName stored
+                    const existingShareEntry = allSharesData.find(s => s.shareName.toUpperCase() === codeForLookup);
+                    const mappedFromCodes = Array.isArray(allAsxCodes) ? (allAsxCodes.find(c => c.code === codeForLookup)?.name || '') : '';
+                    rawName = (existingShareEntry && existingShareEntry.companyName) || mappedFromCodes || '';
+                    if (DEBUG_MODE && rawName) logDebug('Search Modal: Applied fallback company name', { code: codeForLookup, resolved: rawName });
+                }
+                stockData.CompanyName = rawName || '';
+            } catch (e) {
+                stockData.CompanyName = stockData.CompanyName || '';
+                if (DEBUG_MODE) console.warn('Search Modal: Company name resolution failed', e);
+            }
+        })();
 
         // Check if the stock is already in the user's watchlist
         const existingShare = allSharesData.find(s => s.shareName.toUpperCase() === asxCode.toUpperCase());
@@ -4461,7 +4483,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
         // Construct the display HTML
         searchResultDisplay.innerHTML = `
             <div class="text-center mb-4">
-                <h3 class="${searchModalTitleClasses} search-modal-code-header" data-code="${stockData.ASXCode || ''}" data-name="${stockData.CompanyName || ''}" title="Click to populate Add Share form">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
+                <h3 class="${searchModalTitleClasses} search-modal-code-header" data-code="${stockData.ASXCode || ''}" data-name="${stockData.CompanyName || ''}" data-company="${stockData.CompanyName || ''}" title="Click to populate Add Share form">${stockData.ASXCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
                 <span class="text-sm text-gray-500">${stockData.CompanyName ? '' : '(Company Name N/A)'}</span>
                 ${DEBUG_MODE ? `<div class="debug-keys">Keys: ${(Object.keys(stockData||{})).slice(0,25).join(', ')}</div>` : ''}
             </div>
