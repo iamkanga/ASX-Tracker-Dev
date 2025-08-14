@@ -2310,11 +2310,19 @@ body.dark-theme .external-links-grid .external-link { background:var(--card-bg);
 .external-links-grid .primary-news-link { font-weight:800; }
 .commsec-link-wrapper { display:flex; flex-direction:column; gap:2px; }
 /* Thicker target-hit border refinement */
+/* Unified target-hit pulse (coffee accent) */
+@keyframes targetHitPulseBorder { 
+    0% { box-shadow:0 0 0 0 rgba(164,147,147,0.7); }
+    60% { box-shadow:0 0 0 8px rgba(164,147,147,0); }
+    100% { box-shadow:0 0 0 0 rgba(164,147,147,0); }
+}
 .mobile-card.target-hit-alert, 
 .portfolio-card.target-hit-alert, 
 tr.target-hit-alert { 
-    border:2px solid var(--green-color,#2ECC71) !important; 
-    box-shadow:0 0 0 2px var(--green-color,#2ECC71) inset; 
+        position: relative; 
+        border: var(--target-hit-border-width,3px) solid var(--target-hit-border-color,var(--accent-color)) !important; 
+        animation: targetHitPulseBorder 2.4s ease-in-out infinite; 
+        border-radius: 8px; 
 }
 /* Toggle button / enhanced watchlist item target hit outline */
 .asx-code-buttons-container button.asx-code-btn.target-hit, 

@@ -73,6 +73,34 @@ function onLivePricesUpdated() {
                 renderPortfolioList();
             }
         }
+        // Refresh movement + target-hit classes post-render to avoid transient removal
+        try {
+            Object.keys(livePrices||{}).forEach(code => {
+                const upper = code.toUpperCase();
+                const lp = livePrices[upper]; if (!lp) return;
+                const change = (lp.live!=null && lp.prevClose!=null && !isNaN(lp.live) && !isNaN(lp.prevClose)) ? (lp.live - lp.prevClose) : 0;
+                // Table row
+                if (typeof shareTableBody !== 'undefined' && shareTableBody) {
+                    const row = Array.from(shareTableBody.querySelectorAll('tr')).find(r => (r.querySelector('.share-code-display')||{}).textContent === upper);
+                    if (row) {
+                        row.classList.remove('positive-change-row','negative-change-row','neutral-change-row');
+                        if (change > 0) row.classList.add('positive-change-row');
+                        else if (change < 0) row.classList.add('negative-change-row');
+                        else row.classList.add('neutral-change-row');
+                        if (lp.targetHit && !targetHitIconDismissed) row.classList.add('target-hit-alert');
+                    }
+                }
+                // Mobile card
+                const card = document.querySelector('.mobile-card[data-doc-id] span.share-code[data-code="' + upper + '"]')?.closest('.mobile-card');
+                if (card) {
+                    card.classList.remove('positive-change-card','negative-change-card','neutral-change-card');
+                    if (change > 0) card.classList.add('positive-change-card');
+                    else if (change < 0) card.classList.add('negative-change-card');
+                    else card.classList.add('neutral-change-card');
+                    if (lp.targetHit && !targetHitIconDismissed) card.classList.add('target-hit-alert');
+                }
+            });
+        } catch(_e) { /* ignore visual refresh issues */ }
     } catch (e) {
         console.error('Live Price: onLivePricesUpdated error:', e);
     }
@@ -1782,6 +1810,16 @@ function addShareToMobileCards(share) {
 
     const card = document.createElement('div');
     card.classList.add('mobile-card');
+    // Movement background classes
+    try {
+        const lp = livePrices[share.shareName.toUpperCase()];
+        let change = null;
+        if (lp && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) change = lp.live - lp.prevClose;
+        card.classList.remove('positive-change-card','negative-change-card','neutral-change-card');
+        if (change > 0) card.classList.add('positive-change-card');
+        else if (change < 0) card.classList.add('negative-change-card');
+        else card.classList.add('neutral-change-card');
+    } catch(_) {}
     card.dataset.docId = share.id;
 
     // Check if target price is hit for this share
@@ -2141,6 +2179,15 @@ function updateOrCreateShareMobileCard(share) {
     if (!card) {
         card = document.createElement('div');
         card.classList.add('mobile-card');
+        try {
+            const lp = livePrices[share.shareName.toUpperCase()];
+            let change = null;
+            if (lp && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) change = lp.live - lp.prevClose;
+            card.classList.remove('positive-change-card','negative-change-card','neutral-change-card');
+            if (change > 0) card.classList.add('positive-change-card');
+            else if (change < 0) card.classList.add('negative-change-card');
+            else card.classList.add('neutral-change-card');
+        } catch(_) {}
         card.dataset.docId = share.id;
         // Add event listeners only once when the card is created
         card.addEventListener('click', () => {
