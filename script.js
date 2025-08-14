@@ -4320,11 +4320,25 @@ async function displayStockDetailsInSearchModal(asxCode) {
     currentSearchShareData = null; // Reset previous data
 
     try {
-    const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${asxCode}&_ts=${Date.now()}`);
+    const encoded = encodeURIComponent(asxCode.trim().toUpperCase());
+    if (DEBUG_MODE) logDebug('Search Modal: Fetching', `${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encoded}`);
+    const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encoded}&_ts=${Date.now()}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const data = await response.json();
+    let data; let rawText;
+    try {
+        rawText = await response.text();
+        if (DEBUG_MODE) logDebug('Search Modal: Raw response text length', rawText.length);
+        try {
+            data = JSON.parse(rawText);
+        } catch(parseErr) {
+            if (DEBUG_MODE) console.warn('Search Modal: JSON parse failed, raw snippet:', rawText.slice(0,400));
+            throw new Error('Invalid JSON from data source');
+        }
+    } catch(streamErr) {
+        throw streamErr;
+    }
         logDebug(`Search: Fetched details for ${asxCode}:`, data);
 
         if (data.length === 0 || !data[0] || !data[0].ASXCode) {
