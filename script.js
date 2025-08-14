@@ -1832,7 +1832,7 @@ function addShareToMobileCards(share) {
             }
         } else {
             // Market closed and toggle is OFF, show zero change
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
         }
@@ -1855,7 +1855,7 @@ function addShareToMobileCards(share) {
             </div>
             ${companyName ? `<p class="modal-company-name-display" style="margin-top: 2px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
             <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
+                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
             </div>
         </div>
     <p class="data-row"><span class="label-text">Reference Price:</span><span class="data-value">${formatMoney(Number(share.currentPrice), { hideZero: true })}</span></p>
@@ -1886,9 +1886,9 @@ function addShareToMobileCards(share) {
                     const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
 
                     if (frankingCredits > 0 && frankedYield > 0) {
-                        return frankedYield.toFixed(2) + '% (Franked)'; // Display franked yield with (Franked)
+                        return formatAdaptivePercent(frankedYield) + '% (Franked)';
                     } else if (unfrankedYield > 0) {
-                        return unfrankedYield.toFixed(2) + '% (Unfranked)'; // Display unfranked yield with (Unfranked)
+                        return formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
                     }
                     return ''; // No valid yield or yield is 0, display empty string
                 })()
@@ -2027,21 +2027,21 @@ function updateOrCreateShareTableRow(share) {
 
     if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + currentLivePrice.toFixed(2);
+                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
             }
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         } else {
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + lastFetchedLive.toFixed(2) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
         }
@@ -2060,9 +2060,9 @@ function updateOrCreateShareTableRow(share) {
         const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
         const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
         if (frankingCredits > 0 && frankedYield > 0) {
-            return frankedYield.toFixed(2) + '% (F)';
+            return formatAdaptivePercent(frankedYield) + '% (F)';
         } else if (unfrankedYield > 0) {
-            return unfrankedYield.toFixed(2) + '% (U)';
+            return formatAdaptivePercent(unfrankedYield) + '% (U)';
         }
         return ''; // No valid yield or yield is 0, display empty string
     })();
@@ -2200,9 +2200,9 @@ function updateOrCreateShareMobileCard(share) {
         const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
         const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
         if (frankingCredits > 0 && frankedYield > 0) {
-            return frankedYield.toFixed(2) + '% (Franked)';
+            return formatAdaptivePercent(frankedYield) + '% (Franked)';
         } else if (unfrankedYield > 0) {
-            return unfrankedYield.toFixed(2) + '% (Unfranked)';
+            return formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
         }
         return ''; // No valid yield or yield is 0, display empty string
     })();
@@ -2225,11 +2225,11 @@ function updateOrCreateShareMobileCard(share) {
             </div>
             ${companyName ? `<p class="modal-company-name-display" style="margin-top: 2px; margin-bottom: 8px; font-size: 0.9em; color: var(--ghosted-text); font-weight: 400;">${companyName}</p>` : ''}
             <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? livePriceData.PE.toFixed(2) : 'N/A'}</span>
+                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
             </div>
         </div>
-        <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.currentPrice))}</span></p>
-        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(Number(share.targetPrice))}</span></p>
+    <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
+    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.targetPrice))}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
@@ -6692,6 +6692,7 @@ async function initializeAppLogic() {
         // Helper to centralize quick-add behavior and reduce duplication.
         function quickAddFromSearch(code, name) {
             if (!code) return;
+            window.lastSelectedSearchCode = code; // Track for fallback observer
             try {
                 const existingShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === code);
                 hideModal(stockSearchModal);
@@ -6715,6 +6716,24 @@ async function initializeAppLogic() {
                     if (shareNameInput) shareNameInput.focus();
                     checkFormDirtyState();
                     updateAddFormLiveSnapshot(code);
+                    // Install a short-lived MutationObserver to enforce autofill if something clears it
+                    try {
+                        if (shareNameInput && typeof MutationObserver !== 'undefined') {
+                            let enforceCount = 0;
+                            const mo = new MutationObserver(() => {
+                                if (!shareNameInput.value && window.lastSelectedSearchCode) {
+                                    shareNameInput.value = window.lastSelectedSearchCode;
+                                    if (formCompanyName && (!formCompanyName.textContent || formCompanyName.textContent === '')) {
+                                        formCompanyName.textContent = name || '';
+                                    }
+                                }
+                                if (++enforceCount > 5) { mo.disconnect(); }
+                            });
+                            mo.observe(shareNameInput, { attributes:true, attributeFilter:['value'] });
+                            // Safety cleanup after 3s
+                            setTimeout(()=> mo.disconnect(), 3000);
+                        }
+                    } catch(_) {}
                 }
                 // Post-hide verification fallback (rare race where value not applied)
                 setTimeout(() => {
