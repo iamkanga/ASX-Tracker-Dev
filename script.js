@@ -5213,9 +5213,11 @@ async function toggleAlertEnabled(shareId) {
         const newEnabled = !currentEnabled; // invert
         await window.firestore.setDoc(alertDocRef, { enabled: newEnabled, updatedAt: window.firestore.serverTimestamp() }, { merge: true });
         showCustomAlert(newEnabled ? 'Alert unmuted' : 'Alert muted', 1000);
+    return newEnabled;
     } catch (e) {
         console.error('Alerts: Failed to toggle enabled for share ' + shareId, e);
         showCustomAlert('Failed to update alert. Please try again.', 1500);
+    throw e;
     }
 }
 
@@ -8170,7 +8172,24 @@ function showTargetHitDetailsModal() {
         if (toggleBtn) {
             toggleBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                await toggleAlertEnabled(share.id);
+                try {
+                    // Optimistic: move item to other section immediately
+                    const enabledAfter = await toggleAlertEnabled(share.id);
+                    // enabledAfter === true means now active (unmuted)
+                    // Rebuild lists optimistically using current arrays then let listener correct if needed
+                    if (enabledAfter) {
+                        // Move from muted to active
+                        sharesAtTargetPrice = dedupeSharesById([...sharesAtTargetPrice, share]);
+                        sharesAtTargetPriceMuted = sharesAtTargetPriceMuted.filter(s => s.id !== share.id);
+                    } else {
+                        sharesAtTargetPriceMuted = dedupeSharesById([...sharesAtTargetPriceMuted, share]);
+                        sharesAtTargetPrice = sharesAtTargetPrice.filter(s => s.id !== share.id);
+                    }
+                    // Re-render minimal (avoid flicker)
+                    showTargetHitDetailsModal();
+                } catch(err) {
+                    console.warn('Toggle alert failed', err);
+                }
             });
         }
         return item;
