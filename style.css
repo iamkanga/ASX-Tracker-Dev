@@ -273,9 +273,15 @@ table tbody tr.neutral-change-row:not(.target-hit-alert) { position:relative; }
 table tbody tr.positive-change-row:not(.target-hit-alert)::before,
 table tbody tr.negative-change-row:not(.target-hit-alert)::before,
 table tbody tr.neutral-change-row:not(.target-hit-alert)::before { content:""; position:absolute; inset:0; pointer-events:none; border-radius:6px; }
-table tbody tr.positive-change-row:not(.target-hit-alert)::before { box-shadow:inset 4px 0 0 var(--brand-green), inset -4px 0 0 var(--brand-green); }
-table tbody tr.negative-change-row:not(.target-hit-alert)::before { box-shadow:inset 4px 0 0 var(--brand-red), inset -4px 0 0 var(--brand-red); }
-table tbody tr.neutral-change-row:not(.target-hit-alert)::before { box-shadow:inset 4px 0 0 var(--accent-color), inset -4px 0 0 var(--accent-color); }
+/* Revert watchlist (desktop table) side accents; apply accents only on mobile cards/compact to avoid layout shift */
+table tbody tr.positive-change-row:not(.target-hit-alert)::before,
+table tbody tr.negative-change-row:not(.target-hit-alert)::before,
+table tbody tr.neutral-change-row:not(.target-hit-alert)::before { box-shadow:none; }
+
+/* Retain subtle background tint in desktop rows without side bars */
+table tbody tr.positive-change-row:not(.target-hit-alert) td { background: var(--watch-bg-positive); }
+table tbody tr.negative-change-row:not(.target-hit-alert) td { background: var(--watch-bg-negative); }
+table tbody tr.neutral-change-row:not(.target-hit-alert) td { background: var(--watch-bg-neutral); }
 
 /* Ensure borders for all three states are consistent thickness */
 table tbody tr.positive-change-row:not(.target-hit-alert),
@@ -2338,7 +2344,8 @@ tr.target-hit-alert {
     overflow:visible;
 }
 /* Overlay pseudo-element to unify corners (no disjoint lines) */
-tr.target-hit-alert::after, .mobile-card.target-hit-alert::after, .portfolio-card.target-hit-alert::after { content:""; position:absolute; inset:0; border-radius:inherit; box-shadow:0 0 0 2px var(--target-hit-border-color,var(--accent-color)) inset; pointer-events:none; }
+/* Simplify after overlay to avoid shifting layout in table rows */
+tr.target-hit-alert::after, .mobile-card.target-hit-alert::after, .portfolio-card.target-hit-alert::after { content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; }
 
 /* ASX code buttons / target hit icon consistency */
 .asx-code-btn.target-hit-alert, .asx-code-buttons-container button.asx-code-btn.target-hit { position:relative; border:2px solid var(--target-hit-border-color,var(--accent-color)) !important; animation: targetHitPulseBorder 2.8s ease-in-out infinite; }
