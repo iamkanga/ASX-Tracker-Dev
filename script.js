@@ -850,7 +850,11 @@ function formatAdaptivePrice(value) {
 }
 function formatAdaptivePercent(pct) {
     if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
-    return formatAdaptivePercent(pct);
+    const n = Number(pct);
+    const abs = Math.abs(n);
+    // Use 3 decimals for very small magnitudes (under 0.1%), else 2
+    const decimals = (abs > 0 && abs < 0.1) ? 3 : 2;
+    return n.toFixed(decimals);
 }
 
 // Fallback for missing formatUserDecimalStrict (called in edit form population)
@@ -3287,7 +3291,7 @@ function showShareDetails() {
         modalLivePriceDisplaySection.appendChild(livePriceRow);
 
         if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) {
-            currentModalLivePriceLarge.textContent = '$' + livePrice.toFixed(2);
+            currentModalLivePriceLarge.textContent = '$' + formatAdaptivePrice(livePrice);
             currentModalLivePriceLarge.style.display = 'inline';
         } else {
             currentModalLivePriceLarge.textContent = 'N/A';
@@ -3303,9 +3307,9 @@ function showShareDetails() {
             const priceChangeSpan = document.createElement('span');
             priceChangeSpan.classList.add('price-change'); // Keep base class for coloring, color already applied to parent
             if (change > 0) {
-                priceChangeSpan.textContent = '(+$' + change.toFixed(2) + ' / +' + percentageChange.toFixed(2) + '%)';
+                priceChangeSpan.textContent = '(+$' + formatAdaptivePrice(change) + ' / +' + formatAdaptivePercent(percentageChange) + '%)';
             } else if (change < 0) {
-                priceChangeSpan.textContent = '(-$' + Math.abs(change).toFixed(2) + ' / ' + percentageChange.toFixed(2) + '%)'; // percentageChange is already negative
+                priceChangeSpan.textContent = '(-$' + formatAdaptivePrice(Math.abs(change)) + ' / ' + formatAdaptivePercent(percentageChange) + '%)'; // percentageChange is already negative
             } else {
                 priceChangeSpan.textContent = '($0.00 / 0.00%)';
             }
@@ -3321,7 +3325,7 @@ function showShareDetails() {
         peRow.classList.add('pe-ratio-row'); // New class for styling
         const peSpan = document.createElement('h3');
         peSpan.classList.add('pe-ratio-value'); // New class
-        peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A');
+    peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A');
         peRow.appendChild(peSpan);
         modalLivePriceDisplaySection.appendChild(peRow);
     }
@@ -3351,17 +3355,17 @@ function showShareDetails() {
     const displayDividendAmount = Number(share.dividendAmount);
     const displayFrankingCredits = Number(share.frankingCredits);
 
-    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(2) : '')(displayDividendAmount);
+    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(displayDividendAmount);
     modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? val.toFixed(1) + '%' : '')(displayFrankingCredits);
 
     const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
     const unfrankedYield = calculateUnfrankedYield(displayDividendAmount, priceForYield); 
     // Display unfranked yield only if it's not null/NaN AND not 0
-    modalUnfrankedYieldSpan.textContent = unfrankedYield !== null && !isNaN(unfrankedYield) && unfrankedYield !== 0 ? unfrankedYield.toFixed(2) + '%' : '';
+    modalUnfrankedYieldSpan.textContent = unfrankedYield !== null && !isNaN(unfrankedYield) && unfrankedYield !== 0 ? formatAdaptivePercent(unfrankedYield) + '%' : '';
 
     const frankedYield = calculateFrankedYield(displayDividendAmount, priceForYield, displayFrankingCredits);
     // Display franked yield only if it's not null/NaN AND not 0
-    modalFrankedYieldSpan.textContent = frankedYield !== null && !isNaN(frankedYield) && frankedYield !== 0 ? frankedYield.toFixed(2) + '%' : '';
+    modalFrankedYieldSpan.textContent = frankedYield !== null && !isNaN(frankedYield) && frankedYield !== 0 ? formatAdaptivePercent(frankedYield) + '%' : '';
 
     // Populate Entry Date after Franked Yield
     modalEntryDate.textContent = formatDate(share.entryDate) || 'N/A';
@@ -4359,11 +4363,11 @@ async function displayStockDetailsInSearchModal(asxCode) {
         let displayPrice = 'N/A';
 
         if (!isNaN(currentLivePrice) && currentLivePrice !== null) {
-            displayPrice = `$${currentLivePrice.toFixed(2)}`;
+            displayPrice = `$${formatAdaptivePrice(currentLivePrice)}`;
             if (!isNaN(previousClosePrice) && previousClosePrice !== null) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                priceChangeText = `${change.toFixed(2)} (${percentageChange.toFixed(2)}%)`;
+                priceChangeText = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         }
@@ -4395,7 +4399,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
                     <span class="price-change-large ${priceClass}">${priceChangeText}</span>
                 </div>
                 <div class="pe-ratio-row">
-                    <h3 class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? peRatio.toFixed(2) : 'N/A'}</h3>
+                    <h3 class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A'}</h3>
                 </div>
             </div>
             <div class="external-links-section">
@@ -5498,7 +5502,7 @@ function calculateTotalCash() {
     if (totalCashDisplay) {
     totalCashDisplay.textContent = formatMoney(total);
     }
-    logDebug('Cash Categories: Total cash calculated: $' + total.toFixed(2));
+    logDebug('Cash Categories: Total cash calculated: $' + formatAdaptivePrice(total));
 }
 
 // NEW: Cash Asset Form Modal Functions (2.1)
@@ -5514,7 +5518,7 @@ function showAddEditCashCategoryModal(assetIdToEdit = null) {
         }
         cashFormTitle.textContent = 'Edit Cash Asset';
         cashAssetNameInput.value = assetToEdit.name || '';
-        cashAssetBalanceInput.value = Number(assetToEdit.balance) !== null && !isNaN(Number(assetToEdit.balance)) ? Number(assetToEdit.balance).toFixed(2) : '';
+    cashAssetBalanceInput.value = Number(assetToEdit.balance) !== null && !isNaN(Number(assetToEdit.balance)) ? formatAdaptivePrice(Number(assetToEdit.balance)) : '';
         setIconDisabled(deleteCashAssetBtn, false); // Enable delete button for existing asset
         
         // Populate comments for editing
@@ -6194,7 +6198,7 @@ function exportWatchlistToCSV() {
             prevClosePrice !== undefined && prevClosePrice !== null && !isNaN(prevClosePrice)) {
             const change = livePrice - prevClosePrice;
             const percentageChange = (prevClosePrice !== 0 && !isNaN(prevClosePrice)) ? (change / prevClosePrice) * 100 : 0;
-            priceChange = change.toFixed(2) + ' (' + percentageChange.toFixed(2) + '%)'; // Include percentage in CSV
+            priceChange = formatAdaptivePrice(change) + ' (' + formatAdaptivePercent(percentageChange) + '%)'; // Include percentage in CSV
         }
 
         const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
@@ -6204,14 +6208,14 @@ function exportWatchlistToCSV() {
 
         const row = [
             share.shareName || '',
-            (!isNaN(enteredPriceNum) && enteredPriceNum !== null) ? enteredPriceNum.toFixed(2) : '',
-            (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice.toFixed(2) : '',
+            (!isNaN(enteredPriceNum) && enteredPriceNum !== null) ? formatAdaptivePrice(enteredPriceNum) : '',
+            (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? formatAdaptivePrice(livePrice) : '',
             priceChange, // Now includes the calculated price change
-            (!isNaN(targetPriceNum) && targetPriceNum !== null) ? targetPriceNum.toFixed(2) : '',
+            (!isNaN(targetPriceNum) && targetPriceNum !== null) ? formatAdaptivePrice(targetPriceNum) : '',
             (!isNaN(dividendAmountNum) && dividendAmountNum !== null) ? dividendAmountNum.toFixed(3) : '',
             (!isNaN(frankingCreditsNum) && frankingCreditsNum !== null) ? frankingCreditsNum.toFixed(1) : '',
-            unfrankedYield !== null && !isNaN(unfrankedYield) ? unfrankedYield.toFixed(2) : '0.00', // Ensure numerical output
-            frankedYield !== null && !isNaN(frankedYield) ? frankedYield.toFixed(2) : '0.00', // Ensure numerical output
+            unfrankedYield !== null && !isNaN(unfrankedYield) ? formatAdaptivePercent(unfrankedYield) : '0.00', // Ensure numerical output
+            frankedYield !== null && !isNaN(frankedYield) ? formatAdaptivePercent(frankedYield) : '0.00', // Ensure numerical output
             formatDate(share.entryDate) || ''
         ];
         csvRows.push(row.map(escapeCsvValue).join(','));
@@ -7708,9 +7712,9 @@ if (sortSelect) {
         const frankedYield = calculateFrankedYield(dividendAmount, currentPrice, frankingCredits);
         const estimatedDividend = estimateDividendIncome(investmentValue, dividendAmount, currentPrice);
         
-        calcUnfrankedYieldSpan.textContent = unfrankedYield !== null ? unfrankedYield.toFixed(2) + '%' : '-';
-        calcFrankedYieldSpan.textContent = frankedYield !== null ? frankedYield.toFixed(2) + '%' : '-';
-        calcEstimatedDividend.textContent = estimatedDividend !== null ? '$' + estimatedDividend.toFixed(2) : '-';
+    calcUnfrankedYieldSpan.textContent = unfrankedYield !== null ? formatAdaptivePercent(unfrankedYield) + '%' : '-';
+    calcFrankedYieldSpan.textContent = frankedYield !== null ? formatAdaptivePercent(frankedYield) + '%' : '-';
+    calcEstimatedDividend.textContent = estimatedDividend !== null ? '$' + formatAdaptivePrice(estimatedDividend) : '-';
     }
 
     // Standard Calculator Button
@@ -8125,9 +8129,9 @@ function showTargetHitDetailsModal() {
         item.innerHTML = `
             <div class="target-hit-item-header">
                 <span class="share-name-code ${priceClass}">${share.shareName}</span>
-                <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + currentLivePrice.toFixed(2)) : ''}</span>
+                <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
             </div>
-            <p>Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? Number(targetPrice).toFixed(2) : 'N/A'}</strong></p>
+            <p>Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? formatAdaptivePrice(Number(targetPrice)) : 'N/A'}</strong></p>
             <div class="target-hit-actions">
                 <button class="button secondary-buttons toggle-alert-btn" data-share-id="${share.id}">${isMuted ? 'Unmute' : 'Mute'}</button>
             </div>
