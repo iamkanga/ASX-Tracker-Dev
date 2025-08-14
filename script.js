@@ -5167,16 +5167,16 @@ async function loadTriggeredAlertsListener() {
 }
 
 // NEW: Helper to enable/disable a specific alert for a share
-async function toggleAlertEnabled(shareId, enabled) {
+// Toggle alert enabled flag (if currently enabled -> disable; if disabled -> enable)
+async function toggleAlertEnabled(shareId, currentIsMuted) {
     try {
         if (!db || !currentUserId || !window.firestore) throw new Error('Firestore not available');
         const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
         const alertDocRef = window.firestore.doc(alertsCol, shareId);
-        await window.firestore.updateDoc(alertDocRef, {
-            enabled: !!enabled,
-            updatedAt: window.firestore.serverTimestamp()
-        });
-        showCustomAlert(enabled ? 'Alert unmuted' : 'Alert muted', 1000);
+    // currentIsMuted === true means document.enabled === false
+    const newEnabled = !!currentIsMuted; // if muted -> true (unmute); if not muted -> false (mute)
+    await window.firestore.updateDoc(alertDocRef, { enabled: newEnabled, updatedAt: window.firestore.serverTimestamp() });
+    showCustomAlert(newEnabled ? 'Alert unmuted' : 'Alert muted', 1000);
     } catch (e) {
         console.error('Alerts: Failed to toggle enabled for share ' + shareId, e);
         showCustomAlert('Failed to update alert. Please try again.', 1500);
@@ -8107,13 +8107,13 @@ function showTargetHitDetailsModal() {
         item.dataset.shareId = share.id;
         item.innerHTML = `
             <div class="target-hit-item-header">
-                <span class="share-name-code ${priceClass}">${share.shareName}</span>
-                <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
+                <div class="thi-left">
+                    <span class="share-name-code ${priceClass}">${share.shareName}</span>
+                    <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
+                </div>
+                <button class="button secondary-buttons toggle-alert-btn" data-share-id="${share.id}" title="${isMuted ? 'Unmute Alert' : 'Mute Alert'}">${isMuted ? 'Unmute' : 'Mute'}</button>
             </div>
-            <p>Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? formatAdaptivePrice(Number(targetPrice)) : 'N/A'}</strong></p>
-            <div class="target-hit-actions">
-                <button class="button secondary-buttons toggle-alert-btn" data-share-id="${share.id}">${isMuted ? 'Unmute' : 'Mute'}</button>
-            </div>
+            <p class="target-line">Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? formatAdaptivePrice(Number(targetPrice)) : 'N/A'}</strong></p>
         `;
         // Click to open share details
         item.addEventListener('click', (e) => {
@@ -8132,7 +8132,7 @@ function showTargetHitDetailsModal() {
         if (toggleBtn) {
             toggleBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                await toggleAlertEnabled(share.id, isMuted); // if currently muted -> enable; if enabled -> disable
+                await toggleAlertEnabled(share.id, isMuted);
             });
         }
         return item;
