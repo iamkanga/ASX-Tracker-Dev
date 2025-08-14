@@ -201,15 +201,14 @@ function makeFilesAvailableToSourceControlCSS() {
     --live-price-positive-bg: rgba(46, 204, 113, 0.12); /* Restored subtle green */
     --live-price-negative-bg: rgba(231, 76, 60, 0.12); /* Restored subtle red */
     --live-price-neutral-bg: rgba(164, 147, 147, 0.10); /* Muted coffee for unchanged */
-    --watch-bg-positive: rgba(46,204,113,0.10);
-    --watch-bg-negative: rgba(231,76,60,0.10);
-    --watch-bg-neutral: rgba(164,147,147,0.10);
+    /* Strengthened movement background hues for visibility parity */
+    --watch-bg-positive: rgba(46,204,113,0.17); /* Emerald tint stronger */
+    --watch-bg-negative: rgba(231,76,60,0.17);  /* Alizarin tint (unchanged intensity reference) */
+    --watch-bg-neutral: rgba(164,147,147,0.17); /* Coffee tint stronger */
     --target-hit-border-color: var(--accent-color); /* Coffee hue border */
-    --target-hit-border-width: 3px; /* Thicker border for target hits */
+    --target-hit-border-width: 4px; /* Unified thickness */
     --comment-title-bg: rgba(0, 0, 0, 0.05); /* Subtle background for comment titles */
-    --target-alert-bg: #e0f7fa; /* Light blue for target hit alert */
-    --target-alert-text: #a49393; /* Coffee color for target-hit ASX code in modals */
-    --target-alert-border: var(--accent-color);
+    /* Removed obsolete target-alert * styling (replaced by unified border + movement hue) */
     --target-banner-height: 40px; /* This variable is now effectively unused for the banner, but kept for other potential uses */
     /* General green used in components */
     --green-color: var(--brand-green);
@@ -259,9 +258,9 @@ table tbody tr.negative-change-row { background: var(--watch-bg-negative); }
 table tbody tr.neutral-change-row  { background: var(--watch-bg-neutral); }
 
 /* Side borders ONLY for non-target-hit rows */
-table tbody tr.positive-change-row:not(.target-hit-alert) { border-left:4px solid var(--brand-green); border-right:4px solid var(--brand-green); border-top:none; border-bottom:none; }
-table tbody tr.negative-change-row:not(.target-hit-alert) { border-left:4px solid var(--brand-red);   border-right:4px solid var(--brand-red);   border-top:none; border-bottom:none; }
-table tbody tr.neutral-change-row:not(.target-hit-alert)  { border-left:4px solid var(--accent-color); border-right:4px solid var(--accent-color); border-top:none; border-bottom:none; }
+table tbody tr.positive-change-row:not(.target-hit-alert) { border-left:4px solid var(--brand-green); border-right:4px solid var(--brand-green); border-top:none; border-bottom:none; border-radius:6px; }
+table tbody tr.negative-change-row:not(.target-hit-alert) { border-left:4px solid var(--brand-red);   border-right:4px solid var(--brand-red);   border-top:none; border-bottom:none; border-radius:6px; }
+table tbody tr.neutral-change-row:not(.target-hit-alert)  { border-left:4px solid var(--accent-color); border-right:4px solid var(--accent-color); border-top:none; border-bottom:none; border-radius:6px; }
 
 /* Mobile / compact cards backgrounds */
 .mobile-card.positive-change-card { background: var(--watch-bg-positive); }
@@ -269,16 +268,16 @@ table tbody tr.neutral-change-row:not(.target-hit-alert)  { border-left:4px soli
 .mobile-card.neutral-change-card  { background: var(--watch-bg-neutral); }
 
 /* Mobile side borders ONLY (no full border unless target-hit) */
-.mobile-card.positive-change-card:not(.target-hit-alert) { border-left:4px solid var(--brand-green); border-right:4px solid var(--brand-green); border-top:none; border-bottom:none; }
-.mobile-card.negative-change-card:not(.target-hit-alert) { border-left:4px solid var(--brand-red);   border-right:4px solid var(--brand-red);   border-top:none; border-bottom:none; }
-.mobile-card.neutral-change-card:not(.target-hit-alert)  { border-left:4px solid var(--accent-color); border-right:4px solid var(--accent-color); border-top:none; border-bottom:none; }
+.mobile-card.positive-change-card:not(.target-hit-alert) { border-left:4px solid var(--brand-green); border-right:4px solid var(--brand-green); border-top:none; border-bottom:none; border-radius:10px; }
+.mobile-card.negative-change-card:not(.target-hit-alert) { border-left:4px solid var(--brand-red);   border-right:4px solid var(--brand-red);   border-top:none; border-bottom:none; border-radius:10px; }
+.mobile-card.neutral-change-card:not(.target-hit-alert)  { border-left:4px solid var(--accent-color); border-right:4px solid var(--accent-color); border-top:none; border-bottom:none; border-radius:10px; }
 
 /* Target-Hit: full 4px border (keep underlying movement background) */
-@keyframes targetHitPulseBorder { 0% { box-shadow:0 0 0 0 rgba(164,147,147,0.55); } 55% { box-shadow:0 0 0 6px rgba(164,147,147,0); } 100% { box-shadow:0 0 0 0 rgba(164,147,147,0); } }
+@keyframes targetHitPulseBorder { 0% { box-shadow:0 0 0 0 rgba(164,147,147,0.45); } 50% { box-shadow:0 0 0 5px rgba(164,147,147,0); } 100% { box-shadow:0 0 0 0 rgba(164,147,147,0); } }
 table tbody tr.target-hit-alert,
 .mobile-card.target-hit-alert,
 .mobile-share-cards.compact-view .mobile-card.target-hit-alert,
-.portfolio-card.target-hit-alert { border:4px solid var(--accent-color) !important; animation: targetHitPulseBorder 2.2s ease-in-out infinite; box-sizing:border-box; }
+.portfolio-card.target-hit-alert { border:4px solid var(--accent-color) !important; animation: targetHitPulseBorder 2.2s ease-in-out infinite; box-sizing:border-box; border-radius:10px; }
 
 /* Remove side-only borders when target-hit applies (force full border clarity) */
 table tbody tr.target-hit-alert { border-left:4px solid var(--accent-color) !important; border-right:4px solid var(--accent-color) !important; }
