@@ -4355,12 +4355,22 @@ async function displayStockDetailsInSearchModal(asxCode) {
         // Check if the stock is already in the user's watchlist
         const existingShare = allSharesData.find(s => s.shareName.toUpperCase() === asxCode.toUpperCase());
 
-        // Prepare the data to be displayed in the modal
-        const currentLivePrice = parseFloat(stockData.LivePrice);
-        const previousClosePrice = parseFloat(stockData.PrevClose);
-        const peRatio = parseFloat(stockData.PE);
-        const high52Week = parseFloat(stockData.High52);
-        const low52Week = parseFloat(stockData.Low52);
+        // Prepare the data to be displayed in the modal (robust multi-key fallbacks matching snapshot logic)
+        function pickNumber(obj, keys) {
+            for (const k of keys) {
+                if (obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== '') {
+                    const v = parseFloat(obj[k]);
+                    if (!isNaN(v)) return v;
+                }
+            }
+            return NaN;
+        }
+        const currentLivePrice = pickNumber(stockData, ['LivePrice','Live Price','live','price','Last','LastPrice','Last Price','LastTrade','Last Trade']);
+        const previousClosePrice = pickNumber(stockData, ['PrevClose','Prev Close','prevClose','prev','Previous Close','Close','Last Close']);
+        const peRatio = pickNumber(stockData, ['PE','PE Ratio','pe']);
+        const high52Week = pickNumber(stockData, ['High52','High52','High 52','52WeekHigh','52 High']);
+        const low52Week = pickNumber(stockData, ['Low52','Low52','Low 52','52WeekLow','52 Low']);
+        if (DEBUG_MODE) logDebug('Search Modal: Normalized numeric fields', { currentLivePrice, previousClosePrice, peRatio, high52Week, low52Week, rawKeys: Object.keys(stockData||{}) });
 
         // Determine price change class
         let priceClass = '';
@@ -4516,7 +4526,19 @@ async function displayStockDetailsInSearchModal(asxCode) {
 
     } catch (error) {
         console.error('Search: Error fetching stock details:', error);
-        searchResultDisplay.innerHTML = `<p class="initial-message">Error fetching data for ${asxCode}: ${error.message}.</p>`;
+        const friendly = (
+            /NetworkError|Failed to fetch/i.test(error.message) ? 'Network issue fetching data. Check connection.' :
+            /HTTP 4\d\d/.test(error.message) ? 'Request issue (client error). Try again or verify code.' :
+            /HTTP 5\d\d/.test(error.message) ? 'Data source temporarily unavailable (server error).' :
+            'Unexpected error while fetching data.'
+        );
+        searchResultDisplay.innerHTML = `<p class="initial-message">${friendly} (${asxCode}).</p>`;
+        if (DEBUG_MODE) {
+            const pre = document.createElement('pre');
+            pre.className = 'debug-block';
+            pre.textContent = 'Debug: ' + (error && error.stack ? error.stack : error.message);
+            searchResultDisplay.appendChild(pre);
+        }
         searchModalActionButtons.innerHTML = '';
     }
 }
