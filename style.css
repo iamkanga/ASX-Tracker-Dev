@@ -3387,7 +3387,8 @@ table tbody tr.target-hit-alert td,
 .portfolio-card:hover { background:rgba(255,255,255,0.03); }
 .portfolio-card.positive { box-shadow:0 0 0 1px rgba(0,200,120,0.15); }
 .portfolio-card.negative { box-shadow:0 0 0 1px rgba(255,80,80,0.15); }
-.portfolio-card.total { background:linear-gradient(135deg,var(--accent-color,#2d4fa3),#1b2b55); }
+/* Make portfolio total card neutral (no blue gradient in light theme) */
+.portfolio-card.total { background: var(--card-bg) !important; }
 .portfolio-card.total .pc-code { font-weight:600; }
 .portfolio-card .pc-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .portfolio-card .pc-row.top { margin-bottom:4px; }
@@ -3688,7 +3689,7 @@ table td.live-price-cell.negative-change {
 
 /* Enlarged & flush header icons */
 #hamburgerBtn, #addShareHeaderBtn { font-size:2.05rem; width:52px; height:52px; display:inline-flex; align-items:center; justify-content:center; padding:0; margin:0; }
-#addShareHeaderBtn i { opacity:1 !important; color:var(--accent-color,#a49393) !important; filter:none !important; }
+#addShareHeaderBtn i, #addShareHeaderBtn svg { opacity:1 !important; color: var(--accent-color,#a49393) !important; filter:none !important; mix-blend-mode:normal !important; }
 #hamburgerBtn { margin-left:-6px; }
 #addShareHeaderBtn { margin-right:-6px; }
 #hamburgerBtn svg, #addShareHeaderBtn svg { width:34px; height:34px; }
