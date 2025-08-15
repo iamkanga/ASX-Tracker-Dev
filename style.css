@@ -259,9 +259,9 @@ function makeFilesAvailableToSourceControlCSS() {
 .neutral-change-row, .neutral-change-card { border-left: 4px solid var(--accent-color); border-right: 4px solid var(--accent-color); }
 
 /* Movement backgrounds (Light mode) - Increased specificity to ensure override */
-body table tbody tr.positive-change-row, body .mobile-card.positive-change-card { background-color: var(--watch-bg-positive); }
-body table tbody tr.negative-change-row, body .mobile-card.negative-change-card { background-color: var(--watch-bg-negative); }
-body table tbody tr.neutral-change-row, body .mobile-card.neutral-change-card { background-color: var(--watch-bg-neutral); }
+body table tbody tr.positive-change-row, #mobileShareCards .mobile-card.positive-change-card { background-color: var(--watch-bg-positive) !important; }
+body table tbody tr.negative-change-row, #mobileShareCards .mobile-card.negative-change-card { background-color: var(--watch-bg-negative) !important; }
+body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-change-card { background-color: var(--watch-bg-neutral) !important; }
 
 /* Target-Hit Override: Full 4px rounded border with pulse */
 @keyframes targetHitPulseBorder {
@@ -276,30 +276,59 @@ body table tbody tr.neutral-change-row, body .mobile-card.neutral-change-card { 
     will-change: box-shadow;
 }
 
-/* === Compact Card Layout & Theme === */
+/* Pulsing Notification Icon */
+#targetHitIconBtn.has-alerts {
+    animation: targetHitPulseBorder 2s ease-in-out infinite;
+    border-radius: 50%; /* Ensure the pulse follows the button's shape */
+}
+
+/* === Compact Card Layout & Theme (Rebuilt) === */
 .mobile-share-cards.compact-view .mobile-card {
-    display: grid !important; /* Override potential conflicts from general mobile styles */
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto 1fr;
+    display: grid !important;
+    grid-template-columns: 1fr auto; /* Code takes up available space, chevron is auto-sized */
+    grid-template-rows: auto 1fr; /* Top row auto, middle area takes remaining space */
     grid-template-areas:
         "code chevron"
         "price price";
-    align-items: center;
-    padding: 8px;
+    align-items: center; /* Vertically center items in their grid cells */
+    padding: 8px 12px;
     gap: 4px 8px;
 }
-.mobile-share-cards.compact-view .asx-code { grid-area: code; justify-self: start; font-weight: bold; }
-.mobile-share-cards.compact-view .chevron { grid-area: chevron; justify-self: end; }
+
+.mobile-share-cards.compact-view .asx-code {
+    grid-area: code;
+    justify-self: start; /* Align left */
+    font-weight: bold;
+}
+
+.mobile-share-cards.compact-view .chevron {
+    grid-area: chevron;
+    justify-self: end; /* Align right */
+}
+
 .mobile-share-cards.compact-view .live-price-container {
     grid-area: price;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    align-items: center; /* Center horizontally */
+    justify-content: center; /* Center vertically */
     text-align: center;
+    padding-top: 8px; /* Add some space from the top row */
 }
-.mobile-share-cards.compact-view .live-price { font-size: 1.5rem; font-weight: bold; }
-.mobile-share-cards.compact-view .price-change-container { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+
+.mobile-share-cards.compact-view .live-price {
+    font-size: 1.6rem;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.mobile-share-cards.compact-view .price-change-container {
+    display: flex;
+    flex-direction: column; /* Stack price and percentage change */
+    align-items: center;
+    gap: 2px;
+    margin-top: 4px;
+}
 
 /* Light Mode Compact Cards: Use subtle backgrounds */
 .mobile-share-cards.compact-view .positive-change-card { background: var(--watch-bg-positive); }
