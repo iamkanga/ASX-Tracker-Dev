@@ -59,6 +59,69 @@ function sortSharesByPercentageChange(shares) {
     });
 }
 
+// --- AUTH BOOTSTRAP (restored) -------------------------------------------------
+// Some earlier refactors removed the onAuthStateChanged wiring that drives initial data load.
+// Without it, clicking Google Sign-In appears to "do nothing" because UI never transitions.
+// We reintroduce a resilient bootstrap that attaches once Firebase globals are available.
+window._firebaseInitialized = false;
+window._userAuthenticated = false;
+window._appDataLoaded = false;      // Set true after initial Firestore data listener fires
+window._livePricesLoaded = false;   // Set true after first live prices fetch completes
+window._appInitialized = false;     // Guard so initializeAppLogic runs only once per session
+
+function tryAttachAuthListener(attempt=0) {
+    if (window._authListenerAttached) return true;
+    const auth = window.firebaseAuth;
+    const fns = window.authFunctions;
+    if (!auth || !fns || !fns.onAuthStateChanged) {
+        if (attempt < 50) { // retry for ~5s (50 * 100ms)
+            setTimeout(() => tryAttachAuthListener(attempt+1), 100);
+        } else {
+            console.warn('Auth Bootstrap: Firebase auth not available after retries. Sign-in will not function.');
+        }
+        return false;
+    }
+    fns.onAuthStateChanged(auth, (user) => {
+        window._firebaseInitialized = true;
+        if (user) {
+            window._userAuthenticated = true;
+            logDebug('Auth Bootstrap: User authenticated (' + (user.uid || 'no-uid') + ').');
+            // Run core app initialization once
+            if (!window._appInitialized && typeof initializeAppLogic === 'function') {
+                try {
+                    initializeAppLogic();
+                } catch(e) { console.error('Auth Bootstrap: initializeAppLogic failed', e); }
+                window._appInitialized = true;
+            }
+            // Kick off data flows if functions exist
+            try { if (typeof loadShares === 'function') loadShares(); } catch(e){ console.error('Init loadShares failed', e); }
+            try { if (typeof loadCashCategories === 'function') loadCashCategories(); } catch(e){ console.error('Init loadCashCategories failed', e); }
+            try { if (typeof loadAlertsListener === 'function') loadAlertsListener(); } catch(e) { /* optional */ }
+            try { if (typeof fetchLivePrices === 'function') { fetchLivePrices().finally(() => { window._livePricesLoaded = true; hideSplashScreenIfReady(); }); } } catch(e){ console.error('Init fetchLivePrices failed', e); }
+            // Mark splash screen ready (some flows rely on this flag before hiding)
+            window.splashScreenReady = true;
+            hideSplashScreenIfReady();
+        } else {
+            window._userAuthenticated = false;
+            logDebug('Auth Bootstrap: No authenticated user. Showing splash.');
+            // Ensure splash visible & main hidden
+            try {
+                const splash = document.getElementById('splashScreen');
+                if (splash) { splash.style.display = 'flex'; splash.classList.remove('hidden'); }
+                const main = document.querySelector('main.container');
+                if (main) main.classList.add('app-hidden');
+                if (typeof appHeader !== 'undefined' && appHeader) appHeader.classList.add('app-hidden');
+            } catch(e) {}
+        }
+    });
+    window._authListenerAttached = true;
+    logDebug('Auth Bootstrap: onAuthStateChanged listener attached.');
+    return true;
+}
+
+// Begin attachment attempts after current tick to allow inline module to run first.
+setTimeout(() => tryAttachAuthListener(), 0);
+
 // --- Market Open Helper (unconditional top-level definition) ---
 // Note: Previous guarded block made the function block-scoped in module/strict mode causing a ReferenceError.
 // This top-level declaration ensures availability throughout this file.
