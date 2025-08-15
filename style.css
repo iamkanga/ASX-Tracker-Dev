@@ -264,12 +264,16 @@ body table tbody tr.negative-change-row, body .mobile-card.negative-change-card 
 body table tbody tr.neutral-change-row, body .mobile-card.neutral-change-card { background-color: var(--watch-bg-neutral); }
 
 /* Target-Hit Override: Full 4px rounded border with pulse */
-@keyframes targetHitPulseBorder { 0% { box-shadow: 0 0 0 0 var(--accent-color); } 50% { box-shadow: 0 0 0 6px rgba(164, 147, 147, 0); } 100% { box-shadow: 0 0 0 0 rgba(164, 147, 147, 0); } }
+@keyframes targetHitPulseBorder {
+    0% { box-shadow: 0 0 0 0 var(--accent-color); }
+    50% { box-shadow: 0 0 0 6px rgba(164, 147, 147, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(164, 147, 147, 0); }
+}
 .target-hit-alert {
     border: 4px solid var(--accent-color) !important;
-    border-radius: 10px;
-    animation: targetHitPulseBorder 2s ease-in-out infinite;
-    will-change: box-shadow, border-color;
+    border-radius: 10px !important;
+    animation: targetHitPulseBorder 2s ease-in-out infinite !important;
+    will-change: box-shadow;
 }
 
 /* === Compact Card Layout & Theme === */
@@ -2357,13 +2361,7 @@ body.dark-theme .external-links-grid .external-link { background:var(--card-bg);
 }
 .external-links-grid .primary-news-link { font-weight:800; }
 .commsec-link-wrapper { display:contents; }
-/* Thicker target-hit border refinement */
-.mobile-card.target-hit-alert, 
-.portfolio-card.target-hit-alert, 
-tr.target-hit-alert {
-    border:2px solid var(--green-color,#2ECC71) !important; 
-    box-shadow:0 0 0 2px var(--green-color,#2ECC71) inset; 
-}
+/**/
 /* Toggle button / enhanced watchlist item target hit outline */
 .asx-code-buttons-container button.asx-code-btn.target-hit, 
 .watchlist-enhanced-item.target-hit { 
@@ -3338,14 +3336,11 @@ table tbody tr:not(.selected):hover {
 
 /* NEW: Target hit alert styling for table rows and mobile cards */
 table tbody tr.target-hit-alert,
-/* Removed old target-hit shadow; new border handled globally */
 .mobile-card.target-hit-alert, 
 .portfolio-card.target-hit-alert, 
 tr.target-hit-alert {
     position: relative; 
     outline: none; 
-    border-radius: 6px; 
-    box-shadow: none; 
 }
 /* Ensure text color applies to children */
 table tbody tr.target-hit-alert td,
@@ -5561,9 +5556,7 @@ body.dark-theme .alert-item {
 .mobile-share-cards.compact-view .mobile-card.negative-change-card::after { background: var(--brand-red); }
 .mobile-share-cards.compact-view .mobile-card.neutral-change-card::before,
 .mobile-share-cards.compact-view .mobile-card.neutral-change-card::after { background: var(--accent-color); }
-/* Suppress any target-hit full border or pulse in compact */
-.mobile-share-cards.compact-view .mobile-card.target-hit-alert { animation:none !important; }
-.mobile-share-cards.compact-view .mobile-card.target-hit-alert { box-shadow:none !important; }
+/**/
 
 /* Target-hit (non-compact) full coffee border */
 table tbody tr.target-hit-alert, .mobile-card.target-hit-alert { border:4px solid var(--accent-color); border-radius:10px; animation: targetHitPulseBorder 1.5s ease-in-out infinite; }
