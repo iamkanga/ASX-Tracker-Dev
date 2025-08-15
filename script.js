@@ -2260,24 +2260,14 @@ function updateOrCreateShareMobileCard(share) {
     const companyName = companyInfo ? companyInfo.name : '';
 
     const arrowSymbol = priceClass === 'positive' ? '▲' : (priceClass === 'negative' ? '▼' : '');
+    // Markup: direct grid items without inner container to avoid unwanted box
     card.innerHTML = `
-        <div class="live-price-display-section">
-            <h3 class="neutral-code-text">${share.shareName || ''}</h3>
-            <span class="change-chevron ${priceClass}">${arrowSymbol}</span>
-            <div class="live-price-main-row">
-                <span class="live-price-large neutral-code-text">${displayLivePrice}</span>
-            </div>
-            <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
-            <div class="fifty-two-week-row">
-                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
-                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
-            </div>
-            <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
-            </div>
-        </div>
-    <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
-    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.targetPrice))}</span></p>
+        <h3 class="neutral-code-text card-code">${share.shareName || ''}</h3>
+        <span class="change-chevron ${priceClass} card-chevron">${arrowSymbol}</span>
+        <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
+        <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
+        <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
+        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.targetPrice))}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
@@ -3287,7 +3277,7 @@ function showShareDetails() {
     // Display large live price and change in the dedicated section
     // The modalLivePriceDisplaySection is already referenced globally
     if (modalLivePriceDisplaySection) {
-        modalLivePriceDisplaySection.classList.remove('positive-change-section', 'negative-change-section'); // Clear previous states
+        modalLivePriceDisplaySection.classList.remove('positive-change-section', 'negative-change-section');
 
         // Determine price change class for modal live price section
         let priceChangeClass = 'neutral'; // Default to neutral
@@ -3303,12 +3293,12 @@ function showShareDetails() {
             }
         }
 
-        // Clear previous dynamic content in the section
-        modalLivePriceDisplaySection.innerHTML = ''; 
+    // Clear previous dynamic content
+    modalLivePriceDisplaySection.innerHTML = '';
 
-        // 1. Add 52-Week Low and High at the top
-        const fiftyTwoWeekRow = document.createElement('div');
-        fiftyTwoWeekRow.classList.add('fifty-two-week-row'); // New class for styling
+    // 52-Week Low / High
+    const fiftyTwoWeekRow = document.createElement('div');
+    fiftyTwoWeekRow.classList.add('fifty-two-week-row');
 
         const lowSpan = document.createElement('h3');
         lowSpan.classList.add('fifty-two-week-value', 'low'); // New classes
@@ -3322,17 +3312,12 @@ function showShareDetails() {
 
         modalLivePriceDisplaySection.appendChild(fiftyTwoWeekRow);
 
-        // 2. Add Live Price and Change (Dynamically create these elements now)
-        const currentModalLivePriceLarge = document.createElement('h2');
-        currentModalLivePriceLarge.classList.add('modal-share-name', priceChangeClass); // Match title size, apply color
-        const currentModalPriceChangeLarge = document.createElement('span');
-        currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass); // Apply color class
-
-        const livePriceRow = document.createElement('div');
-        livePriceRow.classList.add('live-price-main-row'); // New class for styling
-        livePriceRow.appendChild(currentModalLivePriceLarge);
-        livePriceRow.appendChild(currentModalPriceChangeLarge);
-        modalLivePriceDisplaySection.appendChild(livePriceRow);
+    const currentModalLivePriceLarge = document.createElement('h2');
+    currentModalLivePriceLarge.classList.add('modal-share-name', priceChangeClass);
+    const currentModalPriceChangeLarge = document.createElement('span');
+    currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass);
+    modalLivePriceDisplaySection.appendChild(currentModalLivePriceLarge);
+    modalLivePriceDisplaySection.appendChild(currentModalPriceChangeLarge);
 
         if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) {
             currentModalLivePriceLarge.textContent = '$' + formatAdaptivePrice(livePrice);
@@ -3364,11 +3349,11 @@ function showShareDetails() {
             currentModalPriceChangeLarge.style.display = 'none';
         }
 
-        // 3. Add P/E Ratio below live price
-        const peRow = document.createElement('div');
-        peRow.classList.add('pe-ratio-row'); // New class for styling
-        const peSpan = document.createElement('h3');
-        peSpan.classList.add('pe-ratio-value'); // New class
+    // P/E Ratio
+    const peRow = document.createElement('div');
+    peRow.classList.add('pe-ratio-row');
+    const peSpan = document.createElement('h3');
+    peSpan.classList.add('pe-ratio-value');
     peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A');
         peRow.appendChild(peSpan);
         modalLivePriceDisplaySection.appendChild(peRow);
