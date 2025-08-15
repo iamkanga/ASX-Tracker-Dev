@@ -258,10 +258,10 @@ function makeFilesAvailableToSourceControlCSS() {
 .negative-change-row, .negative-change-card { border-left: 4px solid var(--brand-red); border-right: 4px solid var(--brand-red); }
 .neutral-change-row, .neutral-change-card { border-left: 4px solid var(--accent-color); border-right: 4px solid var(--accent-color); }
 
-/* Movement backgrounds (Light mode) */
-table tbody tr.positive-change-row, .mobile-card.positive-change-card { background: var(--watch-bg-positive); }
-table tbody tr.negative-change-row, .mobile-card.negative-change-card { background: var(--watch-bg-negative); }
-table tbody tr.neutral-change-row, .mobile-card.neutral-change-card { background: var(--watch-bg-neutral); }
+/* Movement backgrounds (Light mode) - Increased specificity to ensure override */
+body table tbody tr.positive-change-row, body .mobile-card.positive-change-card { background-color: var(--watch-bg-positive); }
+body table tbody tr.negative-change-row, body .mobile-card.negative-change-card { background-color: var(--watch-bg-negative); }
+body table tbody tr.neutral-change-row, body .mobile-card.neutral-change-card { background-color: var(--watch-bg-neutral); }
 
 /* Target-Hit Override: Full 4px rounded border with pulse */
 @keyframes targetHitPulseBorder { 0% { box-shadow: 0 0 0 0 var(--accent-color); } 50% { box-shadow: 0 0 0 6px rgba(164, 147, 147, 0); } 100% { box-shadow: 0 0 0 0 rgba(164, 147, 147, 0); } }
@@ -274,7 +274,7 @@ table tbody tr.neutral-change-row, .mobile-card.neutral-change-card { background
 
 /* === Compact Card Layout & Theme === */
 .mobile-share-cards.compact-view .mobile-card {
-    display: grid;
+    display: grid !important; /* Override potential conflicts from general mobile styles */
     grid-template-columns: 1fr auto;
     grid-template-rows: auto 1fr;
     grid-template-areas:
