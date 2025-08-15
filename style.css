@@ -5516,21 +5516,40 @@ body.dark-theme .alert-item {
 
 /* === Unified Movement Side Border System (4px) === */
 /* Apply this helper class via JS to rows & cards in addition to their movement class */
-.movement-sides { border-left:4px solid transparent !important; border-right:4px solid transparent !important; }
-.movement-sides.positive-change-row, .movement-sides.positive-change-card { border-left-color: var(--brand-green) !important; border-right-color: var(--brand-green) !important; }
-.movement-sides.negative-change-row, .movement-sides.negative-change-card { border-left-color: var(--brand-red) !important; border-right-color: var(--brand-red) !important; }
-.movement-sides.neutral-change-row, .movement-sides.neutral-change-card { border-left-color: var(--accent-color) !important; border-right-color: var(--accent-color) !important; }
-/* Remove any unintended full border unless target-hit */
-.movement-sides { border-top:none !important; border-bottom:none !important; }
+/* Movement side borders helper (non-compact contexts only) */
+.movement-sides { border-left:4px solid transparent; border-right:4px solid transparent; border-top:none; border-bottom:none; }
+.movement-sides.positive-change-row, .movement-sides.positive-change-card { border-left-color: var(--brand-green); border-right-color: var(--brand-green); }
+.movement-sides.negative-change-row, .movement-sides.negative-change-card { border-left-color: var(--brand-red); border-right-color: var(--brand-red); }
+.movement-sides.neutral-change-row, .movement-sides.neutral-change-card { border-left-color: var(--accent-color); border-right-color: var(--accent-color); }
 
-/* Target-hit: enforce full 4px coffee border (overrides side-only) */
-table tbody tr.target-hit-alert, .mobile-card.target-hit-alert { border:4px solid var(--accent-color) !important; border-radius:10px !important; animation: targetHitPulseBorder 1.5s ease-in-out infinite; }
-/* In compact view we still keep full notification border per spec */
-/* Ensure pseudo-elements remain suppressed */
+/* Compact view: Side borders ONLY (4px) indicating movement; no top/bottom borders; no full borders ever */
+.mobile-share-cards.compact-view .mobile-card { border:none !important; position:relative; }
+.mobile-share-cards.compact-view .mobile-card.movement-sides { border:none !important; }
 .mobile-share-cards.compact-view .mobile-card::before,
-.mobile-share-cards.compact-view .mobile-card::after { display:none !important; }
+.mobile-share-cards.compact-view .mobile-card::after { content:''; position:absolute; top:0; bottom:0; width:4px; pointer-events:none; }
+.mobile-share-cards.compact-view .mobile-card::before { left:0; }
+.mobile-share-cards.compact-view .mobile-card::after { right:0; }
+.mobile-share-cards.compact-view .mobile-card.positive-change-card::before,
+.mobile-share-cards.compact-view .mobile-card.positive-change-card::after { background: var(--brand-green); }
+.mobile-share-cards.compact-view .mobile-card.negative-change-card::before,
+.mobile-share-cards.compact-view .mobile-card.negative-change-card::after { background: var(--brand-red); }
+.mobile-share-cards.compact-view .mobile-card.neutral-change-card::before,
+.mobile-share-cards.compact-view .mobile-card.neutral-change-card::after { background: var(--accent-color); }
+/* Suppress any target-hit full border or pulse in compact */
+.mobile-share-cards.compact-view .mobile-card.target-hit-alert { animation:none !important; }
+.mobile-share-cards.compact-view .mobile-card.target-hit-alert { box-shadow:none !important; }
 
-/* Optional: if you want to mute pulse in compact, comment out animation above or add override here */
+/* Target-hit (non-compact) full coffee border */
+table tbody tr.target-hit-alert, .mobile-card.target-hit-alert { border:4px solid var(--accent-color); border-radius:10px; animation: targetHitPulseBorder 1.5s ease-in-out infinite; }
+
+/* Reinforce compact grid item alignment & spacing */
+.mobile-share-cards.compact-view .mobile-card { justify-items:center; align-items:center; }
+.mobile-share-cards.compact-view .mobile-card .card-code { justify-self:start; align-self:start; }
+.mobile-share-cards.compact-view .mobile-card .card-chevron { justify-self:end; align-self:start; }
+.mobile-share-cards.compact-view .mobile-card .card-live-price { align-self:center; }
+.mobile-share-cards.compact-view .mobile-card .card-price-change { align-self:start; }
+/* Provide more vertical breathing room between middle and bottom rows */
+.mobile-share-cards.compact-view .mobile-card { grid-row-gap:6px; }
 
 
 /* Keep the target hit alert styling on the card itself */
