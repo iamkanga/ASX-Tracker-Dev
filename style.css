@@ -2306,7 +2306,8 @@ body.dark-theme .detail-row { border-bottom:1px dashed rgba(255,255,255,0.1); }
 .detail-row:last-child { border-bottom:none; }
 .detail-label { font-weight:500; color:var(--label-color); flex:0 0 auto; }
 .detail-value { font-weight:600; color:var(--text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.external-links-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap:10px 14px; margin-top:4px; }
+/* Research links grid refinement */
+.external-links-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:10px 14px; margin-top:4px; align-items:stretch; }
 /* Unified Research Links styling */
 .external-links-grid .external-link { 
     display:inline-flex; align-items:center; gap:6px; 
@@ -2324,7 +2325,7 @@ body.dark-theme .external-links-grid .external-link { background:var(--card-bg);
     box-shadow:0 2px 6px rgba(0,0,0,0.18);
 }
 .external-links-grid .primary-news-link { font-weight:800; }
-.commsec-link-wrapper { display:flex; flex-direction:column; gap:2px; }
+.commsec-link-wrapper { display:contents; }
 /* Thicker target-hit border refinement */
 .mobile-card.target-hit-alert, 
 .portfolio-card.target-hit-alert, 
@@ -3643,22 +3644,26 @@ table td.live-price-cell.negative-change {
     line-height: 1;
 }
 
-/* Price change pill with dark saturated background */
-/* Price change (no pill container – background applied directly behind text) */
+/* Price change text only (no background container / padding) */
 .live-price-display-section .price-change-large {
     font-size: 0.9em;
     font-weight: 700;
     white-space: nowrap;
-    margin-left: 10px;
+    margin-left: 8px;
     display: inline-block;
     line-height: 1.1;
     letter-spacing: .25px;
-    padding: 0 4px; /* slight breathing room so background sits tight to glyphs */
+    padding: 0; /* remove padding to eliminate container feel */
+    background:none !important;
+    border:none !important;
+    box-shadow:none !important;
 }
 
-/* Enlarged primary header icons */
-#hamburgerBtn, #addShareHeaderBtn { font-size: 1.9rem; width: 48px; height: 48px; display:inline-flex; align-items:center; justify-content:center; }
-#hamburgerBtn svg, #addShareHeaderBtn svg { width:32px; height:32px; }
+/* Enlarged & flush header icons */
+#hamburgerBtn, #addShareHeaderBtn { font-size:2.05rem; width:52px; height:52px; display:inline-flex; align-items:center; justify-content:center; padding:0; margin:0; }
+#hamburgerBtn { margin-left:-6px; }
+#addShareHeaderBtn { margin-right:-6px; }
+#hamburgerBtn svg, #addShareHeaderBtn svg { width:34px; height:34px; }
 
 /* Modal action icons (generic) */
 .modal-container .icon-btn, .modal-container .close-button, .modal-container .delete-icon, .modal-container .edit-icon, .modal-container .save-icon {
@@ -3671,9 +3676,10 @@ table td.live-price-cell.negative-change {
 @media (max-width: 768px) {
     #commSecLoginMessage { text-align:center; display:block; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:4px 0 0 0 !important; }
 }
-.price-change-large.positive { background: linear-gradient(135deg,#062d15,#06411f); color: var(--brand-green) !important; }
-.price-change-large.negative { background: linear-gradient(135deg,#310a0a,#541414); color: var(--brand-red) !important; }
-.price-change-large.neutral { background: linear-gradient(135deg,#111,#222); color: var(--text-color) !important; }
+/* Remove gradient backgrounds – pure text color only */
+.price-change-large.positive { color: var(--brand-green) !important; background:none !important; }
+.price-change-large.negative { color: var(--brand-red) !important; background:none !important; }
+.price-change-large.neutral { color: var(--text-color) !important; background:none !important; }
 
 /* Larger arrow sizing inside pill (inherit current font-size, arrow is part of text) */
 .price-change-large { font-variant-numeric: tabular-nums; }
@@ -3787,7 +3793,7 @@ table td.live-price-cell.negative-change {
 #shareDetailModal { overscroll-behavior:contain; }
 
 /* Center & constrain login note (single line) */
-#commSecLoginMessage { text-align:center; display:block; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:4px 0 0 0 !important; }
+#commSecLoginMessage { text-align:center; display:block; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:6px 0 0 0 !important; grid-column:1 / -1; order:999; }
 
 /* Modal Header with Icon for Alignment and Buttons */
 .modal-header-with-icon {
@@ -4659,21 +4665,23 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
 }
 
 /* Modal Action Icons for positioning in header */
-.modal-action-icon {
-    background: none;
-    border: none;
-    padding: 8px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1.5em; /* Adjusted size for header */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
-    flex-shrink: 0; /* Prevent shrinking */
-    width: 40px; /* Fixed width for consistent sizing */
-    height: 40px; /* Fixed height for consistent sizing */
-    color: var(--icon-action-color); /* Default color for action icons */
+/* Override: larger modal header action icons */
+.modal-action-icon, .modal-header-with-icon .close-button {
+    background:none;
+    border:none;
+    padding:6px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:1.9rem; /* larger */
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:background-color .2s ease, color .2s ease, transform .1s ease;
+    flex-shrink:0;
+    width:54px;
+    height:54px;
+    color:var(--icon-action-color);
+    line-height:1;
 }
 
 .modal-action-icon:hover {
