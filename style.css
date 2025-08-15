@@ -3775,7 +3775,16 @@ table td.live-price-cell.negative-change {
     display: flex;
     flex-direction: column;
     max-height: 90vh; 
+    overflow-x: hidden; /* Prevent horizontal spill */
+    word-break: break-word; /* Wrap long tokens */
+    overscroll-behavior: contain;
 }
+
+#shareDetailModal .modal-content { width:94%; max-width:540px; }
+#shareDetailModal { overscroll-behavior:contain; }
+
+/* Center & constrain login note (single line) */
+#commSecLoginMessage { text-align:center; display:block; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:4px 0 0 0 !important; }
 
 /* Modal Header with Icon for Alignment and Buttons */
 .modal-header-with-icon {
@@ -5506,6 +5515,16 @@ body.dark-theme .alert-item {
     font-weight: 700;
     margin-top:0;
 }
+
+/* Remove any internal container visuals inside mobile cards */
+.mobile-card .live-price-display-section { background:none !important; border:none !important; box-shadow:none !important; padding:0 !important; }
+.mobile-card .live-price-display-section > div { background:none !important; border:none !important; box-shadow:none !important; }
+/* Explicit compact card layout sanity */
+.mobile-share-cards.compact-view .mobile-card .live-price-display-section { gap:0; }
+.mobile-share-cards.compact-view .mobile-card h3.neutral-code-text { align-self:start; }
+.mobile-share-cards.compact-view .mobile-card .change-chevron { align-self:end; }
+.mobile-share-cards.compact-view .mobile-card .live-price-main-row { grid-row:2; }
+.mobile-share-cards.compact-view .mobile-card .price-change-large { grid-row:3; }
 
 /* Ensure the share name (h3) is concise and always visible */
 .mobile-share-cards.compact-view .mobile-card h3 {
