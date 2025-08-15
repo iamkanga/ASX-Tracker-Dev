@@ -59,18 +59,16 @@ function sortSharesByPercentageChange(shares) {
     });
 }
 
-// --- Market Open Helper (moved early to avoid any race / hoist ambiguity) ---
-// Simplified: treat market as open by default (user preference is to always show live styling)
-// Optional override via localStorage key 'marketStatusOverride' = 'open' | 'closed'
-if (typeof window.isAsxMarketOpen !== 'function') { // Guard in case legacy copy still present later
-    function isAsxMarketOpen() {
-        try {
-            const override = localStorage.getItem('marketStatusOverride');
-            if (override === 'open') return true;
-            if (override === 'closed') return false;
-        } catch(e) { /* ignore */ }
-        return true; // Default open
-    }
+// --- Market Open Helper (unconditional top-level definition) ---
+// Note: Previous guarded block made the function block-scoped in module/strict mode causing a ReferenceError.
+// This top-level declaration ensures availability throughout this file.
+function isAsxMarketOpen() {
+    try {
+        const override = localStorage.getItem('marketStatusOverride');
+        if (override === 'open') return true;
+        if (override === 'closed') return false;
+    } catch(e) { /* ignore */ }
+    return true; // Default: treat market as open (always show live styling)
 }
 
 // Lean live prices hook: only resort when sort actually depends on live data
