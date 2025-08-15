@@ -4673,17 +4673,7 @@ async function loadAsxCodesFromCSV() {
  * The market is considered "closed" only from Monday 12:01 AM to Thursday 12:01 AM (Sydney time).
  * @returns {boolean} True if the ASX is open, false otherwise.
  */
-function isAsxMarketOpen() {
-    // Manual override support: localStorage key 'marketStatusOverride' can be 'open' or 'closed'
-    try {
-        const override = localStorage.getItem('marketStatusOverride');
-        if (override === 'open') return true;
-        if (override === 'closed') return false;
-    } catch (e) { /* ignore */ }
-    // Simplified: treat market as open by default per user preference (always show live styling)
-    // Optionally, you can reintroduce custom windows here.
-    return true;
-}
+// (Duplicate isAsxMarketOpen removed; early definition retained near top.)
 function calculateFrankedYield(dividendAmount, currentPrice, frankingCreditsPercentage) {
     // Ensure inputs are valid numbers and currentPrice is not zero
     if (typeof dividendAmount !== 'number' || isNaN(dividendAmount) || dividendAmount < 0) { return 0; }
