@@ -59,81 +59,6 @@ function sortSharesByPercentageChange(shares) {
     });
 }
 
-// --- AUTH BOOTSTRAP (restored) -------------------------------------------------
-// Some earlier refactors removed the onAuthStateChanged wiring that drives initial data load.
-// Without it, clicking Google Sign-In appears to "do nothing" because UI never transitions.
-// We reintroduce a resilient bootstrap that attaches once Firebase globals are available.
-window._firebaseInitialized = false;
-window._userAuthenticated = false;
-window._appDataLoaded = false;      // Set true after initial Firestore data listener fires
-window._livePricesLoaded = false;   // Set true after first live prices fetch completes
-window._appInitialized = false;     // Guard so initializeAppLogic runs only once per session
-
-function tryAttachAuthListener(attempt=0) {
-    if (window._authListenerAttached) return true;
-    const auth = window.firebaseAuth;
-    const fns = window.authFunctions;
-    if (!auth || !fns || !fns.onAuthStateChanged) {
-        if (attempt < 50) { // retry for ~5s (50 * 100ms)
-            setTimeout(() => tryAttachAuthListener(attempt+1), 100);
-        } else {
-            console.warn('Auth Bootstrap: Firebase auth not available after retries. Sign-in will not function.');
-        }
-        return false;
-    }
-    fns.onAuthStateChanged(auth, (user) => {
-        window._firebaseInitialized = true;
-        if (user) {
-            window._userAuthenticated = true;
-            logDebug('Auth Bootstrap: User authenticated (' + (user.uid || 'no-uid') + ').');
-            // Run core app initialization once
-            if (!window._appInitialized && typeof initializeAppLogic === 'function') {
-                try {
-                    initializeAppLogic();
-                } catch(e) { console.error('Auth Bootstrap: initializeAppLogic failed', e); }
-                window._appInitialized = true;
-            }
-            // Kick off data flows if functions exist
-            try { if (typeof loadShares === 'function') loadShares(); } catch(e){ console.error('Init loadShares failed', e); }
-            try { if (typeof loadCashCategories === 'function') loadCashCategories(); } catch(e){ console.error('Init loadCashCategories failed', e); }
-            try { if (typeof loadAlertsListener === 'function') loadAlertsListener(); } catch(e) { /* optional */ }
-            try { if (typeof fetchLivePrices === 'function') { fetchLivePrices().finally(() => { window._livePricesLoaded = true; hideSplashScreenIfReady(); }); } } catch(e){ console.error('Init fetchLivePrices failed', e); }
-            // Mark splash screen ready (some flows rely on this flag before hiding)
-            window.splashScreenReady = true;
-            hideSplashScreenIfReady();
-        } else {
-            window._userAuthenticated = false;
-            logDebug('Auth Bootstrap: No authenticated user. Showing splash.');
-            // Ensure splash visible & main hidden
-            try {
-                const splash = document.getElementById('splashScreen');
-                if (splash) { splash.style.display = 'flex'; splash.classList.remove('hidden'); }
-                const main = document.querySelector('main.container');
-                if (main) main.classList.add('app-hidden');
-                if (typeof appHeader !== 'undefined' && appHeader) appHeader.classList.add('app-hidden');
-            } catch(e) {}
-        }
-    });
-    window._authListenerAttached = true;
-    logDebug('Auth Bootstrap: onAuthStateChanged listener attached.');
-    return true;
-}
-
-// Begin attachment attempts after current tick to allow inline module to run first.
-setTimeout(() => tryAttachAuthListener(), 0);
-
-// --- Market Open Helper (unconditional top-level definition) ---
-// Note: Previous guarded block made the function block-scoped in module/strict mode causing a ReferenceError.
-// This top-level declaration ensures availability throughout this file.
-function isAsxMarketOpen() {
-    try {
-        const override = localStorage.getItem('marketStatusOverride');
-        if (override === 'open') return true;
-        if (override === 'closed') return false;
-    } catch(e) { /* ignore */ }
-    return true; // Default: treat market as open (always show live styling)
-}
-
 // Lean live prices hook: only resort when sort actually depends on live data
 function onLivePricesUpdated() {
     try {
@@ -179,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return (h > 16) || (h === 16 && m >= 0);
     }
     function updateMarketStatusUI() {
-    const open = (typeof isAsxMarketOpen === 'function') ? isAsxMarketOpen() : true; // Guard against caching/definition race
+    const open = isAsxMarketOpen();
         if (marketStatusBanner) {
             if (!open) {
                 const now = new Date();
@@ -1879,43 +1804,93 @@ function addShareToMobileCards(share) {
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-    // --- Unified price/change computation (deduped) ---
+    // Declare these variables once at the top of the function
     const isMarketOpen = isAsxMarketOpen();
     let displayLivePrice = 'N/A';
     let displayPriceChange = '';
-    let priceClass = 'neutral';
+    let priceClass = '';
+    let cardPriceChangeClass = ''; // NEW: For subtle background tints and vertical lines
+
+    // Logic to determine display values and card-specific classes
     if (livePriceData) {
-        const cur = livePriceData.live;
-        const prev = livePriceData.prevClose;
-        const lastCur = livePriceData.lastLivePrice;
-        const lastPrev = livePriceData.lastPrevClose;
-        if (isMarketOpen) {
-            if (cur != null && !isNaN(cur)) displayLivePrice = '$' + formatAdaptivePrice(cur);
-            if (cur != null && prev != null && !isNaN(cur) && !isNaN(prev)) {
-                const ch = cur - prev;
-                const pct = prev !== 0 ? (ch / prev) * 100 : 0;
-                displayPriceChange = `${formatAdaptivePrice(ch)} (${formatAdaptivePercent(pct)}%)`;
-                priceClass = ch > 0 ? 'positive' : (ch < 0 ? 'negative' : 'neutral');
-            } else if (lastCur != null && lastPrev != null && !isNaN(lastCur) && !isNaN(lastPrev)) {
-                const ch = lastCur - lastPrev;
-                const pct = lastPrev !== 0 ? (ch / lastPrev) * 100 : 0;
-                displayPriceChange = `${formatAdaptivePrice(ch)} (${formatAdaptivePercent(pct)}%)`;
-                priceClass = ch > 0 ? 'positive' : (ch < 0 ? 'negative' : 'neutral');
+        const currentLivePrice = livePriceData.live;
+        const previousClosePrice = livePriceData.prevClose;
+        const lastFetchedLive = livePriceData.lastLivePrice;
+        const lastFetchedPrevClose = livePriceData.lastPrevClose;
+
+    if (isMarketOpen) {
+            // Show live data if market is open, or if market is closed but toggle is ON
+            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
+            }
+            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                const change = currentLivePrice - previousClosePrice;
+                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card'); // Include neutral class
+            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
             }
         } else {
-            // Closed: freeze at last live if available
-            if (lastCur != null && !isNaN(lastCur)) displayLivePrice = '$' + formatAdaptivePrice(lastCur);
+            // Market closed and toggle is OFF, show zero change
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
+            displayPriceChange = '0.00 (0.00%)';
+            priceClass = 'neutral';
+            cardPriceChangeClass = ''; // No tint/line for neutral or market closed
+        }
+    }
+
+    // Apply card-specific price change class (always include neutral class when appropriate)
+    if (cardPriceChangeClass) {
+        card.classList.add(cardPriceChangeClass);
+    } else if (priceClass === 'neutral') {
+        card.classList.add('neutral-change-card');
+    }
+
+    // Apply target-hit-alert class if target is hit AND not dismissed
+    if (isTargetHit && !targetHitIconDismissed) {
+        card.classList.add('target-hit-alert');
+    } else {
+        card.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
+    }
+
+    // Logic to determine display values
+    if (livePriceData) {
+        const currentLivePrice = livePriceData.live;
+        const previousClosePrice = livePriceData.prevClose;
+        const lastFetchedLive = livePriceData.lastLivePrice;
+        const lastFetchedPrevClose = livePriceData.lastPrevClose;
+
+    if (isMarketOpen) {
+            // Show live data if market is open, or if market is closed but toggle is ON
+            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
+            }
+            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                const change = currentLivePrice - previousClosePrice;
+                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+            }
+        } else {
+            // Market closed and toggle is OFF, show zero change
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
         }
     }
-
-    // Movement class for side borders + background tint
-    const movementClass = priceClass === 'positive' ? 'positive-change-card' : (priceClass === 'negative' ? 'negative-change-card' : 'neutral-change-card');
-    card.classList.add(movementClass);
-
-    // Target hit class
-    if (isTargetHit && !targetHitIconDismissed) card.classList.add('target-hit-alert');
 
     // AGGRESSIVE FIX: Get company name from ASX codes for display
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
@@ -1923,7 +1898,13 @@ function addShareToMobileCards(share) {
 
     const isCompact = mobileShareCardsContainer.classList.contains('compact-view');
     // Build directional arrow for displayPriceChange (keep underlying displayPriceChange variable intact for accessibility if needed)
-    let arrowSymbol = priceClass === 'positive' ? '▲' : (priceClass === 'negative' ? '▼' : '');
+    let arrowSymbol = '';
+    if (/^[-+]?\d/.test(displayPriceChange)) { /* heuristic; actual change variable exists above but reused */ }
+    try {
+        const matchChange = /([-+]?\d*[\d.,]*)(?:\s*\(|$)/.exec(displayPriceChange);
+        // We already computed priceClass; use that for arrow
+        arrowSymbol = priceClass === 'positive' ? '▲' : (priceClass === 'negative' ? '▼' : '');
+    } catch(_) {}
     const enrichedPriceChange = arrowSymbol ? `${arrowSymbol} ${displayPriceChange}` : displayPriceChange;
     card.innerHTML = `
         <div class="live-price-display-section">
@@ -1932,7 +1913,7 @@ function addShareToMobileCards(share) {
             <div class="live-price-main-row">
                 <span class="live-price-large neutral-code-text">${displayLivePrice}</span>
             </div>
-            <span class="price-change-large ${priceClass}">${enrichedPriceChange}</span>
+            <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
             <div class="fifty-two-week-row">
                 <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
                 <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
@@ -4395,7 +4376,7 @@ function calculateUnfrankedYield(dividendAmount, currentPrice) {
 }
 
 /**
- * Displays  detailed stock information in the search modal,
+ * Displays detailed stock information in the search modal,
  * and renders action buttons (Add to Watchlist / Edit Existing Share).
  * @param {string} asxCode The ASX code to display.
  */
@@ -4734,7 +4715,17 @@ async function loadAsxCodesFromCSV() {
  * The market is considered "closed" only from Monday 12:01 AM to Thursday 12:01 AM (Sydney time).
  * @returns {boolean} True if the ASX is open, false otherwise.
  */
-// (Duplicate isAsxMarketOpen removed; early definition retained near top.)
+function isAsxMarketOpen() {
+    // Manual override support: localStorage key 'marketStatusOverride' can be 'open' or 'closed'
+    try {
+        const override = localStorage.getItem('marketStatusOverride');
+        if (override === 'open') return true;
+        if (override === 'closed') return false;
+    } catch (e) { /* ignore */ }
+    // Simplified: treat market as open by default per user preference (always show live styling)
+    // Optionally, you can reintroduce custom windows here.
+    return true;
+}
 function calculateFrankedYield(dividendAmount, currentPrice, frankingCreditsPercentage) {
     // Ensure inputs are valid numbers and currentPrice is not zero
     if (typeof dividendAmount !== 'number' || isNaN(dividendAmount) || dividendAmount < 0) { return 0; }
@@ -6658,15 +6649,8 @@ async function initializeAppLogic() {
         }
     } catch(e){ console.warn('Version badge insert failed:', e); }
 
-    // NEW: Load saved mobile view mode preference (unified key 'mobileViewMode'; migrate legacy key)
-    let savedMobileViewMode = localStorage.getItem('mobileViewMode');
-    if (!savedMobileViewMode) {
-        const legacy = localStorage.getItem('currentMobileViewMode');
-        if (legacy) {
-            savedMobileViewMode = legacy;
-            try { localStorage.setItem('mobileViewMode', legacy); } catch(e){}
-        }
-    }
+    // NEW: Load saved mobile view mode preference
+    const savedMobileViewMode = localStorage.getItem('currentMobileViewMode');
     if (savedMobileViewMode && (savedMobileViewMode === 'default' || savedMobileViewMode === 'compact')) {
         currentMobileViewMode = savedMobileViewMode;
         if (mobileShareCardsContainer) { // Check if element exists before adding class
