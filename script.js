@@ -1135,7 +1135,9 @@ async function fetchLivePrices(opts = {}) {
         onLivePricesUpdated();
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
-        updateTargetHitBanner();
+    // Re-evaluate alerts (dynamic targetHit) now that fresh prices are in
+    try { await evaluateAlertsAgainstLivePrices(); } catch(e) { console.warn('Alerts: evaluate failed', e); }
+    updateTargetHitBanner();
     } catch (e) {
         console.error('Live Price: Fetch error', e);
         window._livePricesLoaded = true;
@@ -1248,6 +1250,85 @@ async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
     // Use setDoc with merge to avoid overwriting createdAt when updating
     await window.firestore.setDoc(alertDocRef, payload, { merge: true });
     logDebug('Alerts: Upserted alert for ' + shareCode + ' with intent ' + intent + ' and direction ' + direction + '.');
+}
+
+// --- Dynamic Alert Re-Evaluation ---
+let _alertEvalInFlight = false;
+async function evaluateAlertsAgainstLivePrices() {
+    if (_alertEvalInFlight) return; // prevent overlap
+    if (!db || !currentUserId || !window.firestore || !livePrices) return;
+    _alertEvalInFlight = true;
+    const startTs = Date.now();
+    try {
+        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        const snap = await window.firestore.getDocs(alertsCol);
+        if (snap.empty) return;
+        const batch = window.firestore.writeBatch(db);
+        let changes = 0;
+        snap.forEach(docSnap => {
+            const data = docSnap.data() || {};
+            if (data.enabled === false) { // muted -> ensure cleared targetHit if currently true
+                if (data.targetHit === true) {
+                    batch.update(docSnap.ref, { targetHit: false, lastEvaluatedAt: window.firestore.serverTimestamp() });
+                    changes++;
+                }
+                return;
+            }
+            const code = (data.shareCode || '').toUpperCase();
+            if (!code) return;
+            const lp = livePrices[code];
+            if (!lp) return; // no price yet
+            const current = (typeof lp.live === 'number' && !isNaN(lp.live)) ? lp.live : (typeof lp.lastLivePrice === 'number' && !isNaN(lp.lastLivePrice) ? lp.lastLivePrice : null);
+            const tPrice = (typeof data.targetPrice === 'number' && !isNaN(data.targetPrice)) ? data.targetPrice : null;
+            if (current === null || tPrice === null) {
+                if (data.targetHit === true) { // clear stale hit
+                    batch.update(docSnap.ref, { targetHit: false, lastEvaluatedAt: window.firestore.serverTimestamp() });
+                    changes++;
+                }
+                return;
+            }
+            const direction = (data.direction === 'above') ? 'above' : 'below';
+            const shouldHit = direction === 'above' ? (current >= tPrice) : (current <= tPrice);
+            if (shouldHit && data.targetHit !== true) {
+                // Transition -> triggered
+                batch.update(docSnap.ref, {
+                    targetHit: true,
+                    lastEvaluatedAt: window.firestore.serverTimestamp(),
+                    lastTriggerAt: window.firestore.serverTimestamp()
+                });
+                // Make it unread again by removing from read set (will appear in badge)
+                try {
+                    if (window._readAlertIds instanceof Set && window._readAlertIds.has(data.shareId || docSnap.id)) {
+                        window._readAlertIds.delete(data.shareId || docSnap.id);
+                        localStorage.setItem('readAlertIds', JSON.stringify(Array.from(window._readAlertIds)));
+                    }
+                } catch(_) {}
+                changes++;
+            } else if (!shouldHit && data.targetHit === true) {
+                // Decide model: auto-untrigger. If we want persistent once-hit behavior, comment this block.
+                batch.update(docSnap.ref, {
+                    targetHit: false,
+                    lastEvaluatedAt: window.firestore.serverTimestamp()
+                });
+                changes++;
+            } else if (shouldHit) {
+                // Still hit; periodically refresh timestamp (optional)
+                if ((Date.now() - startTs) > 1000 * 60 * 10) { // example throttle
+                    batch.update(docSnap.ref, { lastEvaluatedAt: window.firestore.serverTimestamp() });
+                }
+            }
+        });
+        if (changes > 0) {
+            await batch.commit();
+            logDebug('Alerts: Evaluation updated ' + changes + ' alert(s).');
+        } else if (DEBUG_MODE) {
+            logDebug('Alerts: Evaluation - no changes.');
+        }
+    } catch (e) {
+        console.warn('Alerts: Evaluation error', e);
+    } finally {
+        _alertEvalInFlight = false;
+    }
 }
 
 // Centralized Modal Closing Function
