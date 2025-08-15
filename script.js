@@ -2216,11 +2216,12 @@ function updateOrCreateShareMobileCard(share) {
                     const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
                     displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                     priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
                 } else {
                     displayPriceChange = '0.00 (0.00%)';
                     priceClass = 'neutral';
+                    cardPriceChangeClass = 'neutral-change-card';
                 }
-                cardPriceChangeClass = '';
             }
     }
 
