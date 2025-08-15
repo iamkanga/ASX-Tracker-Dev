@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return (h > 16) || (h === 16 && m >= 0);
     }
     function updateMarketStatusUI() {
-    const open = isAsxMarketOpen();
+    const open = (typeof isAsxMarketOpen === 'function') ? isAsxMarketOpen() : true; // Guard against caching/definition race
         if (marketStatusBanner) {
             if (!open) {
                 const now = new Date();
