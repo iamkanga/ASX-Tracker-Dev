@@ -1015,13 +1015,18 @@ const ENABLE_SHEETS_ALERTS_INTEGRATION = true;
 // Unified thin wrapper for Apps Script POST actions (JSON in/out)
 async function postToAppsScript(action, payload = {}, timeoutMs = 12000) {
     if (!ENABLE_SHEETS_ALERTS_INTEGRATION) return null;
+    const baseUrl = (typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' && GOOGLE_APPS_SCRIPT_URL) ? GOOGLE_APPS_SCRIPT_URL : appsScriptUrl;
+    if (!baseUrl) { console.warn('Apps Script URL not configured'); return null; }
+    // If previous POST attempts flagged CORS issues, force GET fallback immediately
+    if (window._appsScriptPostBlocked) {
+        return appsScriptGetFallback(baseUrl, action, payload, timeoutMs);
+    }
     try {
-        const baseUrl = (typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' && GOOGLE_APPS_SCRIPT_URL) ? GOOGLE_APPS_SCRIPT_URL : appsScriptUrl;
-        if (!baseUrl) throw new Error('Apps Script URL not configured');
         const controller = new AbortController();
         const t = setTimeout(() => controller.abort(), timeoutMs);
         const res = await fetch(baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action), {
             method: 'POST',
+            // NOTE: POST with application/json triggers preflight; if server omits CORS headers it fails. We'll fallback on error.
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
             cache: 'no-store',
@@ -1029,11 +1034,28 @@ async function postToAppsScript(action, payload = {}, timeoutMs = 12000) {
         });
         clearTimeout(t);
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        let json = null;
-        try { json = await res.json(); } catch { json = null; }
-        return json;
+        return await res.json();
     } catch (e) {
-        console.warn('AppsScript POST failed for action=' + action, e);
+        console.warn('AppsScript POST failed (will attempt GET fallback) action=' + action, e);
+        // Mark blocked to avoid repeated failing POST attempts this session
+        window._appsScriptPostBlocked = true;
+        return appsScriptGetFallback(baseUrl, action, payload, timeoutMs);
+    }
+}
+
+function appsScriptGetFallback(baseUrl, action, payload, timeoutMs) {
+    try {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), timeoutMs);
+        // Encode payload compactly in query (Base64 JSON)
+        let encoded = '';
+        try { encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))); } catch { encoded = ''; }
+        const url = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action) + (encoded ? ('&payload=' + encodeURIComponent(encoded)) : '');
+        return fetch(url, { method: 'GET', cache: 'no-store', signal: controller.signal })
+            .then(r => { clearTimeout(t); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .catch(err => { console.warn('AppsScript GET fallback failed', err); return null; });
+    } catch (e) {
+        console.warn('AppsScript GET fallback construction failed', e);
         return null;
     }
 }
