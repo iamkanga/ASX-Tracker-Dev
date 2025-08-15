@@ -158,8 +158,9 @@ function makeFilesAvailableToSourceControlCSS() {
     --asx-button-active-bg: #a49393;
     --asx-button-active-text: #fff;
     /* Brand palette and mappings */
-    --brand-red: #E74C3C;   /* Alizarin */
-    --brand-green: #2ECC71; /* Emerald */
+    --brand-green: #008000;
+    --brand-red: #c42131;
+    --accent-color: #a49393;
     --success-color: var(--brand-green);
     --danger-color: var(--brand-red);
     --warning-color: #ffc107;
@@ -252,54 +253,79 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 
 /* === Refined Movement & Target-Hit Styling (Corrected) === */
-/* Movement backgrounds (stay even when target-hit) */
-table tbody tr.positive-change-row { background: var(--watch-bg-positive); }
-table tbody tr.negative-change-row { background: var(--watch-bg-negative); }
-table tbody tr.neutral-change-row  { background: var(--watch-bg-neutral); }
+/* Standard Movement: 4px side borders for all views */
+.positive-change-row, .positive-change-card { border-left: 4px solid var(--brand-green); border-right: 4px solid var(--brand-green); }
+.negative-change-row, .negative-change-card { border-left: 4px solid var(--brand-red); border-right: 4px solid var(--brand-red); }
+.neutral-change-row, .neutral-change-card { border-left: 4px solid var(--accent-color); border-right: 4px solid var(--accent-color); }
 
-/* Side borders ONLY for non-target-hit rows */
-/* Full border style (consistent thickness all around) for non target-hit rows */
-/* (Removed old 3px full border rules in favor of unified .movement-sides class) */
+/* Movement backgrounds (Light mode) */
+table tbody tr.positive-change-row, .mobile-card.positive-change-card { background: var(--watch-bg-positive); }
+table tbody tr.negative-change-row, .mobile-card.negative-change-card { background: var(--watch-bg-negative); }
+table tbody tr.neutral-change-row, .mobile-card.neutral-change-card { background: var(--watch-bg-neutral); }
 
-/* Mobile / compact cards backgrounds */
-.mobile-card.positive-change-card { background: var(--watch-bg-positive); }
-.mobile-card.negative-change-card { background: var(--watch-bg-negative); }
-.mobile-card.neutral-change-card  { background: var(--watch-bg-neutral); }
-body .mobile-card.positive-change-card { background: var(--watch-bg-positive) !important; }
-body .mobile-card.negative-change-card { background: var(--watch-bg-negative) !important; }
-body .mobile-card.neutral-change-card  { background: var(--watch-bg-neutral) !important; }
+/* Target-Hit Override: Full 4px rounded border with pulse */
+@keyframes targetHitPulseBorder { 0% { box-shadow: 0 0 0 0 var(--accent-color); } 50% { box-shadow: 0 0 0 6px rgba(164, 147, 147, 0); } 100% { box-shadow: 0 0 0 0 rgba(164, 147, 147, 0); } }
+.target-hit-alert {
+    border: 4px solid var(--accent-color) !important;
+    border-radius: 10px;
+    animation: targetHitPulseBorder 2s ease-in-out infinite;
+    will-change: box-shadow, border-color;
+}
 
-/* Mobile side borders ONLY (no full border unless target-hit) */
-/* Full border style for mobile cards */
-/* (Removed old 3px full/side border rules for mobile cards – replaced by unified .movement-sides system) */
-.mobile-share-cards.compact-view .mobile-card.target-hit-alert { animation:none !important; }
+/* === Compact Card Layout & Theme === */
+.mobile-share-cards.compact-view .mobile-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+        "code chevron"
+        "price price";
+    align-items: center;
+    padding: 8px;
+    gap: 4px 8px;
+}
+.mobile-share-cards.compact-view .asx-code { grid-area: code; justify-self: start; font-weight: bold; }
+.mobile-share-cards.compact-view .chevron { grid-area: chevron; justify-self: end; }
+.mobile-share-cards.compact-view .live-price-container {
+    grid-area: price;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+.mobile-share-cards.compact-view .live-price { font-size: 1.5rem; font-weight: bold; }
+.mobile-share-cards.compact-view .price-change-container { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 
-/* Target-Hit: full 4px border (keep underlying movement background) */
-@keyframes targetHitPulseBorder { 0% { box-shadow:0 0 0 0 rgba(164,147,147,0.45); } 50% { box-shadow:0 0 0 5px rgba(164,147,147,0); } 100% { box-shadow:0 0 0 0 rgba(164,147,147,0); } }
-table tbody tr.target-hit-alert,
-.mobile-card.target-hit-alert,
-.mobile-share-cards.compact-view .mobile-card.target-hit-alert,
-.portfolio-card.target-hit-alert { border:4px solid var(--accent-color) !important; animation: targetHitPulseBorder 2.2s ease-in-out infinite; box-sizing:border-box; border-radius:10px; }
-.target-hit-alert { will-change: box-shadow, border-color; }
-/* Ensure pulse always applies */
-.target-hit-alert { animation: targetHitPulseBorder 2.2s ease-in-out infinite; }
+/* Light Mode Compact Cards: Use subtle backgrounds */
+.mobile-share-cards.compact-view .positive-change-card { background: var(--watch-bg-positive); }
+.mobile-share-cards.compact-view .negative-change-card { background: var(--watch-bg-negative); }
+.mobile-share-cards.compact-view .neutral-change-card { background: var(--watch-bg-neutral); }
 
-/* Optional pulsing for neutral/coffee notifications (apply .pulse-border to element) */
-@keyframes subtlePulseBorder { 0% { box-shadow:0 0 0 0 rgba(164,147,147,0.35); } 50% { box-shadow:0 0 0 6px rgba(164,147,147,0); } 100% { box-shadow:0 0 0 0 rgba(164,147,147,0); } }
-.pulse-border { animation: subtlePulseBorder 2.4s ease-in-out infinite; }
-/* Ensure compact view target-hit matches full 4px spec (remove legacy 2px override) */
-.mobile-share-cards.compact-view .mobile-card.target-hit-alert { border-width:4px; }
+/* Dark Theme Compact Cards: Rich Black Theme */
+body.dark-theme .mobile-share-cards.compact-view .mobile-card {
+    color: #f0f0f0; /* High-contrast soft white text */
+    border-radius: 8px;
+    border-left-width: 4px; /* Maintain side borders */
+    border-right-width: 4px;
+}
+body.dark-theme .mobile-share-cards.compact-view .positive-change-card {
+    background: linear-gradient(145deg, hsl(120, 100%, 8%), hsl(120, 100%, 4%));
+    border-color: var(--brand-green);
+}
+body.dark-theme .mobile-share-cards.compact-view .negative-change-card {
+    background: linear-gradient(145deg, hsl(353, 70%, 10%), hsl(353, 70%, 6%));
+    border-color: var(--brand-red);
+}
+body.dark-theme .mobile-share-cards.compact-view .neutral-change-card {
+    background: linear-gradient(145deg, #282828, #181818);
+    border-color: var(--accent-color);
+}
+/* Ensure target hit overrides dark theme gradient */
+body.dark-theme .mobile-share-cards.compact-view .target-hit-alert {
+    background: linear-gradient(145deg, #282828, #181818);
+}
 
-
-/* Remove side-only borders when target-hit applies (force full border clarity) */
-table tbody tr.target-hit-alert { border-left:4px solid var(--accent-color) !important; border-right:4px solid var(--accent-color) !important; }
-
-/* Price movement text colors retained automatically */
-
-/* Ensure legacy target-hit variables reflect 4px */
-:root { --target-hit-border-width:4px; }
-
-/* Removed global ghosting when market is closed. Watchlist, borders, and ASX code buttons stay full color. */
 
 /* Dark Theme Variables */
 body.dark-theme {
