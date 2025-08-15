@@ -3,12 +3,445 @@
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
-    // (Implementation of pushAppState moved further below originally; ensure no nested function corruption.)
+    history.pushState(stateObj, title, url);
 }
 
-// Re-insert (or keep) addShareToMobileCards at top-level scope (was mistakenly nested in pushAppState by prior patch)
-// addShareToMobileCards implemented later in file (clean definition). Remove accidental truncated stub.
+// Listen for the back button (popstate event)
+window.addEventListener('popstate', function(event) {
+    // Let the unified stack-based handler manage modals. Only handle sidebar here.
+    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
+        if (window.toggleAppSidebar) {
+            window.toggleAppSidebar(false); // Explicitly close the sidebar
+        }
+        return; // Exit after handling the sidebar
+    }
+    // Defer modal handling to the stack popstate handler below.
+});
+// Keep main content padding in sync with header height changes (e.g., viewport resize)
+window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
+document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
+// ...existing code...
+// --- (Aggressive Enforcement Patch Removed) ---
+// The previous patch has been removed as the root cause of the UI issues,
+// a syntax error in index.html, has been corrected. The standard application
+// logic should now function as intended.
+// --- END REMOVED PATCH ---
 
+
+// [Copilot Update] Source control helper
+// This function is a placeholder for automating source control actions (e.g., git add/commit)
+// and for tracking how many times files have been made available to source control.
+// Usage: Call makeFilesAvailableToSourceControl() after major changes if you want to automate this.
+let sourceControlMakeAvailableCount = 0;
+function makeFilesAvailableToSourceControl() {
+    // This is a placeholder for future automation (e.g., via backend or extension)
+    // Instructs the user to use git or triggers a VS Code command if available
+    sourceControlMakeAvailableCount++;
+    if (window && window.showCustomAlert) {
+        window.showCustomAlert('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')', 2000);
+    } else {
+        console.log('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')');
+    }
+    // To actually add to git, run: git init; git add .; git commit -m "Initial commit"
+}
+// End Copilot source control helper
+
+// Helper: Sort shares by percentage change
+function sortSharesByPercentageChange(shares) {
+    return shares.slice().sort((a, b) => {
+        const liveA = livePrices[a.shareName?.toUpperCase()]?.live;
+        const prevA = livePrices[a.shareName?.toUpperCase()]?.prevClose;
+        const liveB = livePrices[b.shareName?.toUpperCase()]?.live;
+        const prevB = livePrices[b.shareName?.toUpperCase()]?.prevClose;
+        const pctA = (prevA && liveA) ? ((liveA - prevA) / prevA) : 0;
+        const pctB = (prevB && liveB) ? ((liveB - prevB) / prevB) : 0;
+        return pctB - pctA; // Descending
+    });
+}
+
+// Lean live prices hook: only resort when sort actually depends on live data
+function onLivePricesUpdated() {
+    try {
+        if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
+            sortShares();
+        } else {
+            renderWatchlist();
+        }
+        if (typeof renderPortfolioList === 'function') {
+            const section = document.getElementById('portfolioSection');
+            if (section && section.style.display !== 'none') {
+                renderPortfolioList();
+            }
+        }
+    } catch (e) {
+        console.error('Live Price: onLivePricesUpdated error:', e);
+    }
+}
+
+// Compatibility stub (legacy callsites may invoke)
+function forceApplyCurrentSort() { /* legacy no-op retained */ }
+document.addEventListener('DOMContentLoaded', function () {
+    // --- Watchlist logic moved to watchlist.js ---
+    // Import and call watchlist functions
+    if (window.watchlistModule) {
+        window.watchlistModule.renderWatchlistSelect();
+    // If we have a persisted lastKnownTargetCount, ensure the notification icon restores pre-live-load
+    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
+        window.watchlistModule.populateShareWatchlistSelect();
+        window.watchlistModule.ensurePortfolioOptionPresent();
+        setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
+    }
+    // Automatic closed-market banner and ghosting
+    const marketStatusBanner = document.getElementById('marketStatusBanner');
+    function formatSydneyDate(d) {
+        return new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+    }
+    function isAfterCloseUntilMidnightSydney() {
+        const now = new Date();
+        const opts = { hour: 'numeric', minute: 'numeric', hour12: false, timeZone: 'Australia/Sydney' };
+        const timeStr = new Intl.DateTimeFormat('en-AU', opts).format(now);
+        const [h, m] = timeStr.split(':').map(Number);
+        return (h > 16) || (h === 16 && m >= 0);
+    }
+    function updateMarketStatusUI() {
+    const open = isAsxMarketOpen();
+        if (marketStatusBanner) {
+            if (!open) {
+                const now = new Date();
+                // Snapshot is the last fetched live as at close; show date to avoid weekend ambiguity
+                marketStatusBanner.textContent = `ASX market is closed. Showing final prices from today. (${formatSydneyDate(now)})`;
+                marketStatusBanner.classList.remove('app-hidden');
+            } else {
+                marketStatusBanner.textContent = '';
+                marketStatusBanner.classList.add('app-hidden');
+            }
+        }
+    // No global disabling; controls remain enabled regardless of market state
+    }
+    // Initial status and periodic re-check each minute
+    updateMarketStatusUI();
+    setInterval(updateMarketStatusUI, 60 * 1000);
+
+    // Ensure Edit Current Watchlist button updates when selection changes
+    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+        watchlistSelect.addEventListener('change', function () {
+            // If Portfolio is selected, show portfolio view
+            if (watchlistSelect.value === 'portfolio') {
+                showPortfolioView();
+                try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e){}
+            } else {
+                // Default: show normal watchlist view
+                showWatchlistView();
+                try { localStorage.setItem('lastSelectedView', watchlistSelect.value); } catch(e){}
+            }
+            updateMainButtonsState(true);
+        });
+    }
+
+    // Portfolio view logic
+    window.showPortfolioView = function() {
+        // Hide normal stock watchlist section, show a dedicated portfolio section (create if needed)
+        if (!document.getElementById('portfolioSection')) {
+            const portfolioSection = document.createElement('div');
+            portfolioSection.id = 'portfolioSection';
+            portfolioSection.className = 'portfolio-section';
+            portfolioSection.innerHTML = '<h2>Portfolio</h2><div class="portfolio-scroll-wrapper"><div id="portfolioListContainer">Loading portfolio...</div></div>';
+            mainContainer.appendChild(portfolioSection);
+        }
+        stockWatchlistSection.style.display = 'none';
+        // Ensure selection state reflects Portfolio for downstream filters (e.g., ASX buttons)
+        currentSelectedWatchlistIds = ['portfolio'];
+        // Reflect in dropdown if present
+        if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+            if (watchlistSelect.value !== 'portfolio') {
+                watchlistSelect.value = 'portfolio';
+            }
+        }
+    // Persist user intent
+        try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e) {}
+        let portfolioSection = document.getElementById('portfolioSection');
+        portfolioSection.style.display = 'block';
+    renderPortfolioList();
+    // Keep header text in sync
+    try { updateMainTitle(); } catch(e) {}
+    // Ensure sort options and alerts are correct for Portfolio view
+    try { renderSortSelect(); } catch(e) {}
+    try { updateTargetHitBanner(); } catch(e) {}
+        if (typeof renderAsxCodeButtons === 'function') {
+            if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
+            renderAsxCodeButtons();
+        }
+    };
+    window.showWatchlistView = function() {
+        // Hide portfolio section if present, show normal stock watchlist section
+        let portfolioSection = document.getElementById('portfolioSection');
+        if (portfolioSection) portfolioSection.style.display = 'none';
+    stockWatchlistSection.style.display = '';
+    stockWatchlistSection.classList.remove('app-hidden');
+    // Also ensure the table and mobile containers are restored from any previous hide
+    if (tableContainer) tableContainer.style.display = '';
+    if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = '';
+    };
+    // Render portfolio list (uses live prices when available)
+    window.renderPortfolioList = function() {
+        const portfolioListContainer = document.getElementById('portfolioListContainer');
+        if (!portfolioListContainer) return;
+
+        // Filter for shares assigned to the Portfolio
+    const portfolioShares = allSharesData.filter(s => shareBelongsTo(s, 'portfolio'));
+        if (portfolioShares.length === 0) {
+            portfolioListContainer.innerHTML = '<p>No shares in your portfolio yet.</p>';
+            return;
+        }
+
+        // Helper to get a displayable current price for a share (live, last live when closed, then entered price)
+        function getDisplayPrice(share) {
+            const code = (share.shareName || '').toUpperCase();
+            const lp = livePrices ? livePrices[code] : undefined;
+            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+            let price = null;
+            if (lp) {
+                if (marketOpen && lp.live !== null && !isNaN(lp.live)) {
+                    price = Number(lp.live);
+                } else if (!marketOpen && lp.lastLivePrice !== null && !isNaN(lp.lastLivePrice)) {
+                    price = Number(lp.lastLivePrice);
+                }
+            }
+            if (price === null || isNaN(price)) {
+                // Fallback to user-entered currentPrice if available
+                price = (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice)))
+                    ? Number(share.currentPrice)
+                    : null;
+            }
+            return price;
+        }
+
+    function fmtMoney(n) { return formatMoney(n); }
+    function fmtPct(n) { return formatPercent(n); }
+
+    let totalValue = 0;
+    let totalPL = 0;
+    let totalCostBasis = 0; // sum of shares * avgPrice for total % calc
+    // Build desktop/table HTML
+    let htmlTable = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg<br>Price</th><th>Live</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
+    // Build mobile cards markup
+    let cards = [];
+    let profitPLSum = 0; // sum of positive P/L
+    let lossPLSum = 0;   // sum of negative P/L (will stay negative)
+        portfolioShares.forEach(share => {
+            const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
+                ? Math.trunc(Number(share.portfolioShares)) : '';
+            const avgPrice = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)))
+                ? Number(share.portfolioAvgPrice) : null;
+            const code = (share.shareName || '').toUpperCase();
+            const lpObj = livePrices ? livePrices[code] : undefined;
+            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+            let priceNow = null;
+            if (lpObj) {
+                if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceNow = Number(lpObj.live);
+                else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceNow = Number(lpObj.lastLivePrice);
+            }
+            if (priceNow === null || isNaN(priceNow)) {
+                if (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice))) {
+                    priceNow = Number(share.currentPrice);
+                }
+            }
+            let dailyChangeClass = '';
+            if (lpObj) {
+                const latestLive = (lpObj.live !== null && !isNaN(lpObj.live)) ? Number(lpObj.live) : (lpObj.lastLivePrice ?? null);
+                const latestPrev = (lpObj.prevClose !== null && !isNaN(lpObj.prevClose)) ? Number(lpObj.prevClose) : (lpObj.lastPrevClose ?? null);
+                if (latestLive !== null && latestPrev !== null && !isNaN(latestLive) && !isNaN(latestPrev)) {
+                    const dayChange = latestLive - latestPrev;
+                    if (dayChange > 0) dailyChangeClass = 'positive'; else if (dayChange < 0) dailyChangeClass = 'negative';
+                }
+            }
+            const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
+            if (typeof rowValue === 'number') totalValue += rowValue;
+            const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
+            if (typeof shares === 'number' && typeof avgPrice === 'number') totalCostBasis += (shares * avgPrice);
+            if (typeof rowPL === 'number') {
+                totalPL += rowPL;
+                if (rowPL > 0) profitPLSum += rowPL; else if (rowPL < 0) lossPLSum += rowPL;
+            }
+            const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
+            const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
+            const priceColorClass = marketOpen ? 'live-price' : 'last-price';
+            const priceCell = (priceNow !== null && priceNow !== undefined) ? ('<span class="price-value '+priceColorClass+'">' + fmtMoney(priceNow) + '</span>') : '';
+            htmlTable += `<tr data-doc-id="${share.id}" class="${dailyChangeClass}">
+                <td class="code-cell">${share.shareName || ''}</td>
+                <td class="num-cell shares-cell">${shares !== '' ? formatWithCommas(shares) : ''}</td>
+                <td class="num-cell avg-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
+                <td class="num-cell live-cell ${marketOpen ? 'live' : 'last'} liveprice-cell">${priceCell}</td>
+                <td class="num-cell value-cell">${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
+                <td class="num-cell pl-cell ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
+                <td class="num-cell plpct-cell ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
+            </tr>`;
+            const card = `<div class="portfolio-card ${dailyChangeClass}" data-doc-id="${share.id}">
+                <div class="pc-row top">
+                    <div class="pc-code ${dailyChangeClass}">${share.shareName || ''}</div>
+                    <div class="pc-live ${marketOpen ? 'live' : 'last'}"><span class="val ${priceColorClass}">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
+                    <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
+                </div>
+                <div class="pc-row mid">
+                    <div class="pc-shares">${shares !== '' ? shares : ''} @ ${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</div>
+                    <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
+                </div>
+                <div class="pc-row bottom ${plClass}">
+                    <div class="pc-pl-label">P/L</div>
+                    <div class="pc-pl-val">${rowPL !== null ? fmtMoney(rowPL) : ''}</div>
+                </div>
+            </div>`;
+            cards.push(card);
+        });
+        // Total row
+        const totalPLClass = totalPL > 0 ? 'positive' : (totalPL < 0 ? 'negative' : 'neutral');
+        const totalPLPct = (totalCostBasis > 0 && typeof totalPL === 'number') ? (totalPL / totalCostBasis) * 100 : 0;
+        htmlTable += `<tr class="portfolio-total-row ${totalPLClass}">
+            <td colspan="4" style="text-align:right;font-weight:600;">Total</td>
+            <td style="font-weight:700;">${fmtMoney(totalValue)}</td>
+            <td class="${totalPLClass}" style="font-weight:700;">${fmtMoney(totalPL)}</td>
+            <td class="${totalPLClass}" style="font-weight:700;">${fmtPct(totalPLPct)}</td>
+        </tr>`;
+        htmlTable += '</tbody></table>';
+        const totalsCard = `<div class="portfolio-card total ${totalPLClass} wide">
+            <div class="pc-row top"><div class="pc-code">Totals</div></div>
+            <div class="pc-row mid"><div class="pc-value-label">Value</div><div class="pc-value">${fmtMoney(totalValue)}</div></div>
+            <div class="pc-row bottom ${totalPLClass}"><div class="pc-pl-label">P/L</div><div class="pc-pl-val">${fmtMoney(totalPL)}</div></div>
+        </div>`;
+    const totalPLPctDisplay = (totalCostBasis > 0) ? fmtPct((totalPL / totalCostBasis) * 100) : '0.00%';
+        const profitLossSummary = `<div class="portfolio-summary-bar two-cards">
+            <div class="ps-card profit highlight">
+                <div class="ps-label">Profit</div>
+                <div class="ps-value">${fmtMoney(profitPLSum)}</div>
+            </div>
+            <div class="ps-card loss highlight">
+                <div class="ps-label">Loss</div>
+                <div class="ps-value">${fmtMoney(Math.abs(lossPLSum))}</div>
+            </div>
+        </div>`;
+    const htmlCards = `<div class="portfolio-cards">${cards.join('')}<div class="totals-footer-wrapper">${totalsCard}</div></div>`;
+        portfolioListContainer.innerHTML = profitLossSummary + htmlTable + htmlCards;
+
+        // Make portfolio rows interactive: click to open details; right-click to open context menu
+    const rows = portfolioListContainer.querySelectorAll('table.portfolio-table tbody tr, .portfolio-cards .portfolio-card');
+        rows.forEach(row => {
+            if (row.classList.contains('portfolio-total-row')) return; // skip totals
+            const docId = row.getAttribute('data-doc-id');
+            if (!docId) return;
+            row.addEventListener('click', () => {
+                selectShare(docId);
+                showShareDetails();
+            });
+            row.addEventListener('contextmenu', (e) => {
+                if (window.innerWidth > 768) {
+                    e.preventDefault();
+                    selectShare(docId);
+                    showContextMenu(e, docId);
+                }
+            });
+            // Mobile long-press disabled: passive touch handlers only
+            row.addEventListener('touchstart', () => { selectedElementForTap = row; }, { passive: true });
+            row.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
+        });
+    };
+});
+//  This script interacts with Firebase Firestore for data storage.
+// Firebase app, db, auth instances, and userId are made globally available
+// via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
+// from the <script type="module"> block in index.html.
+
+// --- GLOBAL VARIABLES ---
+let DEBUG_MODE = false; // Quiet by default; enable via window.toggleDebug(true)
+window.toggleDebug = (on) => { DEBUG_MODE = !!on; console.log('Debug mode', DEBUG_MODE ? 'ENABLED' : 'DISABLED'); };
+
+// Custom logging function to control verbosity
+function logDebug(message, ...optionalParams) {
+    if (DEBUG_MODE) {
+        // This line MUST call the native console.log, NOT logDebug itself.
+        console.log(message, ...optionalParams); 
+    }
+}
+// --- END DEBUG LOGGING SETUP ---
+
+let db;
+let auth = null;
+let currentUserId = null;
+let currentAppId;
+let selectedShareDocId = null;
+let allSharesData = []; // Kept in sync by the onSnapshot listener
+// Prevent duplicate sign-in attempts
+let authInProgress = false;
+// Helper: normalize and check membership for multi-watchlist support with backward compatibility
+function shareBelongsTo(share, watchlistId) {
+    if (!share) return false;
+    if (Array.isArray(share.watchlistIds)) {
+        return share.watchlistIds.includes(watchlistId);
+    }
+    return share.watchlistId === watchlistId;
+}
+
+// Helper: ensure we don't render duplicates when transient optimistic updates or race conditions occur
+function dedupeSharesById(items) {
+    try {
+        const map = new Map();
+        for (const it of items || []) {
+            if (it && it.id) map.set(it.id, it);
+        }
+        return Array.from(map.values());
+    } catch (e) {
+        console.warn('Dedupe: Failed to dedupe shares by id:', e);
+        return Array.isArray(items) ? items : [];
+    }
+}
+let currentDialogCallback = null;
+let autoDismissTimeout = null;
+let lastTapTime = 0;
+let tapTimeout;
+let selectedElementForTap = null;
+let longPressTimer;
+const LONG_PRESS_THRESHOLD = 500; // Time in ms for long press detection (desktop only; mobile long-press disabled)
+let touchStartX = 0;
+let touchStartY = 0;
+const TOUCH_MOVE_THRESHOLD = 10; // Pixels for touch movement to cancel long press
+const KANGA_EMAIL = 'iamkanga@gmail.com';
+let currentCalculatorInput = '';
+let operator = null;
+let previousCalculatorInput = '';
+let resultDisplayed = false;
+const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
+const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
+let userWatchlists = []; // Stores all watchlists for the user
+let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
+// Initialize dismissal and sort state from localStorage as early as possible to avoid flashes/defaults
+try { targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true'; } catch(e) {}
+// Restore last selected view (persisted)
+try {
+    const lastView = localStorage.getItem('lastSelectedView');
+    if (lastView === 'portfolio') {
+        currentSelectedWatchlistIds = ['portfolio'];
+    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
+        // Defer actual DOM switch until initial data load completes; hook into data load readiness
+        window.addEventListener('load', () => {
+            setTimeout(() => { if (typeof showPortfolioView === 'function') showPortfolioView(); }, 300);
+        });
+
+    // Keep header and alerts consistent after portfolio render
+    try { updateMainTitle(); } catch(e) {}
+    try { ensureTitleStructure(); } catch(e) {}
+    try { updateTargetHitBanner(); } catch(e) {}
+    } else if (lastView && lastView !== 'portfolio') {
+        currentSelectedWatchlistIds = [lastView];
+        if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = lastView; }
+        try { updateMainTitle(); } catch(e) {}
+        try { ensureTitleStructure(); } catch(e) {}
+        try { updateTargetHitBanner(); } catch(e) {}
+    }
+} catch(e) { /* ignore */ }
+const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
+const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
+let currentSortOrder = 'entryDate-desc'; // Default sort order
+try { const lsSort = localStorage.getItem('lastSortOrder'); if (lsSort) { currentSortOrder = lsSort; } } catch(e) {}
+let contextMenuOpen = false; // To track if the custom context menu is open
 let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
 let originalShareData = null; // Stores the original share data when editing for dirty state check
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
@@ -55,12 +488,13 @@ try {
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 let currentMobileViewMode = 'default';
 try {
-    // Canonical key: 'mobileViewMode'. Support legacy 'currentMobileViewMode' for migration.
-    const savedViewMode = localStorage.getItem('mobileViewMode') || localStorage.getItem('currentMobileViewMode');
-    if (savedViewMode === 'compact') currentMobileViewMode = 'compact';
+    const savedViewMode = localStorage.getItem('mobileViewMode');
+    if (savedViewMode === 'compact') {
+        currentMobileViewMode = 'compact';
+    }
 } catch (e) {
     console.warn('Could not load mobile view mode from localStorage', e);
-}
+} 
 
 // Helper to ensure compact mode class is always applied
 function applyCompactViewMode() {
@@ -77,14 +511,6 @@ function applyCompactViewMode() {
     }
     // Adjust layout after view mode change
     requestAnimationFrame(adjustMainContentPadding);
-}
-
-// Ensure the class is applied as early as possible (before initial data render)
-if (document.readyState !== 'loading') {
-    // DOM already parsed
-    setTimeout(applyCompactViewMode, 0);
-} else {
-    document.addEventListener('DOMContentLoaded', () => applyCompactViewMode(), { once: true });
 }
 
 // NEW: Global variable to track if the target hit icon is dismissed for the current session
@@ -1216,12 +1642,10 @@ function toggleAccordionSection(section) {
     }
 }
 
-// Initialize accordion (idempotent) either immediately or on DOMContentLoaded
-if (document.readyState !== 'loading') {
-    try { initShareFormAccordion(); } catch(e) {}
-} else {
-    document.addEventListener('DOMContentLoaded', () => { try { initShareFormAccordion(); } catch(e) {} }, { once: true });
-}
+// Initialize accordion when DOM ready; also on modal open via observer fallback
+document.addEventListener('DOMContentLoaded', () => {
+    initShareFormAccordion();
+});
 
 // MutationObserver safety net: if form content is replaced dynamically later
 const accordionObserver = new MutationObserver(() => {
@@ -7839,7 +8263,6 @@ if (targetHitIconBtn) {
     });
 }
 
-// Single consolidated DOMContentLoaded handler (ensure only one definition exists)
 document.addEventListener('DOMContentLoaded', function() {
     logDebug('script.js DOMContentLoaded fired.');
 
@@ -8069,7 +8492,7 @@ document.addEventListener('DOMContentLoaded', function() {
             renderWatchlist();
             try { ensureTitleStructure(); } catch(e) {}
             // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
-        }); // end onAuthStateChanged
+        });
     } else {
         console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
         const errorDiv = document.getElementById('firebaseInitError');
@@ -8083,5 +8506,5 @@ document.addEventListener('DOMContentLoaded', function() {
         adjustMainContentPadding();
         // NEW: Hide splash screen if Firebase fails to initialize
         hideSplashScreen();
-    } // end if(firebase objects)
-}); // end DOMContentLoaded
+    }
+});
