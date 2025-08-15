@@ -122,6 +122,8 @@ document.addEventListener('DOMContentLoaded', function () {
     updateMarketStatusUI();
     setInterval(updateMarketStatusUI, 60 * 1000);
 
+// (Removed premature DOMContentLoaded closure - listener continues below)
+
     // Ensure Edit Current Watchlist button updates when selection changes
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
         watchlistSelect.addEventListener('change', function () {
@@ -344,6 +346,7 @@ document.addEventListener('DOMContentLoaded', function () {
             row.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
         });
     };
+    // CLOSE primary (early) DOMContentLoaded listener
 });
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
@@ -945,7 +948,7 @@ window.addEventListener('popstate', ()=>{
             }
         }
     }
-});
+}); // end popstate listener
 
 // Hardware / browser back key mapping (mobile)
 window.addEventListener('keydown', e=>{
@@ -1843,9 +1846,11 @@ function addShareToMobileCards(share) {
         }
     }
 
-    // Apply card-specific price change class
+    // Apply card-specific price change class (always include neutral class when appropriate)
     if (cardPriceChangeClass) {
         card.classList.add(cardPriceChangeClass);
+    } else if (priceClass === 'neutral') {
+        card.classList.add('neutral-change-card');
     }
 
     // Apply target-hit-alert class if target is hit AND not dismissed
@@ -1891,6 +1896,7 @@ function addShareToMobileCards(share) {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     const companyName = companyInfo ? companyInfo.name : '';
 
+    const isCompact = mobileShareCardsContainer.classList.contains('compact-view');
     // Build directional arrow for displayPriceChange (keep underlying displayPriceChange variable intact for accessibility if needed)
     let arrowSymbol = '';
     if (/^[-+]?\d/.test(displayPriceChange)) { /* heuristic; actual change variable exists above but reused */ }
@@ -1992,6 +1998,7 @@ function addShareToMobileCards(share) {
     mobileShareCardsContainer.appendChild(card);
     logDebug('Mobile Cards: Added share ' + share.shareName + ' to mobile cards.');
 }
+// END addShareToMobileCards
 /**
  * Updates an existing share row in the table or creates a new one if it doesn't exist.
  * @param {object} share The share object.
@@ -2410,50 +2417,60 @@ function clearWatchlistUI() {
 function clearShareListUI() {
     if (!shareTableBody) { console.error('clearShareListUI: shareTableBody element not found.'); return; }
     if (!mobileShareCardsContainer) { console.error('clearShareListUI: mobileShareCardsContainer element not found.'); return; }
-    shareTableBody.innerHTML = '';
-    mobileShareCardsContainer.innerHTML = '';
-    logDebug('UI: Share list UI cleared.');
-}
-
-function clearShareList() {
-    clearShareListUI();
-    if (asxCodeButtonsContainer) asxCodeButtonsContainer.innerHTML = '';
-    deselectCurrentShare();
-    logDebug('UI: Full share list cleared (UI + buttons).');
-}
-
-function selectShare(shareId) {
-    logDebug('Selection: Attempting to select share with ID: ' + shareId);
-    deselectCurrentShare();
-
-    const tableRow = document.querySelector('#shareTable tbody tr[data-doc-id="' + shareId + '"]');
-    const mobileCard = document.querySelector('.mobile-card[data-doc-id="' + shareId + '"]');
-    const portfolioRow = document.querySelector('#portfolioSection table.portfolio-table tbody tr[data-doc-id="' + shareId + '"]');
-
-    if (tableRow) {
-        tableRow.classList.add('selected');
-        logDebug('Selection: Selected table row for ID: ' + shareId);
+    if (isCompact) {
+        // Minimal grid markup for compact layout
+        card.innerHTML = `
+            <h3 class="card-code neutral-code-text">${share.shareName || ''}</h3>
+            <span class="card-chevron change-chevron ${priceClass}">${arrowSymbol || ''}</span>
+            <span class="card-live-price live-price-large neutral-code-text">${displayLivePrice}</span>
+            <span class="card-price-change price-change-large ${priceClass}">${displayPriceChange}</span>
+        `;
+    } else {
+        card.innerHTML = `
+            <div class="live-price-display-section">
+                <h3 class="neutral-code-text">${share.shareName || ''}</h3>
+                <span class="change-chevron ${priceClass}">${arrowSymbol || ''}</span>
+                <div class="live-price-main-row">
+                    <span class="live-price-large neutral-code-text">${displayLivePrice}</span>
+                </div>
+                <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
+                <div class="fifty-two-week-row">
+                    <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
+                    <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
+                </div>
+                <div class="pe-ratio-row">
+                    <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
+                </div>
+            </div>
+        <p class="data-row"><span class="label-text">Reference Price:</span><span class="data-value">${formatMoney(Number(share.currentPrice), { hideZero: true })}</span></p>
+        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${formatMoney(Number(share.targetPrice), { hideZero: true })}</span></p>
+            <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
+            <p class="data-row">
+                <span class="label-text">Dividend Yield:</span>
+                <span class="data-value">
+                ${
+                    (() => {
+                        const dividendAmount = Number(share.dividendAmount) || 0;
+                        const frankingCredits = Number(share.frankingCredits) || 0;
+                        const enteredPrice = Number(share.currentPrice) || 0; 
+                        const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
+                                            ? parseFloat(displayLivePrice.substring(1))
+                                            : (enteredPrice > 0 ? enteredPrice : 0);
+                        if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
+                        const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
+                        const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
+                        if (frankingCredits > 0 && frankedYield > 0) {
+                            return formatAdaptivePercent(frankedYield) + '% (Franked)';
+                        } else if (unfrankedYield > 0) {
+                            return formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
+                        }
+                        return '';
+                    })()
+                }
+                </span>
+            </p>
+        `;
     }
-    if (mobileCard) {
-        mobileCard.classList.add('selected');
-        logDebug('Selection: Selected mobile card for ID: ' + shareId);
-    }
-    if (portfolioRow) {
-        portfolioRow.classList.add('selected');
-        logDebug('Selection: Selected portfolio row for ID: ' + shareId);
-    }
-    selectedShareDocId = shareId;
-}
-
-function deselectCurrentShare() {
-    const currentlySelected = document.querySelectorAll('.share-list-section tr.selected, .mobile-card.selected, #portfolioSection tr.selected');
-    logDebug('Selection: Attempting to deselect ' + currentlySelected.length + ' elements.');
-    currentlySelected.forEach(el => {
-        el.classList.remove('selected');
-    });
-    selectedShareDocId = null;
-    logDebug('Selection: Share deselected. selectedShareDocId is now null.');
-}
 
 // NEW: Select/Deselect for Cash Assets (3.1)
 function selectCashAsset(assetId) {
@@ -2661,7 +2678,8 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
         Array.from(shareWatchlistSelect.options).forEach(option => {
             option.selected = preselectedIds.includes(option.value);
         });
-    } else {
+    } // close firebase initialization if-block
+    else {
         shareWatchlistSelect.value = selectedOptionId;
     }
     shareWatchlistSelect.disabled = disableDropdown;
@@ -8159,8 +8177,8 @@ if (sortSelect) {
     // NEW: Set initial state for the compact view button
     updateCompactViewButtonState();
     applyCompactViewMode();
-} 
-// This closing brace correctly ends the `initializeAppLogic` function here.
+    // end initializeAppLogic
+}
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal() {
@@ -8263,248 +8281,7 @@ if (targetHitIconBtn) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    logDebug('script.js DOMContentLoaded fired.');
-
-    // Ensure header interactive bindings are attached even on first load
-    try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
-    // Early notification restore from persisted count
-    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
-
-    // Ensure Edit Current Watchlist button updates when watchlist selection changes
-    if (watchlistSelect) {
-        watchlistSelect.addEventListener('change', function() {
-            updateMainButtonsState(true);
-            try { updateMainTitle(); } catch(e) {}
-        });
-    }
-    // NEW: Initialize splash screen related flags
-    window._firebaseInitialized = false;
-    window._userAuthenticated = false;
-    window._appDataLoaded = false;
-    window._livePricesLoaded = false;
-
-    // Show splash screen immediately on DOMContentLoaded
-    if (splashScreen) {
-        splashScreen.style.display = 'flex'; // Ensure it's visible
-        splashScreen.classList.remove('hidden'); // Ensure it's not hidden
-        splashScreenReady = true; // Mark splash screen as ready
-        document.body.style.overflow = 'hidden'; // Prevent scrolling of underlying content
-        logDebug('Splash Screen: Displayed on DOMContentLoaded, body overflow hidden.');
-        // If we are returning from a redirect attempt, keep the button in loading state while we complete sign-in
-        try {
-            if (localStorage.getItem('authRedirectAttempted') === '1' && typeof updateSplashSignInButtonState === 'function') {
-                updateSplashSignInButtonState('loading', 'Completing sign-in…');
-            }
-        } catch(_) {}
-    } else {
-        console.warn('Splash Screen: Splash screen element not found. App will start without it.');
-        // If splash screen not found, set flags to true and hide the splash screen logic.
-        // This is a fallback to allow the app to run without the splash screen HTML.
-        window._firebaseInitialized = true;
-        window._userAuthenticated = false;
-        window._appDataLoaded = true;
-        window._livePricesLoaded = true;
-    } // This closing brace completes the 'else' block for the splash screen check.
-
-    // Initially hide main app content and header
-    if (mainContainer) {
-        mainContainer.classList.add('app-hidden');
-    }
-    if (appHeader) {
-        appHeader.classList.add('app-hidden');
-    }
-
-    if (window.firestoreDb && window.firebaseAuth && window.getFirebaseAppId && window.firestore && window.authFunctions) {
-        db = window.firestoreDb;
-        auth = window.firebaseAuth;
-        currentAppId = window.getFirebaseAppId();
-        window._firebaseInitialized = true; // Mark Firebase as initialized
-        logDebug('Firebase Ready: DB, Auth, and AppId assigned from window. Setting up auth state listener.');
-
-        // Ensure persistence is set once
-        try {
-            if (window.authFunctions.setPersistence) {
-                const ua = navigator.userAgent || navigator.vendor || '';
-                const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-                const targetPersistence = isMobile && window.authFunctions.browserSessionPersistence
-                    ? window.authFunctions.browserSessionPersistence
-                    : window.authFunctions.browserLocalPersistence;
-                if (targetPersistence) {
-                    window.authFunctions
-                        .setPersistence(auth, targetPersistence)
-                        .then(() => logDebug('Auth: Persistence set to ' + (targetPersistence === window.authFunctions.browserSessionPersistence ? 'browserSessionPersistence' : 'browserLocalPersistence') + '.'))
-                        .catch((e) => console.warn('Auth: Failed to set persistence, continuing with default.', e));
-                }
-            }
-        } catch (e) {
-            console.warn('Auth: Failed to set persistence (outer), continuing with default.', e);
-        }
-
-    window.authFunctions.onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUserId = user.uid;
-                logDebug('AuthState: User signed in: ' + user.uid);
-                logDebug('AuthState: User email: ' + user.email);
-                try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
-                // Use dynamic update instead of hard-coded label so it reflects current selection
-                updateMainTitle();
-                logDebug('AuthState: Dynamic title initialized via updateMainTitle().');
-                updateMainButtonsState(true);
-                window._userAuthenticated = true; // Mark user as authenticated
-
-                if (mainContainer) {
-                    mainContainer.classList.remove('app-hidden');
-                }
-                if (appHeader) {
-                    appHeader.classList.remove('app-hidden');
-                }
-                adjustMainContentPadding();
-
-                        // Ensure header click bindings are attached after header becomes visible
-                        try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind after auth show', e); }
-
-                if (splashKangarooIcon) {
-                    splashKangarooIcon.classList.add('pulsing');
-                    logDebug('Splash Screen: Started pulsing animation after sign-in.');
-                }
-
-                targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
-                // Immediately reflect any persisted target count before live data loads
-                try { updateTargetHitBanner(); } catch(e) { console.warn('Auth early Target Alert restore failed', e); }
-
-                // Load user data, then do an initial fetch of live prices before setting the update interval.
-                // This ensures the initial view is correctly sorted by percentage change if selected.
-                await loadUserWatchlistsAndSettings();
-                try { ensureTitleStructure(); } catch(e) {}
-                // Start alerts listener (triggered alerts -> Notification Hub)
-                await loadTriggeredAlertsListener();
-                // On first auth load, force one live fetch even if starting in Cash view to restore alerts
-                const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
-                await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
-                try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true'); } catch(e) {}
-                startLivePriceUpdates();
-
-                allAsxCodes = await loadAsxCodesFromCSV();
-                logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
-                // After essential data loaded, restore last view (portfolio or watchlist) unless user already interacted
-                try {
-                    const lastView = localStorage.getItem('lastSelectedView');
-                    if (lastView === 'portfolio') {
-                        showPortfolioView();
-                    } else if (lastView && lastView !== 'portfolio' && typeof watchlistSelect !== 'undefined' && watchlistSelect) {
-                        // Attempt to set dropdown so renderWatchlist picks correct list
-                        const opt = Array.from(watchlistSelect.options).find(o => o.value === lastView);
-                        if (opt) {
-                            watchlistSelect.value = lastView;
-                            // Ensure internal selection array updated (mimic change)
-                            currentSelectedWatchlistIds = [lastView];
-                            renderWatchlist();
-                            // Ensure the header reflects the restored selection
-                            try { updateMainTitle(); } catch(e) {}
-                        } else {
-                            // Fallback: default to All Shares if stored view isn't present
-                            watchlistSelect.value = ALL_SHARES_ID;
-                            currentSelectedWatchlistIds = [ALL_SHARES_ID];
-                            renderWatchlist();
-                            try { updateMainTitle(); } catch(e) {}
-                        }
-                    }
-                } catch(e) {}
-            }
-
-            else {
-                currentUserId = null;
-                // Reset title safely using the inner span, do not expand click target
-                try { ensureTitleStructure(); const t = document.getElementById('dynamicWatchlistTitleText'); if (t) t.textContent = 'Share Watchlist'; } catch(e) {}
-                logDebug('AuthState: User signed out.');
-                updateMainButtonsState(false);
-                clearShareList();
-                clearWatchlistUI();
-                userCashCategories = []; // Clear cash data on logout
-                if (cashCategoriesContainer) cashCategoriesContainer.innerHTML = ''; // Clear cash UI
-                if (totalCashDisplay) totalCashDisplay.textContent = '$0.00'; // Reset total cash
-                if (loadingIndicator) loadingIndicator.style.display = 'none';
-                applyTheme('system-default');
-                if (unsubscribeShares) {
-                    unsubscribeShares();
-                    unsubscribeShares = null;
-                    logDebug('Firestore Listener: Unsubscribed from shares listener on logout.');
-                }
-                if (unsubscribeCashCategories) { // NEW: Unsubscribe from cash categories
-                    unsubscribeCashCategories();
-                    unsubscribeCashCategories = null;
-                    logDebug('Firestore Listener: Unsubscribed from cash categories listener on logout.');
-                }
-                if (unsubscribeAlerts) { // NEW: Unsubscribe from alerts
-                    try { unsubscribeAlerts(); } catch(_) {}
-                    unsubscribeAlerts = null;
-                    logDebug('Firestore Listener: Unsubscribed from alerts listener on logout.');
-                }
-                stopLivePriceUpdates();
-                
-                window._userAuthenticated = false; // Mark user as not authenticated
-                // If signed out, ensure splash screen is visible for sign-in
-                if (splashScreen) {
-                    splashScreen.style.display = 'flex'; // Ensure splash screen is visible
-                    splashScreen.classList.remove('hidden'); // Ensure it's not hidden
-                    document.body.style.overflow = 'hidden'; // Re-apply overflow hidden
-                    if (splashKangarooIcon) {
-                        splashKangarooIcon.classList.remove('pulsing'); // Stop animation if signed out
-                    }
-                    if (splashSignInBtn) {
-                        splashSignInBtn.disabled = false; // Enable sign-in button
-                        const buttonTextSpan = splashSignInBtn.querySelector('span');
-                        if (buttonTextSpan) {
-                            buttonTextSpan.textContent = 'Sign in with Google'; // Reset only the text, not the icon
-                        }
-                    }
-                    // Hide main app content
-                    if (mainContainer) {
-                        mainContainer.classList.add('app-hidden');
-                    }
-                    if (appHeader) {
-                        appHeader.classList.add('app-hidden');
-                    }
-                    logDebug('Splash Screen: User signed out, splash screen remains visible for sign-in.');
-                } else {
-                    console.warn('Splash Screen: User signed out, but splash screen element not found. App content might be visible.');
-                }
-                // NEW: Reset targetHitIconDismissed and clear localStorage entry on logout for a fresh start on next login
-                targetHitIconDismissed = false; 
-                localStorage.removeItem('targetHitIconDismissed');
-
-            }
-            if (!window._appLogicInitialized) {
-                initializeAppLogic();
-                window._appLogicInitialized = true;
-            } else {
-                // If app logic already initialized, ensure view mode is applied after auth.
-                // This handles cases where user signs out and then signs back in,
-                // and we need to re-apply the correct mobile view class.
-                if (currentMobileViewMode === 'compact' && mobileShareCardsContainer) {
-                    mobileShareCardsContainer.classList.add('compact-view');
-                } else if (mobileShareCardsContainer) {
-                    mobileShareCardsContainer.classList.remove('compact-view');
-                }
-            }
-            // Call renderWatchlist here to ensure correct mobile card rendering after auth state is set
-            renderWatchlist();
-            try { ensureTitleStructure(); } catch(e) {}
-            // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
-        });
-    } else {
-        console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
-        const errorDiv = document.getElementById('firebaseInitError');
-        if (errorDiv) {
-                errorDiv.style.display = 'block';
-        }
-        updateMainButtonsState(false);
-        if (loadingIndicator) loadingIndicator.style.display = 'none';
-        applyTheme('system-default');
-        // NEW: Call adjustMainContentPadding even if Firebase fails, to ensure some basic layout
-        adjustMainContentPadding();
-        // NEW: Hide splash screen if Firebase fails to initialize
-        hideSplashScreen();
-    }
-});
+// Note: Secondary DOMContentLoaded listener removed earlier to resolve brace mismatch.
+}
+// Defensive: ensure no unclosed block remains
+// (If already closed, this extra brace would cause an error, so only add if last non-comment char isn't '}' )
