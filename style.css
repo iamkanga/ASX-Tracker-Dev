@@ -2432,11 +2432,7 @@ body.sidebar-active {
 /* Force vivid plus icon */
 #appHeader #addShareHeaderBtn i, #appHeader #addShareHeaderBtn svg { opacity:1 !important; color:var(--accent-color,#a49393) !important; mix-blend-mode:normal; }
 
-/* Neutral / no-change card styling (muted coffee fill) */
-.mobile-card.neutral, .mobile-card .neutral-change, .mobile-card.neutral-change, .mobile-card .price-neutral, .mobile-card.price-neutral {
-    background: linear-gradient(135deg, #efe9e9 0%, #e4dada 100%);
-    border: 1px solid #d3c6c6;
-}
+/**/
 
 /* Optional subtle style for neutral price change badge inside cards */
 .mobile-card .price-change.neutral, .price-change.neutral {
