@@ -259,13 +259,7 @@ table tbody tr.neutral-change-row  { background: var(--watch-bg-neutral); }
 
 /* Side borders ONLY for non-target-hit rows */
 /* Full border style (consistent thickness all around) for non target-hit rows */
-table tbody tr.positive-change-row:not(.target-hit-alert) { border:3px solid var(--brand-green); border-radius:6px; }
-table tbody tr.negative-change-row:not(.target-hit-alert) { border:3px solid var(--brand-red); border-radius:6px; }
-table tbody tr.neutral-change-row:not(.target-hit-alert)  { border:3px solid var(--accent-color); border-radius:6px; }
-/* Uniform side border thickness (safeguard) */
-table tbody tr.positive-change-row:not(.target-hit-alert),
-table tbody tr.negative-change-row:not(.target-hit-alert),
-table tbody tr.neutral-change-row:not(.target-hit-alert) { border-left-width:4px; border-right-width:4px; }
+/* (Removed old 3px full border rules in favor of unified .movement-sides class) */
 
 /* Mobile / compact cards backgrounds */
 .mobile-card.positive-change-card { background: var(--watch-bg-positive); }
@@ -277,17 +271,7 @@ body .mobile-card.neutral-change-card  { background: var(--watch-bg-neutral) !im
 
 /* Mobile side borders ONLY (no full border unless target-hit) */
 /* Full border style for mobile cards */
-.mobile-card.positive-change-card:not(.target-hit-alert) { border:3px solid var(--brand-green); border-radius:10px; }
-.mobile-card.negative-change-card:not(.target-hit-alert) { border:3px solid var(--brand-red); border-radius:10px; }
-.mobile-card.neutral-change-card:not(.target-hit-alert)  { border:3px solid var(--accent-color); border-radius:10px; }
-/* Uniform mobile card side border thickness */
-.mobile-card.positive-change-card:not(.target-hit-alert),
-.mobile-card.negative-change-card:not(.target-hit-alert),
-.mobile-card.neutral-change-card:not(.target-hit-alert) { border-left-width:4px; border-right-width:4px; }
-/* Compact view: side borders only (positive/negative/neutral) per definitive brief */
-.mobile-share-cards.compact-view .mobile-card.positive-change-card { border:none; border-left:3px solid var(--brand-green); border-right:3px solid var(--brand-green); }
-.mobile-share-cards.compact-view .mobile-card.negative-change-card { border:none; border-left:3px solid var(--brand-red); border-right:3px solid var(--brand-red); }
-.mobile-share-cards.compact-view .mobile-card.neutral-change-card { border:none; border-left:3px solid var(--accent-color); border-right:3px solid var(--accent-color); }
+/* (Removed old 3px full/side border rules for mobile cards – replaced by unified .movement-sides system) */
 .mobile-share-cards.compact-view .mobile-card.target-hit-alert { animation:none !important; }
 
 /* Target-Hit: full 4px border (keep underlying movement background) */
@@ -5530,38 +5514,23 @@ body.dark-theme .alert-item {
     color: var(--text-color) !important; /* Use the theme's main text color, overriding positive/negative colors */
 }
 
-/* --- Compact View Border & Layout Normalisation --- */
-/* Reset any inherited full border in compact view; enforce side-only 3px borders with movement colors */
-.mobile-share-cards.compact-view .mobile-card {
-    border: none !important; /* Remove generic 1px border */
-    border-left: 3px solid transparent !important;
-    border-right: 3px solid transparent !important;
-    border-radius: 6px !important; /* Slightly tighter radius */
-}
-.mobile-share-cards.compact-view .mobile-card.positive-change-card {
-    border-left-color: var(--price-up-color) !important;
-    border-right-color: var(--price-up-color) !important;
-}
-.mobile-share-cards.compact-view .mobile-card.negative-change-card {
-    border-left-color: var(--price-down-color) !important;
-    border-right-color: var(--price-down-color) !important;
-}
-.mobile-share-cards.compact-view .mobile-card.neutral-change-card {
-    border-left-color: var(--neutral-accent, var(--border-color)) !important;
-    border-right-color: var(--neutral-accent, var(--border-color)) !important;
-}
-/* Ensure target-hit pulse does NOT apply in compact view (background tint only) */
-.mobile-share-cards.compact-view .mobile-card.target-hit-alert {
-    animation: none !important;
-    box-shadow: none !important;
-    /* Keep existing side colors; do not thicken */
-}
-/* Remove any accidental full border injection inside compact */
-.mobile-share-cards.compact-view .mobile-card.target-hit-alert { border-top: none !important; border-bottom: none !important; }
+/* === Unified Movement Side Border System (4px) === */
+/* Apply this helper class via JS to rows & cards in addition to their movement class */
+.movement-sides { border-left:4px solid transparent !important; border-right:4px solid transparent !important; }
+.movement-sides.positive-change-row, .movement-sides.positive-change-card { border-left-color: var(--brand-green) !important; border-right-color: var(--brand-green) !important; }
+.movement-sides.negative-change-row, .movement-sides.negative-change-card { border-left-color: var(--brand-red) !important; border-right-color: var(--brand-red) !important; }
+.movement-sides.neutral-change-row, .movement-sides.neutral-change-card { border-left-color: var(--accent-color) !important; border-right-color: var(--accent-color) !important; }
+/* Remove any unintended full border unless target-hit */
+.movement-sides { border-top:none !important; border-bottom:none !important; }
 
-/* Defensive: neutralise any lingering pseudo-element artifacts (if cached styles) */
+/* Target-hit: enforce full 4px coffee border (overrides side-only) */
+table tbody tr.target-hit-alert, .mobile-card.target-hit-alert { border:4px solid var(--accent-color) !important; border-radius:10px !important; animation: targetHitPulseBorder 1.5s ease-in-out infinite; }
+/* In compact view we still keep full notification border per spec */
+/* Ensure pseudo-elements remain suppressed */
 .mobile-share-cards.compact-view .mobile-card::before,
-.mobile-share-cards.compact-view .mobile-card::after { display: none !important; content: none !important; }
+.mobile-share-cards.compact-view .mobile-card::after { display:none !important; }
+
+/* Optional: if you want to mute pulse in compact, comment out animation above or add override here */
 
 
 /* Keep the target hit alert styling on the card itself */

@@ -1540,6 +1540,8 @@ function getShareDisplayData(share) {
             }
         }
         row.classList.remove('positive-change-row','negative-change-row','neutral-change-row');
+    // Ensure unified side border helper present
+    if (!row.classList.contains('movement-sides')) row.classList.add('movement-sides');
         if (changeVal > 0) row.classList.add('positive-change-row');
         else if (changeVal < 0) row.classList.add('negative-change-row');
         else row.classList.add('neutral-change-row');
@@ -1729,6 +1731,7 @@ function addShareToTable(share) {
         let change = null;
         if (lp && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) change = lp.live - lp.prevClose;
         row.classList.remove('positive-change-row','negative-change-row','neutral-change-row');
+    if (!row.classList.contains('movement-sides')) row.classList.add('movement-sides');
         if (change > 0) row.classList.add('positive-change-row');
         else if (change < 0) row.classList.add('negative-change-row');
         else row.classList.add('neutral-change-row');
@@ -2234,6 +2237,8 @@ function updateOrCreateShareMobileCard(share) {
         // Tag neutral cards for muted coffee fill styling
         card.classList.add('neutral');
     }
+    // Ensure unified side border helper present
+    if (!card.classList.contains('movement-sides')) card.classList.add('movement-sides');
 
     const dividendAmount = Number(share.dividendAmount) || 0;
     const frankingCredits = Number(share.frankingCredits) || 0;
