@@ -4334,7 +4334,7 @@ function calculateUnfrankedYield(dividendAmount, currentPrice) {
 }
 
 /**
- * Displays detailed stock information in the search modal,
+ * Displays  detailed stock information in the search modal,
  * and renders action buttons (Add to Watchlist / Edit Existing Share).
  * @param {string} asxCode The ASX code to display.
  */
