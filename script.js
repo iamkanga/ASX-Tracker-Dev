@@ -7,214 +7,8 @@ function pushAppState(stateObj = {}, title = '', url = '') {
 }
 
 // Re-insert (or keep) addShareToMobileCards at top-level scope (was mistakenly nested in pushAppState by prior patch)
-function addShareToMobileCards(share) {
-        if (!mobileShareCardsContainer) {
-            console.error('addShareToMobileCards: mobileShareCardsContainer element not found.');
-            return;
-        }
+// addShareToMobileCards implemented later in file (clean definition). Remove accidental truncated stub.
 
-        const card = document.createElement('div');
-        card.classList.add('mobile-card');
-        card.dataset.docId = share.id;
-
-        const isCompact = currentMobileViewMode === 'compact';
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        const isTargetHit = livePriceData ? livePriceData.targetHit : false;
-        const isMarketOpen = isAsxMarketOpen();
-
-        let displayLivePrice = 'N/A';
-        let displayPriceChange = '';
-        let priceClass = 'neutral';
-        let cardPriceChangeClass = '';
-
-        if (livePriceData) {
-            const { live: currentLivePrice, prevClose: previousClosePrice, lastLivePrice, lastPrevClose, Low52, High52, PE } = livePriceData;
-            let baseLive = currentLivePrice;
-            let basePrev = previousClosePrice;
-            if ((baseLive === null || isNaN(baseLive)) && lastLivePrice != null) baseLive = lastLivePrice;
-            if ((basePrev === null || isNaN(basePrev)) && lastPrevClose != null) basePrev = lastPrevClose;
-            if (baseLive != null && !isNaN(baseLive)) displayLivePrice = '$' + formatAdaptivePrice(baseLive);
-            if (baseLive != null && basePrev != null && !isNaN(baseLive) && !isNaN(basePrev)) {
-                const change = baseLive - basePrev;
-                const pct = basePrev !== 0 ? (change / basePrev) * 100 : 0;
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(pct)}%)`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
-            }
-            // When market closed present zero movement? Final brief requests neutral only when no movement; retain computed change above.
-        }
-
-        if (cardPriceChangeClass) card.classList.add(cardPriceChangeClass);
-        if (isTargetHit && !targetHitIconDismissed) card.classList.add('target-hit-alert');
-
-        // Arrow symbol
-        let arrowSymbol = '';
-        if (priceClass === 'positive') arrowSymbol = '▲'; else if (priceClass === 'negative') arrowSymbol = '▼';
-
-        // Yield calculation (shared)
-        const yieldDisplay = (() => {
-            const dividendAmount = Number(share.dividendAmount) || 0;
-            const frankingCredits = Number(share.frankingCredits) || 0;
-            const enteredPrice = Number(share.currentPrice) || 0;
-            const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$')) ? parseFloat(displayLivePrice.substring(1)) : (enteredPrice > 0 ? enteredPrice : 0);
-            if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
-            const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
-            const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
-            if (frankingCredits > 0 && frankedYield > 0) return formatAdaptivePercent(frankedYield) + '% (Franked)';
-            if (unfrankedYield > 0) return formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
-            return '';
-        })();
-
-        if (isCompact) {
-            // Minimal 4-element grid: code (top-left), chevron (top-right), price (center), change (beneath), no wrappers
-            card.innerHTML = `
-                <div class="card-code neutral-code-text">${share.shareName || ''}</div>
-                <div class="card-chevron ${priceClass}">${arrowSymbol || ''}</div>
-                <div class="card-live-price neutral-code-text">${displayLivePrice}</div>
-                <div class="card-price-change ${priceClass}">${displayPriceChange}</div>
-            `;
-        } else {
-            // Default (full) layout retains extended info blocks
-            const livePriceDataFull = livePrices[share.shareName.toUpperCase()];
-            card.innerHTML = `
-                <div class="live-price-display-section">
-                    <h3 class="neutral-code-text">${share.shareName || ''}</h3>
-                    <span class="change-chevron ${priceClass}">${arrowSymbol || ''}</span>
-                    <div class="live-price-main-row">
-                        <span class="live-price-large neutral-code-text">${displayLivePrice}</span>
-                    </div>
-                    <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
-                    <div class="fifty-two-week-row">
-                        <span class="fifty-two-week-value low">Low: ${livePriceDataFull && livePriceDataFull.Low52 != null && !isNaN(livePriceDataFull.Low52) ? formatMoney(livePriceDataFull.Low52) : 'N/A'}</span>
-                        <span class="fifty-two-week-value high">High: ${livePriceDataFull && livePriceDataFull.High52 != null && !isNaN(livePriceDataFull.High52) ? formatMoney(livePriceDataFull.High52) : 'N/A'}</span>
-                    </div>
-                    <div class="pe-ratio-row">
-                        <span class="pe-ratio-value">P/E: ${livePriceDataFull && livePriceDataFull.PE != null && !isNaN(livePriceDataFull.PE) ? formatAdaptivePrice(livePriceDataFull.PE) : 'N/A'}</span>
-                    </div>
-                </div>
-                <p class="data-row"><span class="label-text">Reference Price:</span><span class="data-value">${formatMoney(Number(share.currentPrice), { hideZero: true })}</span></p>
-                <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${formatMoney(Number(share.targetPrice), { hideZero: true })}</span></p>
-                <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
-                <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
-            `;
-        }
-
-        card.addEventListener('click', () => {
-            logDebug('Mobile Card Click: Share ID: ' + share.id);
-            selectShare(share.id);
-            showShareDetails();
-        });
-
-        // Long press placeholder (disabled heavy actions) but keep structure for future
-        let touchStartTime = 0;
-        card.addEventListener('touchstart', () => { touchStartTime = Date.now(); selectedElementForTap = card; }, { passive: true });
-        card.addEventListener('touchmove', (e) => {
-            const dist = (() => { const t = e.touches[0]; const dx = t.clientX - touchStartX; const dy = t.clientY - touchStartY; return Math.sqrt(dx*dx+dy*dy); })();
-            if (dist > TOUCH_MOVE_THRESHOLD) { clearTimeout(longPressTimer); touchStartTime = 0; }
-        });
-        card.addEventListener('touchend', () => { clearTimeout(longPressTimer); touchStartTime = 0; selectedElementForTap = null; });
-
-    mobileShareCardsContainer.appendChild(card);
-    logDebug('Mobile Cards: Added share ' + share.shareName + ' to mobile cards. (compact=' + isCompact + ')');
-}
-// (Removed accidental large injected block unrelated to addShareToMobileCards.)
-//  This script interacts with Firebase Firestore for data storage.
-// Firebase app, db, auth instances, and userId are made globally available
-// via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
-// from the <script type="module"> block in index.html.
-
-// --- GLOBAL VARIABLES ---
-let DEBUG_MODE = false; // Quiet by default; enable via window.toggleDebug(true)
-window.toggleDebug = (on) => { DEBUG_MODE = !!on; console.log('Debug mode', DEBUG_MODE ? 'ENABLED' : 'DISABLED'); };
-
-// Custom logging function to control verbosity
-function logDebug(message, ...optionalParams) {
-    if (DEBUG_MODE) {
-        // This line MUST call the native console.log, NOT logDebug itself.
-        console.log(message, ...optionalParams); 
-    }
-}
-// --- END DEBUG LOGGING SETUP ---
-
-let db;
-let auth = null;
-let currentUserId = null;
-let currentAppId;
-let selectedShareDocId = null;
-let allSharesData = []; // Kept in sync by the onSnapshot listener
-// Prevent duplicate sign-in attempts
-let authInProgress = false;
-// Helper: normalize and check membership for multi-watchlist support with backward compatibility
-function shareBelongsTo(share, watchlistId) {
-    if (!share) return false;
-    if (Array.isArray(share.watchlistIds)) {
-        return share.watchlistIds.includes(watchlistId);
-    }
-    return share.watchlistId === watchlistId;
-}
-
-// Helper: ensure we don't render duplicates when transient optimistic updates or race conditions occur
-function dedupeSharesById(items) {
-    try {
-        const map = new Map();
-        for (const it of items || []) {
-            if (it && it.id) map.set(it.id, it);
-        }
-        return Array.from(map.values());
-    } catch (e) {
-        console.warn('Dedupe: Failed to dedupe shares by id:', e);
-        return Array.isArray(items) ? items : [];
-    }
-}
-let currentDialogCallback = null;
-let autoDismissTimeout = null;
-let lastTapTime = 0;
-let tapTimeout;
-let selectedElementForTap = null;
-let longPressTimer;
-const LONG_PRESS_THRESHOLD = 500; // Time in ms for long press detection (desktop only; mobile long-press disabled)
-let touchStartX = 0;
-let touchStartY = 0;
-const TOUCH_MOVE_THRESHOLD = 10; // Pixels for touch movement to cancel long press
-const KANGA_EMAIL = 'iamkanga@gmail.com';
-let currentCalculatorInput = '';
-let operator = null;
-let previousCalculatorInput = '';
-let resultDisplayed = false;
-const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
-const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
-let userWatchlists = []; // Stores all watchlists for the user
-let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
-// Initialize dismissal and sort state from localStorage as early as possible to avoid flashes/defaults
-try { targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true'; } catch(e) {}
-// Restore last selected view (persisted)
-try {
-    const lastView = localStorage.getItem('lastSelectedView');
-    if (lastView === 'portfolio') {
-        currentSelectedWatchlistIds = ['portfolio'];
-    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
-        // Defer actual DOM switch until initial data load completes; hook into data load readiness
-        window.addEventListener('load', () => {
-            setTimeout(() => { if (typeof showPortfolioView === 'function') showPortfolioView(); }, 300);
-        });
-
-    // Keep header and alerts consistent after portfolio render
-    try { updateMainTitle(); } catch(e) {}
-    try { ensureTitleStructure(); } catch(e) {}
-    try { updateTargetHitBanner(); } catch(e) {}
-    } else if (lastView && lastView !== 'portfolio') {
-        currentSelectedWatchlistIds = [lastView];
-        if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = lastView; }
-        try { updateMainTitle(); } catch(e) {}
-        try { ensureTitleStructure(); } catch(e) {}
-        try { updateTargetHitBanner(); } catch(e) {}
-    }
-} catch(e) { /* ignore */ }
-const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
-const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
-let currentSortOrder = 'entryDate-desc'; // Default sort order
-try { const lsSort = localStorage.getItem('lastSortOrder'); if (lsSort) { currentSortOrder = lsSort; } } catch(e) {}
-let contextMenuOpen = false; // To track if the custom context menu is open
 let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
 let originalShareData = null; // Stores the original share data when editing for dirty state check
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
@@ -1422,10 +1216,12 @@ function toggleAccordionSection(section) {
     }
 }
 
-// Initialize accordion when DOM ready; also on modal open via observer fallback
-document.addEventListener('DOMContentLoaded', () => {
-    initShareFormAccordion();
-});
+// Initialize accordion (idempotent) either immediately or on DOMContentLoaded
+if (document.readyState !== 'loading') {
+    try { initShareFormAccordion(); } catch(e) {}
+} else {
+    document.addEventListener('DOMContentLoaded', () => { try { initShareFormAccordion(); } catch(e) {} }, { once: true });
+}
 
 // MutationObserver safety net: if form content is replaced dynamically later
 const accordionObserver = new MutationObserver(() => {
@@ -8043,6 +7839,7 @@ if (targetHitIconBtn) {
     });
 }
 
+// Single consolidated DOMContentLoaded handler (ensure only one definition exists)
 document.addEventListener('DOMContentLoaded', function() {
     logDebug('script.js DOMContentLoaded fired.');
 
@@ -8272,7 +8069,7 @@ document.addEventListener('DOMContentLoaded', function() {
             renderWatchlist();
             try { ensureTitleStructure(); } catch(e) {}
             // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
-        });
+        }); // end onAuthStateChanged
     } else {
         console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
         const errorDiv = document.getElementById('firebaseInitError');
@@ -8286,5 +8083,5 @@ document.addEventListener('DOMContentLoaded', function() {
         adjustMainContentPadding();
         // NEW: Hide splash screen if Firebase fails to initialize
         hideSplashScreen();
-    }
-});
+    } // end if(firebase objects)
+}); // end DOMContentLoaded
