@@ -486,7 +486,15 @@ try {
 } catch(e) {}
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
-let currentMobileViewMode = 'default'; 
+let currentMobileViewMode = 'default';
+try {
+    const savedViewMode = localStorage.getItem('mobileViewMode');
+    if (savedViewMode === 'compact') {
+        currentMobileViewMode = 'compact';
+    }
+} catch (e) {
+    console.warn('Could not load mobile view mode from localStorage', e);
+} 
 
 // Helper to ensure compact mode class is always applied
 function applyCompactViewMode() {
@@ -5272,19 +5280,19 @@ function toggleMobileViewMode() {
         return;
     }
 
-    if (currentMobileViewMode === 'default') {
-        currentMobileViewMode = 'compact';
+    currentMobileViewMode = (currentMobileViewMode === 'default') ? 'compact' : 'default';
+    localStorage.setItem('mobileViewMode', currentMobileViewMode); // Save preference
+
+    if (currentMobileViewMode === 'compact') {
         mobileShareCardsContainer.classList.add('compact-view');
         showCustomAlert('Switched to Compact View!', 1000);
         logDebug('View Mode: Switched to Compact View.');
     } else {
-        currentMobileViewMode = 'default';
         mobileShareCardsContainer.classList.remove('compact-view');
         showCustomAlert('Switched to Default View!', 1000);
         logDebug('View Mode: Switched to Default View.');
     }
     
-    localStorage.setItem('currentMobileViewMode', currentMobileViewMode); // Save preference
     renderWatchlist(); // Re-render to apply new card styling and layout
 }
 
@@ -6529,6 +6537,7 @@ async function deleteAllUserData() {
 }
 
 async function initializeAppLogic() {
+    applyCompactViewMode();
     // DEBUG: Log when initializeAppLogic starts
     logDebug('initializeAppLogic: Firebase is ready. Starting app logic.');
 
@@ -8149,6 +8158,7 @@ if (sortSelect) {
 
     // NEW: Set initial state for the compact view button
     updateCompactViewButtonState();
+    applyCompactViewMode();
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
 
