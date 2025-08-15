@@ -5105,6 +5105,19 @@ function updateTargetHitBanner() {
         return;
     }
 
+    // Ensure read set loaded
+    if (!(window._readAlertIds instanceof Set)) {
+        try {
+            const persisted = JSON.parse(localStorage.getItem('readAlertIds') || '[]');
+            window._readAlertIds = new Set(Array.isArray(persisted) ? persisted : []);
+        } catch { window._readAlertIds = new Set(); }
+    }
+    // Prune read ids that are no longer active (so future retriggers will count again)
+    try {
+        const activeIds = new Set([ ...(sharesAtTargetPrice||[]).map(s=>s.id), ...(sharesAtTargetPriceMuted||[]).map(s=>s.id) ]);
+        window._readAlertIds = new Set(Array.from(window._readAlertIds).filter(id => activeIds.has(id)));
+    } catch(_) {}
+
     // Determine if any triggered shares belong to the currently selected watchlist(s)
     const currentViewHasTargetHits = (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []).some(share => {
         if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) return true;
@@ -5114,7 +5127,9 @@ function updateTargetHitBanner() {
         return false;
     });
 
-    const displayCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
+    const unreadCount = (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : [])
+        .filter(s => !window._readAlertIds.has(s.id)).length;
+    const displayCount = unreadCount;
     if (displayCount > 0 && !targetHitIconDismissed) {
         // Diagnostics: capture state before applying changes
         try {
@@ -5182,7 +5197,7 @@ async function loadTriggeredAlertsListener() {
         const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
         // Filter for triggered alerts; additional local filter will enforce enabled !== false
         const q = window.firestore.query(alertsCol, window.firestore.where('targetHit', '==', true));
-        unsubscribeAlerts = window.firestore.onSnapshot(q, (querySnapshot) => {
+    unsubscribeAlerts = window.firestore.onSnapshot(q, (querySnapshot) => {
             const enabledShares = [];
             const mutedShares = [];
             querySnapshot.forEach((doc) => {
@@ -5200,7 +5215,9 @@ async function loadTriggeredAlertsListener() {
                     };
                 }
                 // Attach a hint of enabled state for rendering decisions
-                share.__alertEnabled = (data.enabled !== false);
+        share.__alertEnabled = (data.enabled !== false);
+        share.__alertIntent = data.intent || (data.direction === 'above' ? 'sell' : 'buy');
+        share.__alertDirection = data.direction || (data.direction === 'above' ? 'above' : 'below');
                 if (share.__alertEnabled) {
                     enabledShares.push(share);
                 } else {
@@ -8169,32 +8186,30 @@ function showTargetHitDetailsModal() {
         showCustomAlert('Error displaying target hit details. Please try again.', 2000);
         return;
     }
-    targetHitSharesList.innerHTML = ''; // Clear previous content
-
+    targetHitSharesList.innerHTML = '';
     const makeItem = (share, isMuted) => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        const currentLivePrice = (livePriceData && livePriceData.live !== null && !isNaN(livePriceData.live)) ? livePriceData.live : null;
-        const targetPrice = share.targetPrice;
-        const priceClass = (currentLivePrice !== null && targetPrice != null && !isNaN(targetPrice) && currentLivePrice >= targetPrice) ? 'positive' : 'negative';
         const item = document.createElement('div');
-        item.classList.add('target-hit-item');
+        item.className = 'target-hit-item';
         if (isMuted) item.classList.add('muted');
+        const intent = share.__alertIntent || (share.__alertDirection === 'above' ? 'sell' : 'buy');
+        item.classList.add(intent === 'buy' ? 'positive' : 'negative');
         item.dataset.shareId = share.id;
+        const livePriceData = livePrices[share.shareName.toUpperCase()] || {};
+        const currentLive = (livePriceData && typeof livePriceData.live === 'number' && !isNaN(livePriceData.live)) ? livePriceData.live : null;
+        const tPrice = (typeof share.targetPrice === 'number' && !isNaN(share.targetPrice)) ? share.targetPrice : null;
+        const dirSymbol = share.__alertDirection === 'above' ? '≥' : '≤';
         item.innerHTML = `
             <div class="target-hit-item-grid">
                 <div class="col-left">
-                    <span class="share-name-code ${priceClass}">${share.shareName}</span>
-                    <span class="target-price-line">Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? formatAdaptivePrice(Number(targetPrice)) : 'N/A'}</strong></span>
+                    <span class="share-name-code">${share.shareName}</span>
+                    <span class="target-price-line">${intent.toUpperCase()} ${dirSymbol} <strong>${tPrice!==null ? '$'+formatAdaptivePrice(tPrice) : 'N/A'}</strong></span>
                 </div>
                 <div class="col-right">
-                    <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
+                    <span class="live-price-display">${currentLive!==null ? '$'+formatAdaptivePrice(currentLive) : ''}</span>
                     <button class="toggle-alert-btn tiny-toggle" data-share-id="${share.id}" title="${isMuted ? 'Unmute Alert' : 'Mute Alert'}">${isMuted ? 'Unmute' : 'Mute'}</button>
                 </div>
-            </div>
-        `;
-        // Click to open share details
+            </div>`;
         item.addEventListener('click', (e) => {
-            // If the click is on the toggle button, don't navigate
             if (e.target && e.target.classList && e.target.classList.contains('toggle-alert-btn')) return;
             const sid = item.dataset.shareId;
             if (sid) {
@@ -8204,55 +8219,48 @@ function showTargetHitDetailsModal() {
                 showShareDetails();
             }
         });
-        // Mute/unmute button
         const toggleBtn = item.querySelector('.toggle-alert-btn');
         if (toggleBtn) {
             toggleBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 try {
-                    // Optimistic: move item to other section immediately
                     const enabledAfter = await toggleAlertEnabled(share.id);
-                    // enabledAfter === true means now active (unmuted)
-                    // Rebuild lists optimistically using current arrays then let listener correct if needed
                     if (enabledAfter) {
-                        // Move from muted to active
                         sharesAtTargetPrice = dedupeSharesById([...sharesAtTargetPrice, share]);
                         sharesAtTargetPriceMuted = sharesAtTargetPriceMuted.filter(s => s.id !== share.id);
                     } else {
                         sharesAtTargetPriceMuted = dedupeSharesById([...sharesAtTargetPriceMuted, share]);
                         sharesAtTargetPrice = sharesAtTargetPrice.filter(s => s.id !== share.id);
                     }
-                    // Re-render minimal (avoid flicker)
                     showTargetHitDetailsModal();
-                } catch(err) {
-                    console.warn('Toggle alert failed', err);
-                }
+                } catch(err) { console.warn('Toggle alert failed', err); }
             });
         }
         return item;
     };
-
-    const hasEnabled = sharesAtTargetPrice.length > 0;
-    const hasMuted = Array.isArray(sharesAtTargetPriceMuted) && sharesAtTargetPriceMuted.length > 0;
+    const hasEnabled = (sharesAtTargetPrice||[]).length>0;
+    const hasMuted = (sharesAtTargetPriceMuted||[]).length>0;
     if (!hasEnabled && !hasMuted) {
-        targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
+        targetHitSharesList.innerHTML = '<p class="no-alerts-message">No alerts triggered.</p>';
     } else {
         if (hasEnabled) {
-            const enabledHeader = document.createElement('h3');
-            enabledHeader.textContent = 'Active Alerts';
-            targetHitSharesList.appendChild(enabledHeader);
-            sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
+            const h = document.createElement('h3'); h.textContent='Active Alerts'; targetHitSharesList.appendChild(h);
+            sharesAtTargetPrice.forEach(s=> targetHitSharesList.appendChild(makeItem(s,false)));
         }
         if (hasMuted) {
-            const mutedHeader = document.createElement('h3');
-            mutedHeader.textContent = 'Muted Alerts';
-            targetHitSharesList.appendChild(mutedHeader);
-            sharesAtTargetPriceMuted.forEach(share => targetHitSharesList.appendChild(makeItem(share, true)));
+            const h2 = document.createElement('h3'); h2.textContent='Muted Alerts'; targetHitSharesList.appendChild(h2);
+            sharesAtTargetPriceMuted.forEach(s=> targetHitSharesList.appendChild(makeItem(s,true)));
         }
     }
-
     showModal(targetHitDetailsModal);
-    logDebug('Target Hit Modal: Displayed details for ' + sharesAtTargetPrice.length + ' shares.');
+    // Mark enabled alerts as read
+    try {
+        if (!(window._readAlertIds instanceof Set)) window._readAlertIds = new Set();
+        (sharesAtTargetPrice||[]).forEach(s=> window._readAlertIds.add(s.id));
+        localStorage.setItem('readAlertIds', JSON.stringify(Array.from(window._readAlertIds)));
+        updateTargetHitBanner();
+    } catch(e) { console.warn('Alerts: mark read failed', e); }
+    logDebug('Target Hit Modal: Displayed details for ' + (sharesAtTargetPrice||[]).length + ' shares.');
 }
 
 // NEW: Target hit icon button listener (opens the modal) - moved to global scope
