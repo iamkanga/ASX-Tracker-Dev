@@ -2691,12 +2691,13 @@ h1#mainTitle {
     background: none;
     border: none;
     color: var(--text-color);
-    font-size: 1.8em;
+    font-size: 2rem;
     cursor: pointer;
-    padding: 5px 10px;
-    z-index: 11; /* Keep high for interaction */
+    padding: 4px 4px; /* tighter to edges */
+    z-index: 11;
     display: block;
-    flex-shrink: 0; 
+    flex-shrink: 0;
+    line-height:1;
 }
 
 .header-action-btn:hover {
@@ -2713,16 +2714,24 @@ h1#mainTitle {
 
 /* Specific styling for the hamburger button to ensure it matches other header icons */
 .hamburger-btn {
-    background: none;
-    border: none;
-    color: var(--text-color);
-    font-size: 1.8em;
-    cursor: pointer;
-    padding: 5px 10px;
-    z-index: 11;
-    display: block;
-    flex-shrink: 0;
+    background:none;
+    border:none;
+    color:var(--text-color);
+    font-size:2rem;
+    cursor:pointer;
+    padding:4px 4px;
+    z-index:11;
+    display:block;
+    flex-shrink:0;
+    line-height:1;
 }
+
+/* Push left/right buttons closer to screen edge */
+header .header-action-btn-left { margin-left:2px !important; }
+header .header-action-btn-right { margin-right:2px !important; }
+
+/* Ensure plus/hamburger full opacity */
+#hamburgerBtn, #addShareHeaderBtn { opacity:1 !important; }
 
 .hamburger-btn:hover {
     color: var(--button-hover-bg);
