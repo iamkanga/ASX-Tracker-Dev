@@ -1009,6 +1009,118 @@ const cashFormInputs = [
 
 // --- GLOBAL HELPER FUNCTIONS ---
 const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
+// ===== Alert System Phase 2 (Sheets Integration) ==========================================
+// Feature Flag: toggle external Sheets integration without removing code paths
+const ENABLE_SHEETS_ALERTS_INTEGRATION = true;
+// Unified thin wrapper for Apps Script POST actions (JSON in/out)
+async function postToAppsScript(action, payload = {}, timeoutMs = 12000) {
+    if (!ENABLE_SHEETS_ALERTS_INTEGRATION) return null;
+    try {
+        const baseUrl = (typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' && GOOGLE_APPS_SCRIPT_URL) ? GOOGLE_APPS_SCRIPT_URL : appsScriptUrl;
+        if (!baseUrl) throw new Error('Apps Script URL not configured');
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), timeoutMs);
+        const res = await fetch(baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            cache: 'no-store',
+            signal: controller.signal
+        });
+        clearTimeout(t);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        let json = null;
+        try { json = await res.json(); } catch { json = null; }
+        return json;
+    } catch (e) {
+        console.warn('AppsScript POST failed for action=' + action, e);
+        return null;
+    }
+}
+
+// Persist (upsert) user settings row linking Firebase user to alerts system
+async function syncUserSettingsRecord() {
+    if (!ENABLE_SHEETS_ALERTS_INTEGRATION || !currentUserId) return;
+    const payload = {
+        userId: currentUserId,
+        email: (typeof auth !== 'undefined' && auth && auth.currentUser ? auth.currentUser.email : null),
+        ts: new Date().toISOString(),
+        // Future fields: defaultIntent/defaultDirection could be stored here
+    };
+    const result = await postToAppsScript('upsertSettings', payload);
+    if (result && result.status === 'ok') {
+        logDebug('Sheets: Settings upserted.');
+        if (result.data && result.data.defaultDirection) {
+            // Apply user preference if form is pristine (optional future use)
+        }
+    }
+}
+
+// Push (upsert) per-share alert preference to Settings/Alerts sheet (single source for backend automation)
+async function pushShareAlertPreferenceToSheets(shareId, shareCode, intent, direction, targetPrice, enabled = true) {
+    if (!ENABLE_SHEETS_ALERTS_INTEGRATION || !currentUserId) return;
+    const payload = {
+        userId: currentUserId,
+        shareId: shareId,
+        code: String(shareCode || '').toUpperCase(),
+        intent,
+        direction,
+        targetPrice: (typeof targetPrice === 'number' && !isNaN(targetPrice)) ? targetPrice : null,
+        enabled: !!enabled,
+        ts: new Date().toISOString()
+    };
+    const result = await postToAppsScript('upsertAlert', payload);
+    if (result && result.status === 'ok') {
+        logDebug('Sheets: Alert upsert success for ' + shareCode);
+    }
+}
+
+// Fetch triggered alerts from Alerts sheet and merge with Firestore-driven lists
+let sheetsTriggeredPollInterval = null;
+async function fetchTriggeredAlertsFromSheet() {
+    if (!ENABLE_SHEETS_ALERTS_INTEGRATION || !currentUserId) return;
+    const result = await postToAppsScript('listTriggeredAlerts', { userId: currentUserId });
+    if (!result || result.status !== 'ok' || !Array.isArray(result.alerts)) return;
+    const sheetAlerts = result.alerts;
+    const enabledShares = [];
+    const mutedShares = [];
+    sheetAlerts.forEach(a => {
+        const shareId = a.shareId || a.id;
+        const code = (a.code || a.shareCode || '').toUpperCase();
+        if (!shareId || !code) return;
+        let share = allSharesData.find(s => s.id === shareId) || allSharesData.find(s => String(s.shareName || '').toUpperCase() === code);
+        if (!share) {
+            share = { id: shareId, shareName: code, targetPrice: a.targetPrice || null, watchlistIds: [] };
+        }
+        share.__alertEnabled = (a.enabled !== false);
+        share.__alertIntent = a.intent || (a.direction === 'above' ? 'sell' : 'buy');
+        share.__alertDirection = a.direction || (a.direction === 'above' ? 'above' : 'below');
+        if (share.__alertEnabled) enabledShares.push(share); else mutedShares.push(share);
+    });
+    // Merge with current lists (Firestore listener may also populate)
+    const mergeById = (existing, incoming) => {
+        const map = new Map();
+        existing.forEach(s => map.set(s.id, s));
+        incoming.forEach(s => map.set(s.id, s));
+        return Array.from(map.values());
+    };
+    sharesAtTargetPrice = mergeById(sharesAtTargetPrice || [], enabledShares);
+    sharesAtTargetPriceMuted = mergeById(sharesAtTargetPriceMuted || [], mutedShares);
+    updateTargetHitBanner();
+    if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
+        showTargetHitDetailsModal();
+    }
+}
+
+function startSheetsTriggeredAlertsPolling() {
+    if (!ENABLE_SHEETS_ALERTS_INTEGRATION) return;
+    if (sheetsTriggeredPollInterval) clearInterval(sheetsTriggeredPollInterval);
+    // Poll every 3 minutes (could be optimized later or moved to push)
+    sheetsTriggeredPollInterval = setInterval(fetchTriggeredAlertsFromSheet, 3 * 60 * 1000);
+    // Initial immediate fetch
+    fetchTriggeredAlertsFromSheet();
+}
+// ===========================================================================================
 
 async function fetchLivePricesAndUpdateUI() {
     logDebug('UI: Refresh Live Prices button clicked.');
@@ -3205,6 +3317,12 @@ async function saveShareData(isSilent = false) {
             // Phase 2: Upsert alert document for this share (intent + direction)
             try {
                 await upsertAlertForShare(selectedShareDocId, shareName, shareData, false);
+                // Sheets integration (fire and forget)
+                try {
+                    const direction = shareData.targetDirection === 'above' ? 'above' : 'below';
+                    const intent = direction === 'above' ? 'sell' : 'buy';
+                    await pushShareAlertPreferenceToSheets(selectedShareDocId, shareName, intent, direction, shareData.targetPrice, true);
+                } catch(e) { console.warn('Sheets: alert sync (update) failed', e); }
             } catch (e) {
                 console.error('Alerts: Failed to upsert alert for share update:', e);
             }
@@ -3263,6 +3381,12 @@ async function saveShareData(isSilent = false) {
             // Phase 2: Create alert document for this new share (intent + direction)
             try {
                 await upsertAlertForShare(selectedShareDocId, shareName, shareData, true);
+                // Sheets integration (new share)
+                try {
+                    const direction = shareData.targetDirection === 'above' ? 'above' : 'below';
+                    const intent = direction === 'above' ? 'sell' : 'buy';
+                    await pushShareAlertPreferenceToSheets(selectedShareDocId, shareName, intent, direction, shareData.targetPrice, true);
+                } catch(e) { console.warn('Sheets: alert sync (create) failed', e); }
             } catch (e) {
                 console.error('Alerts: Failed to create alert for new share:', e);
             }
@@ -8468,6 +8592,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 try { ensureTitleStructure(); } catch(e) {}
                 // Start alerts listener (triggered alerts -> Notification Hub)
                 await loadTriggeredAlertsListener();
+                // Phase 2: Sync user settings row to Sheets and start polling triggered alerts there
+                try { await syncUserSettingsRecord(); startSheetsTriggeredAlertsPolling(); } catch(e) { console.warn('Sheets: init sync failed', e); }
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
                 await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
