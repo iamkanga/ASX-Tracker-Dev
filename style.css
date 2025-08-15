@@ -258,9 +258,10 @@ table tbody tr.negative-change-row { background: var(--watch-bg-negative); }
 table tbody tr.neutral-change-row  { background: var(--watch-bg-neutral); }
 
 /* Side borders ONLY for non-target-hit rows */
-table tbody tr.positive-change-row:not(.target-hit-alert) { border-left:4px solid var(--brand-green); border-right:4px solid var(--brand-green); border-top:none; border-bottom:none; border-radius:6px; }
-table tbody tr.negative-change-row:not(.target-hit-alert) { border-left:4px solid var(--brand-red);   border-right:4px solid var(--brand-red);   border-top:none; border-bottom:none; border-radius:6px; }
-table tbody tr.neutral-change-row:not(.target-hit-alert)  { border-left:4px solid var(--accent-color); border-right:4px solid var(--accent-color); border-top:none; border-bottom:none; border-radius:6px; }
+/* Full border style (consistent thickness all around) for non target-hit rows */
+table tbody tr.positive-change-row:not(.target-hit-alert) { border:4px solid var(--brand-green); border-radius:6px; }
+table tbody tr.negative-change-row:not(.target-hit-alert) { border:4px solid var(--brand-red); border-radius:6px; }
+table tbody tr.neutral-change-row:not(.target-hit-alert)  { border:4px solid var(--accent-color); border-radius:6px; }
 /* Uniform side border thickness (safeguard) */
 table tbody tr.positive-change-row:not(.target-hit-alert),
 table tbody tr.negative-change-row:not(.target-hit-alert),
@@ -275,9 +276,10 @@ body .mobile-card.negative-change-card { background: var(--watch-bg-negative) !i
 body .mobile-card.neutral-change-card  { background: var(--watch-bg-neutral) !important; }
 
 /* Mobile side borders ONLY (no full border unless target-hit) */
-.mobile-card.positive-change-card:not(.target-hit-alert) { border-left:4px solid var(--brand-green); border-right:4px solid var(--brand-green); border-top:none; border-bottom:none; border-radius:10px; }
-.mobile-card.negative-change-card:not(.target-hit-alert) { border-left:4px solid var(--brand-red);   border-right:4px solid var(--brand-red);   border-top:none; border-bottom:none; border-radius:10px; }
-.mobile-card.neutral-change-card:not(.target-hit-alert)  { border-left:4px solid var(--accent-color); border-right:4px solid var(--accent-color); border-top:none; border-bottom:none; border-radius:10px; }
+/* Full border style for mobile cards */
+.mobile-card.positive-change-card:not(.target-hit-alert) { border:4px solid var(--brand-green); border-radius:10px; }
+.mobile-card.negative-change-card:not(.target-hit-alert) { border:4px solid var(--brand-red); border-radius:10px; }
+.mobile-card.neutral-change-card:not(.target-hit-alert)  { border:4px solid var(--accent-color); border-radius:10px; }
 /* Uniform mobile card side border thickness */
 .mobile-card.positive-change-card:not(.target-hit-alert),
 .mobile-card.negative-change-card:not(.target-hit-alert),
@@ -292,6 +294,10 @@ table tbody tr.target-hit-alert,
 .target-hit-alert { will-change: box-shadow, border-color; }
 /* Ensure pulse always applies */
 .target-hit-alert { animation: targetHitPulseBorder 2.2s ease-in-out infinite; }
+
+/* Optional pulsing for neutral/coffee notifications (apply .pulse-border to element) */
+@keyframes subtlePulseBorder { 0% { box-shadow:0 0 0 0 rgba(164,147,147,0.35); } 50% { box-shadow:0 0 0 6px rgba(164,147,147,0); } 100% { box-shadow:0 0 0 0 rgba(164,147,147,0); } }
+.pulse-border { animation: subtlePulseBorder 2.4s ease-in-out infinite; }
 /* Ensure compact view target-hit matches full 4px spec (remove legacy 2px override) */
 .mobile-share-cards.compact-view .mobile-card.target-hit-alert { border-width:4px; }
 
