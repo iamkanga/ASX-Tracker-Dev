@@ -4737,6 +4737,8 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
     border-radius: 50%;
     transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
 }
+/* Force add share icon vivid */
+#addShareHeaderBtn.icon-button { opacity:1 !important; color:var(--accent-color,#a49393) !important; }
 
 .icon-button:hover {
     background-color: var(--menu-button-hover-bg);
@@ -5494,10 +5496,11 @@ body.dark-theme .alert-item {
 /* (Removed wrapper grid for compact view; direct grid applied to card) */
 /* New direct layout (no wrapper) */
 .mobile-share-cards.compact-view .mobile-card { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:auto auto auto; align-content:start; }
-.mobile-share-cards.compact-view .mobile-card .card-code { grid-column:1; grid-row:1; align-self:start; margin:0; }
-.mobile-share-cards.compact-view .mobile-card .card-chevron { grid-column:2; grid-row:1; justify-self:end; font-size:1.3em; font-weight:800; line-height:1; }
-.mobile-share-cards.compact-view .mobile-card .card-live-price { grid-column:1 / span 2; grid-row:2; justify-self:center; }
-.mobile-share-cards.compact-view .mobile-card .card-price-change { grid-column:1 / span 2; grid-row:3; justify-self:center; margin:0; }
+.mobile-share-cards.compact-view .mobile-card { padding:10px 10px 12px; }
+.mobile-share-cards.compact-view .mobile-card .card-code { grid-column:1; grid-row:1; align-self:start; justify-self:start; margin:0; line-height:1; }
+.mobile-share-cards.compact-view .mobile-card .card-chevron { grid-column:2; grid-row:1; justify-self:end; align-self:start; font-size:1.25em; font-weight:800; line-height:1; margin:0; }
+.mobile-share-cards.compact-view .mobile-card .card-live-price { grid-column:1 / span 2; grid-row:2; justify-self:center; align-self:center; margin:2px 0 0 0; }
+.mobile-share-cards.compact-view .mobile-card .card-price-change { grid-column:1 / span 2; grid-row:3; justify-self:center; align-self:start; margin:0; }
 
 /* Remove obsolete live-price-main-row usage in compact direct layout */
 
