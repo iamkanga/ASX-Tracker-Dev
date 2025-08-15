@@ -3515,34 +3515,8 @@ table td.live-price-cell.negative-change {
 }
 
 /* General rules for thin vertical lines (keep them for non-target-hit cards) */
-.mobile-card::before,
-.mobile-card::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    width: 5px; /* Width of the vertical line */
-    height: 100%;
-    transition: background-color 0.3s ease, width 0.3s ease, border-width 0.3s ease;
-    z-index: 1; /* Ensure they are above the card background but below content */
-}
-
-.mobile-card::before {
-    left: 0;
-}
-
-.mobile-card::after {
-    right: 0;
-}
-
-.mobile-card.positive-change-card::before,
-.mobile-card.positive-change-card::after {
-    background-color: var(--price-up-color);
-}
-
-.mobile-card.negative-change-card::before,
-.mobile-card.negative-change-card::after {
-    background-color: var(--price-down-color);
-}
+/* Removed legacy side-line pseudo elements – side borders now handled with real borders */
+/* (Intentionally deleted ::before/::after system to avoid conflicts in compact view) */
 
 /* Subtle background tints for price movement */
 .mobile-card.positive-change-card {
@@ -5555,6 +5529,39 @@ body.dark-theme .alert-item {
 .mobile-share-cards.compact-view .mobile-card .live-price-large {
     color: var(--text-color) !important; /* Use the theme's main text color, overriding positive/negative colors */
 }
+
+/* --- Compact View Border & Layout Normalisation --- */
+/* Reset any inherited full border in compact view; enforce side-only 3px borders with movement colors */
+.mobile-share-cards.compact-view .mobile-card {
+    border: none !important; /* Remove generic 1px border */
+    border-left: 3px solid transparent !important;
+    border-right: 3px solid transparent !important;
+    border-radius: 6px !important; /* Slightly tighter radius */
+}
+.mobile-share-cards.compact-view .mobile-card.positive-change-card {
+    border-left-color: var(--price-up-color) !important;
+    border-right-color: var(--price-up-color) !important;
+}
+.mobile-share-cards.compact-view .mobile-card.negative-change-card {
+    border-left-color: var(--price-down-color) !important;
+    border-right-color: var(--price-down-color) !important;
+}
+.mobile-share-cards.compact-view .mobile-card.neutral-change-card {
+    border-left-color: var(--neutral-accent, var(--border-color)) !important;
+    border-right-color: var(--neutral-accent, var(--border-color)) !important;
+}
+/* Ensure target-hit pulse does NOT apply in compact view (background tint only) */
+.mobile-share-cards.compact-view .mobile-card.target-hit-alert {
+    animation: none !important;
+    box-shadow: none !important;
+    /* Keep existing side colors; do not thicken */
+}
+/* Remove any accidental full border injection inside compact */
+.mobile-share-cards.compact-view .mobile-card.target-hit-alert { border-top: none !important; border-bottom: none !important; }
+
+/* Defensive: neutralise any lingering pseudo-element artifacts (if cached styles) */
+.mobile-share-cards.compact-view .mobile-card::before,
+.mobile-share-cards.compact-view .mobile-card::after { display: none !important; content: none !important; }
 
 
 /* Keep the target hit alert styling on the card itself */
