@@ -2824,7 +2824,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     }
 
     if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? formatUserDecimalStrict(shareToEdit.dividendAmount) : '';
-    if (frankingCreditsInput) frankingCreditsInput.value = Number(shareToEdit.frankingCredits) !== null && !isNaN(Number(shareToEdit.frankingCredits)) ? Number(shareToEdit.frankingCredits).toFixed(1) : '';
+    if (frankingCreditsInput) frankingCreditsInput.value = Number(shareToEdit.frankingCredits) !== null && !isNaN(Number(shareToEdit.frankingCredits)) ? Math.trunc(Number(shareToEdit.frankingCredits)).toString() : '';
 
     // Portfolio fields (optional per share)
     const portfolioSharesInput = document.getElementById('portfolioShares');
@@ -3399,21 +3399,23 @@ function showShareDetails() {
         modalLivePriceDisplaySection.appendChild(peRow);
     }
 
-    // Allow display of prices with up to 3 decimal places
-    modalEnteredPrice.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(3) : '')(enteredPriceNum);
+    // Entry (formerly reference) price: show 2 decimals by default; preserve up to 3 only if user originally entered >2
+    const rawEnteredStr = (share.enteredPriceRaw || '').toString();
+    let enteredDecimals = 2;
+    const matchEntered = rawEnteredStr.match(/\.(\d{3,})$/); // user typed 3+ decimals
+    if (matchEntered) enteredDecimals = Math.min(3, matchEntered[1].length);
+    modalEnteredPrice.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + Number(val).toFixed(enteredDecimals) : '')(enteredPriceNum);
 
-    const displayTargetPrice = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + val.toFixed(3) : '')(Number(share.targetPrice));
-    
-    // Determine the target notification message based on share.targetDirection
+    // Target price: same logic (preserve up to 3 only if user supplied more than 2 originally)
+    const rawTargetStr = (share.targetPriceRaw || '').toString();
+    let targetDecimals = 2;
+    const matchTarget = rawTargetStr.match(/\.(\d{3,})$/);
+    if (matchTarget) targetDecimals = Math.min(3, matchTarget[1].length);
+    const targetNum = Number(share.targetPrice);
+    const displayTargetPrice = (targetNum !== null && !isNaN(targetNum) && targetNum !== 0) ? '$' + targetNum.toFixed(targetDecimals) : '';
+
+    // Remove legacy alert trigger message per new requirement
     let targetNotificationMessage = '';
-    // Condition should check if a numeric targetPrice exists, including 0
-    if (share.targetPrice !== null && !isNaN(Number(share.targetPrice))) { 
-        if (share.targetDirection === 'above') {
-            targetNotificationMessage = '(Alert will trigger if >= Target)'; // Option 8
-        } else { // Default or 'below'
-            targetNotificationMessage = '(Alert will trigger if <= Target)'; // Option 7
-        }
-    }
 
     /* Hide empty sections for a cleaner view */
     try {
@@ -3431,16 +3433,15 @@ function showShareDetails() {
     } catch(e) { console.warn('Hide Empty Sections: issue applying visibility', e); }
 
     modalTargetPrice.innerHTML = `
-        ${targetNotificationMessage ? `<span class="ghosted-text">${targetNotificationMessage}</span>` : ''}
-        ${targetNotificationMessage && displayTargetPrice ? ' ' : ''} ${displayTargetPrice}
-    `.trim(); // Trim to remove potential leading/trailing whitespace if parts are empty
+        ${displayTargetPrice}
+    `.trim();
 
     // Ensure dividendAmount and frankingCredits are numbers before formatting
     const displayDividendAmount = Number(share.dividendAmount);
     const displayFrankingCredits = Math.trunc(Number(share.frankingCredits));
 
-    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(displayDividendAmount);
-    modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? val.toFixed(1) + '%' : '')(displayFrankingCredits);
+    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val, {force2:true}) : '')(displayDividendAmount);
+    modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? Math.trunc(val) + '%' : '')(displayFrankingCredits);
 
     const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
     const unfrankedYield = calculateUnfrankedYield(displayDividendAmount, priceForYield); 
@@ -6333,8 +6334,8 @@ function exportWatchlistToCSV() {
             (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? formatAdaptivePrice(livePrice) : '',
             priceChange, // Now includes the calculated price change
             (!isNaN(targetPriceNum) && targetPriceNum !== null) ? formatAdaptivePrice(targetPriceNum) : '',
-            (!isNaN(dividendAmountNum) && dividendAmountNum !== null) ? dividendAmountNum.toFixed(3) : '',
-            (!isNaN(frankingCreditsNum) && frankingCreditsNum !== null) ? frankingCreditsNum.toFixed(1) : '',
+            (!isNaN(dividendAmountNum) && dividendAmountNum !== null) ? dividendAmountNum.toFixed( (String(share.dividendAmount||'').match(/\.\d{3,}$/) ? 3 : 2) ) : '',
+            (!isNaN(frankingCreditsNum) && frankingCreditsNum !== null) ? Math.trunc(frankingCreditsNum).toString() : '',
             unfrankedYield !== null && !isNaN(unfrankedYield) ? formatAdaptivePercent(unfrankedYield) : '0.00', // Ensure numerical output
             frankedYield !== null && !isNaN(frankedYield) ? formatAdaptivePercent(frankedYield) : '0.00', // Ensure numerical output
             formatDate(share.entryDate) || ''
