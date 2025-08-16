@@ -515,6 +515,8 @@ function applyCompactViewMode() {
 
 // NEW: Global variable to track if the target hit icon is dismissed for the current session
 let targetHitIconDismissed = false;
+// Map of alert enable states loaded from Firestore: shareId -> boolean (true = enabled)
+let alertsEnabledMap = new Map();
 // Removed: manual EOD toggle state; behavior is automatic based on Sydney market hours
 
 // Tracks if share detail modal was opened from alerts
@@ -1161,7 +1163,9 @@ async function fetchLivePrices(opts = {}) {
         onLivePricesUpdated();
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
-        updateTargetHitBanner();
+    // Recompute triggered alerts purely from live price targetHit flags + alert enabled map
+    try { recomputeTriggeredAlerts(); } catch(e) { console.warn('Alerts: recompute after live price fetch failed', e); }
+    updateTargetHitBanner();
     } catch (e) {
         console.error('Live Price: Fetch error', e);
         window._livePricesLoaded = true;
@@ -5222,60 +5226,7 @@ function updateTargetHitBanner() {
 
 // NEW: Real-time alerts listener to populate sharesAtTargetPrice from Firestore
 async function loadTriggeredAlertsListener() {
-    if (unsubscribeAlerts) {
-        try { unsubscribeAlerts(); } catch(_) {}
-        unsubscribeAlerts = null;
-        logDebug('Firestore Listener: Unsubscribed from previous alerts listener.');
-    }
-    if (!db || !currentUserId || !window.firestore) {
-        console.warn('Alerts: Firestore DB, User ID, or Firestore functions not available. Clearing triggered alerts.');
-        sharesAtTargetPrice = [];
-        updateTargetHitBanner();
-        return;
-    }
-    try {
-        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-        // Filter for triggered alerts; additional local filter will enforce enabled !== false
-        const q = window.firestore.query(alertsCol, window.firestore.where('targetHit', '==', true));
-        unsubscribeAlerts = window.firestore.onSnapshot(q, (querySnapshot) => {
-            const enabledShares = [];
-            const mutedShares = [];
-            querySnapshot.forEach((doc) => {
-                const data = doc.data() || {};
-                const shareId = data.shareId || doc.id;
-                const shareCode = (data.shareCode || '').toUpperCase();
-                // Try to hydrate from current shares data for richer UI; fallback to a minimal stub
-                let share = allSharesData.find(s => s.id === shareId) || allSharesData.find(s => String(s.shareName || '').toUpperCase() === shareCode);
-                if (!share) {
-                    share = {
-                        id: shareId,
-                        shareName: shareCode || '(Unknown)'.toUpperCase(),
-                        targetPrice: (typeof data.targetPrice === 'number' && !isNaN(data.targetPrice)) ? data.targetPrice : null,
-                        watchlistIds: []
-                    };
-                }
-                // Attach a hint of enabled state for rendering decisions
-                share.__alertEnabled = (data.enabled !== false);
-                if (share.__alertEnabled) {
-                    enabledShares.push(share);
-                } else {
-                    mutedShares.push(share);
-                }
-            });
-            sharesAtTargetPrice = dedupeSharesById(enabledShares);
-            sharesAtTargetPriceMuted = dedupeSharesById(mutedShares);
-            updateTargetHitBanner();
-            // If the notification hub is open, refresh its contents
-            if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
-                showTargetHitDetailsModal();
-            }
-        }, (error) => {
-            console.error('Firestore Listener: Error listening to alerts:', error);
-        });
-        logDebug('Alerts: Real-time alerts listener set up.');
-    } catch (error) {
-        console.error('Alerts: Error setting up alerts listener:', error);
-    }
+    console.warn('loadTriggeredAlertsListener deprecated; using loadAlertsSettingsListener + recomputeTriggeredAlerts');
 }
 
 // NEW: Helper to enable/disable a specific alert for a share
@@ -5302,35 +5253,9 @@ async function toggleAlertEnabled(shareId) {
         }
         const newEnabled = !currentEnabled; // invert
         await window.firestore.setDoc(alertDocRef, { enabled: newEnabled, updatedAt: window.firestore.serverTimestamp() }, { merge: true });
-        // Optimistically update local arrays so UI + count reflect instantly
-        try {
-            const idxEnabled = sharesAtTargetPrice.findIndex(s => s.id === shareId);
-            const idxMuted = sharesAtTargetPriceMuted.findIndex(s => s.id === shareId);
-            if (newEnabled) {
-                // move from muted -> enabled
-                if (idxMuted !== -1) {
-                    const [moved] = sharesAtTargetPriceMuted.splice(idxMuted,1);
-                    if (moved) sharesAtTargetPrice.push(moved);
-                } else if (idxEnabled === -1) {
-                    // if not found anywhere attempt to find share object in allSharesData
-                    const sh = allSharesData.find(s => s.id === shareId);
-                    if (sh) sharesAtTargetPrice.push(sh);
-                }
-            } else {
-                // move from enabled -> muted
-                if (idxEnabled !== -1) {
-                    const [moved] = sharesAtTargetPrice.splice(idxEnabled,1);
-                    if (moved) sharesAtTargetPriceMuted.push(moved);
-                } else if (idxMuted === -1) {
-                    const sh = allSharesData.find(s => s.id === shareId);
-                    if (sh) sharesAtTargetPriceMuted.push(sh);
-                }
-            }
-            updateTargetHitBanner();
-            if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
-                showTargetHitDetailsModal();
-            }
-        } catch(optErr) { console.warn('Alerts: Optimistic local toggle update failed', optErr); }
+    // Optimistic map update then recompute
+    alertsEnabledMap.set(shareId, newEnabled);
+    try { recomputeTriggeredAlerts(); } catch(e) {}
         showCustomAlert(newEnabled ? 'Alert unmuted' : 'Alert muted', 1000);
     return newEnabled;
     } catch (e) {
@@ -5338,6 +5263,47 @@ async function toggleAlertEnabled(shareId) {
         showCustomAlert('Failed to update alert. Please try again.', 1500);
     throw e;
     }
+}
+
+// NEW: Recompute triggered alerts from livePrices + alertsEnabledMap (global portfolio scope)
+function recomputeTriggeredAlerts() {
+    const enabled = [];
+    const muted = [];
+    const lpEntries = Object.entries(livePrices || {});
+    const byCode = new Map();
+    (allSharesData||[]).forEach(s => { if (s && s.shareName) byCode.set(s.shareName.toUpperCase(), s); });
+    lpEntries.forEach(([code, lp]) => {
+        if (!lp || !lp.targetHit) return;
+        const share = byCode.get(code);
+        if (!share) return; // only consider shares user actually has
+        const enabledState = alertsEnabledMap.has(share.id) ? alertsEnabledMap.get(share.id) : true; // default enabled
+        const clone = { ...share }; // shallow clone for modal separation
+        if (enabledState) enabled.push(clone); else muted.push(clone);
+    });
+    sharesAtTargetPrice = dedupeSharesById(enabled);
+    sharesAtTargetPriceMuted = dedupeSharesById(muted);
+    try { console.log('[Diag][recomputeTriggeredAlerts] enabledIds:', sharesAtTargetPrice.map(s=>s.id), 'mutedIds:', sharesAtTargetPriceMuted.map(s=>s.id)); } catch(_){}
+    updateTargetHitBanner();
+    try { enforceTargetHitStyling(); } catch(_) {}
+    if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
+        showTargetHitDetailsModal();
+    }
+}
+
+// Listen only for alert documents to track enabled/disabled state (not target hits which derive from price)
+async function loadAlertsSettingsListener() {
+    if (unsubscribeAlerts) { try { unsubscribeAlerts(); } catch(_){} unsubscribeAlerts=null; }
+    if (!db || !currentUserId || !window.firestore) { console.warn('Alerts: Firestore unavailable for settings listener'); return; }
+    try {
+        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        unsubscribeAlerts = window.firestore.onSnapshot(alertsCol, (qs) => {
+            alertsEnabledMap = new Map();
+            qs.forEach(doc => { const d = doc.data()||{}; alertsEnabledMap.set(doc.id, (d.enabled !== false)); });
+            try { console.log('[Diag][alertsSettingsListener] map size:', alertsEnabledMap.size); } catch(_){}
+            recomputeTriggeredAlerts();
+        }, err => console.error('Alerts: settings listener error', err));
+        logDebug('Alerts: Settings listener active.');
+    } catch (e) { console.error('Alerts: failed to init settings listener', e); }
 }
 
 // NEW: Function to render alerts in the alert panel (currently empty, but planned for future)
@@ -8455,7 +8421,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 await loadUserWatchlistsAndSettings();
                 try { ensureTitleStructure(); } catch(e) {}
                 // Start alerts listener (triggered alerts -> Notification Hub)
-                await loadTriggeredAlertsListener();
+                await loadAlertsSettingsListener();
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
                 await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
