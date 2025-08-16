@@ -232,6 +232,31 @@
             </div>
         </div>
 
+        <!-- Global Alerts Modal -->
+        <div id="globalAlertsModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="globalAlertsTitle">
+            <div class="modal-content global-alerts-modal">
+                <h3 id="globalAlertsTitle">Global Price Alerts</h3>
+                <p class="modal-helper-text">Trigger alerts automatically when ANY tracked ASX share moves beyond these thresholds in a single session.</p>
+                <form id="globalAlertsForm" class="global-alerts-form" novalidate>
+                    <div class="form-row">
+                        <label for="globalPercentThreshold">Percentage Change (%):</label>
+                        <input type="number" step="0.01" min="0" id="globalPercentThreshold" placeholder="e.g. 10" />
+                    </div>
+                    <div class="form-row">
+                        <label for="globalDollarThreshold">Absolute Price Change ($):</label>
+                        <input type="number" step="0.01" min="0" id="globalDollarThreshold" placeholder="e.g. 0.50" />
+                    </div>
+                    <div class="form-row subtle-info-text">
+                        <small>Leave a field blank (or 0) to ignore that threshold.</small>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" id="saveGlobalAlertsBtn" class="primary-action-btn">Save</button>
+                        <button type="button" id="closeGlobalAlertsBtn" class="header-action-btn">Close</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
     <nav id="appSidebar" class="app-sidebar">
         <button id="closeMenuBtn" class="close-menu-btn">X</button>
         
@@ -261,6 +286,9 @@
                 </button>
                 <button id="editWatchlistBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-edit"></i> <span>Edit Current Watchlist</span>
+                </button>
+                <button id="globalAlertsBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-bell"></i> <span>Global Alerts</span>
                 </button>
             </div>
         </div>

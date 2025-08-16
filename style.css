@@ -310,6 +310,15 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
     border-radius: 50%; /* Ensure the pulse follows the button's shape */
 }
 
+/* Global Alerts Modal */
+.global-alerts-modal { max-width:420px; }
+.global-alerts-form .form-row { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
+.global-alerts-form label { font-weight:600; font-size:0.85rem; }
+.global-alerts-form input { padding:8px 10px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--text-color); }
+.global-alerts-form input:focus { outline:2px solid var(--accent-color); }
+.global-alerts-form .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:10px; }
+.global-alerts-form .subtle-info-text { color: var(--ghosted-text); }
+
 /* === Compact Card Layout & Theme (Rebuilt) === */
 .mobile-share-cards.compact-view .mobile-card {
     display: grid !important;

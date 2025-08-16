@@ -469,6 +469,10 @@ let currentCustomThemeIndex = -1; // To track the current theme in the cycle
 let currentActiveTheme = 'system-default'; // Tracks the currently applied theme string
 let savedSortOrder = null; // GLOBAL: Stores the sort order loaded from user settings
 let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
+// GLOBAL: Stored global alert thresholds (null or number)
+let globalPercentAlert = null; // e.g., 10 means +/-10%
+let globalDollarAlert = null; // e.g., 0.5 means +/-$0.50
+let lastGlobalAlertsSessionId = null; // to avoid duplicating alerts within same fetch cycle if needed
 
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
@@ -1144,6 +1148,8 @@ async function fetchLivePrices(opts = {}) {
         });
 
         livePrices = newLivePrices;
+    // After updating livePrices but before recomputeTriggeredAlerts, evaluate global alert thresholds
+    try { evaluateGlobalPriceAlerts(); } catch(e){ console.warn('Global Alerts: evaluation failed', e); }
         if (DEBUG_MODE) {
             const parts = [`accepted=${accepted}`];
             if (surrogate) parts.push(`surrogate=${surrogate}`);
@@ -5003,9 +5009,11 @@ async function loadUserWatchlistsAndSettings() {
     savedTheme = null;
 
         if (userProfileSnap.exists()) {
-            savedSortOrder = userProfileSnap.data().lastSortOrder;
-            savedTheme = userProfileSnap.data().lastTheme;
-            const loadedSelectedWatchlistIds = userProfileSnap.data().lastSelectedWatchlistIds;
+            const settingsData = userProfileSnap.data();
+            savedSortOrder = settingsData.lastSortOrder;
+            savedTheme = settingsData.lastTheme;
+            applyLoadedGlobalAlertSettings(settingsData);
+            const loadedSelectedWatchlistIds = settingsData.lastSelectedWatchlistIds;
             // Manual EOD preference removed; behavior is now automatic
 
             if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
@@ -5277,6 +5285,95 @@ function recomputeTriggeredAlerts() {
     try { enforceTargetHitStyling(); } catch(_) {}
     if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') { showTargetHitDetailsModal(); }
 }
+
+// === Global Price Alerts ===
+function evaluateGlobalPriceAlerts() {
+    if (!currentUserId || !db || !window.firestore) return;
+    if ((globalPercentAlert === null || globalPercentAlert <= 0) && (globalDollarAlert === null || globalDollarAlert <= 0)) return; // nothing configured
+    const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+    const batchPromises = [];
+    const now = Date.now();
+    Object.entries(livePrices || {}).forEach(([code, lp]) => {
+        if (!lp || lp.live == null || lp.prevClose == null) return;
+        const change = lp.live - lp.prevClose;
+        const absChange = Math.abs(change);
+        const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
+        let triggered = false;
+        if (globalPercentAlert !== null && globalPercentAlert > 0 && pct >= globalPercentAlert) triggered = true;
+        if (!triggered && globalDollarAlert !== null && globalDollarAlert > 0 && absChange >= globalDollarAlert) triggered = true;
+        if (!triggered) return;
+        // Create a synthetic alert doc id combining code + type to avoid collision with per-share alerts (prefix GA_)
+        const docId = 'GA_' + code;
+        const alertDocRef = window.firestore.doc(alertsCol, docId);
+        const payload = {
+            shareId: docId,
+            shareCode: code,
+            userId: currentUserId,
+            appId: currentAppId,
+            intent: 'info',
+            direction: 'global',
+            targetPrice: null,
+            globalPercentThreshold: globalPercentAlert,
+            globalDollarThreshold: globalDollarAlert,
+            latestLive: lp.live,
+            previousClose: lp.prevClose,
+            triggeredChange: change,
+            triggeredPercent: pct,
+            targetHit: true,
+            enabled: true,
+            updatedAt: window.firestore.serverTimestamp(),
+            createdAt: window.firestore.serverTimestamp()
+        };
+        batchPromises.push(window.firestore.setDoc(alertDocRef, payload, { merge: true }));
+    });
+    if (batchPromises.length) {
+        Promise.all(batchPromises).then(()=>{ logDebug('Global Alerts: Created/updated ' + batchPromises.length + ' global alert docs.'); }).catch(e=>console.error('Global Alerts: batch error', e));
+    }
+}
+
+async function saveGlobalAlertSettings(percentVal, dollarVal) {
+    if (!db || !currentUserId || !window.firestore) return;
+    const userProfileDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+    const toSave = { globalPercentAlert: percentVal || null, globalDollarAlert: dollarVal || null };
+    try { await window.firestore.setDoc(userProfileDocRef, toSave, { merge: true }); logDebug('Global Alerts: Saved settings ' + JSON.stringify(toSave)); }
+    catch(e){ console.error('Global Alerts: save failed', e); }
+}
+
+function applyLoadedGlobalAlertSettings(settings) {
+    try {
+        globalPercentAlert = (typeof settings.globalPercentAlert === 'number' && settings.globalPercentAlert > 0) ? settings.globalPercentAlert : null;
+        globalDollarAlert = (typeof settings.globalDollarAlert === 'number' && settings.globalDollarAlert > 0) ? settings.globalDollarAlert : null;
+        if (globalPercentThresholdInput) globalPercentThresholdInput.value = globalPercentAlert ?? '';
+        if (globalDollarThresholdInput) globalDollarThresholdInput.value = globalDollarAlert ?? '';
+    } catch(e){ console.warn('Global Alerts: apply settings failed', e); }
+}
+
+// Modal wiring after DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    globalAlertsBtn = document.getElementById('globalAlertsBtn');
+    globalAlertsModal = document.getElementById('globalAlertsModal');
+    saveGlobalAlertsBtn = document.getElementById('saveGlobalAlertsBtn');
+    closeGlobalAlertsBtn = document.getElementById('closeGlobalAlertsBtn');
+    globalPercentThresholdInput = document.getElementById('globalPercentThreshold');
+    globalDollarThresholdInput = document.getElementById('globalDollarThreshold');
+    if (globalAlertsBtn && globalAlertsModal) {
+        globalAlertsBtn.addEventListener('click', () => { try { openModal(globalAlertsModal); } catch(e){} });
+    }
+    if (closeGlobalAlertsBtn && globalAlertsModal) {
+        closeGlobalAlertsBtn.addEventListener('click', () => { try { closeModal(globalAlertsModal); } catch(e){} });
+    }
+    if (saveGlobalAlertsBtn) {
+        saveGlobalAlertsBtn.addEventListener('click', async () => {
+            const pctRaw = parseFloat(globalPercentThresholdInput.value);
+            const dolRaw = parseFloat(globalDollarThresholdInput.value);
+            globalPercentAlert = (!isNaN(pctRaw) && pctRaw > 0) ? pctRaw : null;
+            globalDollarAlert = (!isNaN(dolRaw) && dolRaw > 0) ? dolRaw : null;
+            await saveGlobalAlertSettings(globalPercentAlert, globalDollarAlert);
+            showCustomAlert('Global alert settings saved', 1200);
+            try { closeModal(globalAlertsModal); } catch(e){}
+        });
+    }
+});
 
 // (Deprecated) Previous alerts settings listener retained for reference
 async function loadAlertsSettingsListener() {
