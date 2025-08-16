@@ -5307,6 +5307,7 @@ function evaluateGlobalPriceAlerts() {
     if (!hasIncrease && !hasDecrease) return;
     const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
     let increaseCount = 0; let decreaseCount = 0; let dominantThreshold = null; let dominantType = null;
+    if (DEBUG_MODE) console.log('[GlobalAlerts] Evaluating with thresholds', { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease });
     Object.entries(livePrices || {}).forEach(([code, lp]) => {
         if (!lp || lp.live == null || lp.prevClose == null) return;
         const change = lp.live - lp.prevClose;
@@ -5315,13 +5316,13 @@ function evaluateGlobalPriceAlerts() {
         const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
         if (change > 0) {
             let hit = false;
-            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { hit = true; dominantThreshold = globalPercentIncrease + '%'; dominantType = 'increase'; }
-            else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { hit = true; dominantThreshold = '$' + Number(globalDollarIncrease).toFixed(2); dominantType = 'increase'; }
+            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { hit = true; if (!dominantThreshold) { dominantThreshold = globalPercentIncrease + '%'; dominantType = 'increase'; } }
+            else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { hit = true; if (!dominantThreshold) { dominantThreshold = '$' + Number(globalDollarIncrease).toFixed(2); dominantType = 'increase'; } }
             if (hit) increaseCount++;
         } else { // decrease
             let hit = false;
-            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) { hit = true; dominantThreshold = globalPercentDecrease + '%'; dominantType = 'decrease'; }
-            else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { hit = true; dominantThreshold = '$' + Number(globalDollarDecrease).toFixed(2); dominantType = 'decrease'; }
+            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) { hit = true; if (!dominantThreshold) { dominantThreshold = globalPercentDecrease + '%'; dominantType = 'decrease'; } }
+            else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { hit = true; if (!dominantThreshold) { dominantThreshold = '$' + Number(globalDollarDecrease).toFixed(2); dominantType = 'decrease'; } }
             if (hit) decreaseCount++;
         }
     });
@@ -5351,7 +5352,7 @@ function evaluateGlobalPriceAlerts() {
             createdAt: window.firestore.serverTimestamp()
         };
         window.firestore.setDoc(alertDocRef, payload, { merge: true })
-            .then(()=> logDebug('Global Alerts: Summary alert upserted. Total='+ total))
+            .then(()=> { logDebug('Global Alerts: Summary alert upserted. Total='+ total + ' inc=' + increaseCount + ' dec=' + decreaseCount + ' threshold=' + dominantThreshold); })
             .catch(e=> console.error('Global Alerts: summary upsert failed', e));
     }
 }
@@ -5421,10 +5422,11 @@ function initGlobalAlertsUI(force) {
             try { showModal(globalAlertsModal); if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(e){ console.error('Global Alerts: failed to open modal', e);} });
     }
     if (closeGlobalAlertsBtn && globalAlertsModal) {
-        closeGlobalAlertsBtn.addEventListener('click', () => { try { hideModal(globalAlertsModal); } catch(e){} });
+        closeGlobalAlertsBtn.addEventListener('click', (e) => { e.preventDefault(); try { hideModal(globalAlertsModal); } catch(e){} });
     }
     if (saveGlobalAlertsBtn) {
-        saveGlobalAlertsBtn.addEventListener('click', async () => {
+        saveGlobalAlertsBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
             const pctIncRaw = parseFloat(globalPercentIncreaseInput?.value || '');
             const dolIncRaw = parseFloat(globalDollarIncreaseInput?.value || '');
             const pctDecRaw = parseFloat(globalPercentDecreaseInput?.value || '');

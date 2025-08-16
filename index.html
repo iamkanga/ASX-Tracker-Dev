@@ -235,7 +235,13 @@
         <!-- Global Alerts Modal (Advanced) -->
         <div id="globalAlertsModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="globalAlertsTitle">
             <div class="modal-content global-alerts-modal">
-                <h3 id="globalAlertsTitle">Global Price Alerts</h3>
+                <div class="modal-header-with-icon">
+                    <h2 id="globalAlertsTitle">Global Price Alerts</h2>
+                    <div class="modal-header-action-group">
+                        <button id="saveGlobalAlertsBtn" class="icon-button save-icon" title="Save Settings" aria-label="Save Settings"><i class="fas fa-save"></i></button>
+                        <button id="closeGlobalAlertsBtn" class="icon-button close-button" title="Close" aria-label="Close"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
                 <p class="modal-helper-text">Create automatic alerts when ANY tracked ASX share moves beyond these thresholds since previous close. Configure increases and decreases separately. Leave a field blank (or 0) to disable that trigger.</p>
                 <form id="globalAlertsForm" class="global-alerts-form" novalidate>
                     <fieldset class="ga-section">
@@ -260,10 +266,7 @@
                             <input type="number" step="0.01" min="0" id="globalDollarDecrease" placeholder="e.g. 0.30" />
                         </div>
                     </fieldset>
-                    <div class="modal-actions">
-                        <button type="button" id="saveGlobalAlertsBtn" class="primary-action-btn">Save</button>
-                        <button type="button" id="closeGlobalAlertsBtn" class="header-action-btn">Close</button>
-                    </div>
+                    <!-- Action buttons removed; using header icons for consistency -->
                 </form>
             </div>
         </div>
