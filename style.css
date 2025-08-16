@@ -5662,10 +5662,10 @@ table tbody tr.target-hit-alert, .mobile-card.target-hit-alert { border:4px soli
     margin: 0 !important;
 }
 /* Grid item placements */
-.mobile-share-cards.compact-view .mobile-card .card-code { grid-area: code; justify-self: start; align-self: start; font-size: 0.95em; font-weight: 700; }
-.mobile-share-cards.compact-view .mobile-card .card-chevron { grid-area: chevron; justify-self: end; align-self: start; font-size: 1.05em; font-weight: 700; }
-.mobile-share-cards.compact-view .mobile-card .card-live-price { grid-area: live; font-size: 1.18em !important; font-weight: 700; line-height: 1.15; }
-.mobile-share-cards.compact-view .mobile-card .card-price-change { grid-area: change; font-size: 0.82em; font-weight: 700; line-height: 1.1; }
+.mobile-share-cards.compact-view .mobile-card .card-code { grid-area: code; justify-self: start; align-self: start; font-size: 1.37em; font-weight: 800; }
+.mobile-share-cards.compact-view .mobile-card .card-chevron { grid-area: chevron; justify-self: end; align-self: start; font-size: 1.26em; font-weight: 700; }
+.mobile-share-cards.compact-view .mobile-card .card-live-price { grid-area: live; font-size: 1.42em !important; font-weight: 700; line-height: 1.15; }
+.mobile-share-cards.compact-view .mobile-card .card-price-change { grid-area: change; font-size: 0.98em; font-weight: 700; line-height: 1.1; }
 /* Ensure text centering for middle and bottom */
 .mobile-share-cards.compact-view .mobile-card .card-live-price,
 .mobile-share-cards.compact-view .mobile-card .card-price-change { text-align: center; width: 100%; }
