@@ -8491,8 +8491,8 @@ function showTargetHitDetailsModal() {
         const container = document.createElement('div');
         container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
-        const metaBits = [`Up ${inc}`, `Down ${dec}`];
-        if (minText) metaBits.push(minText);
+    const metaBits = [`<span class=\"up\">Up ${inc}</span>`, `<span class=\"down\">Down ${dec}</span>`];
+    if (minText) metaBits.push(`<span>${minText}</span>`);
         const discoverText = discoverCount ? `Discover ${discoverCount}` : 'Discover';
         const viewText = portfolioCount ? `View ${portfolioCount}` : 'View';
         container.innerHTML = `
@@ -8500,7 +8500,7 @@ function showTargetHitDetailsModal() {
                 <div class="global-summary-title">Global Alert</div>
                 <div class="global-summary-detail">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
                 <div class="global-summary-detail">${portfolioCount} from your portfolio${discoverCount?` · ${discoverCount} others`:''}</div>
-                <div class="global-summary-meta">${metaBits.map(m=>`<span>${m}</span>`).join('')}</div>
+                <div class="global-summary-meta">${metaBits.join('')}</div>
             </div>
             <div class="global-summary-actions">
                 <button data-action="view-portfolio" ${portfolioCount?'':'disabled'}>${viewText}</button>
