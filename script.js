@@ -4265,26 +4265,25 @@ function renderWatchlist() {
 
 // Safety net: ensure any share whose livePrices indicates targetHit gets the .target-hit-alert class (unless globally dismissed)
 function enforceTargetHitStyling() {
-    if (targetHitIconDismissed) return; // user dismissed icon; don't highlight
+    if (targetHitIconDismissed) return; // user dismissed icon
+    // Only enabled alerts get highlight; muted excluded
     const enabledIds = new Set((sharesAtTargetPrice||[]).map(s=>s.id));
-    const mutedIds = new Set((sharesAtTargetPriceMuted||[]).map(s=>s.id));
-    const allIds = new Set([...enabledIds, ...mutedIds]);
     const rows = shareTableBody ? Array.from(shareTableBody.querySelectorAll('tr[data-doc-id]')) : [];
     const cards = mobileShareCardsContainer ? Array.from(mobileShareCardsContainer.querySelectorAll('.mobile-card[data-doc-id]')) : [];
     let applied = 0, removed = 0;
     rows.forEach(r => {
         const id = r.dataset.docId;
-        if (allIds.has(id)) {
+        if (enabledIds.has(id)) {
             if (!r.classList.contains('target-hit-alert')) { r.classList.add('target-hit-alert'); applied++; }
         } else if (r.classList.contains('target-hit-alert')) { r.classList.remove('target-hit-alert'); removed++; }
     });
     cards.forEach(c => {
         const id = c.dataset.docId;
-        if (allIds.has(id)) {
+        if (enabledIds.has(id)) {
             if (!c.classList.contains('target-hit-alert')) { c.classList.add('target-hit-alert'); applied++; }
         } else if (c.classList.contains('target-hit-alert')) { c.classList.remove('target-hit-alert'); removed++; }
     });
-    try { console.log('[Diag][enforceTargetHitStyling] applied:', applied, 'removed:', removed, 'totalTargetIds:', allIds.size); } catch(_){}
+    try { console.log('[Diag][enforceTargetHitStyling] applied:', applied, 'removed:', removed, 'enabledIdsCount:', enabledIds.size); } catch(_){ }
 }
 
 function renderAsxCodeButtons() {
@@ -5162,21 +5161,15 @@ function stopLivePriceUpdates() {
 
 // NEW: Function to update the target hit notification icon
 function updateTargetHitBanner() {
-    // Now driven by alerts from Firestore; sharesAtTargetPrice is set by the alerts listener
     if (!targetHitIconBtn || !targetHitIconCount || !watchlistSelect || !sortSelect) {
         console.warn('Target Alert: UI elements missing. Cannot update banner/highlights.');
         return;
     }
-
-    // Banner should reflect global triggered alerts irrespective of current watchlist.
-    const currentViewHasTargetHits = (Array.isArray(sharesAtTargetPrice) && sharesAtTargetPrice.length > 0) || (Array.isArray(sharesAtTargetPriceMuted) && sharesAtTargetPriceMuted.length > 0);
-
-    // Count should represent all triggered alerts (enabled + muted) so user sees total notifications available
+    // Only enabled alerts are surfaced; muted are excluded from count & styling.
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
-    const mutedCount = Array.isArray(sharesAtTargetPriceMuted) ? sharesAtTargetPriceMuted.length : 0;
-    const displayCount = enabledCount + mutedCount;
+    const displayCount = enabledCount;
     try {
-        console.log('[Diag][updateTargetHitBanner] enabled:', enabledCount, 'muted:', mutedCount, 'total:', displayCount, 'sharesAtTargetPrice IDs:', (sharesAtTargetPrice||[]).map(s=>s.id), 'muted IDs:', (sharesAtTargetPriceMuted||[]).map(s=>s.id));
+        console.log('[Diag][updateTargetHitBanner] enabled:', enabledCount, 'displayCount:', displayCount, 'enabled IDs:', (sharesAtTargetPrice||[]).map(s=>s.id));
     } catch(_) {}
     if (displayCount > 0 && !targetHitIconDismissed) {
         // Diagnostics: capture state before applying changes
@@ -5202,7 +5195,7 @@ function updateTargetHitBanner() {
             console.log('[Diag] AFTER - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
         } catch (_) {}
 
-        logDebug('Target Alert: Showing icon: ' + displayCount + ' triggered alerts.');
+    logDebug('Target Alert: Showing icon: ' + displayCount + ' active alerts.');
     } else {
     // Hide the icon explicitly via inline style and class
     targetHitIconBtn.classList.add('app-hidden');
@@ -5221,9 +5214,22 @@ function updateTargetHitBanner() {
     try { enforceTargetHitStyling(); } catch(_) {}
 }
 
-// NEW: Real-time alerts listener to populate sharesAtTargetPrice from Firestore
+// NEW (Revised): Real-time alerts listener (enabled-only notifications)
+// Muted alerts (enabled === false) must not appear as active notifications or receive styling.
 async function loadTriggeredAlertsListener() {
-    console.warn('loadTriggeredAlertsListener deprecated; using loadAlertsSettingsListener + recomputeTriggeredAlerts');
+    if (unsubscribeAlerts) { try { unsubscribeAlerts(); } catch(_){} unsubscribeAlerts=null; }
+    if (!db || !currentUserId || !window.firestore) { console.warn('Alerts: Firestore unavailable for triggered alerts listener'); return; }
+    try {
+        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        unsubscribeAlerts = window.firestore.onSnapshot(alertsCol, (qs) => {
+            const newMap = new Map();
+            qs.forEach(doc => { const d = doc.data() || {}; newMap.set(doc.id, (d.enabled !== false)); });
+            alertsEnabledMap = newMap;
+            try { console.log('[Diag][loadTriggeredAlertsListener] map size:', alertsEnabledMap.size); } catch(_){ }
+            recomputeTriggeredAlerts();
+        }, err => console.error('Alerts: triggered alerts listener error', err));
+        logDebug('Alerts: Triggered alerts listener active (enabled-state driven).');
+    } catch (e) { console.error('Alerts: failed to init triggered alerts listener', e); }
 }
 
 // NEW: Helper to enable/disable a specific alert for a share
@@ -5270,24 +5276,22 @@ function recomputeTriggeredAlerts() {
     const byCode = new Map();
     (allSharesData||[]).forEach(s => { if (s && s.shareName) byCode.set(s.shareName.toUpperCase(), s); });
     lpEntries.forEach(([code, lp]) => {
-        if (!lp || !lp.targetHit) return;
+        if (!lp || !lp.targetHit) return; // only shares currently at target
         const share = byCode.get(code);
-        if (!share) return; // only consider shares user actually has
-        const enabledState = alertsEnabledMap.has(share.id) ? alertsEnabledMap.get(share.id) : true; // default enabled
-        const clone = { ...share }; // shallow clone for modal separation
+        if (!share) return;
+        const enabledState = alertsEnabledMap.has(share.id) ? alertsEnabledMap.get(share.id) : true;
+        const clone = { ...share };
         if (enabledState) enabled.push(clone); else muted.push(clone);
     });
-    sharesAtTargetPrice = dedupeSharesById(enabled);
-    sharesAtTargetPriceMuted = dedupeSharesById(muted);
-    try { console.log('[Diag][recomputeTriggeredAlerts] enabledIds:', sharesAtTargetPrice.map(s=>s.id), 'mutedIds:', sharesAtTargetPriceMuted.map(s=>s.id)); } catch(_){}
+    sharesAtTargetPrice = dedupeSharesById(enabled); // active notifications
+    sharesAtTargetPriceMuted = dedupeSharesById(muted); // muted (not shown/styled)
+    try { console.log('[Diag][recomputeTriggeredAlerts] enabledIds:', sharesAtTargetPrice.map(s=>s.id), 'mutedIds:', sharesAtTargetPriceMuted.map(s=>s.id)); } catch(_){ }
     updateTargetHitBanner();
     try { enforceTargetHitStyling(); } catch(_) {}
-    if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
-        showTargetHitDetailsModal();
-    }
+    if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') { showTargetHitDetailsModal(); }
 }
 
-// Listen only for alert documents to track enabled/disabled state (not target hits which derive from price)
+// (Deprecated) Previous alerts settings listener retained for reference
 async function loadAlertsSettingsListener() {
     if (unsubscribeAlerts) { try { unsubscribeAlerts(); } catch(_){} unsubscribeAlerts=null; }
     if (!db || !currentUserId || !window.firestore) { console.warn('Alerts: Firestore unavailable for settings listener'); return; }
@@ -8399,8 +8403,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // This ensures the initial view is correctly sorted by percentage change if selected.
                 await loadUserWatchlistsAndSettings();
                 try { ensureTitleStructure(); } catch(e) {}
-                // Start alerts listener (triggered alerts -> Notification Hub)
-                await loadAlertsSettingsListener();
+                // Start alerts listener (enabled alerts only; muted excluded from notifications)
+                await loadTriggeredAlertsListener();
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
                 await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
