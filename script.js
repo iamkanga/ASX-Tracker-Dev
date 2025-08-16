@@ -5184,18 +5184,7 @@ function updateTargetHitBanner() {
     try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch(e) {}
 
     // Highlight dropdowns if the current view has target hits
-    const watchlistContainer = document.querySelector('.watchlist-toolbar') || (watchlistSelect ? watchlistSelect.closest('.toolbar, .controls, header, .watchlist-controls') : null) || watchlistSelect?.parentElement;
-    if (currentViewHasTargetHits && !targetHitIconDismissed) {
-        if (watchlistContainer) watchlistContainer.classList.add('target-hit-border');
-        watchlistSelect.classList.remove('target-hit-border');
-        sortSelect.classList.remove('target-hit-border');
-        logDebug('Target Alert: Toolbar highlighted for target hits.');
-    } else {
-        if (watchlistContainer) watchlistContainer.classList.remove('target-hit-border');
-        watchlistSelect.classList.remove('target-hit-border');
-        sortSelect.classList.remove('target-hit-border');
-        logDebug('Target Alert: Toolbar highlight removed.');
-    }
+    // Removed toolbar highlight per corrected requirement; only individual rows/cards should show target-hit styling.
 }
 
 // NEW: Real-time alerts listener to populate sharesAtTargetPrice from Firestore
