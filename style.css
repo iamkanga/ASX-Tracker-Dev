@@ -322,6 +322,14 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-summary-alert.target-hit-item { background: rgba(164,147,147,0.08); border:1px solid #a49393; border-radius:8px; }
 .global-summary-alert.target-hit-item:hover { background: rgba(164,147,147,0.15); }
 .global-summary-alert .share-name-code { font-weight:600; }
+/* Discovery feature summary action buttons */
+.global-summary-alert .global-summary-actions { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.global-summary-alert .global-summary-actions .button.tiny { padding:4px 8px; font-size:0.75rem; line-height:1.1; }
+.discover-global-list { max-height:60vh; overflow-y:auto; }
+.discover-global-list ul.discover-code-list { list-style:none; margin:0; padding:0; }
+.discover-global-list ul.discover-code-list li { padding:6px 10px; border-bottom:1px solid var(--border-color, #444); cursor:default; display:flex; align-items:center; }
+.discover-global-list ul.discover-code-list li .code { font-weight:600; letter-spacing:0.5px; }
+.discover-global-list ul.discover-code-list li:hover { background:rgba(255,255,255,0.05); }
 
 /* Global Alerts Modal */
 .global-alerts-modal { max-width:420px; }

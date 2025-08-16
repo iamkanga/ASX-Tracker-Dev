@@ -458,6 +458,8 @@ const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwwMEss
 let livePrices = {}; // Stores live price data: {ASX_CODE: {live: price, prevClose: price, PE: value, High52: value, Low52: value, targetHit: boolean, lastLivePrice: value, lastPrevClose: value}} 
 let livePriceFetchInterval = null; // To hold the interval ID for live price updates
 const LIVE_PRICE_FETCH_INTERVAL_MS = 5 * 60 * 1000; // Fetch every 5 minutes
+// Global discovery: store external (non-portfolio) price rows each fetch for global alert discovery logic
+let globalExternalPriceRows = []; // [{ code, live, prevClose }]
 
 // Theme related variables
 const CUSTOM_THEMES = [
@@ -1089,7 +1091,9 @@ async function fetchLivePrices(opts = {}) {
         const needed = haveShares ? new Set(allSharesData.filter(s => s && s.shareName).map(s => s.shareName.toUpperCase())) : null;
         const LOG_LIMIT = 30;
         let skipped = 0, skippedLogged = 0, accepted = 0, surrogate = 0, filtered = 0;
-        const newLivePrices = {};
+    const newLivePrices = {};
+    // Reset external rows container for this cycle
+    globalExternalPriceRows = [];
 
         // Helper: normalize numeric fields; treat null / undefined / '' / '#N/A' as null
         const numOrNull = v => {
@@ -1110,7 +1114,13 @@ async function fetchLivePrices(opts = {}) {
             if (!codeRaw) return; // no code
             const code = String(codeRaw).toUpperCase().trim();
             if (!code) return;
-            if (needed && !needed.has(code)) { filtered++; return; }
+            if (needed && !needed.has(code)) {
+                // Keep a lean record for discovery if we have sufficient data for threshold evaluation
+                if (liveParsed !== null && prevParsed !== null) {
+                    globalExternalPriceRows.push({ code, live: liveParsed, prevClose: prevParsed });
+                }
+                filtered++; return;
+            }
 
             const liveParsed = numOrNull(
                 item.LivePrice || item['Live Price'] || item.live || item.price ||
@@ -5368,25 +5378,41 @@ function evaluateGlobalPriceAlerts() {
     if (!hasIncrease && !hasDecrease) return;
     const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
     let increaseCount = 0; let decreaseCount = 0; let dominantThreshold = null; let dominantType = null;
+    const nonPortfolioCodes = new Set();
+    let portfolioCount = 0; // number of triggered shares in user's portfolio/watchlists
+    // Build quick lookup of portfolio/watchlist codes the user owns
+    const userCodes = new Set();
+    (allSharesData||[]).forEach(s => { if (s && s.shareName) userCodes.add(s.shareName.toUpperCase()); });
     if (DEBUG_MODE) console.log('[GlobalAlerts] Evaluating with thresholds', { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease });
-    Object.entries(livePrices || {}).forEach(([code, lp]) => {
-        if (!lp || lp.live == null || lp.prevClose == null) return;
-        const change = lp.live - lp.prevClose;
-        if (change === 0) return;
+    // Helper to eval a single movement
+    function evaluateMovement(code, live, prev) {
+        if (live == null || prev == null) return;
+        const change = live - prev; if (change === 0) return;
         const absChange = Math.abs(change);
-        const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
+        const pct = prev !== 0 ? (absChange / prev) * 100 : 0;
+        let triggered = false; let type = null; let thresholdHit = null;
         if (change > 0) {
-            let hit = false;
-            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { hit = true; if (!dominantThreshold) { dominantThreshold = globalPercentIncrease + '%'; dominantType = 'increase'; } }
-            else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { hit = true; if (!dominantThreshold) { dominantThreshold = '$' + Number(globalDollarIncrease).toFixed(2); dominantType = 'increase'; } }
-            if (hit) increaseCount++;
+            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { triggered = true; type='increase'; thresholdHit = globalPercentIncrease + '%'; }
+            else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { triggered = true; type='increase'; thresholdHit = '$' + Number(globalDollarIncrease).toFixed(2); }
+            if (triggered) increaseCount++;
         } else { // decrease
-            let hit = false;
-            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) { hit = true; if (!dominantThreshold) { dominantThreshold = globalPercentDecrease + '%'; dominantType = 'decrease'; } }
-            else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { hit = true; if (!dominantThreshold) { dominantThreshold = '$' + Number(globalDollarDecrease).toFixed(2); dominantType = 'decrease'; } }
-            if (hit) decreaseCount++;
+            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) { triggered = true; type='decrease'; thresholdHit = globalPercentDecrease + '%'; }
+            else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { triggered = true; type='decrease'; thresholdHit = '$' + Number(globalDollarDecrease).toFixed(2); }
+            if (triggered) decreaseCount++;
         }
-    });
+        if (triggered) {
+            if (!dominantThreshold) { dominantThreshold = thresholdHit; dominantType = type; }
+            if (userCodes.has(code)) {
+                portfolioCount++;
+            } else {
+                nonPortfolioCodes.add(code);
+            }
+        }
+    }
+    // Evaluate user-owned codes (livePrices)
+    Object.entries(livePrices || {}).forEach(([code, lp]) => { if (!lp) return; evaluateMovement(code, lp.live, lp.prevClose); });
+    // Evaluate external (non-portfolio) collected rows from last fetch
+    (globalExternalPriceRows||[]).forEach(r => { if (r && r.code && !userCodes.has(r.code)) evaluateMovement(r.code, r.live, r.prevClose); });
     const total = increaseCount + decreaseCount;
     if (total > 0) {
         const docId = 'GA_SUMMARY';
@@ -5406,6 +5432,8 @@ function evaluateGlobalPriceAlerts() {
             increaseCount,
             decreaseCount,
             totalCount: total,
+            portfolioCount,
+            nonPortfolioCodes: Array.from(nonPortfolioCodes).sort(),
             threshold: dominantThreshold,
             targetHit: true,
             enabled: true,
@@ -5413,7 +5441,7 @@ function evaluateGlobalPriceAlerts() {
             createdAt: window.firestore.serverTimestamp()
         };
         window.firestore.setDoc(alertDocRef, payload, { merge: true })
-            .then(()=> { logDebug('Global Alerts: Summary alert upserted. Total='+ total + ' inc=' + increaseCount + ' dec=' + decreaseCount + ' threshold=' + dominantThreshold); })
+            .then(()=> { logDebug('Global Alerts: Summary upserted. Total='+ total + ' portfolio=' + portfolioCount + ' discover=' + nonPortfolioCodes.size + ' inc=' + increaseCount + ' dec=' + decreaseCount + ' threshold=' + dominantThreshold); })
             .catch(e=> console.error('Global Alerts: summary upsert failed', e));
     }
 }
@@ -8438,37 +8466,57 @@ function showTargetHitDetailsModal() {
     }
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-    // Inject global summary alert if cached
+    // Inject global summary alert (discovery card) if cached
     if (globalAlertSummary && globalAlertSummary.totalCount > 0) {
-        renderGlobalSummaryAlert(globalAlertSummary);
-    }
-
-    function renderGlobalSummaryAlert(data) {
-        if (!data || !targetHitSharesList) return;
+        const data = globalAlertSummary;
         const total = data.totalCount || 0;
-        if (total <= 0) return;
         const inc = data.increaseCount || 0;
         const dec = data.decreaseCount || 0;
         const threshold = data.threshold || '';
+        const portfolioCount = data.portfolioCount || 0;
+        const discoverCount = Array.isArray(data.nonPortfolioCodes) ? data.nonPortfolioCodes.length : 0;
         const container = document.createElement('div');
         container.classList.add('target-hit-item','global-summary-alert');
-        container.setAttribute('role','button');
-        container.tabIndex = 0;
         container.innerHTML = `
             <div class="target-hit-item-grid">
                 <div class="col-left">
-                    <span class="share-name-code neutral">Global Alert Summary</span>
-                    <span class="target-price-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</span>
+                    <span class="share-name-code neutral">Global Movement Summary</span>
+                    <span class="target-price-line">${total} moved ${threshold ? ('≥ ' + threshold) : ''}</span>
                 </div>
                 <div class="col-right">
                     <span class="live-price-display neutral">Up: ${inc} | Down: ${dec}</span>
                 </div>
+            </div>
+            <div class="global-summary-actions">
+                <button class="button tiny" data-action="view-portfolio" ${portfolioCount?'':'disabled'}>View My Shares (${portfolioCount})</button>
+                <button class="button tiny" data-action="discover" ${discoverCount?'':'disabled'}>Discover Others (${discoverCount})</button>
             </div>`;
-        container.addEventListener('click', () => {
-            try { applyGlobalSummaryFilter(); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal); 
-        });
-        container.addEventListener('keydown', (e)=>{ if (e.key==='Enter' || e.key===' ') { e.preventDefault(); container.click(); }});
+        const actions = container.querySelector('.global-summary-actions');
+        if (actions) {
+            actions.addEventListener('click', (e)=>{
+                const btn = e.target.closest('button'); if (!btn) return;
+                const act = btn.getAttribute('data-action');
+                if (act === 'view-portfolio') {
+                    try { applyGlobalSummaryFilter(); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal);
+                } else if (act === 'discover') {
+                    try { openDiscoverModal(data); } catch(e){ console.warn('Discover modal open failed', e); }
+                }
+            });
+        }
         targetHitSharesList.prepend(container);
+    }
+
+    function openDiscoverModal(summaryData) {
+        let modal = document.getElementById('discoverGlobalModal');
+        if (!modal) { console.warn('Discover modal element missing.'); return; }
+        const listEl = modal.querySelector('#discoverGlobalList');
+        if (listEl) {
+            const codes = Array.isArray(summaryData.nonPortfolioCodes) ? summaryData.nonPortfolioCodes : [];
+            if (!codes.length) listEl.innerHTML = '<p class="ghosted-text">No external shares this cycle.</p>';
+            else listEl.innerHTML = '<ul class="discover-code-list">' + codes.map(c=>`<li data-code="${c}"><span class="code">${c}</span></li>`).join('') + '</ul>';
+            // Optional future: clicking a code could initiate add flow or open search
+        }
+        showModal(modal);
     }
 
     const makeItem = (share, isMuted) => {
@@ -8598,6 +8646,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initially hide main app content and header
     if (mainContainer) {
         mainContainer.classList.add('app-hidden');
+    }
+
+    // Discovery modal close binding
+    const discoverModal = document.getElementById('discoverGlobalModal');
+    if (discoverModal && !discoverModal.__boundClose) {
+        discoverModal.__boundClose = true;
+        const cls = discoverModal.querySelector('.close-button');
+        if (cls) cls.addEventListener('click', ()=> hideModal(discoverModal));
+        discoverModal.addEventListener('mousedown', (e)=>{ if (e.target === discoverModal) hideModal(discoverModal); });
     }
     if (appHeader) {
         appHeader.classList.add('app-hidden');
