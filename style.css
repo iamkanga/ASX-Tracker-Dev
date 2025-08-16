@@ -3675,14 +3675,14 @@ table td.live-price-cell.negative-change {
 
 /* Price change text only (no background container / padding) */
 .live-price-display-section .price-change-large {
-    font-size: 0.9em;
+    font-size: 1.8em; /* doubled from 0.9em */
     font-weight: 700;
     white-space: nowrap;
     margin-left: 8px;
     display: inline-block;
-    line-height: 1.1;
+    line-height: 1.05;
     letter-spacing: .25px;
-    padding: 0; /* remove padding to eliminate container feel */
+    padding: 0;
     background:none !important;
     border:none !important;
     box-shadow:none !important;
@@ -3696,10 +3696,13 @@ table td.live-price-cell.negative-change {
 #hamburgerBtn svg, #addShareHeaderBtn svg { width:34px; height:34px; }
 
 /* Modal action icons (generic) */
-.modal-container .icon-btn, .modal-container .close-button, .modal-container .delete-icon, .modal-container .edit-icon, .modal-container .save-icon {
-        font-size: 1.4rem !important;
-        width: 42px;
-        height: 42px;
+/* Modal action icons (generic) - apply to all modals including watchlist modals */
+.modal-container .icon-btn, .modal-container .close-button, .modal-container .delete-icon, .modal-container .edit-icon, .modal-container .save-icon,
+#editWatchlistModal .icon-btn, #editWatchlistModal .close-button, #editWatchlistModal .delete-icon, #editWatchlistModal .edit-icon, #editWatchlistModal .save-icon,
+#watchlistViewModal .icon-btn, #watchlistViewModal .close-button, #watchlistViewModal .delete-icon, #watchlistViewModal .edit-icon, #watchlistViewModal .save-icon {
+    font-size: 1.4rem !important;
+    width: 48px; /* match add/edit share modal larger touch target */
+    height: 48px;
 }
 
 /* Centered single-line login note on mobile */
