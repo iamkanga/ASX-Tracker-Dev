@@ -5671,6 +5671,16 @@ table tbody tr.target-hit-alert, .mobile-card.target-hit-alert { border:4px soli
 .mobile-share-cards.compact-view .mobile-card .card-price-change { text-align: center; width: 100%; }
 /* Preserve movement side borders & target-hit visuals already defined elsewhere */
 
+/* Adjustment: enlarge ASX code ~20% and pin firmly to top-left */
+.mobile-share-cards.compact-view .mobile-card .card-code {
+    font-size: 1.14em !important; /* 0.95em * 1.2 ≈ 1.14 */
+    font-weight: 800; /* Stronger weight for prominence */
+    width: auto !important; /* Release full-width block so grid start alignment is exact */
+    text-align: left !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
 
 
 /* Keep the target hit alert styling on the card itself */
