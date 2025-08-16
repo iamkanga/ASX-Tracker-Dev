@@ -3697,6 +3697,12 @@ table td.live-price-cell.negative-change {
 .mobile-share-cards.compact-view .mobile-card .live-price-main-row { margin-top:32px; justify-content:center; }
 /* Midpoint font size for change (between 0.9em original and 1.8em doubled => 1.35em) */
 .mobile-share-cards.compact-view .mobile-card .price-change-large { font-size:1.35em !important; margin-left:0; display:block; width:100%; text-align:center; }
+/* Refined compact card layout: center live price & change; keep code & chevron pinned */
+.mobile-share-cards.compact-view .mobile-card .live-price-display-section { position:relative; display:flex; flex-direction:column; align-items:center; padding-top:4px; }
+.mobile-share-cards.compact-view .mobile-card .live-price-display-section h3 { position:absolute; top:6px; left:8px; margin:0; font-size:1.05em; }
+.mobile-share-cards.compact-view .mobile-card .live-price-display-section .change-chevron { position:absolute; top:6px; right:8px; }
+.mobile-share-cards.compact-view .mobile-card .live-price-display-section .live-price-main-row { margin-top:30px; justify-content:center; width:100%; }
+.mobile-share-cards.compact-view .mobile-card .live-price-display-section .price-change-large { margin-top:2px; margin-left:0 !important; }
 /* Ensure code & price color neutrality retained */
 .mobile-share-cards.compact-view .mobile-card .live-price-large { text-align:center; width:100%; }
 
