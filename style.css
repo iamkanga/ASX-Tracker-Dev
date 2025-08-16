@@ -39,6 +39,22 @@
 @media (hover:hover) {
     .segmented-toggle .toggle-segment:hover { background: var(--hover-bg,#f5f7fa); }
 }
+    
+    #shareFormSection .modal-action-icon, #shareFormSection .close-button,
+    #shareDetailModal .modal-action-icon, #shareDetailModal .close-button,
+    #addWatchlistModal .modal-action-icon, #addWatchlistModal .modal-header-with-icon .close-button,
+    #manageWatchlistModal .modal-action-icon, #manageWatchlistModal .modal-header-with-icon .close-button,
+    #watchlistViewModal .modal-action-icon, #watchlistViewModal .close-button,
+    #alertsModal .modal-action-icon, #alertsModal .close-button,
+    .modal-container .modal-action-icon, .modal-container .close-button {
+        font-size:2rem !important;
+        width:56px !important;
+        height:56px !important;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        padding:0 !important;
+    }
 
 /* Utility: hide visually but keep accessible to screen readers */
 .visually-hidden { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
@@ -366,12 +382,12 @@ body.dark-theme .mobile-share-cards.compact-view .target-hit-alert {
 body.dark-theme {
     /* Dark Theme Variables */
     --background-color: #1a1a1a; /* Very dark gray/almost black */
-    --text-color: #e0e0e0; /* Light gray for text */
+    --text-color: var(--accent-color); /* Accent for improved readability */
     --header-bg: #282828; /* Darker gray for header */
     --card-bg: #333333; /* Medium dark gray for cards */
     --border-color: #555555; /* Darker gray for borders */
     --button-bg: #555555; /* Gray button */
-    --button-text: #ffffff; /* White text on buttons */
+    --button-text: var(--accent-color); /* Accent on buttons */
     --button-hover-bg: #6a6a6a; /* Lighter gray on hover */
     --input-bg: #444444; /* Dark gray for input backgrounds */
     --input-border: #777777; /* Gray for input borders */
@@ -396,7 +412,8 @@ body.dark-theme {
     --menu-button-bg: transparent;
     --menu-button-hover-bg: #444444; /* Dark gray for menu button hover */
     --placeholder-text: #aaaaaa;
-    --ghosted-text: #888888; /* Medium gray for ghosted text */
+    --ghosted-text: #888888; /* Keep ghosted text subtle */
+    --label-color: var(--accent-color); /* Accent for data labels */
     --danger-button-bg: var(--brand-red);
     --danger-button-hover-bg: var(--brand-red);
     --icon-action-color: var(--accent-color); /* Coffee accent in dark as well */

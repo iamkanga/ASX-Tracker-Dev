@@ -487,6 +487,13 @@ try {
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 let currentMobileViewMode = 'default';
+// Early load persisted mobile view mode so first render after auth respects it
+try {
+    const __earlyMode = localStorage.getItem('currentMobileViewMode');
+    if (__earlyMode === 'compact' || __earlyMode === 'default') {
+        currentMobileViewMode = __earlyMode;
+    }
+} catch(_) {}
 try {
     const savedViewMode = localStorage.getItem('mobileViewMode');
     if (savedViewMode === 'compact') {
@@ -6671,25 +6678,7 @@ async function initializeAppLogic() {
         }
     } catch(e){ console.warn('Version badge insert failed:', e); }
 
-    // NEW: Load saved mobile view mode preference
-    const savedMobileViewMode = (function(){ try { return localStorage.getItem('currentMobileViewMode'); } catch(_) { return null; } })();
-    if (savedMobileViewMode && (savedMobileViewMode === 'default' || savedMobileViewMode === 'compact')) {
-        currentMobileViewMode = savedMobileViewMode;
-        if (mobileShareCardsContainer) { // Check if element exists before adding class
-                if (currentMobileViewMode === 'compact') {
-                mobileShareCardsContainer.classList.add('compact-view');
-            } else {
-                mobileShareCardsContainer.classList.remove('compact-view');
-            }
-        }
-        logDebug('View Mode: Loaded saved preference: ' + currentMobileViewMode + ' view.');
-    } else {
-        logDebug('View Mode: No saved mobile view preference, defaulting to \'default\'.');
-        currentMobileViewMode = 'default'; // Ensure it's explicitly set if nothing saved
-        if (mobileShareCardsContainer) { // Check if element exists before removing class
-             mobileShareCardsContainer.classList.remove('compact-view'); // Corrected class name
-        }
-    }
+    // (Removed mid-pipeline mobile view preference load; now handled early + during auth apply)
 
 
     // Share Name Input to uppercase + live suggestions
@@ -8420,6 +8409,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
+                // Apply persisted view mode (compact/default) before any watchlist render
+                try {
+                    if (mobileShareCardsContainer) {
+                        if (currentMobileViewMode === 'compact') {
+                            mobileShareCardsContainer.classList.add('compact-view');
+                        } else {
+                            mobileShareCardsContainer.classList.remove('compact-view');
+                        }
+                    }
+                    logDebug('View Mode: Applied persisted mode during auth flow: ' + currentMobileViewMode);
+                } catch(e) { console.warn('View Mode: Failed to apply persisted mode during auth', e); }
+
                 // After essential data loaded, restore last view (portfolio or watchlist) unless user already interacted
                 try {
                     const lastView = localStorage.getItem('lastSelectedView');
