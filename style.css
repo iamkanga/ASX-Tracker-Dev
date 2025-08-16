@@ -5598,6 +5598,10 @@ body.dark-theme .alert-item {
 
 .mobile-share-cards.compact-view .mobile-card .card-price-change { font-size:0.8em; font-weight:700; }
 
+/* Added: extra breathing space in compact cards */
+.mobile-share-cards.compact-view .mobile-card .card-live-price { margin-top:6px !important; }
+.mobile-share-cards.compact-view .mobile-card .card-price-change { margin-top:4px !important; margin-bottom:6px !important; }
+
 /* Remove any internal container visuals inside mobile cards */
 /* Defensive: if any legacy wrapper remains, strip visuals */
 .mobile-card .live-price-display-section, .mobile-card .live-price-display-section > div { background:none !important; border:none !important; box-shadow:none !important; padding:0 !important; margin:0 !important; }
