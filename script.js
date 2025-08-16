@@ -486,22 +486,7 @@ try {
 } catch(e) {}
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
-let currentMobileViewMode = 'default';
-// Early load persisted mobile view mode so first render after auth respects it
-try {
-    const __earlyMode = localStorage.getItem('currentMobileViewMode');
-    if (__earlyMode === 'compact' || __earlyMode === 'default') {
-        currentMobileViewMode = __earlyMode;
-    }
-} catch(_) {}
-try {
-    const savedViewMode = localStorage.getItem('mobileViewMode');
-    if (savedViewMode === 'compact') {
-        currentMobileViewMode = 'compact';
-    }
-} catch (e) {
-    console.warn('Could not load mobile view mode from localStorage', e);
-} 
+let currentMobileViewMode = 'default'; // Will be loaded post-auth
 
 // Helper to ensure compact mode class is always applied
 function applyCompactViewMode() {
@@ -8403,6 +8388,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 // This ensures the initial view is correctly sorted by percentage change if selected.
                 await loadUserWatchlistsAndSettings();
                 try { ensureTitleStructure(); } catch(e) {}
+                // Load persisted compact view preference AFTER user data is ready
+                try {
+                    const storedMode = localStorage.getItem('currentMobileViewMode');
+                    currentMobileViewMode = (storedMode === 'compact' || storedMode === 'default') ? storedMode : 'default';
+                } catch(e) { console.warn('View Mode: Failed to load persisted mode post-auth', e); currentMobileViewMode = 'default'; }
+                // Apply class now so first rendered watchlist/cards adopt correct layout
+                if (mobileShareCardsContainer) {
+                    if (currentMobileViewMode === 'compact') mobileShareCardsContainer.classList.add('compact-view');
+                    else mobileShareCardsContainer.classList.remove('compact-view');
+                }
+                logDebug('View Mode: Applied persisted mode post-auth (pre-initial render): ' + currentMobileViewMode);
                 // Start alerts listener (enabled alerts only; muted excluded from notifications)
                 await loadTriggeredAlertsListener();
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
@@ -8413,17 +8409,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
-                // Apply persisted view mode (compact/default) before any watchlist render
-                try {
-                    if (mobileShareCardsContainer) {
-                        if (currentMobileViewMode === 'compact') {
-                            mobileShareCardsContainer.classList.add('compact-view');
-                        } else {
-                            mobileShareCardsContainer.classList.remove('compact-view');
-                        }
-                    }
-                    logDebug('View Mode: Applied persisted mode during auth flow: ' + currentMobileViewMode);
-                } catch(e) { console.warn('View Mode: Failed to apply persisted mode during auth', e); }
 
                 // After essential data loaded, restore last view (portfolio or watchlist) unless user already interacted
                 try {
