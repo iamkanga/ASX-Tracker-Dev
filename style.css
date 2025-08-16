@@ -57,6 +57,15 @@
         padding:0 !important;
     }
 
+/* Mobile-only refinement: reduce Add/Edit Share modal icons to match other modal visual scale on small screens */
+@media (max-width: 640px) {
+    #shareFormSection .modal-action-icon, #shareFormSection .close-button {
+        font-size:1.55rem !important;
+        width:46px !important;
+        height:46px !important;
+    }
+}
+
 /* Utility: hide visually but keep accessible to screen readers */
 .visually-hidden { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 /* Helper function for source control in style.css (for documentation only, not executable in CSS) */
