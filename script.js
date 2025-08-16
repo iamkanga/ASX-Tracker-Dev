@@ -8491,21 +8491,27 @@ function showTargetHitDetailsModal() {
         const container = document.createElement('div');
         container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
-    const metaBits = [`<span class=\"up\">Up ${inc}</span>`, `<span class=\"down\">Down ${dec}</span>`];
-    if (minText) metaBits.push(`<span>${minText}</span>`);
+        const metaBits = [
+            `<span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span>`,
+            `<span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span>`
+        ];
+        if (minText) metaBits.push(`<span>${minText}</span>`);
         const discoverText = discoverCount ? `Discover ${discoverCount}` : 'Discover';
         const viewText = portfolioCount ? `View ${portfolioCount}` : 'View';
+        // Separate lines for portfolio and others counts
+        const othersLine = discoverCount ? `<div class=\"global-summary-detail others-line\">${discoverCount} others</div>` : '';
         container.innerHTML = `
-            <div class="global-summary-inner">
-                <div class="global-summary-title">Global Alert</div>
-                <div class="global-summary-detail">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
-                <div class="global-summary-detail">${portfolioCount} from your portfolio${discoverCount?` · ${discoverCount} others`:''}</div>
-                <div class="global-summary-meta">${metaBits.join('')}</div>
+            <div class=\"global-summary-inner\">
+                <div class=\"global-summary-title\">Maybe</div>
+                <div class=\"global-summary-detail total-line\">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
+                <div class=\"global-summary-detail portfolio-line\">${portfolioCount} from your portfolio</div>
+                ${othersLine}
+                <div class=\"global-summary-meta\">${metaBits.join('')}</div>
             </div>
-            <div class="global-summary-actions">
-                <button data-action="view-portfolio" ${portfolioCount?'':'disabled'}>${viewText}</button>
-                <button data-action="discover" ${discoverCount?'':'disabled'}>${discoverText}</button>
-                <button data-action="mute-global" title="${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}">${enabled ? 'Mute' : 'Unmute'}</button>
+            <div class=\"global-summary-actions\">
+                <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverText}</button>
+                <button data-action=\"view-portfolio\" ${portfolioCount?'':'disabled'}>${viewText}</button>
+                <button data-action=\"mute-global\" title=\"${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}\">${enabled ? 'Mute' : 'Unmute'}</button>
             </div>`;
         const actions = container.querySelector('.global-summary-actions');
         if (actions) {
