@@ -3483,7 +3483,9 @@ function showShareDetails() {
 
     // Fool.com.au Link
     if (modalFoolLink && share.shareName) {
-        modalFoolLink.href = `https://www.fool.com.au/quote/${share.shareName}/`;
+        // Updated Motley Fool URL pattern (old: /quote/CODE/ -> new: /tickers/asx-code/ )
+        const foolCode = String(share.shareName).trim().toLowerCase();
+        modalFoolLink.href = `https://www.fool.com.au/tickers/asx-${foolCode}/`;
         modalFoolLink.innerHTML = 'View on Fool.com.au <i class="fas fa-external-link-alt"></i>';
         modalFoolLink.style.display = 'inline-flex';
         setIconDisabled(modalFoolLink, false);
@@ -4548,7 +4550,11 @@ async function displayStockDetailsInSearchModal(asxCode) {
 
         if (searchModalNewsLink) searchModalNewsLink.href = `https://news.google.com/search?q=${encodedAsxCode}%20ASX&hl=en-AU&gl=AU&ceid=AU%3Aen`;
         if (searchModalMarketIndexLink) searchModalMarketIndexLink.href = `https://www.marketindex.com.au/asx/${asxCode.toLowerCase()}`;
-        if (searchModalFoolLink) searchModalFoolLink.href = `https://www.fool.com.au/quote/${asxCode}/`; // Assuming Fool URL structure
+        if (searchModalFoolLink) {
+            // Updated Motley Fool URL pattern (old: /quote/CODE/ -> new: /tickers/asx-code/ )
+            const foolSearchCode = String(asxCode).trim().toLowerCase();
+            searchModalFoolLink.href = `https://www.fool.com.au/tickers/asx-${foolSearchCode}/`;
+        }
         if (searchModalListcorpLink) searchModalListcorpLink.href = `https://www.listcorp.com/asx/${asxCode.toLowerCase()}`;
         if (searchModalCommSecLink) searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
     if (searchModalGoogleFinanceLink) searchModalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${asxCode.toUpperCase()}:ASX`;
