@@ -625,6 +625,27 @@ const shareRatingSelect = document.getElementById('shareRating');
 const commentsFormContainer = document.getElementById('dynamicCommentsArea');
 const modalStarRating = document.getElementById('modalStarRating');
 
+// UX improvement: clear default 0 / 0.0 values on focus for numeric inputs (behave like true placeholders)
+const zeroClearInputs = [currentPriceInput, targetPriceInput, dividendAmountInput, frankingCreditsInput].filter(Boolean);
+zeroClearInputs.forEach(inp => {
+    inp.addEventListener('focus', () => {
+        const v = inp.value.trim();
+        if (v === '0' || v === '0.0' || v === '0.00') {
+            inp.dataset.wasZeroPlaceholder = '1';
+            inp.value = '';
+        } else {
+            delete inp.dataset.wasZeroPlaceholder;
+        }
+    });
+    inp.addEventListener('blur', () => {
+        // If user leaves it empty, restore a clean 0 (or leave blank?) — choose to leave blank to avoid confusion
+        if (inp.dataset.wasZeroPlaceholder && inp.value.trim() === '') {
+            inp.value = ''; // blank so validation can decide; remove flag
+            delete inp.dataset.wasZeroPlaceholder;
+        }
+    });
+});
+
 // --- ASX Code Toggle Button Functionality ---
 // Persisted ASX code buttons expanded state
 let asxButtonsExpanded = false;
@@ -1921,7 +1942,7 @@ function addShareToMobileCards(share) {
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
             </div>
         </div>
-    <p class="data-row"><span class="label-text">Reference Price:</span><span class="data-value">${formatMoney(Number(share.currentPrice), { hideZero: true })}</span></p>
+    <p class="data-row"><span class="label-text">Entry Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.currentPrice)}</span></p>
     <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.targetPrice)}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
@@ -8195,7 +8216,7 @@ function showTargetHitDetailsModal() {
             <div class="target-hit-item-grid">
                 <div class="col-left">
                     <span class="share-name-code ${priceClass}">${share.shareName}</span>
-                    <span class="target-price-line">Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? formatAdaptivePrice(Number(targetPrice)) : 'N/A'}</strong></span>
+                    <span class="target-price-line">Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? Number(targetPrice).toFixed(2) : 'N/A'}</strong></span>
                 </div>
                 <div class="col-right">
                     <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
