@@ -8490,20 +8490,22 @@ function showTargetHitDetailsModal() {
         const enabled = (data.enabled !== false);
         const container = document.createElement('div');
         container.classList.add('target-hit-item','global-summary-alert');
-    const minLine = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `<div class="line3 ghosted-text">(Ignoring prices below $${Number(data.appliedMinimumPrice).toFixed(2)})</div>` : '';
+        const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
+        const metaBits = [`Up ${inc}`, `Down ${dec}`];
+        if (minText) metaBits.push(minText);
+        const discoverText = discoverCount ? `Discover ${discoverCount}` : 'Discover';
+        const viewText = portfolioCount ? `View ${portfolioCount}` : 'View';
         container.innerHTML = `
-            <div class="global-summary-block">
-                <div class="summary-lines">
-                    <div class="line1">Global Alert: ${total} shares moved ${threshold ? ('> ' + threshold) : ''}</div>
-                    <div class="line2">(Including ${portfolioCount} from your portfolio)</div>
-            ${minLine}
-                </div>
-                <div class="counts">Up: ${inc} | Down: ${dec}</div>
+            <div class="global-summary-inner">
+                <div class="global-summary-title">Global Alert</div>
+                <div class="global-summary-detail">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
+                <div class="global-summary-detail">${portfolioCount} from your portfolio${discoverCount?` · ${discoverCount} others`:''}</div>
+                <div class="global-summary-meta">${metaBits.map(m=>`<span>${m}</span>`).join('')}</div>
             </div>
             <div class="global-summary-actions">
-                <button class="button tiny" data-action="view-portfolio" ${portfolioCount?'':'disabled'}>View My Shares (${portfolioCount})</button>
-                <button class="button tiny" data-action="discover" ${discoverCount?'':'disabled'}>Discover Others (${discoverCount})</button>
-                <button class="toggle-alert-btn tiny-toggle" data-action="mute-global" title="${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}">${enabled ? 'Mute' : 'Unmute'}</button>
+                <button data-action="view-portfolio" ${portfolioCount?'':'disabled'}>${viewText}</button>
+                <button data-action="discover" ${discoverCount?'':'disabled'}>${discoverText}</button>
+                <button data-action="mute-global" title="${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}">${enabled ? 'Mute' : 'Unmute'}</button>
             </div>`;
         const actions = container.querySelector('.global-summary-actions');
         if (actions) {
