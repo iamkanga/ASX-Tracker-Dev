@@ -5349,6 +5349,8 @@ body.dark-theme .target-hit-details-modal .modal-content {
     flex-direction: column;
     gap: 5px;
 }
+.target-hit-item { cursor:pointer; transition:background-color .15s ease, border-color .15s ease; }
+.target-hit-item:hover { background-color: var(--card-bg-hover, rgba(255,255,255,0.08)); }
 
 .target-hit-item-header {
     display:flex;

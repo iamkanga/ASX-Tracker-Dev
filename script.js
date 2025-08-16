@@ -8580,7 +8580,14 @@ function showTargetHitDetailsModal() {
             // Click-to-populate: trigger snapshot fetch/populate if shareNameInput present
             const code = item.dataset.asxCode;
             if (code && typeof updateAddFormLiveSnapshot === 'function') {
-                try { updateAddFormLiveSnapshot(code); } catch(err) { if (DEBUG_MODE) console.warn('Click-to-populate snapshot failed', err); }
+                try {
+                    if (typeof shareNameInput !== 'undefined' && shareNameInput) {
+                        // Populate input BEFORE snapshot so stale check passes
+                        shareNameInput.value = code;
+                    }
+                    if (DEBUG_MODE) console.log('[ClickPopulate] Triggering snapshot fetch for', code);
+                    updateAddFormLiveSnapshot(code);
+                } catch(err) { if (DEBUG_MODE) console.warn('Click-to-populate snapshot failed', err); }
             }
         });
         // Mute/unmute button
