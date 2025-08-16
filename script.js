@@ -5138,14 +5138,8 @@ function updateTargetHitBanner() {
         return;
     }
 
-    // Determine if any triggered shares belong to the currently selected watchlist(s)
-    const currentViewHasTargetHits = (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []).some(share => {
-        if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) return true;
-        if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] !== CASH_BANK_WATCHLIST_ID) {
-            return shareBelongsTo(share, currentSelectedWatchlistIds[0]);
-        }
-        return false;
-    });
+    // Banner should reflect global triggered alerts irrespective of current watchlist.
+    const currentViewHasTargetHits = (Array.isArray(sharesAtTargetPrice) && sharesAtTargetPrice.length > 0) || (Array.isArray(sharesAtTargetPriceMuted) && sharesAtTargetPriceMuted.length > 0);
 
     // Count should represent all triggered alerts (enabled + muted) so user sees total notifications available
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
@@ -5190,7 +5184,7 @@ function updateTargetHitBanner() {
     try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch(e) {}
 
     // Highlight dropdowns if the current view has target hits
-    const watchlistContainer = document.querySelector('.watchlist-toolbar') || watchlistSelect.parentElement;
+    const watchlistContainer = document.querySelector('.watchlist-toolbar') || (watchlistSelect ? watchlistSelect.closest('.toolbar, .controls, header, .watchlist-controls') : null) || watchlistSelect?.parentElement;
     if (currentViewHasTargetHits && !targetHitIconDismissed) {
         if (watchlistContainer) watchlistContainer.classList.add('target-hit-border');
         watchlistSelect.classList.remove('target-hit-border');
@@ -8283,20 +8277,8 @@ function showTargetHitDetailsModal() {
             toggleBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 try {
-                    // Optimistic: move item to other section immediately
-                    const enabledAfter = await toggleAlertEnabled(share.id);
-                    // enabledAfter === true means now active (unmuted)
-                    // Rebuild lists optimistically using current arrays then let listener correct if needed
-                    if (enabledAfter) {
-                        // Move from muted to active
-                        sharesAtTargetPrice = dedupeSharesById([...sharesAtTargetPrice, share]);
-                        sharesAtTargetPriceMuted = sharesAtTargetPriceMuted.filter(s => s.id !== share.id);
-                    } else {
-                        sharesAtTargetPriceMuted = dedupeSharesById([...sharesAtTargetPriceMuted, share]);
-                        sharesAtTargetPrice = sharesAtTargetPrice.filter(s => s.id !== share.id);
-                    }
-                    // Re-render minimal (avoid flicker)
-                    showTargetHitDetailsModal();
+                    await toggleAlertEnabled(share.id); // internal handles optimistic update + banner refresh
+                    showTargetHitDetailsModal(); // rebuild list to reflect new grouping/button text
                 } catch(err) {
                     console.warn('Toggle alert failed', err);
                 }

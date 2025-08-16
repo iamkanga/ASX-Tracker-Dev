@@ -252,6 +252,9 @@ function makeFilesAvailableToSourceControlCSS() {
         animation: targetHitPulse 2.4s ease-in-out infinite;
 }
 
+/* Ensure contained elements don't overlap rounded pulse */
+.target-hit-border select, .target-hit-border button { position: relative; z-index: 1; }
+
 @keyframes targetHitPulse {
     0% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--target-hit-border-color) 35%, transparent); }
     50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--target-hit-border-color) 15%, transparent); }
