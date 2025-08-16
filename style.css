@@ -308,7 +308,20 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 #targetHitIconBtn.has-alerts {
     animation: targetHitPulseBorder 2s ease-in-out infinite;
     border-radius: 50%; /* Ensure the pulse follows the button's shape */
+        box-shadow: 0 0 0 0 rgba(164,147,147,0.6);
+        animation: targetHitPulseBorder 2.2s ease-in-out infinite;
 }
+
+@keyframes targetHitPulseBorder {
+    0% { box-shadow:0 0 0 0 rgba(164,147,147,0.6); }
+    70% { box-shadow:0 0 0 8px rgba(164,147,147,0); }
+    100% { box-shadow:0 0 0 0 rgba(164,147,147,0); }
+}
+
+/* Global summary alert item styling */
+.global-summary-alert.target-hit-item { background: rgba(164,147,147,0.08); border:1px solid #a49393; border-radius:8px; }
+.global-summary-alert.target-hit-item:hover { background: rgba(164,147,147,0.15); }
+.global-summary-alert .share-name-code { font-weight:600; }
 
 /* Global Alerts Modal */
 .global-alerts-modal { max-width:420px; }

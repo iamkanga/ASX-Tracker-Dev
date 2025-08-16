@@ -495,6 +495,8 @@ let unsubscribeAlerts = null; // NEW: Holds the unsubscribe function for Firesto
 let sharesAtTargetPrice = [];
 // NEW: Also track triggered but muted alerts so users can unmute from the hub
 let sharesAtTargetPriceMuted = [];
+// Global alert summary cache
+let globalAlertSummary = null; // { increaseCount, decreaseCount, totalCount, threshold }
 // NEW: Remember last shown alert count to avoid icon flicker on reload while prices are loading (persisted)
 let lastKnownTargetCount = 0;
 try {
@@ -5175,7 +5177,8 @@ function updateTargetHitBanner() {
     }
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
-    const displayCount = enabledCount;
+    const globalSummaryCount = globalAlertSummary && globalAlertSummary.totalCount ? globalAlertSummary.totalCount : 0;
+    const displayCount = enabledCount + globalSummaryCount;
     try {
         console.log('[Diag][updateTargetHitBanner] enabled:', enabledCount, 'displayCount:', displayCount, 'enabled IDs:', (sharesAtTargetPrice||[]).map(s=>s.id));
     } catch(_) {}
@@ -5238,6 +5241,64 @@ async function loadTriggeredAlertsListener() {
         }, err => console.error('Alerts: triggered alerts listener error', err));
         logDebug('Alerts: Triggered alerts listener active (enabled-state driven).');
     } catch (e) { console.error('Alerts: failed to init triggered alerts listener', e); }
+}
+
+// Real-time listener for global summary alert document
+let unsubscribeGlobalSummary = null;
+function startGlobalSummaryListener() {
+    if (unsubscribeGlobalSummary) { try { unsubscribeGlobalSummary(); } catch(_){} unsubscribeGlobalSummary = null; }
+    if (!db || !currentUserId || !window.firestore) return;
+    try {
+        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        const summaryRef = window.firestore.doc(alertsCol, 'GA_SUMMARY');
+        unsubscribeGlobalSummary = window.firestore.onSnapshot(summaryRef, (snap) => {
+            if (snap && snap.exists()) {
+                globalAlertSummary = snap.data() || null;
+            } else {
+                globalAlertSummary = null;
+            }
+            try { updateTargetHitBanner(); } catch(e) {}
+        }, err => console.error('Global Alerts: summary listener error', err));
+        logDebug('Global Alerts: Summary listener active.');
+    } catch(e) { console.error('Global Alerts: failed to start summary listener', e); }
+}
+
+function stopGlobalSummaryListener() {
+    if (unsubscribeGlobalSummary) { try { unsubscribeGlobalSummary(); } catch(_){} unsubscribeGlobalSummary = null; }
+}
+
+// Apply a temporary filter to main watchlist showing only shares that match the last summary counts
+function applyGlobalSummaryFilter() {
+    if (!globalAlertSummary || !livePrices) return;
+    const threshold = globalAlertSummary.threshold; // e.g. '5%' or '$0.20'
+    if (!threshold) return;
+    const isPercent = threshold.endsWith('%');
+    const numeric = parseFloat(threshold.replace(/[%$]/g,''));
+    if (isNaN(numeric)) return;
+    // Build list of codes meeting threshold now
+    const filteredCodes = Object.entries(livePrices).filter(([code, lp]) => {
+        if (!lp || lp.live == null || lp.prevClose == null) return false;
+        const change = lp.live - lp.prevClose;
+        const absChange = Math.abs(change);
+        const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
+        if (isPercent) return pct >= numeric;
+        else return absChange >= numeric;
+    }).map(([code]) => code);
+    if (!filteredCodes.length) { showCustomAlert('No shares currently meet the summary threshold.'); return; }
+    // Filter UI: hide all cards/rows not in filteredCodes
+    try {
+        document.querySelectorAll('#shareTable tbody tr').forEach(tr => {
+            const codeEl = tr.querySelector('.share-code-display');
+            const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
+            tr.style.display = (code && filteredCodes.includes(code)) ? '' : 'none';
+        });
+        document.querySelectorAll('.mobile-share-cards .mobile-card').forEach(card => {
+            const codeEl = card.querySelector('h3');
+            const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
+            card.style.display = (code && filteredCodes.includes(code)) ? '' : 'none';
+        });
+        showCustomAlert('Filtered to ' + filteredCodes.length + ' global alert matches');
+    } catch(e){ console.warn('Global filter UI error', e); }
 }
 
 // NEW: Helper to enable/disable a specific alert for a share
@@ -8377,20 +8438,10 @@ function showTargetHitDetailsModal() {
     }
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-    // Inject global summary alert if exists in alertsEnabledMap (we need to query DOM or maintain separate state)
-    // Simpler approach: fetch the GA_SUMMARY doc from Firestore once when opening (non-blocking)
-    try {
-        if (db && window.firestore && currentUserId) {
-            const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-            const summaryRef = window.firestore.doc(alertsCol, 'GA_SUMMARY');
-            window.firestore.getDoc(summaryRef).then(snap => {
-                if (snap && snap.exists()) {
-                    const data = snap.data() || {};
-                    renderGlobalSummaryAlert(data);
-                }
-            }).catch(()=>{});
-        }
-    } catch(_) {}
+    // Inject global summary alert if cached
+    if (globalAlertSummary && globalAlertSummary.totalCount > 0) {
+        renderGlobalSummaryAlert(globalAlertSummary);
+    }
 
     function renderGlobalSummaryAlert(data) {
         if (!data || !targetHitSharesList) return;
@@ -8400,12 +8451,23 @@ function showTargetHitDetailsModal() {
         const dec = data.decreaseCount || 0;
         const threshold = data.threshold || '';
         const container = document.createElement('div');
-        container.classList.add('global-summary-alert');
+        container.classList.add('target-hit-item','global-summary-alert');
+        container.setAttribute('role','button');
+        container.tabIndex = 0;
         container.innerHTML = `
-            <div class="global-summary-line">
-                <strong>Global Alert:</strong> ${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}
-                <span class="breakdown">(Up: ${inc} | Down: ${dec})</span>
+            <div class="target-hit-item-grid">
+                <div class="col-left">
+                    <span class="share-name-code neutral">Global Alert Summary</span>
+                    <span class="target-price-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</span>
+                </div>
+                <div class="col-right">
+                    <span class="live-price-display neutral">Up: ${inc} | Down: ${dec}</span>
+                </div>
             </div>`;
+        container.addEventListener('click', () => {
+            try { applyGlobalSummaryFilter(); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal); 
+        });
+        container.addEventListener('keydown', (e)=>{ if (e.key==='Enter' || e.key===' ') { e.preventDefault(); container.click(); }});
         targetHitSharesList.prepend(container);
     }
 
@@ -8616,6 +8678,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 logDebug('View Mode: Applied persisted mode post-auth (pre-initial render): ' + currentMobileViewMode);
                 // Start alerts listener (enabled alerts only; muted excluded from notifications)
                 await loadTriggeredAlertsListener();
+                startGlobalSummaryListener();
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
                 await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
@@ -8679,6 +8742,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     unsubscribeAlerts = null;
                     logDebug('Firestore Listener: Unsubscribed from alerts listener on logout.');
                 }
+                stopGlobalSummaryListener();
                 stopLivePriceUpdates();
                 
                 window._userAuthenticated = false; // Mark user as not authenticated
