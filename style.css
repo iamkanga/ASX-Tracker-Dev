@@ -3688,6 +3688,18 @@ table td.live-price-cell.negative-change {
     box-shadow:none !important;
 }
 
+/* === Compact View Specific Layout & Sizing Overrides === */
+/* Position code top-left and chevron top-right */
+.mobile-share-cards.compact-view .mobile-card { position:relative; }
+.mobile-share-cards.compact-view .mobile-card h3 { position:absolute; top:6px; left:8px; margin:0; }
+.mobile-share-cards.compact-view .mobile-card .change-chevron { position:absolute; top:6px; right:8px; font-size:1.1em; }
+/* Center live price with spacing below the top row */
+.mobile-share-cards.compact-view .mobile-card .live-price-main-row { margin-top:32px; justify-content:center; }
+/* Midpoint font size for change (between 0.9em original and 1.8em doubled => 1.35em) */
+.mobile-share-cards.compact-view .mobile-card .price-change-large { font-size:1.35em !important; margin-left:0; display:block; width:100%; text-align:center; }
+/* Ensure code & price color neutrality retained */
+.mobile-share-cards.compact-view .mobile-card .live-price-large { text-align:center; width:100%; }
+
 /* Enlarged & flush header icons */
 #hamburgerBtn, #addShareHeaderBtn { font-size:2.05rem; width:52px; height:52px; display:inline-flex; align-items:center; justify-content:center; padding:0; margin:0; }
 #addShareHeaderBtn i { opacity:1 !important; color:var(--accent-color,#a49393) !important; filter:none !important; }
