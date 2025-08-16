@@ -5314,7 +5314,7 @@ function toggleMobileViewMode() {
     }
 
     currentMobileViewMode = (currentMobileViewMode === 'default') ? 'compact' : 'default';
-    localStorage.setItem('mobileViewMode', currentMobileViewMode); // Save preference
+    try { localStorage.setItem('currentMobileViewMode', currentMobileViewMode); } catch(_) {}
 
     if (currentMobileViewMode === 'compact') {
         mobileShareCardsContainer.classList.add('compact-view');
@@ -6665,11 +6665,11 @@ async function initializeAppLogic() {
     } catch(e){ console.warn('Version badge insert failed:', e); }
 
     // NEW: Load saved mobile view mode preference
-    const savedMobileViewMode = localStorage.getItem('currentMobileViewMode');
+    const savedMobileViewMode = (function(){ try { return localStorage.getItem('currentMobileViewMode'); } catch(_) { return null; } })();
     if (savedMobileViewMode && (savedMobileViewMode === 'default' || savedMobileViewMode === 'compact')) {
         currentMobileViewMode = savedMobileViewMode;
         if (mobileShareCardsContainer) { // Check if element exists before adding class
-            if (currentMobileViewMode === 'compact') {
+                if (currentMobileViewMode === 'compact') {
                 mobileShareCardsContainer.classList.add('compact-view');
             } else {
                 mobileShareCardsContainer.classList.remove('compact-view');
@@ -7278,6 +7278,8 @@ async function initializeAppLogic() {
                 // Visual feedback
                 if (splashKangarooIcon) splashKangarooIcon.classList.add('pulsing');
                 splashSignInBtn.disabled = true;
+                const btnSpan = splashSignInBtn.querySelector('span');
+                if (btnSpan) { btnSpan.textContent = 'Signing in…'; }
                 // Always create a fresh provider per attempt to avoid stale customParameters
                 const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
                 if (!provider) {
@@ -7301,7 +7303,10 @@ async function initializeAppLogic() {
                 console.error('Auth: Google Sign-In failed from splash screen:', { code: error.code, message: error.message });
                 showCustomAlert('Google Sign-In failed: ' + error.message);
                 splashSignInInProgress = false;
+                splashSignInInProgress = false;
                 splashSignInBtn.disabled = false;
+                const btnSpanReset = splashSignInBtn.querySelector('span');
+                if (btnSpanReset) { btnSpanReset.textContent = 'Sign in with Google'; }
                 if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
             }
         });
