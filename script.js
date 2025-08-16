@@ -1114,14 +1114,6 @@ async function fetchLivePrices(opts = {}) {
             if (!codeRaw) return; // no code
             const code = String(codeRaw).toUpperCase().trim();
             if (!code) return;
-            if (needed && !needed.has(code)) {
-                // Keep a lean record for discovery if we have sufficient data for threshold evaluation
-                if (liveParsed !== null && prevParsed !== null) {
-                    globalExternalPriceRows.push({ code, live: liveParsed, prevClose: prevParsed });
-                }
-                filtered++; return;
-            }
-
             const liveParsed = numOrNull(
                 item.LivePrice || item['Live Price'] || item.live || item.price ||
                 item.Last || item['Last Price'] || item.LastPrice || item['Last Trade'] || item.LastTrade
@@ -1130,6 +1122,13 @@ async function fetchLivePrices(opts = {}) {
                 item.PrevClose || item['Prev Close'] || item.previous || item.prev || item.prevClose ||
                 item['Previous Close'] || item.Close || item['Last Close']
             );
+            if (needed && !needed.has(code)) {
+                // Keep a lean record for discovery if we have sufficient data for threshold evaluation
+                if (liveParsed !== null && prevParsed !== null) {
+                    globalExternalPriceRows.push({ code, live: liveParsed, prevClose: prevParsed });
+                }
+                filtered++; return;
+            }
             const peParsed = numOrNull(item.PE || item['PE Ratio'] || item.pe);
             const high52Parsed = numOrNull(item.High52 || item['High52'] || item['High 52'] || item['52WeekHigh'] || item['52 High']);
             const low52Parsed = numOrNull(item.Low52 || item['Low52'] || item['Low 52'] || item['52WeekLow'] || item['52 Low']);
