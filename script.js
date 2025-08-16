@@ -857,11 +857,16 @@ function formatPercent(val, opts = {}) {
 }
 
 // Lean wrappers for adaptive decimals outside of currency symbol contexts
-function formatAdaptivePrice(value) {
+// Revised adaptive price: default 2 decimals; optionally preserve up to 3 if user entered (pass userRaw); force2 to clamp.
+function formatAdaptivePrice(value, opts = {}) {
     if (value === null || value === undefined || isNaN(value)) return '0.00';
-    const absVal = Math.abs(Number(value));
-    const decimals = absVal !== 0 && absVal < 0.01 ? 3 : 2;
-    return Number(value).toFixed(decimals);
+    const n = Number(value);
+    if (opts.force2) return n.toFixed(2);
+    if (opts.userRaw) {
+        const m = String(opts.userRaw).trim().match(/^[-+]?\d+(?:\.(\d{1,3}))?$/);
+        if (m && m[1] && m[1].length > 2) return n.toFixed(Math.min(3, m[1].length));
+    }
+    return n.toFixed(2);
 }
 function formatAdaptivePercent(pct) {
     if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
@@ -1714,7 +1719,7 @@ function addShareToTable(share) {
             ${
                 (() => {
                     const dividendAmount = Number(share.dividendAmount) || 0;
-                    const frankingCredits = Number(share.frankingCredits) || 0;
+                    const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
                     const enteredPrice = Number(share.currentPrice) || 0;
                     const priceForYield = (displayData.displayLivePrice !== 'N/A' && displayData.displayLivePrice.startsWith('$'))
                                         ? parseFloat(displayData.displayLivePrice.substring(1))
@@ -1917,7 +1922,7 @@ function addShareToMobileCards(share) {
             </div>
         </div>
     <p class="data-row"><span class="label-text">Reference Price:</span><span class="data-value">${formatMoney(Number(share.currentPrice), { hideZero: true })}</span></p>
-    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${formatMoney(Number(share.targetPrice), { hideZero: true })}</span></p>
+    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.targetPrice)}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
@@ -1928,7 +1933,7 @@ function addShareToMobileCards(share) {
                 // Default to empty string if no valid yield can be calculated or if calculated yield is 0
                 (() => {
                     const dividendAmount = Number(share.dividendAmount) || 0;
-                    const frankingCredits = Number(share.frankingCredits) || 0;
+                    const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
                     const enteredPrice = Number(share.currentPrice) || 0; // Fallback for entered price if live not available
 
                     // Use the price that is actually displayed for yield calculation if possible
@@ -2106,7 +2111,7 @@ function updateOrCreateShareTableRow(share) {
     }
 
     const dividendAmount = Number(share.dividendAmount) || 0;
-    const frankingCredits = Number(share.frankingCredits) || 0;
+    const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
     const enteredPrice = Number(share.currentPrice) || 0;
     const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
                             ? parseFloat(displayLivePrice.substring(1))
@@ -2249,7 +2254,7 @@ function updateOrCreateShareMobileCard(share) {
     if (!card.classList.contains('movement-sides')) card.classList.add('movement-sides');
 
     const dividendAmount = Number(share.dividendAmount) || 0;
-    const frankingCredits = Number(share.frankingCredits) || 0;
+    const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
     const enteredPrice = Number(share.currentPrice) || 0;
     const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
                             ? parseFloat(displayLivePrice.substring(1))
@@ -2281,7 +2286,7 @@ function updateOrCreateShareMobileCard(share) {
         <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
         <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
         <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
-        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.targetPrice))}</span></p>
+    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val=>{const n=Number(val);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(Number(share.targetPrice))}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
@@ -3411,7 +3416,7 @@ function showShareDetails() {
 
     // Ensure dividendAmount and frankingCredits are numbers before formatting
     const displayDividendAmount = Number(share.dividendAmount);
-    const displayFrankingCredits = Number(share.frankingCredits);
+    const displayFrankingCredits = Math.trunc(Number(share.frankingCredits));
 
     modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(displayDividendAmount);
     modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? val.toFixed(1) + '%' : '')(displayFrankingCredits);
