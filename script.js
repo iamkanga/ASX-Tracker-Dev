@@ -1718,10 +1718,11 @@ function addShareToTable(share) {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     const companyName = companyInfo ? companyInfo.name : '';
 
+    const desktopTargetDot = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Target price hit"></span>' : '';
     row.innerHTML = `
         <td>
-            <span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>
-            ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
+            ${desktopTargetDot}<span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>
+            ${companyName ? `<br><small style=\"font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;\">${companyName}</small>` : ''}
         </td>
         <td class="live-price-cell">
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
@@ -2140,10 +2141,11 @@ function updateOrCreateShareTableRow(share) {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     const companyName = companyInfo ? companyInfo.name : '';
 
+    const desktopTargetDot2 = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Target price hit"></span>' : '';
     row.innerHTML = `
         <td>
-            <span class="share-code-display ${priceClass}">${share.shareName || ''}</span>
-            ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
+            ${desktopTargetDot2}<span class="share-code-display ${priceClass}">${share.shareName || ''}</span>
+            ${companyName ? `<br><small style=\"font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;\">${companyName}</small>` : ''}
         </td>
         <td class="live-price-cell">
             <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
