@@ -382,12 +382,12 @@ body.dark-theme .mobile-share-cards.compact-view .target-hit-alert {
 body.dark-theme {
     /* Dark Theme Variables */
     --background-color: #1a1a1a; /* Very dark gray/almost black */
-    --text-color: var(--accent-color); /* Accent for improved readability */
+    --text-color: #ffffff; /* White for all primary data/content text */
     --header-bg: #282828; /* Darker gray for header */
     --card-bg: #333333; /* Medium dark gray for cards */
     --border-color: #555555; /* Darker gray for borders */
     --button-bg: #555555; /* Gray button */
-    --button-text: var(--accent-color); /* Accent on buttons */
+    --button-text: #ffffff; /* Keep button text white for contrast */
     --button-hover-bg: #6a6a6a; /* Lighter gray on hover */
     --input-bg: #444444; /* Dark gray for input backgrounds */
     --input-border: #777777; /* Gray for input borders */
@@ -412,8 +412,8 @@ body.dark-theme {
     --menu-button-bg: transparent;
     --menu-button-hover-bg: #444444; /* Dark gray for menu button hover */
     --placeholder-text: #aaaaaa;
-    --ghosted-text: #888888; /* Keep ghosted text subtle */
-    --label-color: var(--accent-color); /* Accent for data labels */
+    --ghosted-text: #888888; /* Subtle muted text */
+    --label-color: #ffffff; /* Labels and user-entered field descriptors in white */
     --danger-button-bg: var(--brand-red);
     --danger-button-hover-bg: var(--brand-red);
     --icon-action-color: var(--accent-color); /* Coffee accent in dark as well */
