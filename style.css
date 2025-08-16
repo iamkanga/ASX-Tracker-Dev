@@ -4719,6 +4719,30 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
     line-height:1;
 }
 
+/* Viewing Modal Specific Larger Icons (match add/edit modal sizes) */
+.share-detail-modal .modal-action-icon,
+.share-detail-modal .modal-header-with-icon .close-button {
+    font-size:2.1rem;
+    width:60px;
+    height:60px;
+}
+
+/* Increase size of toggle mute buttons in target alerts modal for better tap accuracy */
+.target-hit-item-grid .toggle-alert-btn.tiny-toggle {
+    font-size:0.78rem;
+    padding:6px 10px;
+}
+
+@media (max-width: 640px) {
+  .share-detail-modal .modal-action-icon,
+  .share-detail-modal .modal-header-with-icon .close-button {
+      font-size:2.3rem;
+      width:64px;
+      height:64px;
+  }
+  .target-hit-item-grid .toggle-alert-btn.tiny-toggle { font-size:0.85rem; }
+}
+
 .modal-action-icon:hover {
     background-color: var(--menu-button-hover-bg);
     color: var(--icon-action-hover-color);

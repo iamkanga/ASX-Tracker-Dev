@@ -5147,7 +5147,10 @@ function updateTargetHitBanner() {
         return false;
     });
 
-    const displayCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
+    // Count should represent all triggered alerts (enabled + muted) so user sees total notifications available
+    const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
+    const mutedCount = Array.isArray(sharesAtTargetPriceMuted) ? sharesAtTargetPriceMuted.length : 0;
+    const displayCount = enabledCount + mutedCount;
     if (displayCount > 0 && !targetHitIconDismissed) {
         // Diagnostics: capture state before applying changes
         try {
@@ -5280,6 +5283,35 @@ async function toggleAlertEnabled(shareId) {
         }
         const newEnabled = !currentEnabled; // invert
         await window.firestore.setDoc(alertDocRef, { enabled: newEnabled, updatedAt: window.firestore.serverTimestamp() }, { merge: true });
+        // Optimistically update local arrays so UI + count reflect instantly
+        try {
+            const idxEnabled = sharesAtTargetPrice.findIndex(s => s.id === shareId);
+            const idxMuted = sharesAtTargetPriceMuted.findIndex(s => s.id === shareId);
+            if (newEnabled) {
+                // move from muted -> enabled
+                if (idxMuted !== -1) {
+                    const [moved] = sharesAtTargetPriceMuted.splice(idxMuted,1);
+                    if (moved) sharesAtTargetPrice.push(moved);
+                } else if (idxEnabled === -1) {
+                    // if not found anywhere attempt to find share object in allSharesData
+                    const sh = allSharesData.find(s => s.id === shareId);
+                    if (sh) sharesAtTargetPrice.push(sh);
+                }
+            } else {
+                // move from enabled -> muted
+                if (idxEnabled !== -1) {
+                    const [moved] = sharesAtTargetPrice.splice(idxEnabled,1);
+                    if (moved) sharesAtTargetPriceMuted.push(moved);
+                } else if (idxMuted === -1) {
+                    const sh = allSharesData.find(s => s.id === shareId);
+                    if (sh) sharesAtTargetPriceMuted.push(sh);
+                }
+            }
+            updateTargetHitBanner();
+            if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
+                showTargetHitDetailsModal();
+            }
+        } catch(optErr) { console.warn('Alerts: Optimistic local toggle update failed', optErr); }
         showCustomAlert(newEnabled ? 'Alert unmuted' : 'Alert muted', 1000);
     return newEnabled;
     } catch (e) {
