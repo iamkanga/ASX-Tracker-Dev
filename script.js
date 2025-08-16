@@ -5394,10 +5394,12 @@ function evaluateGlobalPriceAlerts() {
         const pct = prev !== 0 ? (absChange / prev) * 100 : 0;
         let triggered = false; let type = null; let thresholdHit = null;
         if (change > 0) {
+            // OR logic: trigger if EITHER percent OR dollar increase threshold satisfied (first satisfied determines threshold label)
             if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { triggered = true; type='increase'; thresholdHit = globalPercentIncrease + '%'; }
             else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { triggered = true; type='increase'; thresholdHit = '$' + Number(globalDollarIncrease).toFixed(2); }
             if (triggered) increaseCount++;
         } else { // decrease
+            // OR logic: trigger if EITHER percent OR dollar decrease threshold satisfied
             if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) { triggered = true; type='decrease'; thresholdHit = globalPercentDecrease + '%'; }
             else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { triggered = true; type='decrease'; thresholdHit = '$' + Number(globalDollarDecrease).toFixed(2); }
             if (triggered) decreaseCount++;
