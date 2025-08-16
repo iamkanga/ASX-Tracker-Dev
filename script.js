@@ -477,6 +477,7 @@ let globalPercentIncrease = null;
 let globalDollarIncrease = null;
 let globalPercentDecrease = null;
 let globalDollarDecrease = null;
+let globalMinimumPrice = null; // New minimum live price filter
 let lastGlobalAlertsSessionId = null; // to avoid duplicating alerts within same fetch cycle if needed
 // GLOBAL: References to Global Alerts modal elements (initialized on DOMContentLoaded)
 let globalAlertsBtn = null;
@@ -487,6 +488,7 @@ let globalPercentIncreaseInput = null;
 let globalDollarIncreaseInput = null;
 let globalPercentDecreaseInput = null;
 let globalDollarDecreaseInput = null;
+let globalMinimumPriceInput = null;
 let globalAlertsSettingsSummaryEl = null; // displays current settings under sidebar button
 
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
@@ -5386,6 +5388,7 @@ function evaluateGlobalPriceAlerts() {
     // Helper to eval a single movement
     function evaluateMovement(code, live, prev) {
         if (live == null || prev == null) return;
+        if (globalMinimumPrice && live < globalMinimumPrice) return; // apply minimum price filter
         const change = live - prev; if (change === 0) return;
         const absChange = Math.abs(change);
         const pct = prev !== 0 ? (absChange / prev) * 100 : 0;
@@ -5428,6 +5431,7 @@ function evaluateGlobalPriceAlerts() {
             globalDollarIncrease: globalDollarIncrease || null,
             globalPercentDecrease: globalPercentDecrease || null,
             globalDollarDecrease: globalDollarDecrease || null,
+            appliedMinimumPrice: globalMinimumPrice || null,
             increaseCount,
             decreaseCount,
             totalCount: total,
@@ -5452,7 +5456,8 @@ async function saveGlobalAlertSettingsDirectional(settings) {
         globalPercentIncrease: settings.globalPercentIncrease || null,
         globalDollarIncrease: settings.globalDollarIncrease || null,
         globalPercentDecrease: settings.globalPercentDecrease || null,
-        globalDollarDecrease: settings.globalDollarDecrease || null
+        globalDollarDecrease: settings.globalDollarDecrease || null,
+        globalMinimumPrice: settings.globalMinimumPrice || null
     };
     try { await window.firestore.setDoc(userProfileDocRef, toSave, { merge: true }); logDebug('Global Alerts: Saved directional settings ' + JSON.stringify(toSave)); }
     catch(e){ console.error('Global Alerts: save directional failed', e); }
@@ -5467,10 +5472,12 @@ function applyLoadedGlobalAlertSettings(settings) {
         globalDollarIncrease = (typeof settings.globalDollarIncrease === 'number' && settings.globalDollarIncrease > 0) ? settings.globalDollarIncrease : null;
         globalPercentDecrease = (typeof settings.globalPercentDecrease === 'number' && settings.globalPercentDecrease > 0) ? settings.globalPercentDecrease : null;
         globalDollarDecrease = (typeof settings.globalDollarDecrease === 'number' && settings.globalDollarDecrease > 0) ? settings.globalDollarDecrease : null;
+    globalMinimumPrice = (typeof settings.globalMinimumPrice === 'number' && settings.globalMinimumPrice > 0) ? settings.globalMinimumPrice : null;
         if (globalPercentIncreaseInput) globalPercentIncreaseInput.value = globalPercentIncrease ?? '';
         if (globalDollarIncreaseInput) globalDollarIncreaseInput.value = globalDollarIncrease ?? '';
         if (globalPercentDecreaseInput) globalPercentDecreaseInput.value = globalPercentDecrease ?? '';
         if (globalDollarDecreaseInput) globalDollarDecreaseInput.value = globalDollarDecrease ?? '';
+    if (globalMinimumPriceInput) globalMinimumPriceInput.value = globalMinimumPrice ?? '';
         updateGlobalAlertsSettingsSummary();
     } catch(e){ console.warn('Global Alerts: apply directional settings failed', e); }
 }
@@ -5490,7 +5497,8 @@ function updateGlobalAlertsSettingsSummary() {
     if (incPart === 'Off' && decPart === 'Off') {
         globalAlertsSettingsSummaryEl.textContent = '';
     } else {
-        globalAlertsSettingsSummaryEl.textContent = 'Increase: ' + incPart + ' | Decrease: ' + decPart;
+        const minPart = globalMinimumPrice ? ('Min: $' + Number(globalMinimumPrice).toFixed(2) + ' | ') : '';
+        globalAlertsSettingsSummaryEl.textContent = minPart + 'Increase: ' + incPart + ' | Decrease: ' + decPart;
     }
 }
 
@@ -5505,6 +5513,7 @@ function initGlobalAlertsUI(force) {
     globalDollarIncreaseInput = document.getElementById('globalDollarIncrease');
     globalPercentDecreaseInput = document.getElementById('globalPercentDecrease');
     globalDollarDecreaseInput = document.getElementById('globalDollarDecrease');
+    globalMinimumPriceInput = document.getElementById('globalMinimumPrice');
     if (globalAlertsBtn && globalAlertsModal) {
         globalAlertsBtn.addEventListener('click', () => {
             try { showModal(globalAlertsModal); if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(e){ console.error('Global Alerts: failed to open modal', e);} });
@@ -5519,11 +5528,13 @@ function initGlobalAlertsUI(force) {
             const dolIncRaw = parseFloat(globalDollarIncreaseInput?.value || '');
             const pctDecRaw = parseFloat(globalPercentDecreaseInput?.value || '');
             const dolDecRaw = parseFloat(globalDollarDecreaseInput?.value || '');
+            const minPriceRaw = parseFloat(globalMinimumPriceInput?.value || '');
             globalPercentIncrease = (!isNaN(pctIncRaw) && pctIncRaw > 0) ? pctIncRaw : null;
             globalDollarIncrease = (!isNaN(dolIncRaw) && dolIncRaw > 0) ? dolIncRaw : null;
             globalPercentDecrease = (!isNaN(pctDecRaw) && pctDecRaw > 0) ? pctDecRaw : null;
             globalDollarDecrease = (!isNaN(dolDecRaw) && dolDecRaw > 0) ? dolDecRaw : null;
-            await saveGlobalAlertSettingsDirectional({ globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease });
+            globalMinimumPrice = (!isNaN(minPriceRaw) && minPriceRaw > 0) ? minPriceRaw : null;
+            await saveGlobalAlertSettingsDirectional({ globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease, globalMinimumPrice });
             showCustomAlert('Global alert settings saved', 1200);
             try { hideModal(globalAlertsModal); } catch(e){}
             updateGlobalAlertsSettingsSummary();
@@ -8477,11 +8488,13 @@ function showTargetHitDetailsModal() {
         const enabled = (data.enabled !== false);
         const container = document.createElement('div');
         container.classList.add('target-hit-item','global-summary-alert');
+    const minLine = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `<div class="line3 ghosted-text">(Ignoring prices below $${Number(data.appliedMinimumPrice).toFixed(2)})</div>` : '';
         container.innerHTML = `
             <div class="global-summary-block">
                 <div class="summary-lines">
                     <div class="line1">Global Alert: ${total} shares moved ${threshold ? ('> ' + threshold) : ''}</div>
                     <div class="line2">(Including ${portfolioCount} from your portfolio)</div>
+            ${minLine}
                 </div>
                 <div class="counts">Up: ${inc} | Down: ${dec}</div>
             </div>

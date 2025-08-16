@@ -245,6 +245,13 @@
                 <p class="modal-helper-text">Create automatic alerts when ANY tracked ASX share moves beyond these thresholds since previous close. Configure increases and decreases separately. Leave a field blank (or 0) to disable that trigger.</p>
                 <form id="globalAlertsForm" class="global-alerts-form" novalidate>
                     <fieldset class="ga-section">
+                        <legend>Minimum Price Filter</legend>
+                        <div class="form-row">
+                            <label for="globalMinimumPrice">Ignore Shares Priced Below ($):</label>
+                            <input type="number" step="0.01" min="0" id="globalMinimumPrice" placeholder="e.g. 0.20" />
+                        </div>
+                    </fieldset>
+                    <fieldset class="ga-section">
                         <legend>Notify on Price Increase</legend>
                         <div class="form-row">
                             <label for="globalPercentIncrease">Percentage Increase (%):</label>
