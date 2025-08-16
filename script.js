@@ -5190,14 +5190,17 @@ function updateTargetHitBanner() {
     try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch(e) {}
 
     // Highlight dropdowns if the current view has target hits
+    const watchlistContainer = document.querySelector('.watchlist-toolbar') || watchlistSelect.parentElement;
     if (currentViewHasTargetHits && !targetHitIconDismissed) {
-        watchlistSelect.classList.add('target-hit-border');
-        sortSelect.classList.add('target-hit-border');
-        logDebug('Target Alert: Watchlist and Sort dropdowns highlighted (current view has target hits).');
-    } else {
+        if (watchlistContainer) watchlistContainer.classList.add('target-hit-border');
         watchlistSelect.classList.remove('target-hit-border');
         sortSelect.classList.remove('target-hit-border');
-        logDebug('Target Alert: Watchlist and Sort dropdowns unhighlighted.');
+        logDebug('Target Alert: Toolbar highlighted for target hits.');
+    } else {
+        if (watchlistContainer) watchlistContainer.classList.remove('target-hit-border');
+        watchlistSelect.classList.remove('target-hit-border');
+        sortSelect.classList.remove('target-hit-border');
+        logDebug('Target Alert: Toolbar highlight removed.');
     }
 }
 
@@ -8322,7 +8325,7 @@ function showTargetHitDetailsModal() {
     }
 
     showModal(targetHitDetailsModal);
-    logDebug('Target Hit Modal: Displayed details for ' + sharesAtTargetPrice.length + ' shares.');
+    logDebug('Target Hit Modal: Displayed details. Enabled=' + sharesAtTargetPrice.length + ' Muted=' + (sharesAtTargetPriceMuted?sharesAtTargetPriceMuted.length:0));
 }
 
 // NEW: Target hit icon button listener (opens the modal) - moved to global scope

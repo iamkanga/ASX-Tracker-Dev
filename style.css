@@ -208,6 +208,7 @@ function makeFilesAvailableToSourceControlCSS() {
     --watch-bg-neutral: rgba(164,147,147,0.17); /* Coffee tint stronger */
     --target-hit-border-color: var(--accent-color); /* Coffee hue border */
     --target-hit-border-width: 4px; /* Unified thickness */
+    --target-hit-border-radius: 10px; /* New: rounded corners for pulsing border */
     --comment-title-bg: rgba(0, 0, 0, 0.05); /* Subtle background for comment titles */
     /* Removed obsolete target-alert * styling (replaced by unified border + movement hue) */
     --target-banner-height: 40px; /* This variable is now effectively unused for the banner, but kept for other potential uses */
@@ -240,6 +241,21 @@ function makeFilesAvailableToSourceControlCSS() {
     --cash-primary-button-hover-bg: #8d7f7f;
     --cash-delete-icon-color: #dc3545;
     --cash-edit-icon-color: #a49393;
+}
+
+/* Target Hit Border Visual (rounded, pulse-friendly) */
+.target-hit-border {
+        position: relative;
+        border: var(--target-hit-border-width) solid var(--target-hit-border-color) !important;
+        border-radius: var(--target-hit-border-radius) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--target-hit-border-color) 35%, transparent);
+        animation: targetHitPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes targetHitPulse {
+    0% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--target-hit-border-color) 35%, transparent); }
+    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--target-hit-border-color) 15%, transparent); }
+    100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--target-hit-border-color) 35%, transparent); }
 }
 
 /* Market status banner */
