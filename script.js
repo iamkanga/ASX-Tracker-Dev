@@ -5356,7 +5356,8 @@ function applyLoadedGlobalAlertSettings(settings) {
 }
 
 // Modal wiring after DOMContentLoaded
-document.addEventListener('DOMContentLoaded', () => {
+function initGlobalAlertsUI(force) {
+    if (!force && globalAlertsBtn) return; // already initialized
     globalAlertsBtn = document.getElementById('globalAlertsBtn');
     globalAlertsModal = document.getElementById('globalAlertsModal');
     saveGlobalAlertsBtn = document.getElementById('saveGlobalAlertsBtn');
@@ -5371,8 +5372,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (saveGlobalAlertsBtn) {
         saveGlobalAlertsBtn.addEventListener('click', async () => {
-            const pctRaw = parseFloat(globalPercentThresholdInput.value);
-            const dolRaw = parseFloat(globalDollarThresholdInput.value);
+            const pctRaw = parseFloat(globalPercentThresholdInput?.value || '');
+            const dolRaw = parseFloat(globalDollarThresholdInput?.value || '');
             globalPercentAlert = (!isNaN(pctRaw) && pctRaw > 0) ? pctRaw : null;
             globalDollarAlert = (!isNaN(dolRaw) && dolRaw > 0) ? dolRaw : null;
             await saveGlobalAlertSettings(globalPercentAlert, globalDollarAlert);
@@ -5380,7 +5381,13 @@ document.addEventListener('DOMContentLoaded', () => {
             try { closeModal(globalAlertsModal); } catch(e){}
         });
     }
-});
+}
+
+document.addEventListener('DOMContentLoaded', () => initGlobalAlertsUI());
+// Safety: if script loaded after DOMContentLoaded already fired
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    try { initGlobalAlertsUI(); } catch(_){}
+}
 
 // (Deprecated) Previous alerts settings listener retained for reference
 async function loadAlertsSettingsListener() {
