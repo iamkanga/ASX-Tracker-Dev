@@ -5365,10 +5365,17 @@ function initGlobalAlertsUI(force) {
     globalPercentThresholdInput = document.getElementById('globalPercentThreshold');
     globalDollarThresholdInput = document.getElementById('globalDollarThreshold');
     if (globalAlertsBtn && globalAlertsModal) {
-        globalAlertsBtn.addEventListener('click', () => { try { openModal(globalAlertsModal); } catch(e){} });
+        // Use existing showModal utility (openModal was never defined)
+        globalAlertsBtn.addEventListener('click', () => {
+            try {
+                showModal(globalAlertsModal);
+                // Focus first input for accessibility
+                if (globalPercentThresholdInput) globalPercentThresholdInput.focus();
+            } catch(e) { console.error('Global Alerts: failed to open modal', e); }
+        });
     }
     if (closeGlobalAlertsBtn && globalAlertsModal) {
-        closeGlobalAlertsBtn.addEventListener('click', () => { try { closeModal(globalAlertsModal); } catch(e){} });
+        closeGlobalAlertsBtn.addEventListener('click', () => { try { hideModal(globalAlertsModal); } catch(e){} });
     }
     if (saveGlobalAlertsBtn) {
         saveGlobalAlertsBtn.addEventListener('click', async () => {
@@ -5378,7 +5385,17 @@ function initGlobalAlertsUI(force) {
             globalDollarAlert = (!isNaN(dolRaw) && dolRaw > 0) ? dolRaw : null;
             await saveGlobalAlertSettings(globalPercentAlert, globalDollarAlert);
             showCustomAlert('Global alert settings saved', 1200);
-            try { closeModal(globalAlertsModal); } catch(e){}
+            try { hideModal(globalAlertsModal); } catch(e){}
+        });
+    }
+
+    // ESC key close support
+    if (!window.__globalAlertsEscBound) {
+        window.__globalAlertsEscBound = true;
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && globalAlertsModal && globalAlertsModal.style.display !== 'none') {
+                try { hideModal(globalAlertsModal); } catch(_) {}
+            }
         });
     }
 }
