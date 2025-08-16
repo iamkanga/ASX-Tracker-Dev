@@ -473,6 +473,13 @@ let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
 let globalPercentAlert = null; // e.g., 10 means +/-10%
 let globalDollarAlert = null; // e.g., 0.5 means +/-$0.50
 let lastGlobalAlertsSessionId = null; // to avoid duplicating alerts within same fetch cycle if needed
+// GLOBAL: References to Global Alerts modal elements (initialized on DOMContentLoaded)
+let globalAlertsBtn = null;
+let globalAlertsModal = null;
+let saveGlobalAlertsBtn = null;
+let closeGlobalAlertsBtn = null;
+let globalPercentThresholdInput = null;
+let globalDollarThresholdInput = null;
 
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
