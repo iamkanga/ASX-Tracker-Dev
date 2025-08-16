@@ -5186,7 +5186,7 @@ function updateTargetHitBanner() {
     }
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
-    const globalSummaryCount = globalAlertSummary && globalAlertSummary.totalCount ? globalAlertSummary.totalCount : 0;
+    const globalSummaryCount = (globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0;
     const displayCount = enabledCount + globalSummaryCount;
     try {
         console.log('[Diag][updateTargetHitBanner] enabled:', enabledCount, 'displayCount:', displayCount, 'enabled IDs:', (sharesAtTargetPrice||[]).map(s=>s.id));
@@ -8474,21 +8474,21 @@ function showTargetHitDetailsModal() {
         const threshold = data.threshold || '';
         const portfolioCount = data.portfolioCount || 0;
         const discoverCount = Array.isArray(data.nonPortfolioCodes) ? data.nonPortfolioCodes.length : 0;
+        const enabled = (data.enabled !== false);
         const container = document.createElement('div');
         container.classList.add('target-hit-item','global-summary-alert');
         container.innerHTML = `
-            <div class="target-hit-item-grid">
-                <div class="col-left">
-                    <span class="share-name-code neutral">Global Movement Summary</span>
-                    <span class="target-price-line">${total} moved ${threshold ? ('≥ ' + threshold) : ''}</span>
+            <div class="global-summary-block">
+                <div class="summary-lines">
+                    <div class="line1">Global Alert: ${total} shares moved ${threshold ? ('> ' + threshold) : ''}</div>
+                    <div class="line2">(Including ${portfolioCount} from your portfolio)</div>
                 </div>
-                <div class="col-right">
-                    <span class="live-price-display neutral">Up: ${inc} | Down: ${dec}</span>
-                </div>
+                <div class="counts">Up: ${inc} | Down: ${dec}</div>
             </div>
             <div class="global-summary-actions">
                 <button class="button tiny" data-action="view-portfolio" ${portfolioCount?'':'disabled'}>View My Shares (${portfolioCount})</button>
                 <button class="button tiny" data-action="discover" ${discoverCount?'':'disabled'}>Discover Others (${discoverCount})</button>
+                <button class="toggle-alert-btn tiny-toggle" data-action="mute-global" title="${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}">${enabled ? 'Mute' : 'Unmute'}</button>
             </div>`;
         const actions = container.querySelector('.global-summary-actions');
         if (actions) {
@@ -8499,6 +8499,9 @@ function showTargetHitDetailsModal() {
                     try { applyGlobalSummaryFilter(); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal);
                 } else if (act === 'discover') {
                     try { openDiscoverModal(data); } catch(e){ console.warn('Discover modal open failed', e); }
+                } else if (act === 'mute-global') {
+                    e.preventDefault();
+                    toggleGlobalSummaryEnabled();
                 }
             });
         }
@@ -8588,6 +8591,27 @@ function showTargetHitDetailsModal() {
 
     showModal(targetHitDetailsModal);
     logDebug('Target Hit Modal: Displayed details. Enabled=' + sharesAtTargetPrice.length + ' Muted=' + (sharesAtTargetPriceMuted?sharesAtTargetPriceMuted.length:0));
+}
+
+// Toggle GA_SUMMARY enabled flag (mute/unmute for session)
+async function toggleGlobalSummaryEnabled() {
+    try {
+        if (!db || !currentUserId || !window.firestore) return;
+        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        const summaryRef = window.firestore.doc(alertsCol, 'GA_SUMMARY');
+        const snap = await window.firestore.getDoc(summaryRef);
+        let currentEnabled = true;
+        if (snap.exists()) {
+            const d = snap.data();
+            currentEnabled = (d.enabled !== false);
+        }
+        await window.firestore.setDoc(summaryRef, { enabled: !currentEnabled, updatedAt: window.firestore.serverTimestamp() }, { merge: true });
+        // Optimistic update of local cache
+        if (globalAlertSummary) globalAlertSummary.enabled = !currentEnabled;
+        updateTargetHitBanner();
+        if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') showTargetHitDetailsModal();
+        showCustomAlert((!currentEnabled ? 'Global Alert unmuted' : 'Global Alert muted'), 1200);
+    } catch(e) { console.warn('Global Alert mute toggle failed', e); }
 }
 
 // NEW: Target hit icon button listener (opens the modal) - moved to global scope

@@ -330,6 +330,13 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .discover-global-list ul.discover-code-list li { padding:6px 10px; border-bottom:1px solid var(--border-color, #444); cursor:default; display:flex; align-items:center; }
 .discover-global-list ul.discover-code-list li .code { font-weight:600; letter-spacing:0.5px; }
 .discover-global-list ul.discover-code-list li:hover { background:rgba(255,255,255,0.05); }
+/* Definitive Global Summary Card */
+.global-summary-alert .global-summary-block { display:flex; flex-direction:column; gap:4px; margin-bottom:6px; }
+.global-summary-alert .summary-lines .line1 { font-weight:600; font-size:0.9rem; }
+.global-summary-alert .summary-lines .line2 { font-size:0.75rem; opacity:0.8; }
+.global-summary-alert .counts { font-size:0.7rem; opacity:0.75; }
+.global-summary-alert .global-summary-actions { align-items:center; }
+.global-summary-alert .global-summary-actions .toggle-alert-btn { margin-left:auto; }
 
 /* Global Alerts Modal */
 .global-alerts-modal { max-width:420px; }
