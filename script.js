@@ -469,17 +469,22 @@ let currentCustomThemeIndex = -1; // To track the current theme in the cycle
 let currentActiveTheme = 'system-default'; // Tracks the currently applied theme string
 let savedSortOrder = null; // GLOBAL: Stores the sort order loaded from user settings
 let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
-// GLOBAL: Stored global alert thresholds (null or number)
-let globalPercentAlert = null; // e.g., 10 means +/-10%
-let globalDollarAlert = null; // e.g., 0.5 means +/-$0.50
+// GLOBAL: Directional global alert thresholds (null or number)
+// (Legacy globalPercentAlert/globalDollarAlert replaced by the four below; migration handled in applyLoadedGlobalAlertSettings)
+let globalPercentIncrease = null;
+let globalDollarIncrease = null;
+let globalPercentDecrease = null;
+let globalDollarDecrease = null;
 let lastGlobalAlertsSessionId = null; // to avoid duplicating alerts within same fetch cycle if needed
 // GLOBAL: References to Global Alerts modal elements (initialized on DOMContentLoaded)
 let globalAlertsBtn = null;
 let globalAlertsModal = null;
 let saveGlobalAlertsBtn = null;
 let closeGlobalAlertsBtn = null;
-let globalPercentThresholdInput = null;
-let globalDollarThresholdInput = null;
+let globalPercentIncreaseInput = null;
+let globalDollarIncreaseInput = null;
+let globalPercentDecreaseInput = null;
+let globalDollarDecreaseInput = null;
 
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
@@ -5296,21 +5301,27 @@ function recomputeTriggeredAlerts() {
 // === Global Price Alerts ===
 function evaluateGlobalPriceAlerts() {
     if (!currentUserId || !db || !window.firestore) return;
-    if ((globalPercentAlert === null || globalPercentAlert <= 0) && (globalDollarAlert === null || globalDollarAlert <= 0)) return; // nothing configured
+    const hasIncrease = (globalPercentIncrease && globalPercentIncrease > 0) || (globalDollarIncrease && globalDollarIncrease > 0);
+    const hasDecrease = (globalPercentDecrease && globalPercentDecrease > 0) || (globalDollarDecrease && globalDollarDecrease > 0);
+    if (!hasIncrease && !hasDecrease) return;
     const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
     const batchPromises = [];
-    const now = Date.now();
     Object.entries(livePrices || {}).forEach(([code, lp]) => {
         if (!lp || lp.live == null || lp.prevClose == null) return;
         const change = lp.live - lp.prevClose;
+        if (change === 0) return;
         const absChange = Math.abs(change);
         const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
-        let triggered = false;
-        if (globalPercentAlert !== null && globalPercentAlert > 0 && pct >= globalPercentAlert) triggered = true;
-        if (!triggered && globalDollarAlert !== null && globalDollarAlert > 0 && absChange >= globalDollarAlert) triggered = true;
+        let triggered = false; let directionLabel = null;
+        if (change > 0) {
+            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { triggered = true; directionLabel = 'increase'; }
+            else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { triggered = true; directionLabel = 'increase'; }
+        } else { // change < 0
+            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) { triggered = true; directionLabel = 'decrease'; }
+            else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { triggered = true; directionLabel = 'decrease'; }
+        }
         if (!triggered) return;
-        // Create a synthetic alert doc id combining code + type to avoid collision with per-share alerts (prefix GA_)
-        const docId = 'GA_' + code;
+        const docId = 'GA_' + directionLabel + '_' + code;
         const alertDocRef = window.firestore.doc(alertsCol, docId);
         const payload = {
             shareId: docId,
@@ -5318,14 +5329,17 @@ function evaluateGlobalPriceAlerts() {
             userId: currentUserId,
             appId: currentAppId,
             intent: 'info',
-            direction: 'global',
+            direction: 'global-' + directionLabel,
             targetPrice: null,
-            globalPercentThreshold: globalPercentAlert,
-            globalDollarThreshold: globalDollarAlert,
+            globalPercentIncrease: globalPercentIncrease || null,
+            globalDollarIncrease: globalDollarIncrease || null,
+            globalPercentDecrease: globalPercentDecrease || null,
+            globalDollarDecrease: globalDollarDecrease || null,
             latestLive: lp.live,
             previousClose: lp.prevClose,
             triggeredChange: change,
             triggeredPercent: pct,
+            movementDirection: directionLabel,
             targetHit: true,
             enabled: true,
             updatedAt: window.firestore.serverTimestamp(),
@@ -5334,25 +5348,39 @@ function evaluateGlobalPriceAlerts() {
         batchPromises.push(window.firestore.setDoc(alertDocRef, payload, { merge: true }));
     });
     if (batchPromises.length) {
-        Promise.all(batchPromises).then(()=>{ logDebug('Global Alerts: Created/updated ' + batchPromises.length + ' global alert docs.'); }).catch(e=>console.error('Global Alerts: batch error', e));
+        Promise.all(batchPromises)
+            .then(()=>{ logDebug('Global Alerts: Created/updated ' + batchPromises.length + ' directional global alert docs.'); })
+            .catch(e=>console.error('Global Alerts: batch error', e));
     }
 }
 
-async function saveGlobalAlertSettings(percentVal, dollarVal) {
+async function saveGlobalAlertSettingsDirectional(settings) {
     if (!db || !currentUserId || !window.firestore) return;
     const userProfileDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-    const toSave = { globalPercentAlert: percentVal || null, globalDollarAlert: dollarVal || null };
-    try { await window.firestore.setDoc(userProfileDocRef, toSave, { merge: true }); logDebug('Global Alerts: Saved settings ' + JSON.stringify(toSave)); }
-    catch(e){ console.error('Global Alerts: save failed', e); }
+    const toSave = {
+        globalPercentIncrease: settings.globalPercentIncrease || null,
+        globalDollarIncrease: settings.globalDollarIncrease || null,
+        globalPercentDecrease: settings.globalPercentDecrease || null,
+        globalDollarDecrease: settings.globalDollarDecrease || null
+    };
+    try { await window.firestore.setDoc(userProfileDocRef, toSave, { merge: true }); logDebug('Global Alerts: Saved directional settings ' + JSON.stringify(toSave)); }
+    catch(e){ console.error('Global Alerts: save directional failed', e); }
 }
 
 function applyLoadedGlobalAlertSettings(settings) {
     try {
-        globalPercentAlert = (typeof settings.globalPercentAlert === 'number' && settings.globalPercentAlert > 0) ? settings.globalPercentAlert : null;
-        globalDollarAlert = (typeof settings.globalDollarAlert === 'number' && settings.globalDollarAlert > 0) ? settings.globalDollarAlert : null;
-        if (globalPercentThresholdInput) globalPercentThresholdInput.value = globalPercentAlert ?? '';
-        if (globalDollarThresholdInput) globalDollarThresholdInput.value = globalDollarAlert ?? '';
-    } catch(e){ console.warn('Global Alerts: apply settings failed', e); }
+        // Migrate legacy single threshold to increase (up) thresholds if new not present
+        if (settings.globalPercentIncrease == null && typeof settings.globalPercentAlert === 'number') settings.globalPercentIncrease = settings.globalPercentAlert;
+        if (settings.globalDollarIncrease == null && typeof settings.globalDollarAlert === 'number') settings.globalDollarIncrease = settings.globalDollarAlert;
+        globalPercentIncrease = (typeof settings.globalPercentIncrease === 'number' && settings.globalPercentIncrease > 0) ? settings.globalPercentIncrease : null;
+        globalDollarIncrease = (typeof settings.globalDollarIncrease === 'number' && settings.globalDollarIncrease > 0) ? settings.globalDollarIncrease : null;
+        globalPercentDecrease = (typeof settings.globalPercentDecrease === 'number' && settings.globalPercentDecrease > 0) ? settings.globalPercentDecrease : null;
+        globalDollarDecrease = (typeof settings.globalDollarDecrease === 'number' && settings.globalDollarDecrease > 0) ? settings.globalDollarDecrease : null;
+        if (globalPercentIncreaseInput) globalPercentIncreaseInput.value = globalPercentIncrease ?? '';
+        if (globalDollarIncreaseInput) globalDollarIncreaseInput.value = globalDollarIncrease ?? '';
+        if (globalPercentDecreaseInput) globalPercentDecreaseInput.value = globalPercentDecrease ?? '';
+        if (globalDollarDecreaseInput) globalDollarDecreaseInput.value = globalDollarDecrease ?? '';
+    } catch(e){ console.warn('Global Alerts: apply directional settings failed', e); }
 }
 
 // Modal wiring after DOMContentLoaded
@@ -5362,41 +5390,41 @@ function initGlobalAlertsUI(force) {
     globalAlertsModal = document.getElementById('globalAlertsModal');
     saveGlobalAlertsBtn = document.getElementById('saveGlobalAlertsBtn');
     closeGlobalAlertsBtn = document.getElementById('closeGlobalAlertsBtn');
-    globalPercentThresholdInput = document.getElementById('globalPercentThreshold');
-    globalDollarThresholdInput = document.getElementById('globalDollarThreshold');
+    globalPercentIncreaseInput = document.getElementById('globalPercentIncrease');
+    globalDollarIncreaseInput = document.getElementById('globalDollarIncrease');
+    globalPercentDecreaseInput = document.getElementById('globalPercentDecrease');
+    globalDollarDecreaseInput = document.getElementById('globalDollarDecrease');
     if (globalAlertsBtn && globalAlertsModal) {
-        // Use existing showModal utility (openModal was never defined)
         globalAlertsBtn.addEventListener('click', () => {
-            try {
-                showModal(globalAlertsModal);
-                // Focus first input for accessibility
-                if (globalPercentThresholdInput) globalPercentThresholdInput.focus();
-            } catch(e) { console.error('Global Alerts: failed to open modal', e); }
-        });
+            try { showModal(globalAlertsModal); if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(e){ console.error('Global Alerts: failed to open modal', e);} });
     }
     if (closeGlobalAlertsBtn && globalAlertsModal) {
         closeGlobalAlertsBtn.addEventListener('click', () => { try { hideModal(globalAlertsModal); } catch(e){} });
     }
     if (saveGlobalAlertsBtn) {
         saveGlobalAlertsBtn.addEventListener('click', async () => {
-            const pctRaw = parseFloat(globalPercentThresholdInput?.value || '');
-            const dolRaw = parseFloat(globalDollarThresholdInput?.value || '');
-            globalPercentAlert = (!isNaN(pctRaw) && pctRaw > 0) ? pctRaw : null;
-            globalDollarAlert = (!isNaN(dolRaw) && dolRaw > 0) ? dolRaw : null;
-            await saveGlobalAlertSettings(globalPercentAlert, globalDollarAlert);
+            const pctIncRaw = parseFloat(globalPercentIncreaseInput?.value || '');
+            const dolIncRaw = parseFloat(globalDollarIncreaseInput?.value || '');
+            const pctDecRaw = parseFloat(globalPercentDecreaseInput?.value || '');
+            const dolDecRaw = parseFloat(globalDollarDecreaseInput?.value || '');
+            globalPercentIncrease = (!isNaN(pctIncRaw) && pctIncRaw > 0) ? pctIncRaw : null;
+            globalDollarIncrease = (!isNaN(dolIncRaw) && dolIncRaw > 0) ? dolIncRaw : null;
+            globalPercentDecrease = (!isNaN(pctDecRaw) && pctDecRaw > 0) ? pctDecRaw : null;
+            globalDollarDecrease = (!isNaN(dolDecRaw) && dolDecRaw > 0) ? dolDecRaw : null;
+            await saveGlobalAlertSettingsDirectional({ globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease });
             showCustomAlert('Global alert settings saved', 1200);
             try { hideModal(globalAlertsModal); } catch(e){}
         });
     }
-
-    // ESC key close support
     if (!window.__globalAlertsEscBound) {
         window.__globalAlertsEscBound = true;
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && globalAlertsModal && globalAlertsModal.style.display !== 'none') {
-                try { hideModal(globalAlertsModal); } catch(_) {}
-            }
+            if (e.key === 'Escape' && globalAlertsModal && globalAlertsModal.style.display !== 'none') { try { hideModal(globalAlertsModal); } catch(_) {} }
         });
+    }
+    if (globalAlertsModal && !globalAlertsModal.__outsideClickBound) {
+        globalAlertsModal.__outsideClickBound = true;
+        globalAlertsModal.addEventListener('mousedown', (e) => { if (e.target === globalAlertsModal) { try { hideModal(globalAlertsModal); } catch(_) {} } });
     }
 }
 

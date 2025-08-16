@@ -232,23 +232,34 @@
             </div>
         </div>
 
-        <!-- Global Alerts Modal -->
+        <!-- Global Alerts Modal (Advanced) -->
         <div id="globalAlertsModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="globalAlertsTitle">
             <div class="modal-content global-alerts-modal">
                 <h3 id="globalAlertsTitle">Global Price Alerts</h3>
-                <p class="modal-helper-text">Trigger alerts automatically when ANY tracked ASX share moves beyond these thresholds in a single session.</p>
+                <p class="modal-helper-text">Create automatic alerts when ANY tracked ASX share moves beyond these thresholds since previous close. Configure increases and decreases separately. Leave a field blank (or 0) to disable that trigger.</p>
                 <form id="globalAlertsForm" class="global-alerts-form" novalidate>
-                    <div class="form-row">
-                        <label for="globalPercentThreshold">Percentage Change (%):</label>
-                        <input type="number" step="0.01" min="0" id="globalPercentThreshold" placeholder="e.g. 10" />
-                    </div>
-                    <div class="form-row">
-                        <label for="globalDollarThreshold">Absolute Price Change ($):</label>
-                        <input type="number" step="0.01" min="0" id="globalDollarThreshold" placeholder="e.g. 0.50" />
-                    </div>
-                    <div class="form-row subtle-info-text">
-                        <small>Leave a field blank (or 0) to ignore that threshold.</small>
-                    </div>
+                    <fieldset class="ga-section">
+                        <legend>Notify on Price Increase</legend>
+                        <div class="form-row">
+                            <label for="globalPercentIncrease">Percentage Increase (%):</label>
+                            <input type="number" step="0.01" min="0" id="globalPercentIncrease" placeholder="e.g. 8" />
+                        </div>
+                        <div class="form-row">
+                            <label for="globalDollarIncrease">Dollar Increase ($):</label>
+                            <input type="number" step="0.01" min="0" id="globalDollarIncrease" placeholder="e.g. 0.40" />
+                        </div>
+                    </fieldset>
+                    <fieldset class="ga-section">
+                        <legend>Notify on Price Decrease</legend>
+                        <div class="form-row">
+                            <label for="globalPercentDecrease">Percentage Decrease (%):</label>
+                            <input type="number" step="0.01" min="0" id="globalPercentDecrease" placeholder="e.g. 6" />
+                        </div>
+                        <div class="form-row">
+                            <label for="globalDollarDecrease">Dollar Decrease ($):</label>
+                            <input type="number" step="0.01" min="0" id="globalDollarDecrease" placeholder="e.g. 0.30" />
+                        </div>
+                    </fieldset>
                     <div class="modal-actions">
                         <button type="button" id="saveGlobalAlertsBtn" class="primary-action-btn">Save</button>
                         <button type="button" id="closeGlobalAlertsBtn" class="header-action-btn">Close</button>
