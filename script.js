@@ -1931,13 +1931,13 @@ function addShareToMobileCards(share) {
     } catch(_) {}
     const enrichedPriceChange = arrowSymbol ? `${arrowSymbol} ${displayPriceChange}` : displayPriceChange;
     card.innerHTML = `
-        <div class="live-price-display-section">
-            <h3 class="neutral-code-text">${share.shareName || ''}</h3>
-            <span class="change-chevron ${priceClass}">${arrowSymbol || ''}</span>
-            <div class="live-price-main-row">
-                <span class="live-price-large neutral-code-text">${displayLivePrice}</span>
+        <div class="live-price-display-section"> <!-- display:contents in compact grid -->
+            <h3 class="neutral-code-text card-code">${share.shareName || ''}</h3>
+            <span class="change-chevron card-chevron ${priceClass}">${arrowSymbol || ''}</span>
+            <div class="live-price-main-row"> <!-- retained for non-compact; neutralized in compact -->
+                <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
             </div>
-            <span class="price-change-large ${priceClass}">${displayPriceChange}</span>
+            <span class="price-change-large card-price-change ${priceClass}">${displayPriceChange}</span>
             <div class="fifty-two-week-row">
                 <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
                 <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
@@ -1946,44 +1946,34 @@ function addShareToMobileCards(share) {
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
             </div>
         </div>
-    <p class="data-row"><span class="label-text">Entry Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.currentPrice)}</span></p>
-    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.targetPrice)}</span></p>
+        <p class="data-row"><span class="label-text">Entry Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.currentPrice)}</span></p>
+        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.targetPrice)}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
             <span class="data-value">
             ${
-                // Determine the effective yield for display in mobile cards
-                // Prioritize franked yield if franking credits are present and yield is valid, otherwise use unfranked yield
-                // Default to empty string if no valid yield can be calculated or if calculated yield is 0
                 (() => {
                     const dividendAmount = Number(share.dividendAmount) || 0;
                     const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
-                    const enteredPrice = Number(share.currentPrice) || 0; // Fallback for entered price if live not available
-
-                    // Use the price that is actually displayed for yield calculation if possible
-                    // If displayLivePrice is 'N/A', use enteredPrice from share object
+                    const enteredPrice = Number(share.currentPrice) || 0;
                     const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
                                         ? parseFloat(displayLivePrice.substring(1))
                                         : (enteredPrice > 0 ? enteredPrice : 0);
-
-                    // If price for yield is 0, or if both dividend and franking are 0, return empty string
                     if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
-
                     const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
                     const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
-
                     if (frankingCredits > 0 && frankedYield > 0) {
                         return formatAdaptivePercent(frankedYield) + '% (Franked)';
                     } else if (unfrankedYield > 0) {
                         return formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
                     }
-                    return ''; // No valid yield or yield is 0, display empty string
+                    return '';
                 })()
             }
             </span>
         </p>
-`;
+    `;
 
     card.addEventListener('click', () => {
         logDebug('Mobile Card Click: Share ID: ' + share.id);

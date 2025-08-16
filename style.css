@@ -3688,24 +3688,7 @@ table td.live-price-cell.negative-change {
     box-shadow:none !important;
 }
 
-/* === Compact View Specific Layout & Sizing Overrides === */
-/* Position code top-left and chevron top-right */
-.mobile-share-cards.compact-view .mobile-card { position:relative; }
-.mobile-share-cards.compact-view .mobile-card h3 { position:absolute; top:6px; left:8px; margin:0; }
-.mobile-share-cards.compact-view .mobile-card .change-chevron { position:absolute; top:6px; right:8px; font-size:1.1em; }
-/* Center live price with spacing below the top row */
-.mobile-share-cards.compact-view .mobile-card .live-price-main-row { margin-top:32px; justify-content:center; }
-/* Midpoint font size for change (between 0.9em original and 1.8em doubled => 1.35em) */
-.mobile-share-cards.compact-view .mobile-card .price-change-large { font-size:1.1em !important; margin-left:0; display:block; width:100%; text-align:center; }
-/* Refined compact card layout: center live price & change; keep code & chevron pinned */
-.mobile-share-cards.compact-view .mobile-card .live-price-display-section { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:34px 8px 12px; height:100%; box-sizing:border-box; }
-.mobile-share-cards.compact-view .mobile-card .live-price-display-section h3 { position:absolute; top:4px; left:6px; margin:0; font-size:0.95em; }
-.mobile-share-cards.compact-view .mobile-card .live-price-display-section .change-chevron { position:absolute; top:4px; right:6px; }
-.mobile-share-cards.compact-view .mobile-card .live-price-display-section .live-price-main-row { margin-top:0; justify-content:center; width:100%; }
-.mobile-share-cards.compact-view .mobile-card .live-price-display-section .price-change-large { margin-top:6px; margin-left:0 !important; }
-.mobile-share-cards.compact-view .mobile-card .live-price-large { font-size:1.12em !important; }
-/* Ensure code & price color neutrality retained */
-.mobile-share-cards.compact-view .mobile-card .live-price-large { text-align:center; width:100%; }
+/* (Removed legacy compact absolute-position & flex centering block – superseded by FINAL COMPACT CARD GRID LAYOUT) */
 
 /* Enlarged & flush header icons */
 #hamburgerBtn, #addShareHeaderBtn { font-size:2.05rem; width:52px; height:52px; display:inline-flex; align-items:center; justify-content:center; padding:0; margin:0; }
@@ -5571,8 +5554,7 @@ body.dark-theme .alert-item {
 /* Compact view card core container now a 2x2 grid */
 /* (Removed wrapper grid for compact view; direct grid applied to card) */
 /* New direct layout (no wrapper) */
-.mobile-share-cards.compact-view .mobile-card { display:grid; grid-template-columns:1fr 1fr; grid-template-rows:auto 1fr auto; align-content:start; }
-.mobile-share-cards.compact-view .mobile-card { padding:10px 10px 12px; }
+/* (Removed earlier generic compact grid declaration – replaced by final unified grid below) */
 .mobile-share-cards.compact-view .mobile-card .card-code { grid-column:1; grid-row:1; align-self:start; justify-self:start; margin:0; line-height:1; }
 .mobile-share-cards.compact-view .mobile-card .card-chevron { grid-column:2; grid-row:1; justify-self:end; align-self:start; font-size:1.25em; font-weight:800; line-height:1; margin:0; }
 .mobile-share-cards.compact-view .mobile-card .card-live-price { grid-column:1 / span 2; grid-row:2; justify-self:center; align-self:center; margin:0; }
@@ -5648,13 +5630,47 @@ body.dark-theme .alert-item {
 table tbody tr.target-hit-alert, .mobile-card.target-hit-alert { border:4px solid var(--accent-color); border-radius:10px; animation: targetHitPulseBorder 1.5s ease-in-out infinite; }
 
 /* Reinforce compact grid item alignment & spacing */
-.mobile-share-cards.compact-view .mobile-card { justify-items:center; align-items:center; }
-.mobile-share-cards.compact-view .mobile-card .card-code { justify-self:start; align-self:start; }
-.mobile-share-cards.compact-view .mobile-card .card-chevron { justify-self:end; align-self:start; }
-.mobile-share-cards.compact-view .mobile-card .card-live-price { align-self:center; }
-.mobile-share-cards.compact-view .mobile-card .card-price-change { align-self:start; }
-/* Provide more vertical breathing room between middle and bottom rows */
-.mobile-share-cards.compact-view .mobile-card { grid-row-gap:6px; }
+/* (Removed intermediate alignment overrides – replaced by final unified grid below) */
+
+/* === FINAL COMPACT CARD GRID LAYOUT (Authoritative) === */
+.mobile-share-cards.compact-view .mobile-card {
+    display: grid !important;
+    grid-template-areas:
+        "code chevron"
+        "live live"
+        "change change";
+    grid-template-columns: 1fr auto;
+    grid-auto-rows: min-content;
+    justify-items: center;
+    align-items: center;
+    row-gap: 4px;
+    padding: 10px 10px 12px; /* Consolidated padding */
+}
+/* Neutralize legacy absolute positioning */
+.mobile-share-cards.compact-view .mobile-card h3,
+.mobile-share-cards.compact-view .mobile-card .change-chevron {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    margin: 0;
+}
+/* Allow wrapper to disappear so its children become grid items */
+.mobile-share-cards.compact-view .mobile-card .live-price-display-section {
+    display: contents !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+/* Grid item placements */
+.mobile-share-cards.compact-view .mobile-card .card-code { grid-area: code; justify-self: start; align-self: start; font-size: 0.95em; font-weight: 700; }
+.mobile-share-cards.compact-view .mobile-card .card-chevron { grid-area: chevron; justify-self: end; align-self: start; font-size: 1.05em; font-weight: 700; }
+.mobile-share-cards.compact-view .mobile-card .card-live-price { grid-area: live; font-size: 1.18em !important; font-weight: 700; line-height: 1.15; }
+.mobile-share-cards.compact-view .mobile-card .card-price-change { grid-area: change; font-size: 0.82em; font-weight: 700; line-height: 1.1; }
+/* Ensure text centering for middle and bottom */
+.mobile-share-cards.compact-view .mobile-card .card-live-price,
+.mobile-share-cards.compact-view .mobile-card .card-price-change { text-align: center; width: 100%; }
+/* Preserve movement side borders & target-hit visuals already defined elsewhere */
+
 
 
 /* Keep the target hit alert styling on the card itself */
