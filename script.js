@@ -485,6 +485,7 @@ let globalPercentIncreaseInput = null;
 let globalDollarIncreaseInput = null;
 let globalPercentDecreaseInput = null;
 let globalDollarDecreaseInput = null;
+let globalAlertsSettingsSummaryEl = null; // displays current settings under sidebar button
 
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
@@ -5305,52 +5306,53 @@ function evaluateGlobalPriceAlerts() {
     const hasDecrease = (globalPercentDecrease && globalPercentDecrease > 0) || (globalDollarDecrease && globalDollarDecrease > 0);
     if (!hasIncrease && !hasDecrease) return;
     const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-    const batchPromises = [];
+    let increaseCount = 0; let decreaseCount = 0; let dominantThreshold = null; let dominantType = null;
     Object.entries(livePrices || {}).forEach(([code, lp]) => {
         if (!lp || lp.live == null || lp.prevClose == null) return;
         const change = lp.live - lp.prevClose;
         if (change === 0) return;
         const absChange = Math.abs(change);
         const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
-        let triggered = false; let directionLabel = null;
         if (change > 0) {
-            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { triggered = true; directionLabel = 'increase'; }
-            else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { triggered = true; directionLabel = 'increase'; }
-        } else { // change < 0
-            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) { triggered = true; directionLabel = 'decrease'; }
-            else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { triggered = true; directionLabel = 'decrease'; }
+            let hit = false;
+            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { hit = true; dominantThreshold = globalPercentIncrease + '%'; dominantType = 'increase'; }
+            else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { hit = true; dominantThreshold = '$' + Number(globalDollarIncrease).toFixed(2); dominantType = 'increase'; }
+            if (hit) increaseCount++;
+        } else { // decrease
+            let hit = false;
+            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) { hit = true; dominantThreshold = globalPercentDecrease + '%'; dominantType = 'decrease'; }
+            else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { hit = true; dominantThreshold = '$' + Number(globalDollarDecrease).toFixed(2); dominantType = 'decrease'; }
+            if (hit) decreaseCount++;
         }
-        if (!triggered) return;
-        const docId = 'GA_' + directionLabel + '_' + code;
+    });
+    const total = increaseCount + decreaseCount;
+    if (total > 0) {
+        const docId = 'GA_SUMMARY';
         const alertDocRef = window.firestore.doc(alertsCol, docId);
         const payload = {
             shareId: docId,
-            shareCode: code,
+            shareCode: 'GLOBAL',
             userId: currentUserId,
             appId: currentAppId,
             intent: 'info',
-            direction: 'global-' + directionLabel,
-            targetPrice: null,
+            type: 'global',
+            direction: dominantType ? ('global-' + dominantType) : 'global',
             globalPercentIncrease: globalPercentIncrease || null,
             globalDollarIncrease: globalDollarIncrease || null,
             globalPercentDecrease: globalPercentDecrease || null,
             globalDollarDecrease: globalDollarDecrease || null,
-            latestLive: lp.live,
-            previousClose: lp.prevClose,
-            triggeredChange: change,
-            triggeredPercent: pct,
-            movementDirection: directionLabel,
+            increaseCount,
+            decreaseCount,
+            totalCount: total,
+            threshold: dominantThreshold,
             targetHit: true,
             enabled: true,
             updatedAt: window.firestore.serverTimestamp(),
             createdAt: window.firestore.serverTimestamp()
         };
-        batchPromises.push(window.firestore.setDoc(alertDocRef, payload, { merge: true }));
-    });
-    if (batchPromises.length) {
-        Promise.all(batchPromises)
-            .then(()=>{ logDebug('Global Alerts: Created/updated ' + batchPromises.length + ' directional global alert docs.'); })
-            .catch(e=>console.error('Global Alerts: batch error', e));
+        window.firestore.setDoc(alertDocRef, payload, { merge: true })
+            .then(()=> logDebug('Global Alerts: Summary alert upserted. Total='+ total))
+            .catch(e=> console.error('Global Alerts: summary upsert failed', e));
     }
 }
 
@@ -5380,7 +5382,27 @@ function applyLoadedGlobalAlertSettings(settings) {
         if (globalDollarIncreaseInput) globalDollarIncreaseInput.value = globalDollarIncrease ?? '';
         if (globalPercentDecreaseInput) globalPercentDecreaseInput.value = globalPercentDecrease ?? '';
         if (globalDollarDecreaseInput) globalDollarDecreaseInput.value = globalDollarDecrease ?? '';
+        updateGlobalAlertsSettingsSummary();
     } catch(e){ console.warn('Global Alerts: apply directional settings failed', e); }
+}
+
+function formatGlobalAlertPart(pct, dol) {
+    const pctStr = pct ? (pct + '%') : null;
+    const dolStr = dol ? ('$' + Number(dol).toFixed(2)) : null;
+    if (pctStr && dolStr) return pctStr + ' / ' + dolStr;
+    return pctStr || dolStr || 'Off';
+}
+
+function updateGlobalAlertsSettingsSummary() {
+    if (!globalAlertsSettingsSummaryEl) globalAlertsSettingsSummaryEl = document.getElementById('globalAlertsSettingsSummary');
+    if (!globalAlertsSettingsSummaryEl) return;
+    const incPart = formatGlobalAlertPart(globalPercentIncrease, globalDollarIncrease);
+    const decPart = formatGlobalAlertPart(globalPercentDecrease, globalDollarDecrease);
+    if (incPart === 'Off' && decPart === 'Off') {
+        globalAlertsSettingsSummaryEl.textContent = '';
+    } else {
+        globalAlertsSettingsSummaryEl.textContent = 'Increase: ' + incPart + ' | Decrease: ' + decPart;
+    }
 }
 
 // Modal wiring after DOMContentLoaded
@@ -5414,6 +5436,7 @@ function initGlobalAlertsUI(force) {
             await saveGlobalAlertSettingsDirectional({ globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease });
             showCustomAlert('Global alert settings saved', 1200);
             try { hideModal(globalAlertsModal); } catch(e){}
+            updateGlobalAlertsSettingsSummary();
         });
     }
     if (!window.__globalAlertsEscBound) {
@@ -8351,6 +8374,38 @@ function showTargetHitDetailsModal() {
         return;
     }
     targetHitSharesList.innerHTML = ''; // Clear previous content
+
+    // Inject global summary alert if exists in alertsEnabledMap (we need to query DOM or maintain separate state)
+    // Simpler approach: fetch the GA_SUMMARY doc from Firestore once when opening (non-blocking)
+    try {
+        if (db && window.firestore && currentUserId) {
+            const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+            const summaryRef = window.firestore.doc(alertsCol, 'GA_SUMMARY');
+            window.firestore.getDoc(summaryRef).then(snap => {
+                if (snap && snap.exists()) {
+                    const data = snap.data() || {};
+                    renderGlobalSummaryAlert(data);
+                }
+            }).catch(()=>{});
+        }
+    } catch(_) {}
+
+    function renderGlobalSummaryAlert(data) {
+        if (!data || !targetHitSharesList) return;
+        const total = data.totalCount || 0;
+        if (total <= 0) return;
+        const inc = data.increaseCount || 0;
+        const dec = data.decreaseCount || 0;
+        const threshold = data.threshold || '';
+        const container = document.createElement('div');
+        container.classList.add('global-summary-alert');
+        container.innerHTML = `
+            <div class="global-summary-line">
+                <strong>Global Alert:</strong> ${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}
+                <span class="breakdown">(Up: ${inc} | Down: ${dec})</span>
+            </div>`;
+        targetHitSharesList.prepend(container);
+    }
 
     const makeItem = (share, isMuted) => {
         const livePriceData = livePrices[share.shareName.toUpperCase()];

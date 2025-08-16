@@ -317,6 +317,10 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-alerts-form input { padding:8px 10px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--text-color); }
 .global-alerts-form input:focus { outline:2px solid var(--accent-color); }
 .global-alerts-form .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:10px; }
+.global-alerts-form fieldset.ga-section { border: 1px solid var(--border-color, #333); padding: 8px 12px 10px; margin: 0 0 14px; border-radius: 6px; }
+.global-alerts-form fieldset.ga-section legend { padding: 0 6px; font-size: 0.85rem; font-weight: 600; }
+.global-alerts-summary-text { font-size: 0.65rem; line-height: 1.2; color: var(--text-secondary, #aaa); padding: 4px 8px 0 8px; min-height: 16px; }
+.global-alerts-summary-text:empty { display:none; }
 .global-alerts-form .subtle-info-text { color: var(--ghosted-text); }
 
 /* === Compact Card Layout & Theme (Rebuilt) === */
