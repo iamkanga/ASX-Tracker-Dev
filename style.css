@@ -40,6 +40,7 @@
     .segmented-toggle .toggle-segment:hover { background: var(--hover-bg,#f5f7fa); }
 }
     
+    /* Unified modal action icon sizing (all modals) */
     #shareFormSection .modal-action-icon, #shareFormSection .close-button,
     #shareDetailModal .modal-action-icon, #shareDetailModal .close-button,
     #addWatchlistModal .modal-action-icon, #addWatchlistModal .modal-header-with-icon .close-button,
@@ -47,20 +48,13 @@
     #watchlistViewModal .modal-action-icon, #watchlistViewModal .close-button,
     #alertsModal .modal-action-icon, #alertsModal .close-button,
     .modal-container .modal-action-icon, .modal-container .close-button {
-        font-size:2rem !important;
-        width:56px !important;
-        height:56px !important;
+        font-size:1.9rem !important;
+        width:54px !important;
+        height:54px !important;
         display:inline-flex;
         align-items:center;
         justify-content:center;
         padding:0 !important;
-    }
-    /* Revert Add/Edit Share modals to prior size (before global upscale) */
-    #shareFormSection .modal-action-icon, #shareFormSection .close-button,
-    #shareDetailModal .modal-action-icon, #shareDetailModal .close-button {
-        font-size:1.9rem !important;
-        width:54px !important;
-        height:54px !important;
     }
 
 /* Utility: hide visually but keep accessible to screen readers */
