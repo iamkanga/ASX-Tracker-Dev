@@ -4228,6 +4228,11 @@ function renderWatchlist() {
         // Re-render ASX Code Buttons separately
         renderAsxCodeButtons();
 
+        // AFTER primary render: enforce target-hit highlight on any rows/cards that might have missed initial application
+        try {
+            enforceTargetHitStyling();
+        } catch(e) { console.warn('Target Alert: enforceTargetHitStyling failed post render', e); }
+
     } else {
         // Cash & Assets section Logic
         cashAssetsSection.classList.remove('app-hidden');
@@ -4255,6 +4260,30 @@ function renderWatchlist() {
     try { updateMainTitle(); } catch(e) {}
     try { ensureTitleStructure(); } catch(e) {}
     try { updateTargetHitBanner(); } catch(e) {}
+}
+
+// Safety net: ensure any share whose livePrices indicates targetHit gets the .target-hit-alert class (unless globally dismissed)
+function enforceTargetHitStyling() {
+    if (targetHitIconDismissed) return; // user dismissed icon; don't highlight
+    const enabledIds = new Set((sharesAtTargetPrice||[]).map(s=>s.id));
+    const mutedIds = new Set((sharesAtTargetPriceMuted||[]).map(s=>s.id));
+    const allIds = new Set([...enabledIds, ...mutedIds]);
+    const rows = shareTableBody ? Array.from(shareTableBody.querySelectorAll('tr[data-doc-id]')) : [];
+    const cards = mobileShareCardsContainer ? Array.from(mobileShareCardsContainer.querySelectorAll('.mobile-card[data-doc-id]')) : [];
+    let applied = 0, removed = 0;
+    rows.forEach(r => {
+        const id = r.dataset.docId;
+        if (allIds.has(id)) {
+            if (!r.classList.contains('target-hit-alert')) { r.classList.add('target-hit-alert'); applied++; }
+        } else if (r.classList.contains('target-hit-alert')) { r.classList.remove('target-hit-alert'); removed++; }
+    });
+    cards.forEach(c => {
+        const id = c.dataset.docId;
+        if (allIds.has(id)) {
+            if (!c.classList.contains('target-hit-alert')) { c.classList.add('target-hit-alert'); applied++; }
+        } else if (c.classList.contains('target-hit-alert')) { c.classList.remove('target-hit-alert'); removed++; }
+    });
+    try { console.log('[Diag][enforceTargetHitStyling] applied:', applied, 'removed:', removed, 'totalTargetIds:', allIds.size); } catch(_){}
 }
 
 function renderAsxCodeButtons() {
@@ -5145,6 +5174,9 @@ function updateTargetHitBanner() {
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
     const mutedCount = Array.isArray(sharesAtTargetPriceMuted) ? sharesAtTargetPriceMuted.length : 0;
     const displayCount = enabledCount + mutedCount;
+    try {
+        console.log('[Diag][updateTargetHitBanner] enabled:', enabledCount, 'muted:', mutedCount, 'total:', displayCount, 'sharesAtTargetPrice IDs:', (sharesAtTargetPrice||[]).map(s=>s.id), 'muted IDs:', (sharesAtTargetPriceMuted||[]).map(s=>s.id));
+    } catch(_) {}
     if (displayCount > 0 && !targetHitIconDismissed) {
         // Diagnostics: capture state before applying changes
         try {
@@ -5185,6 +5217,7 @@ function updateTargetHitBanner() {
 
     // Highlight dropdowns if the current view has target hits
     // Removed toolbar highlight per corrected requirement; only individual rows/cards should show target-hit styling.
+    try { enforceTargetHitStyling(); } catch(_) {}
 }
 
 // NEW: Real-time alerts listener to populate sharesAtTargetPrice from Firestore
