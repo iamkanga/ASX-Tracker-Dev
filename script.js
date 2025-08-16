@@ -1009,140 +1009,6 @@ const cashFormInputs = [
 
 // --- GLOBAL HELPER FUNCTIONS ---
 const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
-// ===== Alert System Phase 2 (Sheets Integration) ==========================================
-// Feature Flag: toggle external Sheets integration without removing code paths
-const ENABLE_SHEETS_ALERTS_INTEGRATION = true;
-// Unified thin wrapper for Apps Script POST actions (JSON in/out)
-async function postToAppsScript(action, payload = {}, timeoutMs = 12000) {
-    if (!ENABLE_SHEETS_ALERTS_INTEGRATION) return null;
-    const baseUrl = (typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' && GOOGLE_APPS_SCRIPT_URL) ? GOOGLE_APPS_SCRIPT_URL : appsScriptUrl;
-    if (!baseUrl) { console.warn('Apps Script URL not configured'); return null; }
-    // If previous POST attempts flagged CORS issues, force GET fallback immediately
-    if (window._appsScriptPostBlocked) {
-        return appsScriptGetFallback(baseUrl, action, payload, timeoutMs);
-    }
-    try {
-        const controller = new AbortController();
-        const t = setTimeout(() => controller.abort(), timeoutMs);
-        const res = await fetch(baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action), {
-            method: 'POST',
-            // NOTE: POST with application/json triggers preflight; if server omits CORS headers it fails. We'll fallback on error.
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            cache: 'no-store',
-            signal: controller.signal
-        });
-        clearTimeout(t);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return await res.json();
-    } catch (e) {
-        console.warn('AppsScript POST failed (will attempt GET fallback) action=' + action, e);
-        // Mark blocked to avoid repeated failing POST attempts this session
-        window._appsScriptPostBlocked = true;
-        return appsScriptGetFallback(baseUrl, action, payload, timeoutMs);
-    }
-}
-
-function appsScriptGetFallback(baseUrl, action, payload, timeoutMs) {
-    try {
-        const controller = new AbortController();
-        const t = setTimeout(() => controller.abort(), timeoutMs);
-        // Encode payload compactly in query (Base64 JSON)
-        let encoded = '';
-        try { encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))); } catch { encoded = ''; }
-        const url = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'action=' + encodeURIComponent(action) + (encoded ? ('&payload=' + encodeURIComponent(encoded)) : '');
-        return fetch(url, { method: 'GET', cache: 'no-store', signal: controller.signal })
-            .then(r => { clearTimeout(t); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-            .catch(err => { console.warn('AppsScript GET fallback failed', err); return null; });
-    } catch (e) {
-        console.warn('AppsScript GET fallback construction failed', e);
-        return null;
-    }
-}
-
-// Persist (upsert) user settings row linking Firebase user to alerts system
-async function syncUserSettingsRecord() {
-    if (!ENABLE_SHEETS_ALERTS_INTEGRATION || !currentUserId) return;
-    const payload = {
-        userId: currentUserId,
-        email: (typeof auth !== 'undefined' && auth && auth.currentUser ? auth.currentUser.email : null),
-        ts: new Date().toISOString(),
-        // Future fields: defaultIntent/defaultDirection could be stored here
-    };
-    const result = await postToAppsScript('upsertSettings', payload);
-    if (result && result.status === 'ok') {
-        logDebug('Sheets: Settings upserted.');
-        if (result.data && result.data.defaultDirection) {
-            // Apply user preference if form is pristine (optional future use)
-        }
-    }
-}
-
-// Push (upsert) per-share alert preference to Settings/Alerts sheet (single source for backend automation)
-async function pushShareAlertPreferenceToSheets(shareId, shareCode, intent, direction, targetPrice, enabled = true) {
-    if (!ENABLE_SHEETS_ALERTS_INTEGRATION || !currentUserId) return;
-    const payload = {
-        userId: currentUserId,
-        shareId: shareId,
-        code: String(shareCode || '').toUpperCase(),
-        intent,
-        direction,
-        targetPrice: (typeof targetPrice === 'number' && !isNaN(targetPrice)) ? targetPrice : null,
-        enabled: !!enabled,
-        ts: new Date().toISOString()
-    };
-    const result = await postToAppsScript('upsertAlert', payload);
-    if (result && result.status === 'ok') {
-        logDebug('Sheets: Alert upsert success for ' + shareCode);
-    }
-}
-
-// Fetch triggered alerts from Alerts sheet and merge with Firestore-driven lists
-let sheetsTriggeredPollInterval = null;
-async function fetchTriggeredAlertsFromSheet() {
-    if (!ENABLE_SHEETS_ALERTS_INTEGRATION || !currentUserId) return;
-    const result = await postToAppsScript('listTriggeredAlerts', { userId: currentUserId });
-    if (!result || result.status !== 'ok' || !Array.isArray(result.alerts)) return;
-    const sheetAlerts = result.alerts;
-    const enabledShares = [];
-    const mutedShares = [];
-    sheetAlerts.forEach(a => {
-        const shareId = a.shareId || a.id;
-        const code = (a.code || a.shareCode || '').toUpperCase();
-        if (!shareId || !code) return;
-        let share = allSharesData.find(s => s.id === shareId) || allSharesData.find(s => String(s.shareName || '').toUpperCase() === code);
-        if (!share) {
-            share = { id: shareId, shareName: code, targetPrice: a.targetPrice || null, watchlistIds: [] };
-        }
-        share.__alertEnabled = (a.enabled !== false);
-        share.__alertIntent = a.intent || (a.direction === 'above' ? 'sell' : 'buy');
-        share.__alertDirection = a.direction || (a.direction === 'above' ? 'above' : 'below');
-        if (share.__alertEnabled) enabledShares.push(share); else mutedShares.push(share);
-    });
-    // Merge with current lists (Firestore listener may also populate)
-    const mergeById = (existing, incoming) => {
-        const map = new Map();
-        existing.forEach(s => map.set(s.id, s));
-        incoming.forEach(s => map.set(s.id, s));
-        return Array.from(map.values());
-    };
-    sharesAtTargetPrice = mergeById(sharesAtTargetPrice || [], enabledShares);
-    sharesAtTargetPriceMuted = mergeById(sharesAtTargetPriceMuted || [], mutedShares);
-    updateTargetHitBanner();
-    if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
-        showTargetHitDetailsModal();
-    }
-}
-
-function startSheetsTriggeredAlertsPolling() {
-    if (!ENABLE_SHEETS_ALERTS_INTEGRATION) return;
-    if (sheetsTriggeredPollInterval) clearInterval(sheetsTriggeredPollInterval);
-    // Poll every 3 minutes (could be optimized later or moved to push)
-    sheetsTriggeredPollInterval = setInterval(fetchTriggeredAlertsFromSheet, 3 * 60 * 1000);
-    // Initial immediate fetch
-    fetchTriggeredAlertsFromSheet();
-}
-// ===========================================================================================
 
 async function fetchLivePricesAndUpdateUI() {
     logDebug('UI: Refresh Live Prices button clicked.');
@@ -1269,9 +1135,7 @@ async function fetchLivePrices(opts = {}) {
         onLivePricesUpdated();
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
-    // Re-evaluate alerts (dynamic targetHit) now that fresh prices are in
-    try { await evaluateAlertsAgainstLivePrices(); } catch(e) { console.warn('Alerts: evaluate failed', e); }
-    updateTargetHitBanner();
+        updateTargetHitBanner();
     } catch (e) {
         console.error('Live Price: Fetch error', e);
         window._livePricesLoaded = true;
@@ -1384,85 +1248,6 @@ async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
     // Use setDoc with merge to avoid overwriting createdAt when updating
     await window.firestore.setDoc(alertDocRef, payload, { merge: true });
     logDebug('Alerts: Upserted alert for ' + shareCode + ' with intent ' + intent + ' and direction ' + direction + '.');
-}
-
-// --- Dynamic Alert Re-Evaluation ---
-let _alertEvalInFlight = false;
-async function evaluateAlertsAgainstLivePrices() {
-    if (_alertEvalInFlight) return; // prevent overlap
-    if (!db || !currentUserId || !window.firestore || !livePrices) return;
-    _alertEvalInFlight = true;
-    const startTs = Date.now();
-    try {
-        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-        const snap = await window.firestore.getDocs(alertsCol);
-        if (snap.empty) return;
-        const batch = window.firestore.writeBatch(db);
-        let changes = 0;
-        snap.forEach(docSnap => {
-            const data = docSnap.data() || {};
-            if (data.enabled === false) { // muted -> ensure cleared targetHit if currently true
-                if (data.targetHit === true) {
-                    batch.update(docSnap.ref, { targetHit: false, lastEvaluatedAt: window.firestore.serverTimestamp() });
-                    changes++;
-                }
-                return;
-            }
-            const code = (data.shareCode || '').toUpperCase();
-            if (!code) return;
-            const lp = livePrices[code];
-            if (!lp) return; // no price yet
-            const current = (typeof lp.live === 'number' && !isNaN(lp.live)) ? lp.live : (typeof lp.lastLivePrice === 'number' && !isNaN(lp.lastLivePrice) ? lp.lastLivePrice : null);
-            const tPrice = (typeof data.targetPrice === 'number' && !isNaN(data.targetPrice)) ? data.targetPrice : null;
-            if (current === null || tPrice === null) {
-                if (data.targetHit === true) { // clear stale hit
-                    batch.update(docSnap.ref, { targetHit: false, lastEvaluatedAt: window.firestore.serverTimestamp() });
-                    changes++;
-                }
-                return;
-            }
-            const direction = (data.direction === 'above') ? 'above' : 'below';
-            const shouldHit = direction === 'above' ? (current >= tPrice) : (current <= tPrice);
-            if (shouldHit && data.targetHit !== true) {
-                // Transition -> triggered
-                batch.update(docSnap.ref, {
-                    targetHit: true,
-                    lastEvaluatedAt: window.firestore.serverTimestamp(),
-                    lastTriggerAt: window.firestore.serverTimestamp()
-                });
-                // Make it unread again by removing from read set (will appear in badge)
-                try {
-                    if (window._readAlertIds instanceof Set && window._readAlertIds.has(data.shareId || docSnap.id)) {
-                        window._readAlertIds.delete(data.shareId || docSnap.id);
-                        localStorage.setItem('readAlertIds', JSON.stringify(Array.from(window._readAlertIds)));
-                    }
-                } catch(_) {}
-                changes++;
-            } else if (!shouldHit && data.targetHit === true) {
-                // Decide model: auto-untrigger. If we want persistent once-hit behavior, comment this block.
-                batch.update(docSnap.ref, {
-                    targetHit: false,
-                    lastEvaluatedAt: window.firestore.serverTimestamp()
-                });
-                changes++;
-            } else if (shouldHit) {
-                // Still hit; periodically refresh timestamp (optional)
-                if ((Date.now() - startTs) > 1000 * 60 * 10) { // example throttle
-                    batch.update(docSnap.ref, { lastEvaluatedAt: window.firestore.serverTimestamp() });
-                }
-            }
-        });
-        if (changes > 0) {
-            await batch.commit();
-            logDebug('Alerts: Evaluation updated ' + changes + ' alert(s).');
-        } else if (DEBUG_MODE) {
-            logDebug('Alerts: Evaluation - no changes.');
-        }
-    } catch (e) {
-        console.warn('Alerts: Evaluation error', e);
-    } finally {
-        _alertEvalInFlight = false;
-    }
 }
 
 // Centralized Modal Closing Function
@@ -3339,12 +3124,6 @@ async function saveShareData(isSilent = false) {
             // Phase 2: Upsert alert document for this share (intent + direction)
             try {
                 await upsertAlertForShare(selectedShareDocId, shareName, shareData, false);
-                // Sheets integration (fire and forget)
-                try {
-                    const direction = shareData.targetDirection === 'above' ? 'above' : 'below';
-                    const intent = direction === 'above' ? 'sell' : 'buy';
-                    await pushShareAlertPreferenceToSheets(selectedShareDocId, shareName, intent, direction, shareData.targetPrice, true);
-                } catch(e) { console.warn('Sheets: alert sync (update) failed', e); }
             } catch (e) {
                 console.error('Alerts: Failed to upsert alert for share update:', e);
             }
@@ -3403,12 +3182,6 @@ async function saveShareData(isSilent = false) {
             // Phase 2: Create alert document for this new share (intent + direction)
             try {
                 await upsertAlertForShare(selectedShareDocId, shareName, shareData, true);
-                // Sheets integration (new share)
-                try {
-                    const direction = shareData.targetDirection === 'above' ? 'above' : 'below';
-                    const intent = direction === 'above' ? 'sell' : 'buy';
-                    await pushShareAlertPreferenceToSheets(selectedShareDocId, shareName, intent, direction, shareData.targetPrice, true);
-                } catch(e) { console.warn('Sheets: alert sync (create) failed', e); }
             } catch (e) {
                 console.error('Alerts: Failed to create alert for new share:', e);
             }
@@ -5332,19 +5105,6 @@ function updateTargetHitBanner() {
         return;
     }
 
-    // Ensure read set loaded
-    if (!(window._readAlertIds instanceof Set)) {
-        try {
-            const persisted = JSON.parse(localStorage.getItem('readAlertIds') || '[]');
-            window._readAlertIds = new Set(Array.isArray(persisted) ? persisted : []);
-        } catch { window._readAlertIds = new Set(); }
-    }
-    // Prune read ids that are no longer active (so future retriggers will count again)
-    try {
-        const activeIds = new Set([ ...(sharesAtTargetPrice||[]).map(s=>s.id), ...(sharesAtTargetPriceMuted||[]).map(s=>s.id) ]);
-        window._readAlertIds = new Set(Array.from(window._readAlertIds).filter(id => activeIds.has(id)));
-    } catch(_) {}
-
     // Determine if any triggered shares belong to the currently selected watchlist(s)
     const currentViewHasTargetHits = (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []).some(share => {
         if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) return true;
@@ -5354,9 +5114,7 @@ function updateTargetHitBanner() {
         return false;
     });
 
-    const unreadCount = (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : [])
-        .filter(s => !window._readAlertIds.has(s.id)).length;
-    const displayCount = unreadCount;
+    const displayCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
     if (displayCount > 0 && !targetHitIconDismissed) {
         // Diagnostics: capture state before applying changes
         try {
@@ -5424,7 +5182,7 @@ async function loadTriggeredAlertsListener() {
         const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
         // Filter for triggered alerts; additional local filter will enforce enabled !== false
         const q = window.firestore.query(alertsCol, window.firestore.where('targetHit', '==', true));
-    unsubscribeAlerts = window.firestore.onSnapshot(q, (querySnapshot) => {
+        unsubscribeAlerts = window.firestore.onSnapshot(q, (querySnapshot) => {
             const enabledShares = [];
             const mutedShares = [];
             querySnapshot.forEach((doc) => {
@@ -5442,9 +5200,7 @@ async function loadTriggeredAlertsListener() {
                     };
                 }
                 // Attach a hint of enabled state for rendering decisions
-        share.__alertEnabled = (data.enabled !== false);
-        share.__alertIntent = data.intent || (data.direction === 'above' ? 'sell' : 'buy');
-        share.__alertDirection = data.direction || (data.direction === 'above' ? 'above' : 'below');
+                share.__alertEnabled = (data.enabled !== false);
                 if (share.__alertEnabled) {
                     enabledShares.push(share);
                 } else {
@@ -8413,30 +8169,32 @@ function showTargetHitDetailsModal() {
         showCustomAlert('Error displaying target hit details. Please try again.', 2000);
         return;
     }
-    targetHitSharesList.innerHTML = '';
+    targetHitSharesList.innerHTML = ''; // Clear previous content
+
     const makeItem = (share, isMuted) => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        const currentLivePrice = (livePriceData && livePriceData.live !== null && !isNaN(livePriceData.live)) ? livePriceData.live : null;
+        const targetPrice = share.targetPrice;
+        const priceClass = (currentLivePrice !== null && targetPrice != null && !isNaN(targetPrice) && currentLivePrice >= targetPrice) ? 'positive' : 'negative';
         const item = document.createElement('div');
-        item.className = 'target-hit-item';
+        item.classList.add('target-hit-item');
         if (isMuted) item.classList.add('muted');
-        const intent = share.__alertIntent || (share.__alertDirection === 'above' ? 'sell' : 'buy');
-        item.classList.add(intent === 'buy' ? 'positive' : 'negative');
         item.dataset.shareId = share.id;
-        const livePriceData = livePrices[share.shareName.toUpperCase()] || {};
-        const currentLive = (livePriceData && typeof livePriceData.live === 'number' && !isNaN(livePriceData.live)) ? livePriceData.live : null;
-        const tPrice = (typeof share.targetPrice === 'number' && !isNaN(share.targetPrice)) ? share.targetPrice : null;
-        const dirSymbol = share.__alertDirection === 'above' ? '≥' : '≤';
         item.innerHTML = `
             <div class="target-hit-item-grid">
                 <div class="col-left">
-                    <span class="share-name-code">${share.shareName}</span>
-                    <span class="target-price-line">${intent.toUpperCase()} ${dirSymbol} <strong>${tPrice!==null ? '$'+formatAdaptivePrice(tPrice) : 'N/A'}</strong></span>
+                    <span class="share-name-code ${priceClass}">${share.shareName}</span>
+                    <span class="target-price-line">Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? formatAdaptivePrice(Number(targetPrice)) : 'N/A'}</strong></span>
                 </div>
                 <div class="col-right">
-                    <span class="live-price-display">${currentLive!==null ? '$'+formatAdaptivePrice(currentLive) : ''}</span>
+                    <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
                     <button class="toggle-alert-btn tiny-toggle" data-share-id="${share.id}" title="${isMuted ? 'Unmute Alert' : 'Mute Alert'}">${isMuted ? 'Unmute' : 'Mute'}</button>
                 </div>
-            </div>`;
+            </div>
+        `;
+        // Click to open share details
         item.addEventListener('click', (e) => {
+            // If the click is on the toggle button, don't navigate
             if (e.target && e.target.classList && e.target.classList.contains('toggle-alert-btn')) return;
             const sid = item.dataset.shareId;
             if (sid) {
@@ -8446,48 +8204,55 @@ function showTargetHitDetailsModal() {
                 showShareDetails();
             }
         });
+        // Mute/unmute button
         const toggleBtn = item.querySelector('.toggle-alert-btn');
         if (toggleBtn) {
             toggleBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 try {
+                    // Optimistic: move item to other section immediately
                     const enabledAfter = await toggleAlertEnabled(share.id);
+                    // enabledAfter === true means now active (unmuted)
+                    // Rebuild lists optimistically using current arrays then let listener correct if needed
                     if (enabledAfter) {
+                        // Move from muted to active
                         sharesAtTargetPrice = dedupeSharesById([...sharesAtTargetPrice, share]);
                         sharesAtTargetPriceMuted = sharesAtTargetPriceMuted.filter(s => s.id !== share.id);
                     } else {
                         sharesAtTargetPriceMuted = dedupeSharesById([...sharesAtTargetPriceMuted, share]);
                         sharesAtTargetPrice = sharesAtTargetPrice.filter(s => s.id !== share.id);
                     }
+                    // Re-render minimal (avoid flicker)
                     showTargetHitDetailsModal();
-                } catch(err) { console.warn('Toggle alert failed', err); }
+                } catch(err) {
+                    console.warn('Toggle alert failed', err);
+                }
             });
         }
         return item;
     };
-    const hasEnabled = (sharesAtTargetPrice||[]).length>0;
-    const hasMuted = (sharesAtTargetPriceMuted||[]).length>0;
+
+    const hasEnabled = sharesAtTargetPrice.length > 0;
+    const hasMuted = Array.isArray(sharesAtTargetPriceMuted) && sharesAtTargetPriceMuted.length > 0;
     if (!hasEnabled && !hasMuted) {
-        targetHitSharesList.innerHTML = '<p class="no-alerts-message">No alerts triggered.</p>';
+        targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
     } else {
         if (hasEnabled) {
-            const h = document.createElement('h3'); h.textContent='Active Alerts'; targetHitSharesList.appendChild(h);
-            sharesAtTargetPrice.forEach(s=> targetHitSharesList.appendChild(makeItem(s,false)));
+            const enabledHeader = document.createElement('h3');
+            enabledHeader.textContent = 'Active Alerts';
+            targetHitSharesList.appendChild(enabledHeader);
+            sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
         }
         if (hasMuted) {
-            const h2 = document.createElement('h3'); h2.textContent='Muted Alerts'; targetHitSharesList.appendChild(h2);
-            sharesAtTargetPriceMuted.forEach(s=> targetHitSharesList.appendChild(makeItem(s,true)));
+            const mutedHeader = document.createElement('h3');
+            mutedHeader.textContent = 'Muted Alerts';
+            targetHitSharesList.appendChild(mutedHeader);
+            sharesAtTargetPriceMuted.forEach(share => targetHitSharesList.appendChild(makeItem(share, true)));
         }
     }
+
     showModal(targetHitDetailsModal);
-    // Mark enabled alerts as read
-    try {
-        if (!(window._readAlertIds instanceof Set)) window._readAlertIds = new Set();
-        (sharesAtTargetPrice||[]).forEach(s=> window._readAlertIds.add(s.id));
-        localStorage.setItem('readAlertIds', JSON.stringify(Array.from(window._readAlertIds)));
-        updateTargetHitBanner();
-    } catch(e) { console.warn('Alerts: mark read failed', e); }
-    logDebug('Target Hit Modal: Displayed details for ' + (sharesAtTargetPrice||[]).length + ' shares.');
+    logDebug('Target Hit Modal: Displayed details for ' + sharesAtTargetPrice.length + ' shares.');
 }
 
 // NEW: Target hit icon button listener (opens the modal) - moved to global scope
@@ -8614,8 +8379,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 try { ensureTitleStructure(); } catch(e) {}
                 // Start alerts listener (triggered alerts -> Notification Hub)
                 await loadTriggeredAlertsListener();
-                // Phase 2: Sync user settings row to Sheets and start polling triggered alerts there
-                try { await syncUserSettingsRecord(); startSheetsTriggeredAlertsPolling(); } catch(e) { console.warn('Sheets: init sync failed', e); }
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
                 await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
