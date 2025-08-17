@@ -367,7 +367,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Mute button matches tiny-toggle style */
 /* arrow size */
 .global-summary-alert .global-summary-arrows-row .arrow { font-size:1.75rem; line-height:1; position:relative; top:2px; }
-.global-summary-alert .global-summary-detail.ignoring-line { font-size:50%; /* previously 0.4rem */ opacity:0.65; letter-spacing:0.2px; }
+.global-summary-alert .global-summary-detail.ignoring-line { font-size:0.8em; /* architectural fix: absolute relative size, was 50% */ opacity:0.65; letter-spacing:0.2px; }
 
 /* Layout adjustment: container becomes flex to push actions to bottom */
 .global-summary-alert.target-hit-item { display:flex; flex-direction:row; }
@@ -377,7 +377,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* External heading styling */
 .global-movers-heading { font-size:1.05rem; font-weight:600; margin:6px 2px 4px 2px; padding:0 2px; letter-spacing:0.5px; }
 /* New unified header class applied to both 'Target hit' and 'Global movers' */
-.target-hit-section-title { font-size:1.05rem; font-weight:600; margin:6px 2px 4px 2px; padding:0 2px; letter-spacing:0.5px; line-height:1.25; }
+.target-hit-section-title { font-size:1.05rem; font-weight:600; margin:6px 2px 4px 2px; padding:0 2px; letter-spacing:0.5px; line-height:1.25; order:-1; }
 /* Preserve combined line-height rule (legacy) */
 .target-hit-section-title, .global-movers-heading { line-height:1.25; }
 
