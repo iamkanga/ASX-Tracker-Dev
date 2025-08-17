@@ -8936,40 +8936,71 @@ function showTargetHitDetailsModal() {
         if (!modal) { console.warn('Discover modal element missing.'); return; }
         const listEl = modal.querySelector('#discoverGlobalList');
         if (listEl) {
-            const snapshot = window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries) ? window.__lastMoversSnapshot : null;
-            let entries = snapshot ? snapshot.entries.slice() : [];
-            if (!entries.length && Array.isArray(summaryData.nonPortfolioCodes)) {
-                entries = summaryData.nonPortfolioCodes.map(code=>({ code, live: (livePrices[code]?.live)||null, prev: (livePrices[code]?.prevClose)||null }));
+            const summary = summaryData || globalAlertSummary || {};
+            const nonPortfolioCodes = Array.isArray(summary.nonPortfolioCodes) ? summary.nonPortfolioCodes : [];
+            const threshold = (typeof summary.threshold === 'number') ? summary.threshold : null;
+            const appliedMinimumPrice = summary.appliedMinimumPrice;
+            const codeSet = new Set(nonPortfolioCodes.map(c => (c || '').toUpperCase()));
+            const snapshot = (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) ? window.__lastMoversSnapshot : null;
+
+            let entries = [];
+            if (snapshot) {
+                entries = snapshot.entries.filter(e => codeSet.has(String(e.code || '').toUpperCase()));
             }
-            entries.sort((a,b)=> (b.pct||0) - (a.pct||0));
+            if (!entries.length && codeSet.size) {
+                entries = Array.from(codeSet).map(c => ({ code: c }));
+            }
+            entries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
+
             listEl.innerHTML='';
             const ul = document.createElement('ul');
-            ul.className='discover-code-list enriched';
+            ul.className='discover-code-list enriched global-only';
+
+            const contextLine = document.createElement('div');
+            contextLine.className = 'discover-context-line';
+            const parts = [];
+            parts.push(nonPortfolioCodes.length + ' global ' + (nonPortfolioCodes.length === 1 ? 'share' : 'shares'));
+            if (threshold !== null) parts.push('moved ≥ ' + threshold + '%');
+            if (appliedMinimumPrice) parts.push('ignoring < $' + Number(appliedMinimumPrice).toFixed(2));
+            contextLine.textContent = parts.join(' | ');
+            listEl.appendChild(contextLine);
+
             if (!entries.length) {
                 const li=document.createElement('li'); li.className='ghosted-text'; li.textContent='No current global movers meeting threshold.'; ul.appendChild(li);
             } else {
-                const threshold = summaryData && summaryData.threshold ? summaryData.threshold : '';
-                if (threshold) {
-                    const hdr=document.createElement('li'); hdr.className='global-movers-threshold';
-                    hdr.textContent='Threshold: '+threshold + (summaryData.appliedMinimumPrice? ' | Min Price: $'+Number(summaryData.appliedMinimumPrice).toFixed(2):'');
-                    ul.appendChild(hdr);
-                }
-                entries.forEach(en=>{
-                    const live = (en.live!=null)? Number(en.live): (livePrices[en.code]?.live);
-                    const prev = (en.prev!=null)? Number(en.prev): (livePrices[en.code]?.prevClose);
-                    let ch=null,pct=null,dir='';
-                    if (live!=null && prev!=null && prev!==0){ ch=live-prev; pct=(ch/prev)*100; dir= ch>0?'up':(ch<0?'down':'flat'); }
-                    const li=document.createElement('li'); li.className='discover-mover dir-'+dir; li.dataset.code=en.code;
+                entries.forEach(en => {
+                    const code = (en.code || '').toUpperCase();
+                    const lpData = (livePrices && livePrices[code]) ? livePrices[code] : {};
+                    const price = (typeof en.price === 'number') ? en.price : (typeof lpData.live === 'number' ? lpData.live : null);
+                    const prevClose = (typeof en.prevClose === 'number') ? en.prevClose : (typeof lpData.prevClose === 'number' ? lpData.prevClose : null);
+                    let ch = (typeof en.ch === 'number') ? en.ch : null;
+                    let pct = (typeof en.pct === 'number') ? en.pct : null;
+                    if ((ch === null || pct === null) && price !== null && prevClose !== null && prevClose !== 0) {
+                        ch = price - prevClose;
+                        pct = (ch / prevClose) * 100;
+                    }
+                    const dir = ch === 0 ? 'flat' : (ch > 0 ? 'up' : 'down');
+                    const li = document.createElement('li');
+                    li.className = 'discover-mover dir-' + dir;
+                    li.dataset.code = code;
                     const chStr=(ch!=null)? (ch>0?'+':'')+'$'+Math.abs(ch).toFixed(2):'';
                     const pctStr=(pct!=null)? (pct>0?'+':'')+pct.toFixed(2)+'%':'';
-                    li.innerHTML=`<span class="code">${en.code}</span><span class="live">${live!=null?('$'+live.toFixed(2)):'-'}</span><span class="delta ${dir}">${chStr} ${pctStr?('('+pctStr+')'):''}</span>`;
+                    let reason='';
+                    if (pct!=null && threshold!=null) {
+                        const meets = Math.abs(pct) >= threshold;
+                        reason = (meets? 'Met threshold: ' : 'Movement: ') + pctStr + (chStr?(' ('+chStr+')'):'');
+                    } else if (pct!=null) {
+                        reason = 'Moved ' + pctStr + (chStr?(' ('+chStr+')'):'');
+                    } else {
+                        reason = 'No movement data yet';
+                    }
+                    li.innerHTML=`<span class="code">${code}</span><span class="live">${price!=null?('$'+Number(price).toFixed(2)):'-'}</span><span class="delta ${dir}">${reason}</span>`;
                     li.addEventListener('click',()=>{
                         try { hideModal(modal); } catch(_) {}
-                        // Optionally jump to add/share detail if available
                         if (typeof shareNameInput !== 'undefined' && shareNameInput) {
-                            shareNameInput.value = en.code;
+                            shareNameInput.value = code;
                             if (typeof updateAddFormLiveSnapshot === 'function') {
-                                try { updateAddFormLiveSnapshot(en.code); } catch(err) {}
+                                try { updateAddFormLiveSnapshot(code); } catch(err) {}
                             }
                         }
                     });
