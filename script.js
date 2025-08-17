@@ -6310,7 +6310,14 @@ function showCashCategoryDetailsModal(assetId) {
 /**
  * Updates the main title of the app based on the currently selected watchlist.
  */
-function updateMainTitle() {
+function updateMainTitle(overrideTitle) {
+    // Optional explicit override (used for virtual views like Movers triggered outside select change)
+    if (overrideTitle && typeof overrideTitle === 'string') {
+        if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = overrideTitle;
+        else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = overrideTitle;
+        logDebug('UI: Dynamic title force-overridden to: ' + overrideTitle);
+        return;
+    }
     if (!watchlistSelect) {
         // Fallback: derive from currentSelectedWatchlistIds if dropdown not mounted yet
         const fallbackId = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
