@@ -5266,13 +5266,22 @@ function updateTargetHitBanner() {
         console.warn('Target Alert: UI elements missing. Cannot update banner/highlights.');
         return;
     }
+    // Lightweight change-detection snapshot to suppress redundant DOM/log churn
+    if (!window.__lastTargetBannerSnapshot) {
+        window.__lastTargetBannerSnapshot = { enabledCount: null, displayCount: null, dismissed: null };
+    }
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
     const globalSummaryCount = (globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0;
     const displayCount = enabledCount + globalSummaryCount;
-    try {
-        console.log('[Diag][updateTargetHitBanner] enabled:', enabledCount, 'displayCount:', displayCount, 'enabled IDs:', (sharesAtTargetPrice||[]).map(s=>s.id));
-    } catch(_) {}
+    const snapshot = window.__lastTargetBannerSnapshot;
+    const snapshotUnchanged = snapshot.enabledCount === enabledCount && snapshot.displayCount === displayCount && snapshot.dismissed === !!targetHitIconDismissed;
+    if (!snapshotUnchanged) {
+        try { console.log('[Diag][updateTargetHitBanner] enabled:', enabledCount, 'displayCount:', displayCount, 'enabled IDs:', (sharesAtTargetPrice||[]).map(s=>s.id)); } catch(_) {}
+    } else {
+        // Nothing changed; bail early to avoid repetitive logs & layout writes
+        return;
+    }
     if (displayCount > 0 && !targetHitIconDismissed) {
         // Diagnostics: capture state before applying changes
         try {
@@ -5313,7 +5322,12 @@ function updateTargetHitBanner() {
 
     // Highlight dropdowns if the current view has target hits
     // Removed toolbar highlight per corrected requirement; only individual rows/cards should show target-hit styling.
-    try { enforceTargetHitStyling(); } catch(_) {}
+    // (Styling enforcement intentionally removed here to prevent duplicate calls; recomputeTriggeredAlerts will invoke it when underlying state changes.)
+
+    // Update snapshot after successful DOM mutation
+    snapshot.enabledCount = enabledCount;
+    snapshot.displayCount = displayCount;
+    snapshot.dismissed = !!targetHitIconDismissed;
 }
 
 // NEW (Revised): Real-time alerts listener (enabled-only notifications)
