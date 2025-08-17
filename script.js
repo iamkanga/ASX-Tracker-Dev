@@ -4050,6 +4050,7 @@ function openWatchlistPicker() {
                 updateMainTitle();
                 renderSortSelect();
                 renderWatchlist();
+                try { enforceMoversVirtualView(); } catch(_) {}
             }
             try { updateAddHeaderButton(); updateSidebarAddButtonContext(); } catch(e) {}
             toggleCodeButtonsArrow();
@@ -5397,13 +5398,13 @@ function stopGlobalSummaryListener() {
 }
 
 // Apply a temporary filter to main watchlist showing only shares that match the last summary counts
-function applyGlobalSummaryFilter() {
-    if (!globalAlertSummary || !livePrices) return;
+function applyGlobalSummaryFilter(options = {}) {
+    if (!globalAlertSummary || !livePrices) return null;
     const threshold = globalAlertSummary.threshold; // e.g. '5%' or '$0.20'
-    if (!threshold) return;
+    if (!threshold) return null;
     const isPercent = threshold.endsWith('%');
     const numeric = parseFloat(threshold.replace(/[%$]/g,''));
-    if (isNaN(numeric)) return;
+    if (isNaN(numeric)) return null;
     const filteredEntries = Object.entries(livePrices).filter(([code, lp]) => {
         if (!lp || lp.live == null || lp.prevClose == null) return false;
         const change = lp.live - lp.prevClose;
@@ -5417,21 +5418,61 @@ function applyGlobalSummaryFilter() {
         return { code, change, absChange, pct, direction: change>=0?'up':'down', live: lp.live, prev: lp.prevClose };
     });
     const filteredCodes = filteredEntries.map(e=>e.code);
-    if (!filteredCodes.length) { showCustomAlert('No shares currently meet the summary threshold.'); return; }
+    if (!filteredCodes.length) {
+        if (!options.silent) showCustomAlert('No shares currently meet the summary threshold.');
+        return [];
+    }
     try { window.__lastMoversSnapshot = { ts: Date.now(), entries: filteredEntries }; } catch(_) {}
-    try {
-        document.querySelectorAll('#shareTable tbody tr').forEach(tr => {
-            const codeEl = tr.querySelector('.share-code-display');
-            const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
-            tr.style.display = (code && filteredCodes.includes(code)) ? '' : 'none';
-        });
-        document.querySelectorAll('.mobile-share-cards .mobile-card').forEach(card => {
-            const codeEl = card.querySelector('h3');
-            const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
-            card.style.display = (code && filteredCodes.includes(code)) ? '' : 'none';
-        });
-        showCustomAlert('Filtered to ' + filteredCodes.length + ' global alert matches');
-    } catch(e){ console.warn('Global filter UI error', e); }
+    if (!options.computeOnly) {
+        // Direct DOM filtering (legacy behavior) – retained for backward compatibility
+        try {
+            document.querySelectorAll('#shareTable tbody tr').forEach(tr => {
+                const codeEl = tr.querySelector('.share-code-display');
+                const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
+                tr.style.display = (code && filteredCodes.includes(code)) ? '' : 'none';
+            });
+            document.querySelectorAll('.mobile-share-cards .mobile-card').forEach(card => {
+                const codeEl = card.querySelector('h3');
+                const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
+                card.style.display = (code && filteredCodes.includes(code)) ? '' : 'none';
+            });
+            if (!options.silent) showCustomAlert('Filtered to ' + filteredCodes.length + ' global alert matches');
+        } catch(e){ console.warn('Global filter UI error', e); }
+    }
+    return filteredEntries;
+}
+
+// Enforce virtual Movers view: after a render, hide non-mover rows/cards; restore when leaving
+function enforceMoversVirtualView() {
+    const isMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+    const tableRows = document.querySelectorAll('#shareTable tbody tr');
+    const mobileCards = document.querySelectorAll('.mobile-share-cards .mobile-card');
+    if (!isMovers) {
+        // Restore all
+        tableRows.forEach(tr => { tr.style.display = ''; });
+        mobileCards.forEach(card => { card.style.display = ''; });
+        return;
+    }
+    // Ensure snapshot exists (compute silently if needed)
+    if (!window.__lastMoversSnapshot || !window.__lastMoversSnapshot.entries || !window.__lastMoversSnapshot.entries.length) {
+        applyGlobalSummaryFilter({ silent: true, computeOnly: true });
+    }
+    const entries = (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries) || [];
+    const codeSet = new Set(entries.map(e => e.code));
+    // Restrict to portfolio codes only (local) – portfolio codes come from allSharesData list
+    const userCodes = new Set((allSharesData||[]).map(s => (s && s.shareName ? s.shareName.toUpperCase() : null)).filter(Boolean));
+    const effectiveCodes = new Set();
+    codeSet.forEach(c => { if (userCodes.has(c)) effectiveCodes.add(c); });
+    tableRows.forEach(tr => {
+        const codeEl = tr.querySelector('.share-code-display');
+        const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
+        tr.style.display = (code && effectiveCodes.has(code)) ? '' : 'none';
+    });
+    mobileCards.forEach(card => {
+        const codeEl = card.querySelector('h3');
+        const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
+        card.style.display = (code && effectiveCodes.has(code)) ? '' : 'none';
+    });
 }
 
 // NEW: Helper to enable/disable a specific alert for a share
@@ -7740,6 +7781,7 @@ async function initializeAppLogic() {
             hideModal(targetHitDetailsModal); // Close the modal
             showCustomAlert('Target Price Alerts dismissed until next login.', 2000); // User feedback
             renderWatchlist(); // Re-render the watchlist to remove all borders/highlights
+            try { enforceMoversVirtualView(); } catch(_) {}
             logDebug('Target Alert Modal: Dismiss All button clicked. Alerts dismissed, modal and bubble hidden. Watchlist re-rendered.');
         });
     }
@@ -7830,6 +7872,7 @@ if (deleteAllUserDataBtn) {
             await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
             // Just render the watchlist. The listeners for shares/cash are already active.
             renderWatchlist();
+            try { enforceMoversVirtualView(); } catch(_) {}
         });
     }
 
@@ -8704,10 +8747,12 @@ function showTargetHitDetailsModal() {
                 const btn = e.target.closest('button'); if (!btn) return;
                 const act = btn.getAttribute('data-action');
                 if (act === 'view-portfolio') {
-                    try { applyGlobalSummaryFilter(); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal);
+                    try { applyGlobalSummaryFilter({ silent:true, computeOnly:true }); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal);
                     currentSelectedWatchlistIds = ['__movers'];
                     try { localStorage.setItem('lastSelectedView','__movers'); } catch(_) {}
                     updateMainTitle('Movers');
+                    // Re-render and enforce virtual view now
+                    try { renderWatchlist(); enforceMoversVirtualView(); } catch(_) {}
                 } else if (act === 'discover') {
                     try { openDiscoverModal(data); } catch(e){ console.warn('Discover modal open failed', e); }
                 } else if (act === 'mute-global') {
