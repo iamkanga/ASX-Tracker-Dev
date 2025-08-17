@@ -4025,33 +4025,24 @@ function openWatchlistPicker() {
             currentSelectedWatchlistIds=[it.id];
             if (watchlistSelect) watchlistSelect.value=it.id; // sync hidden select
             try { localStorage.setItem('lastSelectedView', it.id); } catch(e) {}
-            // Persist to Firestore as well for cross-device restore
             try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
+
+            // Always perform a full render cycle for consistency
             if (it.id === '__movers') {
-                if (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
-                    const codes = window.__lastMoversSnapshot.entries.map(e=>e.code);
-                    try {
-                        document.querySelectorAll('#shareTable tbody tr').forEach(tr => {
-                            const codeEl = tr.querySelector('.share-code-display');
-                            const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
-                            tr.style.display = (code && codes.includes(code)) ? '' : 'none';
-                        });
-                        document.querySelectorAll('.mobile-share-cards .mobile-card').forEach(card => {
-                            const codeEl = card.querySelector('h3');
-                            const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
-                            card.style.display = (code && codes.includes(code)) ? '' : 'none';
-                        });
-                    } catch(err) { console.warn('Movers snapshot apply failed', err); }
-                } else {
-                    try { applyGlobalSummaryFilter(); } catch(e){ console.warn('Movers virtual filter failed', e); }
-                }
                 updateMainTitle('Movers');
             } else {
                 updateMainTitle();
-                renderSortSelect();
-                renderWatchlist();
-                try { enforceMoversVirtualView(); } catch(_) {}
             }
+            // Render watchlist UI first (ensures DOM elements present before filtering)
+            try { renderSortSelect(); } catch(_) {}
+            try { renderWatchlist(); } catch(e) { console.warn('WatchlistPicker: renderWatchlist failed', e); }
+            // Enforce movers filtering if in movers view
+            try { enforceMoversVirtualView(); } catch(e) { console.warn('WatchlistPicker: enforceMoversVirtualView failed', e); }
+            // Immediate consistency debug when entering Movers
+            if (it.id === '__movers' && typeof debugMoversConsistency === 'function') {
+                try { debugMoversConsistency({ includeLists: true }); } catch(_) {}
+            }
+
             try { updateAddHeaderButton(); updateSidebarAddButtonContext(); } catch(e) {}
             toggleCodeButtonsArrow();
             try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); watchlistPickerModal.style.display='none'; }
