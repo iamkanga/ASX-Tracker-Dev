@@ -8502,15 +8502,14 @@ function showTargetHitDetailsModal() {
         const othersLine = discoverCount ? `<div class=\"global-summary-detail others-line\">${discoverCount} others</div>` : '';
         container.innerHTML = `
             <div class=\"global-summary-inner\">
-                <div class=\"global-summary-title\">Maybe</div>
                 <div class=\"global-summary-detail total-line\">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
                 <div class=\"global-summary-detail portfolio-line\">${portfolioCount} from your portfolio</div>
                 ${othersLine}
                 <div class=\"global-summary-meta\">${metaBits.join('')}</div>
             </div>
             <div class=\"global-summary-actions\">
-                <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverText}</button>
-                <button data-action=\"view-portfolio\" ${portfolioCount?'':'disabled'}>${viewText}</button>
+                <button data-action=\"discover\" ${discoverCount?'':'disabled'}>global</button>
+                <button data-action=\"view-portfolio\" ${portfolioCount?'':'disabled'}>local</button>
                 <button data-action=\"mute-global\" title=\"${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}\">${enabled ? 'Mute' : 'Unmute'}</button>
             </div>`;
         const actions = container.querySelector('.global-summary-actions');
@@ -8525,6 +8524,8 @@ function showTargetHitDetailsModal() {
                 } else if (act === 'mute-global') {
                     e.preventDefault();
                     toggleGlobalSummaryEnabled();
+                } else if (act === 'view-portfolio-local') {
+                    // Future placeholder
                 }
             });
         }
@@ -8613,7 +8614,7 @@ function showTargetHitDetailsModal() {
     } else {
         if (hasEnabled) {
             const enabledHeader = document.createElement('h3');
-            enabledHeader.textContent = 'Active Alerts';
+            enabledHeader.textContent = 'Target hit';
             targetHitSharesList.appendChild(enabledHeader);
             sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
         }
