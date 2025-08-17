@@ -8376,6 +8376,39 @@ if (sortSelect) {
             }
         }, true);
 
+        // Accessibility & focus trap for sidebar when open
+        const mainContent = document.getElementById('mainContent') || document.querySelector('main');
+        const firstFocusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+        function trapFocus(e){
+            if (!appSidebar.classList.contains('open')) return;
+            const focusables = Array.from(appSidebar.querySelectorAll(firstFocusableSelector)).filter(el=>!el.disabled && el.offsetParent!==null);
+            if (!focusables.length) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length-1];
+            if (e.key === 'Tab') {
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+        }
+        document.addEventListener('keydown', trapFocus, true);
+
+        // Hook into toggleAppSidebar to set aria-hidden
+        const __origToggle = toggleAppSidebar;
+        window.toggleAppSidebar = function(force){
+            __origToggle(force);
+            const isOpen = appSidebar.classList.contains('open');
+            if (mainContent) mainContent.setAttribute('aria-hidden', isOpen ? 'true':'false');
+            if (isOpen) {
+                // Move initial focus
+                setTimeout(()=>{
+                    const first = appSidebar.querySelector(firstFocusableSelector);
+                    if (first) first.focus();
+                },30);
+            } else {
+                if (mainContent) mainContent.removeAttribute('inert');
+            }
+        };
+
         document.addEventListener('click', (event) => {
             const isDesktop = window.innerWidth > 768;
             // Only close sidebar on clicks outside if it's desktop and the click isn't on the sidebar or hamburger button

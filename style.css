@@ -2957,6 +2957,8 @@ header .header-action-btn-right { margin-right:2px !important; }
     display: block; /* Show when sidebar is open */
     opacity: 1;
     pointer-events: auto; /* Make interactive when open */
+    touch-action: none; /* Prevent accidental scroll/tap passthrough on mobile */
+    cursor: pointer; /* Indicate clickable backdrop */
 }
 
 
