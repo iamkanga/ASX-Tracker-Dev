@@ -5326,8 +5326,13 @@ function updateTargetHitBanner() {
     if (!snapshotUnchanged) {
         try { console.log('[Diag][updateTargetHitBanner] enabled:', enabledCount, 'displayCount:', displayCount, 'enabled IDs:', (sharesAtTargetPrice||[]).map(s=>s.id)); } catch(_) {}
     } else {
-        // Nothing changed; bail early to avoid repetitive logs & layout writes
-        return;
+        // If nothing changed but the icon SHOULD be visible and somehow got hidden, restore it.
+        const shouldBeVisible = displayCount > 0 && !targetHitIconDismissed;
+        const actuallyHidden = targetHitIconBtn.style.display === 'none' || targetHitIconBtn.classList.contains('app-hidden');
+        if (!(shouldBeVisible && actuallyHidden)) {
+            return; // truly nothing to do
+        }
+        logDebug('Target Alert: Snapshot unchanged but icon hidden unexpectedly; restoring visibility.');
     }
     if (displayCount > 0 && !targetHitIconDismissed) {
         // Diagnostics: capture state before applying changes
@@ -5376,6 +5381,25 @@ function updateTargetHitBanner() {
     snapshot.displayCount = displayCount;
     snapshot.dismissed = !!targetHitIconDismissed;
 }
+
+// Diagnostic hotkey: Alt+Shift+N dumps notification icon state
+try {
+    document.addEventListener('keydown', function(e){
+        if (e.altKey && e.shiftKey && (e.key === 'N' || e.key === 'n')) {
+            try {
+                const state = {
+                    dismissed: targetHitIconDismissed,
+                    lastKnownTargetCount,
+                    currentEnabledCount: Array.isArray(sharesAtTargetPrice)?sharesAtTargetPrice.length:0,
+                    globalSummaryCount: (globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0,
+                    btnDisplay: targetHitIconBtn ? targetHitIconBtn.style.display : null,
+                    btnClasses: targetHitIconBtn ? targetHitIconBtn.className : null
+                };
+                console.log('[NotifDiag] Notification Icon State', state);
+            } catch(err) { console.warn('[NotifDiag] Failed to dump state', err); }
+        }
+    }, true);
+} catch(_){ }
 
 // NEW (Revised): Real-time alerts listener (enabled-only notifications)
 // Muted alerts (enabled === false) must not appear as active notifications or receive styling.
