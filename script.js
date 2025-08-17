@@ -2940,25 +2940,30 @@ function getCurrentFormData() {
 
     return {
         shareName: shareNameInput?.value?.trim().toUpperCase() || '',
-    currentPrice: null, // Will be auto-derived when saving new/updated share
+        currentPrice: null, // auto-derived on save
         targetPrice: parseFloat(targetPriceInput?.value),
-        // UPDATED: Get targetDirection from the new checkboxes
         targetDirection: targetAboveCheckbox?.checked ? 'above' : 'below',
         dividendAmount: parseFloat(dividendAmountInput?.value),
         frankingCredits: parseFloat(frankingCreditsInput?.value),
-        // Get the selected star rating as a number
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0,
         comments: comments,
-        // Include legacy single value and the plural array; use checkbox UI as source of truth
         watchlistId: shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null,
         watchlistIds: (() => {
-            const els = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
-            const vals = Array.from(els).map(x => x.value).filter(Boolean);
-            if (vals.length > 0) return vals;
+            // 1. Enhanced multi-select (authoritative when present)
+            try {
+                if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
+                    const enhancedVals = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(cb=>cb.value).filter(Boolean);
+                    if (enhancedVals.length) return enhancedVals;
+                }
+            } catch(_) {}
+            // 2. Legacy checkbox container
+            const legacyEls = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
+            const legacyVals = Array.from(legacyEls).map(x => x.value).filter(Boolean);
+            if (legacyVals.length) return legacyVals;
+            // 3. Fallback single select
             const single = shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null;
             return single ? [single] : null;
         })(),
-        // Portfolio fields
         portfolioShares: isNaN(portfolioSharesVal) ? null : Math.trunc(portfolioSharesVal),
         portfolioAvgPrice: isNaN(portfolioAvgPriceVal) ? null : portfolioAvgPriceVal
     };
@@ -3047,6 +3052,11 @@ function checkFormDirtyState() {
 
     if (selectedShareDocId && originalShareData) {
         const isDirty = !areShareDataEqual(originalShareData, currentData);
+        try {
+            const origW = Array.isArray(originalShareData.watchlistIds)? originalShareData.watchlistIds.join(',') : 'null';
+            const currW = Array.isArray(currentData.watchlistIds)? currentData.watchlistIds.join(',') : 'null';
+            logDebug(`[DirtyTrace] orig watchlists: [${origW}] vs current [${currW}] -> isDirty=${isDirty}`);
+        } catch(_) {}
         canSave = canSave && isDirty;
         if (!isDirty) {
             logDebug('Dirty State: Existing share: No changes detected, save disabled.');
