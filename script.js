@@ -8407,13 +8407,22 @@ if (sortSelect) {
 
         function globalWhileOpenGuard(e){
             if (!appSidebar.classList.contains('open')) return;
-            if (appSidebar.contains(e.target)) return; // allow normal interaction inside sidebar
-            if (e.target === hamburgerBtn) return; // let hamburger reopen/close logic proceed if reachable (desktop)
-            // Anything else while open (and especially beneath overlay) is swallowed
+            // Allow interaction inside the sidebar itself
+            if (appSidebar.contains(e.target)) return;
+            // Allow hamburger button events (desktop scenario) to toggle normally
+            if (e.target === hamburgerBtn) return;
+            // Allow overlay events to reach overlay handlers so they can perform the close exactly once
+            if (e.target === sidebarOverlay) return; 
+            // For any other target (true outside click/tap), close sidebar then swallow to avoid click-through
+            if (e.type === 'click' || e.type === 'pointerup' || e.type === 'mouseup' || e.type === 'touchend') {
+                logDebug('Sidebar Guard: Outside click -> closing sidebar ('+e.type+').');
+                toggleAppSidebar(false);
+                window.__sidebarJustClosedAt = Date.now();
+            }
             e.stopImmediatePropagation();
             e.stopPropagation();
             e.preventDefault();
-            logDebug('Sidebar Overlay: Swallowed stray '+e.type+' while sidebar open (outside sidebar).');
+            logDebug('Sidebar Guard: Swallowed '+e.type+' outside sidebar to prevent click-through.');
         }
 
         const overlayEventTypes = ['pointerdown','pointerup','click','mousedown','mouseup','touchstart','touchend'];
