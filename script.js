@@ -449,7 +449,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 // Guard against unintended re-opening of the Share Edit modal shortly after save
 let suppressShareFormReopen = false;
 
-// App version (single source of truth for display)
+// App version (kept for internal logging; no longer displayed in UI title bar)
 const APP_VERSION = 'v0.1.5';
 
 
@@ -3062,6 +3062,19 @@ function checkFormDirtyState() {
     logDebug('Dirty State: Save button enabled: ' + canSave);
 }
 
+// Ensure watchlist checkbox changes always invoke dirty-state recalculation
+try {
+    if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
+        shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            if (cb.getAttribute('data-dirty-bound')==='true') return;
+            cb.addEventListener('change', ()=>{
+                try { checkFormDirtyState(); } catch(e) { console.warn('DirtyState: checkbox change failed', e); }
+            });
+            cb.setAttribute('data-dirty-bound','true');
+        });
+    }
+} catch(e) { /* silent */ }
+
 /**
  * Saves share data to Firestore. Can be called silently for auto-save.
  * @param {boolean} isSilent If true, no alert messages are shown on success.
@@ -4204,7 +4217,14 @@ function renderWatchlist() {
         const isMobileView = window.innerWidth <= 768;
         let sharesToRender = [];
 
-        if (selectedWatchlistId === ALL_SHARES_ID) {
+        if (selectedWatchlistId === '__movers') {
+            // Use snapshot entries if available; fallback to allShares filtered by last snapshot codes
+            const snapshot = window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries) ? window.__lastMoversSnapshot.entries : [];
+            const codeSet = new Set(snapshot.map(e=>e.code));
+            let base = dedupeSharesById(allSharesData);
+            sharesToRender = base.filter(s => s.shareName && codeSet.has(s.shareName.toUpperCase()));
+            logDebug('Render: Displaying Movers snapshot ('+sharesToRender.length+' items).');
+        } else if (selectedWatchlistId === ALL_SHARES_ID) {
             sharesToRender = dedupeSharesById(allSharesData);
             logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
         } else if (currentSelectedWatchlistIds.length === 1) {
@@ -6967,32 +6987,7 @@ async function initializeAppLogic() {
         });
     }
 
-    // Insert a tiny version badge to the right of the title and keep it there
-    try {
-        const ensureBadge = () => {
-            const title = document.getElementById('dynamicWatchlistTitle');
-            if (!title) return;
-            let badge = document.getElementById('appVersionBadge');
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.id = 'appVersionBadge';
-                badge.textContent = APP_VERSION;
-                badge.style.marginLeft = '8px';
-                badge.style.fontSize = '0.75rem';
-                badge.style.fontWeight = '400';
-                badge.style.color = 'var(--ghosted-text, #888)';
-                badge.style.verticalAlign = 'middle';
-                badge.style.letterSpacing = '0.5px';
-            }
-            if (badge.parentElement !== title) title.appendChild(badge);
-        };
-        ensureBadge();
-        const titleEl = document.getElementById('dynamicWatchlistTitle');
-        if (titleEl && typeof MutationObserver !== 'undefined') {
-            const mo = new MutationObserver(() => ensureBadge());
-            mo.observe(titleEl, { childList: true });
-        }
-    } catch(e){ console.warn('Version badge insert failed:', e); }
+    // Removed version badge insertion for cleaner title bar.
 
     // (Removed mid-pipeline mobile view preference load; now handled early + during auth apply)
 
@@ -8349,13 +8344,25 @@ if (sortSelect) {
         });
         
         // Corrected sidebar overlay dismissal logic for mobile with click-through prevention
-        sidebarOverlay.addEventListener('click', (event) => {
-            logDebug('Sidebar Overlay: Clicked overlay. Attempting to close sidebar.');
+        // Strengthen overlay shielding: capture mousedown + click, add brief global suppression
+        const overlayCloseHandler = (event) => {
             if (appSidebar.classList.contains('open') && event.target === sidebarOverlay) {
+                logDebug('Sidebar Overlay: Dismiss event ('+event.type+').');
                 event.stopPropagation();
                 event.preventDefault();
                 toggleAppSidebar(false);
-                return false; // Explicitly consume
+                // Set suppression window to ignore immediate next body click
+                window.__sidebarJustClosedAt = Date.now();
+                return false;
+            }
+        };
+        sidebarOverlay.addEventListener('mousedown', overlayCloseHandler, true);
+        sidebarOverlay.addEventListener('click', overlayCloseHandler, true);
+        // Global guard: swallow clicks within 150ms of close if they land under old overlay area
+        document.addEventListener('click', (e)=>{
+            if (window.__sidebarJustClosedAt && Date.now() - window.__sidebarJustClosedAt < 150) {
+                e.stopPropagation(); e.preventDefault();
+                logDebug('Sidebar Overlay: Swallowed stray post-close click.');
             }
         }, true);
 
@@ -8536,7 +8543,7 @@ function showTargetHitDetailsModal() {
         const container = document.createElement('div');
         container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
-        const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span><span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span>${minText?`<span class=\"min-filter\">${minText}</span>`:''}</div>`;
+    const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span><span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span></div>`;
     // Ensure single heading styled like other sections
     targetHitSharesList.querySelectorAll('.global-movers-heading').forEach(h=>h.remove());
     const heading = document.createElement('h3');
