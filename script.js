@@ -5448,18 +5448,18 @@ function enforceMoversVirtualView() {
     const tableRows = document.querySelectorAll('#shareTable tbody tr');
     const mobileCards = document.querySelectorAll('.mobile-share-cards .mobile-card');
     if (!isMovers) {
-        // Restore all
         tableRows.forEach(tr => { tr.style.display = ''; });
         mobileCards.forEach(card => { card.style.display = ''; });
         return;
     }
-    // Ensure snapshot exists (compute silently if needed)
-    if (!window.__lastMoversSnapshot || !window.__lastMoversSnapshot.entries || !window.__lastMoversSnapshot.entries.length) {
-        applyGlobalSummaryFilter({ silent: true, computeOnly: true });
+    // Always recompute movers (fresh live movement) – fallback to snapshot only if recompute fails
+    let moversEntries = [];
+    try { moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || []; }
+    catch(e){ console.warn('Movers enforce: fresh compute failed', e); }
+    if (!moversEntries.length && window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries) {
+        moversEntries = window.__lastMoversSnapshot.entries;
     }
-    const entries = (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries) || [];
-    const codeSet = new Set(entries.map(e => e.code));
-    // Restrict to portfolio codes only (local) – portfolio codes come from allSharesData list
+    const codeSet = new Set(moversEntries.map(e => e.code));
     const userCodes = new Set((allSharesData||[]).map(s => (s && s.shareName ? s.shareName.toUpperCase() : null)).filter(Boolean));
     const effectiveCodes = new Set();
     codeSet.forEach(c => { if (userCodes.has(c)) effectiveCodes.add(c); });
@@ -5473,6 +5473,9 @@ function enforceMoversVirtualView() {
         const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
         card.style.display = (code && effectiveCodes.has(code)) ? '' : 'none';
     });
+    if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
+        try { console.debug('[Movers enforce] totalFresh=', moversEntries.length, 'portfolioMatch=', effectiveCodes.size); } catch(_) {}
+    }
 }
 
 // NEW: Helper to enable/disable a specific alert for a share

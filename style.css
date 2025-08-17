@@ -321,8 +321,8 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Global summary alert item styling */
 /* Global summary alert unified card styling */
 .global-summary-alert.target-hit-item { 
-    /* Inherit base .target-hit-item background/border; only tweak internal layout */
-    background: var(--panel-bg, rgba(255,255,255,0.05));
+    /* Match other alert cards visually */
+    background-color: var(--card-bg);
     border: 1px solid var(--border-color, #333);
     border-radius: 8px;
     padding: 10px 12px;
