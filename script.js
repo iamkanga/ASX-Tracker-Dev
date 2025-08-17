@@ -1,4 +1,4 @@
-// Build Marker: 2025-08-17T00:00Z v0.1.9 (cache-bust validation)
+// Build Marker: 2025-08-17T00:00Z v2.0.0 (Modal architecture reset, global movers heading externalized)
 // If you do NOT see this line in DevTools Sources, you're viewing a stale cached script.
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
@@ -885,64 +885,65 @@ const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: 
 // NEW: Cash & Assets UI Elements (1)
 const stockWatchlistSection = document.getElementById('stockWatchlistSection');
 // Generic number formatting helper (adds commas to large numbers while preserving decimals)
-function formatWithCommas(value) {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'number') return value.toLocaleString(undefined, { maximumFractionDigits: 8 });
-    const str = value.toString();
-    if (!/^[-+]?\d*(\.\d+)?$/.test(str)) return value; // not a plain number string
-    const parts = str.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.join('.');
-}
-
-// Global helpers for consistent numeric formatting across the UI
-function formatMoney(val, opts = {}) {
-    const { hideZero = false, decimals } = opts; // if decimals supplied explicitly, override adaptive logic
-    if (val === null || val === undefined) return '';
-    const n = Number(val);
-    if (!isFinite(n)) return '';
-    if (hideZero && n === 0) return '';
-    // Adaptive decimals: < 1 cent show 3 decimals (e.g., $0.005), otherwise 2.
-    const useDecimals = (typeof decimals === 'number') ? decimals : (Math.abs(n) < 0.01 && n !== 0 ? 3 : 2);
-    const fixed = n.toFixed(useDecimals);
-    const parts = fixed.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return '$' + parts.join('.');
-}
-
-function formatPercent(val, opts = {}) {
-    const { maxDecimals = 2 } = opts; // allow specifying maximum decimals
-    if (val === null || val === undefined) return '';
-    const n = Number(val);
-    if (!isFinite(n)) return '';
-    // Show whole number when no fractional component (e.g., 100 instead of 100.00)
-    if (Math.abs(n % 1) < 1e-9) return n.toFixed(0) + '%';
-    return n.toFixed(maxDecimals) + '%';
-}
-
-// Lean wrappers for adaptive decimals outside of currency symbol contexts
-// Revised adaptive price: default 2 decimals; optionally preserve up to 3 if user entered (pass userRaw); force2 to clamp.
-function formatAdaptivePrice(value, opts = {}) {
-    if (value === null || value === undefined || isNaN(value)) return '0.00';
-    const n = Number(value);
-    if (opts.force2) return n.toFixed(2);
-    if (opts.userRaw) {
-        const m = String(opts.userRaw).trim().match(/^[-+]?\d+(?:\.(\d{1,3}))?$/);
-        if (m && m[1] && m[1].length > 2) return n.toFixed(Math.min(3, m[1].length));
+// --- START: NEW Corrected Modal Rendering Logic (Architectural Mandate) ---
+function showTargetHitDetailsModal() {
+    if (!targetHitDetailsModal || !targetHitSharesList) {
+        console.error('Target Hit Modal: Required elements not found.');
+        return;
     }
-    return n.toFixed(2);
-}
-function formatAdaptivePercent(pct) {
-    if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
-    const n = Number(pct);
-    const abs = Math.abs(n);
-    // Use 3 decimals for very small magnitudes (under 0.1%), else 2
-    const decimals = (abs > 0 && abs < 0.1) ? 3 : 2;
-    return n.toFixed(decimals);
-}
+    targetHitSharesList.innerHTML = '';
 
-// Fallback for missing formatUserDecimalStrict (called in edit form population)
-if (typeof window.formatUserDecimalStrict !== 'function') {
+    // Global movers heading first (outside card)
+    if (globalAlertSummary && globalAlertSummary.totalCount > 0) {
+        const globalMoversHeading = document.createElement('h3');
+        globalMoversHeading.className = 'target-hit-section-title';
+        globalMoversHeading.id = 'globalMoversTitle';
+        globalMoversHeading.textContent = 'Global movers';
+        targetHitSharesList.appendChild(globalMoversHeading);
+
+        const data = globalAlertSummary;
+        const total = data.totalCount || 0;
+        const inc = data.increaseCount || 0;
+        const dec = data.decreaseCount || 0;
+        const threshold = data.threshold || '';
+        const portfolioCount = data.portfolioCount || 0;
+        const discoverCount = Array.isArray(data.nonPortfolioCodes) ? data.nonPortfolioCodes.length : 0;
+        const enabled = (data.enabled !== false);
+        const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
+        const container = document.createElement('div');
+        container.className = 'target-hit-item global-summary-alert';
+        container.innerHTML = `
+            <div class="global-summary-inner">
+                <div class="global-summary-arrows-row"><span class="up"><span class="arrow">&#9650;</span> ${inc}</span><span class="down"><span class="arrow">&#9660;</span> ${dec}</span></div>
+                <div class="global-summary-detail total-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
+                <div class="global-summary-detail portfolio-line">${portfolioCount} from your portfolio</div>
+                ${minText?`<div class=\"global-summary-detail ignoring-line\">${minText}</div>`:''}
+            </div>
+            <div class="global-summary-actions">
+                <button data-action="discover" ${discoverCount?'':'disabled'}>${discoverCount?`Global (${discoverCount})`:'Global'}</button>
+                <button data-action="view-portfolio" ${portfolioCount?'':'disabled'}>${portfolioCount?`Local (${portfolioCount})`:'Local'}</button>
+                <button data-action="mute-global" title="${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}">${enabled ? 'Mute' : 'Unmute'}</button>
+            </div>`;
+        const actions = container.querySelector('.global-summary-actions');
+        if (actions) {
+            actions.addEventListener('click', (e)=>{
+                const btn = e.target.closest('button'); if (!btn) return;
+                const act = btn.getAttribute('data-action');
+                if (act === 'view-portfolio') {
+                    try { applyGlobalSummaryFilter(); } catch(err){ console.warn('Global summary filter failed', err);} hideModal(targetHitDetailsModal);
+                    currentSelectedWatchlistIds = ['__movers'];
+                    try { localStorage.setItem('lastSelectedView','__movers'); } catch(_) {}
+                    updateMainTitle('Movers');
+                } else if (act === 'discover') {
+                    try { openDiscoverModal(data); } catch(err){ console.warn('Discover modal open failed', err); }
+                } else if (act === 'mute-global') {
+                    e.preventDefault();
+                    toggleGlobalSummaryEnabled();
+                }
+            });
+        }
+        targetHitSharesList.appendChild(container);
+    }
     window.formatUserDecimalStrict = function(v){
         if (v === null || v === undefined || v === '') return '';
         const num = Number(v);
@@ -6590,54 +6591,21 @@ function hideContextMenu() {
     }
 }
 
+// --- START: NEW Simplified Hamburger Logic (Architectural Mandate) ---
 function toggleAppSidebar(forceState = null) {
-    logDebug('Sidebar: toggleAppSidebar called. Current open state: ' + appSidebar.classList.contains('open') + ', Force state: ' + forceState);
-    const isDesktop = window.innerWidth > 768;
     const isOpen = appSidebar.classList.contains('open');
-
-    if (forceState === true || (forceState === null && !isOpen)) {
-        // On mobile, opening the sidebar is a navigation event that should be caught by the back button.
-        if (!isDesktop) {
-            // Push a new history state for the sidebar opening
-            pushAppState({ sidebarOpen: true }, '', '#sidebar');
-        }
-
+    const shouldOpen = forceState === true || (forceState === null && !isOpen);
+    if (shouldOpen) {
         appSidebar.classList.add('open');
         sidebarOverlay.classList.add('open');
-        // Reset sidebar scroll position to top when opening
-        if (appSidebar) {
-            appSidebar.scrollTop = 0;
-        }
-        // Prevent scrolling of main content when sidebar is open on mobile
-        if (!isDesktop) {
-            document.body.style.overflow = 'hidden';
-            logDebug('Sidebar: Mobile: Body overflow hidden.');
-        }
-        if (isDesktop) {
-            document.body.classList.add('sidebar-active');
-            sidebarOverlay.style.pointerEvents = 'none';
-            logDebug('Sidebar: Desktop: Sidebar opened, body shifted, overlay pointer-events: none.');
-        } else {
-            document.body.classList.remove('sidebar-active');
-            sidebarOverlay.style.pointerEvents = 'auto'; // Ensure overlay is clickable on mobile
-            logDebug('Sidebar: Mobile: Sidebar opened, body NOT shifted, overlay pointer-events: auto.');
-        }
-    if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','true');
-    logDebug('Sidebar: Sidebar opened.');
-    } else if (forceState === false || (forceState === null && isOpen)) {
+        if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','true');
+    } else {
         appSidebar.classList.remove('open');
         sidebarOverlay.classList.remove('open');
-        document.body.classList.remove('sidebar-active');
-        document.body.style.overflow = ''; // Restore scrolling
-        sidebarOverlay.style.pointerEvents = 'none'; // Reset pointer-events when closed
-        // Reset sidebar scroll position to top when closing
-        if (appSidebar) {
-            appSidebar.scrollTop = 0;
-        }
-    if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','false');
-    logDebug('Sidebar: Sidebar closed.');
+        if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','false');
     }
 }
+// --- END: NEW Simplified Hamburger Logic ---
 
 /**
  * Escapes a string for CSV by enclosing it in double quotes and doubling any existing double quotes.
@@ -8398,17 +8366,17 @@ if (sortSelect) {
             toggleAppSidebar(false);
         });
         
-        // Re-architected: single mousedown listener only; close then stop propagation
-        if (!sidebarOverlay.dataset.overlayBound) {
-            const overlayCloseHandler = (e) => {
-                if (!appSidebar.classList.contains('open')) return;
-                if (e.target !== sidebarOverlay) return;
-                toggleAppSidebar(false); // close first
-                e.stopPropagation();     // then stop propagation
-            };
-            sidebarOverlay.addEventListener('mousedown', overlayCloseHandler, true);
-            sidebarOverlay.dataset.overlayBound = '1';
-        }
+        // Clean slate overlay: clone to strip prior listeners, then single mousedown listener
+        const freshOverlay = sidebarOverlay.cloneNode(true);
+        sidebarOverlay.parentNode.replaceChild(freshOverlay, sidebarOverlay);
+        sidebarOverlay = freshOverlay; // update reference
+        window.sidebarOverlay = freshOverlay; // global reference consistency
+        sidebarOverlay.addEventListener('mousedown', (e)=>{
+            if (!appSidebar.classList.contains('open')) return;
+            if (e.target !== sidebarOverlay) return;
+            toggleAppSidebar(false);
+            e.stopPropagation();
+        }, true);
 
         // Accessibility & focus trap for sidebar when open
         const mainContent = document.getElementById('mainContent') || document.querySelector('main');
@@ -8599,7 +8567,7 @@ if (sortSelect) {
     applyCompactViewMode();
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
-// Build Marker: v0.1.12 (Overlay single-listener architecture, ignoring-line 0.8em spec)
+// Build Marker: v2.0.0 (Modal architecture reset, global movers heading externalized)
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal() {
@@ -8763,30 +8731,31 @@ function showTargetHitDetailsModal() {
         return item;
     };
 
-    const hasEnabled = sharesAtTargetPrice.length > 0;
-    const hasMuted = Array.isArray(sharesAtTargetPriceMuted) && sharesAtTargetPriceMuted.length > 0;
-    if (!hasEnabled && !hasMuted) {
-        targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
-    } else {
-        if (hasEnabled) {
-            const enabledHeader = document.createElement('h3');
-            enabledHeader.textContent = 'Target hit';
-            enabledHeader.className = 'target-hit-section-title';
-            // If global summary present, ensure header comes AFTER it (global summary was prepended)
-            targetHitSharesList.appendChild(enabledHeader);
-            sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
-        }
-        if (hasMuted) {
-            const mutedHeader = document.createElement('h3');
-            mutedHeader.textContent = 'Muted Alerts';
-            targetHitSharesList.appendChild(mutedHeader);
-            sharesAtTargetPriceMuted.forEach(share => targetHitSharesList.appendChild(makeItem(share, true)));
-        }
+    // Target hit section heading & items
+    if (sharesAtTargetPrice && sharesAtTargetPrice.length > 0) {
+        const targetHitHeading = document.createElement('h3');
+        targetHitHeading.className = 'target-hit-section-title';
+        targetHitHeading.textContent = 'Target hit';
+        targetHitSharesList.appendChild(targetHitHeading);
+        sharesAtTargetPrice.forEach(share => {
+            const livePriceData = livePrices[share.shareName.toUpperCase()] || {};
+            let movementHTML = '';
+            if (livePriceData.live != null && livePriceData.prevClose != null) {
+                const change = livePriceData.live - livePriceData.prevClose;
+                const percent = livePriceData.prevClose !== 0 ? (change / livePriceData.prevClose) * 100 : 0;
+                const dirClass = change >= 0 ? 'positive' : 'negative';
+                movementHTML = `<div class="movement-details ${dirClass}">${change>=0?'+':''}${change.toFixed(2)} (${percent.toFixed(2)}%)</div>`;
+            }
+            const item = document.createElement('div');
+            item.className = 'target-hit-item';
+            item.innerHTML = movementHTML || '<div class="movement-details neutral">No movement data</div>';
+            targetHitSharesList.appendChild(item);
+        });
     }
 
     showModal(targetHitDetailsModal);
-    logDebug('Target Hit Modal: Displayed details. Enabled=' + sharesAtTargetPrice.length + ' Muted=' + (sharesAtTargetPriceMuted?sharesAtTargetPriceMuted.length:0));
 }
+// --- END: NEW Corrected Modal Rendering Logic ---
 
 // Toggle GA_SUMMARY enabled flag (mute/unmute for session)
 async function toggleGlobalSummaryEnabled() {
