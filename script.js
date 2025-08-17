@@ -9385,3 +9385,51 @@ try {
     }
 })();
 // --- End Auto SuperDebug Fallback Trigger ---
+
+// --- Super Debug Always-Install (resiliency) ---
+// Some users reported the panel not appearing with ?superdebug. This independent
+// installer guarantees superDebugDump exists early, without waiting for other UI.
+(function ensureSuperDebugAlwaysInstalled(){
+    if (window.superDebugDump) return; // already installed by main diagnostics block
+    try {
+        window.superDebugDump = function(){
+            const data = { ts: new Date().toISOString(), href: location.href };
+            try { data.buildMarkerInline = (/Build Marker:[^\n]+/.exec(document.documentElement.innerHTML)||[])[0]||null; } catch(_){}
+            try { data.userId = (typeof currentUserId!=='undefined')? currentUserId : null; } catch(_){}
+            try { data.alertCounts = { enabled: (sharesAtTargetPrice||[]).length, muted: (sharesAtTargetPriceMuted||[]).length }; } catch(_){}
+            try { data.globalSummary = globalAlertSummary? { total: globalAlertSummary.totalCount, inc: globalAlertSummary.increaseCount, dec: globalAlertSummary.decreaseCount } : null; } catch(_){}
+            const json = JSON.stringify(data, null, 2);
+            // Console output (always)
+            console.groupCollapsed('%cSUPER DEBUG (minimal)','color:#7bd5ff');
+            console.log(json); console.groupEnd();
+            // Panel creation (idempotent)
+            let panel = document.getElementById('superDebugPanel');
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.id = 'superDebugPanel';
+                panel.style.cssText = 'position:fixed;bottom:14px;right:14px;z-index:99999;width:340px;max-width:92vw;background:#1b1f23;color:#eef;font:12px monospace;border:1px solid #444;border-radius:6px;display:flex;flex-direction:column;box-shadow:0 6px 18px rgba(0,0,0,.5);';
+                panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:#24292e;border-bottom:1px solid #444;border-radius:6px 6px 0 0;">'+
+                    '<strong style="font:600 12px system-ui">Super Debug</strong>'+
+                    '<div style="display:flex;gap:6px;">'+
+                        '<button id="sdCopyBtn" style="background:#0366d6;color:#fff;border:0;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px;">Copy</button>'+
+                        '<button id="sdCloseBtn" style="background:#d62828;color:#fff;border:0;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px;">×</button>'+
+                    '</div></div>'+
+                    '<textarea id="sdText" spellcheck="false" style="flex:1;min-height:160px;margin:0;padding:6px 8px;background:#0d1117;color:#8fdaff;border:0;outline:none;resize:vertical;border-radius:0 0 6px 6px;font:11px/1.4 monospace;white-space:pre;overflow:auto;"></textarea>';
+                document.body.appendChild(panel);
+                panel.querySelector('#sdCloseBtn').addEventListener('click', ()=> panel.remove());
+                panel.querySelector('#sdCopyBtn').addEventListener('click', ()=>{ const ta=panel.querySelector('#sdText'); ta.select(); try { document.execCommand('copy'); showCustomAlert && showCustomAlert('Copied'); } catch(_){} });
+            }
+            const ta = panel.querySelector('#sdText');
+            if (ta) { ta.value = json; ta.scrollTop = 0; }
+            if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(json).catch(()=>{}); }
+            return data;
+        };
+        // Hotkey (duplicate-safe)
+        document.addEventListener('keydown', function __sdKey(e){ if (e.altKey && e.shiftKey && e.code==='KeyD'){ try { window.superDebugDump(); } catch(_){} } }, true);
+        // Auto-run if param present (quick attempt; the fallback poller above will also assist)
+        if (window.location.search.includes('superdebug')) {
+            setTimeout(()=>{ try { window.superDebugDump(); } catch(_){} }, 800);
+        }
+    } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
+})();
+// --- End Super Debug Always-Install ---
