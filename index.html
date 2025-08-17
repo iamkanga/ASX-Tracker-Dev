@@ -900,20 +900,14 @@
 
         // YOUR FIREBASE CONFIGURATION - Replace with your actual Firebase project config
         const firebaseConfig = {
-            apiKey: "REDACTED_API_KEY",
-            authDomain: "REDACTED_AUTH_DOMAIN",
-            projectId: "REDACTED_PROJECT_ID",
-            storageBucket: "REDACTED_STORAGE_BUCKET",
-            messagingSenderId: "REDACTED_MESSAGING_SENDER_ID",
-            appId: "REDACTED_APP_ID",
-            measurementId: "REDACTED_MEASUREMENT_ID"
+            apiKey: "AIzaSyAyIWoTYlzTkaSZ9x-ySiHtzATBM9XFrYw",
+            authDomain: "asx-watchlist-app.firebaseapp.com",
+            projectId: "asx-watchlist-app",
+            storageBucket: "asx-watchlist-app.firebaseapp.com",
+            messagingSenderId: "671024168765",
+            appId: "1:671024168765:web:f2b62cd0e77a126c0ecf54",
+            measurementId: "G-J24BTJ34D2"
         };
-
-        // Detect redacted / placeholder config to prevent invalid initialization attempts
-        function isRedactedConfig(cfg){
-            if (!cfg) return true;
-            return Object.values(cfg).some(v => typeof v === 'string' && v.startsWith('REDACTED_'));
-        }
 
         const currentAppId = firebaseConfig.projectId || 'default-app-id';
 
@@ -922,7 +916,7 @@
         let db;
         let firebaseInitialized = false;
 
-        if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.projectId && !isRedactedConfig(firebaseConfig)) {
+    if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.projectId) {
             try {
                 firebaseApp = initializeApp(firebaseConfig);
                 auth = getAuth(firebaseApp);
@@ -934,16 +928,10 @@
                 firebaseInitialized = false;
             }
         } else {
-            if (isRedactedConfig(firebaseConfig)) {
-                console.warn("Firebase: Redacted placeholder configuration detected. Skipping initialization (expected in secure/shared builds).");
-                window.__FIREBASE_PLACEHOLDER_CONFIG = true;
-            } else {
-                console.error("Firebase: Configuration is missing or invalid (apiKey or projectId). Firebase will not initialize.");
-            }
+            console.error("Firebase: Configuration is missing or invalid (apiKey or projectId). Firebase will not initialize.");
             const errorDiv = document.getElementById('firebaseInitError');
             if (errorDiv) {
                 errorDiv.style.display = 'block';
-                errorDiv.innerHTML = '<p><strong>Offline Mode:</strong> Secure build without live Firebase keys. Data features disabled.</p><p>Provide valid config locally to enable persistence & auth.</p>';
             }
             firebaseInitialized = false;
         }
