@@ -1,4 +1,4 @@
-// Build Marker: 2025-08-17T00:00Z v0.1.8 (cache-bust validation)
+// Build Marker: 2025-08-17T00:00Z v0.1.9 (cache-bust validation)
 // If you do NOT see this line in DevTools Sources, you're viewing a stale cached script.
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
@@ -9084,7 +9084,7 @@ try {
             btn.addEventListener('click', async () => {
                 try {
                     const diag = {};
-                    diag.buildMarker = 'v0.1.8';
+                      diag.buildMarker = 'v0.1.9';
                     diag.time = new Date().toISOString();
                     diag.userId = (typeof currentUserId!=='undefined')? currentUserId : null;
                     diag.activeWatchlistId = (typeof activeWatchlistId!=='undefined')? activeWatchlistId : null;
