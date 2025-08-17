@@ -830,6 +830,11 @@ const targetHitModalTitle = document.getElementById('targetHitModalTitle');
 const targetHitSharesList = document.getElementById('targetHitSharesList');
 const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
 
+// Ensure initial ARIA state for hamburger
+if (hamburgerBtn && !hamburgerBtn.hasAttribute('aria-expanded')) {
+    hamburgerBtn.setAttribute('aria-expanded','false');
+}
+
 // NEW: References for the reconfigured buttons in the Target Hit Details Modal
 const targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTopBtn'); // New 'X' button at the top
 const alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn'); // New "Minimize" button at the bottom
@@ -8377,14 +8382,17 @@ if (sortSelect) {
         }
 
 
-        // Unified hamburger listener: pushes back stack only on open
-        hamburgerBtn.addEventListener('click', (event) => {
-            logDebug('UI: Hamburger button CLICKED. Event:', event);
-            event.stopPropagation();
-            const willOpen = !appSidebar.classList.contains('open');
-            toggleAppSidebar();
-            if (willOpen) pushAppStateEntry('sidebar','sidebar');
-        });
+        // Unified hamburger listener with idempotent guard
+        if (!hamburgerBtn.dataset.sidebarBound) {
+            hamburgerBtn.addEventListener('click', (event) => {
+                logDebug('UI: Hamburger button CLICKED. Event:', event);
+                event.stopPropagation();
+                const willOpen = !appSidebar.classList.contains('open');
+                toggleAppSidebar();
+                if (willOpen) pushAppStateEntry('sidebar','sidebar');
+            });
+            hamburgerBtn.dataset.sidebarBound = '1';
+        }
         closeMenuBtn.addEventListener('click', () => {
             logDebug('UI: Close Menu button CLICKED.');
             toggleAppSidebar(false);
@@ -8589,7 +8597,7 @@ if (sortSelect) {
     applyCompactViewMode();
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
-// Build Marker: v0.1.10 (Force Update button, sidebar consolidation, modal heading layout, ignoring-line style reduction)
+// Build Marker: v0.1.11 (Modal ordering refinement, stronger ignoring-line reduction, hamburger aria guard)
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal() {
@@ -8601,7 +8609,8 @@ function showTargetHitDetailsModal() {
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
     // Inject global summary alert (discovery card) if cached
-    if (globalAlertSummary && globalAlertSummary.totalCount > 0) {
+    const hasGlobalSummary = !!(globalAlertSummary && globalAlertSummary.totalCount > 0);
+    if (hasGlobalSummary) {
         const data = globalAlertSummary;
         const total = data.totalCount || 0;
         const inc = data.increaseCount || 0;
@@ -8761,6 +8770,7 @@ function showTargetHitDetailsModal() {
             const enabledHeader = document.createElement('h3');
             enabledHeader.textContent = 'Target hit';
             enabledHeader.className = 'target-hit-section-title';
+            // If global summary present, ensure header comes AFTER it (global summary was prepended)
             targetHitSharesList.appendChild(enabledHeader);
             sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
         }

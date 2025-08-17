@@ -1,14 +1,14 @@
-// Service Worker Version: 1.0.10
+// Service Worker Version: 1.0.11
 
 // Cache name for the current version of the service worker
-const CACHE_NAME = 'share-watchlist-v1.0.32'; // Bump for cache-busting (force update feature + UI fixes)
+const CACHE_NAME = 'share-watchlist-v1.0.33'; // Bump for cache-busting (modal ordering + style refinement)
 
 // List of essential application assets to precache
 const CACHED_ASSETS = [
     './', // Caches the root (index.html)
     './index.html',
-    './script.js?v=0.1.10',
-    './style.css?v=0.1.10',
+    './script.js?v=0.1.11',
+    './style.css?v=0.1.11',
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
     // Firebase SDKs are loaded as modules, so they might not be directly in the cache list
