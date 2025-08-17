@@ -1836,8 +1836,9 @@ function addShareToTable(share) {
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
-        <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
-    <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
+        <td class="numeric-data-cell" title="Target direction: A = Above (▲), B = Below (▼)">
+            ${formatMoney(Number(share.targetPrice), { hideZero: true })}
+        </td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
         </td>
@@ -2048,7 +2049,8 @@ function addShareToMobileCards(share) {
             </div>
         </div>
         <p class="data-row"><span class="label-text">Entry Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.currentPrice)}</span></p>
-        <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.targetPrice)}</span></p>
+    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.targetPrice)}</span></p>
+    <p class="data-row small-note"><span class="label-text"></span><span class="data-value"><em>A = Above target (▲), B = Below target (▼)</em></span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
