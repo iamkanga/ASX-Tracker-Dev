@@ -4071,14 +4071,6 @@ table td.live-price-cell.negative-change {
     display: inline; /* Change to inline display */
 }
 
-/* Tiny contextual note under target price (direction legend) */
-.small-note em { font-size: 0.72rem; color: var(--ghosted-text); letter-spacing: 0.3px; }
-
-/* Defensive hide of legacy Entry/Entered Price column in desktop table if still rendered */
-@media (min-width: 900px) {
-    table.portfolio-table th[data-col="entry"],
-    table.portfolio-table td[data-col="entry"] { display: none !important; }
-}
 
 .commsec-message {
     display: block;
