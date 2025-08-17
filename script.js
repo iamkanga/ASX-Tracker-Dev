@@ -8642,6 +8642,8 @@ if (sortSelect) {
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
 // Build Marker: v0.1.12 (Overlay single-listener architecture, ignoring-line 0.8em spec)
+// Also expose as a runtime variable for lightweight diagnostics
+window.BUILD_MARKER = 'v0.1.12';
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal() {
@@ -9394,10 +9396,12 @@ try {
     try {
         window.superDebugDump = function(){
             const data = { ts: new Date().toISOString(), href: location.href };
-            try { data.buildMarkerInline = (/Build Marker:[^\n]+/.exec(document.documentElement.innerHTML)||[])[0]||null; } catch(_){}
-            try { data.userId = (typeof currentUserId!=='undefined')? currentUserId : null; } catch(_){}
-            try { data.alertCounts = { enabled: (sharesAtTargetPrice||[]).length, muted: (sharesAtTargetPriceMuted||[]).length }; } catch(_){}
-            try { data.globalSummary = globalAlertSummary? { total: globalAlertSummary.totalCount, inc: globalAlertSummary.increaseCount, dec: globalAlertSummary.decreaseCount } : null; } catch(_){}
+            try { data.BUILD_MARKER = (typeof window.BUILD_MARKER!=='undefined')? window.BUILD_MARKER : null; } catch(_){ }
+            try { data.buildMarkerInline = (/Build Marker:[^\n]+/.exec(document.documentElement.innerHTML)||[])[0]||null; } catch(_){ }
+            if (!data.buildMarkerInline && data.BUILD_MARKER) data.buildMarkerInline = '(inline marker not found, using BUILD_MARKER variable)';
+            try { data.userId = (typeof currentUserId!=='undefined')? currentUserId : null; } catch(_){ }
+            try { data.alertCounts = { enabled: (sharesAtTargetPrice||[]).length, muted: (sharesAtTargetPriceMuted||[]).length }; } catch(_){ }
+            try { data.globalSummary = globalAlertSummary? { total: globalAlertSummary.totalCount, inc: globalAlertSummary.increaseCount, dec: globalAlertSummary.decreaseCount } : null; } catch(_){ }
             const json = JSON.stringify(data, null, 2);
             // Console output (always)
             console.groupCollapsed('%cSUPER DEBUG (minimal)','color:#7bd5ff');
