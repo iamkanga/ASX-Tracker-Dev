@@ -8353,28 +8353,104 @@ if (sortSelect) {
             toggleAppSidebar(false);
         });
         
-        // Corrected sidebar overlay dismissal logic for mobile with click-through prevention
-        // Strengthen overlay shielding: capture mousedown + click, add brief global suppression
-        const overlayCloseHandler = (event) => {
-            if (appSidebar.classList.contains('open') && event.target === sidebarOverlay) {
-                logDebug('Sidebar Overlay: Dismiss event ('+event.type+').');
-                event.stopPropagation();
-                event.preventDefault();
-                toggleAppSidebar(false);
-                // Set suppression window to ignore immediate next body click
-                window.__sidebarJustClosedAt = Date.now();
-                return false;
+        // --- Robust overlay shielding & click-through prevention ---
+        // Goal: Eliminate any possibility that a rapid tap to close the sidebar also activates an underlying control.
+        // Strategy:
+        // 1. Capture-phase listeners on pointer/touch/mouse down/up/click for the overlay to stopImmediatePropagation + preventDefault.
+        // 2. When closing via overlay, record timestamp + down coordinates.
+        // 3. Global capture guard swallows the ensuing pointerup/click if within a short suppression window & small movement delta.
+        // 4. While sidebar open, any pointer events whose target is not inside the sidebar are swallowed (belt & braces) before bubbling.
+        const SUPPRESS_MS = 320; // Slightly > typical 300ms tap delays on older mobile stacks
+        const SUPPRESS_DISTANCE = 8; // px radius for matching the same tap
+        let lastOverlayPointerDown = null; // { t, x, y }
+
+        function recordDown(e){
+            if (!appSidebar.classList.contains('open')) return;
+            const isOverlayTarget = (e.target === sidebarOverlay);
+            if (isOverlayTarget) {
+                const pt = (e.touches && e.touches[0]) || e;
+                lastOverlayPointerDown = { t: Date.now(), x: pt.clientX, y: pt.clientY };
+                window.__sidebarJustClosedAt = null; // reset; will set on close
+                logDebug('Sidebar Overlay: pointerdown recorded.', lastOverlayPointerDown);
             }
-        };
-        sidebarOverlay.addEventListener('mousedown', overlayCloseHandler, true);
-        sidebarOverlay.addEventListener('click', overlayCloseHandler, true);
-        // Global guard: swallow clicks within 150ms of close if they land under old overlay area
-        document.addEventListener('click', (e)=>{
-            if (window.__sidebarJustClosedAt && Date.now() - window.__sidebarJustClosedAt < 150) {
-                e.stopPropagation(); e.preventDefault();
-                logDebug('Sidebar Overlay: Swallowed stray post-close click.');
+        }
+
+        function closeFromOverlay(e){
+            if (!appSidebar.classList.contains('open')) return;
+            if (e.target !== sidebarOverlay) return;
+            logDebug('Sidebar Overlay: Initiating close ('+e.type+').');
+            e.stopImmediatePropagation();
+            e.stopPropagation();
+            e.preventDefault();
+            toggleAppSidebar(false);
+            window.__sidebarJustClosedAt = Date.now();
+        }
+
+        function swallowIfSuppressed(e){
+            // Swallow follow-up events after close that match overlay tap signature
+            if (window.__sidebarJustClosedAt && Date.now() - window.__sidebarJustClosedAt < SUPPRESS_MS) {
+                const pt = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0]) || e;
+                if (lastOverlayPointerDown) {
+                    const dx = Math.abs(pt.clientX - lastOverlayPointerDown.x);
+                    const dy = Math.abs(pt.clientY - lastOverlayPointerDown.y);
+                    if (dx <= SUPPRESS_DISTANCE && dy <= SUPPRESS_DISTANCE) {
+                        e.stopImmediatePropagation();
+                        e.stopPropagation();
+                        e.preventDefault();
+                        logDebug('Sidebar Overlay: Suppressed residual '+e.type+' after close (dx:'+dx+', dy:'+dy+').');
+                        return true;
+                    }
+                }
             }
-        }, true);
+            return false;
+        }
+
+        function globalWhileOpenGuard(e){
+            if (!appSidebar.classList.contains('open')) return;
+            if (appSidebar.contains(e.target)) return; // allow normal interaction inside sidebar
+            if (e.target === hamburgerBtn) return; // let hamburger reopen/close logic proceed if reachable (desktop)
+            // Anything else while open (and especially beneath overlay) is swallowed
+            e.stopImmediatePropagation();
+            e.stopPropagation();
+            e.preventDefault();
+            logDebug('Sidebar Overlay: Swallowed stray '+e.type+' while sidebar open (outside sidebar).');
+        }
+
+        const overlayEventTypes = ['pointerdown','pointerup','click','mousedown','mouseup','touchstart','touchend'];
+        overlayEventTypes.forEach(type => {
+            // Record coordinates early
+            if (type === 'pointerdown' || type === 'mousedown' || type === 'touchstart') {
+                sidebarOverlay.addEventListener(type, recordDown, true);
+            }
+            // Close on "up" or click over overlay
+            if (['click','pointerup','mouseup','touchend'].includes(type)) {
+                sidebarOverlay.addEventListener(type, (e)=>{ closeFromOverlay(e); }, true);
+            }
+            // Always consume overlay events to block propagation
+            sidebarOverlay.addEventListener(type, (e)=>{
+                if (appSidebar.classList.contains('open')) {
+                    e.stopImmediatePropagation();
+                    e.stopPropagation();
+                    // We intentionally do NOT preventDefault on pointerdown to allow focus outline removal; others we do.
+                    if (type !== 'pointerdown' && type !== 'mousedown' && type !== 'touchstart') {
+                        e.preventDefault();
+                    }
+                }
+            }, true);
+        });
+
+        // Global capture guards
+        ['pointerup','click','touchend'].forEach(type => {
+            document.addEventListener(type, (e)=>{
+                if (swallowIfSuppressed(e)) return;
+            }, true);
+        });
+        ['pointerdown','mousedown','touchstart'].forEach(type => {
+            document.addEventListener(type, globalWhileOpenGuard, true);
+        });
+        ['pointerup','mouseup','click','touchend'].forEach(type => {
+            document.addEventListener(type, globalWhileOpenGuard, true);
+        });
 
         // Accessibility & focus trap for sidebar when open
         const mainContent = document.getElementById('mainContent') || document.querySelector('main');
