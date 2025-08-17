@@ -9155,6 +9155,100 @@ try {
                     };
                         diag.globalSummary = globalAlertSummary || null;
                     diag.lastLivePriceSample = Object.entries(livePrices||{}).slice(0,10);
+
+            // === SUPER DEBUG TOOL (Environment Snapshot) ===
+            // Invoke manually: window.superDebugDump(); or press Alt+Shift+D
+            // Auto-enable if URL has ?superdebug
+            (function installSuperDebug(){
+                if (window.superDebugDump) return; // idempotent
+                function superDebugDump(){
+                    const data = { ts: new Date().toISOString() };
+                    try {
+                        data.location = location.href;
+                        // Scripts inventory
+                        data.scripts = Array.from(document.scripts).map(s=>({
+                            src: s.src || null,
+                            inlineHead: (!s.src && s.textContent) ? s.textContent.slice(0,120) : null
+                        }));
+                        // Build marker attempt (inline variable not guaranteed)
+                        try {
+                            const markerMatch = /Build Marker:[^\n]+/.exec(document.documentElement.innerHTML);
+                            data.buildMarkerFound = markerMatch ? markerMatch[0] : null;
+                        } catch(err){ data.buildMarkerError = ''+err; }
+                        // Overlay state
+                        const overlay = document.querySelector('.sidebar-overlay');
+                        if (overlay) {
+                            data.overlay = {
+                                classes: Array.from(overlay.classList),
+                                    dataset: { ...overlay.dataset },
+                                hasUnifiedHandler: !!overlay._unifiedHandler
+                            };
+                        }
+                        // Target Hit Modal structure
+                        const targetList = document.getElementById('targetHitSharesList');
+                        const gmTitle = document.getElementById('globalMoversTitle');
+                        if (targetList) {
+                            data.targetHitModal = {
+                                hasGlobalMoversTitle: !!gmTitle,
+                                firstFiveChildIdsOrClasses: Array.from(targetList.children).slice(0,5).map(el=>el.id||el.className||el.tagName),
+                                movementDeltaCount: targetList.querySelectorAll('.movement-delta').length
+                            };
+                        }
+                        // Ignoring line style
+                        const ignoreEl = document.querySelector('.global-summary-detail.ignoring-line');
+                        if (ignoreEl) {
+                            const cs = getComputedStyle(ignoreEl);
+                            data.ignoringLineComputed = { fontSize: cs.fontSize, fontWeight: cs.fontWeight, textTransform: cs.textTransform };
+                        }
+                        // Live prices sample
+                        try { data.livePricesSample = Object.entries(livePrices||{}).slice(0,5); } catch(_){ data.livePricesSampleError = true; }
+                        data.globalAlertSummary = (globalAlertSummary ? {
+                            total: globalAlertSummary.totalCount,
+                            inc: globalAlertSummary.increaseCount,
+                            dec: globalAlertSummary.decreaseCount,
+                            enabled: globalAlertSummary.enabled,
+                            min: globalAlertSummary.appliedMinimumPrice
+                        } : null);
+                        data.targetHitCounts = {
+                            enabled: Array.isArray(sharesAtTargetPrice)? sharesAtTargetPrice.length : null,
+                            muted: Array.isArray(sharesAtTargetPriceMuted)? sharesAtTargetPriceMuted.length : null
+                        };
+                        data.currentUserId = (typeof currentUserId!=='undefined')? currentUserId : null;
+                        data.selectedWatchlists = (typeof currentSelectedWatchlistIds!=='undefined')? currentSelectedWatchlistIds : [];
+                        // Resource timing for script/style
+                        try {
+                            data.resourceEntries = performance.getEntriesByType('resource').filter(r=>/script\.js|style\.css/.test(r.name)).map(r=>({ name:r.name, transferSize:r.transferSize, encodedBodySize:r.encodedBodySize, initiator:r.initiatorType }));
+                        } catch(_){ }
+                        // Caches & SW (async portion)
+                        const asyncs = [];
+                        if (window.caches && caches.keys) {
+                            asyncs.push((async()=>{ const keys = await caches.keys(); data.caches = {}; for (const k of keys){ try { const c = await caches.open(k); const reqs = await c.keys(); data.caches[k] = reqs.length; } catch(e){ data.caches[k]='ERR'; } } })());
+                        }
+                        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+                            asyncs.push((async()=>{ const regs = await navigator.serviceWorker.getRegistrations(); data.serviceWorkers = regs.map(r=>({ scope:r.scope, active:r.active?.scriptURL, waiting:r.waiting?.scriptURL, installing:r.installing?.scriptURL })); data.swController = (navigator.serviceWorker.controller && navigator.serviceWorker.controller.state)||null; })());
+                        }
+                        Promise.all(asyncs).finally(()=>{
+                            const json = JSON.stringify(data, null, 2);
+                            console.groupCollapsed('%cSUPER DEBUG SNAPSHOT','color:#a49393;font-weight:bold;');
+                            console.log(json);
+                            console.groupEnd();
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(json).then(()=>console.log('SuperDebug: Snapshot copied to clipboard.')).catch(()=>console.warn('SuperDebug: Clipboard write failed.'));
+                            }
+                            try { showCustomAlert && showCustomAlert('Super-Debug snapshot captured', 2200); } catch(_) {}
+                        });
+                    } catch(err){
+                        console.error('SuperDebug error', err);
+                    }
+                    return data;
+                }
+                window.superDebugDump = superDebugDump;
+                document.addEventListener('keydown', (e)=>{ if (e.altKey && e.shiftKey && e.code==='KeyD'){ superDebugDump(); } }, true);
+                if (window.location.search.includes('superdebug')) {
+                    setTimeout(superDebugDump, 1500);
+                }
+            })();
+            // === END SUPER DEBUG TOOL ===
                     diag.targetDismissed = !!targetHitIconDismissed;
                     diag.cacheKeys = (await caches.keys()).slice(0,10);
                     diag.serviceWorkers = (await navigator.serviceWorker.getRegistrations()).map(r=>({scope:r.scope, active:!!r.active}));
