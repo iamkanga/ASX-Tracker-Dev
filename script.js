@@ -8749,10 +8749,18 @@ function showTargetHitDetailsModal() {
                 if (act === 'view-portfolio') {
                     try { applyGlobalSummaryFilter({ silent:true, computeOnly:true }); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal);
                     currentSelectedWatchlistIds = ['__movers'];
+                    // Sync hidden/native select so subsequent title updates reflect Movers
+                    if (watchlistSelect) {
+                        try { watchlistSelect.value = '__movers'; } catch(_) {}
+                    }
                     try { localStorage.setItem('lastSelectedView','__movers'); } catch(_) {}
+                    // Persist to Firestore if helper available (cross-device restore consistency)
+                    try { if (typeof saveLastSelectedWatchlistIds === 'function') saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } catch(_) {}
                     updateMainTitle('Movers');
                     // Re-render and enforce virtual view now
                     try { renderWatchlist(); enforceMoversVirtualView(); } catch(_) {}
+                    // Safety: re-assert title after potential render-driven updates
+                    setTimeout(()=>{ try { updateMainTitle('Movers'); } catch(_) {} }, 30);
                 } else if (act === 'discover') {
                     try { openDiscoverModal(data); } catch(e){ console.warn('Discover modal open failed', e); }
                 } else if (act === 'mute-global') {
