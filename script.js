@@ -6216,6 +6216,7 @@ function updateMainTitle() {
         if (fallbackId === ALL_SHARES_ID) fallbackText = 'All Shares';
         else if (fallbackId === CASH_BANK_WATCHLIST_ID) fallbackText = 'Cash & Assets';
         else if (fallbackId === 'portfolio') fallbackText = 'Portfolio';
+        else if (fallbackId === '__movers') fallbackText = 'Movers';
         else if (fallbackId) {
             const wl = userWatchlists.find(w=>w.id===fallbackId);
             if (wl) fallbackText = wl.name;
@@ -6230,6 +6231,7 @@ function updateMainTitle() {
     if (selectedValue === ALL_SHARES_ID) titleText = 'All Shares';
     else if (selectedValue === CASH_BANK_WATCHLIST_ID) titleText = 'Cash & Assets';
     else if (selectedValue === 'portfolio') titleText = 'Portfolio';
+    else if (selectedValue === '__movers') titleText = 'Movers';
     else {
         // Prefer the select option text if available; otherwise resolve from userWatchlists by id
         if (selectedText && selectedText.trim()) {
