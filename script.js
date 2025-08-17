@@ -3952,7 +3952,7 @@ function openWatchlistPicker() {
     watchlistPickerList.innerHTML='';
     const items=[];
     items.push({id:ALL_SHARES_ID,name:'All Shares'});
-    if (globalAlertSummary && globalAlertSummary.totalCount > 0) {
+    if ((globalAlertSummary && globalAlertSummary.totalCount > 0) || (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries && window.__lastMoversSnapshot.entries.length)) {
         items.push({id:'__movers',name:'Movers'});
     }
     items.push({id:'portfolio',name:'Portfolio'});
@@ -3971,7 +3971,23 @@ function openWatchlistPicker() {
             // Persist to Firestore as well for cross-device restore
             try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
             if (it.id === '__movers') {
-                try { applyGlobalSummaryFilter(); } catch(e){ console.warn('Movers virtual filter failed', e); }
+                if (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
+                    const codes = window.__lastMoversSnapshot.entries.map(e=>e.code);
+                    try {
+                        document.querySelectorAll('#shareTable tbody tr').forEach(tr => {
+                            const codeEl = tr.querySelector('.share-code-display');
+                            const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
+                            tr.style.display = (code && codes.includes(code)) ? '' : 'none';
+                        });
+                        document.querySelectorAll('.mobile-share-cards .mobile-card').forEach(card => {
+                            const codeEl = card.querySelector('h3');
+                            const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
+                            card.style.display = (code && codes.includes(code)) ? '' : 'none';
+                        });
+                    } catch(err) { console.warn('Movers snapshot apply failed', err); }
+                } else {
+                    try { applyGlobalSummaryFilter(); } catch(e){ console.warn('Movers virtual filter failed', e); }
+                }
                 updateMainTitle('Movers');
             } else {
                 updateMainTitle();
@@ -5299,17 +5315,21 @@ function applyGlobalSummaryFilter() {
     const isPercent = threshold.endsWith('%');
     const numeric = parseFloat(threshold.replace(/[%$]/g,''));
     if (isNaN(numeric)) return;
-    // Build list of codes meeting threshold now
-    const filteredCodes = Object.entries(livePrices).filter(([code, lp]) => {
+    const filteredEntries = Object.entries(livePrices).filter(([code, lp]) => {
         if (!lp || lp.live == null || lp.prevClose == null) return false;
         const change = lp.live - lp.prevClose;
         const absChange = Math.abs(change);
         const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
-        if (isPercent) return pct >= numeric;
-        else return absChange >= numeric;
-    }).map(([code]) => code);
+        if (isPercent) return pct >= numeric; else return absChange >= numeric;
+    }).map(([code, lp]) => {
+        const change = lp.live - lp.prevClose;
+        const absChange = Math.abs(change);
+        const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
+        return { code, change, absChange, pct, direction: change>=0?'up':'down', live: lp.live, prev: lp.prevClose };
+    });
+    const filteredCodes = filteredEntries.map(e=>e.code);
     if (!filteredCodes.length) { showCustomAlert('No shares currently meet the summary threshold.'); return; }
-    // Filter UI: hide all cards/rows not in filteredCodes
+    try { window.__lastMoversSnapshot = { ts: Date.now(), entries: filteredEntries }; } catch(_) {}
     try {
         document.querySelectorAll('#shareTable tbody tr').forEach(tr => {
             const codeEl = tr.querySelector('.share-code-display');
@@ -8515,12 +8535,12 @@ function showTargetHitDetailsModal() {
         container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
         const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span><span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span>${minText?`<span class=\"min-filter\">${minText}</span>`:''}</div>`;
-        if (!targetHitSharesList.querySelector('.global-movers-heading')) {
-            const heading = document.createElement('div');
-            heading.className = 'global-movers-heading';
-            heading.textContent = 'Global movers';
-            targetHitSharesList.prepend(heading);
-        }
+    // Ensure single heading styled like other sections
+    targetHitSharesList.querySelectorAll('.global-movers-heading').forEach(h=>h.remove());
+    const heading = document.createElement('h3');
+    heading.className = 'global-movers-heading';
+    heading.textContent = 'Global movers';
+    targetHitSharesList.prepend(heading);
         container.innerHTML = `
             <div class=\"global-summary-inner\">
                 ${arrowsRow}
@@ -8563,8 +8583,19 @@ function showTargetHitDetailsModal() {
         if (listEl) {
             const codes = Array.isArray(summaryData.nonPortfolioCodes) ? summaryData.nonPortfolioCodes : [];
             if (!codes.length) listEl.innerHTML = '<p class="ghosted-text">No external shares this cycle.</p>';
-            else listEl.innerHTML = '<ul class="discover-code-list">' + codes.map(c=>`<li data-code="${c}"><span class="code">${c}</span></li>`).join('') + '</ul>';
-            // Optional future: clicking a code could initiate add flow or open search
+            else {
+                const rows = codes.map(c=>{
+                    const lp = livePrices && livePrices[c];
+                    let movement='';
+                    if (lp && lp.live!=null && lp.prevClose!=null && !isNaN(lp.live) && !isNaN(lp.prevClose)) {
+                        const ch = lp.live - lp.prevClose;
+                        const pct = lp.prevClose!==0 ? (ch / lp.prevClose)*100 : 0;
+                        movement = `${ch>=0?'+':''}$${Math.abs(ch).toFixed(2)} (${ch>=0?'+':''}${pct.toFixed(2)}%)`;
+                    }
+                    return `<li data-code="${c}" class="discover-mover"><span class="code">${c}</span><span class="movement">${movement}</span></li>`;
+                }).join('');
+                listEl.innerHTML = `<ul class="discover-code-list">${rows}</ul>`;
+            }
         }
         showModal(modal);
     }
