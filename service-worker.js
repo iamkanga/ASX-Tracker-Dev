@@ -1,14 +1,18 @@
-// Service Worker Version: 1.0.12
+// Service Worker Version: 1.0.13
+
+// Unified App / Asset Version (bump this when deploying front-end changes to force fresh fetch of CSS/JS)
+const APP_VERSION = '0.1.13';
 
 // Cache name for the current version of the service worker
-const CACHE_NAME = 'share-watchlist-v1.0.34'; // Bump for cache-busting (overlay re-architecture + ignoring text spec)
+// (Keep this in sync with APP_VERSION; increment suffix to invalidate old precache quickly)
+const CACHE_NAME = 'share-watchlist-v1.0.35'; // Bump (network-first core assets + version 0.1.13)
 
 // List of essential application assets to precache
 const CACHED_ASSETS = [
     './', // Caches the root (index.html)
     './index.html',
-    './script.js?v=0.1.12',
-    './style.css?v=0.1.12',
+    `./script.js?v=${APP_VERSION}`,
+    `./style.css?v=${APP_VERSION}`,
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
     // Firebase SDKs are loaded as modules, so they might not be directly in the cache list
@@ -69,7 +73,29 @@ self.addEventListener('fetch', (event) => {
             return; // Exit early, don't try to cache this
         }
 
-        event.respondWith(
+        // Network-first strategy for core versioned assets (CSS / JS) so updates propagate immediately
+        try {
+            const url = new URL(event.request.url);
+            const isSameOrigin = url.origin === self.location.origin;
+            const isCoreAsset = isSameOrigin && (url.pathname.endsWith('/style.css') || url.pathname.endsWith('/script.js'));
+            if (isCoreAsset) {
+                event.respondWith(
+                    fetch(event.request)
+                        .then(resp => {
+                            // On success, update cache copy asynchronously
+                            if (resp && resp.status === 200) {
+                                const clone = resp.clone();
+                                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(()=>{});
+                            }
+                            return resp;
+                        })
+                        .catch(() => caches.match(event.request)) // Fallback to cached
+                );
+                return; // Prevent falling through to cache-first path
+            }
+        } catch(_e) { /* noop */ }
+
+    event.respondWith(
             caches.match(event.request).then((cachedResponse) => {
                 // If cached response is found, return it
                 if (cachedResponse) {

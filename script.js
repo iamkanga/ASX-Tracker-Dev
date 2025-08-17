@@ -8641,9 +8641,9 @@ if (sortSelect) {
     applyCompactViewMode();
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
-// Build Marker: v0.1.12 (Overlay single-listener architecture, ignoring-line 0.8em spec)
+// Build Marker: v0.1.13 (Network-first CSS/JS, cache bust deploy)
 // Also expose as a runtime variable for lightweight diagnostics
-window.BUILD_MARKER = 'v0.1.12';
+window.BUILD_MARKER = 'v0.1.13';
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal() {
@@ -8654,7 +8654,7 @@ function showTargetHitDetailsModal() {
     }
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-    // Inject global summary alert (discovery card) if cached
+    // Inject headings + global summary card (Global movers heading ABOVE card)
     const hasGlobalSummary = !!(globalAlertSummary && globalAlertSummary.totalCount > 0);
     if (hasGlobalSummary) {
         const data = globalAlertSummary;
@@ -8665,14 +8665,17 @@ function showTargetHitDetailsModal() {
         const portfolioCount = data.portfolioCount || 0;
         const discoverCount = Array.isArray(data.nonPortfolioCodes) ? data.nonPortfolioCodes.length : 0;
         const enabled = (data.enabled !== false);
+        const heading = document.createElement('h3');
+        heading.className = 'target-hit-section-title global-movers-heading';
+        heading.id = 'globalMoversTitle';
+        heading.textContent = 'Global movers';
+        targetHitSharesList.appendChild(heading);
         const container = document.createElement('div');
         container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
         const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span><span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span></div>`;
-        // Inline heading inside summary card (corrected layout)
         container.innerHTML = `
             <div class="global-summary-inner">
-                <h3 class="target-hit-section-title global-movers-inline-title" id="globalMoversTitle">Global movers</h3>
                 ${arrowsRow}
                 <div class="global-summary-detail total-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
                 <div class="global-summary-detail portfolio-line">${portfolioCount} from your portfolio</div>
@@ -8698,12 +8701,10 @@ function showTargetHitDetailsModal() {
                 } else if (act === 'mute-global') {
                     e.preventDefault();
                     toggleGlobalSummaryEnabled();
-                } else if (act === 'view-portfolio-local') {
-                    // Future placeholder
                 }
             });
         }
-        targetHitSharesList.prepend(container);
+        targetHitSharesList.appendChild(container);
     }
 
     function openDiscoverModal(summaryData) {
@@ -8811,13 +8812,17 @@ function showTargetHitDetailsModal() {
     const hasEnabled = sharesAtTargetPrice.length > 0;
     const hasMuted = Array.isArray(sharesAtTargetPriceMuted) && sharesAtTargetPriceMuted.length > 0;
     if (!hasEnabled && !hasMuted) {
-        targetHitSharesList.innerHTML = '<p class="no-alerts-message">No shares currently at target price.</p>';
+        const p = document.createElement('p');
+        p.className = 'no-alerts-message';
+        p.textContent = 'No shares currently at target price.';
+        targetHitSharesList.appendChild(p);
     } else {
         if (hasEnabled) {
             const enabledHeader = document.createElement('h3');
             enabledHeader.textContent = 'Target hit';
             enabledHeader.className = 'target-hit-section-title target-hit-enabled-header';
-            targetHitSharesList.appendChild(enabledHeader); // After global summary + its heading
+            // Ensure this header comes BEFORE the target hit items (and after global movers block if present)
+            targetHitSharesList.appendChild(enabledHeader);
             sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
         }
         if (hasMuted) {
@@ -9178,7 +9183,7 @@ try {
                 try {
                     const diag = {};
                     // Keep this in sync with the Build Marker comment near initializeAppLogic end
-                    diag.buildMarker = 'v0.1.12';
+                    diag.buildMarker = 'v0.1.13';
                     diag.time = new Date().toISOString();
                     diag.userId = (typeof currentUserId!=='undefined')? currentUserId : null;
                     diag.activeWatchlistId = (typeof activeWatchlistId!=='undefined')? activeWatchlistId : null;
