@@ -8577,6 +8577,7 @@ function showTargetHitDetailsModal() {
     targetHitSharesList.querySelectorAll('.global-movers-heading').forEach(h=>h.remove());
     const heading = document.createElement('h3');
     heading.className = 'target-hit-section-title';
+    heading.id = 'globalMoversTitle'; // unique ID for architectural ordering fix
     heading.textContent = 'Global movers';
     targetHitSharesList.prepend(heading);
         container.innerHTML = `
@@ -8643,10 +8644,21 @@ function showTargetHitDetailsModal() {
     }
 
     const makeItem = (share, isMuted) => {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        const currentLivePrice = (livePriceData && livePriceData.live !== null && !isNaN(livePriceData.live)) ? livePriceData.live : null;
+        const livePriceData = livePrices[share.shareName.toUpperCase()] || {};
+        const currentLivePrice = (livePriceData.live !== undefined && livePriceData.live !== null && !isNaN(livePriceData.live)) ? Number(livePriceData.live) : null;
+        const prevClose = (livePriceData.prevClose !== undefined && livePriceData.prevClose !== null && !isNaN(livePriceData.prevClose)) ? Number(livePriceData.prevClose) : null;
         const targetPrice = share.targetPrice;
         const priceClass = (currentLivePrice !== null && targetPrice != null && !isNaN(targetPrice) && currentLivePrice >= targetPrice) ? 'positive' : 'negative';
+        // Movement calculations (dollar + percent) for discover/target list items
+        let movementDeltaHtml = '';
+        if (currentLivePrice !== null && prevClose !== null && prevClose !== 0) {
+            const ch = currentLivePrice - prevClose;
+            const pct = (ch / prevClose) * 100;
+            const dirClass = ch === 0 ? 'neutral' : (ch > 0 ? 'positive' : 'negative');
+            const deltaStr = `${ch>0?'+':''}$${Math.abs(ch).toFixed(2)}`;
+            const pctStr = `${ch>0?'+':''}${pct.toFixed(2)}%`;
+            movementDeltaHtml = `<span class="movement-delta ${dirClass}">${deltaStr}</span> <span class="movement-pct ${dirClass}">${pctStr}</span>`;
+        }
         const item = document.createElement('div');
         item.classList.add('target-hit-item');
         if (isMuted) item.classList.add('muted');
@@ -8657,6 +8669,7 @@ function showTargetHitDetailsModal() {
                 <div class="col-left">
                     <span class="share-name-code ${priceClass}">${share.shareName}</span>
                     <span class="target-price-line">Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? Number(targetPrice).toFixed(2) : 'N/A'}</strong></span>
+                    ${movementDeltaHtml?`<div class=\"movement-line\">${movementDeltaHtml}</div>`:''}
                 </div>
                 <div class="col-right">
                     <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>

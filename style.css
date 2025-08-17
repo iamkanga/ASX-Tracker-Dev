@@ -367,6 +367,9 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Mute button matches tiny-toggle style */
 /* arrow size */
 .global-summary-alert .global-summary-arrows-row .arrow { font-size:1.75rem; line-height:1; position:relative; top:2px; }
+.global-summary-alert .global-summary-detail.ignoring-line { font-size:0.8em; /* architectural fix already applied */ }
+/* Force Global movers heading to top of its flex container only */
+#globalMoversTitle { order:-1; }
 .global-summary-alert .global-summary-detail.ignoring-line { font-size:0.8em; /* architectural fix: absolute relative size, was 50% */ opacity:0.65; letter-spacing:0.2px; }
 
 /* Layout adjustment: container becomes flex to push actions to bottom */
