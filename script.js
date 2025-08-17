@@ -958,10 +958,7 @@ function pushAppStateEntry(type, ref) {
 }
 function popAppStateEntry() { return appBackStack.pop(); }
 
-// Hook sidebar open
-if (hamburgerBtn && appSidebar) {
-    hamburgerBtn.addEventListener('click', ()=>{ pushAppStateEntry('sidebar','sidebar'); });
-}
+// Removed legacy early hamburger push listener (consolidated later) – now handled in unified sidebar setup
 // Override showModal to push (wrap existing if not already wrapped)
 if (!window.__origShowModalForBack) {
     window.__origShowModalForBack = showModal;
@@ -6620,7 +6617,8 @@ function toggleAppSidebar(forceState = null) {
             sidebarOverlay.style.pointerEvents = 'auto'; // Ensure overlay is clickable on mobile
             logDebug('Sidebar: Mobile: Sidebar opened, body NOT shifted, overlay pointer-events: auto.');
         }
-        logDebug('Sidebar: Sidebar opened.');
+    if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','true');
+    logDebug('Sidebar: Sidebar opened.');
     } else if (forceState === false || (forceState === null && isOpen)) {
         appSidebar.classList.remove('open');
         sidebarOverlay.classList.remove('open');
@@ -6631,7 +6629,8 @@ function toggleAppSidebar(forceState = null) {
         if (appSidebar) {
             appSidebar.scrollTop = 0;
         }
-        logDebug('Sidebar: Sidebar closed.');
+    if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','false');
+    logDebug('Sidebar: Sidebar closed.');
     }
 }
 
@@ -8378,10 +8377,13 @@ if (sortSelect) {
         }
 
 
+        // Unified hamburger listener: pushes back stack only on open
         hamburgerBtn.addEventListener('click', (event) => {
             logDebug('UI: Hamburger button CLICKED. Event:', event);
-            event.stopPropagation(); // Stop click from propagating to body/window and closing immediately
-            toggleAppSidebar(); // This should correctly open/close based on current state
+            event.stopPropagation();
+            const willOpen = !appSidebar.classList.contains('open');
+            toggleAppSidebar();
+            if (willOpen) pushAppStateEntry('sidebar','sidebar');
         });
         closeMenuBtn.addEventListener('click', () => {
             logDebug('UI: Close Menu button CLICKED.');
@@ -8389,13 +8391,14 @@ if (sortSelect) {
         });
         
         // Simplified overlay architecture: single mousedown listener closes sidebar, then stops propagation.
-        sidebarOverlay.addEventListener('mousedown', (e) => {
+        const overlayCloseHandler = (e) => {
             if (!appSidebar.classList.contains('open')) return;
-            if (e.target !== sidebarOverlay) return; // Only close when directly on overlay
-            logDebug('Sidebar Overlay: mousedown -> closing sidebar (simplified).');
+            if (e.target !== sidebarOverlay) return;
+            logDebug('Sidebar Overlay: interaction -> closing sidebar. Type=' + e.type);
             toggleAppSidebar(false);
             e.stopPropagation();
-        }, true);
+        };
+        ['mousedown','click','touchstart'].forEach(evt=>sidebarOverlay.addEventListener(evt, overlayCloseHandler, true));
 
         // Accessibility & focus trap for sidebar when open
         const mainContent = document.getElementById('mainContent') || document.querySelector('main');
@@ -8430,16 +8433,14 @@ if (sortSelect) {
             }
         };
 
+        // Desktop outside-click closer (kept but simplified)
         document.addEventListener('click', (event) => {
             const isDesktop = window.innerWidth > 768;
-            // Only close sidebar on clicks outside if it's desktop and the click isn't on the sidebar or hamburger button
-            if (appSidebar.classList.contains('open') && isDesktop &&
-                !appSidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
-                logDebug('Global Click: Clicked outside sidebar on desktop. Closing sidebar.');
+            if (!isDesktop) return; // Mobile handled by overlay explicit listeners
+            if (appSidebar.classList.contains('open') && !appSidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
+                logDebug('Global Click: outside desktop click -> closing sidebar');
                 toggleAppSidebar(false);
             }
-            // For mobile, the sidebarOverlay handles clicks outside, and its pointer-events are managed.
-            // No additional document click listener needed for mobile sidebar dismissal.
         });
 
         window.addEventListener('resize', () => {
@@ -8474,9 +8475,13 @@ if (sortSelect) {
                 }
 
                 const closesMenu = clickedButton.dataset.actionClosesMenu !== 'false';
-                if (closesMenu) {
+                if (clickedButton.id === 'forceUpdateBtn') {
+                    // Force update always closes first to avoid stale UI during reload
                     toggleAppSidebar(false);
+                    forceHardUpdate();
+                    return; // further processing not needed
                 }
+                if (closesMenu) toggleAppSidebar(false);
             });
         });
     } else {
@@ -8584,6 +8589,7 @@ if (sortSelect) {
     applyCompactViewMode();
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
+// Build Marker: v0.1.10 (Force Update button, sidebar consolidation, modal heading layout, ignoring-line style reduction)
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal() {
@@ -8607,16 +8613,10 @@ function showTargetHitDetailsModal() {
         const container = document.createElement('div');
         container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
-    const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span><span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span></div>`;
-    // Ensure single heading styled like other sections
-    targetHitSharesList.querySelectorAll('.global-movers-heading').forEach(h=>h.remove());
-    const heading = document.createElement('h3');
-    heading.className = 'target-hit-section-title';
-    heading.id = 'globalMoversTitle'; // unique ID for architectural ordering fix
-    heading.textContent = 'Global movers';
-    targetHitSharesList.prepend(heading);
+        const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span><span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span></div>`;
         container.innerHTML = `
             <div class=\"global-summary-inner\">
+                <h3 class=\"target-hit-section-title global-movers-inline-title\" id=\"globalMoversTitle\">Global movers</h3>
                 ${arrowsRow}
                 <div class=\"global-summary-detail total-line\">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
                 <div class=\"global-summary-detail portfolio-line\">${portfolioCount} from your portfolio</div>
@@ -8798,6 +8798,43 @@ async function toggleGlobalSummaryEnabled() {
 }
 
 // NEW: Target hit icon button listener (opens the modal) - moved to global scope
+
+// Force Update: fully clears caches, unregisters service workers, clears storage, reloads fresh
+async function forceHardUpdate() {
+    try {
+        showCustomAlert('Forcing update...', 1200);
+        // Unregister all service workers
+        if (navigator.serviceWorker) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r=>r.unregister().catch(()=>{})));
+            if (DEBUG_MODE) console.log('[ForceUpdate] Service workers unregistered:', regs.length);
+        }
+        // Clear caches
+        if (window.caches && caches.keys) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k=>caches.delete(k).catch(()=>{})));
+            if (DEBUG_MODE) console.log('[ForceUpdate] Caches cleared:', keys);
+        }
+        // Clear IndexedDB databases (best-effort; some browsers may not support indexedDB.databases)
+        try {
+            if (window.indexedDB && indexedDB.databases) {
+                const dbs = await indexedDB.databases();
+                if (Array.isArray(dbs)) {
+                    await Promise.all(dbs.map(db => db && db.name ? new Promise(res=>{ const req = indexedDB.deleteDatabase(db.name); req.onsuccess=req.onerror=req.onblocked=()=>res(); }) : Promise.resolve()));
+                    if (DEBUG_MODE) console.log('[ForceUpdate] IndexedDB databases cleared:', dbs.map(d=>d && d.name));
+                }
+            }
+        } catch(idbErr) { if (DEBUG_MODE) console.warn('[ForceUpdate] IndexedDB clear not fully supported', idbErr); }
+        // Clear local/session storage (preserve maybe user theme? currently wiping everything for guaranteed fresh load)
+        try { localStorage.clear(); } catch(_) {}
+        try { sessionStorage.clear(); } catch(_) {}
+        // Small delay to allow SW unregister & cache deletion to settle
+        setTimeout(()=>{ window.location.reload(true); }, 300);
+    } catch(err) {
+        console.warn('[ForceUpdate] Failed, manual hard reload may be required.', err);
+        showCustomAlert('Force update failed. Please hard reload manually.', 2500);
+    }
+}
 if (targetHitIconBtn) {
     targetHitIconBtn.addEventListener('click', (event) => {
         logDebug('Target Alert: Icon button clicked. Opening details modal.');

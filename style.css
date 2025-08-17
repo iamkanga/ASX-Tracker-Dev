@@ -367,10 +367,11 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Mute button matches tiny-toggle style */
 /* arrow size */
 .global-summary-alert .global-summary-arrows-row .arrow { font-size:1.75rem; line-height:1; position:relative; top:2px; }
-.global-summary-alert .global-summary-detail.ignoring-line { font-size:0.8em; /* architectural fix already applied */ }
-/* Force Global movers heading to top of its flex container only */
 #globalMoversTitle { order:-1; }
-.global-summary-alert .global-summary-detail.ignoring-line { font-size:0.8em; /* architectural fix: absolute relative size, was 50% */ opacity:0.65; letter-spacing:0.2px; }
+.global-summary-alert .global-summary-detail.ignoring-line { font-size:0.65rem !important; opacity:0.6; letter-spacing:0.25px; }
+/* Force Global movers heading to top of its flex container only */
+/* Inline title variant (inside card) */
+.global-movers-inline-title { margin:2px 2px 4px 2px; font-size:1.0rem; }
 
 /* Layout adjustment: container becomes flex to push actions to bottom */
 .global-summary-alert.target-hit-item { display:flex; flex-direction:row; }
