@@ -3952,6 +3952,9 @@ function openWatchlistPicker() {
     watchlistPickerList.innerHTML='';
     const items=[];
     items.push({id:ALL_SHARES_ID,name:'All Shares'});
+    if (globalAlertSummary && globalAlertSummary.totalCount > 0) {
+        items.push({id:'__movers',name:'Movers'});
+    }
     items.push({id:'portfolio',name:'Portfolio'});
     userWatchlists.filter(w=>w.id!==ALL_SHARES_ID && w.id!==CASH_BANK_WATCHLIST_ID).forEach(w=>items.push(w));
     items.push({id:CASH_BANK_WATCHLIST_ID,name:'Cash & Assets'});
@@ -3967,9 +3970,14 @@ function openWatchlistPicker() {
             try { localStorage.setItem('lastSelectedView', it.id); } catch(e) {}
             // Persist to Firestore as well for cross-device restore
             try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
-            updateMainTitle();
-            renderSortSelect();
-            renderWatchlist();
+            if (it.id === '__movers') {
+                try { applyGlobalSummaryFilter(); } catch(e){ console.warn('Movers virtual filter failed', e); }
+                updateMainTitle('Movers');
+            } else {
+                updateMainTitle();
+                renderSortSelect();
+                renderWatchlist();
+            }
             try { updateAddHeaderButton(); updateSidebarAddButtonContext(); } catch(e) {}
             toggleCodeButtonsArrow();
             try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); watchlistPickerModal.style.display='none'; }
@@ -8318,14 +8326,16 @@ if (sortSelect) {
             toggleAppSidebar(false);
         });
         
-        // Corrected sidebar overlay dismissal logic for mobile
+        // Corrected sidebar overlay dismissal logic for mobile with click-through prevention
         sidebarOverlay.addEventListener('click', (event) => {
             logDebug('Sidebar Overlay: Clicked overlay. Attempting to close sidebar.');
-            // Ensure the click is actually on the overlay and not bubbling from inside the sidebar
             if (appSidebar.classList.contains('open') && event.target === sidebarOverlay) {
+                event.stopPropagation();
+                event.preventDefault();
                 toggleAppSidebar(false);
+                return false; // Explicitly consume
             }
-        });
+        }, true);
 
         document.addEventListener('click', (event) => {
             const isDesktop = window.innerWidth > 768;
@@ -8505,12 +8515,18 @@ function showTargetHitDetailsModal() {
         container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
         const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span><span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span>${minText?`<span class=\"min-filter\">${minText}</span>`:''}</div>`;
+        if (!targetHitSharesList.querySelector('.global-movers-heading')) {
+            const heading = document.createElement('div');
+            heading.className = 'global-movers-heading';
+            heading.textContent = 'Global movers';
+            targetHitSharesList.prepend(heading);
+        }
         container.innerHTML = `
             <div class=\"global-summary-inner\">
-                <div class=\"global-summary-title\">Global movers</div>
                 ${arrowsRow}
                 <div class=\"global-summary-detail total-line\">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
                 <div class=\"global-summary-detail portfolio-line\">${portfolioCount} from your portfolio</div>
+                ${minText?`<div class=\\"global-summary-detail ignoring-line\\">${minText}</div>`:''}
             </div>
             <div class=\"global-summary-actions\">
                 <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverCount?`Global (${discoverCount})`:'Global'}</button>
@@ -8524,11 +8540,9 @@ function showTargetHitDetailsModal() {
                 const act = btn.getAttribute('data-action');
                 if (act === 'view-portfolio') {
                     try { applyGlobalSummaryFilter(); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal);
-                    // Update dynamic title to reflect filtered movers view (local subset)
-                    try {
-                        const tEl = document.getElementById('dynamicWatchlistTitleText') || document.getElementById('dynamicWatchlistTitle');
-                        if (tEl) tEl.textContent = 'Movers';
-                    } catch(_) {}
+                    currentSelectedWatchlistIds = ['__movers'];
+                    try { localStorage.setItem('lastSelectedView','__movers'); } catch(_) {}
+                    updateMainTitle('Movers');
                 } else if (act === 'discover') {
                     try { openDiscoverModal(data); } catch(e){ console.warn('Discover modal open failed', e); }
                 } else if (act === 'mute-global') {

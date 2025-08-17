@@ -342,7 +342,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-summary-alert .global-summary-arrows-row .down { color: var(--price-down-color); }
 .global-summary-alert .global-summary-arrows-row .min-filter { font-weight:500; opacity:0.7; }
 /* Right column action stack */
-.global-summary-alert .global-summary-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; justify-content:flex-start; }
+.global-summary-alert .global-summary-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; justify-content:flex-start; margin-top:auto; }
 /* Substantial action buttons */
 .global-summary-alert .global-summary-actions button[data-action="view-portfolio"],
 .global-summary-alert .global-summary-actions button[data-action="discover"],
@@ -367,6 +367,15 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Mute button matches tiny-toggle style */
 /* arrow size */
 .global-summary-alert .global-summary-arrows-row .arrow { font-size:1.75rem; line-height:1; position:relative; top:2px; }
+.global-summary-alert .global-summary-detail.ignoring-line { font-size:0.44rem; opacity:0.65; letter-spacing:0.2px; }
+
+/* Layout adjustment: container becomes flex to push actions to bottom */
+.global-summary-alert.target-hit-item { display:flex; flex-direction:row; }
+.global-summary-alert.target-hit-item > .global-summary-inner { flex:1 1 auto; }
+.global-summary-alert.target-hit-item > .global-summary-actions { flex:0 0 auto; }
+
+/* External heading styling */
+.global-movers-heading { font-size:1.15rem; font-weight:600; margin:4px 4px 2px; padding:0 2px; }
 .discover-global-list { max-height:60vh; overflow-y:auto; }
 .discover-global-list ul.discover-code-list { list-style:none; margin:0; padding:0; }
 .discover-global-list ul.discover-code-list li { padding:6px 10px; border-bottom:1px solid var(--border-color, #444); cursor:default; display:flex; align-items:center; }
