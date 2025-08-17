@@ -9358,3 +9358,30 @@ try {
         }
     })();
 } catch(_){ }
+// --- Auto SuperDebug Fallback Trigger ---
+// Ensures the ?superdebug URL parameter always triggers a snapshot even if
+// superDebugDump is registered slightly later (e.g., waiting on other UI pieces).
+(function autoSuperDebugFromParam(){
+    try {
+        const qs = window.location.search;
+        if (!qs || !/(^|[?&])superdebug(=|&|$)/i.test(qs)) return; // parameter not present
+        let attempts = 0;
+        const maxAttempts = 24; // ~12s (24 * 500ms)
+        function tryRun(){
+            attempts++;
+            if (typeof window.superDebugDump === 'function') {
+                console.log('[SuperDebug] Auto-run via ?superdebug (attempt ' + attempts + ')');
+                try { window.superDebugDump(); } catch(err){ console.warn('[SuperDebug] Auto-run failed', err); }
+            } else if (attempts < maxAttempts) {
+                setTimeout(tryRun, 500);
+            } else {
+                console.warn('[SuperDebug] Gave up waiting for superDebugDump after ' + attempts + ' attempts.');
+                try { showCustomAlert && showCustomAlert('Super Debug tool not ready'); } catch(_) {}
+            }
+        }
+        setTimeout(tryRun, 400); // slight delay to allow other scripts to attach
+    } catch(err) {
+        console.warn('[SuperDebug] Fallback init error', err);
+    }
+})();
+// --- End Auto SuperDebug Fallback Trigger ---
