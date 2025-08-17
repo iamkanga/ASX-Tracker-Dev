@@ -375,7 +375,15 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-summary-alert.target-hit-item > .global-summary-actions { flex:0 0 auto; }
 
 /* External heading styling */
-.global-movers-heading { font-size:1.15rem; font-weight:600; margin:4px 4px 2px; padding:0 2px; }
+.global-movers-heading { font-size:1.05rem; font-weight:600; margin:6px 2px 4px 2px; padding:0 2px; letter-spacing:0.5px; }
+/* Ensure parity with target-hit section headers (assumed h3 styling) */
+.target-hit-section-title, .global-movers-heading { line-height:1.25; }
+
+/* Discover modal movement layout */
+.discover-code-list .discover-mover { display:flex; justify-content:space-between; gap:12px; }
+.discover-code-list .discover-mover .movement { font-size:0.65rem; opacity:0.85; letter-spacing:0.3px; }
+.discover-code-list .discover-mover .movement.negative { color: var(--price-down-color); }
+.discover-code-list .discover-mover .movement.positive { color: var(--price-up-color); }
 .discover-global-list { max-height:60vh; overflow-y:auto; }
 .discover-global-list ul.discover-code-list { list-style:none; margin:0; padding:0; }
 .discover-global-list ul.discover-code-list li { padding:6px 10px; border-bottom:1px solid var(--border-color, #444); cursor:default; display:flex; align-items:center; }

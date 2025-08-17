@@ -8638,13 +8638,14 @@ function showTargetHitDetailsModal() {
             else {
                 const rows = codes.map(c=>{
                     const lp = livePrices && livePrices[c];
-                    let movement='';
+                    let movement=''; let cls='';
                     if (lp && lp.live!=null && lp.prevClose!=null && !isNaN(lp.live) && !isNaN(lp.prevClose)) {
                         const ch = lp.live - lp.prevClose;
                         const pct = lp.prevClose!==0 ? (ch / lp.prevClose)*100 : 0;
                         movement = `${ch>=0?'+':''}$${Math.abs(ch).toFixed(2)} (${ch>=0?'+':''}${pct.toFixed(2)}%)`;
+                        cls = ch>=0 ? 'positive' : 'negative';
                     }
-                    return `<li data-code="${c}" class="discover-mover"><span class="code">${c}</span><span class="movement">${movement}</span></li>`;
+                    return `<li data-code="${c}" class="discover-mover"><span class="code">${c}</span><span class="movement ${cls}">${movement}</span></li>`;
                 }).join('');
                 listEl.innerHTML = `<ul class="discover-code-list">${rows}</ul>`;
             }
