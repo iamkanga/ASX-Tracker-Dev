@@ -1054,6 +1054,18 @@ if (!sidebarOverlay) {
     sidebarOverlay.classList.add('sidebar-overlay');
     document.body.appendChild(sidebarOverlay);
 }
+// Ensure Force Update button exists in sidebar (idempotent injection for diagnostics)
+try {
+    if (appSidebar && !document.getElementById('forceUpdateBtn')) {
+        const btn = document.createElement('button');
+        btn.id = 'forceUpdateBtn';
+        btn.className = 'menu-button-item';
+        btn.textContent = 'Force Update';
+        btn.setAttribute('data-action-closes-menu','true');
+        // Insert near end
+        appSidebar.appendChild(btn);
+    }
+} catch(_) {}
 
 const formInputs = [
     shareNameInput,
@@ -8631,18 +8643,14 @@ function showTargetHitDetailsModal() {
         container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
         const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span><span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span></div>`;
-        // External heading (architectural mandate)
-        const heading = document.createElement('h3');
-        heading.className = 'target-hit-section-title';
-        heading.id = 'globalMoversTitle';
-        heading.textContent = 'Global movers';
-        targetHitSharesList.appendChild(heading);
+        // Inline heading inside summary card (corrected layout)
         container.innerHTML = `
-            <div class=\"global-summary-inner\">
+            <div class="global-summary-inner">
+                <h3 class="target-hit-section-title global-movers-inline-title" id="globalMoversTitle">Global movers</h3>
                 ${arrowsRow}
-                <div class=\"global-summary-detail total-line\">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
-                <div class=\"global-summary-detail portfolio-line\">${portfolioCount} from your portfolio</div>
-                ${minText?`<div class=\\"global-summary-detail ignoring-line\\">${minText}</div>`:''}
+                <div class="global-summary-detail total-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
+                <div class="global-summary-detail portfolio-line">${portfolioCount} from your portfolio</div>
+                ${minText?`<div class=\"global-summary-detail ignoring-line\">${minText}</div>`:''}
             </div>
             <div class=\"global-summary-actions\">
                 <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverCount?`Global (${discoverCount})`:'Global'}</button>
