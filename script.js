@@ -8484,15 +8484,21 @@ if (sortSelect) {
             }
         };
 
-        // Desktop outside-click closer (kept but simplified)
+        // Desktop outside-click closer (capture + swallow to prevent click-through)
         document.addEventListener('click', (event) => {
             const isDesktop = window.innerWidth > 768;
-            if (!isDesktop) return; // Mobile handled by overlay explicit listeners
-            if (appSidebar.classList.contains('open') && !appSidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
-                logDebug('Global Click: outside desktop click -> closing sidebar');
+            if (!isDesktop) return; // Mobile uses overlay
+            if (!appSidebar.classList.contains('open')) return;
+            // If click target is outside sidebar & hamburger button
+            if (!appSidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
+                logDebug('Global Click (capture): outside desktop click -> closing sidebar (swallowing event)');
+                // Close sidebar first
                 toggleAppSidebar(false);
+                // Swallow so underlying element does NOT also activate on this same click
+                event.stopPropagation();
+                event.preventDefault();
             }
-        });
+        }, true); // capture phase so we intercept before underlying handlers
 
         window.addEventListener('resize', () => {
             logDebug('Window Resize: Resizing window. Closing sidebar if open.');
