@@ -8398,15 +8398,17 @@ if (sortSelect) {
             toggleAppSidebar(false);
         });
         
-        // Simplified overlay architecture: single mousedown listener closes sidebar, then stops propagation.
-        const overlayCloseHandler = (e) => {
-            if (!appSidebar.classList.contains('open')) return;
-            if (e.target !== sidebarOverlay) return;
-            logDebug('Sidebar Overlay: interaction -> closing sidebar. Type=' + e.type);
-            toggleAppSidebar(false);
-            e.stopPropagation();
-        };
-        ['mousedown','click','touchstart'].forEach(evt=>sidebarOverlay.addEventListener(evt, overlayCloseHandler, true));
+        // Re-architected: single mousedown listener only; close then stop propagation
+        if (!sidebarOverlay.dataset.overlayBound) {
+            const overlayCloseHandler = (e) => {
+                if (!appSidebar.classList.contains('open')) return;
+                if (e.target !== sidebarOverlay) return;
+                toggleAppSidebar(false); // close first
+                e.stopPropagation();     // then stop propagation
+            };
+            sidebarOverlay.addEventListener('mousedown', overlayCloseHandler, true);
+            sidebarOverlay.dataset.overlayBound = '1';
+        }
 
         // Accessibility & focus trap for sidebar when open
         const mainContent = document.getElementById('mainContent') || document.querySelector('main');
@@ -8597,7 +8599,7 @@ if (sortSelect) {
     applyCompactViewMode();
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
-// Build Marker: v0.1.11 (Modal ordering refinement, stronger ignoring-line reduction, hamburger aria guard)
+// Build Marker: v0.1.12 (Overlay single-listener architecture, ignoring-line 0.8em spec)
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal() {

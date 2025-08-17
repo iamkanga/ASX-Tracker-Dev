@@ -368,7 +368,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* arrow size */
 .global-summary-alert .global-summary-arrows-row .arrow { font-size:1.75rem; line-height:1; position:relative; top:2px; }
 #globalMoversTitle { order:-1; }
-.global-summary-alert .global-summary-detail.ignoring-line { font-size:0.6rem !important; opacity:0.55; letter-spacing:0.35px; text-transform:uppercase; font-weight:500; }
+.global-summary-alert .global-summary-detail.ignoring-line { font-size:0.8em !important; opacity:0.55; letter-spacing:0.35px; text-transform:uppercase; font-weight:500; }
 /* Force Global movers heading to top of its flex container only */
 /* Inline title variant (inside card) */
 .global-movers-inline-title { margin:2px 2px 4px 2px; font-size:1.0rem; }
