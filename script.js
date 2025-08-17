@@ -5467,6 +5467,14 @@ function enforceMoversVirtualView() {
     if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
         try { console.debug('[Movers enforce] totalFresh=', moversEntries.length, 'portfolioMatch=', effectiveCodes.size); } catch(_) {}
     }
+    // Always emit a lightweight periodic summary (throttled) so user logs show counts even if group/table not expanded
+    try {
+        const nowTs = Date.now();
+        if (!window.__lastMoversEnforceSummaryTs || (nowTs - window.__lastMoversEnforceSummaryTs) > 1500) {
+            window.__lastMoversEnforceSummaryTs = nowTs;
+            console.log('[Movers enforce][summary] fresh=' + moversEntries.length + ' effectiveLocal=' + effectiveCodes.size + ' (visible rows/cards may differ pre-filter render)');
+        }
+    } catch(_) {}
 }
 
 // DEBUG: Deep consistency checker for Movers virtual watchlist
@@ -5517,6 +5525,10 @@ function debugMoversConsistency(options = {}) {
         }
         console.groupCollapsed('%c[MoversDebug] Consistency ' + now,'color:#3a7bd5;font-weight:600;');
         console.table(result);
+        // Emit a one-line summary outside the collapsed group so copy/paste of raw console lines captures the key metrics
+        try {
+            console.log('[MoversDebug][summary] fresh=' + result.freshCount + ' snapshot=' + result.snapshotCount + ' effectiveLocal=' + result.effectiveLocalCount + ' visible=' + result.visibleCount + ' missing=' + result.missingVisible.length + ' extra=' + result.extraVisible.length);
+        } catch(_) {}
         if (missingVisible.length || extraVisible.length) {
             console.warn('[MoversDebug] Discrepancy detected: missingVisible=', missingVisible, 'extraVisible=', extraVisible);
         } else {
