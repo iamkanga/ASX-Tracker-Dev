@@ -4379,8 +4379,19 @@ function renderWatchlist() {
 // Safety net: ensure any share whose livePrices indicates targetHit gets the .target-hit-alert class (unless globally dismissed)
 function enforceTargetHitStyling() {
     if (targetHitIconDismissed) return; // user dismissed icon
-    // Only enabled alerts get highlight; muted excluded
-    const enabledIds = new Set((sharesAtTargetPrice||[]).map(s=>s.id));
+    const enabledList = (sharesAtTargetPrice||[]).map(s=>s.id).sort();
+    const signature = enabledList.join(',');
+    // Cheap existing highlight count (rows + cards)
+    const existingHighlights = (
+        (shareTableBody? shareTableBody.querySelectorAll('tr.target-hit-alert').length : 0) +
+        (mobileShareCardsContainer? mobileShareCardsContainer.querySelectorAll('.mobile-card.target-hit-alert').length : 0)
+    );
+    if (enforceTargetHitStyling.__lastSig === signature && existingHighlights === enabledList.length) {
+        // No change; skip verbose DOM walk/log
+        return;
+    }
+    enforceTargetHitStyling.__lastSig = signature;
+    const enabledIds = new Set(enabledList);
     const rows = shareTableBody ? Array.from(shareTableBody.querySelectorAll('tr[data-doc-id]')) : [];
     const cards = mobileShareCardsContainer ? Array.from(mobileShareCardsContainer.querySelectorAll('.mobile-card[data-doc-id]')) : [];
     let applied = 0, removed = 0;
@@ -5475,9 +5486,22 @@ function recomputeTriggeredAlerts() {
         const clone = { ...share };
         if (enabledState) enabled.push(clone); else muted.push(clone);
     });
-    sharesAtTargetPrice = dedupeSharesById(enabled); // active notifications
-    sharesAtTargetPriceMuted = dedupeSharesById(muted); // muted (not shown/styled)
-    try { console.log('[Diag][recomputeTriggeredAlerts] enabledIds:', sharesAtTargetPrice.map(s=>s.id), 'mutedIds:', sharesAtTargetPriceMuted.map(s=>s.id)); } catch(_){ }
+    const newEnabled = dedupeSharesById(enabled);
+    const newMuted = dedupeSharesById(muted);
+    // Build signatures to detect no-op updates
+    const sigEnabled = newEnabled.map(s=>s.id).sort().join(',');
+    const sigMuted = newMuted.map(s=>s.id).sort().join(',');
+    const prevEnabledSig = recomputeTriggeredAlerts.__lastEnabledSig;
+    const prevMutedSig = recomputeTriggeredAlerts.__lastMutedSig;
+    if (sigEnabled === prevEnabledSig && sigMuted === prevMutedSig) {
+        // Nothing changed; skip downstream expensive/UI work
+        return;
+    }
+    recomputeTriggeredAlerts.__lastEnabledSig = sigEnabled;
+    recomputeTriggeredAlerts.__lastMutedSig = sigMuted;
+    sharesAtTargetPrice = newEnabled; // active notifications
+    sharesAtTargetPriceMuted = newMuted; // muted notifications
+    try { console.log('[Diag][recomputeTriggeredAlerts] enabledIds:', newEnabled.map(s=>s.id), 'mutedIds:', newMuted.map(s=>s.id)); } catch(_){ }
     updateTargetHitBanner();
     try { enforceTargetHitStyling(); } catch(_) {}
     if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') { showTargetHitDetailsModal(); }
