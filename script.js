@@ -6463,51 +6463,75 @@ function showCashCategoryDetailsModal(assetId) {
  * Updates the main title of the app based on the currently selected watchlist.
  */
 function updateMainTitle(overrideTitle) {
-    // Optional explicit override (used for virtual views like Movers triggered outside select change)
+    // Explicit override path (e.g., when entering virtual Movers view)
     if (overrideTitle && typeof overrideTitle === 'string') {
-        if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = overrideTitle;
-        else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = overrideTitle;
+        try { ensureTitleStructure(); } catch(_) {}
+        if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = overrideTitle; else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = overrideTitle;
         logDebug('UI: Dynamic title force-overridden to: ' + overrideTitle);
         return;
     }
-    if (!watchlistSelect) {
-        // Fallback: derive from currentSelectedWatchlistIds if dropdown not mounted yet
-        const fallbackId = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
-        let fallbackText = 'Share Watchlist';
-        if (fallbackId === ALL_SHARES_ID) fallbackText = 'All Shares';
-        else if (fallbackId === CASH_BANK_WATCHLIST_ID) fallbackText = 'Cash & Assets';
-        else if (fallbackId === 'portfolio') fallbackText = 'Portfolio';
-        else if (fallbackId === '__movers') fallbackText = 'Movers';
-        else if (fallbackId) {
-            const wl = userWatchlists.find(w=>w.id===fallbackId);
-            if (wl) fallbackText = wl.name;
+
+    const activeId = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
+
+    // Ensure an ephemeral Movers option exists if Movers is active but missing from select (prevents fallback to generic label)
+    function ensureEphemeralMoversOption(){
+        if (!watchlistSelect) return;
+        const existing = watchlistSelect.querySelector('option[value="__movers"]');
+        if (activeId === '__movers') {
+            if (!existing) {
+                const opt = document.createElement('option');
+                opt.value='__movers'; opt.textContent='Movers'; opt.dataset.ephemeral='1';
+                // Insert after All Shares if present
+                const allOpt = watchlistSelect.querySelector('option[value="'+ALL_SHARES_ID+'"]');
+                if (allOpt && allOpt.nextSibling) allOpt.parentNode.insertBefore(opt, allOpt.nextSibling); else watchlistSelect.appendChild(opt);
+                logDebug('UI: Injected ephemeral Movers option into select.');
+            }
+        } else if (existing && existing.dataset.ephemeral==='1') {
+            existing.remove();
+            logDebug('UI: Removed ephemeral Movers option (inactive).');
         }
-        if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = fallbackText;
-        else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = fallbackText;
+    }
+    ensureEphemeralMoversOption();
+
+    // If no select yet, derive directly from activeId
+    if (!watchlistSelect) {
+        let text = 'Share Watchlist';
+        if (activeId === ALL_SHARES_ID) text = 'All Shares';
+        else if (activeId === CASH_BANK_WATCHLIST_ID) text = 'Cash & Assets';
+        else if (activeId === 'portfolio') text = 'Portfolio';
+        else if (activeId === '__movers') text = 'Movers';
+        else if (activeId) {
+            const wl = (userWatchlists||[]).find(w=>w.id===activeId); if (wl) text = wl.name;
+        }
+        try { ensureTitleStructure(); } catch(_) {}
+        if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = text; else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = text;
+        logDebug('UI: Dynamic title updated (no select) to: ' + text);
         return;
     }
-    const selectedValue = watchlistSelect.value;
-    const selectedText = watchlistSelect.selectedIndex >=0 ? (watchlistSelect.options[watchlistSelect.selectedIndex]?.textContent || '') : '';
-    let titleText;
-    if (selectedValue === ALL_SHARES_ID) titleText = 'All Shares';
-    else if (selectedValue === CASH_BANK_WATCHLIST_ID) titleText = 'Cash & Assets';
-    else if (selectedValue === 'portfolio') titleText = 'Portfolio';
-    else if (selectedValue === '__movers') titleText = 'Movers';
+
+    const selValue = watchlistSelect.value;
+    const selTextRaw = watchlistSelect.selectedIndex >=0 ? (watchlistSelect.options[watchlistSelect.selectedIndex]?.textContent || '') : '';
+    let resolved;
+    if (selValue === ALL_SHARES_ID) resolved = 'All Shares';
+    else if (selValue === CASH_BANK_WATCHLIST_ID) resolved = 'Cash & Assets';
+    else if (selValue === 'portfolio') resolved = 'Portfolio';
+    else if (selValue === '__movers') resolved = 'Movers';
+    else if (selTextRaw && selTextRaw.trim()) resolved = selTextRaw.trim();
     else {
-        // Prefer the select option text if available; otherwise resolve from userWatchlists by id
-        if (selectedText && selectedText.trim()) {
-            titleText = selectedText.trim();
-        } else {
-            const wl = userWatchlists && Array.isArray(userWatchlists) ? userWatchlists.find(w => w.id === selectedValue) : null;
-            titleText = (wl && wl.name) ? wl.name : 'Share Watchlist';
-        }
+        const wl = (userWatchlists||[]).find(w=>w.id===selValue);
+        resolved = (wl && wl.name) ? wl.name : 'Share Watchlist';
     }
-    if (dynamicWatchlistTitleText) {
-        dynamicWatchlistTitleText.textContent = titleText;
-    } else if (dynamicWatchlistTitle) {
-        dynamicWatchlistTitle.textContent = titleText;
+
+    // If activeId indicates Movers but select isn't reflecting it (race / rebuild), override to Movers
+    if (activeId === '__movers' && selValue !== '__movers') {
+        resolved = 'Movers';
     }
-    logDebug('UI: Dynamic title updated to: ' + titleText);
+
+    try { ensureTitleStructure(); } catch(_) {}
+    if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = resolved; else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = resolved;
+    // Defensive: avoid blank
+    try { if (dynamicWatchlistTitleText && !dynamicWatchlistTitleText.textContent.trim()) dynamicWatchlistTitleText.textContent = resolved || 'Share Watchlist'; } catch(_) {}
+    logDebug('UI: Dynamic title updated to: ' + resolved + ' (activeId=' + activeId + ', selValue=' + selValue + ')');
 }
 
 // Ensure the dynamic title uses a narrow clickable span and not the whole header
