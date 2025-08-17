@@ -561,7 +561,15 @@ try {
 } catch(e) {}
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
-let currentMobileViewMode = 'default'; // Will be loaded post-auth
+let currentMobileViewMode = 'default'; // Will be loaded post-auth, but try early restore now
+// Early restore of persisted mobile view mode so pre-auth UI (and first render) matches last preference
+try {
+    const __storedModeEarly = localStorage.getItem('currentMobileViewMode');
+    if (__storedModeEarly === 'compact' || __storedModeEarly === 'default') {
+        currentMobileViewMode = __storedModeEarly;
+        if (DEBUG_MODE) console.log('View Mode: Early restored mode =', currentMobileViewMode);
+    }
+} catch(_) {}
 
 // Helper to ensure compact mode class is always applied
 function applyCompactViewMode() {
@@ -578,6 +586,8 @@ function applyCompactViewMode() {
     }
     // Adjust layout after view mode change
     requestAnimationFrame(adjustMainContentPadding);
+    // Update toggle button label/icon if present
+    try { if (typeof updateCompactViewButtonState === 'function') updateCompactViewButtonState(); } catch(_) {}
 }
 
 // NEW: Global variable to track if the target hit icon is dismissed for the current session
@@ -2448,8 +2458,14 @@ function updateCompactViewButtonState() {
     }
     // Always enable the button, regardless of screen width
     toggleCompactViewBtn.disabled = false;
-    toggleCompactViewBtn.title = "Toggle between default and compact card view.";
-    logDebug(`UI State: Compact view button enabled for all screen widths.`);
+    const isCompact = currentMobileViewMode === 'compact';
+    toggleCompactViewBtn.title = isCompact ? 'Switch to Default View' : 'Switch to Compact View';
+    // If button has data-label span or similar, update text without blowing away icon
+    try {
+        const labelSpan = toggleCompactViewBtn.querySelector('span') || toggleCompactViewBtn;
+        if (labelSpan) labelSpan.textContent = isCompact ? 'Default View' : 'Compact View';
+    } catch(_) {}
+    logDebug('UI State: Compact view button enabled (mode=' + currentMobileViewMode + ').');
 }
 
 function showModal(modalElement) {
@@ -5933,6 +5949,8 @@ function toggleMobileViewMode() {
     }
     
     renderWatchlist(); // Re-render to apply new card styling and layout
+    // Update button label/state
+    try { updateCompactViewButtonState(); } catch(_) {}
 }
 
 // NEW: Splash Screen Functions
