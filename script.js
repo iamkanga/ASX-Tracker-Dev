@@ -2528,7 +2528,6 @@ function selectShare(shareId) {
 
 function deselectCurrentShare() {
     const currentlySelected = document.querySelectorAll('.share-list-section tr.selected, .mobile-card.selected, #portfolioSection tr.selected');
-    logDebug('Selection: Attempting to deselect ' + currentlySelected.length + ' elements.');
     currentlySelected.forEach(el => {
         el.classList.remove('selected');
     });
@@ -8821,7 +8820,8 @@ function showTargetHitDetailsModal() {
             const enabledHeader = document.createElement('h3');
             enabledHeader.textContent = 'Target hit';
             enabledHeader.className = 'target-hit-section-title target-hit-enabled-header';
-            // Ensure this header comes BEFORE the target hit items (and after global movers block if present)
+            enabledHeader.id = 'targetHitHeader';
+            // Append after global movers block (which was added first if present)
             targetHitSharesList.appendChild(enabledHeader);
             sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
         }
