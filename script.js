@@ -33,238 +33,59 @@ document.addEventListener('DOMContentLoaded', () => {
             ov.dispatchEvent(new Event('mousedown'));
             console.log('[Diag] Overlay singleton check executed. FiredTest=' + fired);
         }
-    } catch (e) {
-        console.warn('[Diag] Overlay singleton check failed', e);
-    }
-});
-let currentDialogCallback = null;
-let autoDismissTimeout = null;
-let lastTapTime = 0;
-let tapTimeout;
-let touchStartX = 0;
-let touchStartY = 0;
-const TOUCH_MOVE_THRESHOLD = 10; // Pixels for touch movement to cancel long press
-const KANGA_EMAIL = 'iamkanga@gmail.com';
-let currentCalculatorInput = '';
-let operator = null;
-let previousCalculatorInput = '';
-let resultDisplayed = false;
-const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
-const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
-let userWatchlists = []; // Stores all watchlists for the user
-let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
-// Initialize dismissal and sort state from localStorage as early as possible to avoid flashes/defaults
-try { targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true'; } catch(e) {}
-// Restore last selected view (persisted)
-try {
-    const lastView = localStorage.getItem('lastSelectedView');
-    if (lastView === 'portfolio') {
-        currentSelectedWatchlistIds = ['portfolio'];
-    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
-        // Defer actual DOM switch until initial data load completes; hook into data load readiness
-        window.addEventListener('load', () => {
-            setTimeout(() => { if (typeof showPortfolioView === 'function') showPortfolioView(); }, 300);
-        });
-
-    // Keep header and alerts consistent after portfolio render
-    try { updateMainTitle(); } catch(e) {}
-    try { ensureTitleStructure(); } catch(e) {}
-    try { updateTargetHitBanner(); } catch(e) {}
-    } else if (lastView && lastView !== 'portfolio') {
-        currentSelectedWatchlistIds = [lastView];
-        if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = lastView; }
-        try { updateMainTitle(); } catch(e) {}
-        try { ensureTitleStructure(); } catch(e) {}
-        try { updateTargetHitBanner(); } catch(e) {}
-    }
-} catch(e) { /* ignore */ }
-const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
-const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
-let currentSortOrder = 'entryDate-desc'; // Default sort order
-try { const lsSort = localStorage.getItem('lastSortOrder'); if (lsSort) { currentSortOrder = lsSort; } } catch(e) {}
-let contextMenuOpen = false; // To track if the custom context menu is open
-let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
-let originalShareData = null; // Stores the original share data when editing for dirty state check
-let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
-let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
-// Guard against unintended re-opening of the Share Edit modal shortly after save
-let suppressShareFormReopen = false;
-
-// App version (kept for internal logging; no longer displayed in UI title bar)
-const APP_VERSION = 'v0.1.5';
-
-
-// Live Price Data
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
-let livePrices = {}; // Stores live price data: {ASX_CODE: {live: price, prevClose: price, PE: value, High52: value, Low52: value, targetHit: boolean, lastLivePrice: value, lastPrevClose: value}} 
-let livePriceFetchInterval = null; // To hold the interval ID for live price updates
-const LIVE_PRICE_FETCH_INTERVAL_MS = 5 * 60 * 1000; // Fetch every 5 minutes
-// Global discovery: store external (non-portfolio) price rows each fetch for global alert discovery logic
-let globalExternalPriceRows = []; // [{ code, live, prevClose }]
-
-// Theme related variables
-const CUSTOM_THEMES = [
-    'bold-1', 'bold-2', 'bold-3', 'bold-4', 'bold-5', 'bold-6', 'bold-7', 'bold-8', 'bold-9', 'bold-10',
-    'subtle-1', 'subtle-2', 'subtle-3', 'subtle-4', 'subtle-5', 'subtle-6', 'subtle-7', 'subtle-8', 'subtle-9', 'subtle-10',
-    'Muted Blue', 'Muted Brown', 'Muted Pink', 'Muted Green', 'Muted Purple', 'Muted Orange', 'Muted Cyan', 'Muted Magenta', 'Muted Gold', 'Muted Grey'
-];
-let currentCustomThemeIndex = -1; // To track the current theme in the cycle
-let currentActiveTheme = 'system-default'; // Tracks the currently applied theme string
-let savedSortOrder = null; // GLOBAL: Stores the sort order loaded from user settings
-let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
-// GLOBAL: Directional global alert thresholds (null or number)
-// (Legacy globalPercentAlert/globalDollarAlert replaced by the four below; migration handled in applyLoadedGlobalAlertSettings)
-let globalPercentIncrease = null;
-let globalDollarIncrease = null;
-let globalPercentDecrease = null;
-let globalDollarDecrease = null;
-let globalMinimumPrice = null; // New minimum live price filter
-let lastGlobalAlertsSessionId = null; // to avoid duplicating alerts within same fetch cycle if needed
-// GLOBAL: References to Global Alerts modal elements (initialized on DOMContentLoaded)
-let globalAlertsBtn = null;
-let globalAlertsModal = null;
-let saveGlobalAlertsBtn = null;
-let closeGlobalAlertsBtn = null;
-let globalPercentIncreaseInput = null;
-let globalDollarIncreaseInput = null;
-let globalPercentDecreaseInput = null;
-let globalDollarDecreaseInput = null;
-let globalMinimumPriceInput = null;
-let globalAlertsSettingsSummaryEl = null; // displays current settings under sidebar button
-
-let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
-let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
-let unsubscribeAlerts = null; // NEW: Holds the unsubscribe function for Firestore alerts listener
-
-// NEW: Global variable to store shares that have hit their target price
-let sharesAtTargetPrice = [];
-// NEW: Also track triggered but muted alerts so users can unmute from the hub
-let sharesAtTargetPriceMuted = [];
-// Global alert summary cache
-let globalAlertSummary = null; // { increaseCount, decreaseCount, totalCount, threshold }
-// NEW: Remember last shown alert count to avoid icon flicker on reload while prices are loading (persisted)
-let lastKnownTargetCount = 0;
-try {
-    const persisted = parseInt(localStorage.getItem('lastKnownTargetCount') || '0', 10);
-    if (!isNaN(persisted) && persisted > 0) lastKnownTargetCount = persisted;
-} catch(e) {}
-
-// NEW: Global variable to track the current mobile view mode ('default' or 'compact')
-let currentMobileViewMode = 'default'; // Will be loaded post-auth
-
-// Helper to ensure compact mode class is always applied
-function applyCompactViewMode() {
-    if (mobileShareCardsContainer) {
-        if (currentMobileViewMode === 'compact') {
-            mobileShareCardsContainer.classList.add('compact-view');
-        } else {
-            mobileShareCardsContainer.classList.remove('compact-view');
+    // (Removed duplicate showTargetHitDetailsModal definition at later section)
+        // Snapshot live price helper (restored into proper async function after refactor corruption)
+        async function fetchAddFormSnapshot(code, reqId) {
+            if (!code || !addShareLivePriceDisplay) return;
+            const upper = String(code).toUpperCase().trim();
+            try {
+                addShareLivePriceDisplay.innerHTML = '<div class="mini-loading">Loading...</div>';
+                const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const data = await resp.json();
+                if (reqId !== _latestAddFormSnapshotReq) return; // stale
+                if (!Array.isArray(data) || data.length === 0) { addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">No price data.</p>'; return; }
+                let row = data.find(r => {
+                    const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
+                    return c && String(c).toUpperCase().trim() === upper;
+                }) || data[0];
+                if (row && row !== data[0] && DEBUG_MODE) logDebug('Snapshot: matched exact row for', upper);
+                if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode||row.Code).toUpperCase().trim() !== upper && DEBUG_MODE) {
+                    logDebug('Snapshot: exact match not found, using first row', { requested: upper, first: row.ASXCode||row.Code });
+                }
+                const live = parseFloat(row.LivePrice ?? row['Live Price'] ?? row.live ?? row.price ?? row.Last ?? row.LastPrice ?? row['Last Price'] ?? row.LastTrade ?? row['Last Trade']);
+                const prev = parseFloat(row.PrevClose ?? row['Prev Close'] ?? row.prevClose ?? row.prev ?? row['Previous Close'] ?? row.Close ?? row['Last Close']);
+                const pe = parseFloat(row.PE ?? row['PE Ratio'] ?? row.pe);
+                const hi = parseFloat(row.High52 ?? row['High52'] ?? row['High 52'] ?? row['52WeekHigh'] ?? row['52 High']);
+                const lo = parseFloat(row.Low52 ?? row['Low52'] ?? row['Low 52'] ?? row['52WeekLow'] ?? row['52 Low']);
+                const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
+                const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
+                const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
+                if (shareNameInput && shareNameInput.value.toUpperCase().trim() !== upper) { return; }
+                if (!isNaN(live) && currentPriceInput) currentPriceInput.value = Number(live).toFixed(2);
+                addShareLivePriceDisplay.innerHTML = `
+                    <div class="fifty-two-week-row">
+                        <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
+                        <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
+                    </div>
+                    <div class="live-price-main-row">
+                        <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
+                        <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${formatAdaptivePrice(change)} (${formatAdaptivePercent(pct)}%)` : 'N/A'}</span>
+                    </div>
+                    <div class="pe-ratio-row">
+                        <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? formatAdaptivePrice(pe) : 'N/A'}</span>
+                    </div>`;
+                addShareLivePriceDisplay.style.display = 'block';
+                addShareLivePriceDisplay.removeAttribute('data-loading');
+            } catch (e) {
+                if (DEBUG_MODE) console.warn('Snapshot: failed for', code, e);
+                if (addShareLivePriceDisplay) {
+                    addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">Price unavailable.</p>';
+                    addShareLivePriceDisplay.style.display = 'block';
+                    addShareLivePriceDisplay.removeAttribute('data-loading');
+                }
+            }
         }
-    }
-    // Re-apply ASX buttons visibility since compact view hides them
-    if (typeof applyAsxButtonsState === 'function') {
-        applyAsxButtonsState();
-    }
-    // Adjust layout after view mode change
-    requestAnimationFrame(adjustMainContentPadding);
-}
-
-// NEW: Global variable to track if the target hit icon is dismissed for the current session
-let targetHitIconDismissed = false;
-// Map of alert enable states loaded from Firestore: shareId -> boolean (true = enabled)
-let alertsEnabledMap = new Map();
-// Removed: manual EOD toggle state; behavior is automatic based on Sydney market hours
-
-// Tracks if share detail modal was opened from alerts
-let wasShareDetailOpenedFromTargetAlerts = false;
-// Track if the edit form was opened from the share detail modal, so back can return to detail
-let wasEditOpenedFromShareDetail = false;
-
-// NEW: Global variable to store cash categories data
-let userCashCategories = [];
-let selectedCashAssetDocId = null; // NEW: To track which cash asset is selected for editing/details
-let originalCashAssetData = null; // NEW: To store original cash asset data for dirty state check
-// NEW: Global variable to store visibility state of cash assets (temporary, not persisted)
-// This will now be managed directly by the 'isHidden' property on the cash asset object itself.
-let cashAssetVisibility = {}; // This object will still track the *current session's* visibility.
-// NEW: Reference for the hide/show checkbox in the cash asset form modal
-const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
-
-
-// --- UI Element References ---
-// Copilot: No-op change to trigger source control detection
-const appHeader = document.getElementById('appHeader'); // Reference to the main header
-const mainContainer = document.querySelector('main.container'); // Reference to the main content container
-// mainTitle removed in favour of dynamicWatchlistTitle only
-const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
-const newShareBtn = document.getElementById('newShareBtn');
-const standardCalcBtn = document.getElementById('standardCalcBtn');
-const dividendCalcBtn = document.getElementById('dividendCalcBtn');
-const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
-const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
-const shareFormSection = document.getElementById('shareFormSection');
-const formCloseButton = document.querySelector('.form-close-button');
-const formTitle = document.getElementById('formTitle');
-const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
-const saveShareBtn = document.getElementById('saveShareBtn');
-const deleteShareBtn = document.getElementById('deleteShareBtn');
-const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
-const currentPriceInput = document.getElementById('currentPrice'); // Reference (reinstated) to Reference Price input
-// Centralized single-code snapshot handling
-let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
-async function updateAddFormLiveSnapshot(code) {
-    try {
-        if (!code || !GOOGLE_APPS_SCRIPT_URL || !addShareLivePriceDisplay) return;
-        const reqId = ++_latestAddFormSnapshotReq;
-        const upper = String(code).toUpperCase();
-        addShareLivePriceDisplay.dataset.loading = 'true';
-        // Lightweight loading indicator (optional)
-        addShareLivePriceDisplay.style.display = 'block';
-        addShareLivePriceDisplay.innerHTML = '<div class="mini-loading">Loading...</div>';
-        const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`);
-        if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        const data = await resp.json();
-        if (reqId !== _latestAddFormSnapshotReq) return; // stale
-        if (!Array.isArray(data) || data.length === 0) { addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">No price data.</p>'; return; }
-        let row = data.find(r => {
-            const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
-            return c && String(c).toUpperCase().trim() === upper;
-        }) || data[0];
-        if (row && row !== data[0] && DEBUG_MODE) logDebug('Snapshot: matched exact row for', upper);
-        if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode||row.Code).toUpperCase().trim() !== upper && DEBUG_MODE) {
-            logDebug('Snapshot: exact match not found, using first row', { requested: upper, first: row.ASXCode||row.Code });
-        }
-        const live = parseFloat(row.LivePrice ?? row['Live Price'] ?? row.live ?? row.price ?? row.Last ?? row.LastPrice ?? row['Last Price'] ?? row.LastTrade ?? row['Last Trade']);
-        const prev = parseFloat(row.PrevClose ?? row['Prev Close'] ?? row.prevClose ?? row.prev ?? row['Previous Close'] ?? row.Close ?? row['Last Close']);
-        const pe = parseFloat(row.PE ?? row['PE Ratio'] ?? row.pe);
-        const hi = parseFloat(row.High52 ?? row['High52'] ?? row['High 52'] ?? row['52WeekHigh'] ?? row['52 High']);
-        const lo = parseFloat(row.Low52 ?? row['Low52'] ?? row['Low 52'] ?? row['52WeekLow'] ?? row['52 Low']);
-        const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
-        const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
-        const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
-        // Guard against user switching code mid-flight
-        if (shareNameInput && shareNameInput.value.toUpperCase().trim() !== upper) {
-            if (DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: shareNameInput.value });
-            return;
-        }
-        // Prefill reference price field with latest live price (always override for accuracy)
-        if (!isNaN(live) && currentPriceInput) {
-            currentPriceInput.value = Number(live).toFixed(2);
-        }
-        addShareLivePriceDisplay.innerHTML = `
-            <div class="fifty-two-week-row">
-                <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
-                <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
-            </div>
-            <div class="live-price-main-row">
-                <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
-                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${formatAdaptivePrice(change)} (${formatAdaptivePercent(pct)}%)` : 'N/A'}</span>
-            </div>
-            <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? formatAdaptivePrice(pe) : 'N/A'}</span>
-            </div>`;
-        addShareLivePriceDisplay.style.display = 'block';
-        addShareLivePriceDisplay.removeAttribute('data-loading');
     } catch (e) {
         if (DEBUG_MODE) console.warn('Snapshot: failed for', code, e);
         if (addShareLivePriceDisplay) {
@@ -273,8 +94,7 @@ async function updateAddFormLiveSnapshot(code) {
             addShareLivePriceDisplay.removeAttribute('data-loading');
         }
     }
-}
-const shareNameInput = document.getElementById('shareName');
+});
 // Removed manual Reference Price input; currentPrice now auto-captured
 const targetPriceInput = document.getElementById('targetPrice');
 const dividendAmountInput = document.getElementById('dividendAmount');
@@ -479,6 +299,9 @@ const shareNameSuggestions = document.getElementById('shareNameSuggestions'); //
 const searchResultDisplay = document.getElementById('searchResultDisplay'); // NEW: Display area for search results
 const searchModalActionButtons = document.querySelector('#stockSearchModal .modal-action-buttons-footer'); // NEW: Action buttons container
 const searchModalCloseButton = document.querySelector('.search-close-button'); // NEW: Close button for search modal
+
+// Ensure shareNameInput is declared before any arrays referencing it (repair after duplicate removal refactor)
+const shareNameInput = document.getElementById('shareName');
 
 // NEW: Global variable for storing loaded ASX code data from CSV
 let allAsxCodes = []; // { code: 'BHP', name: 'BHP Group Ltd' }
