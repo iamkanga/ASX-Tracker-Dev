@@ -9024,7 +9024,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
         });
     } else {
-        console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
+        if (window.__FIREBASE_PLACEHOLDER_CONFIG) {
+            console.info('Offline Mode: Running with redacted Firebase config. Data features disabled by design.');
+            window.__OFFLINE_MODE = true;
+        } else {
+            console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
+        }
         const errorDiv = document.getElementById('firebaseInitError');
         if (errorDiv) {
                 errorDiv.style.display = 'block';
