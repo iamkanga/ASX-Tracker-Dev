@@ -5478,6 +5478,80 @@ function enforceMoversVirtualView() {
     }
 }
 
+// DEBUG: Deep consistency checker for Movers virtual watchlist
+function debugMoversConsistency(options = {}) {
+    const opts = { logVisible: true, recompute: true, ...options };
+    const now = new Date().toISOString();
+    const result = { ts: now };
+    try {
+        // Fresh recompute (doesn't touch DOM) unless disabled
+        let fresh = [];
+        if (opts.recompute) {
+            try { fresh = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || []; }
+            catch(e){ console.warn('[MoversDebug] recompute failed', e); }
+        } else if (window.__lastMoversSnapshot) {
+            fresh = window.__lastMoversSnapshot.entries || [];
+        }
+        const freshCodes = fresh.map(e=>e.code).sort();
+        // Snapshot codes
+        const snapCodes = (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries ? window.__lastMoversSnapshot.entries.map(e=>e.code).sort() : []);
+        // Visible DOM codes (table + mobile) that are currently displayed
+        const visibleTable = Array.from(document.querySelectorAll('#shareTable tbody tr'))
+            .filter(tr => tr.style.display !== 'none')
+            .map(tr => { const el = tr.querySelector('.share-code-display'); return el ? el.textContent.trim().toUpperCase() : null; })
+            .filter(Boolean);
+        const visibleMobile = Array.from(document.querySelectorAll('.mobile-share-cards .mobile-card'))
+            .filter(card => card.style.display !== 'none')
+            .map(card => { const el = card.querySelector('h3'); return el ? el.textContent.trim().toUpperCase() : null; })
+            .filter(Boolean);
+        const visibleAll = Array.from(new Set([...visibleTable, ...visibleMobile])).sort();
+        // Portfolio codes universe
+        const portfolioCodes = (allSharesData||[]).map(s=> s && s.shareName ? s.shareName.toUpperCase() : null).filter(Boolean).sort();
+        // Effective local movers = intersection freshCodes ∩ portfolioCodes
+        const effectiveLocal = freshCodes.filter(c => portfolioCodes.includes(c));
+        // Diffs
+        const missingVisible = effectiveLocal.filter(c => !visibleAll.includes(c));
+        const extraVisible = visibleAll.filter(c => !effectiveLocal.includes(c));
+        result.freshCount = freshCodes.length;
+        result.snapshotCount = snapCodes.length;
+        result.visibleCount = visibleAll.length;
+        result.effectiveLocalCount = effectiveLocal.length;
+        result.missingVisible = missingVisible;
+        result.extraVisible = extraVisible;
+        if (opts.includeLists || window.__logMoversVerbose) {
+            result.freshCodes = freshCodes;
+            result.snapshotCodes = snapCodes;
+            result.visibleAll = visibleAll;
+            result.effectiveLocal = effectiveLocal;
+        }
+        console.groupCollapsed('%c[MoversDebug] Consistency ' + now,'color:#3a7bd5;font-weight:600;');
+        console.table(result);
+        if (missingVisible.length || extraVisible.length) {
+            console.warn('[MoversDebug] Discrepancy detected: missingVisible=', missingVisible, 'extraVisible=', extraVisible);
+        } else {
+            console.info('[MoversDebug] No discrepancies.');
+        }
+        console.groupEnd();
+    } catch(err) {
+        console.error('[MoversDebug] Failed', err);
+    }
+    return result;
+}
+window.debugMoversConsistency = debugMoversConsistency; // expose globally
+
+// Hotkey: Alt+Shift+M to dump Movers consistency when in Movers view
+document.addEventListener('keydown', (e)=>{
+    try {
+        if (e.altKey && e.shiftKey && e.code === 'KeyM') {
+            if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+                debugMoversConsistency({ includeLists: true });
+            } else {
+                console.info('[MoversDebug] Hotkey pressed but not in Movers view.');
+            }
+        }
+    } catch(_) {}
+}, true);
+
 // NEW: Helper to enable/disable a specific alert for a share
 // Toggle alert enabled flag (if currently enabled -> disable; if disabled -> enable)
 async function toggleAlertEnabled(shareId) {
