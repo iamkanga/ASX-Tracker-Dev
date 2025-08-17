@@ -42,6 +42,37 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch(e) { console.warn('[Diag] Overlay singleton check failed', e); }
 });
 // ...existing code...
+
+// Title mutation observer guard to restore if emptied by outside DOM ops
+try {
+    (function installTitleGuard(){
+        if (window.__titleGuardInstalled) return; window.__titleGuardInstalled = true;
+        const host = document.getElementById('dynamicWatchlistTitle'); if(!host) return;
+        const obs = new MutationObserver(()=>{
+            try {
+                const span = document.getElementById('dynamicWatchlistTitleText');
+                if (!span) return;
+                if (!span.textContent || !span.textContent.trim()) {
+                    let wid = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
+                    let expected;
+                    if (wid === '__movers') expected = 'Movers';
+                    else if (wid === 'portfolio') expected = 'Portfolio';
+                    else if (wid === CASH_BANK_WATCHLIST_ID) expected = 'Cash & Assets';
+                    else if (wid === ALL_SHARES_ID) expected = 'All Shares';
+                    else {
+                        const wl = (userWatchlists||[]).find(w=>w.id===wid);
+                        expected = (wl && wl.name) ? wl.name : 'Share Watchlist';
+                    }
+                    span.textContent = expected;
+                    console.warn('[TitleGuard] Restored empty dynamic title to:', expected);
+                }
+            } catch(_) {}
+        });
+        obs.observe(host, { childList:true, characterData:true, subtree:true });
+    })();
+} catch(_) {}
+
+// ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
 // The previous patch has been removed as the root cause of the UI issues,
 // a syntax error in index.html, has been corrected. The standard application
