@@ -9151,7 +9151,8 @@ try {
             btn.addEventListener('click', async () => {
                 try {
                     const diag = {};
-                      diag.buildMarker = 'v0.1.9';
+                    // Keep this in sync with the Build Marker comment near initializeAppLogic end
+                    diag.buildMarker = 'v0.1.12';
                     diag.time = new Date().toISOString();
                     diag.userId = (typeof currentUserId!=='undefined')? currentUserId : null;
                     diag.activeWatchlistId = (typeof activeWatchlistId!=='undefined')? activeWatchlistId : null;
@@ -9240,6 +9241,60 @@ try {
                             console.groupCollapsed('%cSUPER DEBUG SNAPSHOT','color:#a49393;font-weight:bold;');
                             console.log(json);
                             console.groupEnd();
+                            // Ensure on-page panel ("notepad") exists for user-friendly copying
+                            try {
+                                let panel = document.getElementById('superDebugPanel');
+                                if (!panel) {
+                                    panel = document.createElement('div');
+                                    panel.id = 'superDebugPanel';
+                                    panel.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:99999;width:360px;max-width:90vw;background:#1e1e1e;color:#eee;font:12px/1.3 monospace;border:1px solid #555;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;flex-direction:column;';
+                                    panel.innerHTML = `
+                                        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:#2c2c2c;border-bottom:1px solid #444;border-radius:6px 6px 0 0;cursor:move;user-select:none;">
+                                            <strong style="font:600 12px system-ui,Segoe UI,Arial;">Super Debug Snapshot</strong>
+                                            <div style="display:flex;gap:6px;align-items:center;">
+                                                <button id="superDebugMinBtn" title="Minimize" style="background:#444;color:#ddd;border:0;padding:2px 6px;border-radius:4px;font-size:11px;cursor:pointer;">_</button>
+                                                <button id="superDebugCloseBtn" title="Close" style="background:#c0392b;color:#fff;border:0;padding:2px 6px;border-radius:4px;font-size:11px;cursor:pointer;">×</button>
+                                            </div>
+                                        </div>
+                                        <textarea id="superDebugTextArea" spellcheck="false" style="flex:1;min-height:180px;resize:vertical;background:#111;color:#8fdaff;padding:6px 8px;border:0;outline:none;border-radius:0 0 6px 6px;font:11px/1.35 monospace;white-space:pre;overflow:auto;"></textarea>
+                                        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:6px 8px;background:#2c2c2c;border-top:1px solid #444;">
+                                            <button id="superDebugCopyBtn" style="background:#3a7bd5;color:#fff;border:0;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;">Copy</button>
+                                            <button id="superDebugDownloadBtn" style="background:#27ae60;color:#fff;border:0;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;">Download</button>
+                                            <button id="superDebugClearBtn" style="background:#555;color:#eee;border:0;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;">Clear</button>
+                                        </div>`;
+                                    document.body.appendChild(panel);
+
+                                    // Drag to move functionality (simple implementation)
+                                    (function enableDrag(el){
+                                        const header = el.firstElementChild; if(!header) return; let sx=0, sy=0, ox=0, oy=0, dragging=false;
+                                        header.addEventListener('mousedown', (e)=>{ dragging=true; sx=e.clientX; sy=e.clientY; const r=el.getBoundingClientRect(); ox=r.left; oy=r.top; document.addEventListener('mousemove', move, true); document.addEventListener('mouseup', up, true); });
+                                        function move(e){ if(!dragging) return; const dx=e.clientX-sx; const dy=e.clientY-sy; el.style.left=(ox+dx)+'px'; el.style.top=(oy+dy)+'px'; el.style.right='auto'; el.style.bottom='auto'; }
+                                        function up(){ dragging=false; document.removeEventListener('mousemove', move, true); document.removeEventListener('mouseup', up, true); }
+                                    })(panel);
+
+                                    // Button handlers
+                                    panel.querySelector('#superDebugCloseBtn').addEventListener('click', ()=> panel.remove());
+                                    panel.querySelector('#superDebugMinBtn').addEventListener('click', ()=> {
+                                        const ta = panel.querySelector('#superDebugTextArea');
+                                        if (!ta) return; const hidden = ta.style.display==='none';
+                                        ta.style.display = hidden ? 'block':'none';
+                                    });
+                                    panel.querySelector('#superDebugCopyBtn').addEventListener('click', ()=> {
+                                        const ta = panel.querySelector('#superDebugTextArea');
+                                        ta.select(); try { document.execCommand('copy'); showCustomAlert && showCustomAlert('Copied snapshot'); } catch(_) {}
+                                    });
+                                    panel.querySelector('#superDebugDownloadBtn').addEventListener('click', ()=> {
+                                        try { const blob = new Blob([panel.querySelector('#superDebugTextArea').value], {type:'application/json'}); const a=document.createElement('a'); a.download='superdebug-'+Date.now()+'.json'; a.href=URL.createObjectURL(blob); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 1500);} catch(_) {}
+                                    });
+                                    panel.querySelector('#superDebugClearBtn').addEventListener('click', ()=> {
+                                        const ta = panel.querySelector('#superDebugTextArea'); if(ta) ta.value='';
+                                    });
+                                }
+                                const ta = panel.querySelector('#superDebugTextArea');
+                                if (ta) { ta.value = json; ta.scrollTop = 0; }
+                            } catch(panelErr) { console.warn('SuperDebug: Panel creation failed', panelErr); }
+
+                            // Clipboard attempt (non-fatal)
                             if (navigator.clipboard && navigator.clipboard.writeText) {
                                 navigator.clipboard.writeText(json).then(()=>console.log('SuperDebug: Snapshot copied to clipboard.')).catch(()=>console.warn('SuperDebug: Clipboard write failed.'));
                             }
