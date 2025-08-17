@@ -8936,25 +8936,47 @@ function showTargetHitDetailsModal() {
         if (!modal) { console.warn('Discover modal element missing.'); return; }
         const listEl = modal.querySelector('#discoverGlobalList');
         if (listEl) {
-            const codes = Array.isArray(summaryData.nonPortfolioCodes) ? summaryData.nonPortfolioCodes : [];
-            if (!codes.length) listEl.innerHTML = '<p class="ghosted-text">No external shares this cycle.</p>';
-            else {
-                const rows = codes.map(c=>{
-                    const lp = livePrices && livePrices[c];
-                    let deltaHtml = ''; let pctHtml = '';
-                    if (lp && lp.live!=null && lp.prevClose!=null && !isNaN(lp.live) && !isNaN(lp.prevClose)) {
-                        const ch = lp.live - lp.prevClose;
-                        const pct = lp.prevClose!==0 ? (ch / lp.prevClose)*100 : 0;
-                        const dirClass = ch>=0 ? 'positive' : 'negative';
-                        const deltaStr = `${ch>=0?'+':''}$${Math.abs(ch).toFixed(2)}`;
-                        const pctStr = `${ch>=0?'+':''}${pct.toFixed(2)}%`;
-                        deltaHtml = `<span class="delta ${dirClass}">${deltaStr}</span>`;
-                        pctHtml = `<span class="pct ${dirClass}">${pctStr}</span>`;
-                    }
-                    return `<li data-code="${c}" class="discover-mover"><span class="code">${c}</span><span class="movement-group">${deltaHtml} ${pctHtml}</span></li>`;
-                }).join('');
-                listEl.innerHTML = `<ul class="discover-code-list">${rows}</ul>`;
+            const snapshot = window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries) ? window.__lastMoversSnapshot : null;
+            let entries = snapshot ? snapshot.entries.slice() : [];
+            if (!entries.length && Array.isArray(summaryData.nonPortfolioCodes)) {
+                entries = summaryData.nonPortfolioCodes.map(code=>({ code, live: (livePrices[code]?.live)||null, prev: (livePrices[code]?.prevClose)||null }));
             }
+            entries.sort((a,b)=> (b.pct||0) - (a.pct||0));
+            listEl.innerHTML='';
+            const ul = document.createElement('ul');
+            ul.className='discover-code-list enriched';
+            if (!entries.length) {
+                const li=document.createElement('li'); li.className='ghosted-text'; li.textContent='No current global movers meeting threshold.'; ul.appendChild(li);
+            } else {
+                const threshold = summaryData && summaryData.threshold ? summaryData.threshold : '';
+                if (threshold) {
+                    const hdr=document.createElement('li'); hdr.className='global-movers-threshold';
+                    hdr.textContent='Threshold: '+threshold + (summaryData.appliedMinimumPrice? ' | Min Price: $'+Number(summaryData.appliedMinimumPrice).toFixed(2):'');
+                    ul.appendChild(hdr);
+                }
+                entries.forEach(en=>{
+                    const live = (en.live!=null)? Number(en.live): (livePrices[en.code]?.live);
+                    const prev = (en.prev!=null)? Number(en.prev): (livePrices[en.code]?.prevClose);
+                    let ch=null,pct=null,dir='';
+                    if (live!=null && prev!=null && prev!==0){ ch=live-prev; pct=(ch/prev)*100; dir= ch>0?'up':(ch<0?'down':'flat'); }
+                    const li=document.createElement('li'); li.className='discover-mover dir-'+dir; li.dataset.code=en.code;
+                    const chStr=(ch!=null)? (ch>0?'+':'')+'$'+Math.abs(ch).toFixed(2):'';
+                    const pctStr=(pct!=null)? (pct>0?'+':'')+pct.toFixed(2)+'%':'';
+                    li.innerHTML=`<span class="code">${en.code}</span><span class="live">${live!=null?('$'+live.toFixed(2)):'-'}</span><span class="delta ${dir}">${chStr} ${pctStr?('('+pctStr+')'):''}</span>`;
+                    li.addEventListener('click',()=>{
+                        try { hideModal(modal); } catch(_) {}
+                        // Optionally jump to add/share detail if available
+                        if (typeof shareNameInput !== 'undefined' && shareNameInput) {
+                            shareNameInput.value = en.code;
+                            if (typeof updateAddFormLiveSnapshot === 'function') {
+                                try { updateAddFormLiveSnapshot(en.code); } catch(err) {}
+                            }
+                        }
+                    });
+                    ul.appendChild(li);
+                });
+            }
+            listEl.appendChild(ul);
         }
         showModal(modal);
     }
