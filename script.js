@@ -178,7 +178,9 @@ document.addEventListener('DOMContentLoaded', () => {
             row.addEventListener('touchstart', () => { selectedElementForTap = row; }, { passive: true });
             row.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
         });
-    };
+    } catch(portfolioRenderErr) {
+        console.warn('Portfolio render failed', portfolioRenderErr);
+    }
 });
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
