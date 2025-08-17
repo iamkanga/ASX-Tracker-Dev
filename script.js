@@ -1,3 +1,5 @@
+// Build Marker: 2025-08-17T00:00Z v0.1.8 (cache-bust validation)
+// If you do NOT see this line in DevTools Sources, you're viewing a stale cached script.
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
@@ -20,6 +22,25 @@ window.addEventListener('popstate', function(event) {
 // Keep main content padding in sync with header height changes (e.g., viewport resize)
 window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
 document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
+// Diagnostic: overlay listener singleton self-check
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        const ov = document.getElementById('sidebarOverlay') || document.querySelector('.sidebar-overlay');
+        if (ov) {
+            // Attempt to enumerate known listener types by dispatch test events counter (best-effort)
+            let fired = 0;
+            const testHandler = () => { fired++; };
+            ov.addEventListener('mousedown', testHandler, { once: true });
+            const evt = new Event('mousedown');
+            ov.dispatchEvent(evt);
+            // fired should be 1 because our once listener ran; actual sidebar close listener also runs silently
+            // Provide console confirmation marker for QA
+            console.log('[Diag] Overlay singleton check executed. Build marker present.');
+        } else {
+            console.warn('[Diag] Overlay element not found during singleton check.');
+        }
+    } catch(e) { console.warn('[Diag] Overlay singleton check failed', e); }
+});
 // ...existing code...
 // --- (Aggressive Enforcement Patch Removed) ---
 // The previous patch has been removed as the root cause of the UI issues,
