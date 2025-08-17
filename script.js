@@ -8666,7 +8666,7 @@ function showTargetHitDetailsModal() {
     // Ensure single heading styled like other sections
     targetHitSharesList.querySelectorAll('.global-movers-heading').forEach(h=>h.remove());
     const heading = document.createElement('h3');
-    heading.className = 'global-movers-heading';
+    heading.className = 'target-hit-section-title';
     heading.textContent = 'Global movers';
     targetHitSharesList.prepend(heading);
         container.innerHTML = `
@@ -8714,14 +8714,17 @@ function showTargetHitDetailsModal() {
             else {
                 const rows = codes.map(c=>{
                     const lp = livePrices && livePrices[c];
-                    let movement=''; let cls='';
+                    let deltaHtml = ''; let pctHtml = '';
                     if (lp && lp.live!=null && lp.prevClose!=null && !isNaN(lp.live) && !isNaN(lp.prevClose)) {
                         const ch = lp.live - lp.prevClose;
                         const pct = lp.prevClose!==0 ? (ch / lp.prevClose)*100 : 0;
-                        movement = `${ch>=0?'+':''}$${Math.abs(ch).toFixed(2)} (${ch>=0?'+':''}${pct.toFixed(2)}%)`;
-                        cls = ch>=0 ? 'positive' : 'negative';
+                        const dirClass = ch>=0 ? 'positive' : 'negative';
+                        const deltaStr = `${ch>=0?'+':''}$${Math.abs(ch).toFixed(2)}`;
+                        const pctStr = `${ch>=0?'+':''}${pct.toFixed(2)}%`;
+                        deltaHtml = `<span class="delta ${dirClass}">${deltaStr}</span>`;
+                        pctHtml = `<span class="pct ${dirClass}">${pctStr}</span>`;
                     }
-                    return `<li data-code="${c}" class="discover-mover"><span class="code">${c}</span><span class="movement ${cls}">${movement}</span></li>`;
+                    return `<li data-code="${c}" class="discover-mover"><span class="code">${c}</span><span class="movement-group">${deltaHtml} ${pctHtml}</span></li>`;
                 }).join('');
                 listEl.innerHTML = `<ul class="discover-code-list">${rows}</ul>`;
             }
@@ -8799,6 +8802,7 @@ function showTargetHitDetailsModal() {
         if (hasEnabled) {
             const enabledHeader = document.createElement('h3');
             enabledHeader.textContent = 'Target hit';
+            enabledHeader.className = 'target-hit-section-title';
             targetHitSharesList.appendChild(enabledHeader);
             sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
         }

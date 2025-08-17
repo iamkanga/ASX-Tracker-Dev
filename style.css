@@ -367,7 +367,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Mute button matches tiny-toggle style */
 /* arrow size */
 .global-summary-alert .global-summary-arrows-row .arrow { font-size:1.75rem; line-height:1; position:relative; top:2px; }
-.global-summary-alert .global-summary-detail.ignoring-line { font-size:0.4rem; opacity:0.65; letter-spacing:0.2px; }
+.global-summary-alert .global-summary-detail.ignoring-line { font-size:50%; /* previously 0.4rem */ opacity:0.65; letter-spacing:0.2px; }
 
 /* Layout adjustment: container becomes flex to push actions to bottom */
 .global-summary-alert.target-hit-item { display:flex; flex-direction:row; }
@@ -376,7 +376,9 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 
 /* External heading styling */
 .global-movers-heading { font-size:1.05rem; font-weight:600; margin:6px 2px 4px 2px; padding:0 2px; letter-spacing:0.5px; }
-/* Ensure parity with target-hit section headers (assumed h3 styling) */
+/* New unified header class applied to both 'Target hit' and 'Global movers' */
+.target-hit-section-title { font-size:1.05rem; font-weight:600; margin:6px 2px 4px 2px; padding:0 2px; letter-spacing:0.5px; line-height:1.25; }
+/* Preserve combined line-height rule (legacy) */
 .target-hit-section-title, .global-movers-heading { line-height:1.25; }
 
 /* Discover modal movement layout */
@@ -384,6 +386,10 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .discover-code-list .discover-mover .movement { font-size:0.65rem; opacity:0.85; letter-spacing:0.3px; }
 .discover-code-list .discover-mover .movement.negative { color: var(--price-down-color); }
 .discover-code-list .discover-mover .movement.positive { color: var(--price-up-color); }
+/* New separate spans for price and percentage change */
+.discover-code-list .discover-mover .delta, .discover-code-list .discover-mover .pct { font-size:0.65rem; opacity:0.85; letter-spacing:0.3px; }
+.discover-code-list .discover-mover .delta.negative, .discover-code-list .discover-mover .pct.negative { color: var(--price-down-color); }
+.discover-code-list .discover-mover .delta.positive, .discover-code-list .discover-mover .pct.positive { color: var(--price-up-color); }
 .discover-global-list { max-height:60vh; overflow-y:auto; }
 .discover-global-list ul.discover-code-list { list-style:none; margin:0; padding:0; }
 .discover-global-list ul.discover-code-list li { padding:6px 10px; border-bottom:1px solid var(--border-color, #444); cursor:default; display:flex; align-items:center; }
