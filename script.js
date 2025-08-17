@@ -9073,3 +9073,48 @@ document.addEventListener('DOMContentLoaded', function() {
         hideSplashScreen();
     }
 });
+
+// Simple Diagnostics helper for non-coders (adds click on Diagnostics menu button to copy key info)
+try {
+    (function initSimpleDiagnostics(){
+        const attemptBind = () => {
+            const btn = document.getElementById('diagnosticsBtn');
+            if(!btn) return false;
+            if(btn.__diagBound) return true; btn.__diagBound = true;
+            btn.addEventListener('click', async () => {
+                try {
+                    const diag = {};
+                    diag.buildMarker = 'v0.1.8';
+                    diag.time = new Date().toISOString();
+                    diag.userId = (typeof currentUserId!=='undefined')? currentUserId : null;
+                    diag.activeWatchlistId = (typeof activeWatchlistId!=='undefined')? activeWatchlistId : null;
+                    diag.selectedWatchlists = (typeof currentSelectedWatchlistIds!=='undefined')? currentSelectedWatchlistIds : [];
+                    diag.alertCounts = {
+                        enabled: Array.isArray(sharesAtTargetPrice)? sharesAtTargetPrice.length : null,
+                        muted: Array.isArray(sharesAtTargetPriceMuted)? sharesAtTargetPriceMuted.length : null,
+                        globalSummary: (globalAlertSummary && globalAlertSummary.totalCount) || 0
+                    };
+                        diag.globalSummary = globalAlertSummary || null;
+                    diag.lastLivePriceSample = Object.entries(livePrices||{}).slice(0,10);
+                    diag.targetDismissed = !!targetHitIconDismissed;
+                    diag.cacheKeys = (await caches.keys()).slice(0,10);
+                    diag.serviceWorkers = (await navigator.serviceWorker.getRegistrations()).map(r=>({scope:r.scope, active:!!r.active}));
+                    diag.swController = (navigator.serviceWorker.controller && navigator.serviceWorker.controller.state) || null;
+                    diag.windowLocation = window.location.href;
+                    diag.docHidden = document.hidden;
+                    const text = JSON.stringify(diag, null, 2);
+                    try { await navigator.clipboard.writeText(text); showCustomAlert('Diagnostics copied'); }
+                    catch(_) { alert(text); }
+                    console.log('[DiagnosticsDump]', diag);
+                } catch(err){
+                    console.warn('Diagnostics failed', err); alert('Diagnostics failed: '+err.message);
+                }
+            });
+            return true;
+        };
+        if(!attemptBind()) {
+            // Retry a few times in case sidebar not yet rendered
+            let tries = 0; const intv = setInterval(()=>{ if(attemptBind()|| ++tries>10) clearInterval(intv); }, 500);
+        }
+    })();
+} catch(_){ }
