@@ -367,7 +367,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Mute button matches tiny-toggle style */
 /* arrow size */
 .global-summary-alert .global-summary-arrows-row .arrow { font-size:1.75rem; line-height:1; position:relative; top:2px; }
-#globalMoversTitle { order:-1; }
+/* #globalMoversTitle ordering override removed to respect DOM sequence (was order:-1 previously) */
 .global-summary-alert .global-summary-detail.ignoring-line { font-size:0.65rem !important; opacity:0.55; letter-spacing:0.35px; text-transform:uppercase; font-weight:500; }
 /* Force Global movers heading to top of its flex container only */
 /* Inline title variant (inside card) */
@@ -381,7 +381,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* External heading styling */
 .global-movers-heading { font-size:1.05rem; font-weight:600; margin:6px 2px 4px 2px; padding:0 2px; letter-spacing:0.5px; }
 /* New unified header class applied to both 'Target hit' and 'Global movers' */
-.target-hit-section-title { font-size:1.05rem; font-weight:600; margin:6px 2px 4px 2px; padding:0 2px; letter-spacing:0.5px; line-height:1.25; order:-1; }
+.target-hit-section-title { font-size:1.05rem; font-weight:600; margin:6px 2px 4px 2px; padding:0 2px; letter-spacing:0.5px; line-height:1.25; /* Removed order:-1 so 'Target hit' heading remains after the global summary card */ }
 /* Preserve combined line-height rule (legacy) */
 .target-hit-section-title, .global-movers-heading { line-height:1.25; }
 
