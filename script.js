@@ -1,4 +1,4 @@
-// Build Marker: 2025-08-17T00:00Z v0.1.9 (cache-bust validation)
+// Build Marker: 2025-08-17T00:00Z v2.0.0 (Modal architecture reset: external Global movers heading, singleton overlay)
 // If you do NOT see this line in DevTools Sources, you're viewing a stale cached script.
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
@@ -8398,17 +8398,23 @@ if (sortSelect) {
             toggleAppSidebar(false);
         });
         
-        // Re-architected: single mousedown listener only; close then stop propagation
-        if (!sidebarOverlay.dataset.overlayBound) {
-            const overlayCloseHandler = (e) => {
-                if (!appSidebar.classList.contains('open')) return;
-                if (e.target !== sidebarOverlay) return;
-                toggleAppSidebar(false); // close first
-                e.stopPropagation();     // then stop propagation
-            };
-            sidebarOverlay.addEventListener('mousedown', overlayCloseHandler, true);
-            sidebarOverlay.dataset.overlayBound = '1';
+        // Unified overlay handler (single authoritative listener) - prevents race/double fire
+        if (sidebarOverlay._unifiedHandler) {
+            sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);
+            sidebarOverlay.removeEventListener('click', sidebarOverlay._unifiedHandler, true);
+            sidebarOverlay.removeEventListener('touchstart', sidebarOverlay._unifiedHandler, true);
         }
+        const unifiedHandler = (e) => {
+            if (e.target !== sidebarOverlay) return; // Only backdrop clicks
+            if (!appSidebar.classList.contains('open')) return;
+            try { toggleAppSidebar(false); } catch(err){ console.warn('Sidebar close failed', err); }
+            // Suppress any further processing or bubbling to avoid click-throughs
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            e.stopPropagation();
+            if (e.preventDefault) e.preventDefault();
+        };
+        sidebarOverlay.addEventListener('mousedown', unifiedHandler, true);
+        sidebarOverlay._unifiedHandler = unifiedHandler;
 
         // Accessibility & focus trap for sidebar when open
         const mainContent = document.getElementById('mainContent') || document.querySelector('main');
@@ -8625,9 +8631,14 @@ function showTargetHitDetailsModal() {
         container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
         const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span><span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span></div>`;
+        // External heading (architectural mandate)
+        const heading = document.createElement('h3');
+        heading.className = 'target-hit-section-title';
+        heading.id = 'globalMoversTitle';
+        heading.textContent = 'Global movers';
+        targetHitSharesList.appendChild(heading);
         container.innerHTML = `
             <div class=\"global-summary-inner\">
-                <h3 class=\"target-hit-section-title global-movers-inline-title\" id=\"globalMoversTitle\">Global movers</h3>
                 ${arrowsRow}
                 <div class=\"global-summary-detail total-line\">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
                 <div class=\"global-summary-detail portfolio-line\">${portfolioCount} from your portfolio</div>
@@ -8771,9 +8782,8 @@ function showTargetHitDetailsModal() {
         if (hasEnabled) {
             const enabledHeader = document.createElement('h3');
             enabledHeader.textContent = 'Target hit';
-            enabledHeader.className = 'target-hit-section-title';
-            // If global summary present, ensure header comes AFTER it (global summary was prepended)
-            targetHitSharesList.appendChild(enabledHeader);
+            enabledHeader.className = 'target-hit-section-title target-hit-enabled-header';
+            targetHitSharesList.appendChild(enabledHeader); // After global summary + its heading
             sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
         }
         if (hasMuted) {
