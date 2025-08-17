@@ -3017,14 +3017,19 @@ function checkFormDirtyState() {
     const currentData = getCurrentFormData();
     const isShareNameValid = currentData.shareName.trim() !== '';
     const isWatchlistSelected = (() => {
-        // Prefer the Phase 1 checkbox UI if present
-        const checkedCbs = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
-        if (checkedCbs && checkedCbs.length > 0) return true;
-
-        // Fallback to native select state
+        // 1. New enhanced multi-select (shareWatchlistEnhanced) checkboxes
+        try {
+            if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
+                const enhancedChecked = shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked');
+                if (enhancedChecked.length > 0) return true;
+            }
+        } catch(_) {}
+        // 2. Legacy Phase 1 checkbox UI (if still present)
+        const legacyChecked = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
+        if (legacyChecked && legacyChecked.length > 0) return true;
+        // 3. Native select fallback
         if (!shareWatchlistSelect) return false;
         if (shareWatchlistSelect.multiple) {
-            // Some browsers don’t populate selectedOptions reliably when updated programmatically; check option.selected
             const anySelected = Array.from(shareWatchlistSelect.options || []).some(o => o.selected && o.value && o.value !== '');
             if (anySelected) return true;
             return !!(shareWatchlistSelect.value && shareWatchlistSelect.value !== '');
@@ -5540,6 +5545,14 @@ function initGlobalAlertsUI(force) {
             showCustomAlert('Global alert settings saved', 1200);
             try { hideModal(globalAlertsModal); } catch(e){}
             updateGlobalAlertsSettingsSummary();
+            // Auto-refresh evaluation after saving settings so summary & counts reflect immediately
+            try {
+                if (typeof evaluateGlobalPriceAlerts === 'function') {
+                    await evaluateGlobalPriceAlerts();
+                } else if (typeof fetchLivePrices === 'function') {
+                    await fetchLivePrices();
+                }
+            } catch(err) { console.warn('Global Alerts: post-save refresh failed', err); }
         });
     }
     if (!window.__globalAlertsEscBound) {
@@ -8491,25 +8504,17 @@ function showTargetHitDetailsModal() {
         const container = document.createElement('div');
         container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
-        const metaBits = [
-            `<span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span>`,
-            `<span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span>`
-        ];
-        if (minText) metaBits.push(`<span>${minText}</span>`);
-        const discoverText = discoverCount ? `Discover ${discoverCount}` : 'Discover';
-        const viewText = portfolioCount ? `View ${portfolioCount}` : 'View';
-        // Separate lines for portfolio and others counts
-        const othersLine = discoverCount ? `<div class=\"global-summary-detail others-line\">${discoverCount} others</div>` : '';
+        const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> ${inc}</span><span class=\"down\"><span class=\"arrow\">&#9660;</span> ${dec}</span>${minText?`<span class=\"min-filter\">${minText}</span>`:''}</div>`;
         container.innerHTML = `
             <div class=\"global-summary-inner\">
+                <div class=\"global-summary-title\">Global movers</div>
+                ${arrowsRow}
                 <div class=\"global-summary-detail total-line\">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
                 <div class=\"global-summary-detail portfolio-line\">${portfolioCount} from your portfolio</div>
-                ${othersLine}
-                <div class=\"global-summary-meta\">${metaBits.join('')}</div>
             </div>
             <div class=\"global-summary-actions\">
-                <button data-action=\"discover\" ${discoverCount?'':'disabled'}>global</button>
-                <button data-action=\"view-portfolio\" ${portfolioCount?'':'disabled'}>local</button>
+                <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverCount?`Global (${discoverCount})`:'Global'}</button>
+                <button data-action=\"view-portfolio\" ${portfolioCount?'':'disabled'}>${portfolioCount?`Local (${portfolioCount})`:'Local'}</button>
                 <button data-action=\"mute-global\" title=\"${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}\">${enabled ? 'Mute' : 'Unmute'}</button>
             </div>`;
         const actions = container.querySelector('.global-summary-actions');
@@ -8519,6 +8524,11 @@ function showTargetHitDetailsModal() {
                 const act = btn.getAttribute('data-action');
                 if (act === 'view-portfolio') {
                     try { applyGlobalSummaryFilter(); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal);
+                    // Update dynamic title to reflect filtered movers view (local subset)
+                    try {
+                        const tEl = document.getElementById('dynamicWatchlistTitleText') || document.getElementById('dynamicWatchlistTitle');
+                        if (tEl) tEl.textContent = 'Movers';
+                    } catch(_) {}
                 } else if (act === 'discover') {
                     try { openDiscoverModal(data); } catch(e){ console.warn('Discover modal open failed', e); }
                 } else if (act === 'mute-global') {
