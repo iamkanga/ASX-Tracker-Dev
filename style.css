@@ -3797,9 +3797,9 @@ table td.live-price-cell.negative-change {
     display: flex;
     justify-content: space-between;
     width: 100%;
-    font-size: 0.85em; /* Smaller font for high/low */
+    font-size: calc(var(--live-price-size, 1.75em) * 0.5); /* Align baseline to half live price */
     color: var(--text-color);
-    margin-bottom: 5px; /* Space below this row */
+    margin-bottom: 5px;
 }
 
 .fifty-two-week-value {
@@ -3837,6 +3837,15 @@ table td.live-price-cell.negative-change {
 /* Add/Edit Share form live price snapshot uses same proportional system */
 #addShareLivePriceDisplay { --live-price-size:1.75em; }
 @media (max-width:640px){ #addShareLivePriceDisplay { --live-price-size:1.9em; } }
+
+/* Modal: unify 52W row, P/E row, and day change font size (all equal) and keep change color neutral */
+#modalLivePriceDisplaySection .fifty-two-week-row,
+#modalLivePriceDisplaySection .pe-ratio-row,
+#modalLivePriceDisplaySection .price-change-large { font-size: calc(var(--live-price-size) * 0.5) !important; }
+#modalLivePriceDisplaySection .price-change-large { margin-left:12px; }
+#modalLivePriceDisplaySection .price-change-large.positive,
+#modalLivePriceDisplaySection .price-change-large.negative,
+#modalLivePriceDisplaySection .price-change-large.neutral { color: var(--text-color) !important; }
 
 /* Price change text only (no background container / padding) */
 /* Adjusted: make day change subordinate to live price for clarity */
@@ -3910,9 +3919,9 @@ table td.live-price-cell.negative-change {
 .pe-ratio-row {
     width: 100%;
     text-align: center;
-    font-size: 0.9em; /* Slightly smaller for P/E */
+    font-size: calc(var(--live-price-size, 1.75em) * 0.5);
     color: var(--text-color);
-    margin-top: 5px; /* Space above this row */
+    margin-top: 5px;
 }
 
 .pe-ratio-value {

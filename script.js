@@ -4268,6 +4268,13 @@ function bindHeaderInteractiveElements() {
  */
 function renderWatchlist() {
     logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + currentSelectedWatchlistIds[0]);
+    // If first load and user restored to movers, enforce immediately after minimal delay
+    try {
+        if (!window.__moversInitialEnforced && currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+            window.__moversInitialEnforced = true;
+            setTimeout(()=>{ try { enforceMoversVirtualView(); } catch(e){ console.warn('Initial movers enforce failed', e); } }, 150);
+        }
+    } catch(_) {}
 
     // --- Compact View Display Logic ---
     const isCompactView = currentMobileViewMode === 'compact';
