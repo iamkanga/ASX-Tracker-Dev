@@ -479,7 +479,16 @@ try { targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') ==
 // Restore last selected view (persisted)
 try {
     const lastView = localStorage.getItem('lastSelectedView');
-    if (lastView === 'portfolio') {
+    if (lastView === '__movers') {
+        currentSelectedWatchlistIds = ['__movers'];
+    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = '__movers'; }
+        window.addEventListener('load', () => {
+            setTimeout(() => { try { renderWatchlist(); enforceMoversVirtualView(); } catch(e) {} }, 300);
+        });
+        try { updateMainTitle(); } catch(e) {}
+        try { ensureTitleStructure(); } catch(e) {}
+        try { updateTargetHitBanner(); } catch(e) {}
+    } else if (lastView === 'portfolio') {
         currentSelectedWatchlistIds = ['portfolio'];
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
         // Defer actual DOM switch until initial data load completes; hook into data load readiness
@@ -8240,6 +8249,7 @@ if (deleteAllUserDataBtn) {
             logDebug('Watchlist Select: Change event fired. New value: ' + event.target.value);
             currentSelectedWatchlistIds = [event.target.value];
             try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+            try { localStorage.setItem('lastSelectedView', event.target.value); } catch(_) {}
             await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
             // Just render the watchlist. The listeners for shares/cash are already active.
             renderWatchlist();
