@@ -464,6 +464,16 @@ const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
 const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
 let userWatchlists = []; // Stores all watchlists for the user
 let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
+// Restore last explicit watchlist (including virtual '__movers') from localStorage before any render logic
+try {
+    const lsLastWatch = localStorage.getItem('lastWatchlistSelection');
+    if (lsLastWatch) {
+        const parsed = JSON.parse(lsLastWatch);
+        if (Array.isArray(parsed) && parsed.length) {
+            currentSelectedWatchlistIds = parsed;
+        }
+    }
+} catch(_) {}
 // Initialize dismissal and sort state from localStorage as early as possible to avoid flashes/defaults
 try { targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true'; } catch(e) {}
 // Restore last selected view (persisted)
@@ -4020,6 +4030,7 @@ function renderWatchlistSelect() {
                 // Default to All Shares only if no valid preference is found
                 watchlistSelect.value = ALL_SHARES_ID;
                 currentSelectedWatchlistIds = [ALL_SHARES_ID];
+                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
                 logDebug('UI Update: Watchlist select defaulted to All Shares as desired ID was not found.');
             }
         } catch(e) {
@@ -4133,6 +4144,7 @@ function openWatchlistPicker() {
         div.onclick=()=>{
             console.log('[WatchlistPicker] Selecting watchlist', it.id);
             currentSelectedWatchlistIds=[it.id];
+            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
             if (watchlistSelect) watchlistSelect.value=it.id; // sync hidden select
             try { localStorage.setItem('lastSelectedView', it.id); } catch(e) {}
             try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
@@ -8185,6 +8197,7 @@ if (deleteAllUserDataBtn) {
         watchlistSelect.addEventListener('change', async (event) => {
             logDebug('Watchlist Select: Change event fired. New value: ' + event.target.value);
             currentSelectedWatchlistIds = [event.target.value];
+            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
             await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
             // Just render the watchlist. The listeners for shares/cash are already active.
             renderWatchlist();
@@ -9067,6 +9080,7 @@ function showTargetHitDetailsModal() {
                 if (act === 'view-portfolio') {
                     try { applyGlobalSummaryFilter({ silent:true, computeOnly:true }); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal);
                     currentSelectedWatchlistIds = ['__movers'];
+                    try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
                     // Sync hidden/native select so subsequent title updates reflect Movers
                     if (watchlistSelect) {
                         try { watchlistSelect.value = '__movers'; } catch(_) {}

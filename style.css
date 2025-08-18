@@ -85,6 +85,8 @@ function makeFilesAvailableToSourceControlCSS() {
 .alert-target-arrow { font-size:0.85rem; font-weight:700; }
 .alert-target-arrow.up { color: var(--brand-green,#008000); }
 .alert-target-arrow.down { color: var(--brand-red,#c42131); }
+.mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green,#008000) !important; }
+.mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red,#c42131) !important; }
 .alert-target-price { font-weight:600; }
 @media (max-width:640px){ .alert-target-cell { font-size:0.8rem; } }
 /* Mobile card specific container */
