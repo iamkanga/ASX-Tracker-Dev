@@ -3056,10 +3056,10 @@ h1#dynamicWatchlistTitle {
     width: 100%;
     box-sizing: border-box;
     margin-top: 0;
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    padding: 10px 15px;
-}
+        border-top: 10px solid var(--border-color);
+        border-bottom: 10px solid var(--border-color);
+        border-left: 64px solid var(--border-color);
+        border-right: 64px solid var(--border-color);
 
 .dropdowns-center-row {
     display: flex;

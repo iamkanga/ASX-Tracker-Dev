@@ -323,19 +323,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
                 <div class="pc-metrics-row">
                     <div class="pc-metric-line">
-                        <div class="pc-label">P/L</div>
-                        <div class="pc-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-pct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></div>
+                        <div class="pc-label" style="color:#fff;text-align:left;">P/L</div>
+                        <div class="pc-val ${plClass}" style="text-align:right;color:var(--${plClass === 'positive' ? 'price-up-color' : plClass === 'negative' ? 'price-down-color' : 'price-neutral-color'});">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-pct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></div>
                     </div>
                     <div class="pc-metric-line">
-                        <div class="pc-label">Today</div>
-                        <div class="pc-val ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></div>
+                        <div class="pc-label" style="color:#fff;text-align:left;">Today</div>
+                        <div class="pc-val ${todayClass}" style="text-align:right;color:var(--${todayClass === 'positive' ? 'price-up-color' : todayClass === 'negative' ? 'price-down-color' : 'price-neutral-color'});">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></div>
                     </div>
                 </div>
                 <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand"><span class="chevron">▼</span></button>
                 <div class="pc-details" style="display:none;">
                     <div class="pc-detail-row"><span>Quantity:</span> <span>${shares !== '' ? shares : ''}</span></div>
                     <div class="pc-detail-row"><span>Average Cost:</span> <span>${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
-                    <div class="pc-detail-row"><span>Cost Basis:</span> <span>${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
+                    <div class="pc-detail-row"><span>Total Cost:</span> <span>${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
                 </div>
             </div>`;
         });
@@ -360,11 +360,11 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
             <div class="summary-card">
                 <div class="summary-label">Day's Gain</div>
-                <div class="summary-value positive">${fmtMoney(daysGain)} <span class="summary-pct positive">${fmtPct((daysGain / (totalValue - daysGain - daysLoss)) * 100 || 0)}</span></div>
+                <div class="summary-value positive">${fmtMoney(daysGain)} <span class="summary-pct positive">${fmtPct(totalValue > 0 ? (daysGain / totalValue) * 100 : 0)}</span></div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Day's Loss</div>
-                <div class="summary-value negative">${fmtMoney(daysLoss)} <span class="summary-pct negative">${fmtPct((daysLoss / (totalValue - daysGain - daysLoss)) * 100 || 0)}</span></div>
+                <div class="summary-value negative">${fmtMoney(daysLoss)} <span class="summary-pct negative">${fmtPct(totalValue > 0 ? (daysLoss / totalValue) * 100 : 0)}</span></div>
             </div>
         </div>`;
 
