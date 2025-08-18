@@ -469,6 +469,46 @@ let userWatchlists = []; // Stores all watchlists for the user
 let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
 // Guard: track if an initial forced movers selection was applied so later routines do not override
 let __forcedInitialMovers = false;
+let __moversFallbackScheduled = false;
+
+function ensureMoversPlaceholder() {
+    try {
+        const tbody = document.querySelector('#shareTable tbody');
+        if (!tbody) return false;
+        if (!tbody.querySelector('tr.__movers-loading')) {
+            const tr = document.createElement('tr');
+            tr.className='__movers-loading';
+            const td = document.createElement('td');
+            td.colSpan = 50;
+            td.textContent = 'Loading movers…';
+            td.style.opacity='0.65';
+            td.style.fontStyle='italic';
+            td.style.textAlign='center';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }
+        return true;
+    } catch(_) { return false; }
+}
+
+function scheduleMoversFallback() {
+    if (__moversFallbackScheduled) return; __moversFallbackScheduled = true;
+    setTimeout(()=>{
+        try {
+            const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
+            const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+            if (wantMovers && !haveMovers) {
+                // Fallback to All Shares (user request) while preserving intent logs
+                currentSelectedWatchlistIds = [ALL_SHARES_ID];
+                if (typeof watchlistSelect !== 'undefined' && watchlistSelect) watchlistSelect.value = ALL_SHARES_ID;
+                try { localStorage.setItem('lastSelectedView', ALL_SHARES_ID); } catch(_) {}
+                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+                if (typeof renderWatchlist === 'function') { try { renderWatchlist(); } catch(_) {} }
+                console.warn('[Movers restore][fallback->allShares] Movers failed to attach; defaulted to All Shares.');
+            }
+        } catch(e) { console.warn('[Movers fallback] failed', e); }
+    }, 2500);
+}
 // Restore last explicit watchlist (including virtual '__movers') from localStorage before any render logic
 try {
     const lsLastWatch = localStorage.getItem('lastWatchlistSelection');
@@ -490,26 +530,15 @@ try {
         __forcedInitialMovers = true;
         // Set select value if present
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = '__movers'; }
-        // Insert a lightweight placeholder if table body exists (avoid duplicate if rerun)
-        try {
-            const tbody = document.querySelector('#shareTable tbody');
-            if (tbody && !tbody.querySelector('tr.__movers-loading')) {
-                const tr = document.createElement('tr');
-                tr.className='__movers-loading';
-                const td = document.createElement('td');
-                td.colSpan = 20;
-                td.textContent = 'Loading movers…';
-                td.style.opacity='0.7';
-                td.style.fontStyle='italic';
-                tr.appendChild(td);
-                tbody.appendChild(tr);
-            }
-        } catch(_) {}
+    // Insert placeholder (retry a few frames if table not yet present)
+    let tries = 0; (function attempt(){ if (ensureMoversPlaceholder()) return; if (++tries < 10) requestAnimationFrame(attempt); })();
         // Schedule an early render/enforce even if data empty; later data loads will call render again.
         setTimeout(()=>{ try { if (typeof renderWatchlist==='function') renderWatchlist(); enforceMoversVirtualView(true); } catch(_) {} }, 50);
         try { updateMainTitle(); } catch(e) {}
         try { ensureTitleStructure(); } catch(e) {}
         try { updateTargetHitBanner(); } catch(e) {}
+    // Schedule fallback to All Shares if movers never attaches
+    scheduleMoversFallback();
     } else if (lastView === 'portfolio') {
         currentSelectedWatchlistIds = ['portfolio'];
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
