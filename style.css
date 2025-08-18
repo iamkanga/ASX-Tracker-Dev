@@ -3804,11 +3804,10 @@ table td.live-price-cell.negative-change {
     display: flex;
     justify-content: space-between;
     width: 100%;
-    /* Secondary info exactly 50% of live/code size */
-    font-size: calc(var(--live-price-size, 1.75em) * 0.5);
     color: var(--text-color);
     margin-bottom: 5px;
 }
+.fifty-two-week-row .fifty-two-week-value { font-size: calc(var(--live-price-size) * var(--secondary-scale)); }
 
 .fifty-two-week-value {
     font-weight: 600;
@@ -3926,11 +3925,10 @@ table td.live-price-cell.negative-change {
 .pe-ratio-row {
     width: 100%;
     text-align: center;
-    /* 50% of live/code size */
-    font-size: calc(var(--live-price-size, 1.75em) * 0.5);
     color: var(--text-color);
     margin-top: 5px;
 }
+.pe-ratio-row .pe-ratio-value { font-size: calc(var(--live-price-size) * var(--secondary-scale)); }
 
 .pe-ratio-value {
     font-weight: 600;

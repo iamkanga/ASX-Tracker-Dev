@@ -3557,14 +3557,14 @@ function showShareDetails() {
     const fiftyTwoWeekRow = document.createElement('div');
     fiftyTwoWeekRow.classList.add('fifty-two-week-row');
 
-        const lowSpan = document.createElement('h3');
-        lowSpan.classList.add('fifty-two-week-value', 'low'); // New classes
-    lowSpan.textContent = 'Low: ' + (low52Week !== undefined && low52Week !== null && !isNaN(low52Week) ? formatMoney(low52Week) : 'N/A');
+        const lowSpan = document.createElement('span');
+        lowSpan.classList.add('fifty-two-week-value', 'low');
+        lowSpan.textContent = 'Low: ' + (low52Week !== undefined && low52Week !== null && !isNaN(low52Week) ? formatMoney(low52Week) : 'N/A');
         fiftyTwoWeekRow.appendChild(lowSpan);
 
-        const highSpan = document.createElement('h3');
-        highSpan.classList.add('fifty-two-week-value', 'high'); // New classes
-    highSpan.textContent = 'High: ' + (high52Week !== undefined && high52Week !== null && !isNaN(high52Week) ? formatMoney(high52Week) : 'N/A');
+        const highSpan = document.createElement('span');
+        highSpan.classList.add('fifty-two-week-value', 'high');
+        highSpan.textContent = 'High: ' + (high52Week !== undefined && high52Week !== null && !isNaN(high52Week) ? formatMoney(high52Week) : 'N/A');
         fiftyTwoWeekRow.appendChild(highSpan);
 
         modalLivePriceDisplaySection.appendChild(fiftyTwoWeekRow);
@@ -3609,11 +3609,11 @@ function showShareDetails() {
     // P/E Ratio
     const peRow = document.createElement('div');
     peRow.classList.add('pe-ratio-row');
-    const peSpan = document.createElement('h3');
+    const peSpan = document.createElement('span');
     peSpan.classList.add('pe-ratio-value');
     peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A');
-        peRow.appendChild(peSpan);
-        modalLivePriceDisplaySection.appendChild(peRow);
+    peRow.appendChild(peSpan);
+    modalLivePriceDisplaySection.appendChild(peRow);
     }
 
     // Entry (formerly reference) price: show 2 decimals by default; preserve up to 3 only if user originally entered >2
