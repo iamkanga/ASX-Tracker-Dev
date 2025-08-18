@@ -1,5 +1,33 @@
 // Build Marker: 2025-08-17T00:00Z v2.0.0 (Modal architecture reset: external Global movers heading, singleton overlay)
 console.log('[AuthDiag] script.js top-level sentinel reached');
+// --- Early stub declarations (no-op placeholders replaced later by real functions) ---
+if (typeof loadUserWatchlistsAndSettings !== 'function') { window.loadUserWatchlistsAndSettings = async function(){ console.log('[AuthDiag] stub loadUserWatchlistsAndSettings'); }; window.loadUserWatchlistsAndSettings.__isStub = true; }
+if (typeof loadTriggeredAlertsListener !== 'function') { window.loadTriggeredAlertsListener = async function(){ console.log('[AuthDiag] stub loadTriggeredAlertsListener'); }; window.loadTriggeredAlertsListener.__isStub = true; }
+if (typeof startGlobalSummaryListener !== 'function') { window.startGlobalSummaryListener = function(){ console.log('[AuthDiag] stub startGlobalSummaryListener'); }; window.startGlobalSummaryListener.__isStub = true; }
+if (typeof fetchLivePrices !== 'function') { window.fetchLivePrices = async function(){ console.log('[AuthDiag] stub fetchLivePrices'); }; window.fetchLivePrices.__isStub = true; }
+if (typeof startLivePriceUpdates !== 'function') { window.startLivePriceUpdates = function(){ console.log('[AuthDiag] stub startLivePriceUpdates'); }; window.startLivePriceUpdates.__isStub = true; }
+if (typeof loadAsxCodesFromCSV !== 'function') { window.loadAsxCodesFromCSV = async function(){ console.log('[AuthDiag] stub loadAsxCodesFromCSV'); return []; }; window.loadAsxCodesFromCSV.__isStub = true; }
+
+// Helper: force a full reload sequence once real (non-stub) functions are present
+if (typeof window.realReload !== 'function') {
+    window.realReload = async function(){
+        console.log('[AuthDiag] realReload invoked');
+        const required = ['loadUserWatchlistsAndSettings','loadTriggeredAlertsListener','startGlobalSummaryListener','fetchLivePrices','startLivePriceUpdates','loadAsxCodesFromCSV'];
+        const deadline = Date.now() + 10000; // 10s max wait
+        while (Date.now() < deadline) {
+            const missing = required.filter(n => typeof window[n] !== 'function');
+            const stubs   = required.filter(n => window[n] && window[n].__isStub);
+            if (!missing.length && !stubs.length) break;
+            console.log('[AuthDiag] realReload waiting. missing=', missing, 'stubs=', stubs);
+            await new Promise(r=>setTimeout(r,250));
+        }
+        try { window.__finishSignInRan = false; } catch(_) {}
+        const user = (window.firebaseAuth && window.firebaseAuth.currentUser) || null;
+        if (!user) { console.warn('[AuthDiag] realReload: no signed-in user; abort'); return; }
+        try { await window.finishSignIn(user); } catch(e) { console.warn('[AuthDiag] realReload finishSignIn error', e); }
+        console.log('[AuthDiag] realReload done');
+    };
+}
 // Ultra-early simple binder: ensures at least ONE basic handler is attached even if later logic fails.
 (function basicAuthButtonInit(){
     try {
