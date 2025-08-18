@@ -3,8 +3,14 @@
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
 // NOTE: Removed duplicate malformed updateOrCreateShareTableRow that caused syntax errors during Alert Target refactor.
+// Forward declaration guard: ensure isAsxMarketOpen available (fallback stub replaced later by real definition)
+if (typeof window.isAsxMarketOpen !== 'function') {
+    window.isAsxMarketOpen = function(){ return true; }; // temporary until real function defined later
+}
+
+document.addEventListener('DOMContentLoaded', () => {
     function updateMarketStatusUI() {
-    const open = isAsxMarketOpen();
+        const open = (typeof isAsxMarketOpen === 'function') ? isAsxMarketOpen() : true;
         if (marketStatusBanner) {
             if (!open) {
                 const now = new Date();
@@ -21,6 +27,7 @@
     // Initial status and periodic re-check each minute
     updateMarketStatusUI();
     setInterval(updateMarketStatusUI, 60 * 1000);
+});
 
     // Ensure Edit Current Watchlist button updates when selection changes
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
