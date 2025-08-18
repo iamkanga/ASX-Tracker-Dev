@@ -528,6 +528,7 @@ try {
         // Immediate forced selection BEFORE any data. Will re-render later as data arrives.
         currentSelectedWatchlistIds = ['__movers'];
         __forcedInitialMovers = true;
+    try { console.log('[Movers init] Forced initial Movers selection before data load'); } catch(_) {}
         // Set select value if present
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = '__movers'; }
     // Insert placeholder (retry a few frames if table not yet present)
@@ -4128,6 +4129,14 @@ function renderWatchlistSelect() {
     allSharesOption.textContent = 'All Shares';
     watchlistSelect.appendChild(allSharesOption);
 
+    // Ensure Movers virtual option always present (even if counts not ready yet)
+    if (!watchlistSelect.querySelector('option[value="__movers"]')) {
+        const moversOpt = document.createElement('option');
+        moversOpt.value='__movers';
+        moversOpt.textContent='Movers';
+        watchlistSelect.appendChild(moversOpt);
+    }
+
     // Ensure Portfolio is always present as a special option
     if (!watchlistSelect.querySelector('option[value="portfolio"]')) {
         const portfolioOption = document.createElement('option');
@@ -4159,7 +4168,16 @@ function renderWatchlistSelect() {
     // Attempt to select the watchlist specified in currentSelectedWatchlistIds.
     // This array should already contain the correct ID (e.g., the newly created watchlist's ID)
     // from loadUserWatchlistsAndSettings.
-    const desiredWatchlistId = currentSelectedWatchlistIds.length === 1 ? currentSelectedWatchlistIds[0] : '';
+    let desiredWatchlistId = currentSelectedWatchlistIds.length === 1 ? currentSelectedWatchlistIds[0] : '';
+    // Highest precedence: persisted Movers intent when __forcedInitialMovers flag set
+    try {
+        if (__forcedInitialMovers) {
+            desiredWatchlistId='__movers';
+        } else {
+            const persisted = localStorage.getItem('lastSelectedView');
+            if (persisted === '__movers') desiredWatchlistId='__movers';
+        }
+    } catch(_) {}
     
     if (desiredWatchlistId && Array.from(watchlistSelect.options).some(opt => opt.value === desiredWatchlistId)) {
         watchlistSelect.value = desiredWatchlistId;
@@ -4167,20 +4185,19 @@ function renderWatchlistSelect() {
         // Fallback: Prefer the last selected view from localStorage if valid, especially for 'portfolio'
         try {
             const lsView = localStorage.getItem('lastSelectedView');
-            const hasOption = lsView && Array.from(watchlistSelect.options).some(opt => opt.value === lsView);
-            if (hasOption) {
+            const hasLs = lsView && Array.from(watchlistSelect.options).some(opt => opt.value === lsView);
+            if (hasLs) {
+                // If persisted is movers, keep it even if data not yet loaded
                 watchlistSelect.value = lsView;
                 currentSelectedWatchlistIds = [lsView];
                 logDebug('UI Update: Watchlist select applied lastSelectedView from localStorage: ' + lsView);
             } else {
-                // Default to All Shares only if no valid preference is found
                 watchlistSelect.value = ALL_SHARES_ID;
                 currentSelectedWatchlistIds = [ALL_SHARES_ID];
                 try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
-                logDebug('UI Update: Watchlist select defaulted to All Shares as desired ID was not found.');
+                logDebug('UI Update: Watchlist select defaulted to All Shares (no valid preference).');
             }
         } catch(e) {
-            // On any error, default to All Shares
             watchlistSelect.value = ALL_SHARES_ID;
             currentSelectedWatchlistIds = [ALL_SHARES_ID];
             logDebug('UI Update: Watchlist select defaulted to All Shares due to error reading localStorage.');
