@@ -9579,37 +9579,46 @@ function showTargetHitDetailsModal(options={}) {
                 entries.forEach(en => {
                     const code = (en.code || '').toUpperCase();
                     const lpData = (livePrices && livePrices[code]) ? livePrices[code] : {};
-                    const price = (typeof en.price === 'number') ? en.price : (typeof lpData.live === 'number' ? lpData.live : null);
+                    // Map snapshot fields: live -> price fallback, change->ch
+                    const price = (typeof en.price === 'number') ? en.price : (typeof en.live === 'number') ? en.live : (typeof lpData.live === 'number' ? lpData.live : null);
                     const prevClose = (typeof en.prevClose === 'number') ? en.prevClose : (typeof lpData.prevClose === 'number' ? lpData.prevClose : null);
-                    let ch = (typeof en.ch === 'number') ? en.ch : null;
+                    let ch = (typeof en.ch === 'number') ? en.ch : (typeof en.change === 'number') ? en.change : null;
+                    // If change missing, derive from price/prev
+                    if ((ch === null || ch === undefined) && price !== null && prevClose !== null) ch = price - prevClose;
                     let pct = (typeof en.pct === 'number') ? en.pct : null;
-                    if ((ch === null || pct === null) && price !== null && prevClose !== null && prevClose !== 0) {
-                        ch = price - prevClose;
-                        pct = (ch / prevClose) * 100;
-                    }
-                    const dir = ch === 0 ? 'flat' : (ch > 0 ? 'up' : 'down');
+                    if ((pct === null || pct === undefined) && ch !== null && prevClose !== null && prevClose !== 0) pct = (ch / prevClose) * 100;
+                    const dir = (ch === null || ch === 0) ? 'flat' : (ch > 0 ? 'up' : 'down');
                     const li = document.createElement('li');
                     li.className = 'discover-mover dir-' + dir;
                     li.dataset.code = code;
-                    const chStr=(ch!=null)? (ch>0?'+':'')+'$'+Math.abs(ch).toFixed(2):'';
-                    const pctStr=(pct!=null)? (pct>0?'+':'')+pct.toFixed(2)+'%':'';
+                    const chStr = (ch!=null)? (ch>0?'+':'')+'$'+Math.abs(ch).toFixed(2):'';
+                    const pctStr = (pct!=null)? (pct>0?'+':'')+pct.toFixed(2)+'%':'';
                     let reason='';
                     if (pct!=null && threshold!=null) {
                         const meets = Math.abs(pct) >= threshold;
-                        reason = (meets? 'Met threshold: ' : 'Movement: ') + pctStr + (chStr?(' ('+chStr+')'):'');
+                        reason = (meets? 'Met threshold: ':'Movement: ') + pctStr + (chStr?(' ('+chStr+')'):'');
                     } else if (pct!=null) {
                         reason = 'Moved ' + pctStr + (chStr?(' ('+chStr+')'):'');
                     } else {
                         reason = 'No movement data yet';
                     }
-                    li.innerHTML=`<span class="code">${code}</span><span class="live">${price!=null?('$'+Number(price).toFixed(2)):'-'}</span><span class="delta ${dir}">${reason}</span>`;
+                    li.innerHTML = `<span class="code">${code}</span><span class="live">${price!=null?('$'+Number(price).toFixed(2)):'-'}</span><span class="delta ${dir}">${reason}</span>`;
                     li.addEventListener('click',()=>{
                         try { hideModal(modal); } catch(_) {}
+                        // Open the add/search modal (sidebar add share)
+                        try {
+                            if (typeof showAddNewShareModal === 'function') {
+                                showAddNewShareModal();
+                            } else if (typeof newShareBtn !== 'undefined' && newShareBtn && newShareBtn.click) {
+                                newShareBtn.click();
+                            }
+                        } catch(err) { if (DEBUG_MODE) console.warn('Open add share modal failed', err); }
                         if (typeof shareNameInput !== 'undefined' && shareNameInput) {
                             shareNameInput.value = code;
                             if (typeof updateAddFormLiveSnapshot === 'function') {
                                 try { updateAddFormLiveSnapshot(code); } catch(err) {}
                             }
+                            try { shareNameInput.focus(); shareNameInput.setSelectionRange(code.length, code.length); } catch(_) {}
                         }
                     });
                     ul.appendChild(li);
