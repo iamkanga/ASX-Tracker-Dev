@@ -9681,6 +9681,8 @@ function showTargetHitDetailsModal(options={}) {
         const listEl = modal.querySelector('#discoverGlobalList');
         if (listEl) {
             const summary = summaryData || globalAlertSummary || {};
+            // Persist last summary for re-sorts
+            try { window.__lastDiscoverSummaryData = summary; } catch(_) {}
             const nonPortfolioCodes = Array.isArray(summary.nonPortfolioCodes) ? summary.nonPortfolioCodes : [];
             const threshold = (typeof summary.threshold === 'number') ? summary.threshold : null;
             const appliedMinimumPrice = summary.appliedMinimumPrice;
@@ -9698,6 +9700,39 @@ function showTargetHitDetailsModal(options={}) {
             entries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
 
             listEl.innerHTML='';
+            // Sorting controls (create once per render)
+            const sortWrapper = document.createElement('div');
+            sortWrapper.className = 'discover-sort-bar';
+            const sortLabel = document.createElement('label');
+            sortLabel.textContent = 'Sort';
+            sortLabel.htmlFor = 'discoverSortSelect';
+            const sortSelect = document.createElement('select');
+            sortSelect.id = 'discoverSortSelect';
+            const SORT_OPTIONS = [
+                { value:'code_asc', label:'A → Z' },
+                { value:'price_desc', label:'Price ↓' },
+                { value:'pct_desc', label:'% Change ↓' },
+                { value:'chg_desc', label:'$ Change ↓' }
+            ];
+            const storedSort = (localStorage.getItem('discoverSort') || 'pct_desc');
+            SORT_OPTIONS.forEach(opt=>{
+                const o = document.createElement('option'); o.value = opt.value; o.textContent = opt.label; if (opt.value===storedSort) o.selected = true; sortSelect.appendChild(o);
+            });
+            sortWrapper.appendChild(sortLabel); sortWrapper.appendChild(sortSelect);
+            listEl.appendChild(sortWrapper);
+
+            function applySort(list) {
+                const mode = sortSelect.value;
+                if (mode === 'code_asc') {
+                    list.sort((a,b)=> (a.code||'').localeCompare(b.code||''));
+                } else if (mode === 'price_desc') {
+                    list.sort((a,b)=> ( (b._priceForSort ?? -Infinity) - (a._priceForSort ?? -Infinity) ) );
+                } else if (mode === 'pct_desc') {
+                    list.sort((a,b)=> ( (Math.abs(b._pctForSort ?? -Infinity)) - (Math.abs(a._pctForSort ?? -Infinity)) ) );
+                } else if (mode === 'chg_desc') {
+                    list.sort((a,b)=> ( (Math.abs(b._chForSort ?? -Infinity)) - (Math.abs(a._chForSort ?? -Infinity)) ) );
+                }
+            }
             const ul = document.createElement('ul');
             ul.className='discover-code-list enriched global-only card-layout';
 
@@ -9747,6 +9782,12 @@ function showTargetHitDetailsModal(options={}) {
                         missingCodes.push(code);
                     }
                     if (DEBUG_MODE) console.log('[DiscoverItem]', code, { price, prevClose, ch, pct, raw: en, lpData, ext });
+                    // Attach sort helper values directly for later resort without recompute
+                    li._priceForSort = price;
+                    li._pctForSort = pct;
+                    li._chForSort = ch;
+                    // Mirror onto original entry for initial sort function
+                    en._priceForSort = price; en._pctForSort = pct; en._chForSort = ch;
                     // Company name (from allAsxCodes cache) & 52w range
                     let companyName = '';
                     try { if (Array.isArray(allAsxCodes)) { const m = allAsxCodes.find(c=>c.code===code); if (m && m.name) companyName = m.name; } } catch(_) {}
@@ -9797,6 +9838,21 @@ function showTargetHitDetailsModal(options={}) {
                     }
                 }
             }
+            // Apply chosen sort to entries & reorder DOM if necessary
+            try {
+                applySort(entries);
+                // Re-append in new order
+                const ordered = entries.map(en => ul.querySelector('li.discover-mover[data-code="'+en.code+'"]')).filter(Boolean);
+                ordered.forEach(li => ul.appendChild(li));
+            } catch(e){ if (DEBUG_MODE) console.warn('Discover sort apply failed', e); }
+            // Listen for sort changes
+            sortSelect.addEventListener('change', () => {
+                try { localStorage.setItem('discoverSort', sortSelect.value); } catch(_) {}
+                // Re-sort using existing in-memory entries (with helper values)
+                applySort(entries);
+                const ordered = entries.map(en => ul.querySelector('li.discover-mover[data-code="'+en.code+'"]')).filter(Boolean);
+                ordered.forEach(li => ul.appendChild(li));
+            });
             listEl.appendChild(ul);
         }
         showModal(modal);
