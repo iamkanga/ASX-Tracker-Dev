@@ -7741,12 +7741,43 @@ async function initializeAppLogic() {
         }
     } catch(_) {}
 
+    // Diagnostic helper: update auth status line if present
+    function setAuthStatus(msg, level='info') {
+        try {
+            const el = document.getElementById('authStatusLine');
+            if (!el) return;
+            el.textContent = msg;
+            el.dataset.level = level;
+        } catch(_) {}
+    }
+
+    // Periodic auth readiness monitor (lightweight)
+    (function monitorFirebaseReadiness(){
+        let checks = 0;
+        const iv = setInterval(()=>{
+            checks++;
+            const ready = !!(window.firebaseAuth && window.authFunctions && window.authFunctions.signInWithPopup);
+            if (ready) {
+                setAuthStatus('Auth ready', 'ok');
+                clearInterval(iv);
+            } else {
+                if (checks === 1) setAuthStatus('Loading auth…', 'pending');
+                if (checks === 15) setAuthStatus('Still loading auth…', 'pending');
+                if (checks > 60) { // ~30s
+                    setAuthStatus('Auth failed to load. Reload page.', 'error');
+                    clearInterval(iv);
+                }
+            }
+        }, 500);
+    })();
+
     if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
         let splashSignInRetryTimer = null;
         let splashSignInInProgress = false;
         splashSignInBtn.setAttribute('data-bound','true');
         splashSignInBtn.addEventListener('click', async () => {
-            logDebug('Auth: Splash Screen Sign-In Button Clicked.');
+                console.log('[AuthDiag] splashSignInBtn click handler ENTER');
+                logDebug('Auth: Splash Screen Sign-In Button Clicked.');
             const currentAuth = window.firebaseAuth;
             if (!currentAuth || !window.authFunctions) {
                 console.warn('Auth: Auth service not ready or functions not loaded. Cannot process splash sign-in.');
@@ -7756,6 +7787,7 @@ async function initializeAppLogic() {
                         setTimeout(()=> splashSignInBtn.classList.remove('pulse-once'), 400);
                     } catch(_) {}
                     showCustomAlert('Auth starting up… retry shortly.');
+                        setAuthStatus('Click ignored – auth not ready', 'warn');
                 return;
             }
             try {
@@ -7771,21 +7803,25 @@ async function initializeAppLogic() {
                 if (btnSpan) { btnSpan.textContent = 'Signing in…'; }
                 // Always create a fresh provider per attempt to avoid stale customParameters
                 const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
+                    console.log('[AuthDiag] Provider created?', !!provider);
                 if (!provider) {
                     console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
                     showCustomAlert('Authentication service not ready. Firebase script missing.');
                     splashSignInInProgress = false;
+                        setAuthStatus('Provider missing', 'error');
                     return;
                 }
                 try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
                 // Popup only
                 const resolver = window.authFunctions.browserPopupRedirectResolver;
+                    console.log('[AuthDiag] Invoking signInWithPopup (resolver present?', !!resolver, ')');
                 if (resolver) {
                     await window.authFunctions.signInWithPopup(currentAuth, provider, resolver);
                 } else {
                     await window.authFunctions.signInWithPopup(currentAuth, provider);
                 }
                 logDebug('Auth: Google Sign-In successful from splash screen.');
+                    setAuthStatus('Signed in (processing)…', 'ok');
                 // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
             }
             catch (error) {
@@ -7797,6 +7833,7 @@ async function initializeAppLogic() {
                 const btnSpanReset = splashSignInBtn.querySelector('span');
                 if (btnSpanReset) { btnSpanReset.textContent = 'Sign in with Google'; }
                 if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
+                    setAuthStatus('Sign-in failed: ' + (error.code || error.message), 'error');
             }
         });
     }
@@ -7812,7 +7849,7 @@ async function initializeAppLogic() {
             if (tries >= maxTries) clearInterval(interval);
             return;
         }
-        if (btn.getAttribute('data-bound') === 'true') {
+    if (btn.getAttribute('data-bound') === 'true') {
             clearInterval(interval);
             return; // already bound
         }
@@ -7821,12 +7858,14 @@ async function initializeAppLogic() {
             btn.setAttribute('data-bound','true');
             let splashSignInInProgress = false;
             btn.addEventListener('click', async () => {
+                console.log('[AuthDiag] ensureSplashSignInBinding click handler ENTER');
                 logDebug('Auth(Rebind): Splash Sign-In Click');
                 const currentAuth = window.firebaseAuth;
                 if (!currentAuth || !window.authFunctions) {
                     console.warn('Auth(Rebind): Not ready');
                     try { btn.classList.add('pulse-once'); setTimeout(()=>btn.classList.remove('pulse-once'), 400); } catch(_) {}
                     showCustomAlert('Auth not ready yet.');
+                    setAuthStatus('Click ignored – auth not ready', 'warn');
                     return;
                 }
                 if (splashSignInInProgress) return;
@@ -7839,14 +7878,17 @@ async function initializeAppLogic() {
                     if (!provider) throw new Error('Provider missing');
                     try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
                     const resolver = window.authFunctions.browserPopupRedirectResolver;
+                    console.log('[AuthDiag] (rebind) Provider created?', !!provider, ' resolver?', !!resolver);
                     if (resolver) await window.authFunctions.signInWithPopup(window.firebaseAuth, provider, resolver);
                     else await window.authFunctions.signInWithPopup(window.firebaseAuth, provider);
+                    setAuthStatus('Signed in (processing)…', 'ok');
                 } catch(err) {
                     console.error('Auth(Rebind) popup failed', err);
                     showCustomAlert('Sign-in failed: ' + err.message);
                     splashSignInInProgress = false;
                     btn.disabled = false;
                     if (span) span.textContent = 'Sign in with Google';
+                    setAuthStatus('Sign-in failed: ' + (err.code || err.message), 'error');
                 }
             });
         } catch(e) { console.warn('Auth: Rebind attempt failed', e); }
