@@ -3821,16 +3821,19 @@ table td.live-price-cell.negative-change {
 .live-price-display-section .live-price-large,
 .neutral-code-text { color: var(--text-color) !important; }
 /* Adjusted: live price should visually dominate over day change */
+/* Live price large: define a variable so change can be derived at 50% */
 .live-price-display-section .live-price-large {
-    font-size: 1.75em; /* increased from 1.4em */
+    --live-price-size: 1.75em; /* base size */
+    font-size: var(--live-price-size);
     font-weight: 800;
     line-height: 1;
 }
 
 /* Price change text only (no background container / padding) */
 /* Adjusted: make day change subordinate to live price for clarity */
+/* Day change always 50% of live price (uses variable from .live-price-large) */
 .live-price-display-section .price-change-large {
-    font-size: 1.05em; /* was 1.8em (too dominant) */
+    font-size: calc(var(--live-price-size, 1.75em) * 0.5);
     font-weight: 600;
     white-space: nowrap;
     margin-left: 10px;
@@ -3846,8 +3849,8 @@ table td.live-price-cell.negative-change {
 
 /* Mobile fine-tune: further reduce change size on very small screens */
 @media (max-width: 640px) {
-    .live-price-display-section .live-price-large { font-size: 1.9em; }
-    .live-price-display-section .price-change-large { font-size: 0.95em; margin-left: 8px; }
+    .live-price-display-section .live-price-large { --live-price-size: 1.9em; font-size: var(--live-price-size); }
+    .live-price-display-section .price-change-large { font-size: calc(var(--live-price-size, 1.9em) * 0.5); margin-left: 8px; }
 }
 
 /* (Removed legacy compact absolute-position & flex centering block – superseded by FINAL COMPACT CARD GRID LAYOUT) */
