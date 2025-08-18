@@ -1787,21 +1787,23 @@ try { accordionObserver.observe(document.body, { childList: true, subtree: true 
 // Helper: Render unified Alert Target (Intent + Direction + Price) B/S + Arrow + $Price
 function renderAlertTargetInline(share, opts = {}) {
     if (!share) return opts.emptyReturn || '';
+    const priceNum = Number(share.targetPrice);
+    const hasPrice = !isNaN(priceNum) && priceNum !== 0;
+    // HARD GATE: Do not show anything (intent, arrow, or price) unless a valid target price is set
+    if (!hasPrice) return opts.emptyReturn || '';
     const intentRaw = (share.alertIntent || share.intent || share.targetIntent || '').toString().toLowerCase();
     const intent = intentRaw === 'sell' ? 'S' : (intentRaw === 'buy' ? 'B' : '');
     const dirRaw = (share.targetDirection || share.direction || '').toString().toLowerCase();
     const isAbove = dirRaw === 'above';
     const isBelow = dirRaw === 'below';
+    // Arrow direction: up for above, down for below. If user selects anomalous combination (e.g., sell above), respect direction only.
     const arrow = isAbove ? '▲' : (isBelow ? '▼' : '');
-    const priceNum = Number(share.targetPrice);
-    const hasPrice = !isNaN(priceNum) && priceNum !== 0;
-    if (!intent && !arrow && !hasPrice) return opts.emptyReturn || '';
-    const priceStr = hasPrice ? ('$' + priceNum.toFixed(2)) : '';
+    const priceStr = '$' + priceNum.toFixed(2);
     const arrowClass = isAbove ? 'alert-target-arrow up' : (isBelow ? 'alert-target-arrow down' : 'alert-target-arrow');
     const parts = [];
     if (intent) parts.push('<span class="alert-target-intent">'+intent+'</span>');
     if (arrow) parts.push('<span class="'+arrowClass+'">'+arrow+'</span>');
-    if (priceStr) parts.push('<span class="alert-target-price">'+priceStr+'</span>');
+    parts.push('<span class="alert-target-price">'+priceStr+'</span>');
     const core = parts.join(' ');
     if (opts.showLabel) return '<strong>Alert:</strong> ' + core;
     return core;
@@ -2070,8 +2072,8 @@ function addShareToMobileCards(share) {
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
             </div>
         </div>
-        <p class="data-row"><span class="label-text">Entry Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.currentPrice)}</span></p>
-    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.targetPrice)}</span></p>
+    <p class="data-row"><span class="label-text">Entry Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.currentPrice)}</span></p>
+    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row">${renderAlertTargetInline(share,{showLabel:true})}</p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
@@ -2425,8 +2427,8 @@ function updateOrCreateShareMobileCard(share) {
         <span class="change-chevron ${priceClass} card-chevron">${arrowSymbol}</span>
         <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
         <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
-        <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
-    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val=>{const n=Number(val);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(Number(share.targetPrice))}</span></p>
+    <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
+    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row">${renderAlertTargetInline(share,{showLabel:true})}</p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
