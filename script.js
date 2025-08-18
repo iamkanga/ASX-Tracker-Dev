@@ -5650,7 +5650,14 @@ function updateTargetHitBanner() {
     }
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
-    const globalSummaryCount = (globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0;
+    // Treat global summary counts as zero if directional thresholds are fully inactive (prevents stale badge after clearing)
+    const directionalActive = isDirectionalThresholdsActive ? isDirectionalThresholdsActive() : (
+        (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ||
+        (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ||
+        (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ||
+        (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0)
+    );
+    const globalSummaryCount = (directionalActive && globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0;
     const displayCount = enabledCount + globalSummaryCount;
     const snapshot = window.__lastTargetBannerSnapshot;
     const snapshotUnchanged = snapshot.enabledCount === enabledCount && snapshot.displayCount === displayCount && snapshot.dismissed === !!targetHitIconDismissed;
@@ -6228,6 +6235,16 @@ function applyLoadedGlobalAlertSettings(settings) {
     } catch(e){ console.warn('Global Alerts: apply directional settings failed', e); }
 }
 
+// Helper: are any directional thresholds currently active?
+function isDirectionalThresholdsActive() {
+    return !!(
+        (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ||
+        (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ||
+        (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ||
+        (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0)
+    );
+}
+
 function formatGlobalAlertPart(pct, dol) {
     const pctStr = pct ? (pct + '%') : null;
     const dolStr = dol ? ('$' + Number(dol).toFixed(2)) : null;
@@ -6315,9 +6332,27 @@ function initGlobalAlertsUI(force) {
             const clearedAll = !globalPercentIncrease && !globalDollarIncrease && !globalPercentDecrease && !globalDollarDecrease;
             if (clearedAll) {
                 try { delete window.__lastMoversSnapshot; } catch(_) {}
+                // Proactively delete GA_SUMMARY doc so listener emits null (prevents stale global counts)
+                try {
+                    if (db && currentUserId && window.firestore) {
+                        const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+                        const summaryRef = window.firestore.doc(alertsCol, 'GA_SUMMARY');
+                        await window.firestore.deleteDoc(summaryRef).catch(()=>{});
+                        globalAlertSummary = null; // local cache clear
+                    }
+                } catch(delErr) { console.warn('Global Alerts: failed to delete GA_SUMMARY after clear', delErr); }
+                // Hide any open target hit modal if it only contained global summary
+                try {
+                    const onlyGlobal = sharesAtTargetPrice.length === 0 && (!sharesAtTargetPriceMuted || !sharesAtTargetPriceMuted.length);
+                    if (onlyGlobal && targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') hideModal(targetHitDetailsModal);
+                } catch(_) {}
+                // Recompute banner (will drop globalSummaryCount to zero)
+                try { updateTargetHitBanner(); } catch(_) {}
                 if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
                     try { enforceMoversVirtualView(true); } catch(e2){ console.warn('Movers refresh after clear failed', e2); }
-                    showCustomAlert('Directional thresholds cleared – Movers list emptied', 1400);
+                    showCustomAlert('Directional thresholds cleared – Movers list & global movers reset', 1600);
+                } else {
+                    showCustomAlert('Directional thresholds cleared', 1200);
                 }
             }
         });
@@ -9419,7 +9454,8 @@ function showTargetHitDetailsModal(options={}) {
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
     // Inject headings + global summary card (Global movers heading ABOVE card)
-    const hasGlobalSummary = !!(globalAlertSummary && globalAlertSummary.totalCount > 0);
+    // Only show global summary if thresholds still active to avoid displaying stale counts after clear
+    const hasGlobalSummary = !!(isDirectionalThresholdsActive() && globalAlertSummary && globalAlertSummary.totalCount > 0);
     if (hasGlobalSummary) {
         const data = globalAlertSummary;
         const total = data.totalCount || 0;
