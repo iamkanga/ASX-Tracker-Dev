@@ -752,6 +752,30 @@ function initializeShareNameAutocomplete(force=false){
 let currentSearchShareData = null; // Stores data of the currently displayed stock in search modal
 const splashKangarooIcon = document.getElementById('splashKangarooIcon');
 const splashSignInBtn = document.getElementById('splashSignInBtn');
+// Helper: robustly update splash sign-in button visual state
+if (typeof window.updateSplashSignInButtonState !== 'function') {
+    window.updateSplashSignInButtonState = function(state, label){
+        const btn = document.getElementById('splashSignInBtn');
+        if (!btn) return;
+        const span = btn.querySelector('span');
+        if (label && span) span.textContent = label;
+        btn.classList.remove('state-loading','state-error','state-ready');
+        switch(state){
+            case 'loading': btn.classList.add('state-loading'); btn.disabled = true; break;
+            case 'error': btn.classList.add('state-error'); btn.disabled = false; break;
+            default: btn.classList.add('state-ready'); btn.disabled = false; break;
+        }
+    };
+}
+
+// Early auth readiness console insight
+setTimeout(()=>{
+    try {
+        if (!window.firebaseAuth || !window.authFunctions) {
+            console.warn('[AuthDebug] Firebase auth objects not yet ready 1s after load. Click will show startup notice.');
+        }
+    } catch(_) {}
+},1000);
 const alertPanel = document.getElementById('alertPanel'); // NEW: Reference to the alert panel (not in current HTML, but kept for consistency)
 const alertList = document.getElementById('alertList'); // NEW: Reference to the alert list container (not in current HTML, but kept for consistency)
 const closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn'); // NEW: Reference to close alert panel button (not in current HTML, but kept for consistency)
