@@ -1022,6 +1022,12 @@ const targetHitModalTitle = document.getElementById('targetHitModalTitle');
 // Removed: minimizeTargetHitModalBtn, dismissAllTargetHitsBtn (now explicit buttons at bottom)
 const targetHitSharesList = document.getElementById('targetHitSharesList');
 const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
+    // Initial load suppression flags (prevent auto reopening of Target Hit modal after hard reload)
+    window.__initialLoadPhase = true; // cleared after first interaction or timeout
+    let __userInitiatedTargetModal = false;
+    window.addEventListener('pointerdown', ()=>{ window.__initialLoadPhase=false; }, { once:true, passive:true });
+    window.addEventListener('keydown', ()=>{ window.__initialLoadPhase=false; }, { once:true });
+    setTimeout(()=>{ window.__initialLoadPhase=false; }, 6000);
 
 // Ensure initial ARIA state for hamburger
 if (hamburgerBtn && !hamburgerBtn.hasAttribute('aria-expanded')) {
@@ -5871,9 +5877,17 @@ function enforceMoversVirtualView(force) {
     }
     // Recompute movers (fresh live movement) – fallback to snapshot only if recompute fails. Force flag triggers unconditional recompute.
     let moversEntries = [];
+    let recomputeFailed = false;
     try { moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || []; }
-    catch(e){ console.warn('Movers enforce: fresh compute failed', e); }
-    if (!moversEntries.length && window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries) {
+    catch(e){ console.warn('Movers enforce: fresh compute failed', e); recomputeFailed = true; }
+    const hasActiveThresholds = (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ||
+        (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ||
+        (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ||
+        (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0);
+    if (!hasActiveThresholds) {
+        // Purge stale snapshot so clearing thresholds empties movers immediately
+        if (window.__lastMoversSnapshot) { try { delete window.__lastMoversSnapshot; } catch(_) {} }
+    } else if (!moversEntries.length && window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries) {
         moversEntries = window.__lastMoversSnapshot.entries;
     }
     const codeSet = new Set(moversEntries.map(e => e.code));
@@ -6297,6 +6311,15 @@ function initGlobalAlertsUI(force) {
             } catch(err) { console.warn('Global Alerts: post-save refresh failed', err); }
             // Run directional diagnostics immediately after save for user transparency
             try { runDirectionalThresholdDiagnostics(); } catch(diagErr){ console.warn('Global Alerts: diagnostics failed', diagErr); }
+            // If all thresholds cleared, clear movers snapshot & refresh movers view immediately
+            const clearedAll = !globalPercentIncrease && !globalDollarIncrease && !globalPercentDecrease && !globalDollarDecrease;
+            if (clearedAll) {
+                try { delete window.__lastMoversSnapshot; } catch(_) {}
+                if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+                    try { enforceMoversVirtualView(true); } catch(e2){ console.warn('Movers refresh after clear failed', e2); }
+                    showCustomAlert('Directional thresholds cleared – Movers list emptied', 1400);
+                }
+            }
         });
     }
 
@@ -9382,7 +9405,12 @@ if (sortSelect) {
 window.BUILD_MARKER = 'v0.1.13';
 
 // Function to show the target hit details modal (moved to global scope)
-function showTargetHitDetailsModal() {
+function showTargetHitDetailsModal(options={}) {
+    const explicit = !!options.explicit;
+    if (window.__initialLoadPhase && !explicit && !__userInitiatedTargetModal) {
+        if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[TargetHitModal] Suppressed auto-open during initial load phase');
+        return;
+    }
     if (!targetHitDetailsModal || !targetHitSharesList || !sharesAtTargetPrice) {
         console.error('Target Hit Modal: Required elements or data not found.');
         showCustomAlert('Error displaying target hit details. Please try again.', 2000);
@@ -9635,6 +9663,7 @@ function showTargetHitDetailsModal() {
     }
 
     showModal(targetHitDetailsModal);
+    __userInitiatedTargetModal = true; // mark that user has seen modal this session
     logDebug('Target Hit Modal: Displayed details. Enabled=' + sharesAtTargetPrice.length + ' Muted=' + (sharesAtTargetPriceMuted?sharesAtTargetPriceMuted.length:0));
 }
 
@@ -9700,7 +9729,8 @@ async function forceHardUpdate() {
 if (targetHitIconBtn) {
     targetHitIconBtn.addEventListener('click', (event) => {
         logDebug('Target Alert: Icon button clicked. Opening details modal.');
-        showTargetHitDetailsModal();
+        __userInitiatedTargetModal = true;
+        showTargetHitDetailsModal({ explicit:true });
     });
 }
 
