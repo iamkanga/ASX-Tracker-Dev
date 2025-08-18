@@ -404,6 +404,15 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 
 /* Discover modal movement layout */
 .discover-code-list .discover-mover { display:flex; justify-content:space-between; gap:12px; }
+.discover-code-list.card-layout { display:grid; grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
+.discover-code-list.card-layout .discover-mover { flex-direction:column; align-items:flex-start; border:1px solid var(--border-color,#444); border-radius:8px; padding:8px 10px; gap:4px; background:var(--panel-bg,rgba(255,255,255,0.03)); }
+.discover-code-list.card-layout .discover-mover:hover { background:rgba(255,255,255,0.06); }
+.discover-mover .row-top { display:flex; width:100%; justify-content:space-between; align-items:center; }
+.discover-mover .company { font-size:0.62rem; line-height:1.15; color:var(--ghosted-text); font-weight:400; letter-spacing:0.25px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.discover-mover .price-line { font-size:0.7rem; font-variant-numeric:tabular-nums; }
+.discover-mover .range-line { font-size:0.65rem; font-variant-numeric:tabular-nums; opacity:0.85; }
+.discover-mover .range-line .sep { opacity:0.4; padding:0 3px; }
+.discover-mover .movement-combo { font-size:0.7rem; }
 .discover-code-list .discover-mover .movement { font-size:0.65rem; opacity:0.85; letter-spacing:0.3px; }
 .discover-code-list .discover-mover .movement.negative { color: var(--price-down-color); }
 .discover-code-list .discover-mover .movement.positive { color: var(--price-up-color); }

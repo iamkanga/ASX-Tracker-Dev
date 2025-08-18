@@ -9699,7 +9699,7 @@ function showTargetHitDetailsModal(options={}) {
 
             listEl.innerHTML='';
             const ul = document.createElement('ul');
-            ul.className='discover-code-list enriched global-only';
+            ul.className='discover-code-list enriched global-only card-layout';
 
             const contextLine = document.createElement('div');
             contextLine.className = 'discover-context-line';
@@ -9747,9 +9747,16 @@ function showTargetHitDetailsModal(options={}) {
                         missingCodes.push(code);
                     }
                     if (DEBUG_MODE) console.log('[DiscoverItem]', code, { price, prevClose, ch, pct, raw: en, lpData, ext });
-                    li.innerHTML = `<span class="code">${code}</span>` +
-                        `<span class="live">${price!=null?('$'+Number(price).toFixed(2)):'-'}</span>` +
-                        `<span class="delta movement-combo ${colorClass}" title="${comboLine}">${comboLine}</span>`;
+                    // Company name (from allAsxCodes cache) & 52w range
+                    let companyName = '';
+                    try { if (Array.isArray(allAsxCodes)) { const m = allAsxCodes.find(c=>c.code===code); if (m && m.name) companyName = m.name; } } catch(_) {}
+                    const hi52 = (lpData && lpData.High52!=null && !isNaN(lpData.High52)) ? '$'+formatAdaptivePrice(lpData.High52) : '';
+                    const lo52 = (lpData && lpData.Low52!=null && !isNaN(lpData.Low52)) ? '$'+formatAdaptivePrice(lpData.Low52) : '';
+                    const rangeLine = (hi52||lo52) ? `<div class=\"range-line\">${lo52||'?'}<span class=\"sep\">→</span>${hi52||'?'} 52w</div>` : '';
+                    const priceLine = `<div class=\"price-line\">${price!=null?('$'+Number(price).toFixed(2)):'-'} ${comboLine?`<span class=\"movement-combo ${colorClass}\">${comboLine}</span>`:''}</div>`;
+                    li.innerHTML = `<div class=\"row-top\"><span class=\"code\">${code}</span></div>`+
+                        (companyName?`<div class=\"company\" title=\"${companyName}\">${companyName}</div>`:'')+
+                        priceLine + rangeLine;
                     li.addEventListener('click',()=>{
                         try { hideModal(modal); } catch(_) {}
                         // Open Stock Search & Research modal instead of Add Share form
