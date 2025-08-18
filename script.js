@@ -29,22 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateMarketStatusUI, 60 * 1000);
 });
 
-    // Ensure Edit Current Watchlist button updates when selection changes
-    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
-        watchlistSelect.addEventListener('change', function () {
-            // If Portfolio is selected, show portfolio view
-            if (watchlistSelect.value === 'portfolio') {
-                showPortfolioView();
-                try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e){}
-            } else {
-                // Default: show normal watchlist view
-                showWatchlistView();
-                try { localStorage.setItem('lastSelectedView', watchlistSelect.value); } catch(e){}
-            }
-            updateMainButtonsState(true);
-        });
-    }
-
     // Portfolio view logic
     window.showPortfolioView = function() {
         // Hide normal stock watchlist section, show a dedicated portfolio section (create if needed)
@@ -7895,11 +7879,24 @@ if (deleteAllUserDataBtn) {
     // Watchlist Select Change Listener
     if (watchlistSelect) {
         watchlistSelect.addEventListener('change', async (event) => {
-            logDebug('Watchlist Select: Change event fired. New value: ' + event.target.value);
-            currentSelectedWatchlistIds = [event.target.value];
+            const newVal = event.target.value;
+            logDebug('Watchlist Select: Change event fired. New value: ' + newVal);
+            // Portfolio special handling
+            if (newVal === 'portfolio') {
+                try { showPortfolioView(); } catch(e) { console.warn('Portfolio view switch failed', e); }
+            } else {
+                try { showWatchlistView(); } catch(e) { console.warn('Watchlist view switch failed', e); }
+            }
+            currentSelectedWatchlistIds = [newVal];
             await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
-            // Just render the watchlist. The listeners for shares/cash are already active.
-            renderWatchlist();
+            // Render main view (portfolio render handles itself)
+            if (newVal !== 'portfolio') {
+                renderWatchlist();
+            } else {
+                try { renderPortfolioList(); } catch(e) {}
+            }
+            try { updateMainTitle(); } catch(_) {}
+            try { updateMainButtonsState(true); } catch(_) {}
             try { enforceMoversVirtualView(); } catch(_) {}
         });
     }
