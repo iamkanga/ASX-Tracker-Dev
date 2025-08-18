@@ -379,7 +379,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // --- Expand/Collapse Logic (Accordion) & Eye Button ---
         const cardNodes = portfolioListContainer.querySelectorAll('.portfolio-card');
-        cardNodes.forEach(card => {
+        cardNodes.forEach((card, idx) => {
+            // Get the share object for this card
+            const share = portfolioShares[idx];
             const btn = card.querySelector('.pc-chevron-btn');
             const details = card.querySelector('.pc-details');
             btn.addEventListener('click', function() {
