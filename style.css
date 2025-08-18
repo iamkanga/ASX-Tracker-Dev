@@ -3740,6 +3740,10 @@ table td.live-price-cell.negative-change {
 .mobile-card.positive-change-card .card-chevron.positive { color: var(--brand-green) !important; }
 .mobile-card.negative-change-card .card-chevron.negative { color: var(--brand-red) !important; }
 .mobile-card.neutral-change-card .card-chevron.neutral { color: var(--price-neutral-color) !important; }
+/* Global fallback to guarantee arrow coloring even if parent card movement class not applied yet */
+.card-chevron.positive { color: var(--brand-green) !important; }
+.card-chevron.negative { color: var(--brand-red) !important; }
+.card-chevron.neutral { color: var(--price-neutral-color) !important; }
 
 .mobile-card {
     background-color: var(--card-bg);
