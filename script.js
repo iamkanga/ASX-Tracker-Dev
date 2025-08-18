@@ -2088,7 +2088,7 @@ function addShareToMobileCards(share) {
             </div>
         </div>
     <p class="data-row"><span class="label-text">Entry Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.currentPrice)}</span></p>
-    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row">${renderAlertTargetInline(share,{showLabel:true})}</p>` : '' })()}
+    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="alert-target-inline">${renderAlertTargetInline(share)}</span></p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
@@ -2443,7 +2443,7 @@ function updateOrCreateShareMobileCard(share) {
         <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
         <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
     <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
-    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row">${renderAlertTargetInline(share,{showLabel:true})}</p>` : '' })()}
+    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="alert-target-inline">${renderAlertTargetInline(share)}</span></p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
@@ -3310,6 +3310,20 @@ async function saveShareData(isSilent = false) {
         lastPriceUpdateTime: new Date().toISOString(),
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0 // Ensure rating is saved as a number
     };
+
+    // Uniqueness check: if adding new share but a document with same code already exists, switch to update mode
+    if (!selectedShareDocId) {
+        try {
+            const sharesColUnique = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
+            const dupQuery = window.firestore.query(sharesColUnique, window.firestore.where('shareName', '==', shareName));
+            const dupSnap = await window.firestore.getDocs(dupQuery);
+            if (!dupSnap.empty) {
+                const existing = dupSnap.docs[0];
+                selectedShareDocId = existing.id;
+                logDebug('Uniqueness: Existing share found for code '+shareName+' (ID='+selectedShareDocId+'). Converting add into update.');
+            }
+        } catch(e) { console.warn('Uniqueness: lookup failed', e); }
+    }
 
     if (selectedShareDocId) {
         const existingShare = allSharesData.find(s => s.id === selectedShareDocId);

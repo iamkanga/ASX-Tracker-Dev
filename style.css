@@ -87,6 +87,9 @@ function makeFilesAvailableToSourceControlCSS() {
 .alert-target-arrow.down { color: var(--brand-red,#c42131); }
 .alert-target-price { font-weight:600; }
 @media (max-width:640px){ .alert-target-cell { font-size:0.8rem; } }
+/* Mobile card specific container */
+.alert-target-row { margin:0; padding:0.1rem 0 0.2rem 0; }
+.alert-target-row .alert-target-inline { display:inline-flex; align-items:center; gap:0.3rem; }
 
 /* --- Modern Responsive Controls Row & Dropdowns --- */
 /* Modern, balanced controls row: equal width, responsive, all on one line */
