@@ -3,9 +3,8 @@
 // Unified App / Asset Version (bump this when deploying front-end changes to force fresh fetch of CSS/JS)
 const APP_VERSION = '0.1.13';
 
-// Cache name for the current version of the service worker
-// (Keep this in sync with APP_VERSION; increment suffix to invalidate old precache quickly)
-const CACHE_NAME = 'share-watchlist-v1.0.35'; // Bump (network-first core assets + version 0.1.13)
+// Cache name for the current version (auto-derived from APP_VERSION so we don't forget to bump both)
+const CACHE_NAME = `share-watchlist-v${APP_VERSION}`;
 
 // List of essential application assets to precache
 const CACHED_ASSETS = [
@@ -22,23 +21,32 @@ const CACHED_ASSETS = [
     'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js'
 ];
 
-// Install event: caches all essential assets
+// Install event: cache assets individually so one failure doesn't abort install
 self.addEventListener('install', (event) => {
-    console.log('Service Worker: Installing...');
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => {
-                console.log('Service Worker: Cache opened, adding assets...');
-                return cache.addAll(CACHED_ASSETS);
-            })
-            .then(() => {
-                console.log('Service Worker: All assets added to cache. Skipping waiting.');
-                return self.skipWaiting(); // Activate the new service worker immediately
-            })
-            .catch((error) => {
-                console.error('Service Worker: Failed to cache essential assets during install:', error);
-            })
-    );
+    console.log('[SW] Installing… version', APP_VERSION, 'cache', CACHE_NAME);
+    event.waitUntil((async ()=>{
+        const cache = await caches.open(CACHE_NAME);
+        const results = await Promise.all(CACHED_ASSETS.map(async (url) => {
+            const req = new Request(url, { cache: 'no-cache' });
+            try {
+                const res = await fetch(req);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await cache.put(req, res.clone());
+                console.log('[SW] Cached:', url);
+                return { url, ok:true };
+            } catch(err) {
+                console.warn('[SW] Cache miss (skipped):', url, err.message || err);
+                return { url, ok:false, err:err.message||String(err) };
+            }
+        }));
+        const failed = results.filter(r=>!r.ok);
+        if (failed.length) {
+            console.warn('[SW] Some assets failed to cache (install continues):', failed.map(f=>f.url));
+        } else {
+            console.log('[SW] All listed assets cached.');
+        }
+        await self.skipWaiting();
+    })());
 });
 
 // Activate event: cleans up old caches
