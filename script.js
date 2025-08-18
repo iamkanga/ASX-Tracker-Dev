@@ -846,8 +846,22 @@ function popAppStateEntry() { return appBackStack.pop(); }
 // Removed legacy early hamburger push listener (consolidated later) – now handled in unified sidebar setup
 // Override showModal to push (wrap existing if not already wrapped)
 if (!window.__origShowModalForBack) {
-    window.__origShowModalForBack = showModal;
-    showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
+    // Defer wrapping until showModal exists to prevent ReferenceError when this script section runs before the function declaration.
+    function installModalWrapper(){
+        if (typeof showModal === 'function') {
+            window.__origShowModalForBack = showModal;
+            showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
+            return true;
+        }
+        return false;
+    }
+    if (!installModalWrapper()) {
+        // Retry a few times (DOM parse order or bundler could move things)
+        let modalWrapTries = 0;
+        const wrapTimer = setInterval(()=>{
+            if (installModalWrapper() || ++modalWrapTries > 20) clearInterval(wrapTimer);
+        }, 50);
+    }
 }
 
 window.addEventListener('popstate', ()=>{
