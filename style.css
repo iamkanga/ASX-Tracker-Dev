@@ -3832,8 +3832,9 @@ table td.live-price-cell.negative-change {
 
 /* Modal live price proportional sizing (day change = 50%).
     Place variable on the container so both price and change inherit the same base. */
-#modalLivePriceDisplaySection { --live-price-size: 2.8em; }
-@media (max-width:640px){ #modalLivePriceDisplaySection { --live-price-size: 2.25em; } }
+/* Align detail modal primary sizing with Add Share modal for consistent ratios */
+#modalLivePriceDisplaySection { --live-price-size: 1.9em; }
+@media (max-width:640px){ #modalLivePriceDisplaySection { --live-price-size: 1.85em; } }
 /* Modal / add form: large code & live price; smaller contextual metrics */
 .live-price-display-section .modal-share-name { font-size: var(--live-price-size) !important; font-weight:800; line-height:1; }
 #addShareLivePriceDisplay { --live-price-size:1.9em; }

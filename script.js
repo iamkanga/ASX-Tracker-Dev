@@ -3630,7 +3630,8 @@ function showShareDetails() {
         modalLivePriceDisplaySection.appendChild(fiftyTwoWeekRow);
 
     const currentModalLivePriceLarge = document.createElement('span');
-    currentModalLivePriceLarge.classList.add('modal-share-name','live-price-large', priceChangeClass);
+    // Force neutral color for primary live price (colour only on change element) to match Add Share snapshot styling
+    currentModalLivePriceLarge.classList.add('modal-share-name','live-price-large','neutral');
     const currentModalPriceChangeLarge = document.createElement('span');
     currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass);
     modalLivePriceDisplaySection.appendChild(currentModalLivePriceLarge);
@@ -5715,6 +5716,12 @@ function applyGlobalSummaryFilter(options = {}) {
 // Enforce virtual Movers view: after a render, hide non-mover rows/cards; restore when leaving
 function enforceMoversVirtualView(force) {
     const isMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+    if (isMovers) {
+        // Safety: ensure persistence keys reflect Movers so reload restores correctly even if earlier writes were skipped
+        try { localStorage.setItem('lastSelectedView','__movers'); } catch(_) {}
+        try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(['__movers'])); } catch(_) {}
+        try { sessionStorage.setItem('preResetLastSelectedView','__movers'); } catch(_) {}
+    }
     const tableRows = document.querySelectorAll('#shareTable tbody tr');
     const mobileCards = document.querySelectorAll('.mobile-share-cards .mobile-card');
     if (!isMovers) {
