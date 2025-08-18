@@ -88,6 +88,10 @@ function makeFilesAvailableToSourceControlCSS() {
 .mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green,#008000) !important; }
 .mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red,#c42131) !important; }
 .alert-target-price { font-weight:600; }
+.asx-code-buttons-scroll { max-height:220px; overflow-y:auto; -webkit-overflow-scrolling:touch; position:relative; }
+.asx-code-buttons-scroll::-webkit-scrollbar { width:6px; }
+.asx-code-buttons-scroll::-webkit-scrollbar-track { background:transparent; }
+.asx-code-buttons-scroll::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.25); border-radius:3px; }
 @media (max-width:640px){ .alert-target-cell { font-size:0.8rem; } }
 /* Mobile card specific container */
 .alert-target-row { margin:0; padding:0.1rem 0 0.2rem 0; }

@@ -632,6 +632,10 @@ const newShareBtn = document.getElementById('newShareBtn');
 const standardCalcBtn = document.getElementById('standardCalcBtn');
 const dividendCalcBtn = document.getElementById('dividendCalcBtn');
 const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
+// Ensure scroll class applied (id container present in DOM from HTML)
+if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
+    asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll');
+}
 const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
 const shareFormSection = document.getElementById('shareFormSection');
 const formCloseButton = document.querySelector('.form-close-button');
@@ -4596,15 +4600,24 @@ function renderAsxCodeButtons() {
     asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b=>b.classList.remove('active'));
     // Delegated click handler (single)
     if (!asxCodeButtonsContainer.__delegated) {
-        asxCodeButtonsContainer.addEventListener('click', (e) => {
-            const btn = e.target.closest('button.asx-code-btn');
-            if (!btn) return;
+        let touchStartY = 0, touchMoved = false, touchStartX = 0;
+        const MOVE_THRESHOLD = 8; // px before we treat as scroll not tap
+        asxCodeButtonsContainer.addEventListener('touchstart', e => {
+            const t = e.touches[0];
+            touchStartY = t.clientY; touchStartX = t.clientX; touchMoved = false;
+        }, { passive: true });
+        asxCodeButtonsContainer.addEventListener('touchmove', e => {
+            const t = e.touches[0];
+            if (Math.abs(t.clientY - touchStartY) > MOVE_THRESHOLD || Math.abs(t.clientX - touchStartX) > MOVE_THRESHOLD) {
+                touchMoved = true; // user scrolling
+            }
+        }, { passive: true });
+        const activateButton = (btn) => {
             const code = btn.dataset.asxCode;
-            logDebug('ASX Button Click (delegated): ' + code);
+            logDebug('ASX Code Select: ' + code);
             asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b=>b.classList.remove('active'));
             btn.classList.add('active');
             scrollToShare(code);
-            // NEW: If the Add/Edit Share form is open, also populate the code field and show a quick live snapshot
             try {
                 const formVisible = shareFormSection && shareFormSection.style.display !== 'none' && !shareFormSection.classList.contains('app-hidden');
                 if (formVisible && shareNameInput) {
@@ -4612,10 +4625,19 @@ function renderAsxCodeButtons() {
                     shareNameInput.value = code;
                     if (formCompanyName) formCompanyName.textContent = company;
                     checkFormDirtyState();
-                    // Fetch a single-stock snapshot to render the small live panel
                     updateAddFormLiveSnapshot(code);
                 }
             } catch(_) {}
+        };
+        asxCodeButtonsContainer.addEventListener('touchend', e => {
+            if (touchMoved) return; // treat as scroll end
+            const btn = e.target.closest('button.asx-code-btn');
+            if (btn) activateButton(btn);
+        });
+        // Mouse / desktop clicks unchanged
+        asxCodeButtonsContainer.addEventListener('click', e => {
+            const btn = e.target.closest('button.asx-code-btn');
+            if (btn) activateButton(btn);
         });
         asxCodeButtonsContainer.__delegated = true;
     }
