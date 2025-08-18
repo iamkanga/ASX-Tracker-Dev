@@ -448,6 +448,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .discover-mover .price-line {
     font-size: 1.15rem;
     font-variant-numeric: tabular-nums;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
 }
 .discover-mover .range-line {
     font-size: 1.05rem;
@@ -460,6 +461,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 }
 .discover-mover .movement-combo {
     font-size: 1.15rem;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
 }
 .discover-code-list .discover-mover .movement {
     font-size: 1.05rem;
@@ -470,6 +472,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .discover-code-list .discover-mover .movement.positive { color: var(--price-up-color); }
 .discover-code-list .discover-mover .delta, .discover-code-list .discover-mover .pct {
     font-size: 1.05rem;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
     opacity: 0.9;
     letter-spacing: 0.3px;
 }
@@ -480,6 +483,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
     font-size: 1.25rem;
     letter-spacing: 0.22px;
     font-variant-numeric: tabular-nums;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
 }
 .movement-combo.positive { color: var(--price-up-color); }
 .movement-combo.negative { color: var(--price-down-color); }
