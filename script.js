@@ -6203,6 +6203,12 @@ function initGlobalAlertsUI(force) {
             globalPercentDecrease = (!isNaN(pctDecRaw) && pctDecRaw > 0) ? pctDecRaw : null;
             globalDollarDecrease = (!isNaN(dolDecRaw) && dolDecRaw > 0) ? dolDecRaw : null;
             globalMinimumPrice = (!isNaN(minPriceRaw) && minPriceRaw > 0) ? minPriceRaw : null;
+            // Reflect cleared values back into inputs so user sees reset immediately
+            if (globalPercentIncreaseInput && globalPercentIncrease === null) globalPercentIncreaseInput.value = '';
+            if (globalDollarIncreaseInput && globalDollarIncrease === null) globalDollarIncreaseInput.value = '';
+            if (globalPercentDecreaseInput && globalPercentDecrease === null) globalPercentDecreaseInput.value = '';
+            if (globalDollarDecreaseInput && globalDollarDecrease === null) globalDollarDecreaseInput.value = '';
+            if (globalMinimumPriceInput && globalMinimumPrice === null) globalMinimumPriceInput.value = '';
             const after = { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease };
             try { console.log('[GlobalAlerts][save] thresholds changed', { before, after, min: globalMinimumPrice }); } catch(_) {}
             // Edge case assist: If only decrease thresholds now exist, ensure increase ones are null (stale UI race)
@@ -6214,6 +6220,7 @@ function initGlobalAlertsUI(force) {
             showCustomAlert('Global alert settings saved', 1200);
             try { hideModal(globalAlertsModal); } catch(e){}
             updateGlobalAlertsSettingsSummary();
+            // If all thresholds cleared, also clear summary doc counts by re-evaluating (it will early return)
             // Auto-refresh evaluation after saving settings so summary & counts reflect immediately
             try {
                 if (typeof evaluateGlobalPriceAlerts === 'function') {
