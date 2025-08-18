@@ -408,11 +408,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (eyeBtn) {
                 eyeBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    if (typeof openShareDetailModal === 'function') {
-                        openShareDetailModal(share.shareName || '', share.id);
-                    } else {
-                        alert('Share details modal not available.');
-                    }
+                    selectShare(share.id);
+                    showShareDetails();
                 });
             }
             // Plus shortcut icon logic (in expanded details)
@@ -421,11 +418,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 shortcutBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (typeof openShareDetailModal === 'function') {
-                        openShareDetailModal(share.shareName || '', share.id);
-                    } else {
-                        alert('Share details modal not available.');
-                    }
+                    selectShare(share.id);
+                    showShareDetails();
                 });
             }
         });
