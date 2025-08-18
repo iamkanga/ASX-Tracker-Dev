@@ -768,10 +768,24 @@ async function persistUserPreference(key, value) {
 
 // Helper: persist lastSelectedView to both localStorage & Firestore (if authenticated)
 function setLastSelectedView(val) {
+    if (!val) return;
+    // Skip if unchanged (avoid noisy duplicate writes)
+    const currentLocal = (()=>{ try { return localStorage.getItem('lastSelectedView'); } catch(_) { return null; } })();
+    if (currentLocal === val && userPreferences.lastSelectedView === val) {
+        if (DEBUG_MODE) console.log('[Prefs] setLastSelectedView unchanged ->', val);
+        return;
+    }
     try { localStorage.setItem('lastSelectedView', val); } catch(_) {}
     userPreferences.lastSelectedView = val;
     if (db && currentUserId && window.firestore) {
-        try { persistUserPreference('lastSelectedView', val); } catch(_) {}
+        // Debounce Firestore writes within a short window
+        if (!window.__lastViewPersist) window.__lastViewPersist = { value: null, ts: 0, timer: null };
+        const rec = window.__lastViewPersist;
+        rec.value = val; rec.ts = Date.now();
+        if (rec.timer) { clearTimeout(rec.timer); rec.timer = null; }
+        rec.timer = setTimeout(()=>{
+            try { persistUserPreference('lastSelectedView', rec.value); } catch(_) {}
+        }, 500); // 500ms debounce collects rapid consecutive changes
     }
     if (DEBUG_MODE) console.log('[Prefs] setLastSelectedView ->', val);
 }
