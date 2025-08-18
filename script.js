@@ -180,11 +180,11 @@ document.addEventListener('DOMContentLoaded', function () {
             // If Portfolio is selected, show portfolio view
             if (watchlistSelect.value === 'portfolio') {
                 showPortfolioView();
-                try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e){}
+                try { setLastSelectedView('portfolio'); } catch(e){}
             } else {
                 // Default: show normal watchlist view
                 showWatchlistView();
-                try { localStorage.setItem('lastSelectedView', watchlistSelect.value); } catch(e){}
+                try { setLastSelectedView(watchlistSelect.value); } catch(e){}
             }
             updateMainButtonsState(true);
         });
@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     // Persist user intent
-        try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e) {}
+    try { setLastSelectedView('portfolio'); } catch(e) {}
         let portfolioSection = document.getElementById('portfolioSection');
         portfolioSection.style.display = 'block';
     renderPortfolioList();
@@ -501,7 +501,7 @@ function scheduleMoversFallback() {
                 // Fallback to All Shares (user request) while preserving intent logs
                 currentSelectedWatchlistIds = [ALL_SHARES_ID];
                 if (typeof watchlistSelect !== 'undefined' && watchlistSelect) watchlistSelect.value = ALL_SHARES_ID;
-                try { localStorage.setItem('lastSelectedView', ALL_SHARES_ID); } catch(_) {}
+                try { setLastSelectedView(ALL_SHARES_ID); } catch(_) {}
                 try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
                 if (typeof renderWatchlist === 'function') { try { renderWatchlist(); } catch(_) {} }
                 console.warn('[Movers restore][fallback->allShares] Movers failed to attach; defaulted to All Shares.');
@@ -763,6 +763,16 @@ async function persistUserPreference(key, value) {
         userPreferences[key] = value;
         if (DEBUG_MODE) console.log('[Prefs] Persisted', key, '=', value);
     } catch(e) { if (DEBUG_MODE) console.warn('Prefs: persist failed', e); }
+}
+
+// Helper: persist lastSelectedView to both localStorage & Firestore (if authenticated)
+function setLastSelectedView(val) {
+    try { localStorage.setItem('lastSelectedView', val); } catch(_) {}
+    userPreferences.lastSelectedView = val;
+    if (db && currentUserId && window.firestore) {
+        try { persistUserPreference('lastSelectedView', val); } catch(_) {}
+    }
+    if (DEBUG_MODE) console.log('[Prefs] setLastSelectedView ->', val);
 }
 
 // Auto-open suppression sentinel: require user interaction (clicking alert icon) before any passive auto-open
@@ -4362,7 +4372,7 @@ function openWatchlistPicker() {
             currentSelectedWatchlistIds=[it.id];
             try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
             if (watchlistSelect) watchlistSelect.value=it.id; // sync hidden select
-            try { localStorage.setItem('lastSelectedView', it.id); } catch(e) {}
+            try { setLastSelectedView(it.id); } catch(e) {}
             try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
 
             // Always perform a full render cycle for consistency
@@ -5042,7 +5052,8 @@ async function displayStockDetailsInSearchModal(asxCode) {
             if (!isNaN(previousClosePrice) && previousClosePrice !== null) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                priceChangeText = `${change>0?'+':''}${formatAdaptivePrice(change)} / ${percentageChange>0?'+':''}${formatAdaptivePercent(percentageChange)}%`;
+                const arrow = change > 0 ? '▲' : (change < 0 ? '▼' : '');
+                priceChangeText = `${arrow} ${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         }
@@ -5060,13 +5071,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
 
         // Construct the display HTML
         const resolvedDisplayCode = (stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode || '').toUpperCase();
-        // Compute movement combo for unified formatting
-        let movementCombo = 'N/A';
-        if (!isNaN(currentLivePrice) && !isNaN(previousClosePrice) && previousClosePrice !== 0) {
-            const ch = currentLivePrice - previousClosePrice;
-            const pct = (ch / previousClosePrice) * 100;
-            movementCombo = `${ch>0?'+':''}${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%`;
-        }
+    // Legacy formatting retained; movement combo removed (user requested revert)
 
         searchResultDisplay.innerHTML = `
             <div class="text-center mb-4">
@@ -5081,15 +5086,10 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 </div>
                 <div class="live-price-main-row">
                         <h2 class="modal-share-name neutral-code-text">${displayPrice}</h2>
-                        <span class="price-change-large ${priceClass}" title="Day change / %">${movementCombo}</span>
+                        <span class="price-change-large ${priceClass}">${priceChangeText}</span>
                     </div>
-                <div class="research-stats-grid">
-                    <div><span class="stat-label">P/E</span><span class="stat-value">${!isNaN(peRatio)?formatAdaptivePrice(peRatio):'N/A'}</span></div>
-                    <div><span class="stat-label">Day High</span><span class="stat-value">${!isNaN(dayHigh)?formatMoney(dayHigh):'N/A'}</span></div>
-                    <div><span class="stat-label">Day Low</span><span class="stat-value">${!isNaN(dayLow)?formatMoney(dayLow):'N/A'}</span></div>
-                    <div><span class="stat-label">Volume</span><span class="stat-value">${!isNaN(volume)?Intl.NumberFormat('en-AU').format(volume):'N/A'}</span></div>
-                    <div><span class="stat-label">Mkt Cap</span><span class="stat-value">${!isNaN(marketCap)?('$'+Intl.NumberFormat('en-AU',{notation:'compact'}).format(marketCap)):'N/A'}</span></div>
-                    <div><span class="stat-label">Dividend</span><span class="stat-value">${!isNaN(dividend)?formatAdaptivePrice(dividend):'N/A'}</span></div>
+                <div class="pe-ratio-row">
+                    <span class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A'}</span>
                 </div>
             </div>
             <div class="external-links-section">
@@ -5916,7 +5916,7 @@ function enforceMoversVirtualView(force) {
     const isMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
     if (isMovers) {
         // Safety: ensure persistence keys reflect Movers so reload restores correctly even if earlier writes were skipped
-        try { localStorage.setItem('lastSelectedView','__movers'); } catch(_) {}
+    try { setLastSelectedView('__movers'); } catch(_) {}
         try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(['__movers'])); } catch(_) {}
         try { sessionStorage.setItem('preResetLastSelectedView','__movers'); } catch(_) {}
     }
@@ -7099,6 +7099,10 @@ function updateMainTitle(overrideTitle) {
         try { ensureTitleStructure(); } catch(_) {}
         if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = overrideTitle; else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = overrideTitle;
         logDebug('UI: Dynamic title force-overridden to: ' + overrideTitle);
+        // If overriding to Movers, persist selection cross-device
+        if (overrideTitle === 'Movers') {
+            try { setLastSelectedView('__movers'); } catch(_) {}
+        }
         return;
     }
 
@@ -7163,6 +7167,14 @@ function updateMainTitle(overrideTitle) {
     // Defensive: avoid blank
     try { if (dynamicWatchlistTitleText && !dynamicWatchlistTitleText.textContent.trim()) dynamicWatchlistTitleText.textContent = resolved || 'Share Watchlist'; } catch(_) {}
     logDebug('UI: Dynamic title updated to: ' + resolved + ' (activeId=' + activeId + ', selValue=' + selValue + ')');
+    // Persist resolved selection if it maps to a concrete logical view (avoid noisy writes during early boot with undefined)
+    if (resolved === 'Movers') { try { setLastSelectedView('__movers'); } catch(_) {} }
+    else if (resolved === 'Portfolio') { try { setLastSelectedView('portfolio'); } catch(_) {} }
+    else if (resolved === 'All Shares') { try { setLastSelectedView(ALL_SHARES_ID); } catch(_) {} }
+    else if (activeId && activeId !== '__movers' && activeId !== 'portfolio' && activeId !== ALL_SHARES_ID && activeId !== CASH_BANK_WATCHLIST_ID) {
+        // Persist actual watchlist id
+        try { setLastSelectedView(activeId); } catch(_) {}
+    }
 }
 
 // Ensure the dynamic title uses a narrow clickable span and not the whole header
@@ -8671,7 +8683,7 @@ if (deleteAllUserDataBtn) {
             logDebug('Watchlist Select: Change event fired. New value: ' + event.target.value);
             currentSelectedWatchlistIds = [event.target.value];
             try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
-            try { localStorage.setItem('lastSelectedView', event.target.value); } catch(_) {}
+                    try { setLastSelectedView(event.target.value); } catch(_) {}
             await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
             // Just render the watchlist. The listeners for shares/cash are already active.
             renderWatchlist();
@@ -9576,7 +9588,7 @@ function showTargetHitDetailsModal(options={}) {
                     if (watchlistSelect) {
                         try { watchlistSelect.value = '__movers'; } catch(_) {}
                     }
-                    try { localStorage.setItem('lastSelectedView','__movers'); } catch(_) {}
+                    try { setLastSelectedView('__movers'); } catch(_) {}
                     // Persist to Firestore if helper available (cross-device restore consistency)
                     try { if (typeof saveLastSelectedWatchlistIds === 'function') saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } catch(_) {}
                     updateMainTitle('Movers');
@@ -9636,12 +9648,13 @@ function showTargetHitDetailsModal(options={}) {
                     const code = (en.code || '').toUpperCase();
                     const lpData = (livePrices && livePrices[code]) ? livePrices[code] : {};
                     // Map snapshot fields: live -> price fallback, change->ch
-                    const price = (typeof en.price === 'number') ? en.price : (typeof en.live === 'number') ? en.live : (typeof lpData.live === 'number' ? lpData.live : null);
-                    const prevClose = (typeof en.prevClose === 'number') ? en.prevClose : (typeof lpData.prevClose === 'number' ? lpData.prevClose : null);
-                    let ch = (typeof en.ch === 'number') ? en.ch : (typeof en.change === 'number') ? en.change : null;
+                    function num(v){ if (v===null||v===undefined||v==='') return null; const n=Number(v); return isNaN(n)?null:n; }
+                    const price = num(en.price) ?? num(en.live) ?? num(lpData.live);
+                    const prevClose = num(en.prevClose) ?? num(lpData.prevClose);
+                    let ch = num(en.ch) ?? num(en.change) ?? num(lpData.change);
                     // If change missing, derive from price/prev
                     if ((ch === null || ch === undefined) && price !== null && prevClose !== null) ch = price - prevClose;
-                    let pct = (typeof en.pct === 'number') ? en.pct : null;
+                    let pct = num(en.pct) ?? num(lpData.pct);
                     if ((pct === null || pct === undefined) && ch !== null && prevClose !== null && prevClose !== 0) pct = (ch / prevClose) * 100;
                     const dir = (ch === null || ch === 0) ? 'flat' : (ch > 0 ? 'up' : 'down');
                     const colorClass = (ch === null || ch === 0) ? 'neutral' : (ch > 0 ? 'positive' : 'negative');
@@ -9656,6 +9669,7 @@ function showTargetHitDetailsModal(options={}) {
                     } else if (pct != null) {
                         comboLine = `${pct>0?'+':''}${pct.toFixed(2)}%`;
                     }
+                    if (DEBUG_MODE) console.log('[DiscoverItem]', code, { price, prevClose, ch, pct, raw: en, lpData });
                     li.innerHTML = `<span class="code">${code}</span>` +
                         `<span class="live">${price!=null?('$'+Number(price).toFixed(2)):'-'}</span>` +
                         `<span class="delta movement-combo ${colorClass}" title="${comboLine}">${comboLine}</span>`;
@@ -9967,7 +9981,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     const pre = sessionStorage.getItem('preResetLastSelectedView');
                     if (pre === '__movers' && !localStorage.getItem('lastSelectedView')) {
-                        localStorage.setItem('lastSelectedView','__movers');
+                        setLastSelectedView('__movers');
                         sessionStorage.removeItem('preResetLastSelectedView');
                     }
                 } catch(_) {}
@@ -10036,7 +10050,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // After essential data loaded, restore last view (portfolio or watchlist) unless user already interacted
                 try {
-                    const lastView = localStorage.getItem('lastSelectedView');
+                    let lastView = localStorage.getItem('lastSelectedView');
+                    if ((!lastView || lastView === 'undefined') && userPreferences && userPreferences.lastSelectedView) {
+                        lastView = userPreferences.lastSelectedView; // Firestore fallback
+                        if (DEBUG_MODE) console.log('[Prefs] Restored lastSelectedView from Firestore =', lastView);
+                        try { localStorage.setItem('lastSelectedView', lastView); } catch(_) {}
+                    }
                     if (lastView === 'portfolio') {
                         showPortfolioView();
                     } else if (lastView && lastView !== 'portfolio' && typeof watchlistSelect !== 'undefined' && watchlistSelect) {
