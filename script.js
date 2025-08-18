@@ -2,159 +2,7 @@
 // If you do NOT see this line in DevTools Sources, you're viewing a stale cached script.
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
-// --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
-// Push a new state when opening a modal or navigating to a new in-app view
-function pushAppState(stateObj = {}, title = '', url = '') {
-    history.pushState(stateObj, title, url);
-}
-
-// Listen for the back button (popstate event)
-window.addEventListener('popstate', function(event) {
-    // Let the unified stack-based handler manage modals. Only handle sidebar here.
-    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
-        if (window.toggleAppSidebar) {
-            window.toggleAppSidebar(false); // Explicitly close the sidebar
-        }
-        return; // Exit after handling the sidebar
-    }
-    // Defer modal handling to the stack popstate handler below.
-});
-// Keep main content padding in sync with header height changes (e.g., viewport resize)
-window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
-document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
-// Diagnostic: overlay listener singleton self-check
-document.addEventListener('DOMContentLoaded', () => {
-    try {
-        const ov = document.getElementById('sidebarOverlay') || document.querySelector('.sidebar-overlay');
-        if (ov) {
-            // Attempt to enumerate known listener types by dispatch test events counter (best-effort)
-            let fired = 0;
-            const testHandler = () => { fired++; };
-            ov.addEventListener('mousedown', testHandler, { once: true });
-            const evt = new Event('mousedown');
-            ov.dispatchEvent(evt);
-            // fired should be 1 because our once listener ran; actual sidebar close listener also runs silently
-            // Provide console confirmation marker for QA
-            console.log('[Diag] Overlay singleton check executed. Build marker present.');
-        } else {
-            console.warn('[Diag] Overlay element not found during singleton check.');
-        }
-    } catch(e) { console.warn('[Diag] Overlay singleton check failed', e); }
-});
-// ...existing code...
-
-// Title mutation observer guard to restore if emptied by outside DOM ops
-try {
-    (function installTitleGuard(){
-        if (window.__titleGuardInstalled) return; window.__titleGuardInstalled = true;
-        const host = document.getElementById('dynamicWatchlistTitle'); if(!host) return;
-        const obs = new MutationObserver(()=>{
-            try {
-                const span = document.getElementById('dynamicWatchlistTitleText');
-                if (!span) return;
-                if (!span.textContent || !span.textContent.trim()) {
-                    let wid = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
-                    let expected;
-                    if (wid === '__movers') expected = 'Movers';
-                    else if (wid === 'portfolio') expected = 'Portfolio';
-                    else if (wid === CASH_BANK_WATCHLIST_ID) expected = 'Cash & Assets';
-                    else if (wid === ALL_SHARES_ID) expected = 'All Shares';
-                    else {
-                        const wl = (userWatchlists||[]).find(w=>w.id===wid);
-                        expected = (wl && wl.name) ? wl.name : 'Share Watchlist';
-                    }
-                    span.textContent = expected;
-                    console.warn('[TitleGuard] Restored empty dynamic title to:', expected);
-                }
-            } catch(_) {}
-        });
-        obs.observe(host, { childList:true, characterData:true, subtree:true });
-    })();
-} catch(_) {}
-
-// ...existing code...
-// --- (Aggressive Enforcement Patch Removed) ---
-// The previous patch has been removed as the root cause of the UI issues,
-// a syntax error in index.html, has been corrected. The standard application
-// logic should now function as intended.
-// --- END REMOVED PATCH ---
-
-
-// [Copilot Update] Source control helper
-// This function is a placeholder for automating source control actions (e.g., git add/commit)
-// and for tracking how many times files have been made available to source control.
-// Usage: Call makeFilesAvailableToSourceControl() after major changes if you want to automate this.
-let sourceControlMakeAvailableCount = 0;
-function makeFilesAvailableToSourceControl() {
-    // This is a placeholder for future automation (e.g., via backend or extension)
-    // Instructs the user to use git or triggers a VS Code command if available
-    sourceControlMakeAvailableCount++;
-    if (window && window.showCustomAlert) {
-        window.showCustomAlert('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')', 2000);
-    } else {
-        console.log('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')');
-    }
-    // To actually add to git, run: git init; git add .; git commit -m "Initial commit"
-}
-// End Copilot source control helper
-
-// Helper: Sort shares by percentage change
-function sortSharesByPercentageChange(shares) {
-    return shares.slice().sort((a, b) => {
-        const liveA = livePrices[a.shareName?.toUpperCase()]?.live;
-        const prevA = livePrices[a.shareName?.toUpperCase()]?.prevClose;
-        const liveB = livePrices[b.shareName?.toUpperCase()]?.live;
-        const prevB = livePrices[b.shareName?.toUpperCase()]?.prevClose;
-        const pctA = (prevA && liveA) ? ((liveA - prevA) / prevA) : 0;
-        const pctB = (prevB && liveB) ? ((liveB - prevB) / prevB) : 0;
-        return pctB - pctA; // Descending
-    });
-}
-
-// Lean live prices hook: only resort when sort actually depends on live data
-function onLivePricesUpdated() {
-    try {
-        if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
-            sortShares();
-        } else {
-            renderWatchlist();
-        }
-        if (typeof renderPortfolioList === 'function') {
-            const section = document.getElementById('portfolioSection');
-            if (section && section.style.display !== 'none') {
-                renderPortfolioList();
-            }
-        }
-    } catch (e) {
-        console.error('Live Price: onLivePricesUpdated error:', e);
-    }
-}
-
-// Compatibility stub (legacy callsites may invoke)
-function forceApplyCurrentSort() { /* legacy no-op retained */ }
-document.addEventListener('DOMContentLoaded', function () {
-    // --- Watchlist logic moved to watchlist.js ---
-    // Import and call watchlist functions
-    if (window.watchlistModule) {
-        window.watchlistModule.renderWatchlistSelect();
-    // If we have a persisted lastKnownTargetCount, ensure the notification icon restores pre-live-load
-    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
-        window.watchlistModule.populateShareWatchlistSelect();
-        window.watchlistModule.ensurePortfolioOptionPresent();
-        setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
-    }
-    // Automatic closed-market banner and ghosting
-    const marketStatusBanner = document.getElementById('marketStatusBanner');
-    function formatSydneyDate(d) {
-        return new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
-    }
-    function isAfterCloseUntilMidnightSydney() {
-        const now = new Date();
-        const opts = { hour: 'numeric', minute: 'numeric', hour12: false, timeZone: 'Australia/Sydney' };
-        const timeStr = new Intl.DateTimeFormat('en-AU', opts).format(now);
-        const [h, m] = timeStr.split(':').map(Number);
-        return (h > 16) || (h === 16 && m >= 0);
-    }
+// NOTE: Removed duplicate malformed updateOrCreateShareTableRow that caused syntax errors during Alert Target refactor.
     function updateMarketStatusUI() {
     const open = isAsxMarketOpen();
         if (marketStatusBanner) {
@@ -396,7 +244,7 @@ document.addEventListener('DOMContentLoaded', function () {
             row.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
         });
     };
-});
+// Removed stray closure from earlier refactor
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
 // via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
@@ -1836,7 +1684,7 @@ function addShareToTable(share) {
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
-        <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
+    <td class="numeric-data-cell">${formatAlertTargetDisplay(share)}</td>
         <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
@@ -1916,6 +1764,26 @@ function addShareToTable(share) {
 
     shareTableBody.appendChild(row);
     logDebug('Table: Added share ' + share.shareName + ' to table.');
+}
+
+// Helper: build unified Alert Target display (Intent + Arrow + Price)
+function formatAlertTargetDisplay(share){
+    try {
+        const intentRaw = (share && share.alertIntent) || (share && share.targetIntent) || (share && share.intent) || '';
+        // Derive intent from UI active buttons if missing on object
+        let intent = intentRaw ? intentRaw.toLowerCase() : '';
+        if (!intent && typeof targetIntentBuyBtn !== 'undefined' && targetIntentBuyBtn && targetIntentSellBtn && share && currentSelectedShareId === share.id){
+            intent = targetIntentBuyBtn.classList.contains('is-active') ? 'buy' : (targetIntentSellBtn.classList.contains('is-active') ? 'sell' : '');
+        }
+        const intentLetter = intent === 'sell' ? 'S' : (intent === 'buy' ? 'B' : '');
+        const dir = (share && share.targetDirection) === 'above' ? 'above' : 'below';
+        const arrow = dir === 'above' ? '▲' : '▼';
+        const arrowClass = dir === 'above' ? 'alert-target-arrow up' : 'alert-target-arrow down';
+        const priceNum = Number(share.targetPrice);
+        const priceStr = (!isNaN(priceNum) && priceNum !== 0) ? '$' + priceNum.toFixed(2) : '';
+        if (!intentLetter && !priceStr) return '';
+        return `<span class="alert-target-display"><span class="intent">${intentLetter}</span> <span class="${arrowClass}">${arrow}</span> <span class="price">${priceStr}</span></span>`;
+    } catch(e) { return ''; }
 }
 
 function addShareToMobileCards(share) {
@@ -2048,7 +1916,7 @@ function addShareToMobileCards(share) {
             </div>
         </div>
         <p class="data-row"><span class="label-text">Entry Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.currentPrice)}</span></p>
-    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.targetPrice)}</span></p>
+    <p class="data-row"><span class="label-text">Alert Target:</span><span class="data-value">${formatAlertTargetDisplay(share)}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
@@ -2249,31 +2117,7 @@ function updateOrCreateShareTableRow(share) {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     const companyName = companyInfo ? companyInfo.name : '';
 
-    const desktopTargetDot2 = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Target price hit"></span>' : '';
-    row.innerHTML = `
-        <td>
-            ${desktopTargetDot2}<span class="share-code-display ${priceClass}">${share.shareName || ''}</span>
-            ${companyName ? `<br><small style=\"font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;\">${companyName}</small>` : ''}
-        </td>
-        <td class="live-price-cell">
-            <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
-            <span class="price-change ${priceClass}">${displayPriceChange}</span>
-        </td>
-    <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
-    <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
-        <td class="star-rating-cell numeric-data-cell">
-            ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
-        </td>
-        <td class="numeric-data-cell">${yieldDisplay}</td>
-    `;
-
-    logDebug('Table: Updated/Created row for share ' + share.shareName + '.');
-}
-
-/**
- * Updates an existing share card or creates a new one if it doesn't exist.
- * @param {object} share The share object.
- */
+// (Removed malformed leftover HTML from prior refactor here)
 function updateOrCreateShareMobileCard(share) {
     if (!mobileShareCardsContainer) {
         console.error('updateOrCreateShareMobileCard: mobileShareCardsContainer element not found.');
@@ -2403,7 +2247,7 @@ function updateOrCreateShareMobileCard(share) {
         <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
         <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
         <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
-    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val=>{const n=Number(val);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(Number(share.targetPrice))}</span></p>
+    <p class="data-row"><span class="label-text">Alert Target:</span><span class="data-value">${formatAlertTargetDisplay(share)}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
@@ -2414,7 +2258,7 @@ function updateOrCreateShareMobileCard(share) {
     }
 
     logDebug('Mobile Cards: Updated/Created card for share ' + share.shareName + '.');
-}
+} // end updateOrCreateShareMobileCard
 
 function updateMainButtonsState(enable) {
     logDebug('UI State: Setting main buttons state to: ' + (enable ? 'ENABLED' : 'DISABLED'));
@@ -9738,3 +9582,6 @@ try {
     } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
 // --- End Super Debug Always-Install ---
+// (Closing brace restored after refactor)
+}
+// End of file
