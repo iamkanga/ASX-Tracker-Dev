@@ -340,9 +340,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="pc-detail-row"><span>Quantity:</span> <span>${shares !== '' ? shares : ''}</span></div>
                     <div class="pc-detail-row"><span>Average Cost:</span> <span>${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
                     <div class="pc-detail-row"><span>Total Cost:</span> <span>${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
+                    <button class="pc-shortcut-btn" aria-label="View Details"><span class="fa fa-plus"></span></button>
                 </div>
             </div>`;
-        });
+    });
 
         // Calculate overall %
         overallPLPct = (totalCostBasis > 0 && typeof totalPL === 'number') ? (totalPL / totalCostBasis) * 100 : 0;
@@ -407,7 +408,19 @@ document.addEventListener('DOMContentLoaded', function () {
             if (eyeBtn) {
                 eyeBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    // Open shareDetailModal for this stock
+                    if (typeof openShareDetailModal === 'function') {
+                        openShareDetailModal(share.shareName || '', share.id);
+                    } else {
+                        alert('Share details modal not available.');
+                    }
+                });
+            }
+            // Plus shortcut icon logic (in expanded details)
+            const shortcutBtn = card.querySelector('.pc-shortcut-btn');
+            if (shortcutBtn) {
+                shortcutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
                     if (typeof openShareDetailModal === 'function') {
                         openShareDetailModal(share.shareName || '', share.id);
                     } else {
