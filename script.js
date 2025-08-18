@@ -9793,12 +9793,16 @@ function showTargetHitDetailsModal(options={}) {
             const SORT_OPTIONS = [
                 { value:'code_asc', label:'A → Z' },
                 { value:'price_desc', label:'Price ↓' },
-                { value:'pct_desc', label:'% Change ↓' },
-                { value:'chg_desc', label:'$ Change ↓' }
+                { value:'pct_asc', label:'Biggest Losers (% ↓)' },
+                { value:'chg_asc', label:'Biggest Losers ($ ↓)' }
             ];
             const storedSort = (localStorage.getItem('discoverSort') || 'pct_desc');
+            // Migrate old sort keys if present
+            let initialSort = storedSort;
+            if (initialSort === 'pct_desc') initialSort = 'pct_asc';
+            if (initialSort === 'chg_desc') initialSort = 'chg_asc';
             SORT_OPTIONS.forEach(opt=>{
-                const o = document.createElement('option'); o.value = opt.value; o.textContent = opt.label; if (opt.value===storedSort) o.selected = true; sortSelect.appendChild(o);
+                const o = document.createElement('option'); o.value = opt.value; o.textContent = opt.label; if (opt.value===initialSort) o.selected = true; sortSelect.appendChild(o);
             });
             sortWrapper.appendChild(sortLabel); sortWrapper.appendChild(sortSelect);
             const sortDesc = document.createElement('div');
@@ -9807,8 +9811,8 @@ function showTargetHitDetailsModal(options={}) {
                 switch(v){
                     case 'code_asc': return 'Alphabetical (A → Z)';
                     case 'price_desc': return 'Highest live price first';
-                    case 'pct_desc': return 'Largest percentage movers first';
-                    case 'chg_desc': return 'Largest $ movers first';
+                    case 'pct_asc': return 'Biggest losers by % (lowest to highest)';
+                    case 'chg_asc': return 'Biggest losers by $ (lowest to highest)';
                     default: return '';
                 }
             }
@@ -9822,10 +9826,10 @@ function showTargetHitDetailsModal(options={}) {
                     list.sort((a,b)=> (a.code||'').localeCompare(b.code||''));
                 } else if (mode === 'price_desc') {
                     list.sort((a,b)=> ( (b._priceForSort ?? -Infinity) - (a._priceForSort ?? -Infinity) ) );
-                } else if (mode === 'pct_desc') {
-                    list.sort((a,b)=> ( (Math.abs(b._pctForSort ?? -Infinity)) - (Math.abs(a._pctForSort ?? -Infinity)) ) );
-                } else if (mode === 'chg_desc') {
-                    list.sort((a,b)=> ( (Math.abs(b._chForSort ?? -Infinity)) - (Math.abs(a._chForSort ?? -Infinity)) ) );
+                } else if (mode === 'pct_asc') {
+                    list.sort((a,b)=> ((a._pctForSort ?? 0) - (b._pctForSort ?? 0)) );
+                } else if (mode === 'chg_asc') {
+                    list.sort((a,b)=> ((a._chForSort ?? 0) - (b._chForSort ?? 0)) );
                 }
             }
             const ul = document.createElement('ul');
