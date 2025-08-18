@@ -3783,6 +3783,9 @@ table td.live-price-cell.negative-change {
 
 /* Live Price Display Section for Mobile Cards and Modals */
 .live-price-display-section {
+    /* Centralized sizing contract */
+    --live-price-size: 1.75em;         /* Primary (ASX Code + Live Price) */
+    --secondary-scale: 0.50;           /* All secondary metrics (change, 52W, P/E, etc.) */
     background: none !important;
     border-radius: 8px;
     padding: 15px;
@@ -3826,12 +3829,7 @@ table td.live-price-cell.negative-change {
 .neutral-code-text { color: var(--text-color) !important; }
 /* Adjusted: live price should visually dominate over day change */
 /* Live price large: define a variable so change can be derived at 50% */
-.live-price-display-section .live-price-large {
-    --live-price-size: 1.75em; /* base size */
-    font-size: var(--live-price-size);
-    font-weight: 800;
-    line-height: 1;
-}
+.live-price-display-section .live-price-large { font-size: var(--live-price-size); font-weight: 800; line-height: 1; }
 
 /* Modal live price proportional sizing (day change = 50%).
     Place variable on the container so both price and change inherit the same base. */
@@ -3842,13 +3840,18 @@ table td.live-price-cell.negative-change {
 #addShareLivePriceDisplay { --live-price-size:1.9em; }
 @media (max-width:640px){ #addShareLivePriceDisplay { --live-price-size:1.85em; } }
 
-/* Secondary metrics (52w row, P/E, day change) universally 50% of live/code size */
+/* Secondary metrics sizing (contract): ALWAYS secondary-scale * primary */
 #modalLivePriceDisplaySection .fifty-two-week-row,
 #modalLivePriceDisplaySection .pe-ratio-row,
 #modalLivePriceDisplaySection .price-change-large,
 #addShareLivePriceDisplay .fifty-two-week-row,
 #addShareLivePriceDisplay .pe-ratio-row,
-#addShareLivePriceDisplay .price-change-large { font-size: calc(var(--live-price-size) * 0.5) !important; }
+#addShareLivePriceDisplay .price-change-large { font-size: calc(var(--live-price-size) * var(--secondary-scale)) !important; }
+
+/* Generic fallback so any secondary inside a live-price-display-section auto scales */
+.live-price-display-section .price-change-large,
+.live-price-display-section .fifty-two-week-row,
+.live-price-display-section .pe-ratio-row { font-size: calc(var(--live-price-size) * var(--secondary-scale)); }
 #modalLivePriceDisplaySection .price-change-large { margin-left:14px; }
 #addShareLivePriceDisplay .price-change-large { margin-left:10px; }
 
@@ -3856,7 +3859,6 @@ table td.live-price-cell.negative-change {
 /* Adjusted: make day change subordinate to live price for clarity */
 /* Day change always 50% of live price (uses variable from .live-price-large) */
 .live-price-display-section .price-change-large {
-    font-size: calc(var(--live-price-size, 1.75em) * 0.5);
     font-weight: 600;
     white-space: nowrap;
     margin-left: 10px;
@@ -3872,8 +3874,8 @@ table td.live-price-cell.negative-change {
 
 /* Mobile fine-tune: further reduce change size on very small screens */
 @media (max-width: 640px) {
-    .live-price-display-section .live-price-large { --live-price-size: 1.9em; font-size: var(--live-price-size); }
-    .live-price-display-section .price-change-large { font-size: calc(var(--live-price-size, 1.9em) * 0.5); margin-left: 8px; }
+    .live-price-display-section { --live-price-size: 1.9em; }
+    .live-price-display-section .price-change-large { margin-left: 8px; }
 }
 
 /* (Removed legacy compact absolute-position & flex centering block – superseded by FINAL COMPACT CARD GRID LAYOUT) */
@@ -5860,8 +5862,8 @@ body.dark-theme .alert-item {
 /* Grid item placements */
 .mobile-share-cards.compact-view .mobile-card .card-code { grid-area: code; justify-self: start; align-self: start; font-size: 1.368em; font-weight: 800; }
 .mobile-share-cards.compact-view .mobile-card .card-chevron { grid-area: chevron; justify-self: end; align-self: start; font-size: 1.26em; font-weight: 700; }
-.mobile-share-cards.compact-view .mobile-card .card-live-price { grid-area: live; --card-live-price-size:1.416em; font-size: var(--card-live-price-size) !important; font-weight: 700; line-height: 1.15; }
-.mobile-share-cards.compact-view .mobile-card .card-price-change { grid-area: change; font-size: calc(var(--card-live-price-size,1.416em)*0.5); font-weight: 700; line-height: 1.1; }
+.mobile-share-cards.compact-view .mobile-card .card-live-price { grid-area: live; --live-price-size:1.416em; font-size: var(--live-price-size) !important; font-weight: 700; line-height: 1.15; }
+.mobile-share-cards.compact-view .mobile-card .card-price-change { grid-area: change; font-size: calc(var(--live-price-size)*var(--secondary-scale)); font-weight: 700; line-height: 1.1; }
 /* Ensure text centering for middle and bottom */
 .mobile-share-cards.compact-view .mobile-card .card-live-price,
 .mobile-share-cards.compact-view .mobile-card .card-price-change { text-align: center; width: 100%; }
