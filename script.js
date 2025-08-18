@@ -9602,24 +9602,31 @@ function showTargetHitDetailsModal(options={}) {
                     } else {
                         reason = 'No movement data yet';
                     }
-                    li.innerHTML = `<span class="code">${code}</span><span class="live">${price!=null?('$'+Number(price).toFixed(2)):'-'}</span><span class="delta ${dir}">${reason}</span>`;
+                    // Always show explicit movement components line if we have any data
+                    const movementLine = (pctStr || chStr) ? `${pctStr}${chStr?(' ('+chStr+')'):''}` : 'No movement data yet';
+                    li.innerHTML = `<span class="code">${code}</span>` +
+                        `<span class="live">${price!=null?('$'+Number(price).toFixed(2)):'-'}</span>` +
+                        `<span class="delta ${dir}" title="${movementLine}">${movementLine}</span>`;
                     li.addEventListener('click',()=>{
                         try { hideModal(modal); } catch(_) {}
-                        // Open the add/search modal (sidebar add share)
+                        // Open Stock Search & Research modal instead of Add Share form
                         try {
-                            if (typeof showAddNewShareModal === 'function') {
-                                showAddNewShareModal();
-                            } else if (typeof newShareBtn !== 'undefined' && newShareBtn && newShareBtn.click) {
-                                newShareBtn.click();
+                            if (typeof stockSearchModal !== 'undefined' && stockSearchModal) {
+                                showModal(stockSearchModal);
+                            } else if (typeof searchStockBtn !== 'undefined' && searchStockBtn && searchStockBtn.click) {
+                                searchStockBtn.click();
                             }
-                        } catch(err) { if (DEBUG_MODE) console.warn('Open add share modal failed', err); }
-                        if (typeof shareNameInput !== 'undefined' && shareNameInput) {
-                            shareNameInput.value = code;
-                            if (typeof updateAddFormLiveSnapshot === 'function') {
-                                try { updateAddFormLiveSnapshot(code); } catch(err) {}
+                        } catch(err) { if (DEBUG_MODE) console.warn('Open stock search modal failed', err); }
+                        // Populate search input and fetch details for research URLs
+                        try {
+                            if (typeof asxSearchInput !== 'undefined' && asxSearchInput) {
+                                asxSearchInput.value = code;
+                                if (typeof displayStockDetailsInSearchModal === 'function') {
+                                    displayStockDetailsInSearchModal(code);
+                                }
+                                try { asxSearchInput.focus(); asxSearchInput.setSelectionRange(code.length, code.length); } catch(_) {}
                             }
-                            try { shareNameInput.focus(); shareNameInput.setSelectionRange(code.length, code.length); } catch(_) {}
-                        }
+                        } catch(err2) { if (DEBUG_MODE) console.warn('Populate search modal failed', err2); }
                     });
                     ul.appendChild(li);
                 });
