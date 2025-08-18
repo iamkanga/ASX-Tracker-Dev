@@ -79,6 +79,14 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 */
 /* End Copilot source control helper (style.css) */
+/* === Alert Target Inline Display === */
+.alert-target-cell, .alert-target-line { white-space: nowrap; font-weight:600; font-size:0.9rem; }
+.alert-target-intent { display:inline-block; min-width:1ch; text-align:center; }
+.alert-target-arrow { font-size:0.85rem; font-weight:700; }
+.alert-target-arrow.up { color: var(--brand-green,#008000); }
+.alert-target-arrow.down { color: var(--brand-red,#c42131); }
+.alert-target-price { font-weight:600; }
+@media (max-width:640px){ .alert-target-cell { font-size:0.8rem; } }
 
 /* --- Modern Responsive Controls Row & Dropdowns --- */
 /* Modern, balanced controls row: equal width, responsive, all on one line */

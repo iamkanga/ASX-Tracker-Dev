@@ -1784,6 +1784,29 @@ const accordionObserver = new MutationObserver(() => {
 });
 try { accordionObserver.observe(document.body, { childList: true, subtree: true }); } catch(e) {}
 
+// Helper: Render unified Alert Target (Intent + Direction + Price) B/S + Arrow + $Price
+function renderAlertTargetInline(share, opts = {}) {
+    if (!share) return opts.emptyReturn || '';
+    const intentRaw = (share.alertIntent || share.intent || share.targetIntent || '').toString().toLowerCase();
+    const intent = intentRaw === 'sell' ? 'S' : (intentRaw === 'buy' ? 'B' : '');
+    const dirRaw = (share.targetDirection || share.direction || '').toString().toLowerCase();
+    const isAbove = dirRaw === 'above';
+    const isBelow = dirRaw === 'below';
+    const arrow = isAbove ? '▲' : (isBelow ? '▼' : '');
+    const priceNum = Number(share.targetPrice);
+    const hasPrice = !isNaN(priceNum) && priceNum !== 0;
+    if (!intent && !arrow && !hasPrice) return opts.emptyReturn || '';
+    const priceStr = hasPrice ? ('$' + priceNum.toFixed(2)) : '';
+    const arrowClass = isAbove ? 'alert-target-arrow up' : (isBelow ? 'alert-target-arrow down' : 'alert-target-arrow');
+    const parts = [];
+    if (intent) parts.push('<span class="alert-target-intent">'+intent+'</span>');
+    if (arrow) parts.push('<span class="'+arrowClass+'">'+arrow+'</span>');
+    if (priceStr) parts.push('<span class="alert-target-price">'+priceStr+'</span>');
+    const core = parts.join(' ');
+    if (opts.showLabel) return '<strong>Alert:</strong> ' + core;
+    return core;
+}
+
 /**
  * Adds a single share to the desktop table view.
  * @param {object} share The share object to add.
@@ -1836,7 +1859,7 @@ function addShareToTable(share) {
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
-        <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
+    <td class="numeric-data-cell alert-target-cell">${renderAlertTargetInline(share)}</td>
         <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
@@ -3561,9 +3584,7 @@ function showShareDetails() {
         }
     } catch(e) { console.warn('Hide Empty Sections: issue applying visibility', e); }
 
-    modalTargetPrice.innerHTML = `
-        ${displayTargetPrice}
-    `.trim();
+    modalTargetPrice.innerHTML = renderAlertTargetInline(share, { emptyReturn: '' });
 
     // Ensure dividendAmount and frankingCredits are numbers before formatting
     const displayDividendAmount = Number(share.dividendAmount);
@@ -9055,7 +9076,7 @@ function showTargetHitDetailsModal() {
             <div class="target-hit-item-grid">
                 <div class="col-left">
                     <span class="share-name-code ${priceClass}">${share.shareName}</span>
-                    <span class="target-price-line">Target: <strong>$${(targetPrice !== null && !isNaN(targetPrice)) ? Number(targetPrice).toFixed(2) : 'N/A'}</strong></span>
+                    <span class="target-price-line alert-target-line">${renderAlertTargetInline(share,{showLabel:true})}</span>
                     ${movementDeltaHtml?`<div class=\"movement-line\">${movementDeltaHtml}</div>`:''}
                 </div>
                 <div class="col-right">
