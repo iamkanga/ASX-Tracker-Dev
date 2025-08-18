@@ -384,7 +384,7 @@ function makeFilesAvailableToSourceControlCSS() {
   border-bottom-right-radius: 6px;
   margin-left: 0;
 }
-@media (max-width: 600px) {
+    .pc-details-btn:hover { color: var(--icon-action-hover-color); }
     .controls-flex-row.no-gap {
         flex-direction: row !important;
         flex-wrap: wrap !important;
