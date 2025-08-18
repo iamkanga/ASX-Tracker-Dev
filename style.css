@@ -4096,15 +4096,18 @@ table td.live-price-cell.negative-change {
 }
 
 /* General Close Button Styling for all modals */
+/* Normalized close button sizing: inherit unified modal icon size (set earlier to 1.9rem / 54px) */
 .close-button {
     background:none;
     border:none;
     color:var(--text-color);
-    font-size:2.2em;
+    font-size:inherit; /* use size from unified modal icon rule */
     cursor:pointer;
-    padding:8px;
+    padding:0; /* match other modal action icons */
     line-height:1;
-    display:block;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
     flex-shrink:0;
     position:static;
     margin-left:0;
@@ -4118,10 +4121,12 @@ table td.live-price-cell.negative-change {
 }
 
 /* Specific styling for close buttons in modal headers (like Share, Watchlist, Custom Dialog) */
-.modal-header-with-icon .close-button { font-size:2.4em; padding:8px; }
+/* Remove oversized variant; keep spacing consistent */
+.modal-header-with-icon .close-button { font-size:inherit; padding:0; }
 
 /* Specific styling for calculator modal close button */
-.calculator-modal-content .close-button { font-size:2.4em; position:absolute; top:10px; right:20px; color:var(--text-color); }
+/* Calculator modal keeps positioning but not larger font */
+.calculator-modal-content .close-button { font-size:inherit; position:absolute; top:10px; right:20px; color:var(--text-color); padding:0; }
 
 /* Modal action icon sizing */
 .modal-header-action-group button, .modal-header-action-group .icon-button, .modal-header-action-group .delete-icon, .modal-header-action-group .edit-icon, .modal-header-action-group .save-icon { font-size:2rem !important; padding:10px !important; line-height:1; }
