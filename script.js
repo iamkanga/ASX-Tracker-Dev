@@ -244,47 +244,30 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!portfolioListContainer) return;
 
         // Filter for shares assigned to the Portfolio
-    const portfolioShares = allSharesData.filter(s => shareBelongsTo(s, 'portfolio'));
+        const portfolioShares = allSharesData.filter(s => shareBelongsTo(s, 'portfolio'));
         if (portfolioShares.length === 0) {
             portfolioListContainer.innerHTML = '<p>No shares in your portfolio yet.</p>';
             return;
         }
 
-        // Helper to get a displayable current price for a share (live, last live when closed, then entered price)
-        function getDisplayPrice(share) {
-            const code = (share.shareName || '').toUpperCase();
-            const lp = livePrices ? livePrices[code] : undefined;
-            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
-            let price = null;
-            if (lp) {
-                if (marketOpen && lp.live !== null && !isNaN(lp.live)) {
-                    price = Number(lp.live);
-                } else if (!marketOpen && lp.lastLivePrice !== null && !isNaN(lp.lastLivePrice)) {
-                    price = Number(lp.lastLivePrice);
-                }
-            }
-            if (price === null || isNaN(price)) {
-                // Fallback to user-entered currentPrice if available
-                price = (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice)))
-                    ? Number(share.currentPrice)
-                    : null;
-            }
-            return price;
-        }
+        // Helper functions
+        function fmtMoney(n) { return formatMoney(n); }
+        function fmtPct(n) { return formatPercent(n); }
 
-    function fmtMoney(n) { return formatMoney(n); }
-    function fmtPct(n) { return formatPercent(n); }
+        // --- Calculate Portfolio Metrics ---
+        let totalValue = 0;
+        let totalPL = 0;
+        let totalCostBasis = 0;
+        let todayNet = 0;
+        let todayNetPct = 0;
+        let overallPLPct = 0;
+        let daysGain = 0;
+        let daysLoss = 0;
+        let profitPLSum = 0;
+        let lossPLSum = 0;
 
-    let totalValue = 0;
-    let totalPL = 0;
-    let totalCostBasis = 0; // sum of shares * avgPrice for total % calc
-    // Build desktop/table HTML
-    let htmlTable = '<table class="portfolio-table"><thead><tr><th>Code</th><th>Shares</th><th>Avg<br>Price</th><th>Live</th><th>Value</th><th>P/L</th><th>P/L %</th></tr></thead><tbody>';
-    // Build mobile cards markup
-    let cards = [];
-    let profitPLSum = 0; // sum of positive P/L
-    let lossPLSum = 0;   // sum of negative P/L (will stay negative)
-        portfolioShares.forEach(share => {
+        // For each share, calculate metrics
+        const cards = portfolioShares.map(share => {
             const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
                 ? Math.trunc(Number(share.portfolioShares)) : '';
             const avgPrice = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)))
@@ -293,24 +276,21 @@ document.addEventListener('DOMContentLoaded', function () {
             const lpObj = livePrices ? livePrices[code] : undefined;
             const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
             let priceNow = null;
+            let prevClose = null;
             if (lpObj) {
                 if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceNow = Number(lpObj.live);
                 else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceNow = Number(lpObj.lastLivePrice);
+                if (lpObj.prevClose !== null && !isNaN(lpObj.prevClose)) prevClose = Number(lpObj.prevClose);
             }
             if (priceNow === null || isNaN(priceNow)) {
                 if (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice))) {
                     priceNow = Number(share.currentPrice);
                 }
             }
-            let dailyChangeClass = '';
-            if (lpObj) {
-                const latestLive = (lpObj.live !== null && !isNaN(lpObj.live)) ? Number(lpObj.live) : (lpObj.lastLivePrice ?? null);
-                const latestPrev = (lpObj.prevClose !== null && !isNaN(lpObj.prevClose)) ? Number(lpObj.prevClose) : (lpObj.lastPrevClose ?? null);
-                if (latestLive !== null && latestPrev !== null && !isNaN(latestLive) && !isNaN(latestPrev)) {
-                    const dayChange = latestLive - latestPrev;
-                    if (dayChange > 0) dailyChangeClass = 'positive'; else if (dayChange < 0) dailyChangeClass = 'negative';
-                }
+            if (prevClose === null && lpObj && lpObj.lastPrevClose !== null && !isNaN(lpObj.lastPrevClose)) {
+                prevClose = Number(lpObj.lastPrevClose);
             }
+            // Value, P/L, Cost Basis
             const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
             if (typeof rowValue === 'number') totalValue += rowValue;
             const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
@@ -319,85 +299,87 @@ document.addEventListener('DOMContentLoaded', function () {
                 totalPL += rowPL;
                 if (rowPL > 0) profitPLSum += rowPL; else if (rowPL < 0) lossPLSum += rowPL;
             }
+            // Today change
+            let todayChange = 0;
+            let todayChangePct = 0;
+            if (typeof shares === 'number' && typeof priceNow === 'number' && typeof prevClose === 'number') {
+                todayChange = (priceNow - prevClose) * shares;
+                todayChangePct = prevClose > 0 ? ((priceNow - prevClose) / prevClose) * 100 : 0;
+                todayNet += todayChange;
+                todayNetPct += todayChangePct;
+                if (todayChange > 0) daysGain += todayChange;
+                if (todayChange < 0) daysLoss += todayChange;
+            }
+            // P/L %
             const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
-            const priceColorClass = marketOpen ? 'live-price' : 'last-price';
-            const priceCell = (priceNow !== null && priceNow !== undefined) ? ('<span class="price-value '+priceColorClass+'">' + fmtMoney(priceNow) + '</span>') : '';
-            htmlTable += `<tr data-doc-id="${share.id}" class="${dailyChangeClass}">
-                <td class="code-cell">${share.shareName || ''}</td>
-                <td class="num-cell shares-cell">${shares !== '' ? formatWithCommas(shares) : ''}</td>
-                <td class="num-cell avg-cell">${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</td>
-                <td class="num-cell live-cell ${marketOpen ? 'live' : 'last'} liveprice-cell">${priceCell}</td>
-                <td class="num-cell value-cell">${rowValue !== null ? fmtMoney(rowValue) : ''}</td>
-                <td class="num-cell pl-cell ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</td>
-                <td class="num-cell plpct-cell ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</td>
-            </tr>`;
-            const card = `<div class="portfolio-card ${dailyChangeClass}" data-doc-id="${share.id}">
-                <div class="pc-row top">
-                    <div class="pc-code ${dailyChangeClass}">${share.shareName || ''}</div>
-                    <div class="pc-live ${marketOpen ? 'live' : 'last'}"><span class="val ${priceColorClass}">${priceNow !== null && priceNow !== undefined ? fmtMoney(priceNow) : ''}</span></div>
-                    <div class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</div>
-                </div>
-                <div class="pc-row mid">
-                    <div class="pc-shares">${shares !== '' ? shares : ''} @ ${avgPrice !== '' ? fmtMoney(avgPrice) : ''}</div>
+            const todayClass = (todayChange > 0) ? 'positive' : (todayChange < 0 ? 'negative' : 'neutral');
+
+            // Card HTML (collapsed/expandable)
+            return `<div class="portfolio-card expanded-${false} ${plClass}" data-doc-id="${share.id}">
+                <div class="pc-main-row">
+                    <div class="pc-code">${share.shareName || ''}</div>
                     <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
                 </div>
-                <div class="pc-row bottom ${plClass}">
+                <div class="pc-metrics-row">
                     <div class="pc-pl-label">P/L</div>
-                    <div class="pc-pl-val">${rowPL !== null ? fmtMoney(rowPL) : ''}</div>
+                    <div class="pc-pl-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></div>
+                    <div class="pc-today-label">Today</div>
+                    <div class="pc-today-val ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-todaypct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></div>
+                </div>
+                <button class="pc-details-btn" aria-expanded="false" aria-label="Show Details"><span class="chevron">▼</span> Details</button>
+                <div class="pc-details" style="display:none;">
+                    <div class="pc-detail-row"><span>Quantity:</span> <span>${shares !== '' ? shares : ''}</span></div>
+                    <div class="pc-detail-row"><span>Average Cost:</span> <span>${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
+                    <div class="pc-detail-row"><span>Cost Basis:</span> <span>${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
                 </div>
             </div>`;
-            cards.push(card);
         });
-        // Total row
-        const totalPLClass = totalPL > 0 ? 'positive' : (totalPL < 0 ? 'negative' : 'neutral');
-        const totalPLPct = (totalCostBasis > 0 && typeof totalPL === 'number') ? (totalPL / totalCostBasis) * 100 : 0;
-        htmlTable += `<tr class="portfolio-total-row ${totalPLClass}">
-            <td colspan="4" style="text-align:right;font-weight:600;">Total</td>
-            <td style="font-weight:700;">${fmtMoney(totalValue)}</td>
-            <td class="${totalPLClass}" style="font-weight:700;">${fmtMoney(totalPL)}</td>
-            <td class="${totalPLClass}" style="font-weight:700;">${fmtPct(totalPLPct)}</td>
-        </tr>`;
-        htmlTable += '</tbody></table>';
-        const totalsCard = `<div class="portfolio-card total ${totalPLClass} wide">
-            <div class="pc-row top"><div class="pc-code">Totals</div></div>
-            <div class="pc-row mid"><div class="pc-value-label">Value</div><div class="pc-value">${fmtMoney(totalValue)}</div></div>
-            <div class="pc-row bottom ${totalPLClass}"><div class="pc-pl-label">P/L</div><div class="pc-pl-val">${fmtMoney(totalPL)}</div></div>
-        </div>`;
-    const totalPLPctDisplay = (totalCostBasis > 0) ? fmtPct((totalPL / totalCostBasis) * 100) : '0.00%';
-        const profitLossSummary = `<div class="portfolio-summary-bar two-cards">
-            <div class="ps-card profit highlight">
-                <div class="ps-label">Profit</div>
-                <div class="ps-value">${fmtMoney(profitPLSum)}</div>
-            </div>
-            <div class="ps-card loss highlight">
-                <div class="ps-label">Loss</div>
-                <div class="ps-value">${fmtMoney(Math.abs(lossPLSum))}</div>
-            </div>
-        </div>`;
-    const htmlCards = `<div class="portfolio-cards">${cards.join('')}<div class="totals-footer-wrapper">${totalsCard}</div></div>`;
-        portfolioListContainer.innerHTML = profitLossSummary + htmlTable + htmlCards;
 
-        // Make portfolio rows interactive: click to open details; right-click to open context menu
-    const rows = portfolioListContainer.querySelectorAll('table.portfolio-table tbody tr, .portfolio-cards .portfolio-card');
-        rows.forEach(row => {
-            if (row.classList.contains('portfolio-total-row')) return; // skip totals
-            const docId = row.getAttribute('data-doc-id');
-            if (!docId) return;
-            row.addEventListener('click', () => {
-                selectShare(docId);
-                showShareDetails();
+        // Calculate overall %
+        overallPLPct = (totalCostBasis > 0 && typeof totalPL === 'number') ? (totalPL / totalCostBasis) * 100 : 0;
+        daysLoss = Math.abs(daysLoss);
+
+        // --- Summary Bar ---
+        const summaryBar = `<div class="portfolio-summary-bar">
+            <div class="summary-card">
+                <div class="summary-label">Total Value</div>
+                <div class="summary-value">${fmtMoney(totalValue)}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Today's Net</div>
+                <div class="summary-value ${todayNet >= 0 ? 'positive' : 'negative'}">${fmtMoney(todayNet)} <span class="summary-pct">${fmtPct(todayNetPct)}</span></div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Overall Gain/Loss</div>
+                <div class="summary-value ${totalPL >= 0 ? 'positive' : 'negative'}">${fmtMoney(totalPL)} <span class="summary-pct">${fmtPct(overallPLPct)}</span></div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Day's Gain</div>
+                <div class="summary-value positive">${fmtMoney(daysGain)}</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Day's Loss</div>
+                <div class="summary-value negative">${fmtMoney(daysLoss)}</div>
+            </div>
+        </div>`;
+
+        // --- Cards Grid ---
+        const cardsGrid = `<div class="portfolio-cards-grid">${cards.join('')}</div>`;
+        portfolioListContainer.innerHTML = summaryBar + cardsGrid;
+
+        // --- Expand/Collapse Logic ---
+        const cardNodes = portfolioListContainer.querySelectorAll('.portfolio-card');
+        cardNodes.forEach(card => {
+            const btn = card.querySelector('.pc-details-btn');
+            const details = card.querySelector('.pc-details');
+            btn.addEventListener('click', function() {
+                const expanded = btn.getAttribute('aria-expanded') === 'true';
+                btn.setAttribute('aria-expanded', !expanded);
+                details.style.display = expanded ? 'none' : 'block';
+                card.classList.toggle('expanded', !expanded);
+                btn.querySelector('.chevron').textContent = !expanded ? '▲' : '▼';
             });
-            row.addEventListener('contextmenu', (e) => {
-                if (window.innerWidth > 768) {
-                    e.preventDefault();
-                    selectShare(docId);
-                    showContextMenu(e, docId);
-                }
-            });
-            // Mobile long-press disabled: passive touch handlers only
-            row.addEventListener('touchstart', () => { selectedElementForTap = row; }, { passive: true });
-            row.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
         });
     };
 });
