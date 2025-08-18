@@ -62,6 +62,27 @@ window.__applyUserAuthState = async function(user){
 if (typeof window.finishSignIn !== 'function') {
     window.finishSignIn = async function(user){
         if (!user) { console.log('[AuthDiag] finishSignIn: no user'); return; }
+        // Defer until core functions exist
+        const needed = [
+            'loadUserWatchlistsAndSettings',
+            'loadTriggeredAlertsListener',
+            'startGlobalSummaryListener',
+            'fetchLivePrices',
+            'startLivePriceUpdates',
+            'loadAsxCodesFromCSV'
+        ];
+        const missing = needed.filter(n => typeof window[n] !== 'function');
+        if (missing.length) {
+            const attempt = (window.__finishSignInRetries||0)+1;
+            window.__finishSignInRetries = attempt;
+            if (attempt < 40) { // ~40 * 200ms = 8s max wait
+                if (attempt === 1) console.log('[AuthDiag] finishSignIn: delaying until functions defined:', missing.join(','));
+                setTimeout(()=> window.finishSignIn(user), 200);
+                return;
+            } else {
+                console.warn('[AuthDiag] finishSignIn: giving up waiting for functions:', missing.join(','));
+            }
+        }
         if (window.__finishSignInRan) { console.log('[AuthDiag] finishSignIn: already ran'); return; }
         window.__finishSignInRan = true;
         console.log('[AuthDiag] finishSignIn: starting full data load');
@@ -69,13 +90,8 @@ if (typeof window.finishSignIn !== 'function') {
         try { currentUserId = user.uid; } catch(_) {}
         try { updateMainTitle(); } catch(_) {}
         try { updateMainButtonsState(true); } catch(_) {}
-        // Load user data and live prices similar to onAuthStateChanged
-        try {
-            await loadUserWatchlistsAndSettings();
-        } catch(e) { console.log('[AuthDiag] finishSignIn loadUserWatchlistsAndSettings error', e); }
-        try {
-            await loadTriggeredAlertsListener();
-        } catch(e) { console.log('[AuthDiag] finishSignIn loadTriggeredAlertsListener error', e); }
+        try { await loadUserWatchlistsAndSettings(); } catch(e) { console.log('[AuthDiag] finishSignIn loadUserWatchlistsAndSettings error', e); }
+        try { await loadTriggeredAlertsListener(); } catch(e) { console.log('[AuthDiag] finishSignIn loadTriggeredAlertsListener error', e); }
         try { startGlobalSummaryListener(); } catch(e) { console.log('[AuthDiag] finishSignIn startGlobalSummaryListener error', e); }
         try {
             const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
