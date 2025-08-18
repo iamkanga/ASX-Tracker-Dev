@@ -1,5 +1,31 @@
 // Build Marker: 2025-08-17T00:00Z v2.0.0 (Modal architecture reset: external Global movers heading, singleton overlay)
 console.log('[AuthDiag] script.js top-level sentinel reached');
+// Ultra-early simple binder: ensures at least ONE basic handler is attached even if later logic fails.
+(function basicAuthButtonInit(){
+    try {
+        const btn = document.getElementById('splashSignInBtn');
+        if (!btn) { console.log('[AuthDiag] basicAuthButtonInit: button not found at start'); return; }
+        if (btn.__basicBound) { return; }
+        btn.__basicBound = true;
+        btn.addEventListener('click', async function basicAuthClickSimple(){
+            console.log('[AuthDiag] basic handler click');
+            if (!window.firebaseAuth || !window.authFunctions) {
+                console.log('[AuthDiag] basic handler: auth not ready');
+                return;
+            }
+            try {
+                const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
+                if (!provider) { console.log('[AuthDiag] basic handler: provider missing'); return; }
+                try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
+                console.log('[AuthDiag] basic handler: calling signInWithPopup');
+                await window.authFunctions.signInWithPopup(window.firebaseAuth, provider).catch(e=>{ throw e; });
+                console.log('[AuthDiag] basic handler: popup call finished (success or redirect)');
+            } catch(err) {
+                console.log('[AuthDiag] basic handler error:', err && err.code, err && err.message);            }
+        });
+        console.log('[AuthDiag] basicAuthButtonInit: basic handler bound');
+    } catch(e) { console.log('[AuthDiag] basicAuthButtonInit exception', e); }
+})();
 // Global early diagnostic: capture ALL clicks (capturing phase) to verify splashSignInBtn click propagation
 if (!window.__globalClickDiagInstalled) {
     window.__globalClickDiagInstalled = true;
