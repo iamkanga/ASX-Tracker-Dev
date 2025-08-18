@@ -1845,6 +1845,37 @@ body.theme-muted-grey {
     --cash-edit-icon-color: #999999;
 }
 
+/* === Mobile Modal Safe Area & Keyboard Handling Enhancements (Appended) === */
+@media (max-width: 820px) {
+    .modal .modal-content.global-alerts-modal, .modal .modal-content.global-alerts-modal *:focus-visible {
+        outline-offset: 2px;
+    }
+    .modal .modal-content.global-alerts-modal {
+        max-height: calc(100dvh - 18px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        scroll-padding-bottom: 160px; /* ensure last inputs not hidden behind keyboard */
+    }
+    /* When a virtual keyboard is inferred (class toggled via JS), add extra breathing room */
+    body.keyboard-visible .modal .modal-content.global-alerts-modal {
+        padding-bottom: 150px;
+    }
+    /* Sticky header keeps save / close buttons accessible while scrolling thresholds */
+    .global-alerts-modal .modal-header-with-icon {
+        position: sticky;
+        top: 0;
+        background: var(--modal-content-bg, #fff);
+        z-index: 10;
+        padding-top: 6px;
+        margin-top: -6px; /* compensate for added padding in some themes */
+        box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+    }
+}
+
+/* Utility class JS can toggle when a virtual keyboard shows on mobile */
+body.keyboard-visible { /* marker class (intentionally minimal) */ }
+
 /* Subtle Themes - Adjusted for better visual distinction */
 body.theme-subtle-1 { /* Subtle Sky */
     --background-color: #e0eaf2; /* Lighter blue */

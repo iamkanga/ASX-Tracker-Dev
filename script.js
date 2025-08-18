@@ -6056,6 +6056,8 @@ async function toggleAlertEnabled(shareId) {
 
 // NEW: Recompute triggered alerts from livePrices + alertsEnabledMap (global portfolio scope)
 function recomputeTriggeredAlerts() {
+    // Guard: during initial load phase never auto-open the target modal (even if shares already at target)
+    const suppressAutoOpen = !!window.__initialLoadPhase;
     const enabled = [];
     const muted = [];
     const lpEntries = Object.entries(livePrices || {});
@@ -6087,7 +6089,7 @@ function recomputeTriggeredAlerts() {
     try { console.log('[Diag][recomputeTriggeredAlerts] enabledIds:', newEnabled.map(s=>s.id), 'mutedIds:', newMuted.map(s=>s.id)); } catch(_){ }
     updateTargetHitBanner();
     try { enforceTargetHitStyling(); } catch(_) {}
-    if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') { showTargetHitDetailsModal(); }
+    if (!suppressAutoOpen && targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') { showTargetHitDetailsModal(); }
 }
 
 // === Global Price Alerts ===
@@ -9935,6 +9937,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
                 try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true'); } catch(e) {}
                 startLivePriceUpdates();
+                // Extra safety: ensure target modal not left open from cached state on fresh auth
+                try { if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none' && window.__initialLoadPhase) hideModal(targetHitDetailsModal); } catch(_){ }
 
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
