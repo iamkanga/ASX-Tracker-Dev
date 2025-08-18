@@ -522,6 +522,12 @@ let suppressShareFormReopen = false;
 
 // App version (kept for internal logging; no longer displayed in UI title bar)
 const APP_VERSION = 'v0.1.5';
+// Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
+try {
+    if (localStorage.getItem('lastSelectedView') === '__movers') {
+        sessionStorage.setItem('preResetLastSelectedView','__movers');
+    }
+} catch(_) {}
 
 
 // Live Price Data
@@ -4848,15 +4854,15 @@ async function displayStockDetailsInSearchModal(asxCode) {
             </div>
             <div class="live-price-display-section">
                 <div class="fifty-two-week-row">
-                    <h3 class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? formatMoney(low52Week) : 'N/A'}</h3>
-                    <h3 class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? formatMoney(high52Week) : 'N/A'}</h3>
+                    <span class="fifty-two-week-value low">Low: ${!isNaN(low52Week) ? formatMoney(low52Week) : 'N/A'}</span>
+                    <span class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? formatMoney(high52Week) : 'N/A'}</span>
                 </div>
                 <div class="live-price-main-row">
                         <h2 class="modal-share-name neutral-code-text">${displayPrice}</h2>
                         <span class="price-change-large ${priceClass}">${priceChangeText}</span>
                     </div>
                 <div class="pe-ratio-row">
-                    <h3 class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A'}</h3>
+                    <span class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A'}</span>
                 </div>
             </div>
             <div class="external-links-section">
@@ -9495,6 +9501,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.authFunctions.onAuthStateChanged(auth, async (user) => {
             if (user) {
+                // Restore movers view if it was active prior to a storage reset during auth
+                try {
+                    const pre = sessionStorage.getItem('preResetLastSelectedView');
+                    if (pre === '__movers' && !localStorage.getItem('lastSelectedView')) {
+                        localStorage.setItem('lastSelectedView','__movers');
+                        sessionStorage.removeItem('preResetLastSelectedView');
+                    }
+                } catch(_) {}
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
                 logDebug('AuthState: User email: ' + user.email);
