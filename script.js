@@ -747,8 +747,10 @@ async function loadUserPreferences() {
         const snap = await window.firestore.getDoc(prefsRef);
         if (snap.exists()) {
             userPreferences = snap.data() || {};
+            if (DEBUG_MODE) console.log('[Prefs] Loaded user preferences:', userPreferences);
             return userPreferences;
         }
+        if (DEBUG_MODE) console.log('[Prefs] No existing preferences doc');
     } catch(e) { if (DEBUG_MODE) console.warn('Prefs: load failed', e); }
     return {};
 }
@@ -759,6 +761,7 @@ async function persistUserPreference(key, value) {
         const obj = {}; obj[key] = value; obj.updatedAt = window.firestore.serverTimestamp();
         await window.firestore.setDoc(prefsRef, obj, { merge: true });
         userPreferences[key] = value;
+        if (DEBUG_MODE) console.log('[Prefs] Persisted', key, '=', value);
     } catch(e) { if (DEBUG_MODE) console.warn('Prefs: persist failed', e); }
 }
 
@@ -5039,8 +5042,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
             if (!isNaN(previousClosePrice) && previousClosePrice !== null) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                const arrow = change > 0 ? '▲' : (change < 0 ? '▼' : '');
-                priceChangeText = `${arrow} ${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                priceChangeText = `${change>0?'+':''}${formatAdaptivePrice(change)} / ${percentageChange>0?'+':''}${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         }
@@ -7702,6 +7704,11 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             await loadUserWatchlistsAndSettings();
                         // Load Firestore-backed UI preferences (compact view etc.)
                         await loadUserPreferences();
+                // Bootstrap defaults if empty
+                if (Object.keys(userPreferences||{}).length === 0) {
+                    if (DEBUG_MODE) console.log('[Prefs] Bootstrapping default preferences');
+                    try { await persistUserPreference('compactViewMode', localStorage.getItem('currentMobileViewMode') || currentMobileViewMode); } catch(_) {}
+                }
             // --- END IMPORTANT FIX ---
             logDebug('Firestore: Watchlist (ID: ' + watchlistId + ') renamed to \'' + newName + '\'.');
         } else { // Adding new watchlist
