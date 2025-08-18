@@ -9618,6 +9618,7 @@ function showTargetHitDetailsModal(options={}) {
             const appliedMinimumPrice = summary.appliedMinimumPrice;
             const codeSet = new Set(nonPortfolioCodes.map(c => (c || '').toUpperCase()));
             const snapshot = (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) ? window.__lastMoversSnapshot : null;
+            const externalRows = Array.isArray(globalExternalPriceRows) ? globalExternalPriceRows : [];
 
             let entries = [];
             if (snapshot) {
@@ -9644,13 +9645,19 @@ function showTargetHitDetailsModal(options={}) {
             if (!entries.length) {
                 const li=document.createElement('li'); li.className='ghosted-text'; li.textContent='No current global movers meeting threshold.'; ul.appendChild(li);
             } else {
+                const missingCodes = [];
                 entries.forEach(en => {
                     const code = (en.code || '').toUpperCase();
                     const lpData = (livePrices && livePrices[code]) ? livePrices[code] : {};
-                    // Map snapshot fields: live -> price fallback, change->ch
+                    // Fallback: if no livePrices data, attempt to source from externalRows captured during last fetch
+                    let ext = null;
+                    if ((!lpData || lpData.live == null) && externalRows.length) {
+                        ext = externalRows.find(r => r.code === code);
+                    }
+                    // Map snapshot & external fields: live -> price fallback, change->ch
                     function num(v){ if (v===null||v===undefined||v==='') return null; const n=Number(v); return isNaN(n)?null:n; }
-                    const price = num(en.price) ?? num(en.live) ?? num(lpData.live);
-                    const prevClose = num(en.prevClose) ?? num(lpData.prevClose);
+                    const price = num(en.price) ?? num(en.live) ?? num(lpData.live) ?? (ext?num(ext.live):null);
+                    const prevClose = num(en.prevClose) ?? num(lpData.prevClose) ?? (ext?num(ext.prevClose):null);
                     let ch = num(en.ch) ?? num(en.change) ?? num(lpData.change);
                     // If change missing, derive from price/prev
                     if ((ch === null || ch === undefined) && price !== null && prevClose !== null) ch = price - prevClose;
@@ -9668,8 +9675,10 @@ function showTargetHitDetailsModal(options={}) {
                         comboLine = `${ch>0?'+':''}${ch.toFixed(2)}`;
                     } else if (pct != null) {
                         comboLine = `${pct>0?'+':''}${pct.toFixed(2)}%`;
+                    } else {
+                        missingCodes.push(code);
                     }
-                    if (DEBUG_MODE) console.log('[DiscoverItem]', code, { price, prevClose, ch, pct, raw: en, lpData });
+                    if (DEBUG_MODE) console.log('[DiscoverItem]', code, { price, prevClose, ch, pct, raw: en, lpData, ext });
                     li.innerHTML = `<span class="code">${code}</span>` +
                         `<span class="live">${price!=null?('$'+Number(price).toFixed(2)):'-'}</span>` +
                         `<span class="delta movement-combo ${colorClass}" title="${comboLine}">${comboLine}</span>`;
@@ -9696,6 +9705,22 @@ function showTargetHitDetailsModal(options={}) {
                     });
                     ul.appendChild(li);
                 });
+                // Async enrichment retry: if some codes missing data, schedule a one-off background refresh
+                if (missingCodes.length) {
+                    if (DEBUG_MODE) console.log('[Discover] Missing movement for', missingCodes.length, 'codes. Scheduling enrichment fetch.');
+                    const now = Date.now();
+                    if (!window.__discoverEnrichTs || (now - window.__discoverEnrichTs) > 4000) {
+                        window.__discoverEnrichTs = now;
+                        setTimeout(async ()=>{
+                            try {
+                                await fetchLivePrices({ cacheBust: true });
+                                if (modal && modal.style.display !== 'none') {
+                                    try { openDiscoverModal(summaryData); } catch(e){ console.warn('Discover enrichment refresh failed', e); }
+                                }
+                            } catch(e) { console.warn('Discover enrichment fetch error', e); }
+                        }, 350);
+                    }
+                }
             }
             listEl.appendChild(ul);
         }
