@@ -202,7 +202,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         stockWatchlistSection.style.display = 'none';
         // Ensure selection state reflects Portfolio for downstream filters (e.g., ASX buttons)
-        currentSelectedWatchlistIds = ['portfolio'];
+        // But do not auto-switch away from a forced initial Movers selection unless user explicitly chose portfolio
+        if (!__forcedInitialMovers || (watchlistSelect && watchlistSelect.value === 'portfolio')) {
+            currentSelectedWatchlistIds = ['portfolio'];
+        }
         // Reflect in dropdown if present
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
             if (watchlistSelect.value !== 'portfolio') {
@@ -464,6 +467,8 @@ const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
 const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
 let userWatchlists = []; // Stores all watchlists for the user
 let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
+// Guard: track if an initial forced movers selection was applied so later routines do not override
+let __forcedInitialMovers = false;
 // Restore last explicit watchlist (including virtual '__movers') from localStorage before any render logic
 try {
     const lsLastWatch = localStorage.getItem('lastWatchlistSelection');
@@ -480,11 +485,28 @@ try { targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') ==
 try {
     const lastView = localStorage.getItem('lastSelectedView');
     if (lastView === '__movers') {
+        // Immediate forced selection BEFORE any data. Will re-render later as data arrives.
         currentSelectedWatchlistIds = ['__movers'];
-    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = '__movers'; }
-        window.addEventListener('load', () => {
-            setTimeout(() => { try { renderWatchlist(); enforceMoversVirtualView(true); } catch(e) {} }, 300);
-        });
+        __forcedInitialMovers = true;
+        // Set select value if present
+        if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = '__movers'; }
+        // Insert a lightweight placeholder if table body exists (avoid duplicate if rerun)
+        try {
+            const tbody = document.querySelector('#shareTable tbody');
+            if (tbody && !tbody.querySelector('tr.__movers-loading')) {
+                const tr = document.createElement('tr');
+                tr.className='__movers-loading';
+                const td = document.createElement('td');
+                td.colSpan = 20;
+                td.textContent = 'Loading movers…';
+                td.style.opacity='0.7';
+                td.style.fontStyle='italic';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            }
+        } catch(_) {}
+        // Schedule an early render/enforce even if data empty; later data loads will call render again.
+        setTimeout(()=>{ try { if (typeof renderWatchlist==='function') renderWatchlist(); enforceMoversVirtualView(true); } catch(_) {} }, 50);
         try { updateMainTitle(); } catch(e) {}
         try { ensureTitleStructure(); } catch(e) {}
         try { updateTargetHitBanner(); } catch(e) {}
@@ -5702,7 +5724,26 @@ function applyGlobalSummaryFilter(options = {}) {
         // Directional gating (revised): apply based on computed mode
         if (mode === 'up' && change < 0) return false;
         if (mode === 'down' && change > 0) return false;
-        if (isPercent) return pct >= numeric; else return absChange >= numeric;
+        // Threshold comparison: when single direction mode, compare raw movement (positive or negative) rather than absolute
+        if (isPercent) {
+            if (mode === 'up') {
+                const pctPos = lp.prevClose !== 0 ? ((change) / lp.prevClose) * 100 : 0;
+                return pctPos >= numeric;
+            } else if (mode === 'down') {
+                const pctNeg = lp.prevClose !== 0 ? ((-change) / lp.prevClose) * 100 : 0; // make positive number for comparison
+                return pctNeg >= numeric;
+            } else {
+                return pct >= numeric;
+            }
+        } else {
+            if (mode === 'up') {
+                return change >= numeric; // raw positive dollar move
+            } else if (mode === 'down') {
+                return (-change) >= numeric; // raw negative dollar move magnitude
+            } else {
+                return absChange >= numeric;
+            }
+        }
     }).map(([code, lp]) => {
         const change = lp.live - lp.prevClose;
         const absChange = Math.abs(change);
