@@ -3312,6 +3312,13 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
 
     showModal(shareFormSection);
     shareNameInput.focus();
+    // Always show live price snapshot if code is present
+    if (shareNameInput && shareNameInput.value.trim()) {
+        updateAddFormLiveSnapshot(shareNameInput.value.trim());
+    } else if (addShareLivePriceDisplay) {
+        addShareLivePriceDisplay.style.display = 'none';
+        addShareLivePriceDisplay.innerHTML = '';
+    }
     logDebug('Form: Opened edit form for share: ' + shareToEdit.shareName + ' (ID: ' + selectedShareDocId + ')');
 }
 
@@ -7343,6 +7350,13 @@ function handleAddShareClick() {
     populateShareWatchlistSelect(null, true); // true indicates new share
     showModal(shareFormSection);
     shareNameInput.focus();
+    // Always show live price snapshot if code is present
+    if (shareNameInput && shareNameInput.value.trim()) {
+        updateAddFormLiveSnapshot(shareNameInput.value.trim());
+    } else if (addShareLivePriceDisplay) {
+        addShareLivePriceDisplay.style.display = 'none';
+        addShareLivePriceDisplay.innerHTML = '';
+    }
     addCommentSection(commentsFormContainer); // Add an initial empty comment section for new shares
     checkFormDirtyState(); // Check dirty state immediately after opening for new share
 }
