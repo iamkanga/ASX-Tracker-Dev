@@ -3645,22 +3645,17 @@ function showShareDetails() {
             currentModalLivePriceLarge.style.display = 'inline';
         }
 
-        if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice) && 
+        if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice) &&
             prevClosePrice !== undefined && prevClosePrice !== null && !isNaN(prevClosePrice)) {
             const change = livePrice - prevClosePrice;
-            const percentageChange = (prevClosePrice !== 0 && !isNaN(prevClosePrice)) ? (change / prevClosePrice) * 100 : 0; // Handle division by zero
-
-            currentModalPriceChangeLarge.textContent = ''; // Clear previous content
-            const priceChangeSpan = document.createElement('span');
-            priceChangeSpan.classList.add('price-change'); // Keep base class for coloring, color already applied to parent
+            const percentageChange = (prevClosePrice !== 0 && !isNaN(prevClosePrice)) ? (change / prevClosePrice) * 100 : 0;
             if (change > 0) {
-                priceChangeSpan.textContent = '(+$' + formatAdaptivePrice(change) + ' / +' + formatAdaptivePercent(percentageChange) + '%)';
+                currentModalPriceChangeLarge.textContent = '(+$' + formatAdaptivePrice(change) + ' / +' + formatAdaptivePercent(percentageChange) + '%)';
             } else if (change < 0) {
-                priceChangeSpan.textContent = '(-$' + formatAdaptivePrice(Math.abs(change)) + ' / ' + formatAdaptivePercent(percentageChange) + '%)'; // percentageChange is already negative
+                currentModalPriceChangeLarge.textContent = '(-$' + formatAdaptivePrice(Math.abs(change)) + ' / ' + formatAdaptivePercent(percentageChange) + '%)';
             } else {
-                priceChangeSpan.textContent = '($0.00 / 0.00%)';
+                currentModalPriceChangeLarge.textContent = '($0.00 / 0.00%)';
             }
-            currentModalPriceChangeLarge.appendChild(priceChangeSpan);
             currentModalPriceChangeLarge.style.display = 'inline';
         } else {
             currentModalPriceChangeLarge.textContent = '';

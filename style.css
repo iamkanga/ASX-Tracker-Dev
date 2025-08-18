@@ -3648,8 +3648,8 @@ table td.live-price-cell.negative-change {
     background-color: transparent;
 }
 
-.price-change {
-    font-size: 0.8em;
+/* Removed standalone .price-change 0.8em scaling; change now written directly into .price-change-large which already has the 50% contract */
+.price-change { /* Keep selector for legacy markup; no size override */
     margin-left: 5px;
     font-weight: 700;
     white-space: nowrap;
