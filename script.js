@@ -9706,6 +9706,7 @@ function showTargetHitDetailsModal(options={}) {
                 return badges;
             }
             const criteriaBadges = buildCriteriaBadges();
+            const lastUpdatedTs = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
 
             let entries = [];
             if (snapshot) {
@@ -9730,8 +9731,39 @@ function showTargetHitDetailsModal(options={}) {
             } else {
                 const none=document.createElement('span'); none.className='criteria-badge none'; none.textContent='No active thresholds'; badgeContainer.appendChild(none);
             }
+            // Reset button
+            const resetBtn = document.createElement('button');
+            resetBtn.type = 'button';
+            resetBtn.className = 'criteria-reset-btn';
+            resetBtn.textContent = 'Reset';
+            resetBtn.title = 'Clear all global alert thresholds';
+            resetBtn.addEventListener('click', () => {
+                try {
+                    // Clear threshold globals
+                    globalPercentIncrease = null; globalDollarIncrease = null; globalPercentDecrease = null; globalDollarDecrease = null; globalMinimumPrice = null;
+                    // Persist cleared settings if persistence function exists
+                    if (typeof saveGlobalAlertSettings === 'function') {
+                        saveGlobalAlertSettings({
+                            globalPercentIncrease: null,
+                            globalDollarIncrease: null,
+                            globalPercentDecrease: null,
+                            globalDollarDecrease: null,
+                            globalMinimumPrice: null
+                        });
+                    }
+                    // Provide immediate feedback
+                    showCustomAlert('Global thresholds reset');
+                    // Rebuild movers snapshot (clears)
+                    try { if (window.__lastMoversSnapshot) delete window.__lastMoversSnapshot; } catch(_) {}
+                    // Re-open modal with updated (empty) criteria
+                    openDiscoverModal(summaryData);
+                } catch(e){ console.warn('Reset thresholds failed', e); }
+            });
+            const tsSpan = document.createElement('span'); tsSpan.className='criteria-timestamp'; tsSpan.textContent = lastUpdatedTs;
             criteriaBar.appendChild(titleSpan);
             criteriaBar.appendChild(badgeContainer);
+            criteriaBar.appendChild(tsSpan);
+            criteriaBar.appendChild(resetBtn);
             listEl.appendChild(criteriaBar);
             // Sorting controls (create once per render)
             const sortWrapper = document.createElement('div');
