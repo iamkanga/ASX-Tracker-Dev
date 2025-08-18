@@ -1,181 +1,162 @@
 // Build Marker: 2025-08-17T00:00Z v2.0.0 (Modal architecture reset: external Global movers heading, singleton overlay)
-console.log('[AuthDiag] script.js top-level sentinel reached');
-// --- Early stub declarations (no-op placeholders replaced later by real functions) ---
-if (typeof loadUserWatchlistsAndSettings !== 'function') { window.loadUserWatchlistsAndSettings = async function(){ console.log('[AuthDiag] stub loadUserWatchlistsAndSettings'); }; window.loadUserWatchlistsAndSettings.__isStub = true; }
-if (typeof loadTriggeredAlertsListener !== 'function') { window.loadTriggeredAlertsListener = async function(){ console.log('[AuthDiag] stub loadTriggeredAlertsListener'); }; window.loadTriggeredAlertsListener.__isStub = true; }
-if (typeof startGlobalSummaryListener !== 'function') { window.startGlobalSummaryListener = function(){ console.log('[AuthDiag] stub startGlobalSummaryListener'); }; window.startGlobalSummaryListener.__isStub = true; }
-if (typeof fetchLivePrices !== 'function') { window.fetchLivePrices = async function(){ console.log('[AuthDiag] stub fetchLivePrices'); }; window.fetchLivePrices.__isStub = true; }
-if (typeof startLivePriceUpdates !== 'function') { window.startLivePriceUpdates = function(){ console.log('[AuthDiag] stub startLivePriceUpdates'); }; window.startLivePriceUpdates.__isStub = true; }
-if (typeof loadAsxCodesFromCSV !== 'function') { window.loadAsxCodesFromCSV = async function(){ console.log('[AuthDiag] stub loadAsxCodesFromCSV'); return []; }; window.loadAsxCodesFromCSV.__isStub = true; }
-// Missing callback stubs (prevent ReferenceErrors before real definitions later in file)
-if (typeof window.onLivePricesUpdated !== 'function') { window.onLivePricesUpdated = function(){ /* no-op early */ }; window.onLivePricesUpdated.__isStub = true; }
-
-// Helper: force a full reload sequence once real (non-stub) functions are present
-if (typeof window.realReload !== 'function') {
-    window.realReload = async function(){
-        console.log('[AuthDiag] realReload invoked');
-        const required = ['loadUserWatchlistsAndSettings','loadTriggeredAlertsListener','startGlobalSummaryListener','fetchLivePrices','startLivePriceUpdates','loadAsxCodesFromCSV'];
-        const deadline = Date.now() + 10000; // 10s max wait
-        while (Date.now() < deadline) {
-            const missing = required.filter(n => typeof window[n] !== 'function');
-            const stubs   = required.filter(n => window[n] && window[n].__isStub);
-            if (!missing.length && !stubs.length) break;
-            console.log('[AuthDiag] realReload waiting. missing=', missing, 'stubs=', stubs);
-            await new Promise(r=>setTimeout(r,250));
-        }
-        try { window.__finishSignInRan = false; } catch(_) {}
-        const user = (window.firebaseAuth && window.firebaseAuth.currentUser) || null;
-        if (!user) { console.warn('[AuthDiag] realReload: no signed-in user; abort'); return; }
-        try { await window.finishSignIn(user); } catch(e) { console.warn('[AuthDiag] realReload finishSignIn error', e); }
-        console.log('[AuthDiag] realReload done');
-    };
-}
-// Ultra-early simple binder: ensures at least ONE basic handler is attached even if later logic fails.
-(function basicAuthButtonInit(){
-    try {
-        const btn = document.getElementById('splashSignInBtn');
-        if (!btn) { console.log('[AuthDiag] basicAuthButtonInit: button not found at start'); return; }
-        if (btn.__basicBound) { return; }
-        btn.__basicBound = true;
-        btn.addEventListener('click', async function basicAuthClickSimple(){
-            console.log('[AuthDiag] basic handler click');
-            if (!window.firebaseAuth || !window.authFunctions) {
-                console.log('[AuthDiag] basic handler: auth not ready');
-                return;
-            }
-            try {
-                const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
-                if (!provider) { console.log('[AuthDiag] basic handler: provider missing'); return; }
-                try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
-                console.log('[AuthDiag] basic handler: calling signInWithPopup');
-                let credential = null;
-                try {
-                    credential = await window.authFunctions.signInWithPopup(window.firebaseAuth, provider);
-                } catch(pErr) {
-                    console.log('[AuthDiag] basic handler popup error:', pErr && pErr.code, pErr && pErr.message);
-                    throw pErr;
-                }
-                console.log('[AuthDiag] basic handler: popup call finished (success or redirect). Has credential=', !!credential);
-                if (credential && credential.user) {
-                    console.log('[AuthDiag] basic handler: user object uid=' + credential.user.uid);
-                    // Fallback manual UI update if onAuthStateChanged not yet processed
-                    if (!window.__manualAuthApplied) {
-                        window.__manualAuthApplied = true;
-                        try { window.__applyUserAuthState && window.__applyUserAuthState(credential.user); } catch(e) { console.log('[AuthDiag] manual apply error', e); }
-                        try { window.finishSignIn && window.finishSignIn(credential.user); } catch(e) { console.log('[AuthDiag] finishSignIn invoke error', e); }
-                    }
-                }
-            } catch(err) {
-                console.log('[AuthDiag] basic handler error:', err && err.code, err && err.message);            }
-        });
-        console.log('[AuthDiag] basicAuthButtonInit: basic handler bound');
-    } catch(e) { console.log('[AuthDiag] basicAuthButtonInit exception', e); }
-})();
-
-// Provide a manual apply fallback mirroring core of onAuthStateChanged(user)
-window.__applyUserAuthState = async function(user){
-    console.log('[AuthDiag] __applyUserAuthState invoked');
-    try {
-        if (!user) { console.log('[AuthDiag] __applyUserAuthState: no user passed'); return; }
-        const mainContainer = document.getElementById('mainContainer');
-        const appHeader = document.getElementById('appHeader');
-        const splashScreen = document.getElementById('splashScreen');
-        if (splashScreen) splashScreen.style.display = 'none';
-        if (mainContainer) mainContainer.classList.remove('app-hidden');
-        if (appHeader) appHeader.classList.remove('app-hidden');
-        try { document.body.style.overflow = ''; } catch(_) {}
-        console.log('[AuthDiag] __applyUserAuthState: basic UI reveal done');
-    } catch(e) { console.log('[AuthDiag] __applyUserAuthState exception', e); }
-};
-
-// Unified post-sign-in initializer (idempotent)
-if (typeof window.finishSignIn !== 'function') {
-    window.finishSignIn = async function(user){
-        if (!user) { console.log('[AuthDiag] finishSignIn: no user'); return; }
-        // Defer until core functions exist
-        const needed = [ 'loadUserWatchlistsAndSettings','loadTriggeredAlertsListener','startGlobalSummaryListener','fetchLivePrices','startLivePriceUpdates','loadAsxCodesFromCSV' ];
-        function hasRealFn(name){
-            const w = window[name];
-            if (typeof w === 'function' && !w.__isStub) return true;
-            // Also consider module-scope (globalThis) functions that haven't been copied onto window yet
-            if (typeof globalThis[name] === 'function' && !(globalThis[name] && globalThis[name].__isStub)) return true;
-            return false;
-        }
-        const missing = needed.filter(n => !hasRealFn(n));
-        if (missing.length) {
-            const attempt = (window.__finishSignInRetries||0)+1;
-            window.__finishSignInRetries = attempt;
-            if (attempt < 40) { // ~40 * 200ms = 8s max wait
-                if (attempt === 1) console.log('[AuthDiag] finishSignIn: delaying until functions defined:', missing.join(','));
-                setTimeout(()=> window.finishSignIn(user), 200);
-                return;
-            } else {
-                console.warn('[AuthDiag] finishSignIn: giving up waiting for functions:', missing.join(','));
-            }
-        }
-        if (window.__finishSignInRan) { console.log('[AuthDiag] finishSignIn: already ran'); return; }
-        window.__finishSignInRan = true;
-        console.log('[AuthDiag] finishSignIn: starting full data load');
-        try { window.__applyUserAuthState(user); } catch(e) { console.log('[AuthDiag] finishSignIn applyUserAuthState error', e); }
-        try { currentUserId = user.uid; } catch(_) {}
-        try { updateMainTitle(); } catch(_) {}
-        try { updateMainButtonsState(true); } catch(_) {}
-        try { await loadUserWatchlistsAndSettings(); } catch(e) { console.log('[AuthDiag] finishSignIn loadUserWatchlistsAndSettings error', e); }
-        try { await loadTriggeredAlertsListener(); } catch(e) { console.log('[AuthDiag] finishSignIn loadTriggeredAlertsListener error', e); }
-        try { startGlobalSummaryListener(); } catch(e) { console.log('[AuthDiag] finishSignIn startGlobalSummaryListener error', e); }
-        try {
-            const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
-            await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
-            if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true');
-        } catch(e) { console.log('[AuthDiag] finishSignIn fetchLivePrices error', e); }
-        try { startLivePriceUpdates(); } catch(e) { console.log('[AuthDiag] finishSignIn startLivePriceUpdates error', e); }
-        try {
-            allAsxCodes = await loadAsxCodesFromCSV();
-            console.log('[AuthDiag] finishSignIn: ASX codes loaded count=' + (allAsxCodes && allAsxCodes.length));
-        } catch(e) { console.log('[AuthDiag] finishSignIn loadAsxCodes error', e); }
-        try { updateTargetHitBanner(); } catch(_) {}
-        try { renderWatchlist(); } catch(_) {}
-        console.log('[AuthDiag] finishSignIn: complete');
-    };
-}
-// Global early diagnostic: capture ALL clicks (capturing phase) to verify splashSignInBtn click propagation
-if (!window.__globalClickDiagInstalled) {
-    window.__globalClickDiagInstalled = true;
-    document.addEventListener('click', (ev) => {
-        try {
-            const id = ev.target && ev.target.id;
-            if (id === 'splashSignInBtn' || (ev.target.closest && ev.target.closest('#splashSignInBtn'))) {
-                console.log('[AuthDiag] Global capture saw click on splashSignInBtn (willBubble=', ev.bubbles, ')');
-            }
-        } catch(_) {}
-    }, true);
-}
-
-// Expose a quick diagnostic dump function
-window.__dumpAuthDiag = function(){
-    const out = {
-        hasFirebaseAuth: !!window.firebaseAuth,
-        hasAuthFunctions: !!window.authFunctions,
-        authFunctionsKeys: window.authFunctions ? Object.keys(window.authFunctions) : [],
-        buttonEl: !!document.getElementById('splashSignInBtn'),
-        buttonBound: (function(){
-            const b = document.getElementById('splashSignInBtn');
-            return b ? b.getAttribute('data-bound') : null;
-        })(),
-        locationProtocol: window.location && window.location.protocol,
-        serviceWorkerControlled: !!(navigator.serviceWorker && navigator.serviceWorker.controller),
-    docReadyState: document.readyState
-    };
-    console.log('[AuthDiag] __dumpAuthDiag', out);
-    return out;
-};
 // If you do NOT see this line in DevTools Sources, you're viewing a stale cached script.
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
-// NOTE: Removed duplicate malformed updateOrCreateShareTableRow that caused syntax errors during Alert Target refactor.
+// --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
+// Push a new state when opening a modal or navigating to a new in-app view
+function pushAppState(stateObj = {}, title = '', url = '') {
+    history.pushState(stateObj, title, url);
+}
+
+// Listen for the back button (popstate event)
+window.addEventListener('popstate', function(event) {
+    // Let the unified stack-based handler manage modals. Only handle sidebar here.
+    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
+        if (window.toggleAppSidebar) {
+            window.toggleAppSidebar(false); // Explicitly close the sidebar
+        }
+        return; // Exit after handling the sidebar
+    }
+    // Defer modal handling to the stack popstate handler below.
+});
+// Keep main content padding in sync with header height changes (e.g., viewport resize)
+window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
+document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
+// Diagnostic: overlay listener singleton self-check
 document.addEventListener('DOMContentLoaded', () => {
+    try {
+        const ov = document.getElementById('sidebarOverlay') || document.querySelector('.sidebar-overlay');
+        if (ov) {
+            // Attempt to enumerate known listener types by dispatch test events counter (best-effort)
+            let fired = 0;
+            const testHandler = () => { fired++; };
+            ov.addEventListener('mousedown', testHandler, { once: true });
+            const evt = new Event('mousedown');
+            ov.dispatchEvent(evt);
+            // fired should be 1 because our once listener ran; actual sidebar close listener also runs silently
+            // Provide console confirmation marker for QA
+            console.log('[Diag] Overlay singleton check executed. Build marker present.');
+        } else {
+            console.warn('[Diag] Overlay element not found during singleton check.');
+        }
+    } catch(e) { console.warn('[Diag] Overlay singleton check failed', e); }
+});
+// ...existing code...
+
+// Title mutation observer guard to restore if emptied by outside DOM ops
+try {
+    (function installTitleGuard(){
+        if (window.__titleGuardInstalled) return; window.__titleGuardInstalled = true;
+        const host = document.getElementById('dynamicWatchlistTitle'); if(!host) return;
+        const obs = new MutationObserver(()=>{
+            try {
+                const span = document.getElementById('dynamicWatchlistTitleText');
+                if (!span) return;
+                if (!span.textContent || !span.textContent.trim()) {
+                    let wid = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
+                    let expected;
+                    if (wid === '__movers') expected = 'Movers';
+                    else if (wid === 'portfolio') expected = 'Portfolio';
+                    else if (wid === CASH_BANK_WATCHLIST_ID) expected = 'Cash & Assets';
+                    else if (wid === ALL_SHARES_ID) expected = 'All Shares';
+                    else {
+                        const wl = (userWatchlists||[]).find(w=>w.id===wid);
+                        expected = (wl && wl.name) ? wl.name : 'Share Watchlist';
+                    }
+                    span.textContent = expected;
+                    console.warn('[TitleGuard] Restored empty dynamic title to:', expected);
+                }
+            } catch(_) {}
+        });
+        obs.observe(host, { childList:true, characterData:true, subtree:true });
+    })();
+} catch(_) {}
+
+// ...existing code...
+// --- (Aggressive Enforcement Patch Removed) ---
+// The previous patch has been removed as the root cause of the UI issues,
+// a syntax error in index.html, has been corrected. The standard application
+// logic should now function as intended.
+// --- END REMOVED PATCH ---
+
+
+// [Copilot Update] Source control helper
+// This function is a placeholder for automating source control actions (e.g., git add/commit)
+// and for tracking how many times files have been made available to source control.
+// Usage: Call makeFilesAvailableToSourceControl() after major changes if you want to automate this.
+let sourceControlMakeAvailableCount = 0;
+function makeFilesAvailableToSourceControl() {
+    // This is a placeholder for future automation (e.g., via backend or extension)
+    // Instructs the user to use git or triggers a VS Code command if available
+    sourceControlMakeAvailableCount++;
+    if (window && window.showCustomAlert) {
+        window.showCustomAlert('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')', 2000);
+    } else {
+        console.log('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')');
+    }
+    // To actually add to git, run: git init; git add .; git commit -m "Initial commit"
+}
+// End Copilot source control helper
+
+// Helper: Sort shares by percentage change
+function sortSharesByPercentageChange(shares) {
+    return shares.slice().sort((a, b) => {
+        const liveA = livePrices[a.shareName?.toUpperCase()]?.live;
+        const prevA = livePrices[a.shareName?.toUpperCase()]?.prevClose;
+        const liveB = livePrices[b.shareName?.toUpperCase()]?.live;
+        const prevB = livePrices[b.shareName?.toUpperCase()]?.prevClose;
+        const pctA = (prevA && liveA) ? ((liveA - prevA) / prevA) : 0;
+        const pctB = (prevB && liveB) ? ((liveB - prevB) / prevB) : 0;
+        return pctB - pctA; // Descending
+    });
+}
+
+// Lean live prices hook: only resort when sort actually depends on live data
+function onLivePricesUpdated() {
+    try {
+        if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
+            sortShares();
+        } else {
+            renderWatchlist();
+        }
+        if (typeof renderPortfolioList === 'function') {
+            const section = document.getElementById('portfolioSection');
+            if (section && section.style.display !== 'none') {
+                renderPortfolioList();
+            }
+        }
+    } catch (e) {
+        console.error('Live Price: onLivePricesUpdated error:', e);
+    }
+}
+
+// Compatibility stub (legacy callsites may invoke)
+function forceApplyCurrentSort() { /* legacy no-op retained */ }
+document.addEventListener('DOMContentLoaded', function () {
+    // --- Watchlist logic moved to watchlist.js ---
+    // Import and call watchlist functions
+    if (window.watchlistModule) {
+        window.watchlistModule.renderWatchlistSelect();
+    // If we have a persisted lastKnownTargetCount, ensure the notification icon restores pre-live-load
+    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
+        window.watchlistModule.populateShareWatchlistSelect();
+        window.watchlistModule.ensurePortfolioOptionPresent();
+        setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
+    }
+    // Automatic closed-market banner and ghosting
+    const marketStatusBanner = document.getElementById('marketStatusBanner');
+    function formatSydneyDate(d) {
+        return new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+    }
+    function isAfterCloseUntilMidnightSydney() {
+        const now = new Date();
+        const opts = { hour: 'numeric', minute: 'numeric', hour12: false, timeZone: 'Australia/Sydney' };
+        const timeStr = new Intl.DateTimeFormat('en-AU', opts).format(now);
+        const [h, m] = timeStr.split(':').map(Number);
+        return (h > 16) || (h === 16 && m >= 0);
+    }
     function updateMarketStatusUI() {
-        const open = (typeof isAsxMarketOpen === 'function') ? isAsxMarketOpen() : true;
+    const open = isAsxMarketOpen();
         if (marketStatusBanner) {
             if (!open) {
                 const now = new Date();
@@ -192,7 +173,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial status and periodic re-check each minute
     updateMarketStatusUI();
     setInterval(updateMarketStatusUI, 60 * 1000);
-});
+
+    // Ensure Edit Current Watchlist button updates when selection changes
+    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+        watchlistSelect.addEventListener('change', function () {
+            // If Portfolio is selected, show portfolio view
+            if (watchlistSelect.value === 'portfolio') {
+                showPortfolioView();
+                try { localStorage.setItem('lastSelectedView','portfolio'); } catch(e){}
+            } else {
+                // Default: show normal watchlist view
+                showWatchlistView();
+                try { localStorage.setItem('lastSelectedView', watchlistSelect.value); } catch(e){}
+            }
+            updateMainButtonsState(true);
+        });
+    }
 
     // Portfolio view logic
     window.showPortfolioView = function() {
@@ -400,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
         });
     };
-// Removed stray closure from earlier refactor
+});
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
 // via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
@@ -922,30 +918,6 @@ function initializeShareNameAutocomplete(force=false){
 let currentSearchShareData = null; // Stores data of the currently displayed stock in search modal
 const splashKangarooIcon = document.getElementById('splashKangarooIcon');
 const splashSignInBtn = document.getElementById('splashSignInBtn');
-// Helper: robustly update splash sign-in button visual state
-if (typeof window.updateSplashSignInButtonState !== 'function') {
-    window.updateSplashSignInButtonState = function(state, label){
-        const btn = document.getElementById('splashSignInBtn');
-        if (!btn) return;
-        const span = btn.querySelector('span');
-        if (label && span) span.textContent = label;
-        btn.classList.remove('state-loading','state-error','state-ready');
-        switch(state){
-            case 'loading': btn.classList.add('state-loading'); btn.disabled = true; break;
-            case 'error': btn.classList.add('state-error'); btn.disabled = false; break;
-            default: btn.classList.add('state-ready'); btn.disabled = false; break;
-        }
-    };
-}
-
-// Early auth readiness console insight
-setTimeout(()=>{
-    try {
-        if (!window.firebaseAuth || !window.authFunctions) {
-            console.warn('[AuthDebug] Firebase auth objects not yet ready 1s after load. Click will show startup notice.');
-        }
-    } catch(_) {}
-},1000);
 const alertPanel = document.getElementById('alertPanel'); // NEW: Reference to the alert panel (not in current HTML, but kept for consistency)
 const alertList = document.getElementById('alertList'); // NEW: Reference to the alert list container (not in current HTML, but kept for consistency)
 const closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn'); // NEW: Reference to close alert panel button (not in current HTML, but kept for consistency)
@@ -1035,22 +1007,8 @@ function popAppStateEntry() { return appBackStack.pop(); }
 // Removed legacy early hamburger push listener (consolidated later) – now handled in unified sidebar setup
 // Override showModal to push (wrap existing if not already wrapped)
 if (!window.__origShowModalForBack) {
-    // Defer wrapping until showModal exists to prevent ReferenceError when this script section runs before the function declaration.
-    function installModalWrapper(){
-        if (typeof showModal === 'function') {
-            window.__origShowModalForBack = showModal;
-            showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
-            return true;
-        }
-        return false;
-    }
-    if (!installModalWrapper()) {
-        // Retry a few times (DOM parse order or bundler could move things)
-        let modalWrapTries = 0;
-        const wrapTimer = setInterval(()=>{
-            if (installModalWrapper() || ++modalWrapTries > 20) clearInterval(wrapTimer);
-        }, 50);
-    }
+    window.__origShowModalForBack = showModal;
+    showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
 }
 
 window.addEventListener('popstate', ()=>{
@@ -1302,7 +1260,7 @@ async function fetchLivePrices(opts = {}) {
             if (skipped > LOG_LIMIT) parts.push(`skippedNotLogged=${skipped - LOG_LIMIT}`);
             console.log('Live Price: Summary ' + parts.join(', '));
         }
-    try { if (typeof onLivePricesUpdated === 'function') onLivePricesUpdated(); } catch(e){ console.warn('Live Price: onLivePricesUpdated failed', e); }
+        onLivePricesUpdated();
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
     // Recompute triggered alerts purely from live price targetHit flags + alert enabled map
@@ -1878,7 +1836,7 @@ function addShareToTable(share) {
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
-    <td class="numeric-data-cell">${formatAlertTargetDisplay(share)}</td>
+        <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
         <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
@@ -1958,26 +1916,6 @@ function addShareToTable(share) {
 
     shareTableBody.appendChild(row);
     logDebug('Table: Added share ' + share.shareName + ' to table.');
-}
-
-// Helper: build unified Alert Target display (Intent + Arrow + Price)
-function formatAlertTargetDisplay(share){
-    try {
-        const intentRaw = (share && share.alertIntent) || (share && share.targetIntent) || (share && share.intent) || '';
-        // Derive intent from UI active buttons if missing on object
-        let intent = intentRaw ? intentRaw.toLowerCase() : '';
-        if (!intent && typeof targetIntentBuyBtn !== 'undefined' && targetIntentBuyBtn && targetIntentSellBtn && share && currentSelectedShareId === share.id){
-            intent = targetIntentBuyBtn.classList.contains('is-active') ? 'buy' : (targetIntentSellBtn.classList.contains('is-active') ? 'sell' : '');
-        }
-        const intentLetter = intent === 'sell' ? 'S' : (intent === 'buy' ? 'B' : '');
-        const dir = (share && share.targetDirection) === 'above' ? 'above' : 'below';
-        const arrow = dir === 'above' ? '▲' : '▼';
-        const arrowClass = dir === 'above' ? 'alert-target-arrow up' : 'alert-target-arrow down';
-        const priceNum = Number(share.targetPrice);
-        const priceStr = (!isNaN(priceNum) && priceNum !== 0) ? '$' + priceNum.toFixed(2) : '';
-        if (!intentLetter && !priceStr) return '';
-        return `<span class="alert-target-display"><span class="intent">${intentLetter}</span> <span class="${arrowClass}">${arrow}</span> <span class="price">${priceStr}</span></span>`;
-    } catch(e) { return ''; }
 }
 
 function addShareToMobileCards(share) {
@@ -2110,7 +2048,7 @@ function addShareToMobileCards(share) {
             </div>
         </div>
         <p class="data-row"><span class="label-text">Entry Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.currentPrice)}</span></p>
-    <p class="data-row"><span class="label-text">Alert Target:</span><span class="data-value">${formatAlertTargetDisplay(share)}</span></p>
+    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.targetPrice)}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
@@ -2311,7 +2249,31 @@ function updateOrCreateShareTableRow(share) {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     const companyName = companyInfo ? companyInfo.name : '';
 
-// (Removed malformed leftover HTML from prior refactor here)
+    const desktopTargetDot2 = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Target price hit"></span>' : '';
+    row.innerHTML = `
+        <td>
+            ${desktopTargetDot2}<span class="share-code-display ${priceClass}">${share.shareName || ''}</span>
+            ${companyName ? `<br><small style=\"font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;\">${companyName}</small>` : ''}
+        </td>
+        <td class="live-price-cell">
+            <span class="live-price-value ${priceClass}">${displayLivePrice}</span>
+            <span class="price-change ${priceClass}">${displayPriceChange}</span>
+        </td>
+    <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
+    <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
+        <td class="star-rating-cell numeric-data-cell">
+            ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
+        </td>
+        <td class="numeric-data-cell">${yieldDisplay}</td>
+    `;
+
+    logDebug('Table: Updated/Created row for share ' + share.shareName + '.');
+}
+
+/**
+ * Updates an existing share card or creates a new one if it doesn't exist.
+ * @param {object} share The share object.
+ */
 function updateOrCreateShareMobileCard(share) {
     if (!mobileShareCardsContainer) {
         console.error('updateOrCreateShareMobileCard: mobileShareCardsContainer element not found.');
@@ -2441,7 +2403,7 @@ function updateOrCreateShareMobileCard(share) {
         <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
         <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
         <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
-    <p class="data-row"><span class="label-text">Alert Target:</span><span class="data-value">${formatAlertTargetDisplay(share)}</span></p>
+    <p class="data-row"><span class="label-text">Target Price:</span><span class="data-value">${(val=>{const n=Number(val);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(Number(share.targetPrice))}</span></p>
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
@@ -2452,7 +2414,7 @@ function updateOrCreateShareMobileCard(share) {
     }
 
     logDebug('Mobile Cards: Updated/Created card for share ' + share.shareName + '.');
-} // end updateOrCreateShareMobileCard
+}
 
 function updateMainButtonsState(enable) {
     logDebug('UI State: Setting main buttons state to: ' + (enable ? 'ENABLED' : 'DISABLED'));
@@ -7911,56 +7873,16 @@ async function initializeAppLogic() {
         }
     } catch(_) {}
 
-    // Diagnostic helper: update auth status line if present
-    function setAuthStatus(msg, level='info') {
-        try {
-            const el = document.getElementById('authStatusLine');
-            if (!el) return;
-            el.textContent = msg;
-            el.dataset.level = level;
-        } catch(_) {}
-    }
-
-    // Periodic auth readiness monitor (lightweight)
-    (function monitorFirebaseReadiness(){
-        let checks = 0;
-        const iv = setInterval(()=>{
-            checks++;
-            const ready = !!(window.firebaseAuth && window.authFunctions && window.authFunctions.signInWithPopup);
-            if (ready) {
-                setAuthStatus('Auth ready', 'ok');
-                clearInterval(iv);
-            } else {
-                if (checks === 1) setAuthStatus('Loading auth…', 'pending');
-                if (checks === 15) setAuthStatus('Still loading auth…', 'pending');
-                if (checks > 60) { // ~30s
-                    setAuthStatus('Auth failed to load. Reload page.', 'error');
-                    clearInterval(iv);
-                }
-            }
-        }, 500);
-    })();
-
     if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
-        console.log('[AuthDiag] Enter binding block. splashSignInBtn present. Current data-bound=', splashSignInBtn.getAttribute('data-bound'));
         let splashSignInRetryTimer = null;
         let splashSignInInProgress = false;
         splashSignInBtn.setAttribute('data-bound','true');
-        // Simple inline fallback so we know at least ONE handler is attached
-        splashSignInBtn.onclick = function(){ console.log('[AuthDiag] Fallback inline onclick fired'); };
         splashSignInBtn.addEventListener('click', async () => {
-                console.log('[AuthDiag] splashSignInBtn click handler ENTER');
-                logDebug('Auth: Splash Screen Sign-In Button Clicked.');
+            logDebug('Auth: Splash Screen Sign-In Button Clicked.');
             const currentAuth = window.firebaseAuth;
             if (!currentAuth || !window.authFunctions) {
                 console.warn('Auth: Auth service not ready or functions not loaded. Cannot process splash sign-in.');
-                    // Visual micro-feedback so user knows click registered
-                    try {
-                        splashSignInBtn.classList.add('pulse-once');
-                        setTimeout(()=> splashSignInBtn.classList.remove('pulse-once'), 400);
-                    } catch(_) {}
-                    showCustomAlert('Auth starting up… retry shortly.');
-                        setAuthStatus('Click ignored – auth not ready', 'warn');
+                showCustomAlert('Authentication service not ready. Please try again in a moment.');
                 return;
             }
             try {
@@ -7975,46 +7897,22 @@ async function initializeAppLogic() {
                 const btnSpan = splashSignInBtn.querySelector('span');
                 if (btnSpan) { btnSpan.textContent = 'Signing in…'; }
                 // Always create a fresh provider per attempt to avoid stale customParameters
-                    const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
-                    console.log('[AuthDiag] Provider created?', !!provider);
+                const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
                 if (!provider) {
                     console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
                     showCustomAlert('Authentication service not ready. Firebase script missing.');
                     splashSignInInProgress = false;
-                        setAuthStatus('Provider missing', 'error');
                     return;
                 }
                 try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
                 // Popup only
                 const resolver = window.authFunctions.browserPopupRedirectResolver;
-                    console.log('[AuthDiag] Invoking signInWithPopup (resolver present?', !!resolver, ')');
-                    let popupSucceeded = false;
-                    try {
-                        if (resolver) {
-                            await window.authFunctions.signInWithPopup(currentAuth, provider, resolver);
-                        } else {
-                            await window.authFunctions.signInWithPopup(currentAuth, provider);
-                        }
-                        popupSucceeded = true;
-                    } catch (popupErr) {
-                        console.warn('[AuthDiag] Popup sign-in error code:', popupErr && popupErr.code, popupErr);
-                        // Fallback for common popup issues
-                        if (popupErr && (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user')) {
-                            setAuthStatus('Popup issue (' + popupErr.code + '). Trying redirect…', 'warn');
-                            try {
-                                await window.authFunctions.signInWithRedirect(currentAuth, provider);
-                                console.log('[AuthDiag] Redirect attempted after popup issue.');
-                                return; // flow will continue after redirect
-                            } catch (redirErr) {
-                                console.error('[AuthDiag] Redirect fallback failed', redirErr);
-                                throw redirErr; // propagate to outer catch
-                            }
-                        } else {
-                            throw popupErr;
-                        }
-                    }
+                if (resolver) {
+                    await window.authFunctions.signInWithPopup(currentAuth, provider, resolver);
+                } else {
+                    await window.authFunctions.signInWithPopup(currentAuth, provider);
+                }
                 logDebug('Auth: Google Sign-In successful from splash screen.');
-                    setAuthStatus('Signed in (processing)…', 'ok');
                 // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
             }
             catch (error) {
@@ -8026,87 +7924,9 @@ async function initializeAppLogic() {
                 const btnSpanReset = splashSignInBtn.querySelector('span');
                 if (btnSpanReset) { btnSpanReset.textContent = 'Sign in with Google'; }
                 if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-                    setAuthStatus('Sign-in failed: ' + (error.code || error.message), 'error');
             }
         });
     }
-
-// Harden sign-in binding: periodic lightweight verifier (stops after success or max tries)
-(function ensureSplashSignInBinding(){
-    let tries = 0;
-    const maxTries = 25; // ~5s at 200ms
-    const interval = setInterval(()=>{
-        tries++;
-        const btn = document.getElementById('splashSignInBtn');
-        if (!btn) {
-            if (tries >= maxTries) clearInterval(interval);
-            return;
-        }
-    if (btn.getAttribute('data-bound') === 'true') {
-            clearInterval(interval);
-            return; // already bound
-        }
-        // Re-run binding logic (subset) without duplicating code above
-        try {
-            btn.setAttribute('data-bound','true');
-            let splashSignInInProgress = false;
-            btn.addEventListener('click', async () => {
-                console.log('[AuthDiag] ensureSplashSignInBinding click handler ENTER');
-                logDebug('Auth(Rebind): Splash Sign-In Click');
-                const currentAuth = window.firebaseAuth;
-                if (!currentAuth || !window.authFunctions) {
-                    console.warn('Auth(Rebind): Not ready');
-                    try { btn.classList.add('pulse-once'); setTimeout(()=>btn.classList.remove('pulse-once'), 400); } catch(_) {}
-                    showCustomAlert('Auth not ready yet.');
-                    setAuthStatus('Click ignored – auth not ready', 'warn');
-                    return;
-                }
-                if (splashSignInInProgress) return;
-                splashSignInInProgress = true;
-                const span = btn.querySelector('span');
-                if (span) span.textContent = 'Signing in…';
-                btn.disabled = true;
-                try {
-                    const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
-                    if (!provider) throw new Error('Provider missing');
-                    try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
-                    const resolver = window.authFunctions.browserPopupRedirectResolver;
-                    console.log('[AuthDiag] (rebind) Provider created?', !!provider, ' resolver?', !!resolver);
-                    let popupSucceeded = false;
-                    try {
-                        if (resolver) await window.authFunctions.signInWithPopup(window.firebaseAuth, provider, resolver);
-                        else await window.authFunctions.signInWithPopup(window.firebaseAuth, provider);
-                        popupSucceeded = true;
-                    } catch (popupErr) {
-                        console.warn('[AuthDiag] (rebind) Popup error', popupErr && popupErr.code, popupErr);
-                        if (popupErr && (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user')) {
-                            setAuthStatus('Popup issue (' + popupErr.code + '). Trying redirect…', 'warn');
-                            try {
-                                await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
-                                console.log('[AuthDiag] (rebind) Redirect attempted.');
-                                return;
-                            } catch (redirErr) {
-                                console.error('[AuthDiag] (rebind) Redirect fallback failed', redirErr);
-                                throw redirErr;
-                            }
-                        } else {
-                            throw popupErr;
-                        }
-                    }
-                    if (popupSucceeded) setAuthStatus('Signed in (processing)…', 'ok');
-                } catch(err) {
-                    console.error('Auth(Rebind) popup failed', err);
-                    showCustomAlert('Sign-in failed: ' + err.message);
-                    splashSignInInProgress = false;
-                    btn.disabled = false;
-                    if (span) span.textContent = 'Sign in with Google';
-                    setAuthStatus('Sign-in failed: ' + (err.code || err.message), 'error');
-                }
-            });
-        } catch(e) { console.warn('Auth: Rebind attempt failed', e); }
-        if (tries >= maxTries) clearInterval(interval);
-    }, 200);
-})();
 
     // Removed redirect handling entirely: popup-only auth
 
@@ -8220,43 +8040,15 @@ if (deleteAllUserDataBtn) {
         toggleAppSidebar(false); // Close sidebar after action
     });
 }
-else {
-    if (!splashSignInBtn) {
-        console.log('[AuthDiag] Binding block skipped: splashSignInBtn was null at evaluation time');
-    } else {
-        console.log('[AuthDiag] Binding block skipped: data-bound already true');
-    }
-}
-
-// Manual helper to re-run binding logic if needed
-window.forceBindAuthButton = function(){
-    const btn = document.getElementById('splashSignInBtn');
-    if (!btn) { console.log('[AuthDiag] forceBindAuthButton: button not found'); return; }
-    btn.removeAttribute('data-bound');
-    console.log('[AuthDiag] forceBindAuthButton: removed data-bound attribute, reloading page recommended OR call location.reload()');
-};
 
     // Watchlist Select Change Listener
     if (watchlistSelect) {
         watchlistSelect.addEventListener('change', async (event) => {
-            const newVal = event.target.value;
-            logDebug('Watchlist Select: Change event fired. New value: ' + newVal);
-            // Portfolio special handling
-            if (newVal === 'portfolio') {
-                try { showPortfolioView(); } catch(e) { console.warn('Portfolio view switch failed', e); }
-            } else {
-                try { showWatchlistView(); } catch(e) { console.warn('Watchlist view switch failed', e); }
-            }
-            currentSelectedWatchlistIds = [newVal];
+            logDebug('Watchlist Select: Change event fired. New value: ' + event.target.value);
+            currentSelectedWatchlistIds = [event.target.value];
             await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
-            // Render main view (portfolio render handles itself)
-            if (newVal !== 'portfolio') {
-                renderWatchlist();
-            } else {
-                try { renderPortfolioList(); } catch(e) {}
-            }
-            try { updateMainTitle(); } catch(_) {}
-            try { updateMainButtonsState(true); } catch(_) {}
+            // Just render the watchlist. The listeners for shares/cash are already active.
+            renderWatchlist();
             try { enforceMoversVirtualView(); } catch(_) {}
         });
     }
@@ -9495,12 +9287,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
     window.authFunctions.onAuthStateChanged(auth, async (user) => {
-            console.log('[AuthDiag] onAuthStateChanged fired. user=', !!user);
             if (user) {
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
                 logDebug('AuthState: User email: ' + user.email);
-                try { window.finishSignIn && window.finishSignIn(user); } catch(e) { console.log('[AuthDiag] onAuthStateChanged finishSignIn error', e); }
                 try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
                 // Use dynamic update instead of hard-coded label so it reflects current selection
                 updateMainTitle();
@@ -9948,28 +9738,3 @@ try {
     } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
 // --- End Super Debug Always-Install ---
-// (Closing brace restored after refactor)
-}
-// === Post-Parse Readiness Hook (auth ordering fix) ===
-;(function ensureAuthPostParseInit(){
-    try {
-        const names = ['loadUserWatchlistsAndSettings','loadTriggeredAlertsListener','startGlobalSummaryListener','fetchLivePrices','startLivePriceUpdates','loadAsxCodesFromCSV','evaluateGlobalPriceAlerts'];
-        let upgraded = [];
-        names.forEach(n => {
-            if (typeof globalThis[n] === 'function') {
-                const fn = globalThis[n];
-                if (!window[n] || window[n].__isStub) { window[n] = fn; upgraded.push(n); }
-            }
-        });
-        if (upgraded.length) console.log('[AuthDiag] Upgraded window bindings for:', upgraded.join(','));
-        // Auto-run realReload if we previously gave up (stubs) and a user is already signed in
-        if (window.firebaseAuth && window.firebaseAuth.currentUser && typeof window.realReload === 'function') {
-            if (!window.__postParseReloadScheduled) {
-                window.__postParseReloadScheduled = true;
-                setTimeout(()=>{ try { window.realReload(); } catch(e){ console.warn('[AuthDiag] auto realReload error', e); } }, 100);
-            }
-        }
-    } catch(e){ console.warn('[AuthDiag] ensureAuthPostParseInit error', e); }
-})();
-// === End Post-Parse Readiness Hook ===
-// End of file

@@ -4070,13 +4070,6 @@ table td.live-price-cell.negative-change {
     margin-bottom: 0; /* Remove bottom margin */
     display: inline; /* Change to inline display */
 }
-/* Alert Target composite display */
-.alert-target-display { white-space: nowrap; font-weight: 500; font-size: 0.85rem; display:inline-flex; align-items:center; gap:4px; }
-.alert-target-display .intent { font-weight:600; letter-spacing:0.5px; }
-.alert-target-arrow { font-size:0.8rem; line-height:1; display:inline-block; }
-.alert-target-arrow.up { color: var(--positive-color, #1b7f2a); }
-.alert-target-arrow.down { color: var(--negative-color, #c7382b); }
-.mobile-card .mobile-alert-target { display:block; font-size:0.75rem; margin-left:6px; margin-top:2px; }
 
 
 .commsec-message {
