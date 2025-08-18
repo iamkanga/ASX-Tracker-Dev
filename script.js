@@ -9413,6 +9413,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
     window.authFunctions.onAuthStateChanged(auth, async (user) => {
+            console.log('[AuthDiag] onAuthStateChanged fired. user=', !!user);
             if (user) {
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
