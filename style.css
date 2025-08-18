@@ -3839,18 +3839,18 @@ table td.live-price-cell.negative-change {
 #addShareLivePriceDisplay { --live-price-size:1.9em; }
 @media (max-width:640px){ #addShareLivePriceDisplay { --live-price-size:1.85em; } }
 
-/* Secondary metrics sizing (contract): ALWAYS secondary-scale * primary */
-#modalLivePriceDisplaySection .fifty-two-week-row,
-#modalLivePriceDisplaySection .pe-ratio-row,
+/* Secondary metrics sizing (contract): value elements only (avoid inflating container rows) */
 #modalLivePriceDisplaySection .price-change-large,
-#addShareLivePriceDisplay .fifty-two-week-row,
-#addShareLivePriceDisplay .pe-ratio-row,
-#addShareLivePriceDisplay .price-change-large { font-size: calc(var(--live-price-size) * var(--secondary-scale)) !important; }
+#modalLivePriceDisplaySection .fifty-two-week-value,
+#modalLivePriceDisplaySection .pe-ratio-value,
+#addShareLivePriceDisplay .price-change-large,
+#addShareLivePriceDisplay .fifty-two-week-value,
+#addShareLivePriceDisplay .pe-ratio-value { font-size: calc(var(--live-price-size) * var(--secondary-scale)) !important; }
 
-/* Generic fallback so any secondary inside a live-price-display-section auto scales */
+/* Generic fallback for any live price display context */
 .live-price-display-section .price-change-large,
-.live-price-display-section .fifty-two-week-row,
-.live-price-display-section .pe-ratio-row { font-size: calc(var(--live-price-size) * var(--secondary-scale)); }
+.live-price-display-section .fifty-two-week-value,
+.live-price-display-section .pe-ratio-value { font-size: calc(var(--live-price-size) * var(--secondary-scale)); }
 #modalLivePriceDisplaySection .price-change-large { margin-left:14px; }
 #addShareLivePriceDisplay .price-change-large { margin-left:10px; }
 

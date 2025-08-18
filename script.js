@@ -483,7 +483,7 @@ try {
         currentSelectedWatchlistIds = ['__movers'];
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = '__movers'; }
         window.addEventListener('load', () => {
-            setTimeout(() => { try { renderWatchlist(); enforceMoversVirtualView(); } catch(e) {} }, 300);
+            setTimeout(() => { try { renderWatchlist(); enforceMoversVirtualView(true); } catch(e) {} }, 300);
         });
         try { updateMainTitle(); } catch(e) {}
         try { ensureTitleStructure(); } catch(e) {}
@@ -5654,7 +5654,7 @@ function applyGlobalSummaryFilter(options = {}) {
 }
 
 // Enforce virtual Movers view: after a render, hide non-mover rows/cards; restore when leaving
-function enforceMoversVirtualView() {
+function enforceMoversVirtualView(force) {
     const isMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
     const tableRows = document.querySelectorAll('#shareTable tbody tr');
     const mobileCards = document.querySelectorAll('.mobile-share-cards .mobile-card');
@@ -5665,7 +5665,7 @@ function enforceMoversVirtualView() {
     try { if (window.__moversRetryTimer) { clearTimeout(window.__moversRetryTimer); window.__moversRetryTimer = null; } } catch(_) {}
         return;
     }
-    // Always recompute movers (fresh live movement) – fallback to snapshot only if recompute fails
+    // Recompute movers (fresh live movement) – fallback to snapshot only if recompute fails. Force flag triggers unconditional recompute.
     let moversEntries = [];
     try { moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || []; }
     catch(e){ console.warn('Movers enforce: fresh compute failed', e); }
