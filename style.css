@@ -3801,7 +3801,7 @@ table td.live-price-cell.negative-change {
     display: flex;
     justify-content: space-between;
     width: 100%;
-    font-size: calc(var(--live-price-size, 1.75em) * 0.5); /* Align baseline to half live price */
+    font-size: calc(var(--live-price-size, 1.75em) * 0.4); /* smaller secondary info */
     color: var(--text-color);
     margin-bottom: 5px;
 }
@@ -3834,22 +3834,22 @@ table td.live-price-cell.negative-change {
 
 /* Modal live price proportional sizing (day change = 50%).
     Place variable on the container so both price and change inherit the same base. */
-#modalLivePriceDisplaySection { --live-price-size: 2.7em; }
-@media (max-width:640px){ #modalLivePriceDisplaySection { --live-price-size: 2.2em; } }
-/* Modal live price element adopts container variable */
+#modalLivePriceDisplaySection { --live-price-size: 2.8em; }
+@media (max-width:640px){ #modalLivePriceDisplaySection { --live-price-size: 2.25em; } }
+/* Modal / add form: large code & live price; smaller contextual metrics */
 .live-price-display-section .modal-share-name { font-size: var(--live-price-size) !important; font-weight:800; line-height:1; }
-/* Add/Edit Share form live price snapshot uses same proportional system */
-#addShareLivePriceDisplay { --live-price-size:1.75em; }
-@media (max-width:640px){ #addShareLivePriceDisplay { --live-price-size:1.9em; } }
+#addShareLivePriceDisplay { --live-price-size:1.9em; }
+@media (max-width:640px){ #addShareLivePriceDisplay { --live-price-size:1.85em; } }
 
-/* Modal: unify 52W row, P/E row, and day change font size (all equal) and keep change color neutral */
+/* Secondary metrics (52w row, P/E, day change) scaled down globally to 38% of live price unless overridden */
 #modalLivePriceDisplaySection .fifty-two-week-row,
 #modalLivePriceDisplaySection .pe-ratio-row,
-#modalLivePriceDisplaySection .price-change-large { font-size: calc(var(--live-price-size) * 0.5) !important; }
-#modalLivePriceDisplaySection .price-change-large { margin-left:12px; }
-#modalLivePriceDisplaySection .price-change-large.positive,
-#modalLivePriceDisplaySection .price-change-large.negative,
-#modalLivePriceDisplaySection .price-change-large.neutral { color: var(--text-color) !important; }
+#modalLivePriceDisplaySection .price-change-large,
+#addShareLivePriceDisplay .fifty-two-week-row,
+#addShareLivePriceDisplay .pe-ratio-row,
+#addShareLivePriceDisplay .price-change-large { font-size: calc(var(--live-price-size) * 0.38) !important; }
+#modalLivePriceDisplaySection .price-change-large { margin-left:14px; }
+#addShareLivePriceDisplay .price-change-large { margin-left:10px; }
 
 /* Price change text only (no background container / padding) */
 /* Adjusted: make day change subordinate to live price for clarity */
@@ -3923,7 +3923,7 @@ table td.live-price-cell.negative-change {
 .pe-ratio-row {
     width: 100%;
     text-align: center;
-    font-size: calc(var(--live-price-size, 1.75em) * 0.5);
+    font-size: calc(var(--live-price-size, 1.75em) * 0.4);
     color: var(--text-color);
     margin-top: 5px;
 }

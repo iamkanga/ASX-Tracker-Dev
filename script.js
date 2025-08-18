@@ -4387,12 +4387,25 @@ function renderWatchlist() {
         let sharesToRender = [];
 
         if (selectedWatchlistId === '__movers') {
-            // Use snapshot entries if available; fallback to allShares filtered by last snapshot codes
-            const snapshot = window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries) ? window.__lastMoversSnapshot.entries : [];
-            const codeSet = new Set(snapshot.map(e=>e.code));
-            let base = dedupeSharesById(allSharesData);
+            // Fresh compute of movers (preferred) with fallback to last snapshot, then schedule a retry if empty
+            let moversEntries = [];
+            try { if (typeof applyGlobalSummaryFilter === 'function') moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || []; } catch(e){ console.warn('Render movers: compute failed', e); }
+            if ((!moversEntries || moversEntries.length === 0) && window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
+                moversEntries = window.__lastMoversSnapshot.entries;
+            }
+            const codeSet = new Set((moversEntries||[]).map(e=>e.code));
+            const base = dedupeSharesById(allSharesData);
             sharesToRender = base.filter(s => s.shareName && codeSet.has(s.shareName.toUpperCase()));
-            logDebug('Render: Displaying Movers snapshot ('+sharesToRender.length+' items).');
+            logDebug('Render: Displaying Movers computed ('+sharesToRender.length+' items, codes='+codeSet.size+').');
+            // If still empty but we have shares & livePrices may not be ready, schedule a one-time re-render retry
+            if (sharesToRender.length === 0 && base.length > 0 && !window.__moversRenderRetry) {
+                window.__moversRenderRetry = setTimeout(()=>{
+                    window.__moversRenderRetry = null;
+                    if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+                        try { renderWatchlist(); } catch(e){ console.warn('Movers re-render retry failed', e); }
+                    }
+                }, 900);
+            }
         } else if (selectedWatchlistId === ALL_SHARES_ID) {
             sharesToRender = dedupeSharesById(allSharesData);
             logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
