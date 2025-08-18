@@ -6089,7 +6089,15 @@ function recomputeTriggeredAlerts() {
     try { console.log('[Diag][recomputeTriggeredAlerts] enabledIds:', newEnabled.map(s=>s.id), 'mutedIds:', newMuted.map(s=>s.id)); } catch(_){ }
     updateTargetHitBanner();
     try { enforceTargetHitStyling(); } catch(_) {}
-    if (!suppressAutoOpen && targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') { showTargetHitDetailsModal(); }
+    if (!suppressAutoOpen && targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
+        const noEnabled = sharesAtTargetPrice.length === 0;
+        const noMuted = !sharesAtTargetPriceMuted || sharesAtTargetPriceMuted.length === 0;
+        if (noEnabled && noMuted) {
+            try { hideModal(targetHitDetailsModal); } catch(_) {}
+        } else {
+            showTargetHitDetailsModal();
+        }
+    }
 }
 
 // === Global Price Alerts ===
@@ -9453,6 +9461,17 @@ function showTargetHitDetailsModal(options={}) {
         showCustomAlert('Error displaying target hit details. Please try again.', 2000);
         return;
     }
+    // Guard: if no enabled/muted alerts AND no active global summary, suppress unless explicit
+    try {
+        const noLocalEnabled = !sharesAtTargetPrice || sharesAtTargetPrice.length === 0;
+        const noLocalMuted = !sharesAtTargetPriceMuted || sharesAtTargetPriceMuted.length === 0;
+        const hasGlobalActive = (typeof isDirectionalThresholdsActive === 'function') ? isDirectionalThresholdsActive() : false;
+        const hasDisplayableGlobal = hasGlobalActive && globalAlertSummary && globalAlertSummary.totalCount > 0;
+        if (!explicit && noLocalEnabled && noLocalMuted && !hasDisplayableGlobal) {
+            if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[TargetHitModal] Auto-open suppressed: no alerts or global summary to display.');
+            return;
+        }
+    } catch(_err) { /* ignore */ }
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
     // Inject headings + global summary card (Global movers heading ABOVE card)
