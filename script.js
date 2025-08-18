@@ -5700,56 +5700,45 @@ function stopGlobalSummaryListener() {
 
 // Apply a temporary filter to main watchlist showing only shares that match the last summary counts
 function applyGlobalSummaryFilter(options = {}) {
-    if (!globalAlertSummary || !livePrices) return null;
-    const threshold = globalAlertSummary.threshold; // e.g. '5%' or '$0.20'
-    if (!threshold) return null;
-    const isPercent = threshold.endsWith('%');
-    const numeric = parseFloat(threshold.replace(/[%$]/g,''));
-    if (isNaN(numeric)) return null;
-    // Determine directional intent from configured increase/decrease thresholds.
-    // Original logic relied solely on explicit up/down inputs; if neither side configured we assume UPWARD-ONLY (user complaint: downward movers leaking when only generic threshold set).
-    const hasUp = (globalPercentIncrease !== null && globalPercentIncrease !== undefined && globalPercentIncrease > 0) || (globalDollarIncrease !== null && globalDollarIncrease !== undefined && globalDollarIncrease > 0);
-    const hasDown = (globalPercentDecrease !== null && globalPercentDecrease !== undefined && globalPercentDecrease > 0) || (globalDollarDecrease !== null && globalDollarDecrease !== undefined && globalDollarDecrease > 0);
-    let mode = 'both';
-    if (hasUp && !hasDown) mode = 'up'; else if (hasDown && !hasUp) mode = 'down'; else if (!hasUp && !hasDown) {
-        // Fallback assumption: upward-only (documented for debug) – prevents unwanted negatives when user expects "option one" (increase only)
-        mode = 'up';
+    // New logic: compute movers directly from directional thresholds instead of relying on aggregated summary threshold label.
+    if (!livePrices) return null;
+    const hasUp = (typeof globalPercentIncrease === 'number' && globalPercentIncrease > 0) || (typeof globalDollarIncrease === 'number' && globalDollarIncrease > 0);
+    const hasDown = (typeof globalPercentDecrease === 'number' && globalPercentDecrease > 0) || (typeof globalDollarDecrease === 'number' && globalDollarDecrease > 0);
+    // If no thresholds configured at all, nothing to compute (return empty array silently if computeOnly; null if not to indicate inactive)
+    if (!hasUp && !hasDown) {
+        if (options.computeOnly) return [];
+        return [];
     }
-    try { if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.debug('[applyGlobalSummaryFilter] directional mode=', mode, 'hasUp=', hasUp, 'hasDown=', hasDown); } catch(_) {}
-    const filteredEntries = Object.entries(livePrices).filter(([code, lp]) => {
-        if (!lp || lp.live == null || lp.prevClose == null) return false;
-        const change = lp.live - lp.prevClose;
+    const entries = [];
+    Object.entries(livePrices).forEach(([code, lp]) => {
+        if (!lp || lp.live == null || lp.prevClose == null) return;
+        const prev = lp.prevClose;
+        if (prev == null) return;
+        const live = lp.live;
+        if (globalMinimumPrice && live < globalMinimumPrice) return; // respect minimum price filter
+        const change = live - prev;
+        if (change === 0) return;
+        const up = change > 0;
         const absChange = Math.abs(change);
-        const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
-        // Directional gating (revised): apply based on computed mode
-        if (mode === 'up' && change < 0) return false;
-        if (mode === 'down' && change > 0) return false;
-        // Threshold comparison: when single direction mode, compare raw movement (positive or negative) rather than absolute
-        if (isPercent) {
-            if (mode === 'up') {
-                const pctPos = lp.prevClose !== 0 ? ((change) / lp.prevClose) * 100 : 0;
-                return pctPos >= numeric;
-            } else if (mode === 'down') {
-                const pctNeg = lp.prevClose !== 0 ? ((-change) / lp.prevClose) * 100 : 0; // make positive number for comparison
-                return pctNeg >= numeric;
-            } else {
-                return pct >= numeric;
-            }
-        } else {
-            if (mode === 'up') {
-                return change >= numeric; // raw positive dollar move
-            } else if (mode === 'down') {
-                return (-change) >= numeric; // raw negative dollar move magnitude
-            } else {
-                return absChange >= numeric;
-            }
+        const pctSigned = prev !== 0 ? (change / prev) * 100 : 0; // signed percent
+        const pctMagnitude = Math.abs(pctSigned);
+        let include = false;
+        if (up && hasUp) {
+            if ((globalPercentIncrease && pctSigned >= globalPercentIncrease) || (globalDollarIncrease && change >= globalDollarIncrease)) include = true;
+        } else if (!up && hasDown) {
+            if ((globalPercentDecrease && pctMagnitude >= globalPercentDecrease) || (globalDollarDecrease && absChange >= globalDollarDecrease)) include = true;
         }
-    }).map(([code, lp]) => {
-        const change = lp.live - lp.prevClose;
-        const absChange = Math.abs(change);
-        const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
-        return { code, change, absChange, pct, direction: change>=0?'up':'down', live: lp.live, prev: lp.prevClose };
+        if (include) {
+            entries.push({ code, change, absChange, pct: pctMagnitude, direction: up ? 'up' : 'down', live, prev });
+        }
     });
+    // Sort: primary by direction grouping (ups first), then by percent magnitude descending
+    entries.sort((a,b)=>{
+        if (a.direction !== b.direction) return a.direction === 'up' ? -1 : 1;
+        return b.pct - a.pct;
+    });
+    try { if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.debug('[applyGlobalSummaryFilter][recomputed]', { hasUp, hasDown, count: entries.length }); } catch(_) {}
+    const filteredEntries = entries;
     const filteredCodes = filteredEntries.map(e=>e.code);
     if (!filteredCodes.length) {
         if (!options.silent) showCustomAlert('No shares currently meet the summary threshold.');
