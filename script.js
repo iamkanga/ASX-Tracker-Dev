@@ -322,20 +322,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
                 </div>
                 <div class="pc-metrics-row">
-                    <div class="pc-metric-line">
-                        <div class="pc-label" style="color:#fff;text-align:left;">P/L</div>
-                        <div class="pc-val ${plClass}" style="text-align:right;color:var(--${plClass === 'positive' ? 'price-up-color' : plClass === 'negative' ? 'price-down-color' : 'price-neutral-color'});">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-pct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></div>
-                    </div>
-                    <div class="pc-metric-line">
-                        <div class="pc-label" style="color:#fff;text-align:left;">Today</div>
-                        <div class="pc-val ${todayClass}" style="text-align:right;color:var(--${todayClass === 'positive' ? 'price-up-color' : todayClass === 'negative' ? 'price-down-color' : 'price-neutral-color'});">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></div>
-                    </div>
+                    <div class="pc-pl-label">P/L</div>
+                    <div class="pc-pl-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></div>
+                    <div class="pc-today-label">Today</div>
+                    <div class="pc-today-val ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-todaypct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></div>
                 </div>
-                <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand"><span class="chevron">▼</span></button>
+                <button class="pc-details-btn" aria-expanded="false" aria-label="Show Details"><span class="chevron">▼</span> Details</button>
                 <div class="pc-details" style="display:none;">
                     <div class="pc-detail-row"><span>Quantity:</span> <span>${shares !== '' ? shares : ''}</span></div>
                     <div class="pc-detail-row"><span>Average Cost:</span> <span>${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
-                    <div class="pc-detail-row"><span>Total Cost:</span> <span>${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
+                    <div class="pc-detail-row"><span>Cost Basis:</span> <span>${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
                 </div>
             </div>`;
         });
@@ -360,11 +356,11 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
             <div class="summary-card">
                 <div class="summary-label">Day's Gain</div>
-                <div class="summary-value positive">${fmtMoney(daysGain)} <span class="summary-pct positive">${fmtPct(totalValue > 0 ? (daysGain / totalValue) * 100 : 0)}</span></div>
+                <div class="summary-value positive">${fmtMoney(daysGain)}</div>
             </div>
             <div class="summary-card">
                 <div class="summary-label">Day's Loss</div>
-                <div class="summary-value negative">${fmtMoney(daysLoss)} <span class="summary-pct negative">${fmtPct(totalValue > 0 ? (daysLoss / totalValue) * 100 : 0)}</span></div>
+                <div class="summary-value negative">${fmtMoney(daysLoss)}</div>
             </div>
         </div>`;
 
@@ -372,27 +368,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const cardsGrid = `<div class="portfolio-cards-grid">${cards.join('')}</div>`;
         portfolioListContainer.innerHTML = summaryBar + cardsGrid;
 
-        // --- Expand/Collapse Logic (Accordion) ---
+        // --- Expand/Collapse Logic ---
         const cardNodes = portfolioListContainer.querySelectorAll('.portfolio-card');
         cardNodes.forEach(card => {
-            const btn = card.querySelector('.pc-chevron-btn');
+            const btn = card.querySelector('.pc-details-btn');
             const details = card.querySelector('.pc-details');
             btn.addEventListener('click', function() {
                 const expanded = btn.getAttribute('aria-expanded') === 'true';
-                // Collapse all other cards
-                cardNodes.forEach(otherCard => {
-                    if (otherCard !== card) {
-                        const otherBtn = otherCard.querySelector('.pc-chevron-btn');
-                        const otherDetails = otherCard.querySelector('.pc-details');
-                        if (otherBtn && otherDetails) {
-                            otherBtn.setAttribute('aria-expanded', false);
-                            otherDetails.style.display = 'none';
-                            otherCard.classList.remove('expanded');
-                            otherBtn.querySelector('.chevron').textContent = '▼';
-                        }
-                    }
-                });
-                // Toggle this card
                 btn.setAttribute('aria-expanded', !expanded);
                 details.style.display = expanded ? 'none' : 'block';
                 card.classList.toggle('expanded', !expanded);
