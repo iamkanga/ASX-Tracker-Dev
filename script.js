@@ -7802,7 +7802,7 @@ async function initializeAppLogic() {
                 const btnSpan = splashSignInBtn.querySelector('span');
                 if (btnSpan) { btnSpan.textContent = 'Signing in…'; }
                 // Always create a fresh provider per attempt to avoid stale customParameters
-                const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
+                    const provider = (window.authFunctions.createGoogleProvider ? window.authFunctions.createGoogleProvider() : window.authFunctions.GoogleAuthProviderInstance);
                     console.log('[AuthDiag] Provider created?', !!provider);
                 if (!provider) {
                     console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
@@ -7815,11 +7815,31 @@ async function initializeAppLogic() {
                 // Popup only
                 const resolver = window.authFunctions.browserPopupRedirectResolver;
                     console.log('[AuthDiag] Invoking signInWithPopup (resolver present?', !!resolver, ')');
-                if (resolver) {
-                    await window.authFunctions.signInWithPopup(currentAuth, provider, resolver);
-                } else {
-                    await window.authFunctions.signInWithPopup(currentAuth, provider);
-                }
+                    let popupSucceeded = false;
+                    try {
+                        if (resolver) {
+                            await window.authFunctions.signInWithPopup(currentAuth, provider, resolver);
+                        } else {
+                            await window.authFunctions.signInWithPopup(currentAuth, provider);
+                        }
+                        popupSucceeded = true;
+                    } catch (popupErr) {
+                        console.warn('[AuthDiag] Popup sign-in error code:', popupErr && popupErr.code, popupErr);
+                        // Fallback for common popup issues
+                        if (popupErr && (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user')) {
+                            setAuthStatus('Popup issue (' + popupErr.code + '). Trying redirect…', 'warn');
+                            try {
+                                await window.authFunctions.signInWithRedirect(currentAuth, provider);
+                                console.log('[AuthDiag] Redirect attempted after popup issue.');
+                                return; // flow will continue after redirect
+                            } catch (redirErr) {
+                                console.error('[AuthDiag] Redirect fallback failed', redirErr);
+                                throw redirErr; // propagate to outer catch
+                            }
+                        } else {
+                            throw popupErr;
+                        }
+                    }
                 logDebug('Auth: Google Sign-In successful from splash screen.');
                     setAuthStatus('Signed in (processing)…', 'ok');
                 // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
@@ -7879,9 +7899,28 @@ async function initializeAppLogic() {
                     try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
                     const resolver = window.authFunctions.browserPopupRedirectResolver;
                     console.log('[AuthDiag] (rebind) Provider created?', !!provider, ' resolver?', !!resolver);
-                    if (resolver) await window.authFunctions.signInWithPopup(window.firebaseAuth, provider, resolver);
-                    else await window.authFunctions.signInWithPopup(window.firebaseAuth, provider);
-                    setAuthStatus('Signed in (processing)…', 'ok');
+                    let popupSucceeded = false;
+                    try {
+                        if (resolver) await window.authFunctions.signInWithPopup(window.firebaseAuth, provider, resolver);
+                        else await window.authFunctions.signInWithPopup(window.firebaseAuth, provider);
+                        popupSucceeded = true;
+                    } catch (popupErr) {
+                        console.warn('[AuthDiag] (rebind) Popup error', popupErr && popupErr.code, popupErr);
+                        if (popupErr && (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user')) {
+                            setAuthStatus('Popup issue (' + popupErr.code + '). Trying redirect…', 'warn');
+                            try {
+                                await window.authFunctions.signInWithRedirect(window.firebaseAuth, provider);
+                                console.log('[AuthDiag] (rebind) Redirect attempted.');
+                                return;
+                            } catch (redirErr) {
+                                console.error('[AuthDiag] (rebind) Redirect fallback failed', redirErr);
+                                throw redirErr;
+                            }
+                        } else {
+                            throw popupErr;
+                        }
+                    }
+                    if (popupSucceeded) setAuthStatus('Signed in (processing)…', 'ok');
                 } catch(err) {
                     console.error('Auth(Rebind) popup failed', err);
                     showCustomAlert('Sign-in failed: ' + err.message);
