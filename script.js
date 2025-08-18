@@ -1,4 +1,36 @@
 // Build Marker: 2025-08-17T00:00Z v2.0.0 (Modal architecture reset: external Global movers heading, singleton overlay)
+console.log('[AuthDiag] script.js top-level sentinel reached');
+// Global early diagnostic: capture ALL clicks (capturing phase) to verify splashSignInBtn click propagation
+if (!window.__globalClickDiagInstalled) {
+    window.__globalClickDiagInstalled = true;
+    document.addEventListener('click', (ev) => {
+        try {
+            const id = ev.target && ev.target.id;
+            if (id === 'splashSignInBtn' || (ev.target.closest && ev.target.closest('#splashSignInBtn'))) {
+                console.log('[AuthDiag] Global capture saw click on splashSignInBtn (willBubble=', ev.bubbles, ')');
+            }
+        } catch(_) {}
+    }, true);
+}
+
+// Expose a quick diagnostic dump function
+window.__dumpAuthDiag = function(){
+    const out = {
+        hasFirebaseAuth: !!window.firebaseAuth,
+        hasAuthFunctions: !!window.authFunctions,
+        authFunctionsKeys: window.authFunctions ? Object.keys(window.authFunctions) : [],
+        buttonEl: !!document.getElementById('splashSignInBtn'),
+        buttonBound: (function(){
+            const b = document.getElementById('splashSignInBtn');
+            return b ? b.getAttribute('data-bound') : null;
+        })(),
+        locationProtocol: window.location && window.location.protocol,
+        serviceWorkerControlled: !!(navigator.serviceWorker && navigator.serviceWorker.controller),
+        docReadyState: document.readyState
+    };
+    console.log('[AuthDiag] __dumpAuthDiag', out);
+    return out;
+};
 // If you do NOT see this line in DevTools Sources, you're viewing a stale cached script.
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
