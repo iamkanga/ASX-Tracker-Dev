@@ -322,16 +322,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
                 </div>
                 <div class="pc-metrics-row">
-                    <div class="pc-pl-label">P/L</div>
-                    <div class="pc-pl-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-plpct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></div>
-                    <div class="pc-today-label">Today</div>
-                    <div class="pc-today-val ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-todaypct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></div>
+                    <div class="pc-metric-line">
+                        <div class="pc-label" style="color:#fff;text-align:left;">P/L</div>
+                        <div class="pc-val ${plClass}" style="text-align:right;color:var(--${plClass === 'positive' ? 'price-up-color' : plClass === 'negative' ? 'price-down-color' : 'price-neutral-color'});">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-pct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></div>
+                    </div>
+                    <div class="pc-metric-line">
+                        <div class="pc-label" style="color:#fff;text-align:left;">Today</div>
+                        <div class="pc-val ${todayClass}" style="text-align:right;color:var(--${todayClass === 'positive' ? 'price-up-color' : todayClass === 'negative' ? 'price-down-color' : 'price-neutral-color'});">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></div>
+                    </div>
                 </div>
                 <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand"><span class="chevron">▼</span></button>
                 <div class="pc-details" style="display:none;">
                     <div class="pc-detail-row"><span>Quantity:</span> <span>${shares !== '' ? shares : ''}</span></div>
                     <div class="pc-detail-row"><span>Average Cost:</span> <span>${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
-                    <div class="pc-detail-row"><span>Cost Basis:</span> <span>${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
+                    <div class="pc-detail-row"><span>Total Cost:</span> <span>${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
                 </div>
             </div>`;
         });
