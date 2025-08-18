@@ -3629,8 +3629,8 @@ function showShareDetails() {
 
         modalLivePriceDisplaySection.appendChild(fiftyTwoWeekRow);
 
-    const currentModalLivePriceLarge = document.createElement('h2');
-    currentModalLivePriceLarge.classList.add('modal-share-name', priceChangeClass);
+    const currentModalLivePriceLarge = document.createElement('span');
+    currentModalLivePriceLarge.classList.add('modal-share-name','live-price-large', priceChangeClass);
     const currentModalPriceChangeLarge = document.createElement('span');
     currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass);
     modalLivePriceDisplaySection.appendChild(currentModalLivePriceLarge);
