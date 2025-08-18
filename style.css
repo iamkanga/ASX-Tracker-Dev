@@ -178,7 +178,7 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-summary-bar .summary-card {
     background: var(--card-bg);
     border-radius: 14px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    box-shadow: none;
     padding: 24px 32px 18px 32px;
     min-width: 210px;
     flex: 1 1 210px;
@@ -187,7 +187,7 @@ function makeFilesAvailableToSourceControlCSS() {
     align-items: center;
     justify-content: flex-start;
     font-size: 1.45rem;
-    border: 1.5px solid var(--border-color);
+    border: 8px solid var(--border-color);
     text-align: center;
 }
 .portfolio-summary-bar .summary-label {
@@ -275,7 +275,7 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-card {
     background: var(--card-bg);
     border-radius: 22px;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.10), inset 0 0 0 8px rgba(0,0,0,0.10);
+    box-shadow: none;
     padding: 22px 22px 16px 22px;
     font-size: 1.45rem;
     display: flex;
@@ -286,7 +286,7 @@ function makeFilesAvailableToSourceControlCSS() {
     min-height: 140px;
 }
 .portfolio-card, .portfolio-card.positive, .portfolio-card.negative, .portfolio-card.neutral {
-    border-width: 16px;
+    border-width: 8px;
     border-style: solid;
     border-color: var(--border-color);
 }
@@ -308,7 +308,7 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-card.neutral {
     border-color: var(--price-neutral-color) !important;
 }
-.portfolio-card.expanded { box-shadow: 0 4px 24px rgba(0,0,0,0.16); }
+.portfolio-card.expanded { box-shadow: none; }
 .portfolio-card .pc-main-row {
     display: flex;
     justify-content: space-between;
