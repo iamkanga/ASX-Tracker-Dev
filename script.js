@@ -5671,11 +5671,17 @@ function applyGlobalSummaryFilter(options = {}) {
     const isPercent = threshold.endsWith('%');
     const numeric = parseFloat(threshold.replace(/[%$]/g,''));
     if (isNaN(numeric)) return null;
+    // Determine directional intent from configured increase/decrease thresholds
+    const hasUp = (globalPercentIncrease !== null && globalPercentIncrease !== undefined) || (globalDollarIncrease !== null && globalDollarIncrease !== undefined);
+    const hasDown = (globalPercentDecrease !== null && globalPercentDecrease !== undefined) || (globalDollarDecrease !== null && globalDollarDecrease !== undefined);
     const filteredEntries = Object.entries(livePrices).filter(([code, lp]) => {
         if (!lp || lp.live == null || lp.prevClose == null) return false;
         const change = lp.live - lp.prevClose;
         const absChange = Math.abs(change);
         const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
+        // Directional gating: if only upward thresholds configured, exclude negatives; if only downward, exclude positives
+        if (hasUp && !hasDown && change < 0) return false;
+        if (hasDown && !hasUp && change > 0) return false;
         if (isPercent) return pct >= numeric; else return absChange >= numeric;
     }).map(([code, lp]) => {
         const change = lp.live - lp.prevClose;
@@ -9533,6 +9539,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (appHeader) {
         appHeader.classList.add('app-hidden');
     }
+
+    // Fallback Movers restore: if persisted as last view but not applied yet (e.g., due to early race), re-apply after short delay
+    setTimeout(()=>{
+        try {
+            const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
+            const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+            if (wantMovers && !haveMovers) {
+                currentSelectedWatchlistIds = ['__movers'];
+                if (watchlistSelect) watchlistSelect.value = '__movers';
+                if (typeof renderWatchlist === 'function') renderWatchlist();
+                enforceMoversVirtualView(true);
+                console.log('[Movers restore][fallback DOMContentLoaded] applied');
+            }
+        } catch(e){ console.warn('[Movers restore][fallback DOMContentLoaded] failed', e); }
+    }, 1300);
 
     if (window.firestoreDb && window.firebaseAuth && window.getFirebaseAppId && window.firestore && window.authFunctions) {
         db = window.firestoreDb;
