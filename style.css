@@ -2516,6 +2516,18 @@ table td .share-code-display { /* This class exists, just ensure its emphasis */
 .share-detail-sections .detail-card { background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:14px 16px 16px; box-shadow:0 2px 4px rgba(0,0,0,0.05); display:flex; flex-direction:column; gap:8px; min-height:0; }
 .share-detail-sections .detail-card.full-span { grid-column:1 / -1; }
 .detail-card-title { margin:0 0 4px; font-size:0.95rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--ghosted-text); }
+.watchlists-membership-footer { 
+    margin-top:auto; /* push to bottom of flex column */
+    text-align:center; 
+    font-size:0.70rem; 
+    letter-spacing:0.4px; 
+    font-weight:500; 
+    color:var(--ghosted-text); 
+    opacity:0.85; 
+    padding-top:4px; 
+    border-top:1px dashed rgba(0,0,0,0.06);
+}
+body.dark-theme .watchlists-membership-footer { border-top:1px dashed rgba(255,255,255,0.12); }
 .detail-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:4px 0; font-size:0.9rem; border-bottom:1px dashed rgba(0,0,0,0.08); }
 body.dark-theme .detail-row { border-bottom:1px dashed rgba(255,255,255,0.1); }
 .detail-row:last-child { border-bottom:none; }

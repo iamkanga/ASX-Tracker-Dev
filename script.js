@@ -3868,6 +3868,30 @@ function showShareDetails() {
 
     showModal(shareDetailModal);
     logDebug('Details: Displayed details for share: ' + share.shareName + ' (ID: ' + selectedShareDocId + ')');
+
+    // Inject Watchlists membership footer inside Investment section (centered, subtle)
+    try {
+        const investmentSection = shareDetailModal.querySelector('.detail-card[data-section="investment"]');
+        if (investmentSection) {
+            // Remove any previous footer to avoid duplicates on re-open
+            const old = investmentSection.querySelector('.watchlists-membership-footer');
+            if (old) old.remove();
+            // Derive watchlist names (excluding special virtual ids)
+            const wlIds = Array.isArray(share.watchlistIds) ? share.watchlistIds : (share.watchlistId ? [share.watchlistId] : []);
+            const names = [];
+            wlIds.forEach(id => {
+                if (!id || id === '__movers' || id === 'portfolio') return;
+                const wl = userWatchlists.find(w => w.id === id);
+                if (wl && wl.name) names.push(wl.name.trim());
+            });
+            if (names.length) {
+                const footer = document.createElement('div');
+                footer.className = 'watchlists-membership-footer';
+                footer.textContent = names.join(' / ');
+                investmentSection.appendChild(footer);
+            }
+        }
+    } catch(e) { console.warn('Watchlists footer inject failed', e); }
 }
 
 function sortShares() {
