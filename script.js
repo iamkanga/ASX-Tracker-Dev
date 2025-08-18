@@ -674,6 +674,23 @@ let globalDollarDecreaseInput = null;
 let globalMinimumPriceInput = null;
 let globalAlertsSettingsSummaryEl = null; // displays current settings under sidebar button
 
+// Early preload: if user recently cleared thresholds and we saved a local snapshot, apply it immediately
+// to avoid a flash of stale remote values before Firestore listener returns.
+try {
+    const lsSnap = localStorage.getItem('globalDirectionalSnapshot');
+    if (lsSnap) {
+        const parsed = JSON.parse(lsSnap);
+        if (parsed && parsed.at && Date.now() - parsed.at < 1000 * 60 * 60 * 12) { // valid for 12h
+            globalPercentIncrease = (typeof parsed.pInc === 'number' && parsed.pInc > 0) ? parsed.pInc : null;
+            globalDollarIncrease = (typeof parsed.dInc === 'number' && parsed.dInc > 0) ? parsed.dInc : null;
+            globalPercentDecrease = (typeof parsed.pDec === 'number' && parsed.pDec > 0) ? parsed.pDec : null;
+            globalDollarDecrease = (typeof parsed.dDec === 'number' && parsed.dDec > 0) ? parsed.dDec : null;
+            globalMinimumPrice = (typeof parsed.minP === 'number' && parsed.minP > 0) ? parsed.minP : null;
+            console.log('[GlobalAlerts][preload] Applied local snapshot of directional thresholds before remote load', parsed);
+        }
+    }
+} catch(e) { /* ignore */ }
+
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
 let unsubscribeAlerts = null; // NEW: Holds the unsubscribe function for Firestore alerts listener
@@ -6135,14 +6152,32 @@ function evaluateGlobalPriceAlerts() {
 async function saveGlobalAlertSettingsDirectional(settings) {
     if (!db || !currentUserId || !window.firestore) return;
     const userProfileDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+    // Use deleteField for any cleared (null) thresholds so old values cannot resurrect on reload
+    const del = window.firestore.deleteField();
     const toSave = {
-        globalPercentIncrease: settings.globalPercentIncrease || null,
-        globalDollarIncrease: settings.globalDollarIncrease || null,
-        globalPercentDecrease: settings.globalPercentDecrease || null,
-        globalDollarDecrease: settings.globalDollarDecrease || null,
-        globalMinimumPrice: settings.globalMinimumPrice || null
+        globalPercentIncrease: (typeof settings.globalPercentIncrease === 'number' && settings.globalPercentIncrease > 0) ? settings.globalPercentIncrease : del,
+        globalDollarIncrease: (typeof settings.globalDollarIncrease === 'number' && settings.globalDollarIncrease > 0) ? settings.globalDollarIncrease : del,
+        globalPercentDecrease: (typeof settings.globalPercentDecrease === 'number' && settings.globalPercentDecrease > 0) ? settings.globalPercentDecrease : del,
+        globalDollarDecrease: (typeof settings.globalDollarDecrease === 'number' && settings.globalDollarDecrease > 0) ? settings.globalDollarDecrease : del,
+        globalMinimumPrice: (typeof settings.globalMinimumPrice === 'number' && settings.globalMinimumPrice > 0) ? settings.globalMinimumPrice : del,
+        globalDirectionalVersion: Date.now() // bump a version so clients can detect freshness
     };
-    try { await window.firestore.setDoc(userProfileDocRef, toSave, { merge: true }); logDebug('Global Alerts: Saved directional settings ' + JSON.stringify(toSave)); }
+    try { await window.firestore.setDoc(userProfileDocRef, toSave, { merge: true });
+        logDebug('Global Alerts: Saved directional settings (normalized/deleteField applied) ' + JSON.stringify(toSave));
+        try { localStorage.setItem('globalDirectionalVersion', String(toSave.globalDirectionalVersion)); } catch(e){}
+        // Persist cleared sentinel so a hard reload before Firestore cache invalidation still respects cleared state
+        try {
+            const snapshotCache = {
+                pInc: settings.globalPercentIncrease ?? null,
+                dInc: settings.globalDollarIncrease ?? null,
+                pDec: settings.globalPercentDecrease ?? null,
+                dDec: settings.globalDollarDecrease ?? null,
+                minP: settings.globalMinimumPrice ?? null,
+                at: toSave.globalDirectionalVersion
+            };
+            localStorage.setItem('globalDirectionalSnapshot', JSON.stringify(snapshotCache));
+        } catch(e){}
+    }
     catch(e){ console.error('Global Alerts: save directional failed', e); }
 }
 
