@@ -6160,6 +6160,9 @@ async function saveGlobalAlertSettingsDirectional(settings) {
         globalPercentDecrease: (typeof settings.globalPercentDecrease === 'number' && settings.globalPercentDecrease > 0) ? settings.globalPercentDecrease : del,
         globalDollarDecrease: (typeof settings.globalDollarDecrease === 'number' && settings.globalDollarDecrease > 0) ? settings.globalDollarDecrease : del,
         globalMinimumPrice: (typeof settings.globalMinimumPrice === 'number' && settings.globalMinimumPrice > 0) ? settings.globalMinimumPrice : del,
+        // Always remove legacy single-threshold fields so they can never repopulate new directional fields after a clear
+        globalPercentAlert: del,
+        globalDollarAlert: del,
         globalDirectionalVersion: Date.now() // bump a version so clients can detect freshness
     };
     try { await window.firestore.setDoc(userProfileDocRef, toSave, { merge: true });
@@ -6183,9 +6186,20 @@ async function saveGlobalAlertSettingsDirectional(settings) {
 
 function applyLoadedGlobalAlertSettings(settings) {
     try {
-        // Migrate legacy single threshold to increase (up) thresholds if new not present
-        if (settings.globalPercentIncrease == null && typeof settings.globalPercentAlert === 'number') settings.globalPercentIncrease = settings.globalPercentAlert;
-        if (settings.globalDollarIncrease == null && typeof settings.globalDollarAlert === 'number') settings.globalDollarIncrease = settings.globalDollarAlert;
+        // If a local snapshot exists that shows all cleared, skip legacy migration to avoid resurrecting deleted values
+        let snapshotClearedAll = false;
+        try {
+            const snapRaw = localStorage.getItem('globalDirectionalSnapshot');
+            if (snapRaw) {
+                const snap = JSON.parse(snapRaw);
+                if (snap && snap.pInc==null && snap.dInc==null && snap.pDec==null && snap.dDec==null && snap.minP==null) snapshotClearedAll = true;
+            }
+        } catch(_) {}
+        if (!snapshotClearedAll) {
+            // Migrate legacy single threshold to increase (up) thresholds if new not present
+            if (settings.globalPercentIncrease == null && typeof settings.globalPercentAlert === 'number') settings.globalPercentIncrease = settings.globalPercentAlert;
+            if (settings.globalDollarIncrease == null && typeof settings.globalDollarAlert === 'number') settings.globalDollarIncrease = settings.globalDollarAlert;
+        }
         globalPercentIncrease = (typeof settings.globalPercentIncrease === 'number' && settings.globalPercentIncrease > 0) ? settings.globalPercentIncrease : null;
         globalDollarIncrease = (typeof settings.globalDollarIncrease === 'number' && settings.globalDollarIncrease > 0) ? settings.globalDollarIncrease : null;
         globalPercentDecrease = (typeof settings.globalPercentDecrease === 'number' && settings.globalPercentDecrease > 0) ? settings.globalPercentDecrease : null;
