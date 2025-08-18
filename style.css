@@ -3023,8 +3023,10 @@ header .header-action-btn-right { margin-right:2px !important; }
     padding-bottom: 5px;
     font-size: 1.1em;
 }
-
-.menu-section {
+    .mobile-share-cards.compact-view .mobile-card .card-live-price { --card-live-price-size:1.4em; font-size:var(--card-live-price-size); line-height:1.2; }
+    .mobile-share-cards.compact-view .mobile-card .card-price-change { font-size:calc(var(--card-live-price-size,1.4em)*0.5); font-weight:700; }
+    .mobile-share-cards.compact-view .mobile-card .card-live-price { grid-area: live; --card-live-price-size:1.416em; font-size: var(--card-live-price-size) !important; font-weight: 700; line-height: 1.15; }
+    .mobile-share-cards.compact-view .mobile-card .card-price-change { grid-area: change; font-size: calc(var(--card-live-price-size,1.416em)*0.5); font-weight: 700; line-height: 1.1; }
     margin-bottom: 20px;
 }
 
