@@ -2953,6 +2953,8 @@ header .header-action-btn-right { margin-right:2px !important; }
 
 /* Ensure plus/hamburger full opacity */
 #hamburgerBtn, #addShareHeaderBtn { opacity:1 !important; }
+/* Match hamburger icon color to plus (coffee accent) */
+#appHeader #hamburgerBtn i, #appHeader #hamburgerBtn svg { color:var(--accent-color,#a49393) !important; opacity:1 !important; mix-blend-mode:normal; }
 
 .hamburger-btn:hover {
     color: var(--button-hover-bg);
