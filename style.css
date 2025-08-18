@@ -411,7 +411,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .discover-code-list .discover-mover .delta, .discover-code-list .discover-mover .pct { font-size:0.65rem; opacity:0.85; letter-spacing:0.3px; }
 .discover-code-list .discover-mover .delta.negative, .discover-code-list .discover-mover .pct.negative { color: var(--price-down-color); }
 .discover-code-list .discover-mover .delta.positive, .discover-code-list .discover-mover .pct.positive { color: var(--price-up-color); }
-.movement-combo { font-weight:600; font-size:0.75rem; letter-spacing:0.3px; }
+.movement-combo { font-weight:500; font-size:0.75rem; letter-spacing:0.2px; font-variant-numeric: tabular-nums; }
 .movement-combo.positive { color: var(--price-up-color); }
 .movement-combo.negative { color: var(--price-down-color); }
 .movement-combo.neutral { color: var(--price-neutral-color); }

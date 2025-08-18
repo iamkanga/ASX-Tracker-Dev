@@ -775,6 +775,74 @@ function setLastSelectedView(val) {
     if (DEBUG_MODE) console.log('[Prefs] setLastSelectedView ->', val);
 }
 
+// Post-auth preference bootstrap & restore (A & B)
+function restoreViewAndModeFromPreferences() {
+    try {
+        // Last selected view: prefer localStorage, else Firestore preference
+        let lastView = localStorage.getItem('lastSelectedView');
+        if (!lastView && userPreferences && userPreferences.lastSelectedView) {
+            lastView = userPreferences.lastSelectedView;
+            if (DEBUG_MODE) console.log('[Restore] Using Firestore lastSelectedView fallback:', lastView);
+        }
+        if (lastView) {
+            if (lastView === 'portfolio') {
+                showPortfolioView();
+            } else if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+                // If movers virtual view
+                if (lastView === '__movers') {
+                    try { watchlistSelect.value = ALL_SHARES_ID; } catch(_) {}
+                    currentSelectedWatchlistIds = ['__movers'];
+                    renderWatchlist();
+                    enforceMoversVirtualView();
+                    updateMainTitle('Movers');
+                    // Schedule re-enforcement after first prices (C)
+                    scheduleMoversDeferredEnforce();
+                } else {
+                    // Regular watchlist id
+                    const opt = Array.from(watchlistSelect.options).find(o => o.value === lastView);
+                    if (opt) {
+                        watchlistSelect.value = lastView;
+                        currentSelectedWatchlistIds = [lastView];
+                        renderWatchlist();
+                        updateMainTitle();
+                    }
+                }
+            }
+        }
+
+        // Compact mode: prefer localStorage; else Firestore; else bootstrap default
+        let storedMode = localStorage.getItem('currentMobileViewMode');
+        if (!storedMode && userPreferences && userPreferences.compactViewMode) {
+            storedMode = userPreferences.compactViewMode;
+            if (DEBUG_MODE) console.log('[Restore] Using Firestore compactViewMode fallback:', storedMode);
+        }
+        if (storedMode !== 'compact' && storedMode !== 'default') {
+            storedMode = 'default';
+            // Bootstrap Firestore doc with default if missing
+            if (Object.keys(userPreferences||{}).length === 0 || userPreferences.compactViewMode === undefined) {
+                try { persistUserPreference('compactViewMode', storedMode); } catch(_) {}
+            }
+        }
+        currentMobileViewMode = storedMode;
+        try { localStorage.setItem('currentMobileViewMode', currentMobileViewMode); } catch(_) {}
+        applyCompactViewMode();
+    } catch(e) { console.warn('Restore preferences failed', e); }
+}
+
+function scheduleMoversDeferredEnforce() {
+    try {
+        if (window.__moversDeferredEnforceTimer) return; // debounce
+        window.__moversDeferredEnforceTimer = setTimeout(()=>{
+            window.__moversDeferredEnforceTimer = null;
+            try {
+                if (localStorage.getItem('lastSelectedView') === '__movers' || (userPreferences && userPreferences.lastSelectedView === '__movers')) {
+                    enforceMoversVirtualView();
+                }
+            } catch(e){ console.warn('Deferred movers enforce failed', e); }
+        }, 1800); // after first live price fetch cycle likely done
+    } catch(_) {}
+}
+
 // Auto-open suppression sentinel: require user interaction (clicking alert icon) before any passive auto-open
 let ALLOW_ALERT_MODAL_AUTO_OPEN = false;
 
@@ -871,7 +939,7 @@ async function updateAddFormLiveSnapshot(code) {
             </div>
             <div class="live-price-main-row">
                 <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
-                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${formatAdaptivePrice(change)} (${formatAdaptivePercent(pct)}%)` : 'N/A'}</span>
+                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(pct)}%` : 'N/A'}</span>
             </div>
             <div class="pe-ratio-row">
                 <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? formatAdaptivePrice(pe) : 'N/A'}</span>
@@ -1862,13 +1930,13 @@ function getShareDisplayData(share) {
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
             }
@@ -2192,14 +2260,14 @@ function addShareToMobileCards(share) {
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card'); // Include neutral class
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
             }
@@ -2239,13 +2307,13 @@ function addShareToMobileCards(share) {
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         } else {
@@ -2449,7 +2517,7 @@ function updateOrCreateShareTableRow(share) {
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 const change = lastFetchedLive - lastFetchedPrevClose;
@@ -5053,7 +5121,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
                 const arrow = change > 0 ? '▲' : (change < 0 ? '▼' : '');
-                priceChangeText = `${arrow} ${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                priceChangeText = `${arrow} ${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         }
@@ -10043,6 +10111,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Load user data, then do an initial fetch of live prices before setting the update interval.
                 // This ensures the initial view is correctly sorted by percentage change if selected.
                 await loadUserWatchlistsAndSettings();
+                // Load Firestore UI prefs early then restore view/mode (A & B)
+                try { await loadUserPreferences(); restoreViewAndModeFromPreferences(); } catch(e){ console.warn('Preference restore failed', e); }
                 try { ensureTitleStructure(); } catch(e) {}
                 // Load persisted compact view preference AFTER user data is ready
                 try {
@@ -10073,35 +10143,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 allAsxCodes = await loadAsxCodesFromCSV();
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
 
-                // After essential data loaded, restore last view (portfolio or watchlist) unless user already interacted
-                try {
-                    let lastView = localStorage.getItem('lastSelectedView');
-                    if ((!lastView || lastView === 'undefined') && userPreferences && userPreferences.lastSelectedView) {
-                        lastView = userPreferences.lastSelectedView; // Firestore fallback
-                        if (DEBUG_MODE) console.log('[Prefs] Restored lastSelectedView from Firestore =', lastView);
-                        try { localStorage.setItem('lastSelectedView', lastView); } catch(_) {}
-                    }
-                    if (lastView === 'portfolio') {
-                        showPortfolioView();
-                    } else if (lastView && lastView !== 'portfolio' && typeof watchlistSelect !== 'undefined' && watchlistSelect) {
-                        // Attempt to set dropdown so renderWatchlist picks correct list
-                        const opt = Array.from(watchlistSelect.options).find(o => o.value === lastView);
-                        if (opt) {
-                            watchlistSelect.value = lastView;
-                            // Ensure internal selection array updated (mimic change)
-                            currentSelectedWatchlistIds = [lastView];
-                            renderWatchlist();
-                            // Ensure the header reflects the restored selection
-                            try { updateMainTitle(); } catch(e) {}
-                        } else {
-                            // Fallback: default to All Shares if stored view isn't present
-                            watchlistSelect.value = ALL_SHARES_ID;
-                            currentSelectedWatchlistIds = [ALL_SHARES_ID];
-                            renderWatchlist();
-                            try { updateMainTitle(); } catch(e) {}
-                        }
-                    }
-                } catch(e) {}
+                // Legacy block replaced by restoreViewAndModeFromPreferences()
             }
 
             else {
