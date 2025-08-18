@@ -165,10 +165,6 @@ function makeFilesAvailableToSourceControlCSS() {
     display: none !important;
   }
 }
-.modal-share-name {
-    font-size: 2.7em !important; /* 1.8em * 1.5 = 2.7em */
-    font-weight: 700;
-}
 #modalCommSecLink {
     margin-bottom: 0 !important;
 }
@@ -3023,12 +3019,7 @@ header .header-action-btn-right { margin-right:2px !important; }
     padding-bottom: 5px;
     font-size: 1.1em;
 }
-    .mobile-share-cards.compact-view .mobile-card .card-live-price { --card-live-price-size:1.4em; font-size:var(--card-live-price-size); line-height:1.2; }
-    .mobile-share-cards.compact-view .mobile-card .card-price-change { font-size:calc(var(--card-live-price-size,1.4em)*0.5); font-weight:700; }
-    .mobile-share-cards.compact-view .mobile-card .card-live-price { grid-area: live; --card-live-price-size:1.416em; font-size: var(--card-live-price-size) !important; font-weight: 700; line-height: 1.15; }
-    .mobile-share-cards.compact-view .mobile-card .card-price-change { grid-area: change; font-size: calc(var(--card-live-price-size,1.416em)*0.5); font-weight: 700; line-height: 1.1; }
-    margin-bottom: 20px;
-}
+/* Removed malformed duplicate compact-view snippet (was unwrapped and produced lint error). */
 
 .menu-buttons-group {
     display: flex;
@@ -3834,6 +3825,16 @@ table td.live-price-cell.negative-change {
     font-weight: 800;
     line-height: 1;
 }
+
+/* Modal live price proportional sizing (day change = 50%).
+    Place variable on the container so both price and change inherit the same base. */
+#modalLivePriceDisplaySection { --live-price-size: 2.7em; }
+@media (max-width:640px){ #modalLivePriceDisplaySection { --live-price-size: 2.2em; } }
+/* Modal live price element adopts container variable */
+.live-price-display-section .modal-share-name { font-size: var(--live-price-size) !important; font-weight:800; line-height:1; }
+/* Add/Edit Share form live price snapshot uses same proportional system */
+#addShareLivePriceDisplay { --live-price-size:1.75em; }
+@media (max-width:640px){ #addShareLivePriceDisplay { --live-price-size:1.9em; } }
 
 /* Price change text only (no background container / padding) */
 /* Adjusted: make day change subordinate to live price for clarity */
