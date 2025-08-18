@@ -7804,9 +7804,12 @@ async function initializeAppLogic() {
     })();
 
     if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
+        console.log('[AuthDiag] Enter binding block. splashSignInBtn present. Current data-bound=', splashSignInBtn.getAttribute('data-bound'));
         let splashSignInRetryTimer = null;
         let splashSignInInProgress = false;
         splashSignInBtn.setAttribute('data-bound','true');
+        // Simple inline fallback so we know at least ONE handler is attached
+        splashSignInBtn.onclick = function(){ console.log('[AuthDiag] Fallback inline onclick fired'); };
         splashSignInBtn.addEventListener('click', async () => {
                 console.log('[AuthDiag] splashSignInBtn click handler ENTER');
                 logDebug('Auth: Splash Screen Sign-In Button Clicked.');
@@ -8079,6 +8082,21 @@ if (deleteAllUserDataBtn) {
         toggleAppSidebar(false); // Close sidebar after action
     });
 }
+else {
+    if (!splashSignInBtn) {
+        console.log('[AuthDiag] Binding block skipped: splashSignInBtn was null at evaluation time');
+    } else {
+        console.log('[AuthDiag] Binding block skipped: data-bound already true');
+    }
+}
+
+// Manual helper to re-run binding logic if needed
+window.forceBindAuthButton = function(){
+    const btn = document.getElementById('splashSignInBtn');
+    if (!btn) { console.log('[AuthDiag] forceBindAuthButton: button not found'); return; }
+    btn.removeAttribute('data-bound');
+    console.log('[AuthDiag] forceBindAuthButton: removed data-bound attribute, reloading page recommended OR call location.reload()');
+};
 
     // Watchlist Select Change Listener
     if (watchlistSelect) {
