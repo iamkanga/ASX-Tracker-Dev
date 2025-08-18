@@ -4302,6 +4302,19 @@ loadUserWatchlistsAndSettings = async function() {
     updateMainTitle();
     renderSortSelect();
     toggleCodeButtonsArrow();
+    // Post-load Movers enforcement: if persisted as lastSelectedView but not active (race conditions), activate now
+    try {
+        const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
+        const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+        if (wantMovers && !haveMovers) {
+            currentSelectedWatchlistIds = ['__movers'];
+            const sel = typeof watchlistSelect !== 'undefined' ? watchlistSelect : document.getElementById('watchlistSelect');
+            if (sel) sel.value = '__movers';
+            if (typeof renderWatchlist === 'function') renderWatchlist();
+            enforceMoversVirtualView(true);
+            console.log('[Movers restore][post-user-data] enforced after loadUserWatchlistsAndSettings');
+        }
+    } catch(e) { console.warn('[Movers restore][post-user-data] failed', e); }
 };
 
 // Late-binding helper to ensure header interactions are wired when DOM is ready
@@ -5671,17 +5684,24 @@ function applyGlobalSummaryFilter(options = {}) {
     const isPercent = threshold.endsWith('%');
     const numeric = parseFloat(threshold.replace(/[%$]/g,''));
     if (isNaN(numeric)) return null;
-    // Determine directional intent from configured increase/decrease thresholds
-    const hasUp = (globalPercentIncrease !== null && globalPercentIncrease !== undefined) || (globalDollarIncrease !== null && globalDollarIncrease !== undefined);
-    const hasDown = (globalPercentDecrease !== null && globalPercentDecrease !== undefined) || (globalDollarDecrease !== null && globalDollarDecrease !== undefined);
+    // Determine directional intent from configured increase/decrease thresholds.
+    // Original logic relied solely on explicit up/down inputs; if neither side configured we assume UPWARD-ONLY (user complaint: downward movers leaking when only generic threshold set).
+    const hasUp = (globalPercentIncrease !== null && globalPercentIncrease !== undefined && globalPercentIncrease > 0) || (globalDollarIncrease !== null && globalDollarIncrease !== undefined && globalDollarIncrease > 0);
+    const hasDown = (globalPercentDecrease !== null && globalPercentDecrease !== undefined && globalPercentDecrease > 0) || (globalDollarDecrease !== null && globalDollarDecrease !== undefined && globalDollarDecrease > 0);
+    let mode = 'both';
+    if (hasUp && !hasDown) mode = 'up'; else if (hasDown && !hasUp) mode = 'down'; else if (!hasUp && !hasDown) {
+        // Fallback assumption: upward-only (documented for debug) – prevents unwanted negatives when user expects "option one" (increase only)
+        mode = 'up';
+    }
+    try { if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.debug('[applyGlobalSummaryFilter] directional mode=', mode, 'hasUp=', hasUp, 'hasDown=', hasDown); } catch(_) {}
     const filteredEntries = Object.entries(livePrices).filter(([code, lp]) => {
         if (!lp || lp.live == null || lp.prevClose == null) return false;
         const change = lp.live - lp.prevClose;
         const absChange = Math.abs(change);
         const pct = lp.prevClose !== 0 ? (absChange / lp.prevClose) * 100 : 0;
-        // Directional gating: if only upward thresholds configured, exclude negatives; if only downward, exclude positives
-        if (hasUp && !hasDown && change < 0) return false;
-        if (hasDown && !hasUp && change > 0) return false;
+        // Directional gating (revised): apply based on computed mode
+        if (mode === 'up' && change < 0) return false;
+        if (mode === 'down' && change > 0) return false;
         if (isPercent) return pct >= numeric; else return absChange >= numeric;
     }).map(([code, lp]) => {
         const change = lp.live - lp.prevClose;
