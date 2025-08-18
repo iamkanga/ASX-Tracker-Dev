@@ -1,6 +1,6 @@
 // Service Worker Version: 1.0.13
 
-// Unified App / Asset  Version (bump this when deploying front-end changes to force fresh fetch of CSS/JS)
+// Unified App / Asset Version (bump this when deploying front-end changes to force fresh fetch of CSS/JS)
 const APP_VERSION = '0.1.13';
 
 // Cache name for the current version (auto-derived from APP_VERSION so we don't forget to bump both)

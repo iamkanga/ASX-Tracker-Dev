@@ -9691,6 +9691,22 @@ function showTargetHitDetailsModal(options={}) {
             const snapshot = (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) ? window.__lastMoversSnapshot : null;
             const externalRows = Array.isArray(globalExternalPriceRows) ? globalExternalPriceRows : [];
 
+            // Build global criteria badges (percent / dollar up+down thresholds + min price)
+            function buildCriteriaBadges() {
+                const badges = [];
+                const upPct = (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ? globalPercentIncrease : null;
+                const upDol = (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ? globalDollarIncrease : null;
+                const dnPct = (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ? globalPercentDecrease : null;
+                const dnDol = (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0) ? globalDollarDecrease : null;
+                if (upPct) badges.push({ cls:'up', text:'▲ ≥ '+upPct+'%' });
+                if (upDol) badges.push({ cls:'up', text:'▲ ≥ $'+upDol });
+                if (dnPct) badges.push({ cls:'down', text:'▼ ≥ '+dnPct+'%' });
+                if (dnDol) badges.push({ cls:'down', text:'▼ ≥ $'+dnDol });
+                if (appliedMinimumPrice) badges.push({ cls:'min', text:'Min $'+Number(appliedMinimumPrice).toFixed(2) });
+                return badges;
+            }
+            const criteriaBadges = buildCriteriaBadges();
+
             let entries = [];
             if (snapshot) {
                 entries = snapshot.entries.filter(e => codeSet.has(String(e.code || '').toUpperCase()));
@@ -9701,6 +9717,22 @@ function showTargetHitDetailsModal(options={}) {
             entries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
 
             listEl.innerHTML='';
+            // Header / criteria bar
+            const criteriaBar = document.createElement('div');
+            criteriaBar.className = 'discover-criteria-bar';
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'criteria-title';
+            titleSpan.textContent = 'Global Movers';
+            const badgeContainer = document.createElement('div');
+            badgeContainer.className = 'criteria-badges';
+            if (criteriaBadges.length) {
+                criteriaBadges.forEach(b => { const s=document.createElement('span'); s.className='criteria-badge '+b.cls; s.textContent=b.text; badgeContainer.appendChild(s); });
+            } else {
+                const none=document.createElement('span'); none.className='criteria-badge none'; none.textContent='No active thresholds'; badgeContainer.appendChild(none);
+            }
+            criteriaBar.appendChild(titleSpan);
+            criteriaBar.appendChild(badgeContainer);
+            listEl.appendChild(criteriaBar);
             // Sorting controls (create once per render)
             const sortWrapper = document.createElement('div');
             sortWrapper.className = 'discover-sort-bar';
@@ -9720,6 +9752,19 @@ function showTargetHitDetailsModal(options={}) {
                 const o = document.createElement('option'); o.value = opt.value; o.textContent = opt.label; if (opt.value===storedSort) o.selected = true; sortSelect.appendChild(o);
             });
             sortWrapper.appendChild(sortLabel); sortWrapper.appendChild(sortSelect);
+            const sortDesc = document.createElement('div');
+            sortDesc.className = 'discover-sort-desc';
+            function sortModeDescription(v){
+                switch(v){
+                    case 'code_asc': return 'Alphabetical (A → Z)';
+                    case 'price_desc': return 'Highest live price first';
+                    case 'pct_desc': return 'Largest percentage movers first';
+                    case 'chg_desc': return 'Largest $ movers first';
+                    default: return '';
+                }
+            }
+            sortDesc.textContent = sortModeDescription(storedSort);
+            sortWrapper.appendChild(sortDesc);
             listEl.appendChild(sortWrapper);
 
             function applySort(list) {
@@ -9739,11 +9784,7 @@ function showTargetHitDetailsModal(options={}) {
 
             const contextLine = document.createElement('div');
             contextLine.className = 'discover-context-line';
-            const parts = [];
-            parts.push(nonPortfolioCodes.length + ' global ' + (nonPortfolioCodes.length === 1 ? 'share' : 'shares'));
-            if (threshold !== null) parts.push('moved ≥ ' + threshold + '%');
-            if (appliedMinimumPrice) parts.push('ignoring < $' + Number(appliedMinimumPrice).toFixed(2));
-            contextLine.textContent = parts.join(' | ');
+            contextLine.innerHTML = `<strong>${nonPortfolioCodes.length}</strong> global ${nonPortfolioCodes.length===1?'share':'shares'} matched thresholds`;
             listEl.appendChild(contextLine);
 
             if (!entries.length) {
@@ -9853,6 +9894,7 @@ function showTargetHitDetailsModal(options={}) {
                 applySort(entries);
                 const ordered = entries.map(en => ul.querySelector('li.discover-mover[data-code="'+en.code+'"]')).filter(Boolean);
                 ordered.forEach(li => ul.appendChild(li));
+                sortDesc.textContent = sortModeDescription(sortSelect.value);
             });
             listEl.appendChild(ul);
         }
