@@ -4050,8 +4050,8 @@ function renderSortSelect() {
             { value: 'shareName-asc', text: 'Code (A-Z)' },
             { value: 'shareName-desc', text: 'Code (Z-A)' },
             // Then Date and Rating
-            { value: 'entryDate-desc', text: 'Date (H-L)' },
-            { value: 'entryDate-asc', text: 'Date (L-H)' },
+            { value: 'entryDate-desc', text: 'Date (N-O)' }, // Newest-Oldest
+            { value: 'entryDate-asc', text: 'Date (O-N)' },  // Oldest-Newest
             { value: 'starRating-desc', text: '⭐ (H-L)' },
             { value: 'starRating-asc', text: '⭐ (L-H)' },
             // Dividend Yield last
@@ -5592,6 +5592,8 @@ function enforceMoversVirtualView() {
     if (!isMovers) {
         tableRows.forEach(tr => { tr.style.display = ''; });
         mobileCards.forEach(card => { card.style.display = ''; });
+    // Clear any pending retry when leaving movers view
+    try { if (window.__moversRetryTimer) { clearTimeout(window.__moversRetryTimer); window.__moversRetryTimer = null; } } catch(_) {}
         return;
     }
     // Always recompute movers (fresh live movement) – fallback to snapshot only if recompute fails
@@ -5615,6 +5617,22 @@ function enforceMoversVirtualView() {
         const code = codeEl ? codeEl.textContent.trim().toUpperCase() : null;
         card.style.display = (code && effectiveCodes.has(code)) ? '' : 'none';
     });
+
+    // If first attempt yielded no visible movers but data exists, schedule one retry after a short delay
+    if (isMovers && effectiveCodes.size === 0 && (allSharesData && allSharesData.length > 0)) {
+        if (!window.__moversRetryTimer) {
+            window.__moversRetryTimer = setTimeout(() => {
+                window.__moversRetryTimer = null;
+                // Re-run only if still in movers view and nothing visible
+                const stillMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+                const anyVisible = Array.from(document.querySelectorAll('#shareTable tbody tr,.mobile-share-cards .mobile-card'))
+                    .some(el => el.style.display !== 'none');
+                if (stillMovers && !anyVisible) {
+                    try { enforceMoversVirtualView(); } catch(e){ console.warn('Movers retry failed', e); }
+                }
+            }, 1200); // allow livePrices / snapshots to populate
+        }
+    }
     if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
         try { console.debug('[Movers enforce] totalFresh=', moversEntries.length, 'portfolioMatch=', effectiveCodes.size); } catch(_) {}
     }
