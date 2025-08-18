@@ -3838,6 +3838,8 @@ table td.live-price-cell.negative-change {
 .live-price-display-section .modal-share-name { font-size: var(--live-price-size) !important; font-weight:800; line-height:1; }
 #addShareLivePriceDisplay { --live-price-size:1.9em; }
 @media (max-width:640px){ #addShareLivePriceDisplay { --live-price-size:1.85em; } }
+/* Search modal live display: align primary size with detail modal but slightly smaller */
+#stockSearchModal .live-price-display-section { --live-price-size: 2.4em; }
 
 /* Secondary metrics sizing (contract): value elements only (avoid inflating container rows) */
 #modalLivePriceDisplaySection .price-change-large,

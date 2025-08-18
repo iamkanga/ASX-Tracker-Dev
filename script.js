@@ -523,6 +523,60 @@ let suppressShareFormReopen = false;
 // App version (kept for internal logging; no longer displayed in UI title bar)
 const APP_VERSION = 'v0.1.5';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
+// === Typography Diagnostics ===
+function logTypographyRatios(contextLabel='') {
+    try {
+        const root = document;
+        const priceEl = root.querySelector('#shareDetailModal .live-price-display-section .live-price-large, #shareDetailModal .modal-share-name');
+        const changeEl = root.querySelector('#shareDetailModal .live-price-display-section .price-change-large');
+        const weekLowEl = root.querySelector('#shareDetailModal .live-price-display-section .fifty-two-week-value.low');
+        const weekHighEl = root.querySelector('#shareDetailModal .live-price-display-section .fifty-two-week-value.high');
+        const peEl = root.querySelector('#shareDetailModal .live-price-display-section .pe-ratio-value');
+        const getSize = el => el ? parseFloat(getComputedStyle(el).fontSize) : NaN;
+        const primarySize = getSize(priceEl);
+        const report = {
+            context: contextLabel || 'detail-modal',
+            primaryPx: primarySize,
+            changePx: getSize(changeEl),
+            weekLowPx: getSize(weekLowEl),
+            weekHighPx: getSize(weekHighEl),
+            pePx: getSize(peEl)
+        };
+        ['changePx','weekLowPx','weekHighPx','pePx'].forEach(k => {
+            if (!isNaN(report[k]) && !isNaN(primarySize) && primarySize>0) {
+                report[k.replace('Px','Ratio')] = +(report[k] / primarySize).toFixed(3);
+            }
+        });
+        console.log('[TypographyDiagnostics]', report);
+    } catch(e) { console.warn('Typography diagnostics failed', e); }
+}
+
+function logSearchModalTypographyRatios() {
+    try {
+        const root = document;
+        const priceEl = root.querySelector('#stockSearchModal .live-price-display-section .modal-share-name');
+        const changeEl = root.querySelector('#stockSearchModal .live-price-display-section .price-change-large');
+        const weekLowEl = root.querySelector('#stockSearchModal .live-price-display-section .fifty-two-week-value.low');
+        const weekHighEl = root.querySelector('#stockSearchModal .live-price-display-section .fifty-two-week-value.high');
+        const peEl = root.querySelector('#stockSearchModal .live-price-display-section .pe-ratio-value');
+        const getSize = el => el ? parseFloat(getComputedStyle(el).fontSize) : NaN;
+        const primarySize = getSize(priceEl);
+        const report = {
+            context:'search-modal',
+            primaryPx: primarySize,
+            changePx: getSize(changeEl),
+            weekLowPx: getSize(weekLowEl),
+            weekHighPx: getSize(weekHighEl),
+            pePx: getSize(peEl)
+        };
+        ['changePx','weekLowPx','weekHighPx','pePx'].forEach(k => {
+            if (!isNaN(report[k]) && !isNaN(primarySize) && primarySize>0) {
+                report[k.replace('Px','Ratio')] = +(report[k] / primarySize).toFixed(3);
+            }
+        });
+        console.log('[TypographyDiagnostics]', report);
+    } catch(e) { console.warn('Search typography diagnostics failed', e); }
+}
 try {
     if (localStorage.getItem('lastSelectedView') === '__movers') {
         sessionStorage.setItem('preResetLastSelectedView','__movers');
@@ -3620,6 +3674,8 @@ function showShareDetails() {
     peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A');
     peRow.appendChild(peSpan);
     modalLivePriceDisplaySection.appendChild(peRow);
+    // Typography diagnostics for detail modal
+    setTimeout(()=>{ try { logTypographyRatios('detail-modal'); } catch(_) {} },0);
     }
 
     // Entry (formerly reference) price: show 2 decimals by default; preserve up to 3 only if user originally entered >2
@@ -4908,6 +4964,9 @@ async function displayStockDetailsInSearchModal(asxCode) {
         if (searchModalListcorpLink) searchModalListcorpLink.href = `https://www.listcorp.com/asx/${asxCode.toLowerCase()}`;
         if (searchModalCommSecLink) searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
     if (searchModalGoogleFinanceLink) searchModalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${asxCode.toUpperCase()}:ASX`;
+
+    // Typography diagnostics for search modal
+    setTimeout(() => { try { logSearchModalTypographyRatios(); } catch(_) {} }, 0);
 
         // Store the fetched data for potential adding/editing (normalize code property fallbacks)
         const resolvedCode = stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode;
