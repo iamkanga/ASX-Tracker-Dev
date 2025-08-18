@@ -890,6 +890,15 @@ const targetIntentSellBtn = document.getElementById('targetIntentSellBtn');
 const targetDirAboveBtn = document.getElementById('targetDirAboveBtn');
 const targetDirBelowBtn = document.getElementById('targetDirBelowBtn');
 let userManuallyOverrodeDirection = false; // reset per form open
+// Debounced auto-save for target alert related inputs (intent, direction, target price)
+let _alertAutoSaveTimer = null;
+function scheduleAlertAutoSave(trigger){
+    try { logDebug('AlertAutoSave: schedule ('+trigger+')'); } catch(_){ }
+    if (_alertAutoSaveTimer) clearTimeout(_alertAutoSaveTimer);
+    _alertAutoSaveTimer = setTimeout(()=>{
+        try { if (typeof saveShareData === 'function') saveShareData(true); } catch(e){ console.warn('AlertAutoSave failed', e); }
+    }, 400);
+}
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
 const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
@@ -7686,6 +7695,8 @@ async function initializeAppLogic() {
             }
             syncDirButtonsFromCheckboxes();
             checkFormDirtyState();
+            const tp = parseFloat(targetPriceInput ? targetPriceInput.value : '');
+            if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('dir-checkbox-above');
         });
 
         targetBelowCheckbox.addEventListener('change', () => {
@@ -7694,6 +7705,8 @@ async function initializeAppLogic() {
             }
             syncDirButtonsFromCheckboxes();
             checkFormDirtyState();
+            const tp = parseFloat(targetPriceInput ? targetPriceInput.value : '');
+            if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('dir-checkbox-below');
         });
     }
 
@@ -7705,6 +7718,8 @@ async function initializeAppLogic() {
             targetBelowCheckbox.checked = false;
             syncDirButtonsFromCheckboxes();
             checkFormDirtyState();
+            const tp = parseFloat(targetPriceInput ? targetPriceInput.value : '');
+            if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('dir-btn-above');
         });
         targetDirBelowBtn.addEventListener('click', () => {
             userManuallyOverrodeDirection = true;
@@ -7712,6 +7727,8 @@ async function initializeAppLogic() {
             targetBelowCheckbox.checked = true;
             syncDirButtonsFromCheckboxes();
             checkFormDirtyState();
+            const tp = parseFloat(targetPriceInput ? targetPriceInput.value : '');
+            if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('dir-btn-below');
         });
         // Initial sync
         syncDirButtonsFromCheckboxes();
@@ -7725,6 +7742,8 @@ async function initializeAppLogic() {
             targetIntentBuyBtn.setAttribute('aria-pressed', String(isBuy));
             targetIntentSellBtn.classList.toggle('is-active', !isBuy);
             targetIntentSellBtn.setAttribute('aria-pressed', String(!isBuy));
+            const tp = parseFloat(targetPriceInput ? targetPriceInput.value : '');
+            if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('intent-'+intent);
         };
         targetIntentBuyBtn.addEventListener('click', () => {
             setIntentUI('buy');
@@ -7734,6 +7753,8 @@ async function initializeAppLogic() {
                 targetBelowCheckbox.checked = true;
                 syncDirButtonsFromCheckboxes();
                 checkFormDirtyState();
+                const tp = parseFloat(targetPriceInput ? targetPriceInput.value : '');
+                if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('intent-buy-default-dir');
             }
         });
         targetIntentSellBtn.addEventListener('click', () => {
@@ -7744,11 +7765,27 @@ async function initializeAppLogic() {
                 targetBelowCheckbox.checked = false;
                 syncDirButtonsFromCheckboxes();
                 checkFormDirtyState();
+                const tp = parseFloat(targetPriceInput ? targetPriceInput.value : '');
+                if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('intent-sell-default-dir');
             }
         });
         // Default to Buy on load
         setIntentUI('buy');
     }
+
+// Target price auto-save on blur / Enter (only when non-zero)
+if (targetPriceInput) {
+    targetPriceInput.addEventListener('blur', () => {
+        const tp = parseFloat(targetPriceInput.value);
+        if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('tp-blur');
+    });
+    targetPriceInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const tp = parseFloat(targetPriceInput.value);
+            if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('tp-enter');
+        }
+    });
+}
     
     // NEW: Add event listeners for cash asset form inputs for dirty state checking (2.1)
     if (cashAssetNameInput) cashAssetNameInput.addEventListener('input', checkCashAssetFormDirtyState);
