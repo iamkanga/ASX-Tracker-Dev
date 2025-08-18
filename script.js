@@ -3270,6 +3270,17 @@ async function saveShareData(isSilent = false) {
         targetPrice: isNaN(targetPrice) ? null : targetPrice,
         // UPDATED: Save the selected target direction from the new checkboxes
         targetDirection: targetAboveCheckbox.checked ? 'above' : 'below',
+        // Persist intent so Alert Target renderer can read directly without needing alert doc (B/S)
+        intent: (function(){
+            try {
+                const dir = targetAboveCheckbox.checked ? 'above' : 'below';
+                const buyActive = targetIntentBuyBtn && targetIntentBuyBtn.classList.contains('is-active');
+                const sellActive = targetIntentSellBtn && targetIntentSellBtn.classList.contains('is-active');
+                if (buyActive && !sellActive) return 'buy';
+                if (sellActive && !buyActive) return 'sell';
+                return dir === 'above' ? 'sell' : 'buy';
+            } catch(_) { return targetAboveCheckbox.checked ? 'sell' : 'buy'; }
+        })(),
         dividendAmount: isNaN(dividendAmount) ? null : dividendAmount,
         frankingCredits: isNaN(frankingCredits) ? null : frankingCredits,
         comments: comments,
@@ -5447,10 +5458,27 @@ async function loadTriggeredAlertsListener() {
         const alertsCol = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
         unsubscribeAlerts = window.firestore.onSnapshot(alertsCol, (qs) => {
             const newMap = new Map();
-            qs.forEach(doc => { const d = doc.data() || {}; newMap.set(doc.id, (d.enabled !== false)); });
+            const alertMetaById = new Map();
+            qs.forEach(doc => { 
+                const d = doc.data() || {}; 
+                newMap.set(doc.id, (d.enabled !== false)); 
+                alertMetaById.set(doc.id, { intent: d.intent, direction: d.direction });
+            });
             alertsEnabledMap = newMap;
+            // Propagate intent/direction to existing shares for inline render if missing
+            try {
+                allSharesData.forEach(s => {
+                    const meta = alertMetaById.get(s.id);
+                    if (meta) {
+                        if (!s.intent && meta.intent) s.intent = meta.intent;
+                        if (!s.targetDirection && meta.direction) s.targetDirection = meta.direction;
+                    }
+                });
+            } catch(_) {}
             try { console.log('[Diag][loadTriggeredAlertsListener] map size:', alertsEnabledMap.size); } catch(_){ }
             recomputeTriggeredAlerts();
+            // Re-render watchlist to show newly available intent letters
+            try { renderWatchlist(); } catch(_) {}
         }, err => console.error('Alerts: triggered alerts listener error', err));
         logDebug('Alerts: Triggered alerts listener active (enabled-state driven).');
     } catch (e) { console.error('Alerts: failed to init triggered alerts listener', e); }
@@ -6064,6 +6092,19 @@ async function loadShares() {
 
             allSharesData = dedupeSharesById(fetchedShares);
             logDebug('Shares: Shares data updated from snapshot. Total shares: ' + allSharesData.length);
+
+            // Backfill intent field from alertsEnabledMap / alerts collection if missing
+            try {
+                if (Array.isArray(allSharesData) && alertsEnabledMap && typeof alertsEnabledMap === 'object') {
+                    allSharesData.forEach(s => {
+                        if (s && (s.intent === undefined || s.intent === null || s.intent === '')) {
+                            // Try to find corresponding alert in sharesAtTargetPriceMuted or sharesAtTargetPrice arrays first
+                            const alertMatch = (sharesAtTargetPrice||[]).concat(sharesAtTargetPriceMuted||[]).find(a=>a && a.id===s.id);
+                            if (alertMatch && alertMatch.intent) s.intent = alertMatch.intent;
+                        }
+                    });
+                }
+            } catch(e){ console.warn('Intent backfill failed', e); }
             
             // AGGRESSIVE FIX: Force apply current sort order after data loads
             forceApplyCurrentSort();
