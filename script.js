@@ -332,7 +332,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         <span class="pc-val ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></span>
                     </div>
                 </div>
-                <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand"><span class="chevron">▼</span></button>
+                <div class="pc-controls-row">
+                    <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand"><span class="chevron">▼</span></button>
+                    <button class="pc-eye-btn" aria-label="View Details"><span class="fa fa-eye"></span></button>
+                </div>
                 <div class="pc-details" style="display:none;">
                     <div class="pc-detail-row"><span>Quantity:</span> <span>${shares !== '' ? shares : ''}</span></div>
                     <div class="pc-detail-row"><span>Average Cost:</span> <span>${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
@@ -373,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const cardsGrid = `<div class="portfolio-cards-grid">${cards.join('')}</div>`;
         portfolioListContainer.innerHTML = summaryBar + cardsGrid;
 
-        // --- Expand/Collapse Logic (Accordion) ---
+        // --- Expand/Collapse Logic (Accordion) & Eye Button ---
         const cardNodes = portfolioListContainer.querySelectorAll('.portfolio-card');
         cardNodes.forEach(card => {
             const btn = card.querySelector('.pc-chevron-btn');
@@ -399,6 +402,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 card.classList.toggle('expanded', !expanded);
                 btn.querySelector('.chevron').textContent = !expanded ? '▲' : '▼';
             });
+            // Eye icon logic
+            const eyeBtn = card.querySelector('.pc-eye-btn');
+            if (eyeBtn) {
+                eyeBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    // Open shareDetailModal for this stock
+                    if (typeof openShareDetailModal === 'function') {
+                        openShareDetailModal(share.shareName || '', share.id);
+                    } else {
+                        alert('Share details modal not available.');
+                    }
+                });
+            }
         });
     };
 });
