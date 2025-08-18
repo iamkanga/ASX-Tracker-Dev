@@ -2157,8 +2157,7 @@ function addShareToTable(share) {
             <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
-    <td class="numeric-data-cell alert-target-cell">${renderAlertTargetInline(share)}</td>
-        <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
+        <td class="numeric-data-cell alert-target-cell">${renderAlertTargetInline(share)}</td>
         <td class="star-rating-cell numeric-data-cell">
             ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
         </td>
@@ -2368,7 +2367,7 @@ function addShareToMobileCards(share) {
                 <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
             </div>
         </div>
-    <p class="data-row"><span class="label-text">Entry Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.currentPrice)}</span></p>
+    <!-- Entry Price removed from mobile card main view -->
     ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value"><span class="alert-target-inline">${renderAlertTargetInline(share)}</span></span></p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
@@ -4782,7 +4781,7 @@ function renderWatchlist() {
             
             if (tableContainer && tableContainer.style.display !== 'none') {
                 const td = document.createElement('td');
-                td.colSpan = 6;
+                td.colSpan = 5; // Adjusted after removing Entry Price column
                 td.appendChild(emptyWatchlistMessage);
                 const tr = document.createElement('tr');
                 tr.classList.add('empty-message-row'); // Add class to easily target for removal later
