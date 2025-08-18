@@ -9591,22 +9591,17 @@ function showTargetHitDetailsModal(options={}) {
                     const li = document.createElement('li');
                     li.className = 'discover-mover dir-' + dir;
                     li.dataset.code = code;
-                    const chStr = (ch!=null)? (ch>0?'+':'')+'$'+Math.abs(ch).toFixed(2):'';
-                    const pctStr = (pct!=null)? (pct>0?'+':'')+pct.toFixed(2)+'%':'';
-                    let reason='';
-                    if (pct!=null && threshold!=null) {
-                        const meets = Math.abs(pct) >= threshold;
-                        reason = (meets? 'Met threshold: ':'Movement: ') + pctStr + (chStr?(' ('+chStr+')'):'');
-                    } else if (pct!=null) {
-                        reason = 'Moved ' + pctStr + (chStr?(' ('+chStr+')'):'');
-                    } else {
-                        reason = 'No movement data yet';
+                    let comboLine = 'No movement data yet';
+                    if (ch != null && pct != null) {
+                        comboLine = `${ch>0?'+':''}${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%`;
+                    } else if (ch != null) {
+                        comboLine = `${ch>0?'+':''}${ch.toFixed(2)}`;
+                    } else if (pct != null) {
+                        comboLine = `${pct>0?'+':''}${pct.toFixed(2)}%`;
                     }
-                    // Always show explicit movement components line if we have any data
-                    const movementLine = (pctStr || chStr) ? `${pctStr}${chStr?(' ('+chStr+')'):''}` : 'No movement data yet';
                     li.innerHTML = `<span class="code">${code}</span>` +
                         `<span class="live">${price!=null?('$'+Number(price).toFixed(2)):'-'}</span>` +
-                        `<span class="delta ${dir}" title="${movementLine}">${movementLine}</span>`;
+                        `<span class="delta movement-combo ${dir}" title="${comboLine}">${comboLine}</span>`;
                     li.addEventListener('click',()=>{
                         try { hideModal(modal); } catch(_) {}
                         // Open Stock Search & Research modal instead of Add Share form
@@ -9648,9 +9643,8 @@ function showTargetHitDetailsModal(options={}) {
             const ch = currentLivePrice - prevClose;
             const pct = (ch / prevClose) * 100;
             const dirClass = ch === 0 ? 'neutral' : (ch > 0 ? 'positive' : 'negative');
-            const deltaStr = `${ch>0?'+':''}$${Math.abs(ch).toFixed(2)}`;
-            const pctStr = `${ch>0?'+':''}${pct.toFixed(2)}%`;
-            movementDeltaHtml = `<span class="movement-delta ${dirClass}">${deltaStr}</span> <span class="movement-pct ${dirClass}">${pctStr}</span>`;
+            const combo = `${ch>0?'+':''}${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%`;
+            movementDeltaHtml = `<span class="movement-combo ${dirClass}">${combo}</span>`;
         }
         const item = document.createElement('div');
         item.classList.add('target-hit-item');
@@ -10160,7 +10154,7 @@ try {
                             data.targetHitModal = {
                                 hasGlobalMoversTitle: !!gmTitle,
                                 firstFiveChildIdsOrClasses: Array.from(targetList.children).slice(0,5).map(el=>el.id||el.className||el.tagName),
-                                movementDeltaCount: targetList.querySelectorAll('.movement-delta').length
+                                movementDeltaCount: targetList.querySelectorAll('.movement-combo').length
                             };
                         }
                         // Ignoring line style

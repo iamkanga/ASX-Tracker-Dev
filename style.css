@@ -411,6 +411,10 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .discover-code-list .discover-mover .delta, .discover-code-list .discover-mover .pct { font-size:0.65rem; opacity:0.85; letter-spacing:0.3px; }
 .discover-code-list .discover-mover .delta.negative, .discover-code-list .discover-mover .pct.negative { color: var(--price-down-color); }
 .discover-code-list .discover-mover .delta.positive, .discover-code-list .discover-mover .pct.positive { color: var(--price-up-color); }
+.movement-combo { font-weight:600; font-size:0.75rem; letter-spacing:0.3px; }
+.movement-combo.positive { color: var(--price-up-color); }
+.movement-combo.negative { color: var(--price-down-color); }
+.movement-combo.neutral { color: var(--price-neutral-color); }
 .discover-global-list { max-height:60vh; overflow-y:auto; }
 .discover-global-list ul.discover-code-list { list-style:none; margin:0; padding:0; }
 .discover-global-list ul.discover-code-list li { padding:6px 10px; border-bottom:1px solid var(--border-color, #444); cursor:default; display:flex; align-items:center; }
@@ -1874,7 +1878,7 @@ body.theme-muted-grey {
 }
 
 /* Utility class JS can toggle when a virtual keyboard shows on mobile */
-body.keyboard-visible { /* marker class (intentionally minimal) */ }
+body.keyboard-visible { /* marker class (intentionally minimal) */ --keyboard-visible:1; }
 
 /* Subtle Themes - Adjusted for better visual distinction */
 body.theme-subtle-1 { /* Subtle Sky */
