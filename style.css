@@ -3812,25 +3812,34 @@ table td.live-price-cell.negative-change {
 /* Live price + code: always neutral theme text color */
 .live-price-display-section .live-price-large,
 .neutral-code-text { color: var(--text-color) !important; }
+/* Adjusted: live price should visually dominate over day change */
 .live-price-display-section .live-price-large {
-    font-size: 1.4em;
+    font-size: 1.75em; /* increased from 1.4em */
     font-weight: 800;
     line-height: 1;
 }
 
 /* Price change text only (no background container / padding) */
+/* Adjusted: make day change subordinate to live price for clarity */
 .live-price-display-section .price-change-large {
-    font-size: 1.8em; /* doubled from 0.9em */
-    font-weight: 700;
+    font-size: 1.05em; /* was 1.8em (too dominant) */
+    font-weight: 600;
     white-space: nowrap;
-    margin-left: 8px;
+    margin-left: 10px;
     display: inline-block;
-    line-height: 1.05;
+    line-height: 1.1;
     letter-spacing: .25px;
     padding: 0;
     background:none !important;
     border:none !important;
     box-shadow:none !important;
+    opacity: .95;
+}
+
+/* Mobile fine-tune: further reduce change size on very small screens */
+@media (max-width: 640px) {
+    .live-price-display-section .live-price-large { font-size: 1.9em; }
+    .live-price-display-section .price-change-large { font-size: 0.95em; margin-left: 8px; }
 }
 
 /* (Removed legacy compact absolute-position & flex centering block – superseded by FINAL COMPACT CARD GRID LAYOUT) */

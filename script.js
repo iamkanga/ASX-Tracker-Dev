@@ -8244,8 +8244,9 @@ if (sortSelect) {
                 try {
                     const shareDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
                     await window.firestore.deleteDoc(shareDocRef);
-                    // showCustomAlert('Share deleted successfully!', 1500); // Removed as per previous request
                     logDebug('Firestore: Share (ID: ' + selectedShareDocId + ') deleted.');
+                    // New lightweight toast for deletion confirmation
+                    showCustomAlert('Share deleted', 1500, 'success');
                     closeModals();
                     updateTargetHitBanner(); // NEW: Update banner after deletion
                 } catch (error) {
@@ -8293,8 +8294,9 @@ if (sortSelect) {
                 try {
                     const shareDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
                     await window.firestore.deleteDoc(shareDocRef);
-                    // showCustomAlert('Share deleted successfully!', 1500); // Removed as per previous request
                     logDebug('Firestore: Share (ID: ' + selectedShareDocId + ') deleted.');
+                    // New lightweight toast for deletion confirmation
+                    showCustomAlert('Share deleted', 1500, 'success');
                     closeModals();
                     updateTargetHitBanner(); // NEW: Update banner after deletion
                 } catch (error) {
@@ -9858,4 +9860,4 @@ try {
         }
     } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
-// --- End Super Debug Always-Install ---
+// --- End Super Debug Always-Install --- OK now on the mobile cards the actual information the sell or buy
