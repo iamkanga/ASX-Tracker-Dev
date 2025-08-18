@@ -134,7 +134,7 @@ window.__dumpAuthDiag = function(){
         })(),
         locationProtocol: window.location && window.location.protocol,
         serviceWorkerControlled: !!(navigator.serviceWorker && navigator.serviceWorker.controller),
-        docReadyState: document.readyState
+    docReadyState: document.readyState
     };
     console.log('[AuthDiag] __dumpAuthDiag', out);
     return out;
