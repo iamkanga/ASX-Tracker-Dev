@@ -271,25 +271,32 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-card .pc-metrics-row {
     display: flex;
     flex-direction: column;
-    gap: 8px 0;
-    font-size: 1.18rem;
+    gap: 0.2em;
+    margin-top: 0.5em;
+    font-size: 1.13rem;
 }
 .portfolio-card .pc-metric-line {
     display: flex;
-    justify-content: space-between;
+    flex-direction: row;
     align-items: center;
+    justify-content: space-between;
     width: 100%;
+    margin: 0 0 2px 0;
 }
 .portfolio-card .pc-label {
-    color: #fff;
     font-weight: 500;
+    color: #fff;
+    letter-spacing: 0.01em;
+    text-align: left;
     font-size: 1.08rem;
 }
 .portfolio-card .pc-val {
     font-weight: 700;
-    font-size: 1.18rem;
+    min-width: 80px;
     text-align: right;
-    color: #fff;
+    letter-spacing: 0.01em;
+    margin-left: 1em;
+    font-size: 1.18rem;
 }
 .portfolio-card .pc-pct {
     font-size: 1.08rem;

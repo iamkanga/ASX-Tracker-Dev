@@ -323,12 +323,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
                 <div class="pc-metrics-row">
                     <div class="pc-metric-line">
-                        <div class="pc-label" style="color:#fff;text-align:left;">P/L</div>
-                        <div class="pc-val ${plClass}" style="text-align:right;color:var(--${plClass === 'positive' ? 'price-up-color' : plClass === 'negative' ? 'price-down-color' : 'price-neutral-color'});">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-pct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></div>
+                        <span class="pc-label">P/L</span>
+                        <span class="pc-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-pct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></span>
                     </div>
                     <div class="pc-metric-line">
-                        <div class="pc-label" style="color:#fff;text-align:left;">Today</div>
-                        <div class="pc-val ${todayClass}" style="text-align:right;color:var(--${todayClass === 'positive' ? 'price-up-color' : todayClass === 'negative' ? 'price-down-color' : 'price-neutral-color'});">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></div>
+                        <span class="pc-label">Today</span>
+                        <span class="pc-val ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></span>
                     </div>
                 </div>
                 <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand"><span class="chevron">▼</span></button>
