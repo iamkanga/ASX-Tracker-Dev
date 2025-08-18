@@ -316,7 +316,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const todayClass = (todayChange > 0) ? 'positive' : (todayChange < 0 ? 'negative' : 'neutral');
 
             // Card HTML (collapsed/expandable)
-            return `<div class="portfolio-card expanded-${false} ${plClass}" data-doc-id="${share.id}">
+            // Border color logic: always use plClass (overall P/L), never todayClass
+            return `<div class="portfolio-card ${plClass}" data-doc-id="${share.id}">
                 <div class="pc-main-row">
                     <div class="pc-code">${share.shareName || ''}</div>
                     <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
