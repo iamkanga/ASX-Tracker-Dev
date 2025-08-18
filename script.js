@@ -6166,11 +6166,21 @@ function initGlobalAlertsUI(force) {
             const pctDecRaw = parseFloat(globalPercentDecreaseInput?.value || '');
             const dolDecRaw = parseFloat(globalDollarDecreaseInput?.value || '');
             const minPriceRaw = parseFloat(globalMinimumPriceInput?.value || '');
+            // Validation: disallow negative inputs; clamp to null
+            function norm(v){ return (!isNaN(v) && v > 0) ? v : null; }
+            const before = { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease };
             globalPercentIncrease = (!isNaN(pctIncRaw) && pctIncRaw > 0) ? pctIncRaw : null;
             globalDollarIncrease = (!isNaN(dolIncRaw) && dolIncRaw > 0) ? dolIncRaw : null;
             globalPercentDecrease = (!isNaN(pctDecRaw) && pctDecRaw > 0) ? pctDecRaw : null;
             globalDollarDecrease = (!isNaN(dolDecRaw) && dolDecRaw > 0) ? dolDecRaw : null;
             globalMinimumPrice = (!isNaN(minPriceRaw) && minPriceRaw > 0) ? minPriceRaw : null;
+            const after = { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease };
+            try { console.log('[GlobalAlerts][save] thresholds changed', { before, after, min: globalMinimumPrice }); } catch(_) {}
+            // Edge case assist: If only decrease thresholds now exist, ensure increase ones are null (stale UI race)
+            if (!globalPercentIncrease && !globalDollarIncrease && (globalPercentDecrease || globalDollarDecrease)) {
+                // Forcefully null (already) but log for clarity
+                try { console.log('[GlobalAlerts][save] Increase side cleared; operating in DECREASE-ONLY mode.'); } catch(_) {}
+            }
             await saveGlobalAlertSettingsDirectional({ globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease, globalMinimumPrice });
             showCustomAlert('Global alert settings saved', 1200);
             try { hideModal(globalAlertsModal); } catch(e){}
@@ -6183,8 +6193,47 @@ function initGlobalAlertsUI(force) {
                     await fetchLivePrices();
                 }
             } catch(err) { console.warn('Global Alerts: post-save refresh failed', err); }
+            // Run directional diagnostics immediately after save for user transparency
+            try { runDirectionalThresholdDiagnostics(); } catch(diagErr){ console.warn('Global Alerts: diagnostics failed', diagErr); }
         });
     }
+
+// Diagnostics: Inspect each live price vs current directional thresholds to detect incorrect triggering
+function runDirectionalThresholdDiagnostics(options={}) {
+    if (!livePrices) { console.warn('[DiagDirectional] livePrices unavailable'); return null; }
+    const results = [];
+    const hasUp = (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) || (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0);
+    const hasDown = (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) || (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0);
+    Object.entries(livePrices).forEach(([code, lp])=>{
+        if(!lp || lp.live==null || lp.prevClose==null) return;
+        const change = lp.live - lp.prevClose;
+        if(change===0) return;
+        const pctSigned = lp.prevClose!==0 ? (change / lp.prevClose)*100 : 0;
+        const pctMag = Math.abs(pctSigned);
+        const upQualified = hasUp && ((globalPercentIncrease && pctSigned >= globalPercentIncrease) || (globalDollarIncrease && change >= globalDollarIncrease));
+        const downQualified = hasDown && ((globalPercentDecrease && pctMag >= globalPercentDecrease && change < 0) || (globalDollarDecrease && Math.abs(change) >= globalDollarDecrease && change < 0));
+        // Detect misclassification: positive change counted only by decrease side or vice versa
+        const potentialBug = (change>0 && downQualified && !upQualified) || (change<0 && upQualified && !downQualified);
+        if (upQualified || downQualified || potentialBug) {
+            results.push({ code, live: lp.live, prev: lp.prevClose, change, pctSigned: +pctSigned.toFixed(2), dir: change>0?'up':'down', upQualified, downQualified, potentialBug });
+        }
+    });
+    try {
+        const summary = {
+            thresholds: { upPct: globalPercentIncrease, upDol: globalDollarIncrease, downPct: globalPercentDecrease, downDol: globalDollarDecrease },
+            upCount: results.filter(r=>r.upQualified && r.dir==='up').length,
+            downCount: results.filter(r=>r.downQualified && r.dir==='down').length,
+            potentialBugCount: results.filter(r=>r.potentialBug).length
+        };
+        console.groupCollapsed('%c[DiagDirectional] Threshold evaluation','color:#2d6cdf;font-weight:600;');
+        console.table(results);
+        console.log('[DiagDirectional][summary]', summary);
+        if (summary.potentialBugCount>0) console.warn('[DiagDirectional] Potential misclassification detected.');
+        console.groupEnd();
+    } catch(_) {}
+    return results;
+}
+window.runDirectionalThresholdDiagnostics = runDirectionalThresholdDiagnostics;
     if (!window.__globalAlertsEscBound) {
         window.__globalAlertsEscBound = true;
         document.addEventListener('keydown', (e) => {
