@@ -9731,39 +9731,29 @@ function showTargetHitDetailsModal(options={}) {
             } else {
                 const none=document.createElement('span'); none.className='criteria-badge none'; none.textContent='No active thresholds'; badgeContainer.appendChild(none);
             }
-            // Reset button
-            const resetBtn = document.createElement('button');
-            resetBtn.type = 'button';
-            resetBtn.className = 'criteria-reset-btn';
-            resetBtn.textContent = 'Reset';
-            resetBtn.title = 'Clear all global alert thresholds';
-            resetBtn.addEventListener('click', () => {
+            // Summary line (mirror sidebar Global Alerts summary)
+            function buildGlobalAlertsSummaryInline(){
                 try {
-                    // Clear threshold globals
-                    globalPercentIncrease = null; globalDollarIncrease = null; globalPercentDecrease = null; globalDollarDecrease = null; globalMinimumPrice = null;
-                    // Persist cleared settings if persistence function exists
-                    if (typeof saveGlobalAlertSettings === 'function') {
-                        saveGlobalAlertSettings({
-                            globalPercentIncrease: null,
-                            globalDollarIncrease: null,
-                            globalPercentDecrease: null,
-                            globalDollarDecrease: null,
-                            globalMinimumPrice: null
-                        });
-                    }
-                    // Provide immediate feedback
-                    showCustomAlert('Global thresholds reset');
-                    // Rebuild movers snapshot (clears)
-                    try { if (window.__lastMoversSnapshot) delete window.__lastMoversSnapshot; } catch(_) {}
-                    // Re-open modal with updated (empty) criteria
-                    openDiscoverModal(summaryData);
-                } catch(e){ console.warn('Reset thresholds failed', e); }
-            });
+                    // Reuse formatting helper if present
+                    const incPart = (typeof formatGlobalAlertPart === 'function') ? formatGlobalAlertPart(globalPercentIncrease, globalDollarIncrease) : '';
+                    const decPart = (typeof formatGlobalAlertPart === 'function') ? formatGlobalAlertPart(globalPercentDecrease, globalDollarDecrease) : '';
+                    const anyActive = (incPart && incPart !== 'Off') || (decPart && decPart !== 'Off') || (typeof globalMinimumPrice === 'number' && globalMinimumPrice>0);
+                    if (!anyActive) return '';
+                    const minPart = (typeof globalMinimumPrice === 'number' && globalMinimumPrice>0) ? ('Min: $' + Number(globalMinimumPrice).toFixed(2) + ' | ') : '';
+                    return minPart + 'Increase: ' + incPart + ' | Decrease: ' + decPart;
+                } catch(err){ console.warn('Global alerts inline summary build failed', err); return ''; }
+            }
+            const inlineSummary = buildGlobalAlertsSummaryInline();
             const tsSpan = document.createElement('span'); tsSpan.className='criteria-timestamp'; tsSpan.textContent = lastUpdatedTs;
             criteriaBar.appendChild(titleSpan);
             criteriaBar.appendChild(badgeContainer);
+            if (inlineSummary) {
+                const summarySpan = document.createElement('span');
+                summarySpan.className = 'criteria-summary';
+                summarySpan.textContent = inlineSummary;
+                criteriaBar.appendChild(summarySpan);
+            }
             criteriaBar.appendChild(tsSpan);
-            criteriaBar.appendChild(resetBtn);
             listEl.appendChild(criteriaBar);
             // Sorting controls (create once per render)
             const sortWrapper = document.createElement('div');
