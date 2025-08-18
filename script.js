@@ -738,6 +738,33 @@ function applyCompactViewMode() {
     try { if (typeof updateCompactViewButtonState === 'function') updateCompactViewButtonState(); } catch(_) {}
 }
 
+// === User Preferences Persistence (Firestore-backed) ===
+let userPreferences = {};
+async function loadUserPreferences() {
+    if (!db || !currentUserId || !window.firestore) return {};
+    try {
+        const prefsRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/preferences/ui');
+        const snap = await window.firestore.getDoc(prefsRef);
+        if (snap.exists()) {
+            userPreferences = snap.data() || {};
+            return userPreferences;
+        }
+    } catch(e) { if (DEBUG_MODE) console.warn('Prefs: load failed', e); }
+    return {};
+}
+async function persistUserPreference(key, value) {
+    if (!db || !currentUserId || !window.firestore) return;
+    try {
+        const prefsRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/preferences/ui');
+        const obj = {}; obj[key] = value; obj.updatedAt = window.firestore.serverTimestamp();
+        await window.firestore.setDoc(prefsRef, obj, { merge: true });
+        userPreferences[key] = value;
+    } catch(e) { if (DEBUG_MODE) console.warn('Prefs: persist failed', e); }
+}
+
+// Auto-open suppression sentinel: require user interaction (clicking alert icon) before any passive auto-open
+let ALLOW_ALERT_MODAL_AUTO_OPEN = false;
+
 // NEW: Global variable to track if the target hit icon is dismissed for the current session
 let targetHitIconDismissed = false;
 // Map of alert enable states loaded from Firestore: shareId -> boolean (true = enabled)
@@ -4995,6 +5022,11 @@ async function displayStockDetailsInSearchModal(asxCode) {
         const peRatio = pickNumber(stockData, ['PE','PE Ratio','pe']);
         const high52Week = pickNumber(stockData, ['High52','High52','High 52','52WeekHigh','52 High']);
         const low52Week = pickNumber(stockData, ['Low52','Low52','Low 52','52WeekLow','52 Low']);
+    const dayHigh = pickNumber(stockData, ['DayHigh','High','Day High','High Price']);
+    const dayLow = pickNumber(stockData, ['DayLow','Low','Day Low','Low Price']);
+    const volume = pickNumber(stockData, ['Volume','Vol','Turnover']);
+    const marketCap = pickNumber(stockData, ['MarketCap','Market Cap','MktCap']);
+    const dividend = pickNumber(stockData, ['Dividend','Div','DividendAmount']);
         if (DEBUG_MODE) logDebug('Search Modal: Normalized numeric fields', { currentLivePrice, previousClosePrice, peRatio, high52Week, low52Week, rawKeys: Object.keys(stockData||{}) });
 
         // Determine price change class
@@ -5026,6 +5058,14 @@ async function displayStockDetailsInSearchModal(asxCode) {
 
         // Construct the display HTML
         const resolvedDisplayCode = (stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode || '').toUpperCase();
+        // Compute movement combo for unified formatting
+        let movementCombo = 'N/A';
+        if (!isNaN(currentLivePrice) && !isNaN(previousClosePrice) && previousClosePrice !== 0) {
+            const ch = currentLivePrice - previousClosePrice;
+            const pct = (ch / previousClosePrice) * 100;
+            movementCombo = `${ch>0?'+':''}${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%`;
+        }
+
         searchResultDisplay.innerHTML = `
             <div class="text-center mb-4">
                 <h3 class="${searchModalTitleClasses} search-modal-code-header" data-code="${resolvedDisplayCode}" data-name="${stockData.CompanyName || ''}" data-company="${stockData.CompanyName || ''}" title="Click to populate Add Share form">${resolvedDisplayCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
@@ -5039,10 +5079,15 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 </div>
                 <div class="live-price-main-row">
                         <h2 class="modal-share-name neutral-code-text">${displayPrice}</h2>
-                        <span class="price-change-large ${priceClass}">${priceChangeText}</span>
+                        <span class="price-change-large ${priceClass}" title="Day change / %">${movementCombo}</span>
                     </div>
-                <div class="pe-ratio-row">
-                    <span class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A'}</span>
+                <div class="research-stats-grid">
+                    <div><span class="stat-label">P/E</span><span class="stat-value">${!isNaN(peRatio)?formatAdaptivePrice(peRatio):'N/A'}</span></div>
+                    <div><span class="stat-label">Day High</span><span class="stat-value">${!isNaN(dayHigh)?formatMoney(dayHigh):'N/A'}</span></div>
+                    <div><span class="stat-label">Day Low</span><span class="stat-value">${!isNaN(dayLow)?formatMoney(dayLow):'N/A'}</span></div>
+                    <div><span class="stat-label">Volume</span><span class="stat-value">${!isNaN(volume)?Intl.NumberFormat('en-AU').format(volume):'N/A'}</span></div>
+                    <div><span class="stat-label">Mkt Cap</span><span class="stat-value">${!isNaN(marketCap)?('$'+Intl.NumberFormat('en-AU',{notation:'compact'}).format(marketCap)):'N/A'}</span></div>
+                    <div><span class="stat-label">Dividend</span><span class="stat-value">${!isNaN(dividend)?formatAdaptivePrice(dividend):'N/A'}</span></div>
                 </div>
             </div>
             <div class="external-links-section">
@@ -6057,7 +6102,7 @@ async function toggleAlertEnabled(shareId) {
 // NEW: Recompute triggered alerts from livePrices + alertsEnabledMap (global portfolio scope)
 function recomputeTriggeredAlerts() {
     // Guard: during initial load phase never auto-open the target modal (even if shares already at target)
-    const suppressAutoOpen = !!window.__initialLoadPhase;
+    const suppressAutoOpen = !!window.__initialLoadPhase || !ALLOW_ALERT_MODAL_AUTO_OPEN;
     const enabled = [];
     const muted = [];
     const lpEntries = Object.entries(livePrices || {});
@@ -6464,6 +6509,7 @@ function toggleMobileViewMode() {
 
     currentMobileViewMode = (currentMobileViewMode === 'default') ? 'compact' : 'default';
     try { localStorage.setItem('currentMobileViewMode', currentMobileViewMode); } catch(_) {}
+    try { persistUserPreference('compactViewMode', currentMobileViewMode); } catch(_) {}
 
     if (currentMobileViewMode === 'compact') {
         mobileShareCardsContainer.classList.add('compact-view');
@@ -6474,6 +6520,7 @@ function toggleMobileViewMode() {
         showCustomAlert('Switched to Default View!', 1000);
         logDebug('View Mode: Switched to Default View.');
     }
+    try { persistUserPreference('compactViewMode', currentMobileViewMode); } catch(_) {}
     
     renderWatchlist(); // Re-render to apply new card styling and layout
     // Update button label/state
@@ -7653,6 +7700,8 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             if (!isSilent) showCustomAlert('Watchlist renamed to \'' + newName + '\'!', 1500);
             // --- IMPORTANT FIX: Reload all settings to refresh UI after renaming ---
             await loadUserWatchlistsAndSettings();
+                        // Load Firestore-backed UI preferences (compact view etc.)
+                        await loadUserPreferences();
             // --- END IMPORTANT FIX ---
             logDebug('Firestore: Watchlist (ID: ' + watchlistId + ') renamed to \'' + newName + '\'.');
         } else { // Adding new watchlist
@@ -9588,6 +9637,7 @@ function showTargetHitDetailsModal(options={}) {
                     let pct = (typeof en.pct === 'number') ? en.pct : null;
                     if ((pct === null || pct === undefined) && ch !== null && prevClose !== null && prevClose !== 0) pct = (ch / prevClose) * 100;
                     const dir = (ch === null || ch === 0) ? 'flat' : (ch > 0 ? 'up' : 'down');
+                    const colorClass = (ch === null || ch === 0) ? 'neutral' : (ch > 0 ? 'positive' : 'negative');
                     const li = document.createElement('li');
                     li.className = 'discover-mover dir-' + dir;
                     li.dataset.code = code;
@@ -9601,7 +9651,7 @@ function showTargetHitDetailsModal(options={}) {
                     }
                     li.innerHTML = `<span class="code">${code}</span>` +
                         `<span class="live">${price!=null?('$'+Number(price).toFixed(2)):'-'}</span>` +
-                        `<span class="delta movement-combo ${dir}" title="${comboLine}">${comboLine}</span>`;
+                        `<span class="delta movement-combo ${colorClass}" title="${comboLine}">${comboLine}</span>`;
                     li.addEventListener('click',()=>{
                         try { hideModal(modal); } catch(_) {}
                         // Open Stock Search & Research modal instead of Add Share form
@@ -9797,6 +9847,7 @@ if (targetHitIconBtn) {
     targetHitIconBtn.addEventListener('click', (event) => {
         logDebug('Target Alert: Icon button clicked. Opening details modal.');
         __userInitiatedTargetModal = true;
+        ALLOW_ALERT_MODAL_AUTO_OPEN = true; // enable future passive opens this session
         showTargetHitDetailsModal({ explicit:true });
     });
 }
@@ -9950,7 +10001,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Load persisted compact view preference AFTER user data is ready
                 try {
                     const storedMode = localStorage.getItem('currentMobileViewMode');
-                    currentMobileViewMode = (storedMode === 'compact' || storedMode === 'default') ? storedMode : 'default';
+                    let mode = (storedMode === 'compact' || storedMode === 'default') ? storedMode : null;
+                    if (!mode && userPreferences && userPreferences.compactViewMode) {
+                        mode = (userPreferences.compactViewMode === 'compact') ? 'compact' : 'default';
+                    }
+                    currentMobileViewMode = mode || 'default';
                 } catch(e) { console.warn('View Mode: Failed to load persisted mode post-auth', e); currentMobileViewMode = 'default'; }
                 // Apply class now so first rendered watchlist/cards adopt correct layout
                 if (mobileShareCardsContainer) {

@@ -415,6 +415,12 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .movement-combo.positive { color: var(--price-up-color); }
 .movement-combo.negative { color: var(--price-down-color); }
 .movement-combo.neutral { color: var(--price-neutral-color); }
+
+/* Search modal research stats grid */
+.research-stats-grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(100px,1fr)); gap:6px 12px; margin:10px 0 4px; }
+.research-stats-grid .stat-label { display:block; font-size:0.60rem; text-transform:uppercase; letter-spacing:0.6px; opacity:0.65; font-weight:600; }
+.research-stats-grid .stat-value { display:block; font-size:0.78rem; font-weight:600; line-height:1.1; }
+.dark-theme .research-stats-grid .stat-label { opacity:0.75; }
 .discover-global-list { max-height:60vh; overflow-y:auto; }
 .discover-global-list ul.discover-code-list { list-style:none; margin:0; padding:0; }
 .discover-global-list ul.discover-code-list li { padding:6px 10px; border-bottom:1px solid var(--border-color, #444); cursor:default; display:flex; align-items:center; }
