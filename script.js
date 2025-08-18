@@ -32,6 +32,7 @@ console.log('[AuthDiag] script.js top-level sentinel reached');
                     if (!window.__manualAuthApplied) {
                         window.__manualAuthApplied = true;
                         try { window.__applyUserAuthState && window.__applyUserAuthState(credential.user); } catch(e) { console.log('[AuthDiag] manual apply error', e); }
+                        try { window.finishSignIn && window.finishSignIn(credential.user); } catch(e) { console.log('[AuthDiag] finishSignIn invoke error', e); }
                     }
                 }
             } catch(err) {
@@ -56,6 +57,41 @@ window.__applyUserAuthState = async function(user){
         console.log('[AuthDiag] __applyUserAuthState: basic UI reveal done');
     } catch(e) { console.log('[AuthDiag] __applyUserAuthState exception', e); }
 };
+
+// Unified post-sign-in initializer (idempotent)
+if (typeof window.finishSignIn !== 'function') {
+    window.finishSignIn = async function(user){
+        if (!user) { console.log('[AuthDiag] finishSignIn: no user'); return; }
+        if (window.__finishSignInRan) { console.log('[AuthDiag] finishSignIn: already ran'); return; }
+        window.__finishSignInRan = true;
+        console.log('[AuthDiag] finishSignIn: starting full data load');
+        try { window.__applyUserAuthState(user); } catch(e) { console.log('[AuthDiag] finishSignIn applyUserAuthState error', e); }
+        try { currentUserId = user.uid; } catch(_) {}
+        try { updateMainTitle(); } catch(_) {}
+        try { updateMainButtonsState(true); } catch(_) {}
+        // Load user data and live prices similar to onAuthStateChanged
+        try {
+            await loadUserWatchlistsAndSettings();
+        } catch(e) { console.log('[AuthDiag] finishSignIn loadUserWatchlistsAndSettings error', e); }
+        try {
+            await loadTriggeredAlertsListener();
+        } catch(e) { console.log('[AuthDiag] finishSignIn loadTriggeredAlertsListener error', e); }
+        try { startGlobalSummaryListener(); } catch(e) { console.log('[AuthDiag] finishSignIn startGlobalSummaryListener error', e); }
+        try {
+            const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
+            await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
+            if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true');
+        } catch(e) { console.log('[AuthDiag] finishSignIn fetchLivePrices error', e); }
+        try { startLivePriceUpdates(); } catch(e) { console.log('[AuthDiag] finishSignIn startLivePriceUpdates error', e); }
+        try {
+            allAsxCodes = await loadAsxCodesFromCSV();
+            console.log('[AuthDiag] finishSignIn: ASX codes loaded count=' + (allAsxCodes && allAsxCodes.length));
+        } catch(e) { console.log('[AuthDiag] finishSignIn loadAsxCodes error', e); }
+        try { updateTargetHitBanner(); } catch(_) {}
+        try { renderWatchlist(); } catch(_) {}
+        console.log('[AuthDiag] finishSignIn: complete');
+    };
+}
 // Global early diagnostic: capture ALL clicks (capturing phase) to verify splashSignInBtn click propagation
 if (!window.__globalClickDiagInstalled) {
     window.__globalClickDiagInstalled = true;
@@ -9418,6 +9454,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
                 logDebug('AuthState: User email: ' + user.email);
+                try { window.finishSignIn && window.finishSignIn(user); } catch(e) { console.log('[AuthDiag] onAuthStateChanged finishSignIn error', e); }
                 try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
                 // Use dynamic update instead of hard-coded label so it reflects current selection
                 updateMainTitle();
