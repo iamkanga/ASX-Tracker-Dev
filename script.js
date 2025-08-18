@@ -18,14 +18,44 @@ console.log('[AuthDiag] script.js top-level sentinel reached');
                 if (!provider) { console.log('[AuthDiag] basic handler: provider missing'); return; }
                 try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
                 console.log('[AuthDiag] basic handler: calling signInWithPopup');
-                await window.authFunctions.signInWithPopup(window.firebaseAuth, provider).catch(e=>{ throw e; });
-                console.log('[AuthDiag] basic handler: popup call finished (success or redirect)');
+                let credential = null;
+                try {
+                    credential = await window.authFunctions.signInWithPopup(window.firebaseAuth, provider);
+                } catch(pErr) {
+                    console.log('[AuthDiag] basic handler popup error:', pErr && pErr.code, pErr && pErr.message);
+                    throw pErr;
+                }
+                console.log('[AuthDiag] basic handler: popup call finished (success or redirect). Has credential=', !!credential);
+                if (credential && credential.user) {
+                    console.log('[AuthDiag] basic handler: user object uid=' + credential.user.uid);
+                    // Fallback manual UI update if onAuthStateChanged not yet processed
+                    if (!window.__manualAuthApplied) {
+                        window.__manualAuthApplied = true;
+                        try { window.__applyUserAuthState && window.__applyUserAuthState(credential.user); } catch(e) { console.log('[AuthDiag] manual apply error', e); }
+                    }
+                }
             } catch(err) {
                 console.log('[AuthDiag] basic handler error:', err && err.code, err && err.message);            }
         });
         console.log('[AuthDiag] basicAuthButtonInit: basic handler bound');
     } catch(e) { console.log('[AuthDiag] basicAuthButtonInit exception', e); }
 })();
+
+// Provide a manual apply fallback mirroring core of onAuthStateChanged(user)
+window.__applyUserAuthState = async function(user){
+    console.log('[AuthDiag] __applyUserAuthState invoked');
+    try {
+        if (!user) { console.log('[AuthDiag] __applyUserAuthState: no user passed'); return; }
+        const mainContainer = document.getElementById('mainContainer');
+        const appHeader = document.getElementById('appHeader');
+        const splashScreen = document.getElementById('splashScreen');
+        if (splashScreen) splashScreen.style.display = 'none';
+        if (mainContainer) mainContainer.classList.remove('app-hidden');
+        if (appHeader) appHeader.classList.remove('app-hidden');
+        try { document.body.style.overflow = ''; } catch(_) {}
+        console.log('[AuthDiag] __applyUserAuthState: basic UI reveal done');
+    } catch(e) { console.log('[AuthDiag] __applyUserAuthState exception', e); }
+};
 // Global early diagnostic: capture ALL clicks (capturing phase) to verify splashSignInBtn click propagation
 if (!window.__globalClickDiagInstalled) {
     window.__globalClickDiagInstalled = true;
