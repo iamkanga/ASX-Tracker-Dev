@@ -7,6 +7,8 @@ if (typeof startGlobalSummaryListener !== 'function') { window.startGlobalSummar
 if (typeof fetchLivePrices !== 'function') { window.fetchLivePrices = async function(){ console.log('[AuthDiag] stub fetchLivePrices'); }; window.fetchLivePrices.__isStub = true; }
 if (typeof startLivePriceUpdates !== 'function') { window.startLivePriceUpdates = function(){ console.log('[AuthDiag] stub startLivePriceUpdates'); }; window.startLivePriceUpdates.__isStub = true; }
 if (typeof loadAsxCodesFromCSV !== 'function') { window.loadAsxCodesFromCSV = async function(){ console.log('[AuthDiag] stub loadAsxCodesFromCSV'); return []; }; window.loadAsxCodesFromCSV.__isStub = true; }
+// Missing callback stubs (prevent ReferenceErrors before real definitions later in file)
+if (typeof window.onLivePricesUpdated !== 'function') { window.onLivePricesUpdated = function(){ /* no-op early */ }; window.onLivePricesUpdated.__isStub = true; }
 
 // Helper: force a full reload sequence once real (non-stub) functions are present
 if (typeof window.realReload !== 'function') {
@@ -91,15 +93,15 @@ if (typeof window.finishSignIn !== 'function') {
     window.finishSignIn = async function(user){
         if (!user) { console.log('[AuthDiag] finishSignIn: no user'); return; }
         // Defer until core functions exist
-        const needed = [
-            'loadUserWatchlistsAndSettings',
-            'loadTriggeredAlertsListener',
-            'startGlobalSummaryListener',
-            'fetchLivePrices',
-            'startLivePriceUpdates',
-            'loadAsxCodesFromCSV'
-        ];
-        const missing = needed.filter(n => typeof window[n] !== 'function');
+        const needed = [ 'loadUserWatchlistsAndSettings','loadTriggeredAlertsListener','startGlobalSummaryListener','fetchLivePrices','startLivePriceUpdates','loadAsxCodesFromCSV' ];
+        function hasRealFn(name){
+            const w = window[name];
+            if (typeof w === 'function' && !w.__isStub) return true;
+            // Also consider module-scope (globalThis) functions that haven't been copied onto window yet
+            if (typeof globalThis[name] === 'function' && !(globalThis[name] && globalThis[name].__isStub)) return true;
+            return false;
+        }
+        const missing = needed.filter(n => !hasRealFn(n));
         if (missing.length) {
             const attempt = (window.__finishSignInRetries||0)+1;
             window.__finishSignInRetries = attempt;
@@ -1300,7 +1302,7 @@ async function fetchLivePrices(opts = {}) {
             if (skipped > LOG_LIMIT) parts.push(`skippedNotLogged=${skipped - LOG_LIMIT}`);
             console.log('Live Price: Summary ' + parts.join(', '));
         }
-        onLivePricesUpdated();
+    try { if (typeof onLivePricesUpdated === 'function') onLivePricesUpdated(); } catch(e){ console.warn('Live Price: onLivePricesUpdated failed', e); }
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
     // Recompute triggered alerts purely from live price targetHit flags + alert enabled map
@@ -9948,4 +9950,26 @@ try {
 // --- End Super Debug Always-Install ---
 // (Closing brace restored after refactor)
 }
+// === Post-Parse Readiness Hook (auth ordering fix) ===
+;(function ensureAuthPostParseInit(){
+    try {
+        const names = ['loadUserWatchlistsAndSettings','loadTriggeredAlertsListener','startGlobalSummaryListener','fetchLivePrices','startLivePriceUpdates','loadAsxCodesFromCSV','evaluateGlobalPriceAlerts'];
+        let upgraded = [];
+        names.forEach(n => {
+            if (typeof globalThis[n] === 'function') {
+                const fn = globalThis[n];
+                if (!window[n] || window[n].__isStub) { window[n] = fn; upgraded.push(n); }
+            }
+        });
+        if (upgraded.length) console.log('[AuthDiag] Upgraded window bindings for:', upgraded.join(','));
+        // Auto-run realReload if we previously gave up (stubs) and a user is already signed in
+        if (window.firebaseAuth && window.firebaseAuth.currentUser && typeof window.realReload === 'function') {
+            if (!window.__postParseReloadScheduled) {
+                window.__postParseReloadScheduled = true;
+                setTimeout(()=>{ try { window.realReload(); } catch(e){ console.warn('[AuthDiag] auto realReload error', e); } }, 100);
+            }
+        }
+    } catch(e){ console.warn('[AuthDiag] ensureAuthPostParseInit error', e); }
+})();
+// === End Post-Parse Readiness Hook ===
 // End of file
