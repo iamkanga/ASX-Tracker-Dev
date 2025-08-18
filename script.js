@@ -1866,7 +1866,7 @@ function addShareToTable(share) {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     const companyName = companyInfo ? companyInfo.name : '';
 
-    const desktopTargetDot = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Target price hit"></span>' : '';
+    const desktopTargetDot = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Alert target hit"></span>' : '';
     row.innerHTML = `
         <td>
             ${desktopTargetDot}<span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>
@@ -2088,7 +2088,7 @@ function addShareToMobileCards(share) {
             </div>
         </div>
     <p class="data-row"><span class="label-text">Entry Price:</span><span class="data-value">${(v=>{const n=Number(v);return(!isNaN(n)&&n!==0)?'$'+n.toFixed(2):'';})(share.currentPrice)}</span></p>
-    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="alert-target-inline">${renderAlertTargetInline(share)}</span></p>` : '' })()}
+    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value"><span class="alert-target-inline">${renderAlertTargetInline(share)}</span></span></p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
@@ -2289,7 +2289,7 @@ function updateOrCreateShareTableRow(share) {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     const companyName = companyInfo ? companyInfo.name : '';
 
-    const desktopTargetDot2 = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Target price hit"></span>' : '';
+    const desktopTargetDot2 = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Alert target hit"></span>' : '';
     row.innerHTML = `
         <td>
             ${desktopTargetDot2}<span class="share-code-display ${priceClass}">${share.shareName || ''}</span>
@@ -2443,7 +2443,7 @@ function updateOrCreateShareMobileCard(share) {
         <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
         <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
     <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
-    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="alert-target-inline">${renderAlertTargetInline(share)}</span></p>` : '' })()}
+    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value"><span class="alert-target-inline">${renderAlertTargetInline(share)}</span></span></p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
@@ -7049,7 +7049,7 @@ function exportWatchlistToCSV() {
     }
 
     const headers = [
-        'Code', 'Entered Price', 'Live Price', 'Price Change', 'Target Price', 'Dividend Amount', 'Franking Credits (%)',
+        'Code', 'Entered Price', 'Live Price', 'Price Change', 'Alert Target', 'Dividend Amount', 'Franking Credits (%)',
         'Unfranked Yield (%)', 'Franked Yield (%)', 'Entry Date'
     ];
 
@@ -8077,7 +8077,7 @@ if (targetPriceInput) {
             // No need to explicitly hide the bubble here, updateTargetHitBanner will handle it.
             updateTargetHitBanner(); // Update the bubble (will hide it if no alerts and dismissed)
             hideModal(targetHitDetailsModal); // Close the modal
-            showCustomAlert('Target Price Alerts dismissed until next login.', 2000); // User feedback
+            showCustomAlert('Alert Targets dismissed until next login.', 2000); // User feedback
             renderWatchlist(); // Re-render the watchlist to remove all borders/highlights
             try { enforceMoversVirtualView(); } catch(_) {}
             logDebug('Target Alert Modal: Dismiss All button clicked. Alerts dismissed, modal and bubble hidden. Watchlist re-rendered.');
@@ -9232,7 +9232,7 @@ function showTargetHitDetailsModal() {
     if (!hasEnabled && !hasMuted) {
         const p = document.createElement('p');
         p.className = 'no-alerts-message';
-        p.textContent = 'No shares currently at target price.';
+    p.textContent = 'No shares currently at alert target.';
         targetHitSharesList.appendChild(p);
     } else {
         if (hasEnabled) {

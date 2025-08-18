@@ -90,6 +90,10 @@ function makeFilesAvailableToSourceControlCSS() {
 /* Mobile card specific container */
 .alert-target-row { margin:0; padding:0.1rem 0 0.2rem 0; }
 .alert-target-row .alert-target-inline { display:inline-flex; align-items:center; gap:0.3rem; }
+/* Ensure alert target row label/value alignment matches other data rows */
+.mobile-card p.data-row.alert-target-row { display:flex; justify-content:space-between; align-items:baseline; }
+.mobile-card p.data-row.alert-target-row .label-text { font-weight:600; color: var(--label-color); }
+.mobile-card p.data-row.alert-target-row .data-value { font-weight:700; text-align:right; }
 
 /* --- Modern Responsive Controls Row & Dropdowns --- */
 /* Modern, balanced controls row: equal width, responsive, all on one line */
@@ -3730,6 +3734,10 @@ table td.live-price-cell.negative-change {
 .mobile-card.negative-change-card span {
     color: var(--text-color); /* Ensure readability */
 }
+/* Restore directional arrow color inside tinted cards */
+.mobile-card.positive-change-card .card-chevron.positive { color: var(--brand-green) !important; }
+.mobile-card.negative-change-card .card-chevron.negative { color: var(--brand-red) !important; }
+.mobile-card.neutral-change-card .card-chevron.neutral { color: var(--price-neutral-color) !important; }
 
 .mobile-card {
     background-color: var(--card-bg);
