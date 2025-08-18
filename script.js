@@ -893,7 +893,9 @@ let userManuallyOverrodeDirection = false; // reset per form open
 // Debounced auto-save for target alert related inputs (intent, direction, target price)
 let _alertAutoSaveTimer = null;
 function scheduleAlertAutoSave(trigger){
-    try { logDebug('AlertAutoSave: schedule ('+trigger+')'); } catch(_){ }
+    // Only auto-save when editing an existing share (avoid accidental creation of duplicates during new entry form fills)
+    if (!selectedShareDocId) { try { logDebug('AlertAutoSave: skipped (no selectedShareDocId) trigger='+trigger); } catch(_){} return; }
+    try { logDebug('AlertAutoSave: schedule ('+trigger+') for shareId='+selectedShareDocId); } catch(_){ }
     if (_alertAutoSaveTimer) clearTimeout(_alertAutoSaveTimer);
     _alertAutoSaveTimer = setTimeout(()=>{
         try { if (typeof saveShareData === 'function') saveShareData(true); } catch(e){ console.warn('AlertAutoSave failed', e); }
@@ -1325,6 +1327,10 @@ function setIconDisabled(element, isDisabled) {
 async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
     if (!db || !currentUserId || !window.firestore) {
         console.warn('Alerts: Firestore not available; skipping alert upsert.');
+        return;
+    }
+    if (!shareId) {
+        console.warn('Alerts: Missing shareId for alert upsert; skipping.');
         return;
     }
     // Collection path: artifacts/{appId}/users/{userId}/alerts
