@@ -258,8 +258,8 @@ function makeFilesAvailableToSourceControlCSS() {
     }
     .portfolio-summary-bar .summary-card {
         width: 100%;
-        font-size: 1.1rem;
-        padding: 6px 4px 6px 4px;
+        font-size: 1.98rem;
+        padding: 8px 6px 8px 6px;
         border-radius: 10px;
         min-height: unset;
         height: auto;
@@ -268,15 +268,15 @@ function makeFilesAvailableToSourceControlCSS() {
         justify-content: center;
     }
     .portfolio-summary-bar .summary-label {
-        font-size: 1.05rem;
-        margin-bottom: 2px;
+        font-size: 1.89rem;
+        margin-bottom: 4px;
     }
     .portfolio-summary-bar .summary-value {
-        font-size: 1.18rem;
+        font-size: 2.12rem;
     }
     .portfolio-summary-bar .summary-pct {
-        font-size: 1.02rem;
-        margin-left: 4px;
+        font-size: 1.84rem;
+        margin-left: 8px;
     }
 
     /* Individual holding cards: make more compact and decrease font size */
