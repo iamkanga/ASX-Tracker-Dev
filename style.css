@@ -85,8 +85,8 @@
     align-items: stretch;
 }
 .low52-alert-card {
-    background: #fff6f6;
-    border: 1px solid #f3cccc;
+    background: var(--card-bg, #fff6f6);
+    border: 1px solid var(--border-color, #f3cccc);
     border-radius: 7px;
     padding: 10px 14px 8px 14px;
     box-shadow: 0 1px 4px rgba(178,34,34,0.06);
@@ -133,9 +133,10 @@
     margin-top: 18px;
     margin-bottom: 6px;
     font-size: 1.1em;
-    color: #b22222;
+    color: var(--global-summary-title-color, #b22222) !important;
     font-weight: 600;
     letter-spacing: 0.5px;
+    background: none;
 }
 .low52-alert-list {
     list-style: none;
@@ -159,9 +160,12 @@
     min-width: 54px;
 }
 .low52-name {
-    color: #444;
+    color: var(--text-color, #444);
     flex: 1 1 auto;
     min-width: 80px;
+    font-size: 0.78em;
+    line-height: 1.1;
+    font-weight: 500;
 }
 .low52-price {
     color: #1a6e1a;
@@ -169,9 +173,10 @@
     min-width: 70px;
 }
 .low52-thresh {
-    color: #888;
-    font-size: 0.93em;
+    color: var(--text-color-secondary, #888);
+    font-size: 0.68em;
     margin-left: 6px;
+    font-weight: 400;
 }
 /* Portfolio Card Controls Row */
 .portfolio-card .pc-controls-row {
