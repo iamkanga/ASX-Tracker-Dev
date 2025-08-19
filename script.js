@@ -10780,3 +10780,4 @@ try {
     } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
 // --- End Super Debug Always-Install --- OK now on the mobile cards the actual information the sell or buy
+}
