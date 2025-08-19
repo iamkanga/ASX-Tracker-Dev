@@ -324,11 +324,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
                 <div class="pc-metrics-row">
                     <div class="pc-metric-line">
-                        <span class="pc-label">P/L</span>
+                        <span class="pc-label">Total Return</span>
                         <span class="pc-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-pct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></span>
                     </div>
                     <div class="pc-metric-line">
-                        <span class="pc-label">Today</span>
+                        <span class="pc-label">Day Change</span>
                         <span class="pc-val ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></span>
                     </div>
                 </div>
