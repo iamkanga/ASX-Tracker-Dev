@@ -344,19 +344,19 @@ function makeFilesAvailableToSourceControlCSS() {
     transition: border-color 0.18s;
 }
 .portfolio-cards-grid .portfolio-card.positive {
-    border-color: var(--price-up-color, #008000) !important;
+    border-color: #008000 !important; /* TEST: hardcoded brand green */
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
 }
 .portfolio-cards-grid .portfolio-card.negative {
-    border-color: var(--price-down-color, #c42131) !important;
+    border-color: #c42131 !important; /* TEST: hardcoded brand red */
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
 }
 .portfolio-cards-grid .portfolio-card.neutral {
-    border-color: var(--accent-color, #a49393) !important;
+    border-color: #a49393 !important; /* TEST: hardcoded accent */
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
