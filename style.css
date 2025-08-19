@@ -365,15 +365,6 @@ function makeFilesAvailableToSourceControlCSS() {
     box-shadow: 0 0 0 2px #b0896833 !important;
     z-index: 2;
 }
-
-/* Extra specificity for portfolio view to override any other border rules */
-.portfolio-cards-grid .portfolio-card.neutral, .portfolio-cards-grid > .portfolio-card.neutral {
-    border-color: #b08968 !important;
-    border-width: 4px !important;
-    border-style: solid !important;
-    box-shadow: 0 0 0 2px #b0896833 !important;
-    z-index: 2;
-}
 .portfolio-card.expanded { box-shadow: none; }
 .portfolio-card .pc-main-row {
     display: flex;
