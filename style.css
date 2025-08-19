@@ -88,7 +88,7 @@
     align-items: stretch;
 }
 .low52-alert-card {
-    background: var(--card-bg, #fff6f6);
+    background: var(--low52-card-bg, var(--card-bg, #fff6f6));
     border: 1px solid var(--border-color, #f3cccc);
     border-radius: 7px;
     padding: 10px 14px 8px 14px;
@@ -121,6 +121,27 @@
     gap: 12px;
     margin-bottom: 2px;
 }
+
+/* Main row for 52-week low value, right-aligned */
+.low52-card-row-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0;
+    margin-bottom: 2px;
+}
+
+.low52-thresh-dynamic {
+    color: var(--low52-thresh-color, #fff);
+    font-size: 0.68em;
+    font-weight: 400;
+    text-align: right;
+    margin-left: auto;
+    min-width: 110px;
+    white-space: nowrap;
+}
+
 .low52-muted-msg {
     color: #b22222;
     background: #fff6f6;
@@ -861,6 +882,10 @@ function makeFilesAvailableToSourceControlCSS() {
     --snooze-options-bg: #ffffff;
     --snooze-options-border: #b0b8bb;
 
+    /* 52-Week Low Alert Theme Variables */
+    --low52-thresh-color: #fff;
+    --low52-card-bg: #f7f7fa;
+
     /* UPDATED: Cash & Assets Section Colors */
     --cash-section-bg: #f8f9fa;
     --cash-card-bg: #ffffff;
@@ -1250,6 +1275,9 @@ body.dark-theme {
     --green-color: var(--brand-green);
     --green-color-dark: var(--brand-green);
     --green-color-dark-rgb: 46, 204, 113; /* RGB for #2ECC71 */
+    /* 52-Week Low Alert Theme Variables */
+    --low52-thresh-color: #fff;
+    --low52-card-bg: #23242a;
     /* UPDATED: Cash & Assets Section Colors (Dark Theme) */
     --cash-section-bg: #282828;
     --cash-card-bg: #333333;
