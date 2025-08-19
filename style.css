@@ -8,6 +8,7 @@
     margin-top: 18px;
     margin-bottom: 0;
     gap: 0;
+}
 .portfolio-card .pc-chevron-btn {
     background: none;
     border: none;
@@ -232,15 +233,6 @@ function makeFilesAvailableToSourceControlCSS() {
     font-size: 1.18rem;
     font-weight: 600;
     margin-left: 8px;
-}
-
-/* Ensure Day's Gain card (first card) percent is always on a new line and centered */
-.portfolio-summary-bar .summary-card:nth-child(1) .summary-pct {
-    display: block;
-    margin-left: 0;
-    margin-top: 2px;
-    text-align: center;
-}
 }
 .portfolio-summary-bar .summary-pct.positive { color: var(--price-up-color); }
 .portfolio-summary-bar .summary-pct.negative { color: var(--price-down-color); }
