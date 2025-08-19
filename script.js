@@ -10062,10 +10062,7 @@ if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
             listEl.appendChild(criteriaBar);
             // Sorting controls (create once per render)
             const sortWrapper = document.createElement('div');
-            sortWrapper.className = 'discover-sort-bar';
-            const sortLabel = document.createElement('label');
-            sortLabel.textContent = 'Sort';
-            sortLabel.htmlFor = 'discoverSortSelect';
+            sortWrapper.className = 'discover-sort-bar discover-sort-bar-centered';
             const sortSelect = document.createElement('select');
             sortSelect.id = 'discoverSortSelect';
             const SORT_OPTIONS = [
@@ -10082,7 +10079,7 @@ if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
             SORT_OPTIONS.forEach(opt=>{
                 const o = document.createElement('option'); o.value = opt.value; o.textContent = opt.label; if (opt.value===initialSort) o.selected = true; sortSelect.appendChild(o);
             });
-            sortWrapper.appendChild(sortLabel); sortWrapper.appendChild(sortSelect);
+            sortWrapper.appendChild(sortSelect);
             const sortDesc = document.createElement('div');
             sortDesc.className = 'discover-sort-desc';
             function sortModeDescription(v){
@@ -10114,7 +10111,7 @@ if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
             ul.className='discover-code-list enriched global-only card-layout';
 
             const contextLine = document.createElement('div');
-            contextLine.className = 'discover-context-line';
+            contextLine.className = 'discover-context-line discover-context-line-spaced';
             contextLine.innerHTML = `<strong>${nonPortfolioCodes.length}</strong> global ${nonPortfolioCodes.length===1?'share':'shares'} matched thresholds`;
             listEl.appendChild(contextLine);
 

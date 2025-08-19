@@ -1,3 +1,27 @@
+/* Center the discover sort bar vertically and remove label spacing */
+.discover-sort-bar-centered {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 18px 0 10px 0;
+    gap: 4px;
+}
+.discover-sort-bar-centered select {
+    min-width: 140px;
+    font-size: 1em;
+}
+.discover-sort-bar-centered .discover-sort-desc {
+    margin-top: 2px;
+    font-size: 0.93em;
+    color: #aaa;
+}
+/* Add spacing above and below the context line */
+.discover-context-line-spaced {
+    margin: 18px 0 18px 0 !important;
+    text-align: center;
+    font-size: 1.08em;
+}
 /* Charcoal background for 52-Week Low Alerts to match global movers */
 .low52-charcoal {
     background: #23242a !important;
