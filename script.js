@@ -326,7 +326,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Card HTML (collapsed/expandable)
             // Border color logic: always use plClass (overall P/L), never todayClass
-            return `<div class="portfolio-card ${plClass}" data-doc-id="${share.id}">
+            let borderColor = '';
+            if (plClass === 'positive') borderColor = 'border: 4px solid #008000;';
+            else if (plClass === 'negative') borderColor = 'border: 4px solid #c42131;';
+            else if (plClass === 'neutral') borderColor = 'border: 4px solid #a49393;';
+            return `<div class="portfolio-card ${plClass}" data-doc-id="${share.id}"${borderColor ? ` style=\"${borderColor}\"` : ''}>
                 <div class="pc-main-row">
                     <div class="pc-code">${share.shareName || ''}</div>
                     <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
