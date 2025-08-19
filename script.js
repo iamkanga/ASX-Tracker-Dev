@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
             <div class="summary-card ${daysLoss > 0 ? 'negative' : daysLoss < 0 ? 'positive' : 'neutral'}">
                 <div class="summary-label">Day's Loss</div>
-                <div class="summary-value negative">${daysLoss > 0 ? '-' : ''}${fmtMoney(daysLoss)} <span class="summary-pct negative">${fmtPct(totalValue > 0 ? (daysLoss / totalValue) * 100 : 0)}</span></div>
+                <div class="summary-value negative">${fmtMoney(-daysLoss)} <span class="summary-pct negative">${fmtPct(totalValue > 0 ? (daysLoss / totalValue) * 100 : 0)}</span></div>
             </div>
             <div class="summary-card ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : 'neutral'}">
                 <div class="summary-label">Total Return</div>
