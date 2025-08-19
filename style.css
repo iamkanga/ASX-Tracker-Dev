@@ -168,29 +168,13 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 
 .portfolio-summary-bar {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(2, 1fr);
+    display: flex;
+    flex-wrap: wrap;
     gap: 20px 18px;
     margin: 0 0 32px 0;
-    /* Fluid width: matches two .portfolio-card columns below, including gap */
-    width: calc(2 * 420px + 28px); /* fallback for very large screens */
-    width: clamp(0px, calc(2 * min(100vw - 32px, 1200px) / 3 + 28px), 888px);
-    max-width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    box-sizing: border-box;
+    justify-content: flex-start;
+    align-items: flex-start;
 }
-.portfolio-summary-bar .summary-card {
-    min-width: 0;
-    width: 100%;
-}
-/* 3+2 grid placement */
-.portfolio-summary-bar .summary-card:nth-child(1) { grid-column: 1; grid-row: 1; }
-.portfolio-summary-bar .summary-card:nth-child(2) { grid-column: 2; grid-row: 1; }
-.portfolio-summary-bar .summary-card:nth-child(3) { grid-column: 3; grid-row: 1; }
-.portfolio-summary-bar .summary-card:nth-child(4) { grid-column: 1 / 3; grid-row: 2; }
-.portfolio-summary-bar .summary-card:nth-child(5) { grid-column: 3; grid-row: 2; }
 .portfolio-summary-bar .summary-card {
     background: var(--card-bg);
     border-radius: 14px;
@@ -231,118 +215,47 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-summary-bar .summary-pct.negative { color: var(--price-down-color); }
 
 @media (max-width: 900px) {
-    .portfolio-summary-bar {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto auto auto;
-        gap: 12px 8px;
-        width: 100%;
-    }
-    .portfolio-summary-bar .summary-card {
-        min-width: 0;
-        font-size: 1.18rem;
-        padding: 16px 10px 10px 10px;
-    }
-    .portfolio-summary-bar .summary-card:nth-child(1) { grid-column: 1 / 3; grid-row: 1; }
-    .portfolio-summary-bar .summary-card:nth-child(2) { grid-column: 1; grid-row: 2; }
-    .portfolio-summary-bar .summary-card:nth-child(3) { grid-column: 2; grid-row: 2; }
-    .portfolio-summary-bar .summary-card:nth-child(4) { grid-column: 1; grid-row: 3; }
-    .portfolio-summary-bar .summary-card:nth-child(5) { grid-column: 2; grid-row: 3; }
+    .portfolio-summary-bar .summary-card { min-width: 150px; padding: 16px 10px 10px 10px; font-size: 1.18rem; }
+    .portfolio-summary-bar { gap: 12px 8px; }
 }
 @media (max-width: 600px) {
     .portfolio-summary-bar {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        margin-bottom: 8px;
-        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto;
+        gap: 8px 8px;
+        margin-bottom: 12px;
     }
     .portfolio-summary-bar .summary-card {
+        min-width: 0;
         width: 100%;
-        font-size: 2.0rem;
-        padding: 6px 6px 6px 6px;
+        font-size: 1.02rem;
+        padding: 10px 6px 8px 6px;
         border-radius: 10px;
-        min-height: unset;
-        height: auto;
-        display: block;
-        margin-bottom: 4px;
-        line-height: 1.1;
     }
-    .portfolio-summary-bar .summary-label,
-    .portfolio-summary-bar .summary-value,
-    .portfolio-summary-bar .summary-pct {
-        line-height: 1.1;
+    .portfolio-summary-bar .summary-card:first-child {
+        grid-column: 1 / 3;
+        font-size: 1.13rem;
+        padding: 14px 8px 10px 8px;
     }
+    .portfolio-summary-bar .summary-card:nth-child(2),
+    .portfolio-summary-bar .summary-card:nth-child(3) {
+        grid-row: 2;
+    }
+    .portfolio-summary-bar .summary-card:nth-child(4),
+    .portfolio-summary-bar .summary-card:nth-child(5) {
+        grid-row: 3;
     }
     .portfolio-summary-bar .summary-label {
-        font-size: 1.8rem;
+        font-size: 0.92rem;
         margin-bottom: 2px;
     }
     .portfolio-summary-bar .summary-value {
-        font-size: 2.1rem;
+        font-size: 1.18rem;
     }
     .portfolio-summary-bar .summary-pct {
-        font-size: 1.6rem;
-        margin-left: 6px;
-    }
-
-    /* Individual holding cards: more compact and decrease font size by ~40% */
-    .portfolio-card {
-        padding: 2px 1px 2px 1px;
-        font-size: 0.6rem;
-        min-height: unset;
-        height: auto;
-        gap: 2px;
-        margin-bottom: 3px;
-        line-height: 1.1;
-    }
-    .portfolio-card .pc-main-row, .portfolio-card .pc-code {
-        font-size: 0.65rem;
-        margin-bottom: 0.05em;
-        line-height: 1.1;
-    }
-    .portfolio-card .pc-value {
-        font-size: 0.6rem;
-        line-height: 1.1;
-    }
-    .portfolio-card .pc-metrics-row {
-        font-size: 0.5rem;
-        gap: 1px 0;
-        margin-top: 0.08em;
-        line-height: 1.1;
-    }
-    .portfolio-card .pc-metric-line {
-        margin: 0 0 0.5px 0;
-    }
-    .portfolio-card .pc-label {
-        font-size: 0.6rem;
-        line-height: 1.1;
-    }
-    .portfolio-card .pc-val {
-        font-size: 0.6rem;
-        min-width: 0;
-        margin-left: 0.2em;
-        line-height: 1.1;
-    }
-    .portfolio-card .pc-pct {
-        font-size: 0.55rem;
-        margin-left: 2px;
-    }
-    .portfolio-card .pc-details {
-        font-size: 0.85rem;
-        margin-top: 0.2em;
-        padding-top: 6px;
-    }
-    .portfolio-card .pc-detail-row {
-        margin-bottom: 4px;
-    }
-    .portfolio-card .pc-shortcut-btn {
-        width: 24px;
-        height: 24px;
-        font-size: 1.02rem;
-        margin-top: 4px;
-    }
-    .portfolio-card .pc-controls-row {
-        margin-top: 6px;
+        font-size: 0.95rem;
+        margin-left: 4px;
     }
 }
 
@@ -521,56 +434,12 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-card .pc-shortcut-btn:hover { background: var(--accent-color-hover); }
 
 @media (max-width: 600px) {
-    .portfolio-card {
-        padding: 6px 2px 6px 2px;
-        font-size: 2.16rem;
-        min-height: unset;
-        gap: 8px;
-    }
-    .portfolio-card .pc-main-row, .portfolio-card .pc-code {
-        font-size: 2.26rem;
-        margin-bottom: 0.1em;
-    }
-    .portfolio-card .pc-value {
-        font-size: 2.04rem;
-    }
-    .portfolio-card .pc-metrics-row {
-        font-size: 1.96rem;
-        gap: 2px 0;
-        margin-top: 0.2em;
-    }
-    .portfolio-card .pc-metric-line {
-        margin: 0 0 1px 0;
-    }
-    .portfolio-card .pc-label {
-        font-size: 2.16rem;
-    }
-    .portfolio-card .pc-val {
-        font-size: 2.16rem;
-        min-width: 0;
-        margin-left: 0.5em;
-    }
-    .portfolio-card .pc-pct {
-        font-size: 2.16rem;
-        margin-left: 4px;
-    }
-    .portfolio-card .pc-details {
-        font-size: 1.9rem;
-        margin-top: 0.2em;
-        padding-top: 6px;
-    }
-    .portfolio-card .pc-detail-row {
-        margin-bottom: 4px;
-    }
-    .portfolio-card .pc-shortcut-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 2.16rem;
-        margin-top: 4px;
-    }
-    .portfolio-card .pc-controls-row {
-        margin-top: 6px;
-    }
+    .portfolio-card { padding: 12px 4px 10px 4px; font-size: 1.08rem; min-height: 90px; }
+    .portfolio-card .pc-main-row, .portfolio-card .pc-code { font-size: 1.13rem; }
+    .portfolio-card .pc-value { font-size: 1.02rem; }
+    .portfolio-card .pc-metrics-row { font-size: 0.98rem; gap: 6px 0; }
+    .portfolio-card .pc-details { font-size: 0.95rem; }
+    .portfolio-card .pc-shortcut-btn { width: 26px; height: 26px; font-size: 0.98rem; }
 }
 
 /* Accordion logic: only one expanded at a time (handled in JS, but style for expanded) */
@@ -618,6 +487,7 @@ function makeFilesAvailableToSourceControlCSS() {
   border-top-right-radius: 6px;
   border-bottom-right-radius: 6px;
   margin-left: 0;
+}
     .pc-details-btn:hover { color: var(--icon-action-hover-color); }
     .controls-flex-row.no-gap {
         flex-direction: row !important;
@@ -637,6 +507,7 @@ function makeFilesAvailableToSourceControlCSS() {
     }
     .dropdown-large { font-size:0.95rem; padding:6px 8px; }
     .toggle-asx-buttons-group { order:3; flex:0 0 100%; display:flex; justify-content:center; margin:2px 0 0 0; }
+}
 /* --- End Modern Responsive Controls Row & Dropdowns --- */
 @media (min-width: 769px) {
   .toggle-asx-buttons-group {
