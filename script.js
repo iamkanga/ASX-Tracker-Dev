@@ -1649,9 +1649,16 @@ async function fetchLivePrices(opts = {}) {
                 const lpObj = livePrices ? livePrices[code] : undefined;
                 if (!lpObj || lpObj.live == null || isNaN(lpObj.live) || lpObj.Low52 == null || isNaN(lpObj.Low52)) return;
                 if (lpObj.live <= lpObj.Low52 && !triggered52WeekLowSet.has(code)) {
+                    // Try to get the correct company name from allAsxCodes
+                    let displayName = code;
+                    if (Array.isArray(allAsxCodes)) {
+                        const match = allAsxCodes.find(c => c.code === code);
+                        if (match && match.name) displayName = match.name;
+                    }
+                    if (!displayName && share.companyName) displayName = share.companyName;
                     sharesAt52WeekLow.push({
                         code,
-                        name: share.companyName || code,
+                        name: displayName,
                         live: lpObj.live,
                         low52: lpObj.Low52
                     });
