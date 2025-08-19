@@ -24,22 +24,14 @@
     display: none !important;
 }
 /* Charcoal background for 52-Week Low Alerts to match global movers */
-.low52-charcoal {
-    background: #23242a !important;
-    border: 1px solid #2d2e33 !important;
-    color: #fff;
-}
+
 .low52-heading-white {
     color: #fff !important;
 }
 .low52-thresh-white {
     color: #fff !important;
 }
-.low52-alert-card.low52-charcoal {
-    background: #23242a !important;
-    border: 1px solid #2d2e33 !important;
-    color: #fff;
-}
+
 .low52-card-muted {
     opacity: 0.45;
     filter: grayscale(0.7);
@@ -54,9 +46,9 @@
 }
 /* Mute button for 52-week low: charcoal, white, small, compact */
 .low52-mute-btn {
-    background: var(--card-bg, #23242a);
-    color: var(--text-color, #fff);
-    border: 1px solid var(--border-color, #2d2e33);
+    background: var(--card-bg, #fff);
+    color: var(--text-color, #222);
+    border: 1px solid var(--border-color, #e0e0e0);
     border-radius: 6px;
     padding: 2px 10px;
     font-size: 0.78em;
@@ -73,9 +65,9 @@
     display: inline-block;
 }
 .low52-mute-btn:hover {
-    background: var(--button-hover-bg, #444);
-    color: var(--button-hover-color, #fff);
-    border-color: var(--border-color, #2d2e33);
+    background: var(--button-hover-bg, #f0f0f0);
+    color: var(--button-hover-color, #111);
+    border-color: var(--border-color, #bdbdbd);
 }
 .low52-alerts-container {
     display: flex;
@@ -86,8 +78,10 @@
     align-items: stretch;
 }
 .low52-alert-card {
-    background: var(--low52-card-bg, var(--card-bg, #fff6f6));
-    border: 1px solid var(--border-color, #f3cccc);
+    background: var(--low52-card-bg, var(--card-bg, #fff));
+    border: 1px solid var(--border-color, #e0e0e0);
+    color: var(--text-color, #222);
+    transition: background 0.2s, color 0.2s, border 0.2s;
     border-radius: 7px;
     padding: 10px 14px 8px 14px;
     box-shadow: 0 1px 4px rgba(178,34,34,0.06);
