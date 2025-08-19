@@ -450,12 +450,56 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-card .pc-shortcut-btn:hover { background: var(--accent-color-hover); }
 
 @media (max-width: 600px) {
-    .portfolio-card { padding: 12px 4px 10px 4px; font-size: 1.08rem; min-height: 90px; }
-    .portfolio-card .pc-main-row, .portfolio-card .pc-code { font-size: 1.13rem; }
-    .portfolio-card .pc-value { font-size: 1.02rem; }
-    .portfolio-card .pc-metrics-row { font-size: 0.98rem; gap: 6px 0; }
-    .portfolio-card .pc-details { font-size: 0.95rem; }
-    .portfolio-card .pc-shortcut-btn { width: 26px; height: 26px; font-size: 0.98rem; }
+    .portfolio-card {
+        padding: 6px 2px 6px 2px;
+        font-size: 2.16rem;
+        min-height: unset;
+        gap: 8px;
+    }
+    .portfolio-card .pc-main-row, .portfolio-card .pc-code {
+        font-size: 2.26rem;
+        margin-bottom: 0.1em;
+    }
+    .portfolio-card .pc-value {
+        font-size: 2.04rem;
+    }
+    .portfolio-card .pc-metrics-row {
+        font-size: 1.96rem;
+        gap: 2px 0;
+        margin-top: 0.2em;
+    }
+    .portfolio-card .pc-metric-line {
+        margin: 0 0 1px 0;
+    }
+    .portfolio-card .pc-label {
+        font-size: 2.16rem;
+    }
+    .portfolio-card .pc-val {
+        font-size: 2.16rem;
+        min-width: 0;
+        margin-left: 0.5em;
+    }
+    .portfolio-card .pc-pct {
+        font-size: 2.16rem;
+        margin-left: 4px;
+    }
+    .portfolio-card .pc-details {
+        font-size: 1.9rem;
+        margin-top: 0.2em;
+        padding-top: 6px;
+    }
+    .portfolio-card .pc-detail-row {
+        margin-bottom: 4px;
+    }
+    .portfolio-card .pc-shortcut-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 2.16rem;
+        margin-top: 4px;
+    }
+    .portfolio-card .pc-controls-row {
+        margin-top: 6px;
+    }
 }
 
 /* Accordion logic: only one expanded at a time (handled in JS, but style for expanded) */
