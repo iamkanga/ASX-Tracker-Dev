@@ -4457,23 +4457,30 @@ function renderSortSelect() {
         // Set the initial placeholder text to "Sort List"
         sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
 
-        const stockOptions = [
-            // Put Percentage Change at the top
+
+        // Portfolio-specific sort options
+        const portfolioOptions = [
             { value: 'percentageChange-desc', text: 'Change % (H-L)' },
             { value: 'percentageChange-asc', text: 'Change % (L-H)' },
-            // Then Name (Code)
             { value: 'shareName-asc', text: 'Code (A-Z)' },
             { value: 'shareName-desc', text: 'Code (Z-A)' },
-            // Then Date and Rating
-            { value: 'entryDate-desc', text: 'Date (N-O)' }, // Newest-Oldest
-            { value: 'entryDate-asc', text: 'Date (O-N)' },  // Oldest-Newest
+            { value: 'dayDollar-desc', text: 'Day $ (H-L)' },
+            { value: 'dayDollar-asc', text: 'Day $ (L-H)' },
+            { value: 'totalDollar-desc', text: 'Total $ (H-L)' },
+            { value: 'totalDollar-asc', text: 'Total $ (L-H)' }
+        ];
+        const stockOptions = [
+            { value: 'percentageChange-desc', text: 'Change % (H-L)' },
+            { value: 'percentageChange-asc', text: 'Change % (L-H)' },
+            { value: 'shareName-asc', text: 'Code (A-Z)' },
+            { value: 'shareName-desc', text: 'Code (Z-A)' },
+            { value: 'entryDate-desc', text: 'Date (N-O)' },
+            { value: 'entryDate-asc', text: 'Date (O-N)' },
             { value: 'starRating-desc', text: '⭐ (H-L)' },
             { value: 'starRating-asc', text: '⭐ (L-H)' },
-            // Dividend Yield last
             { value: 'dividendAmount-desc', text: 'Yield % (H-L)' },
             { value: 'dividendAmount-asc', text: 'Yield % (L-H)' }
         ];
-
         const cashOptions = [
             { value: 'name-asc', text: 'Asset Name (A-Z)' },
             { value: 'name-desc', text: 'Asset Name (Z-A)' },
@@ -4482,28 +4489,22 @@ function renderSortSelect() {
         ];
 
         // Determine which set of options to display
+        let optionsToUse = stockOptions;
+        let defaultSortValue = 'entryDate-desc';
         if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-            cashOptions.forEach(opt => {
-                const optionElement = document.createElement('option');
-                optionElement.value = opt.value;
-                optionElement.textContent = opt.text;
-                sortSelect.appendChild(optionElement);
-            });
-            logDebug('Sort Select: Populated with Cash Asset options.');
-        } else {
-            stockOptions.forEach(opt => {
-                const optionElement = document.createElement('option');
-                optionElement.value = opt.value;
-                optionElement.textContent = opt.text;
-                sortSelect.appendChild(optionElement);
-            });
-            logDebug('Sort Select: Populated with Stock options.');
+            optionsToUse = cashOptions;
+            defaultSortValue = 'name-asc';
+        } else if (currentSelectedWatchlistIds.includes('portfolio')) {
+            optionsToUse = portfolioOptions;
+            defaultSortValue = 'percentageChange-desc';
         }
+        optionsToUse.forEach(opt => {
+            const optionElement = document.createElement('option');
+            optionElement.value = opt.value;
+            optionElement.textContent = opt.text;
+            sortSelect.appendChild(optionElement);
+        });
 
-        let defaultSortValue = 'entryDate-desc'; // Default for stocks
-        if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-            defaultSortValue = 'name-asc'; // Default for cash
-        }
 
         // Prefer an explicitly set currentSortOrder if it's valid for this view
         const optionValues = Array.from(sortSelect.options).map(o => o.value);
@@ -4515,7 +4516,6 @@ function renderSortSelect() {
             currentSortOrder = currentSelectedSortValue;
             logDebug('Sort: Applied previously selected sort order: ' + currentSortOrder);
         } else {
-            // If not valid or no previous, apply the default for the current view type
             sortSelect.value = defaultSortValue;
             currentSortOrder = defaultSortValue;
             logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
@@ -4745,145 +4745,138 @@ function renderWatchlist() {
         }
         portfolioSection.style.display = 'block';
         // Hide stock-specific containers
-        if (tableContainer) tableContainer.style.display = 'none';
-        if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
-        // Update title
-    // Title handled by updateMainTitle
-    // Show sort dropdown in portfolio too
-    sortSelect.classList.remove('app-hidden');
-        refreshLivePricesBtn.classList.add('app-hidden');
-        toggleCompactViewBtn.classList.add('app-hidden');
-        exportWatchlistBtn.classList.remove('app-hidden'); // Allow export if desired
-        // Render the portfolio list
-        if (typeof renderPortfolioList === 'function') {
-            renderPortfolioList();
-        }
-    // Update sort options and alerts for portfolio view as well
-    try { renderSortSelect(); } catch(e) {}
-    try { updateTargetHitBanner(); } catch(e) {}
-        // Also render ASX code buttons for portfolio shares
-        if (typeof renderAsxCodeButtons === 'function') {
-            renderAsxCodeButtons();
-        }
-        adjustMainContentPadding();
-        return;
-    } else if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
-    // Hide portfolio section if it exists from previous view
-    const existingPortfolio = document.getElementById('portfolioSection');
-    if (existingPortfolio) existingPortfolio.style.display='none';
-        // Stock Watchlist Logic
-        stockWatchlistSection.classList.remove('app-hidden');
-        // IMPORTANT: Also clear any inline display:none applied by showPortfolioView
-        if (typeof stockWatchlistSection.style !== 'undefined') {
-            stockWatchlistSection.style.display = '';
-        }
-        const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
-        if (selectedWatchlistId === ALL_SHARES_ID) {
-            // Title handled by updateMainTitle
-        } else if (selectedWatchlist) {
-            // Title handled by updateMainTitle
-        } else if (selectedWatchlistId === 'portfolio') {
-            // Title handled by updateMainTitle
-        } else {
-            // Title handled by updateMainTitle
-        }
+        allSharesData.sort((a, b) => {
+            // Portfolio-specific sorts
+            if (field === 'dayDollar') {
+                // Daily dollar change: (live - prevClose) * quantity
+                const liveA = livePrices[a.shareName?.toUpperCase()]?.live;
+                const prevA = livePrices[a.shareName?.toUpperCase()]?.prevClose;
+                const qtyA = Number(a.quantity) || 0;
+                const dayA = (liveA !== undefined && prevA !== undefined && !isNaN(liveA) && !isNaN(prevA)) ? (liveA - prevA) * qtyA : 0;
 
-        // Show stock-specific UI elements
-        sortSelect.classList.remove('app-hidden');
-        refreshLivePricesBtn.classList.remove('app-hidden');
-        toggleCompactViewBtn.classList.remove('app-hidden');
-        exportWatchlistBtn.classList.remove('app-hidden');
-        // startLivePriceUpdates(); // Removed this line to prevent multiple intervals
-        updateAddHeaderButton();
+                const liveB = livePrices[b.shareName?.toUpperCase()]?.live;
+                const prevB = livePrices[b.shareName?.toUpperCase()]?.prevClose;
+                const qtyB = Number(b.quantity) || 0;
+                const dayB = (liveB !== undefined && prevB !== undefined && !isNaN(liveB) && !isNaN(prevB)) ? (liveB - prevB) * qtyB : 0;
 
-        const isMobileView = window.innerWidth <= 768;
-        let sharesToRender = [];
-
-        if (selectedWatchlistId === '__movers') {
-            // Fresh compute of movers (preferred) with fallback to last snapshot, then schedule a retry if empty
-            let moversEntries = [];
-            try { if (typeof applyGlobalSummaryFilter === 'function') moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || []; } catch(e){ console.warn('Render movers: compute failed', e); }
-            if ((!moversEntries || moversEntries.length === 0) && window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
-                moversEntries = window.__lastMoversSnapshot.entries;
+                return order === 'asc' ? dayA - dayB : dayB - dayA;
             }
-            const codeSet = new Set((moversEntries||[]).map(e=>e.code));
-            const base = dedupeSharesById(allSharesData);
-            sharesToRender = base.filter(s => s.shareName && codeSet.has(s.shareName.toUpperCase()));
-            logDebug('Render: Displaying Movers computed ('+sharesToRender.length+' items, codes='+codeSet.size+').');
-            // If still empty but we have shares & livePrices may not be ready, schedule a one-time re-render retry
-            if (sharesToRender.length === 0 && base.length > 0 && !window.__moversRenderRetry) {
-                window.__moversRenderRetry = setTimeout(()=>{
-                    window.__moversRenderRetry = null;
-                    if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
-                        try { renderWatchlist(); } catch(e){ console.warn('Movers re-render retry failed', e); }
-                    }
-                }, 900);
+            if (field === 'totalDollar') {
+                // Total profit/loss: (live - entryPrice) * quantity
+                const liveA = livePrices[a.shareName?.toUpperCase()]?.live;
+                const entryA = Number(a.entryPrice) || 0;
+                const qtyA = Number(a.quantity) || 0;
+                const totalA = (liveA !== undefined && !isNaN(liveA) && !isNaN(entryA)) ? (liveA - entryA) * qtyA : 0;
+
+                const liveB = livePrices[b.shareName?.toUpperCase()]?.live;
+                const entryB = Number(b.entryPrice) || 0;
+                const qtyB = Number(b.quantity) || 0;
+                const totalB = (liveB !== undefined && !isNaN(liveB) && !isNaN(entryB)) ? (liveB - entryB) * qtyB : 0;
+
+                return order === 'asc' ? totalA - totalB : totalB - totalA;
             }
-        } else if (selectedWatchlistId === ALL_SHARES_ID) {
-            sharesToRender = dedupeSharesById(allSharesData);
-            logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
-        } else if (currentSelectedWatchlistIds.length === 1) {
-            sharesToRender = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
-            logDebug('Render: Displaying shares from watchlist: ' + selectedWatchlistId);
-        } else {
-            logDebug('Render: No specific stock watchlists selected or multiple selected, showing empty state.');
-        }
+            // Handle sorting by percentage change
+            if (field === 'percentageChange') {
+                logDebug('AGGRESSIVE DEBUG: Percentage change sorting detected');
+                const livePriceDataA = livePrices[a.shareName.toUpperCase()];
+                const livePriceA = livePriceDataA ? livePriceDataA.live : undefined;
+                const prevCloseA = livePriceDataA ? livePriceDataA.prevClose : undefined;
 
-        // --- Optimized DOM Update for Shares ---
-        const existingTableRows = Array.from(shareTableBody.children);
-        const existingMobileCards = Array.from(mobileShareCardsContainer.children);
-        const existingAsxButtons = Array.from(asxCodeButtonsContainer.children);
+                const livePriceDataB = livePrices[b.shareName.toUpperCase()];
+                const livePriceB = livePriceDataB ? livePriceDataB.live : undefined;
+                const prevCloseB = livePriceDataB ? livePriceDataB.prevClose : undefined;
 
-        const newShareIds = new Set(sharesToRender.map(s => s.id));
-        const newAsxCodes = new Set(sharesToRender.map(s => s.shareName.trim().toUpperCase()));
+                let percentageChangeA = null;
+                if (livePriceA !== undefined && livePriceA !== null && !isNaN(livePriceA) &&
+                    prevCloseA !== undefined && prevCloseA !== null && !isNaN(prevCloseA) && prevCloseA !== 0) {
+                    percentageChangeA = ((livePriceA - prevCloseA) / prevCloseA) * 100;
+                }
 
-        // Remove old rows/cards/buttons that are no longer in the filtered list
-        existingTableRows.forEach(row => {
-            if (!newShareIds.has(row.dataset.docId)) {
-                row.remove();
+                let percentageChangeB = null;
+                if (livePriceB !== undefined && livePriceB !== null && !isNaN(livePriceB) &&
+                    prevCloseB !== undefined && prevCloseB !== null && !isNaN(prevCloseB) && prevCloseB !== 0) {
+                    percentageChangeB = ((livePriceB - prevCloseB) / prevCloseB) * 100;
+                }
+
+                logDebug('Sort Debug - Percentage: Comparing ' + a.shareName + ' (Change: ' + percentageChangeA + ') vs ' + b.shareName + ' (Change: ' + percentageChangeB + ')');
+
+                if (percentageChangeA === null && percentageChangeB === null) return 0;
+                if (percentageChangeA === null) return 1; 
+                if (percentageChangeB === null) return -1; 
+                return order === 'asc' ? percentageChangeA - percentageChangeB : percentageChangeB - percentageChangeA;
+            }
+
+            let valA = a[field];
+            let valB = b[field];
+
+            if (field === 'currentPrice' || field === 'targetPrice' || field === 'frankingCredits') {
+                valA = (typeof valA === 'string' && valA.trim() !== '') ? parseFloat(valA) : valA;
+                valB = (typeof valB === 'string' && valB.trim() !== '') ? parseFloat(valB) : valB;
+                valA = (valA === null || valA === undefined || isNaN(valA)) ? (order === 'asc' ? Infinity : -Infinity) : valA;
+                valB = (valB === null || valB === undefined || isNaN(valB)) ? (order === 'asc' ? Infinity : -Infinity) : valB;
+                return order === 'asc' ? valA - valB : valB - valA;
+            } else if (field === 'dividendAmount') { // Dedicated logic for dividendAmount (yield)
+                const livePriceDataA = livePrices[a.shareName.toUpperCase()];
+                const livePriceA = livePriceDataA ? livePriceDataA.live : undefined;
+                const priceForYieldA = (livePriceA !== undefined && livePriceA !== null && !isNaN(livePriceA) && livePriceA > 0) ? livePriceA : (Number(a.currentPrice) > 0 ? Number(a.currentPrice) : 0);
+
+                const livePriceDataB = livePrices[b.shareName.toUpperCase()];
+                const livePriceB = livePriceDataB ? livePriceDataB.live : undefined;
+                const priceForYieldB = (livePriceB !== undefined && livePriceB !== null && !isNaN(livePriceB) && livePriceB > 0) ? livePriceB : (Number(b.currentPrice) > 0 ? Number(b.currentPrice) : 0);
+
+                const dividendAmountA = Number(a.dividendAmount) || 0;
+                const frankingCreditsA = Number(a.frankingCredits) || 0;
+                const dividendAmountB = Number(b.dividendAmount) || 0;
+                const frankingCreditsB = Number(b.frankingCredits) || 0;
+
+                const frankedYieldA = calculateFrankedYield(dividendAmountA, priceForYieldA, frankingCreditsA);
+                const unfrankedYieldA = calculateUnfrankedYield(dividendAmountA, priceForYieldA);
+                const frankedYieldB = calculateFrankedYield(dividendAmountB, priceForYieldB, frankingCreditsB);
+                const unfrankedYieldB = calculateUnfrankedYield(dividendAmountB, priceForYieldB);
+
+                let effectiveYieldA = 0;
+                if (frankingCreditsA > 0 && frankedYieldA > 0) {
+                    effectiveYieldA = frankedYieldA;
+                } else if (unfrankedYieldA > 0) {
+                    effectiveYieldA = unfrankedYieldA;
+                }
+                let effectiveYieldB = 0;
+                if (frankingCreditsB > 0 && frankedYieldB > 0) {
+                    effectiveYieldB = frankedYieldB;
+                } else if (unfrankedYieldB > 0) {
+                    effectiveYieldB = unfrankedYieldB;
+                }
+                logDebug(`Sort Debug - Dividend: Comparing ${a.shareName} (Effective Yield A: ${effectiveYieldA}) vs ${b.shareName} (Effective Yield B: ${effectiveYieldB})`);
+                return order === 'asc' ? effectiveYieldA - effectiveYieldB : effectiveYieldB - effectiveYieldA;
+            } else if (field === 'shareName') {
+                const nameA = (a.shareName || '').toUpperCase().trim();
+                const nameB = (b.shareName || '').toUpperCase().trim();
+                if (nameA === '' && nameB === '') return 0;
+                if (nameA === '') return 1; 
+                if (nameB === '') return -1; 
+                return order === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+            } else if (field === 'starRating') {
+                const ratingA = a.starRating !== undefined && a.starRating !== null && !isNaN(parseInt(a.starRating)) ? parseInt(a.starRating) : 0;
+                const ratingB = b.starRating !== undefined && b.starRating !== null && !isNaN(parseInt(b.starRating)) ? parseInt(b.starRating) : 0;
+                return order === 'asc' ? ratingA - ratingB : ratingB - ratingA;
+            } else if (field === 'entryDate') {
+                const dateA = new Date(valA);
+                const dateB = new Date(valB);
+                const timeA = isNaN(dateA.getTime()) ? (order === 'asc' ? Infinity : -Infinity) : dateA.getTime();
+                const timeB = isNaN(dateB.getTime()) ? (order === 'asc' ? Infinity : -Infinity) : dateB.getTime();
+                return order === 'asc' ? timeA - timeB : timeB - timeA;
+            } else {
+                if (order === 'asc') {
+                    if (valA < valB) return -1;
+                    if (valA > valB) return 1;
+                    return 0;
+                } else {
+                    if (valA > valB) return -1;
+                    if (valA < valB) return 1;
+                    return 0;
+                }
             }
         });
-        existingMobileCards.forEach(card => {
-            if (!newShareIds.has(card.dataset.docId)) {
-                card.remove();
-            }
-        });
-        // Clear existing rows and cards before re-rendering in sorted order
-        // This ensures the order is always correct based on the sorted `sharesToRender` array
-        if (shareTableBody) {
-            shareTableBody.innerHTML = '';
-        }
-        if (mobileShareCardsContainer) {
-            mobileShareCardsContainer.innerHTML = '';
-        }
-
-        // Re-add shares to the UI in their sorted order
-        if (sharesToRender.length > 0) {
-            sharesToRender.forEach(share => {
-                if (tableContainer && tableContainer.style.display !== 'none') {
-                    addShareToTable(share); // Using add functions to ensure new row/card is created in order
-                }
-                if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
-                    addShareToMobileCards(share); // Using add functions to ensure new row/card is created in order
-                }
-            });
-        } else {
-            // Handle empty message if no shares to render in current view
-            const emptyWatchlistMessage = document.createElement('p');
-            emptyWatchlistMessage.textContent = 'No shares found for the selected watchlists. Add a new share to get started!';
-            emptyWatchlistMessage.style.textAlign = 'center';
-            emptyWatchlistMessage.style.padding = '20px';
-            emptyWatchlistMessage.style.color = 'var(--ghosted-text)';
-            
-            if (tableContainer && tableContainer.style.display !== 'none') {
-                const td = document.createElement('td');
-                td.colSpan = 5; // Adjusted after removing Entry Price column
-                td.appendChild(emptyWatchlistMessage);
-                const tr = document.createElement('tr');
-                tr.classList.add('empty-message-row'); // Add class to easily target for removal later
-                tr.appendChild(td);
-                shareTableBody.appendChild(tr);
-            }
             if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
                 mobileShareCardsContainer.appendChild(emptyWatchlistMessage.cloneNode(true));
             }
