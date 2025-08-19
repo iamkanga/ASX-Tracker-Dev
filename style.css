@@ -1,3 +1,24 @@
+/* Charcoal background for 52-Week Low Alerts to match global movers */
+.low52-charcoal {
+    background: #23242a !important;
+    border: 1px solid #2d2e33 !important;
+    color: #fff;
+}
+.low52-heading-white {
+    color: #fff !important;
+}
+.low52-thresh-white {
+    color: #fff !important;
+}
+.low52-alert-card.low52-charcoal {
+    background: #23242a !important;
+    border: 1px solid #2d2e33 !important;
+    color: #fff;
+}
+.low52-card-muted {
+    opacity: 0.45;
+    filter: grayscale(0.7);
+}
 /* --- 52-Week Low Alerts Section (Refined) --- */
 .low52-section-header {
     display: flex;
