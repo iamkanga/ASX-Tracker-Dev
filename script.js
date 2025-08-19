@@ -7,7 +7,6 @@
 // Push a new state when opening a modal or navigating to a new in-app view
 function pushAppState(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
-}
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
