@@ -20,9 +20,7 @@ window.addEventListener('popstate', function(event) {
     }
     // Defer modal handling to the stack popstate handler below.
 });
-// Keep main content padding in sync with header height changes (e.g., viewport resize)
-window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
-document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
+// (moved below after UI element references)
 // Diagnostic: overlay listener singleton self-check
 document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -43,6 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch(e) { console.warn('[Diag] Overlay singleton check failed', e); }
 });
 // ...existing code...
+// (moved below after function definitions)
+// Keep main content padding in sync with header height changes (e.g., viewport resize)
+window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
+document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
 // Ensure global access to critical functions (fallback for ReferenceError issues)
 window.isAsxMarketOpen = window.isAsxMarketOpen || isAsxMarketOpen;
 window.loadUserWatchlistsAndSettings = window.loadUserWatchlistsAndSettings || loadUserWatchlistsAndSettings;
