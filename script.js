@@ -43,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // ...existing code...
 
 // === END OF FILE: Ensure global access and layout listeners are set after all definitions ===
-window.isAsxMarketOpen = window.isAsxMarketOpen || isAsxMarketOpen;
 window.loadUserWatchlistsAndSettings = window.loadUserWatchlistsAndSettings || loadUserWatchlistsAndSettings;
 window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
 document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
