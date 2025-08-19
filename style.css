@@ -1,3 +1,7 @@
+/* Add margin to code button arrow for better spacing */
+.asx-toggle-triangle {
+    margin-right: 10px;
+}
 /* Center the discover sort bar vertically and remove label spacing */
 .discover-sort-bar-centered {
     display: flex;

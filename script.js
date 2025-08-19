@@ -1,3 +1,36 @@
+// --- Watchlist Title Click: Open Watchlist Picker Modal ---
+
+if (dynamicWatchlistTitleText && watchlistPickerModal) {
+    dynamicWatchlistTitleText.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (typeof showModal === 'function') {
+            showModal(watchlistPickerModal);
+        } else {
+            watchlistPickerModal.style.display = 'block';
+        }
+    });
+    dynamicWatchlistTitleText.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (typeof showModal === 'function') {
+                showModal(watchlistPickerModal);
+            } else {
+                watchlistPickerModal.style.display = 'block';
+            }
+        }
+    });
+}
+
+// --- Close Watchlist Picker Modal ---
+if (closeWatchlistPickerBtn && watchlistPickerModal) {
+    closeWatchlistPickerBtn.addEventListener('click', function() {
+        if (typeof hideModal === 'function') {
+            hideModal(watchlistPickerModal);
+        } else {
+            watchlistPickerModal.style.display = 'none';
+        }
+    });
+}
 // Global function to open the ASX search modal and populate the code
 window.showStockSearchModal = function(asxCode) {
     if (!stockSearchModal || !asxSearchInput) return;
