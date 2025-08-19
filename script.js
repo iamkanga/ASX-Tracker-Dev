@@ -41,13 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch(e) { console.warn('[Diag] Overlay singleton check failed', e); }
 });
 // ...existing code...
-// (moved below after function definitions)
-// Keep main content padding in sync with header height changes (e.g., viewport resize)
-window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
-document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
-// Ensure global access to critical functions (fallback for ReferenceError issues)
+
+// === END OF FILE: Ensure global access and layout listeners are set after all definitions ===
 window.isAsxMarketOpen = window.isAsxMarketOpen || isAsxMarketOpen;
 window.loadUserWatchlistsAndSettings = window.loadUserWatchlistsAndSettings || loadUserWatchlistsAndSettings;
+window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
+document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
 
 // Title mutation observer guard to restore if emptied by outside DOM ops
 try {
