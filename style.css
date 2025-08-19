@@ -1,3 +1,48 @@
+/* --- 52-Week Low Alerts Section --- */
+.low52-heading {
+    margin-top: 18px;
+    margin-bottom: 6px;
+    font-size: 1.1em;
+    color: #b22222;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+.low52-alert-list {
+    list-style: none;
+    padding: 0 0 8px 0;
+    margin: 0 0 12px 0;
+}
+.low52-alert-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0 7px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 0.98em;
+}
+.low52-alert-item:last-child {
+    border-bottom: none;
+}
+.low52-code {
+    font-weight: 700;
+    color: #b22222;
+    min-width: 54px;
+}
+.low52-name {
+    color: #444;
+    flex: 1 1 auto;
+    min-width: 80px;
+}
+.low52-price {
+    color: #1a6e1a;
+    font-weight: 600;
+    min-width: 70px;
+}
+.low52-thresh {
+    color: #888;
+    font-size: 0.93em;
+    margin-left: 6px;
+}
 /* Portfolio Card Controls Row */
 .portfolio-card .pc-controls-row {
     display: flex;

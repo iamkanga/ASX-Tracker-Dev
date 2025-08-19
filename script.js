@@ -99,6 +99,10 @@ function makeFilesAvailableToSourceControl() {
 }
 // End Copilot source control helper
 
+// --- 52-Week Low Alert State ---
+let sharesAt52WeekLow = [];
+const triggered52WeekLowSet = new Set();
+
 // Helper: Sort shares by percentage change
 function sortSharesByPercentageChange(shares) {
     return shares.slice().sort((a, b) => {
@@ -1636,6 +1640,24 @@ async function fetchLivePrices(opts = {}) {
             if (filtered) parts.push(`filtered=${filtered}`);
             if (skipped > LOG_LIMIT) parts.push(`skippedNotLogged=${skipped - LOG_LIMIT}`);
             console.log('Live Price: Summary ' + parts.join(', '));
+        }
+        // --- 52-Week Low Alert Detection ---
+        sharesAt52WeekLow = [];
+        if (Array.isArray(allSharesData)) {
+            allSharesData.forEach(share => {
+                const code = (share.shareName || '').toUpperCase();
+                const lpObj = livePrices ? livePrices[code] : undefined;
+                if (!lpObj || lpObj.live == null || isNaN(lpObj.live) || lpObj.Low52 == null || isNaN(lpObj.Low52)) return;
+                if (lpObj.live <= lpObj.Low52 && !triggered52WeekLowSet.has(code)) {
+                    sharesAt52WeekLow.push({
+                        code,
+                        name: share.companyName || code,
+                        live: lpObj.live,
+                        low52: lpObj.Low52
+                    });
+                    triggered52WeekLowSet.add(code);
+                }
+            });
         }
         onLivePricesUpdated();
         window._livePricesLoaded = true;
@@ -5945,6 +5967,7 @@ function updateTargetHitBanner() {
     }
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
+    const low52Count = Array.isArray(sharesAt52WeekLow) ? sharesAt52WeekLow.length : 0;
     // Treat global summary counts as zero if directional thresholds are fully inactive (prevents stale badge after clearing)
     const directionalActive = isDirectionalThresholdsActive ? isDirectionalThresholdsActive() : (
         (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ||
@@ -5953,7 +5976,7 @@ function updateTargetHitBanner() {
         (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0)
     );
     const globalSummaryCount = (directionalActive && globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0;
-    const displayCount = enabledCount + globalSummaryCount;
+    const displayCount = enabledCount + globalSummaryCount + low52Count;
     const snapshot = window.__lastTargetBannerSnapshot;
     const snapshotUnchanged = snapshot.enabledCount === enabledCount && snapshot.displayCount === displayCount && snapshot.dismissed === !!targetHitIconDismissed;
     if (!snapshotUnchanged) {
@@ -9796,6 +9819,23 @@ function showTargetHitDetailsModal(options={}) {
         }
     } catch(_err) { /* ignore */ }
     targetHitSharesList.innerHTML = ''; // Clear previous content
+
+    // --- 52-Week Low Alerts Section ---
+    if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
+        const low52Header = document.createElement('h3');
+        low52Header.className = 'target-hit-section-title low52-heading';
+        low52Header.textContent = '52-Week Low Alerts';
+        targetHitSharesList.appendChild(low52Header);
+        const ul = document.createElement('ul');
+        ul.className = 'low52-alert-list';
+        sharesAt52WeekLow.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'low52-alert-item';
+            li.innerHTML = `<span class="low52-code">${item.code}</span> <span class="low52-name">${item.name}</span> <span class="low52-price">$${Number(item.live).toFixed(2)}</span> <span class="low52-thresh">(52W Low: $${Number(item.low52).toFixed(2)})</span>`;
+            ul.appendChild(li);
+        });
+        targetHitSharesList.appendChild(ul);
+    }
 
     // Inject headings + global summary card (Global movers heading ABOVE card)
     // Only show global summary if thresholds still active to avoid displaying stale counts after clear
