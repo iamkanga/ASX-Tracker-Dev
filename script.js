@@ -360,11 +360,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="summary-value negative">${fmtMoney(daysLoss)} <span class="summary-pct negative">${fmtPct(totalValue > 0 ? (daysLoss / totalValue) * 100 : 0)}</span></div>
             </div>
             <div class="summary-card ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : 'neutral'}">
-                <div class="summary-label">Total Overall Gain/Loss</div>
+                <div class="summary-label">Total Return</div>
                 <div class="summary-value ${totalPL >= 0 ? 'positive' : 'negative'}">${fmtMoney(totalPL)} <span class="summary-pct">${fmtPct(overallPLPct)}</span></div>
             </div>
             <div class="summary-card ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">
-                <div class="summary-label">Today's Net Gain/Loss</div>
+                <div class="summary-label">Day Change</div>
                 <div class="summary-value ${todayNet >= 0 ? 'positive' : 'negative'}">${fmtMoney(todayNet)} <span class="summary-pct">${fmtPct(todayNetPct)}</span></div>
             </div>
             <div class="summary-card neutral">

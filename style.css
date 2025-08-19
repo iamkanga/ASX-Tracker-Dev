@@ -214,11 +214,21 @@ function makeFilesAvailableToSourceControlCSS() {
     text-align: center;
 }
 .portfolio-summary-bar .summary-label {
-    font-size: 1.13rem;
-    color: var(--label-color);
-    font-weight: 500;
-    margin-bottom: 6px;
-    text-align: center;
+        font-size: 1.13rem;
+        color: var(--label-color);
+        font-weight: 500;
+        margin-bottom: 6px;
+        text-align: center;
+}
+
+/* Make Total Return and Day Change labels more visible in light theme */
+@media (prefers-color-scheme: light) {
+    .portfolio-summary-bar .summary-card:nth-child(3) .summary-label,
+    .portfolio-summary-bar .summary-card:nth-child(4) .summary-label {
+        color: #222 !important;
+        font-weight: 600;
+    }
+}
 }
 .portfolio-summary-bar .summary-value {
     font-size: 1.85rem;
