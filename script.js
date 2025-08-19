@@ -314,6 +314,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
+        if (plClass === 'neutral') {
+            console.log('[DEBUG] Neutral card assigned:', {
+                shareId: share.id,
+                shareName: share.shareName,
+                rowPL,
+                avgPrice,
+                priceNow,
+                shares
+            });
+        }
             const todayClass = (todayChange > 0) ? 'positive' : (todayChange < 0 ? 'negative' : 'neutral');
 
             // DEBUG: Log rowPL and plClass for each card
