@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 testNeutral = true;
             } else if (plClass === 'positive') borderColor = 'border: 4px solid #008000;';
             else if (plClass === 'negative') borderColor = 'border: 4px solid #c42131;';
-            else if (plClass === 'neutral') borderColor = 'border: 4px solid #a49393; background: repeating-linear-gradient(135deg, #a49393, #a49393 10px, #fff 10px, #fff 20px);'; // DEBUG: coffee border and background
+            else if (plClass === 'neutral') borderColor = 'border: 4px solid #a49393 !important; background: repeating-linear-gradient(135deg, #a49393, #a49393 10px, #fff 10px, #fff 20px);'; // DEBUG: coffee border and background for real neutral cards
             // ...existing code...
             return `<div class="portfolio-card ${testNeutral ? 'neutral' : plClass}" data-doc-id="${share.id}"${borderColor ? ` style=\"${borderColor}\"` : ''}>
                 <div class="pc-main-row">
