@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch(e) { console.warn('[Diag] Overlay singleton check failed', e); }
 });
 // ...existing code...
+// Ensure global access to critical functions (fallback for ReferenceError issues)
+window.isAsxMarketOpen = window.isAsxMarketOpen || isAsxMarketOpen;
+window.loadUserWatchlistsAndSettings = window.loadUserWatchlistsAndSettings || loadUserWatchlistsAndSettings;
 
 // Title mutation observer guard to restore if emptied by outside DOM ops
 try {
