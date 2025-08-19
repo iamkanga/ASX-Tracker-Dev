@@ -337,17 +337,17 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 /* Portfolio holding cards: portfolio view only, dynamic border */
 .portfolio-cards-grid .portfolio-card {
-    border-width: 8px !important;
+    border-width: 4px !important; /* DEBUG: visually confirm border update */
     border-style: solid !important;
-    border-color: var(--border-color) !important;
+    border-color: var(--border-color, #c9d2d4) !important;
     box-shadow: none !important;
     transition: border-color 0.18s;
 }
 .portfolio-cards-grid .portfolio-card.positive {
-    border-color: var(--price-up-color) !important;
+    border-color: var(--price-up-color, #008000) !important; /* DEBUG: force brand green fallback */
 }
 .portfolio-cards-grid .portfolio-card.negative {
-    border-color: var(--price-down-color) !important;
+    border-color: var(--price-down-color, #c42131) !important; /* DEBUG: force brand red fallback */
 }
 .portfolio-cards-grid .portfolio-card.neutral {
     border-color: var(--accent-color, #a49393) !important;
