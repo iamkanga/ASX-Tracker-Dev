@@ -604,8 +604,7 @@ function makeFilesAvailableToSourceControlCSS() {
     --green-color-dark-rgb: 46, 204, 113; /* RGB for #2ECC71 for pulsing effect */
     /* NEW: Alert System Colors */
     --alert-icon-bg: #dc3545; /* Red for the chat box icon */
-        --accent-color: #a49393; /* coffee accent (standardized selection fill) */
-        --accent-color: #ff5733; /* updated accent color */
+    --alert-icon-text: #fff;
     --alert-icon-shadow: rgba(220, 53, 69, 0.4);
     --alert-panel-bg: #f8f9fa; /* Light background for panel */
     --alert-panel-border: #c9d2d4;
