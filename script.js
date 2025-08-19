@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const portfolioSection = document.createElement('div');
             portfolioSection.id = 'portfolioSection';
             portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<h2>Portfolio</h2><div class="portfolio-scroll-wrapper"><div id="portfolioListContainer">Loading portfolio...</div></div>';
+            portfolioSection.innerHTML = '<div id="portfolioViewLastUpdated" class="last-updated-timestamp"></div><div class="portfolio-scroll-wrapper"><div id="portfolioListContainer">Loading portfolio...</div></div>';
             mainContainer.appendChild(portfolioSection);
         }
         stockWatchlistSection.style.display = 'none';
@@ -242,6 +242,11 @@ document.addEventListener('DOMContentLoaded', function () {
     window.renderPortfolioList = function() {
         const portfolioListContainer = document.getElementById('portfolioListContainer');
         if (!portfolioListContainer) return;
+
+        const portfolioViewLastUpdated = document.getElementById('portfolioViewLastUpdated');
+        if (portfolioViewLastUpdated && window._portfolioLastUpdated) {
+            portfolioViewLastUpdated.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
+        }
 
         // Show last updated timestamp if available (header and container)
         const lastUpdatedEl = document.getElementById('portfolioLastUpdated');
