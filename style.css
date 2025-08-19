@@ -987,6 +987,9 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-summary-alert .global-summary-detail { font-size:0.88rem; line-height:1.35; opacity:0.95; }
 .global-summary-alert .global-summary-detail.portfolio-line, .global-summary-alert .global-summary-detail.others-line { margin-top:2px; }
 .global-summary-alert .global-summary-arrows-row { display:flex; gap:18px; font-size:0.85rem; font-weight:600; align-items:center; margin:2px 0 4px; flex-wrap:wrap; }
+.global-summary-alert.target-hit-item .global-summary-arrows-row {
+    font-size: 0.425rem !important;
+}
 .global-summary-alert .global-summary-arrows-row .up { color: var(--price-up-color); }
 .global-summary-alert .global-summary-arrows-row .down { color: var(--price-down-color); }
 .global-summary-alert .global-summary-arrows-row .min-filter { font-weight:500; opacity:0.7; }
