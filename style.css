@@ -403,15 +403,13 @@ function makeFilesAvailableToSourceControlCSS() {
 @media (prefers-color-scheme: light) {
     .portfolio-card .pc-label,
     .portfolio-card .pc-pct {
-        color: #222 !important;
-        background: #fff !important; /* TEMP: force max contrast for debug */
+    color: #222 !important;
     }
 }
 @media (prefers-color-scheme: dark) {
     .portfolio-card .pc-label,
     .portfolio-card .pc-pct {
-        color: #fff !important;
-        background: #000 !important; /* TEMP: force max contrast for debug */
+    color: #fff !important;
     }
 }
 .portfolio-card .pc-chevron-btn {
