@@ -229,7 +229,6 @@ function makeFilesAvailableToSourceControlCSS() {
         font-weight: 600;
     }
 }
-}
 .portfolio-summary-bar .summary-value {
     font-size: 1.85rem;
     font-weight: 700;
