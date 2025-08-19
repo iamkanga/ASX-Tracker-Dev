@@ -9872,14 +9872,14 @@ function showTargetHitDetailsModal(options={}) {
     } catch(_err) { /* ignore */ }
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-    // --- 52 week low Section (horizontal, smart UI) ---
+    // --- 52 week high/low Section (horizontal, smart UI) ---
     if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
         // Section title styled like global movers
         const sectionHeader = document.createElement('div');
         sectionHeader.className = 'low52-section-header';
         const low52Title = document.createElement('h3');
         low52Title.className = 'target-hit-section-title low52-heading low52-heading-white';
-        low52Title.textContent = '52 week low';
+        low52Title.textContent = '52 week alerts';
         sectionHeader.appendChild(low52Title);
         targetHitSharesList.appendChild(sectionHeader);
         if (!window.__low52MutedMap) {
@@ -9891,13 +9891,13 @@ function showTargetHitDetailsModal(options={}) {
         // Split into unmuted and muted
         const unmuted = [], muted = [];
         sharesAt52WeekLow.forEach((item, idx) => {
-            const isMuted = !!window.__low52MutedMap[item.code];
+            const isMuted = !!window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')];
             (isMuted ? muted : unmuted).push({item, idx});
         });
         // Unmuted cards (left)
         unmuted.forEach(({item, idx}) => {
             const card = document.createElement('div');
-            card.className = 'low52-alert-card low52-charcoal';
+            card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'}`;
             card.innerHTML = `
                 <div class="low52-card-row">
                     <span class="low52-code">${item.code}</span>
@@ -9905,7 +9905,7 @@ function showTargetHitDetailsModal(options={}) {
                 </div>
                 <div class="low52-card-row">
                     <span class="low52-price">$${Number(item.live).toFixed(2)}</span>
-                    <span class="low52-thresh low52-thresh-white">(52W Low: $${Number(item.low52).toFixed(2)})</span>
+                    <span class="low52-thresh">(${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)})</span>
                     <button class="low52-mute-btn" data-idx="${idx}">Mute</button>
                 </div>
             `;
@@ -9913,7 +9913,7 @@ function showTargetHitDetailsModal(options={}) {
             const muteBtn = card.querySelector('.low52-mute-btn');
             muteBtn.onclick = function(e) {
                 e.stopPropagation();
-                window.__low52MutedMap[item.code] = true;
+                window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = true;
                 try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
                 showTargetHitDetailsModal();
             };
@@ -9933,7 +9933,7 @@ function showTargetHitDetailsModal(options={}) {
         // Muted cards (right, can unmute)
         muted.forEach(({item, idx}) => {
             const card = document.createElement('div');
-            card.className = 'low52-alert-card low52-charcoal low52-card-muted';
+            card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'} low52-card-muted`;
             card.innerHTML = `
                 <div class="low52-card-row">
                     <span class="low52-code">${item.code}</span>
@@ -9941,7 +9941,7 @@ function showTargetHitDetailsModal(options={}) {
                 </div>
                 <div class="low52-card-row">
                     <span class="low52-price">$${Number(item.live).toFixed(2)}</span>
-                    <span class="low52-thresh low52-thresh-white">(52W Low: $${Number(item.low52).toFixed(2)})</span>
+                    <span class="low52-thresh">(${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)})</span>
                     <button class="low52-mute-btn" data-idx="${idx}">Unmute</button>
                 </div>
             `;
@@ -9949,7 +9949,7 @@ function showTargetHitDetailsModal(options={}) {
             const muteBtn = card.querySelector('.low52-mute-btn');
             muteBtn.onclick = function(e) {
                 e.stopPropagation();
-                window.__low52MutedMap[item.code] = false;
+                window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = false;
                 try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
                 showTargetHitDetailsModal();
             };
