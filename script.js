@@ -369,7 +369,6 @@ document.addEventListener('DOMContentLoaded', function () {
         daysLoss = Math.abs(daysLoss);
 
         // After mapping, inject a test neutral card at the start for debug/visual confirmation
-        cards.unshift(`<div class="portfolio-card neutral" data-doc-id="test-neutral" style="border: 4px solid #a49393; background: repeating-linear-gradient(135deg, #a49393, #a49393 10px, #fff 10px, #fff 20px);"><div class="pc-main-row"><div class="pc-code">TEST-NEUTRAL</div><div class="pc-value">$0.00</div></div><div class="pc-metrics-row"><div class="pc-metric-line"><span class="pc-label">Total Return</span><span class="pc-val neutral">$0.00 <span class="pc-pct neutral">0.00%</span></span></div></div><div class="pc-controls-row"></div><div class="pc-details" style="display:none;"></div></div>`);
 
         // --- Summary Bar ---
         const summaryBar = `<div class="portfolio-summary-bar">
