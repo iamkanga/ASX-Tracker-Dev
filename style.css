@@ -952,16 +952,15 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 
 /* Global summary alert item styling */
 /* Global summary alert unified card styling */
-.global-summary-alert.target-hit-item { 
-    /* Match other alert cards visually */
-    background-color: var(--card-bg);
+.global-summary-alert.target-hit-item {
+    background-color: var(--card-bg, #fff) !important;
     border: 1px solid var(--border-color, #333);
     border-radius: 8px;
     padding: 10px 12px;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 8px 18px;
+    display: flex;
+    flex-direction: row;
     align-items: stretch;
+    gap: 8px 18px;
 }
 .global-summary-alert.target-hit-item:hover { background: var(--panel-bg-hover, rgba(255,255,255,0.08)); }
 .global-summary-alert .share-name-code { font-weight: 600; }
