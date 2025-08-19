@@ -329,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function () {
             let borderColor = '';
             if (plClass === 'positive') borderColor = 'border: 4px solid #008000;';
             else if (plClass === 'negative') borderColor = 'border: 4px solid #c42131;';
-            else if (plClass === 'neutral') borderColor = 'border: 4px solid #a49393;';
+            else if (plClass === 'neutral') borderColor = 'border: 4px solid #a49393; background: repeating-linear-gradient(135deg, #a49393, #a49393 10px, #fff 10px, #fff 20px);'; // DEBUG: coffee border and background
             return `<div class="portfolio-card ${plClass}" data-doc-id="${share.id}"${borderColor ? ` style=\"${borderColor}\"` : ''}>
                 <div class="pc-main-row">
                     <div class="pc-code">${share.shareName || ''}</div>
