@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let lossPLSum = 0;
 
         // For each share, calculate metrics
-        const cards = portfolioShares.map(share => {
+    const cards = portfolioShares.map((share, i) => {
             const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
                 ? Math.trunc(Number(share.portfolioShares)) : '';
             const avgPrice = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)))
