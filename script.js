@@ -9839,7 +9839,13 @@ if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
     targetHitSharesList.appendChild(sectionHeader);
     const container = document.createElement('div');
     container.className = 'low52-alerts-container low52-charcoal';
-    if (!window.__low52MutedMap) window.__low52MutedMap = {};
+    // Persist mute state in sessionStorage
+    if (!window.__low52MutedMap) {
+        try {
+            const stored = sessionStorage.getItem('low52MutedMap');
+            window.__low52MutedMap = stored ? JSON.parse(stored) : {};
+        } catch { window.__low52MutedMap = {}; }
+    }
     sharesAt52WeekLow.forEach((item, idx) => {
         const isMuted = !!window.__low52MutedMap[item.code];
         if (isMuted) return; // Only show unmuted cards
@@ -9861,6 +9867,7 @@ if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
         muteBtn.onclick = function(e) {
             e.stopPropagation();
             window.__low52MutedMap[item.code] = true;
+            try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
             showTargetHitDetailsModal();
         };
         container.appendChild(card);
