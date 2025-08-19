@@ -4215,6 +4215,39 @@ function sortShares() {
 
             // Now perform numerical comparison for non-null values
             return order === 'asc' ? percentageChangeA - percentageChangeB : percentageChangeB - percentageChangeA;
+        } else if (field === 'dayDollar' || field === 'totalDollar') {
+            const getPortfolioMetric = (share) => {
+                const lp = livePrices[share.shareName?.toUpperCase()];
+                if (!lp) return null;
+
+                const priceNow = lp.live ?? lp.lastLivePrice ?? share.currentPrice ?? null;
+                if (priceNow === null || isNaN(priceNow)) return null;
+
+                const shares = share.portfolioShares ?? null;
+                if (shares === null || isNaN(shares) || shares === 0) return null;
+
+                if (field === 'dayDollar') {
+                    const prevClose = lp.prevClose ?? lp.lastPrevClose ?? null;
+                    if (prevClose === null || isNaN(prevClose)) return null;
+                    return (priceNow - prevClose) * shares;
+                }
+
+                if (field === 'totalDollar') {
+                    const avgPrice = share.portfolioAvgPrice ?? null;
+                    if (avgPrice === null || isNaN(avgPrice)) return null;
+                    return (priceNow - avgPrice) * shares;
+                }
+                return null;
+            };
+
+            const valA = getPortfolioMetric(a);
+            const valB = getPortfolioMetric(b);
+
+            if (valA === null && valB === null) return 0;
+            if (valA === null) return 1;
+            if (valB === null) return -1;
+
+            return order === 'asc' ? valA - valB : valB - valA;
         }
 
         let valA = a[field];
@@ -4450,79 +4483,88 @@ function renderWatchlistSelect() {
 }
 
 function renderSortSelect() {
-        if (!sortSelect) { console.error('renderSortSelect: sortSelect element not found.'); return; }
+    if (!sortSelect) { console.error('renderSortSelect: sortSelect element not found.'); return; }
     // Store the currently selected value before clearing (used as a fallback)
     const currentSelectedSortValue = sortSelect.value;
 
-        // Set the initial placeholder text to "Sort List"
-        sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
+    // Set the initial placeholder text to "Sort List"
+    sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
 
-        const stockOptions = [
-            // Put Percentage Change at the top
-            { value: 'percentageChange-desc', text: 'Change % (H-L)' },
-            { value: 'percentageChange-asc', text: 'Change % (L-H)' },
-            // Then Name (Code)
-            { value: 'shareName-asc', text: 'Code (A-Z)' },
-            { value: 'shareName-desc', text: 'Code (Z-A)' },
-            // Then Date and Rating
-            { value: 'entryDate-desc', text: 'Date (N-O)' }, // Newest-Oldest
-            { value: 'entryDate-asc', text: 'Date (O-N)' },  // Oldest-Newest
-            { value: 'starRating-desc', text: '⭐ (H-L)' },
-            { value: 'starRating-asc', text: '⭐ (L-H)' },
-            // Dividend Yield last
-            { value: 'dividendAmount-desc', text: 'Yield % (H-L)' },
-            { value: 'dividendAmount-asc', text: 'Yield % (L-H)' }
-        ];
+    const stockOptions = [
+        { value: 'percentageChange-desc', text: 'Change % (H-L)' },
+        { value: 'percentageChange-asc', text: 'Change % (L-H)' },
+        { value: 'shareName-asc', text: 'Code (A-Z)' },
+        { value: 'shareName-desc', text: 'Code (Z-A)' },
+        { value: 'entryDate-desc', text: 'Date (N-O)' },
+        { value: 'entryDate-asc', text: 'Date (O-N)' },
+        { value: 'starRating-desc', text: '⭐ (H-L)' },
+        { value: 'starRating-asc', text: '⭐ (L-H)' },
+        { value: 'dividendAmount-desc', text: 'Yield % (H-L)' },
+        { value: 'dividendAmount-asc', text: 'Yield % (L-H)' }
+    ];
 
-        const cashOptions = [
-            { value: 'name-asc', text: 'Asset Name (A-Z)' },
-            { value: 'name-desc', text: 'Asset Name (Z-A)' },
-            { value: 'balance-desc', text: 'Balance (High-Low)' },
-            { value: 'balance-asc', text: 'Balance (Low-High)' }
-        ];
+    const portfolioOptions = [
+        { value: 'percentageChange-desc', text: 'Change % (H-L)' },
+        { value: 'percentageChange-asc', text: 'Change % (L-H)' },
+        { value: 'shareName-asc', text: 'Code (A-Z)' },
+        { value: 'shareName-desc', text: 'Code (Z-A)' },
+        { value: 'dayDollar-desc', text: 'Day $ (H-L)' },
+        { value: 'dayDollar-asc', text: 'Day $ (L-H)' },
+        { value: 'totalDollar-desc', text: 'Total $ (H-L)' },
+        { value: 'totalDollar-asc', text: 'Total $ (L-H)' }
+    ];
 
-        // Determine which set of options to display
-        if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-            cashOptions.forEach(opt => {
-                const optionElement = document.createElement('option');
-                optionElement.value = opt.value;
-                optionElement.textContent = opt.text;
-                sortSelect.appendChild(optionElement);
-            });
-            logDebug('Sort Select: Populated with Cash Asset options.');
-        } else {
-            stockOptions.forEach(opt => {
-                const optionElement = document.createElement('option');
-                optionElement.value = opt.value;
-                optionElement.textContent = opt.text;
-                sortSelect.appendChild(optionElement);
-            });
-            logDebug('Sort Select: Populated with Stock options.');
-        }
+    const cashOptions = [
+        { value: 'name-asc', text: 'Asset Name (A-Z)' },
+        { value: 'name-desc', text: 'Asset Name (Z-A)' },
+        { value: 'balance-desc', text: 'Balance (High-Low)' },
+        { value: 'balance-asc', text: 'Balance (Low-High)' }
+    ];
 
-        let defaultSortValue = 'entryDate-desc'; // Default for stocks
-        if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
-            defaultSortValue = 'name-asc'; // Default for cash
-        }
+    let optionsToShow;
+    let logMessage;
+    let defaultSortValue;
 
-        // Prefer an explicitly set currentSortOrder if it's valid for this view
-        const optionValues = Array.from(sortSelect.options).map(o => o.value);
-        if (currentSortOrder && optionValues.includes(currentSortOrder)) {
-            sortSelect.value = currentSortOrder;
-            logDebug('Sort: Applied currentSortOrder: ' + currentSortOrder);
-        } else if (currentSelectedSortValue && optionValues.includes(currentSelectedSortValue)) {
-            sortSelect.value = currentSelectedSortValue;
-            currentSortOrder = currentSelectedSortValue;
-            logDebug('Sort: Applied previously selected sort order: ' + currentSortOrder);
-        } else {
-            // If not valid or no previous, apply the default for the current view type
-            sortSelect.value = defaultSortValue;
-            currentSortOrder = defaultSortValue;
-            logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
-        }
+    if (currentSelectedWatchlistIds.includes('portfolio')) {
+        optionsToShow = portfolioOptions;
+        logMessage = 'Portfolio options';
+        defaultSortValue = 'totalDollar-desc';
+    } else if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+        optionsToShow = cashOptions;
+        logMessage = 'Cash Asset options';
+        defaultSortValue = 'name-asc';
+    } else {
+        optionsToShow = stockOptions;
+        logMessage = 'Stock options';
+        defaultSortValue = 'entryDate-desc';
+    }
+
+    optionsToShow.forEach(opt => {
+        const optionElement = document.createElement('option');
+        optionElement.value = opt.value;
+        optionElement.textContent = opt.text;
+        sortSelect.appendChild(optionElement);
+    });
+    logDebug(`Sort Select: Populated with ${logMessage}.`);
+
+    // Prefer an explicitly set currentSortOrder if it's valid for this view
+    const optionValues = Array.from(sortSelect.options).map(o => o.value);
+    if (currentSortOrder && optionValues.includes(currentSortOrder)) {
+        sortSelect.value = currentSortOrder;
+        logDebug('Sort: Applied currentSortOrder: ' + currentSortOrder);
+    } else if (currentSelectedSortValue && optionValues.includes(currentSelectedSortValue)) {
+        sortSelect.value = currentSelectedSortValue;
+        currentSortOrder = currentSelectedSortValue;
+        logDebug('Sort: Applied previously selected sort order: ' + currentSortOrder);
+    } else {
+        // If not valid or no previous, apply the default for the current view type
+        sortSelect.value = defaultSortValue;
+        currentSortOrder = defaultSortValue;
+        logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
+    }
 
     logDebug('UI Update: Sort select rendered. Sort select disabled: ' + sortSelect.disabled);
-    }
+}
 
 
 function openWatchlistPicker() {
