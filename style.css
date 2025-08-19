@@ -258,55 +258,61 @@ function makeFilesAvailableToSourceControlCSS() {
     }
     .portfolio-summary-bar .summary-card {
         width: 100%;
-        font-size: 2.04rem;
-        padding: 14px 8px 12px 8px;
+        font-size: 1.1rem;
+        padding: 6px 4px 6px 4px;
         border-radius: 10px;
+        min-height: unset;
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
     .portfolio-summary-bar .summary-label {
-        font-size: 1.84rem;
-        margin-bottom: 4px;
+        font-size: 1.05rem;
+        margin-bottom: 2px;
     }
     .portfolio-summary-bar .summary-value {
-        font-size: 2.36rem;
+        font-size: 1.18rem;
     }
     .portfolio-summary-bar .summary-pct {
-        font-size: 1.9rem;
-        margin-left: 8px;
+        font-size: 1.02rem;
+        margin-left: 4px;
     }
 
     /* Individual holding cards: make more compact and decrease font size */
     .portfolio-card {
-        padding: 6px 2px 6px 2px;
-        font-size: 0.92rem;
+        padding: 4px 1px 4px 1px;
+        font-size: 0.55rem;
         min-height: unset;
-        gap: 6px;
+        height: auto;
+        gap: 3px;
     }
     .portfolio-card .pc-main-row, .portfolio-card .pc-code {
-        font-size: 1.02rem;
-        margin-bottom: 0.1em;
+        font-size: 0.6rem;
+        margin-bottom: 0.05em;
     }
     .portfolio-card .pc-value {
-        font-size: 0.92rem;
+        font-size: 0.55rem;
     }
     .portfolio-card .pc-metrics-row {
-        font-size: 0.88rem;
-        gap: 2px 0;
-        margin-top: 0.2em;
+        font-size: 0.5rem;
+        gap: 1px 0;
+        margin-top: 0.1em;
     }
     .portfolio-card .pc-metric-line {
-        margin: 0 0 1px 0;
+        margin: 0 0 0.5px 0;
     }
     .portfolio-card .pc-label {
-        font-size: 0.92rem;
+        font-size: 0.55rem;
     }
     .portfolio-card .pc-val {
-        font-size: 0.92rem;
+        font-size: 0.55rem;
         min-width: 0;
-        margin-left: 0.5em;
+        margin-left: 0.25em;
     }
     .portfolio-card .pc-pct {
-        font-size: 0.92rem;
-        margin-left: 4px;
+        font-size: 0.55rem;
+        margin-left: 2px;
     }
     .portfolio-card .pc-details {
         font-size: 0.85rem;
