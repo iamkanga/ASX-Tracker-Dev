@@ -9882,14 +9882,14 @@ function showTargetHitDetailsModal(options={}) {
 
     // --- 52 week high/low Section (horizontal, smart UI) ---
     if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
-        // Section title styled like global movers
-        const sectionHeader = document.createElement('div');
-        sectionHeader.className = 'low52-section-header';
-        const low52Title = document.createElement('h3');
-        low52Title.className = 'target-hit-section-title low52-heading low52-heading-white';
-        low52Title.textContent = '52 week alerts';
-        sectionHeader.appendChild(low52Title);
-        targetHitSharesList.appendChild(sectionHeader);
+    // Section title styled like global movers
+    const sectionHeader = document.createElement('div');
+    sectionHeader.className = 'low52-section-header';
+    const low52Title = document.createElement('h3');
+    low52Title.className = 'target-hit-section-title low52-heading';
+    low52Title.textContent = '52 week alerts';
+    sectionHeader.appendChild(low52Title);
+    targetHitSharesList.appendChild(sectionHeader);
         if (!window.__low52MutedMap) {
             try {
                 const stored = sessionStorage.getItem('low52MutedMap');

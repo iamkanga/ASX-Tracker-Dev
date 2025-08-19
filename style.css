@@ -170,14 +170,15 @@
 }
 /* --- 52-Week Low Alerts Section --- */
 .low52-heading {
-    margin-top: 18px;
-    margin-bottom: 6px;
+    margin-top: 6px;
+    margin-bottom: 4px;
     font-size: 1.05rem;
-    color: var(--global-summary-title-color, #b22222) !important;
+    color: var(--global-summary-title-color, var(--text-color, #222)) !important;
     font-weight: 600;
     letter-spacing: 0.5px;
     background: none;
     padding: 0 2px;
+    line-height: 1.25;
     transition: color 0.18s;
 }
 .low52-alert-list {
