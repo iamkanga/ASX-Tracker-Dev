@@ -9849,8 +9849,6 @@ function showTargetHitDetailsModal(options={}) {
             const isMuted = !!window.__low52MutedMap[item.code];
             (isMuted ? muted : unmuted).push({item, idx});
         });
-        const container = document.createElement('div');
-        container.className = 'low52-alerts-container low52-charcoal global-summary-alert target-hit-item low52-horizontal';
         // Unmuted cards (left)
         unmuted.forEach(({item, idx}) => {
             const card = document.createElement('div');
@@ -9885,7 +9883,7 @@ function showTargetHitDetailsModal(options={}) {
                     showStockSearchModal(item.code);
                 }
             };
-            container.appendChild(card);
+            targetHitSharesList.appendChild(card);
         });
         // Muted cards (right, can unmute)
         muted.forEach(({item, idx}) => {
@@ -9916,9 +9914,8 @@ function showTargetHitDetailsModal(options={}) {
                 if (e.target === muteBtn) return;
                 if (typeof showStockSearchModal === 'function') showStockSearchModal(item.code);
             };
-            container.appendChild(card);
+            targetHitSharesList.appendChild(card);
         });
-        targetHitSharesList.appendChild(container);
     }
 
     // Inject headings + global summary card (Global movers heading ABOVE card)
