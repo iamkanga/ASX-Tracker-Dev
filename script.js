@@ -243,14 +243,25 @@ document.addEventListener('DOMContentLoaded', function () {
         const portfolioListContainer = document.getElementById('portfolioListContainer');
         if (!portfolioListContainer) return;
 
-        // Show last updated timestamp if available
+        // Show last updated timestamp if available (header and container)
         const lastUpdatedEl = document.getElementById('portfolioLastUpdated');
-        if (lastUpdatedEl && window._portfolioLastUpdated) {
-            lastUpdatedEl.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
-            lastUpdatedEl.parentElement.style.display = '';
-        } else if (lastUpdatedEl) {
-            lastUpdatedEl.textContent = '';
-            lastUpdatedEl.parentElement.style.display = 'none';
+        const lastUpdatedHeader = document.getElementById('portfolioLastUpdatedHeader');
+        if (window._portfolioLastUpdated) {
+            if (lastUpdatedEl) {
+                lastUpdatedEl.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
+                lastUpdatedEl.parentElement.style.display = '';
+            }
+            if (lastUpdatedHeader) {
+                lastUpdatedHeader.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
+            }
+        } else {
+            if (lastUpdatedEl) {
+                lastUpdatedEl.textContent = '';
+                lastUpdatedEl.parentElement.style.display = 'none';
+            }
+            if (lastUpdatedHeader) {
+                lastUpdatedHeader.textContent = '';
+            }
         }
 
         // Filter for shares assigned to the Portfolio
