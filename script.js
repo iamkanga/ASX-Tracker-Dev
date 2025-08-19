@@ -1,3 +1,15 @@
+// Global function to open the ASX search modal and populate the code
+window.showStockSearchModal = function(asxCode) {
+    if (!stockSearchModal || !asxSearchInput) return;
+    showModal(stockSearchModal);
+    asxSearchInput.value = asxCode || '';
+    asxSearchInput.focus();
+    if (asxCode && typeof displayStockDetailsInSearchModal === 'function') {
+        displayStockDetailsInSearchModal(asxCode);
+    }
+    // Optionally close sidebar if open
+    if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false);
+};
 // Build Marker: 2025-08-17T00:00Z v2.0.0 (Modal architecture reset: external Global movers heading, singleton overlay)
 // Deploy bump marker: 2025-08-18T12:00Z (no functional change)
 // If you do NOT see this line in DevTools Sources, you're viewing a stale cached script.
