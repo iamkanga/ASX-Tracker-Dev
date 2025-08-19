@@ -169,12 +169,16 @@ function makeFilesAvailableToSourceControlCSS() {
 
 .portfolio-summary-bar {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     grid-template-rows: auto auto;
     gap: 20px 18px;
     margin: 0 0 32px 0;
     justify-items: stretch;
     align-items: stretch;
+    max-width: 880px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
 }
 .portfolio-summary-bar .summary-card {
     background: var(--card-bg);
@@ -200,16 +204,16 @@ function makeFilesAvailableToSourceControlCSS() {
     grid-row: 1;
 }
 .portfolio-summary-bar .summary-card:nth-child(3) {
-    grid-column: 3;
-    grid-row: 1;
-}
-.portfolio-summary-bar .summary-card:nth-child(4) {
     grid-column: 1 / 3;
     grid-row: 2;
 }
+.portfolio-summary-bar .summary-card:nth-child(4) {
+    grid-column: 1;
+    grid-row: 3;
+}
 .portfolio-summary-bar .summary-card:nth-child(5) {
-    grid-column: 3 / 4;
-    grid-row: 2;
+    grid-column: 2;
+    grid-row: 3;
 }
 .portfolio-summary-bar .summary-label {
     font-size: 1.13rem;
@@ -295,10 +299,12 @@ function makeFilesAvailableToSourceControlCSS() {
 
 .portfolio-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 36px 28px;
     width: 100%;
-    margin: 0 auto;
+    max-width: 880px;
+    margin-left: auto;
+    margin-right: auto;
     box-sizing: border-box;
 }
 @media (max-width: 600px) {
@@ -530,43 +536,26 @@ function makeFilesAvailableToSourceControlCSS() {
         justify-content: center;
         gap: 6px 6px;
         width: 100%;
-        max-width: 500px;
-        margin: 4px auto 6px auto;
-        padding: 0 8px;
-    }
-    .controls-flex-row.no-gap > select.dropdown-large {
-        flex:1 1 calc(50% - 6px);
-        max-width: calc(50% - 6px);
-        text-align:center;
-    }
-    .dropdown-large { font-size:0.95rem; padding:6px 8px; }
-    .toggle-asx-buttons-group { order:3; flex:0 0 100%; display:flex; justify-content:center; margin:2px 0 0 0; }
-}
-/* --- End Modern Responsive Controls Row & Dropdowns --- */
-@media (min-width: 769px) {
-  .toggle-asx-buttons-group {
-    display: none !important;
-  }
-}
-#modalCommSecLink {
-    margin-bottom: 0 !important;
-}
-/* Base Styles */
-:root {
-    /* Light Theme (Default) */
-    --background-color: #eef2f3;
-    --text-color: #333;
-    /* Header adopts coffee tone for default theme */
-    --header-bg: #b8a7a7; /* slightly lighter coffee bar */
-    --card-bg: #ffffff; /* Base card background for light theme (ensures P/L cards follow theme) */
-    --accent-color: #a49393; /* coffee accent (standardized selection fill) */
-    --border-color: #c9d2d4;
-    /* Standardized coffee palette replacing previous blue */
-    --button-bg: #a49393;
-    --button-text: #fff;
-    --button-hover-bg: #8d7f7f;
-    --input-bg: #fff;
-    --input-border: #b0b8bb;
+        @media (max-width: 900px) {
+            .portfolio-summary-bar {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto auto;
+                gap: 12px 8px;
+                max-width: 100%;
+            }
+            .portfolio-summary-bar .summary-card {
+                min-width: 0;
+                font-size: 1.18rem;
+                padding: 16px 10px 10px 10px;
+            }
+            .portfolio-summary-bar .summary-card:nth-child(n) {
+                grid-column: 1;
+            }
+            .portfolio-cards-grid {
+                grid-template-columns: 1fr;
+                max-width: 100%;
+            }
+        }
     --input-placeholder-color: #6c757d;
     --modal-bg: rgba(0, 0, 0, 0.6);
     --modal-content-bg: #fff;
