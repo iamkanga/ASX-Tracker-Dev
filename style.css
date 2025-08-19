@@ -282,33 +282,33 @@ function makeFilesAvailableToSourceControlCSS() {
     /* Individual holding cards: make more compact and decrease font size */
     .portfolio-card {
         padding: 4px 1px 4px 1px;
-        font-size: 0.55rem;
+        font-size: 0.77rem;
         min-height: unset;
         height: auto;
-        gap: 3px;
+        gap: 4px;
     }
     .portfolio-card .pc-main-row, .portfolio-card .pc-code {
-        font-size: 0.6rem;
-        margin-bottom: 0.05em;
+        font-size: 0.84rem;
+        margin-bottom: 0.08em;
     }
     .portfolio-card .pc-value {
-        font-size: 0.55rem;
+        font-size: 0.77rem;
     }
     .portfolio-card .pc-metrics-row {
-        font-size: 0.5rem;
-        gap: 1px 0;
-        margin-top: 0.1em;
+        font-size: 0.7rem;
+        gap: 1.4px 0;
+        margin-top: 0.14em;
     }
     .portfolio-card .pc-metric-line {
-        margin: 0 0 0.5px 0;
+        margin: 0 0 0.7px 0;
     }
     .portfolio-card .pc-label {
-        font-size: 0.55rem;
+        font-size: 0.77rem;
     }
     .portfolio-card .pc-val {
-        font-size: 0.55rem;
+        font-size: 0.77rem;
         min-width: 0;
-        margin-left: 0.25em;
+        margin-left: 0.35em;
     }
     .portfolio-card .pc-pct {
         font-size: 0.55rem;
