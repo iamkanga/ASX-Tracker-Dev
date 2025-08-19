@@ -2,15 +2,7 @@
 // (Moved below DOM references to avoid ReferenceError)
 
 // --- Close Watchlist Picker Modal ---
-if (closeWatchlistPickerBtn && watchlistPickerModal) {
-    closeWatchlistPickerBtn.addEventListener('click', function() {
-        if (typeof hideModal === 'function') {
-            hideModal(watchlistPickerModal);
-        } else {
-            watchlistPickerModal.style.display = 'none';
-        }
-    });
-}
+// (Moved below DOM references to avoid ReferenceError)
 // Global function to open the ASX search modal and populate the code
 window.showStockSearchModal = function(asxCode) {
     if (!stockSearchModal || !asxSearchInput) return;
@@ -23,7 +15,7 @@ window.showStockSearchModal = function(asxCode) {
     // Optionally close sidebar if open
     if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false);
 };
-// Build Marker: 2025-08-17T00:00Z v2.0.0 (Modal architecture reset: external Global movers heading, singleton overlay)
+// Build Marker: 2025-08-17T00:00Z v2.0.0 (Modal architecture reset: external Global  movers heading, singleton overlay)
 // Deploy bump marker: 2025-08-18T12:00Z (no functional change)
 // If you do NOT see this line in DevTools Sources, you're viewing a stale cached script.
 // Copilot update: 2025-07-29 - change for sync test
@@ -1242,6 +1234,19 @@ if (dynamicWatchlistTitleText && watchlistPickerModal) {
 const watchlistPickerModal = document.getElementById('watchlistPickerModal');
 const watchlistPickerList = document.getElementById('watchlistPickerList');
 const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
+
+// --- Close Watchlist Picker Modal ---
+if (closeWatchlistPickerBtn && watchlistPickerModal) {
+    closeWatchlistPickerBtn.addEventListener('click', function() {
+        if (typeof hideModal === 'function') {
+            hideModal(watchlistPickerModal);
+        } else {
+            watchlistPickerModal.style.display = 'none';
+        }
+    });
+}
+// ...existing code...
+
 // Removed legacy currentSortDisplay element (text summary of sort) now that dropdown itself is visible
 const themeToggleBtn = document.getElementById('themeToggleBtn');
 const colorThemeSelect = document.getElementById('colorThemeSelect');
