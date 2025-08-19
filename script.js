@@ -9882,12 +9882,25 @@ function showTargetHitDetailsModal(options={}) {
 
     // --- 52 week high/low Section (horizontal, smart UI) ---
     if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
-    // Section title styled like global movers
+    // Section title styled like global movers, with dynamic arrow icon
     const sectionHeader = document.createElement('div');
     sectionHeader.className = 'low52-section-header';
     const low52Title = document.createElement('h3');
     low52Title.className = 'target-hit-section-title low52-heading';
-    low52Title.textContent = '52 week alerts';
+    // Determine if there is a high or low in the unmuted list for icon
+    let firstType = null;
+    if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
+        for (const item of sharesAt52WeekLow) {
+            if (item && item.type) { firstType = item.type; break; }
+        }
+    }
+    let arrowIcon = '';
+    if (firstType === 'high') {
+        arrowIcon = `<svg class="low52-arrow-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 13V3M8 3L3 8M8 3l5 5" stroke="#1a6e1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    } else if (firstType === 'low') {
+        arrowIcon = `<svg class="low52-arrow-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 3v10M8 13l5-5M8 13l-5-5" stroke="#b22222" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    }
+    low52Title.innerHTML = `${arrowIcon}<span class="low52-title-text">52 week alerts</span>`;
     sectionHeader.appendChild(low52Title);
     targetHitSharesList.appendChild(sectionHeader);
         if (!window.__low52MutedMap) {

@@ -48,6 +48,26 @@
     margin-top: 18px;
     margin-bottom: 6px;
 }
+
+/* Themed arrow icon for 52-week alert title */
+.low52-arrow-icon {
+    vertical-align: middle;
+    margin-right: 8px;
+    width: 1.15em;
+    height: 1.15em;
+    display: inline-block;
+    position: relative;
+    top: 1px;
+}
+.low52-title-text {
+    vertical-align: middle;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: inherit;
+    padding: 0 2px;
+}
+}
 /* Mute button for 52-week low: charcoal, white, small, compact */
 .low52-mute-btn {
     background: var(--card-bg, #fff);
