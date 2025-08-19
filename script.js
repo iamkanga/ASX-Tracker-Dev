@@ -353,8 +353,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const summaryBar = `<div class="portfolio-summary-bar">
             <div class="summary-card ${daysGain > 0 ? 'positive' : daysGain < 0 ? 'negative' : 'neutral'}">
                 <div class="summary-label">Day's Gain</div>
-                <div class="summary-value positive">${fmtMoney(daysGain)}</div>
-                <div class="summary-pct positive">${fmtPct(totalValue > 0 ? (daysGain / totalValue) * 100 : 0)}</div>
+                <div class="summary-value positive">${fmtMoney(daysGain)} <span class="summary-pct positive">${fmtPct(totalValue > 0 ? (daysGain / totalValue) * 100 : 0)}</span></div>
             </div>
             <div class="summary-card ${daysLoss > 0 ? 'negative' : daysLoss < 0 ? 'positive' : 'neutral'}">
                 <div class="summary-label">Day's Loss</div>
