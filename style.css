@@ -21,9 +21,7 @@
 }
 /* Add spacing above and below the context line */
 .discover-context-line-spaced {
-    margin: 18px 0 18px 0 !important;
-    text-align: center;
-    font-size: 1.08em;
+    display: none !important;
 }
 /* Charcoal background for 52-Week Low Alerts to match global movers */
 .low52-charcoal {
