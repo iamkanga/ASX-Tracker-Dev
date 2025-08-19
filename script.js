@@ -2167,6 +2167,24 @@ function renderAlertTargetInline(share, opts = {}) {
  * @param {object} share The share object to add.
  */
 function addShareToTable(share) {
+    if (share.shareName && share.shareName.toUpperCase() === 'S32') {
+        const avgPrice = share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)) ? Number(share.portfolioAvgPrice) : null;
+        let priceNow = null;
+        const lpObj = livePrices ? livePrices[share.shareName.toUpperCase()] : undefined;
+        const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+        if (lpObj) {
+            if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceNow = Number(lpObj.live);
+            else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceNow = Number(lpObj.lastLivePrice);
+        }
+        if (priceNow === null || isNaN(priceNow)) {
+            if (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice))) {
+                priceNow = Number(share.currentPrice);
+            }
+        }
+        const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares))) ? Math.trunc(Number(share.portfolioShares)) : '';
+        const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
+        console.log('[DEBUG][Portfolio Table] S32', { priceNow, avgPrice, shares, rowPL, share });
+    }
     if (!shareTableBody) {
         console.error('addShareToTable: shareTableBody element not found.');
         return;
@@ -2296,6 +2314,17 @@ function addShareToTable(share) {
 }
 
 function addShareToMobileCards(share) {
+    if (share.shareName && share.shareName.toUpperCase() === 'S32') {
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        let priceNow = null;
+        let avgPrice = null;
+        let shares = null;
+        if (livePriceData && livePriceData.live !== null && !isNaN(livePriceData.live)) priceNow = Number(livePriceData.live);
+        if (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice))) avgPrice = Number(share.portfolioAvgPrice);
+        if (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares))) shares = Math.trunc(Number(share.portfolioShares));
+        const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
+        console.log('[DEBUG][Watchlist Card] S32', { priceNow, avgPrice, shares, rowPL, share });
+    }
     if (!mobileShareCardsContainer) {
         console.error('addShareToMobileCards: mobileShareCardsContainer element not found.');
         return;
