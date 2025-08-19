@@ -378,9 +378,10 @@ function makeFilesAvailableToSourceControlCSS() {
     width: 100%;
     margin: 0 0 2px 0;
 }
+/* Dynamically themed label for portfolio cards */
 .portfolio-card .pc-label {
     font-weight: 500;
-    color: #fff;
+    color: var(--portfolio-label-color, #fff);
     letter-spacing: 0.01em;
     text-align: left;
     font-size: 1.08rem;
@@ -393,11 +394,23 @@ function makeFilesAvailableToSourceControlCSS() {
     margin-left: 1em;
     font-size: 1.18rem;
 }
+/* Dynamically themed percent for portfolio cards */
 .portfolio-card .pc-pct {
     font-size: 1.08rem;
     font-weight: 600;
     margin-left: 8px;
-    color: #fff;
+    color: var(--portfolio-label-color, #fff);
+}
+/* Light theme override for portfolio card labels and percent */
+@media (prefers-color-scheme: light) {
+    :root {
+        --portfolio-label-color: #222;
+    }
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --portfolio-label-color: #fff;
+    }
 }
 .portfolio-card .pc-chevron-btn {
     background: none;
