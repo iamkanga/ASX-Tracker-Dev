@@ -1211,6 +1211,9 @@ const watchlistSelect = document.getElementById('watchlistSelect');
 const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
 const dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
+// (Moved below watchlistPickerModal initialization to avoid ReferenceError)
+const watchlistPickerModal = document.getElementById('watchlistPickerModal');
+// --- Watchlist Title Click: Open Watchlist Picker Modal ---
 if (dynamicWatchlistTitleText && watchlistPickerModal) {
     dynamicWatchlistTitleText.addEventListener('click', function(e) {
         e.preventDefault();
@@ -1231,7 +1234,6 @@ if (dynamicWatchlistTitleText && watchlistPickerModal) {
         }
     });
 }
-const watchlistPickerModal = document.getElementById('watchlistPickerModal');
 const watchlistPickerList = document.getElementById('watchlistPickerList');
 const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
 
