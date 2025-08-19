@@ -4084,7 +4084,7 @@ function showShareDetails() {
             // Remove any previous footer to avoid duplicates on re-open
             const old = investmentSection.querySelector('.watchlists-membership-footer');
             if (old) old.remove();
-            // Derive watchlist names (excluding special virtual ids)
+            // Derive watchlist names (excluding special virtual ids except portfolio)
             const wlIds = Array.isArray(share.watchlistIds) ? share.watchlistIds : (share.watchlistId ? [share.watchlistId] : []);
             const names = [];
             wlIds.forEach(id => {
@@ -4092,6 +4092,9 @@ function showShareDetails() {
                 const wl = userWatchlists.find(w => w.id === id);
                 if (wl && wl.name) names.push(wl.name.trim());
             });
+            // Check if share is in portfolio (by id)
+            const inPortfolio = wlIds.includes('portfolio');
+            if (inPortfolio) names.push('Portfolio');
             if (names.length) {
                 const footer = document.createElement('div');
                 footer.className = 'watchlists-membership-footer';
