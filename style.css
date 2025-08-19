@@ -4057,20 +4057,7 @@ table tbody tr.target-hit-alert td,
 /* Portfolio Mobile Cards */
 /* ===================== */
 .portfolio-cards { display:none; }
-.portfolio-cards .portfolio-card { width:100%; }
-@media (min-width:821px){ .portfolio-cards .portfolio-card { width:auto; } }
-.portfolio-card:hover { background:rgba(255,255,255,0.03); }
-.portfolio-card.positive { box-shadow:0 0 0 1px rgba(0,200,120,0.15); }
-.portfolio-card.negative { box-shadow:0 0 0 1px rgba(255,80,80,0.15); }
-.portfolio-card.total { background:linear-gradient(135deg,var(--accent-color,#2d4fa3),#1b2b55); }
-.portfolio-card.total .pc-code { font-weight:600; }
-.portfolio-card .pc-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.portfolio-card .pc-row.top { margin-bottom:4px; }
-.portfolio-card .pc-row.mid { font-size:0.75rem; opacity:0.9; margin-bottom:4px; }
-.portfolio-card .pc-row.bottom { font-weight:600; font-size:0.8rem; }
-.portfolio-card .pc-code { font-weight:600; letter-spacing:0.5px; }
-.portfolio-card.positive .pc-code { color:var(--green-color); }
-.portfolio-card.negative .pc-code { color:#FF4D4D; }
+
 
 /* Stronger portfolio context button coloring */
 .asx-code-btn.portfolio-context.positive { background:rgba(0,255,140,0.15); border-color:#00FF8C; color:#00FF8C; }
