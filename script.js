@@ -327,10 +327,23 @@ document.addEventListener('DOMContentLoaded', function () {
             // Card HTML (collapsed/expandable)
             // Border color logic: always use plClass (overall P/L), never todayClass
             let borderColor = '';
-            if (plClass === 'positive') borderColor = 'border: 4px solid #008000;';
+            let testNeutral = false;
+            // DEBUG: Force a test neutral card for visual confirmation
+            if (share.shareName === 'TEST-NEUTRAL') {
+                borderColor = 'border: 4px solid #a49393; background: repeating-linear-gradient(135deg, #a49393, #a49393 10px, #fff 10px, #fff 20px);';
+                testNeutral = true;
+            } else if (plClass === 'positive') borderColor = 'border: 4px solid #008000;';
             else if (plClass === 'negative') borderColor = 'border: 4px solid #c42131;';
             else if (plClass === 'neutral') borderColor = 'border: 4px solid #a49393; background: repeating-linear-gradient(135deg, #a49393, #a49393 10px, #fff 10px, #fff 20px);'; // DEBUG: coffee border and background
-            return `<div class="portfolio-card ${plClass}" data-doc-id="${share.id}"${borderColor ? ` style=\"${borderColor}\"` : ''}>
+            // If this is the first card, inject a test neutral card before it
+            if (i === 0) {
+                cards.unshift(`<div class="portfolio-card neutral" data-doc-id="test-neutral" style="border: 4px solid #a49393; background: repeating-linear-gradient(135deg, #a49393, #a49393 10px, #fff 10px, #fff 20px);">
+                    <div class="pc-main-row"><div class="pc-code">TEST-NEUTRAL</div><div class="pc-value">$0.00</div></div>
+                    <div class="pc-metrics-row"><div class="pc-metric-line"><span class="pc-label">Total Return</span><span class="pc-val neutral">$0.00 <span class="pc-pct neutral">0.00%</span></span></div></div>
+                    <div class="pc-controls-row"></div><div class="pc-details" style="display:none;"></div>
+                </div>`);
+            }
+            return `<div class="portfolio-card ${testNeutral ? 'neutral' : plClass}" data-doc-id="${share.id}"${borderColor ? ` style=\"${borderColor}\"` : ''}>
                 <div class="pc-main-row">
                     <div class="pc-code">${share.shareName || ''}</div>
                     <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
