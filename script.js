@@ -351,25 +351,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // --- Summary Bar ---
         const summaryBar = `<div class="portfolio-summary-bar">
-            <div class="summary-card neutral">
-                <div class="summary-label">Total Value</div>
-                <div class="summary-value">${fmtMoney(totalValue)}</div>
-            </div>
-            <div class="summary-card ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">
-                <div class="summary-label">Today's Net</div>
-                <div class="summary-value ${todayNet >= 0 ? 'positive' : 'negative'}">${fmtMoney(todayNet)} <span class="summary-pct">${fmtPct(todayNetPct)}</span></div>
-            </div>
-            <div class="summary-card ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : 'neutral'}">
-                <div class="summary-label">Overall Gain/Loss</div>
-                <div class="summary-value ${totalPL >= 0 ? 'positive' : 'negative'}">${fmtMoney(totalPL)} <span class="summary-pct">${fmtPct(overallPLPct)}</span></div>
-            </div>
+            <!-- Top Row -->
             <div class="summary-card ${daysGain > 0 ? 'positive' : daysGain < 0 ? 'negative' : 'neutral'}">
                 <div class="summary-label">Day's Gain</div>
-                <div class="summary-value positive">${fmtMoney(daysGain)} <span class="summary-pct positive">${fmtPct(totalValue > 0 ? (daysGain / totalValue) * 100 : 0)}</span></div>
+                <div class="summary-value ${daysGain > 0 ? 'positive' : daysGain < 0 ? 'negative' : 'neutral'}">${fmtMoney(daysGain)} <span class="summary-pct ${daysGain > 0 ? 'positive' : daysGain < 0 ? 'negative' : 'neutral'}">${fmtPct(totalValue > 0 ? (daysGain / totalValue) * 100 : 0)}</span></div>
             </div>
             <div class="summary-card ${daysLoss > 0 ? 'negative' : daysLoss < 0 ? 'positive' : 'neutral'}">
                 <div class="summary-label">Day's Loss</div>
-                <div class="summary-value negative">${fmtMoney(daysLoss)} <span class="summary-pct negative">${fmtPct(totalValue > 0 ? (daysLoss / totalValue) * 100 : 0)}</span></div>
+                <div class="summary-value ${daysLoss > 0 ? 'negative' : daysLoss < 0 ? 'positive' : 'neutral'}">${fmtMoney(daysLoss)} <span class="summary-pct ${daysLoss > 0 ? 'negative' : daysLoss < 0 ? 'positive' : 'neutral'}">${fmtPct(totalValue > 0 ? (daysLoss / totalValue) * 100 : 0)}</span></div>
+            </div>
+            <!-- Middle Row -->
+            <div class="summary-card ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : 'neutral'}">
+                <div class="summary-label">Total Overall Gain/Loss</div>
+                <div class="summary-value ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : 'neutral'}">${fmtMoney(totalPL)} <span class="summary-pct ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : 'neutral'}">${fmtPct(overallPLPct)}</span></div>
+            </div>
+            <div class="summary-card ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">
+                <div class="summary-label">Today's Gain/Loss</div>
+                <div class="summary-value ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">${fmtMoney(todayNet)} <span class="summary-pct ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">${fmtPct(todayNetPct)}</span></div>
+            </div>
+            <!-- Bottom Row -->
+            <div class="summary-card neutral">
+                <div class="summary-label">Total Portfolio Value</div>
+                <div class="summary-value">${fmtMoney(totalValue)}</div>
             </div>
         </div>`;
 
