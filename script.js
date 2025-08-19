@@ -9827,52 +9827,46 @@ function showTargetHitDetailsModal(options={}) {
     } catch(_err) { /* ignore */ }
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-    // --- 52-Week Low Alerts Section ---
-    if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
-        // Section title and mute button row
-        const sectionHeader = document.createElement('div');
-        sectionHeader.className = 'low52-section-header';
-        const low52Title = document.createElement('h3');
-        low52Title.className = 'target-hit-section-title low52-heading';
-        low52Title.textContent = '52-Week Low Alerts';
-        sectionHeader.appendChild(low52Title);
-        // Mute button (session only)
-        const muteBtn = document.createElement('button');
-        muteBtn.className = 'low52-mute-btn';
-        muteBtn.textContent = window.__low52Muted ? 'Unmute' : 'Mute';
-        muteBtn.title = (window.__low52Muted ? 'Unmute 52-Week Low Alerts for this session' : 'Mute 52-Week Low Alerts for this session');
-        muteBtn.onclick = function() {
-            window.__low52Muted = !window.__low52Muted;
+    // --- 52-Week Low Alerts Section (Modern, robust) ---
+if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
+    // Section title styled like global movers
+    const sectionHeader = document.createElement('div');
+    sectionHeader.className = 'low52-section-header';
+    const low52Title = document.createElement('h3');
+    low52Title.className = 'target-hit-section-title low52-heading low52-heading-white';
+    low52Title.textContent = '52-Week Low Alerts';
+    sectionHeader.appendChild(low52Title);
+    targetHitSharesList.appendChild(sectionHeader);
+    const container = document.createElement('div');
+    container.className = 'low52-alerts-container low52-charcoal';
+    if (!window.__low52MutedMap) window.__low52MutedMap = {};
+    sharesAt52WeekLow.forEach((item, idx) => {
+        const isMuted = !!window.__low52MutedMap[item.code];
+        if (isMuted) return; // Only show unmuted cards
+        const card = document.createElement('div');
+        card.className = 'low52-alert-card low52-charcoal';
+        card.innerHTML = `
+            <div class="low52-card-row">
+                <span class="low52-code">${item.code}</span>
+                <span class="low52-name">${item.name}</span>
+            </div>
+            <div class="low52-card-row">
+                <span class="low52-price">$${Number(item.live).toFixed(2)}</span>
+                <span class="low52-thresh low52-thresh-white">(52W Low: $${Number(item.low52).toFixed(2)})</span>
+                <button class="low52-mute-btn" data-idx="${idx}">Mute</button>
+            </div>
+        `;
+        // Mute button logic for each card
+        const muteBtn = card.querySelector('.low52-mute-btn');
+        muteBtn.onclick = function(e) {
+            e.stopPropagation();
+            window.__low52MutedMap[item.code] = true;
             showTargetHitDetailsModal();
         };
-        sectionHeader.appendChild(muteBtn);
-        targetHitSharesList.appendChild(sectionHeader);
-        if (!window.__low52Muted) {
-            const container = document.createElement('div');
-            container.className = 'low52-alerts-container';
-            sharesAt52WeekLow.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'low52-alert-card';
-                card.innerHTML = `
-                    <div class="low52-card-row">
-                        <span class="low52-code">${item.code}</span>
-                        <span class="low52-name">${item.name}</span>
-                    </div>
-                    <div class="low52-card-row">
-                        <span class="low52-price">$${Number(item.live).toFixed(2)}</span>
-                        <span class="low52-thresh">(52W Low: $${Number(item.low52).toFixed(2)})</span>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-            targetHitSharesList.appendChild(container);
-        } else {
-            const mutedMsg = document.createElement('div');
-            mutedMsg.className = 'low52-muted-msg';
-            mutedMsg.textContent = '52-Week Low Alerts are muted for this session.';
-            targetHitSharesList.appendChild(mutedMsg);
-        }
-    }
+        container.appendChild(card);
+    });
+    targetHitSharesList.appendChild(container);
+}
 
     // Inject headings + global summary card (Global movers heading ABOVE card)
     // Only show global summary if thresholds still active to avoid displaying stale counts after clear
