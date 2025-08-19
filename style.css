@@ -404,12 +404,14 @@ function makeFilesAvailableToSourceControlCSS() {
     .portfolio-card .pc-label,
     .portfolio-card .pc-pct {
         color: #222 !important;
+        background: #fff !important; /* TEMP: force max contrast for debug */
     }
 }
 @media (prefers-color-scheme: dark) {
     .portfolio-card .pc-label,
     .portfolio-card .pc-pct {
         color: #fff !important;
+        background: #000 !important; /* TEMP: force max contrast for debug */
     }
 }
 .portfolio-card .pc-chevron-btn {
