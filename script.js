@@ -9827,7 +9827,7 @@ function showTargetHitDetailsModal(options={}) {
     } catch(_err) { /* ignore */ }
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
-    // --- 52-Week Low Alerts Section (Modern, robust) ---
+    // --- 52-Week Low Alerts Section (Modern, robust, with unmute and click-through) ---
 if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
     // Section title styled like global movers
     const sectionHeader = document.createElement('div');
@@ -9837,18 +9837,22 @@ if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
     low52Title.textContent = '52-Week Low Alerts';
     sectionHeader.appendChild(low52Title);
     targetHitSharesList.appendChild(sectionHeader);
-    const container = document.createElement('div');
-    container.className = 'low52-alerts-container low52-charcoal';
-    // Persist mute state in sessionStorage
     if (!window.__low52MutedMap) {
         try {
             const stored = sessionStorage.getItem('low52MutedMap');
             window.__low52MutedMap = stored ? JSON.parse(stored) : {};
         } catch { window.__low52MutedMap = {}; }
     }
+    // Split into unmuted and muted
+    const unmuted = [], muted = [];
     sharesAt52WeekLow.forEach((item, idx) => {
         const isMuted = !!window.__low52MutedMap[item.code];
-        if (isMuted) return; // Only show unmuted cards
+        (isMuted ? muted : unmuted).push({item, idx});
+    });
+    const container = document.createElement('div');
+    container.className = 'low52-alerts-container low52-charcoal global-summary-alert target-hit-item';
+    // Unmuted cards (top)
+    unmuted.forEach(({item, idx}) => {
         const card = document.createElement('div');
         card.className = 'low52-alert-card low52-charcoal';
         card.innerHTML = `
@@ -9869,6 +9873,43 @@ if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
             window.__low52MutedMap[item.code] = true;
             try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
             showTargetHitDetailsModal();
+        };
+        // Click-through to search modal
+        card.style.cursor = 'pointer';
+        card.onclick = function(e) {
+            if (e.target === muteBtn) return;
+            if (typeof showStockSearchModal === 'function') showStockSearchModal(item.code);
+        };
+        container.appendChild(card);
+    });
+    // Muted cards (bottom, can unmute)
+    muted.forEach(({item, idx}) => {
+        const card = document.createElement('div');
+        card.className = 'low52-alert-card low52-charcoal low52-card-muted';
+        card.innerHTML = `
+            <div class="low52-card-row">
+                <span class="low52-code">${item.code}</span>
+                <span class="low52-name">${item.name}</span>
+            </div>
+            <div class="low52-card-row">
+                <span class="low52-price">$${Number(item.live).toFixed(2)}</span>
+                <span class="low52-thresh low52-thresh-white">(52W Low: $${Number(item.low52).toFixed(2)})</span>
+                <button class="low52-mute-btn" data-idx="${idx}">Unmute</button>
+            </div>
+        `;
+        // Unmute button logic for each card
+        const muteBtn = card.querySelector('.low52-mute-btn');
+        muteBtn.onclick = function(e) {
+            e.stopPropagation();
+            window.__low52MutedMap[item.code] = false;
+            try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
+            showTargetHitDetailsModal();
+        };
+        // Click-through to search modal
+        card.style.cursor = 'pointer';
+        card.onclick = function(e) {
+            if (e.target === muteBtn) return;
+            if (typeof showStockSearchModal === 'function') showStockSearchModal(item.code);
         };
         container.appendChild(card);
     });
