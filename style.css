@@ -379,11 +379,13 @@ function makeFilesAvailableToSourceControlCSS() {
     margin: 0 0 2px 0;
 }
 /* Portfolio card label styling (color set by theme below) */
+/* Portfolio card label styling (color set by theme below) */
 .portfolio-card .pc-label {
     font-weight: 500;
     letter-spacing: 0.01em;
     text-align: left;
     font-size: 1.08rem;
+    color: var(--label-color);
 }
 .portfolio-card .pc-val {
     font-weight: 700;
@@ -394,24 +396,15 @@ function makeFilesAvailableToSourceControlCSS() {
     font-size: 1.18rem;
 }
 /* Portfolio card percent styling (color set by theme below) */
+/* Portfolio card percent styling (color set by theme below) */
 .portfolio-card .pc-pct {
     font-size: 1.08rem;
     font-weight: 600;
     margin-left: 8px;
+    color: var(--label-color);
 }
 /* Force correct label color for portfolio cards in light/dark mode */
-@media (prefers-color-scheme: light) {
-    .portfolio-card .pc-label,
-    .portfolio-card .pc-pct {
-    color: #222 !important;
-    }
-}
-@media (prefers-color-scheme: dark) {
-    .portfolio-card .pc-label,
-    .portfolio-card .pc-pct {
-    color: #fff !important;
-    }
-}
+
 .portfolio-card .pc-chevron-btn {
     background: none;
     border: none;
