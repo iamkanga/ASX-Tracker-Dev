@@ -362,7 +362,7 @@ function makeFilesAvailableToSourceControlCSS() {
     border-color: #a49393 !important;
     border-width: 4px !important;
     border-style: solid !important;
-    box-shadow: 0 0 0 2px #b0896833 !important;
+    box-shadow: 0 0 0 2px #a4939333 !important;
     z-index: 2;
 }
 .portfolio-card.expanded { box-shadow: none; }
