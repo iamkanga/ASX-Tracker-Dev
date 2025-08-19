@@ -9877,7 +9877,8 @@ function showTargetHitDetailsModal(options={}) {
             // Click-through to search modal
             card.style.cursor = 'pointer';
             card.onclick = function(e) {
-                if (e.target === muteBtn) return;
+                // Only ignore if the click is on the mute/unmute button itself
+                if (e.target.closest('.low52-mute-btn')) return;
                 if (typeof showStockSearchModal === 'function') showStockSearchModal(item.code);
             };
             container.appendChild(card);
