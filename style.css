@@ -345,7 +345,7 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 .portfolio-card .pc-label {
     font-weight: 500;
-    color: #fff;
+    color: var(--text-color);
     letter-spacing: 0.01em;
     text-align: left;
     font-size: 1.08rem;
