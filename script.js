@@ -1,25 +1,5 @@
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
-
-if (dynamicWatchlistTitleText && watchlistPickerModal) {
-    dynamicWatchlistTitleText.addEventListener('click', function(e) {
-        e.preventDefault();
-        if (typeof showModal === 'function') {
-            showModal(watchlistPickerModal);
-        } else {
-            watchlistPickerModal.style.display = 'block';
-        }
-    });
-    dynamicWatchlistTitleText.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            if (typeof showModal === 'function') {
-                showModal(watchlistPickerModal);
-            } else {
-                watchlistPickerModal.style.display = 'block';
-            }
-        }
-    });
-}
+// (Moved below DOM references to avoid ReferenceError)
 
 // --- Close Watchlist Picker Modal ---
 if (closeWatchlistPickerBtn && watchlistPickerModal) {
@@ -1238,6 +1218,27 @@ const watchlistSelect = document.getElementById('watchlistSelect');
 // Dynamic watchlist title + picker modal + sort display (new UI layer)
 const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
 const dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
+// --- Watchlist Title Click: Open Watchlist Picker Modal ---
+if (dynamicWatchlistTitleText && watchlistPickerModal) {
+    dynamicWatchlistTitleText.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (typeof showModal === 'function') {
+            showModal(watchlistPickerModal);
+        } else {
+            watchlistPickerModal.style.display = 'block';
+        }
+    });
+    dynamicWatchlistTitleText.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (typeof showModal === 'function') {
+                showModal(watchlistPickerModal);
+            } else {
+                watchlistPickerModal.style.display = 'block';
+            }
+        }
+    });
+}
 const watchlistPickerModal = document.getElementById('watchlistPickerModal');
 const watchlistPickerList = document.getElementById('watchlistPickerList');
 const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
