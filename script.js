@@ -5481,6 +5481,7 @@ async function loadAsxCodesFromCSV() {
  * @returns {boolean} True if the ASX is open, false otherwise.
  */
 function isAsxMarketOpen() {
+window.isAsxMarketOpen = isAsxMarketOpen;
     // Manual override support: localStorage key 'marketStatusOverride' can be 'open' or 'closed'
     try {
         const override = localStorage.getItem('marketStatusOverride');
@@ -5688,6 +5689,7 @@ async function saveSortOrderPreference(sortOrder) {
 }
 
 async function loadUserWatchlistsAndSettings() {
+window.loadUserWatchlistsAndSettings = loadUserWatchlistsAndSettings;
     logDebug('loadUserWatchlistsAndSettings called.'); // Added log for function entry
 
     if (!db || !currentUserId) {
