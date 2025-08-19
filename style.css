@@ -198,6 +198,7 @@ function makeFilesAvailableToSourceControlCSS() {
     grid-column: 1 / 5;
     grid-row: 2;
 }
+/* Portfolio summary cards: portfolio view only, dynamic border */
 .portfolio-summary-bar .summary-card {
     background: var(--card-bg);
     border-radius: 14px;
@@ -210,8 +211,20 @@ function makeFilesAvailableToSourceControlCSS() {
     align-items: center;
     justify-content: flex-start;
     font-size: 1.45rem;
-    border: 8px solid var(--border-color);
+    border-width: 8px;
+    border-style: solid;
+    border-color: var(--border-color);
     text-align: center;
+    transition: border-color 0.18s;
+}
+.portfolio-summary-bar .summary-card.positive {
+    border-color: var(--price-up-color) !important;
+}
+.portfolio-summary-bar .summary-card.negative {
+    border-color: var(--price-down-color) !important;
+}
+.portfolio-summary-bar .summary-card.neutral {
+    border-color: var(--accent-color, #a49393) !important;
 }
 .portfolio-summary-bar .summary-label {
         font-size: 1.13rem;
@@ -320,28 +333,22 @@ function makeFilesAvailableToSourceControlCSS() {
     position: relative;
     min-height: 140px;
 }
-.portfolio-card, .portfolio-card.positive, .portfolio-card.negative, .portfolio-card.neutral {
+/* Portfolio holding cards: portfolio view only, dynamic border */
+.portfolio-cards-grid .portfolio-card {
     border-width: 8px;
     border-style: solid;
     border-color: var(--border-color);
+    box-shadow: none;
+    transition: border-color 0.18s;
 }
-.portfolio-card.positive {
+.portfolio-cards-grid .portfolio-card.positive {
     border-color: var(--price-up-color) !important;
 }
-.portfolio-card.negative {
+.portfolio-cards-grid .portfolio-card.negative {
     border-color: var(--price-down-color) !important;
 }
-.portfolio-card.neutral {
-    border-color: var(--price-neutral-color) !important;
-}
-.portfolio-card.positive {
-    border-color: var(--price-up-color) !important;
-}
-.portfolio-card.negative {
-    border-color: var(--price-down-color) !important;
-}
-.portfolio-card.neutral {
-    border-color: var(--price-neutral-color) !important;
+.portfolio-cards-grid .portfolio-card.neutral {
+    border-color: var(--accent-color, #a49393) !important;
 }
 .portfolio-card.expanded { box-shadow: none; }
 .portfolio-card .pc-main-row {
