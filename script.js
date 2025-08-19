@@ -311,9 +311,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (todayChange < 0) daysLoss += todayChange;
             }
             // P/L %
+
             const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
             const todayClass = (todayChange > 0) ? 'positive' : (todayChange < 0 ? 'negative' : 'neutral');
+
+            // DEBUG: Log rowPL and plClass for each card
+            console.log('Portfolio Card Debug:', {
+                shareId: share.id,
+                shareName: share.shareName,
+                rowPL,
+                plClass
+            });
 
             // Card HTML (collapsed/expandable)
             // Border color logic: always use plClass (overall P/L), never todayClass
