@@ -243,6 +243,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const portfolioListContainer = document.getElementById('portfolioListContainer');
         if (!portfolioListContainer) return;
 
+        // Show last updated timestamp if available
+        const lastUpdatedEl = document.getElementById('portfolioLastUpdated');
+        if (lastUpdatedEl && window._portfolioLastUpdated) {
+            lastUpdatedEl.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
+            lastUpdatedEl.parentElement.style.display = '';
+        } else if (lastUpdatedEl) {
+            lastUpdatedEl.textContent = '';
+            lastUpdatedEl.parentElement.style.display = 'none';
+        }
+
         // Filter for shares assigned to the Portfolio
         const portfolioShares = allSharesData.filter(s => shareBelongsTo(s, 'portfolio'));
         if (portfolioShares.length === 0) {
@@ -1497,6 +1507,8 @@ async function fetchLivePricesAndUpdateUI() {
 async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
     try {
+        // Set last updated timestamp for portfolio view
+        window._portfolioLastUpdated = new Date().toLocaleString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
         // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
     const baseUrl = typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' ? GOOGLE_APPS_SCRIPT_URL : (typeof appsScriptUrl !== 'undefined' ? appsScriptUrl : null);
     if (!baseUrl) throw new Error('Apps Script URL not defined');
