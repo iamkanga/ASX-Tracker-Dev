@@ -6,6 +6,9 @@
     justify-content: center;
     margin: 18px 0 10px 0;
     gap: 4px;
+    background: var(--card-bg, transparent) !important;
+    border-radius: 8px;
+    box-shadow: none;
 }
 .discover-sort-bar-centered select {
     min-width: 140px;
