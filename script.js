@@ -5426,6 +5426,9 @@ function isAsxMarketOpen() {
     // Optionally, you can reintroduce custom windows here.
     return true;
 }
+// Ensure global access
+window.isAsxMarketOpen = isAsxMarketOpen;
+}
 function calculateFrankedYield(dividendAmount, currentPrice, frankingCreditsPercentage) {
     // Ensure inputs are valid numbers and currentPrice is not zero
     if (typeof dividendAmount !== 'number' || isNaN(dividendAmount) || dividendAmount < 0) { return 0; }
@@ -9291,6 +9294,8 @@ if (sortSelect) {
             } else {
                 logDebug('Theme Debug: No custom themes defined. Defaulting to system-default.');
                 applyTheme('system-default'); // Fallback if no custom themes defined
+            // Ensure global access
+            window.loadUserWatchlistsAndSettings = loadUserWatchlistsAndSettings;
             }
         });
     }
