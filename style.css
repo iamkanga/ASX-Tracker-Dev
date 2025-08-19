@@ -259,14 +259,19 @@ function makeFilesAvailableToSourceControlCSS() {
     .portfolio-summary-bar .summary-card {
         width: 100%;
         font-size: 2.0rem;
-        padding: 4px 4px 4px 4px;
+        padding: 6px 6px 6px 6px;
         border-radius: 10px;
         min-height: unset;
         height: auto;
-        display: flex;
-        flex-direction: column;
-        /* justify-content: center; removed for dynamic height */
-        margin-bottom: 2px;
+        display: block;
+        margin-bottom: 4px;
+        line-height: 1.1;
+    }
+    .portfolio-summary-bar .summary-label,
+    .portfolio-summary-bar .summary-value,
+    .portfolio-summary-bar .summary-pct {
+        line-height: 1.1;
+    }
     }
     .portfolio-summary-bar .summary-label {
         font-size: 1.8rem;
@@ -282,35 +287,41 @@ function makeFilesAvailableToSourceControlCSS() {
 
     /* Individual holding cards: more compact and decrease font size by ~40% */
     .portfolio-card {
-        padding: 3px 2px 3px 2px;
-        font-size: 0.84rem;
+        padding: 2px 1px 2px 1px;
+        font-size: 0.6rem;
         min-height: unset;
         height: auto;
-        gap: 3px;
-        margin-bottom: 4px;
+        gap: 2px;
+        margin-bottom: 3px;
+        line-height: 1.1;
     }
     .portfolio-card .pc-main-row, .portfolio-card .pc-code {
-        font-size: 0.91rem;
-        margin-bottom: 0.07em;
+        font-size: 0.65rem;
+        margin-bottom: 0.05em;
+        line-height: 1.1;
     }
     .portfolio-card .pc-value {
-        font-size: 0.84rem;
+        font-size: 0.6rem;
+        line-height: 1.1;
     }
     .portfolio-card .pc-metrics-row {
-        font-size: 0.7rem;
-        gap: 1.4px 0;
-        margin-top: 0.11em;
+        font-size: 0.5rem;
+        gap: 1px 0;
+        margin-top: 0.08em;
+        line-height: 1.1;
     }
     .portfolio-card .pc-metric-line {
-        margin: 0 0 0.7px 0;
+        margin: 0 0 0.5px 0;
     }
     .portfolio-card .pc-label {
-        font-size: 0.84rem;
+        font-size: 0.6rem;
+        line-height: 1.1;
     }
     .portfolio-card .pc-val {
-        font-size: 0.84rem;
+        font-size: 0.6rem;
         min-width: 0;
-        margin-left: 0.28em;
+        margin-left: 0.2em;
+        line-height: 1.1;
     }
     .portfolio-card .pc-pct {
         font-size: 0.55rem;
@@ -607,7 +618,6 @@ function makeFilesAvailableToSourceControlCSS() {
   border-top-right-radius: 6px;
   border-bottom-right-radius: 6px;
   margin-left: 0;
-}
     .pc-details-btn:hover { color: var(--icon-action-hover-color); }
     .controls-flex-row.no-gap {
         flex-direction: row !important;
@@ -627,7 +637,6 @@ function makeFilesAvailableToSourceControlCSS() {
     }
     .dropdown-large { font-size:0.95rem; padding:6px 8px; }
     .toggle-asx-buttons-group { order:3; flex:0 0 100%; display:flex; justify-content:center; margin:2px 0 0 0; }
-}
 /* --- End Modern Responsive Controls Row & Dropdowns --- */
 @media (min-width: 769px) {
   .toggle-asx-buttons-group {
