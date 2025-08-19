@@ -4877,47 +4877,8 @@ function renderWatchlist() {
                 }
             }
         });
-            if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
-                mobileShareCardsContainer.appendChild(emptyWatchlistMessage.cloneNode(true));
-            }
-        }
-        
-        // Re-render ASX Code Buttons separately
-        renderAsxCodeButtons();
-
-        // AFTER primary render: enforce target-hit highlight on any rows/cards that might have missed initial application
-        try {
-            enforceTargetHitStyling();
-        } catch(e) { console.warn('Target Alert: enforceTargetHitStyling failed post render', e); }
-
-    } else {
-        // Cash & Assets section Logic
-        cashAssetsSection.classList.remove('app-hidden');
-    const existingPortfolio2 = document.getElementById('portfolioSection');
-    if (existingPortfolio2) existingPortfolio2.style.display='none';
-    // Title handled by updateMainTitle
-        renderCashCategories();
-        sortSelect.classList.remove('app-hidden');
-        refreshLivePricesBtn.classList.add('app-hidden');
-        toggleCompactViewBtn.classList.add('app-hidden');
-        asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
-    // Hide in cash view via inline style to avoid class conflicts
-    if (targetHitIconBtn) targetHitIconBtn.style.display = 'none';
-        exportWatchlistBtn.classList.add('app-hidden');
-        stopLivePriceUpdates();
-        updateAddHeaderButton();
-        // Ensure stock-specific containers are hidden when showing cash assets
-        if (tableContainer) tableContainer.style.display = 'none';
-        if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
+        renderWatchlist(); 
     }
-    // Update sort dropdown options based on selected watchlist type
-    renderSortSelect(); // Moved here to ensure it updates for both stock and cash views
-    updateMainButtonsState(!!currentUserId); // Ensure button states (like Edit Watchlist) are correct for the current view
-    adjustMainContentPadding();
-    try { updateMainTitle(); } catch(e) {}
-    try { ensureTitleStructure(); } catch(e) {}
-    try { updateTargetHitBanner(); } catch(e) {}
-}
 
 // Safety net: ensure any share whose livePrices indicates targetHit gets the .target-hit-alert class (unless globally dismissed)
 function enforceTargetHitStyling() {
@@ -10754,3 +10715,4 @@ try {
     } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
 // --- End Super Debug Always-Install --- OK now on the mobile cards the actual information the sell or buy
+// End of script.js
