@@ -10716,3 +10716,4 @@ try {
 })();
 // --- End Super Debug Always-Install --- OK now on the mobile cards the actual information the sell or buy
 // End of script.js
+}
