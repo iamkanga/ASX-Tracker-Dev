@@ -9926,8 +9926,10 @@ function showTargetHitDetailsModal(options={}) {
                 </div>
                 <div class="low52-card-row">
                     <span class="low52-price">$${Number(item.live).toFixed(2)}</span>
-                    <span class="low52-thresh">(${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)})</span>
                     <button class="low52-mute-btn" data-idx="${idx}">Mute</button>
+                </div>
+                <div class="low52-card-row low52-thresh-row">
+                    <span class="low52-thresh">${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)}</span>
                 </div>
             `;
             // Mute button logic for each card

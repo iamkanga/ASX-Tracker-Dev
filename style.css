@@ -1,3 +1,14 @@
+/* Ensure 52-week explainer row is horizontal and not wrapped vertically */
+.low52-thresh-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+    margin-bottom: 0;
+    width: 100%;
+    white-space: nowrap;
+}
 /* Add margin to code button arrow for better spacing */
 .asx-toggle-triangle {
     margin-right: 10px;
