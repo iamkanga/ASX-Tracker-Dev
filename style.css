@@ -1,94 +1,204 @@
-/* --- 52-Week Alert Notifications (Rebuilt for Consistency) --- */
-
-/* Inherits from .target-hit-item for base layout, padding, and theming */
-.fifty-two-week-alert {
-    /* Uses the same flex properties as other notifications */
+/* Target hit notification container inside 52-week alert: match global movers width */
+.low52-alert-card .target-hit-item.global-summary-alert {
+    min-width: 320px;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
 }
-
-.fifty-two-week-alert.positive {
-    background-color: var(--price-up-bg, var(--watch-bg-positive));
-    border-left-color: var(--price-up-color, var(--brand-green));
-}
-
-.fifty-two-week-alert.negative {
-    background-color: var(--price-down-bg, var(--watch-bg-negative));
-    border-left-color: var(--price-down-color, var(--brand-red));
-}
-
-.fifty-two-week-alert .target-hit-content {
-    flex-grow: 1;
+/* 52-week alert header row: code/name left, price right */
+.low52-header-row {
     display: flex;
-    justify-content: space-between;
+    flex-direction: row;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+    margin-bottom: 0;
 }
-
-.fifty-two-week-alert .target-hit-share-info,
-.fifty-two-week-alert .target-hit-price-info {
+.low52-header-row .low52-code, .low52-header-row .low52-name {
+    flex: 0 1 auto;
+    font-weight: 600;
+    font-size: 1.05em;
+    margin-right: 6px;
+}
+.low52-header-row .low52-price {
+    margin-left: auto;
+    font-weight: 700;
+    font-size: 1.08em;
+    color: var(--text-color, #222);
+    text-align: right;
+    min-width: 64px;
+}
+.low52-action-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    margin-bottom: 0;
+    margin-top: 2px;
+}
+.low52-price-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 0;
+}
+/* Ensure 52-week explainer row is horizontal and not wrapped vertically */
+.low52-thresh-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 6px;
+    margin-top: 8px;
+    margin-bottom: 0;
+    width: 100%;
+    white-space: nowrap;
+    position: absolute;
+    left: 18px;
+    bottom: 10px;
+}
+/* Add margin to code button arrow for better spacing */
+.asx-toggle-triangle {
+    margin-right: 10px;
+}
+/* Center the discover sort bar vertically and remove label spacing */
+.discover-sort-bar-centered {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    justify-content: center;
+    margin: 18px 0 10px 0;
+    gap: 4px;
+    background: var(--card-bg, transparent) !important;
+    border-radius: 8px;
+    box-shadow: none;
+}
+.discover-sort-bar-centered select {
+    min-width: 140px;
+    font-size: 1em;
+}
+.discover-sort-bar-centered .discover-sort-desc {
+    margin-top: 2px;
+    font-size: 0.93em;
+    color: #aaa;
+}
+/* Add spacing above and below the context line */
+.discover-context-line-spaced {
+    display: none !important;
+}
+/* Charcoal background for 52-Week Low Alerts to match global movers */
+
+.low52-heading-white {
+    color: #fff !important;
+}
+.low52-thresh-white {
+    color: #fff !important;
 }
 
-.fifty-two-week-alert .target-hit-price-info {
-    align-items: flex-end;
-    text-align: right;
+.low52-card-muted {
+    opacity: 0.45;
+    filter: grayscale(0.7);
+}
+/* --- 52-Week Low Alerts Section (Refined) --- */
+.low52-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 18px;
+    margin-bottom: 6px;
 }
 
-.fifty-two-week-alert .share-name-code {
-    font-weight: bold;
-    font-size: 1.1em;
+/* Themed arrow icon for 52-week alert title */
+.low52-arrow-icon {
+    vertical-align: middle;
+    margin-right: 8px;
+    width: 1.15em;
+    height: 1.15em;
+    display: inline-block;
+    position: relative;
+    top: 1px;
+    /* Use CSS variable for stroke color, fallback to theme color */
+    stroke: var(--low52-arrow-color, #b22222);
+    /* For SVGs, set fill to none and allow stroke to inherit */
+    fill: none;
+}
+.low52-high .low52-arrow-icon {
+    stroke: var(--high52-arrow-color, #1a6e1a);
+}
+.low52-low .low52-arrow-icon {
+    stroke: var(--low52-arrow-color, #b22222);
+}
+.low52-title-text {
+    vertical-align: middle;
+    font-size:1.05rem;
+    font-weight:600;
+    margin:6px 2px 4px 2px;
+    padding:0 2px;
+    letter-spacing:0.5px;
+    background: none !important;
+    color: var(--global-summary-title-color, var(--text-color, #222)) !important;
+    box-shadow: none !important;
 }
 
-.fifty-two-week-alert .share-company-name {
-    font-size: 0.9em;
-    opacity: 0.8;
-}
-
-.fifty-two-week-alert .live-price-value {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-
-.fifty-two-week-alert .target-price-label {
-    font-size: 0.9em;
-}
-
-.fifty-two-week-alert .target-hit-actions {
-    flex-shrink: 0;
-}
-
-.fifty-two-week-alert .mute-button {
-    background: transparent;
-    border: none;
-    color: var(--text-color);
-    opacity: 0.6;
+/* Mute button for 52-week low: charcoal, white, small, compact */
+.low52-mute-btn {
+    background: var(--card-bg, #fff);
+    color: var(--text-color, #222);
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 0.78em;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 1.2em;
-    padding: 5px;
+    margin-left: 10px;
+    transition: background 0.2s, color 0.2s, border 0.2s;
+    box-shadow: none;
+    min-width: 48px;
+    min-height: 22px;
+    line-height: 1.1;
+    text-align: center;
+    white-space: nowrap;
+    display: inline-block;
 }
-
-.fifty-two-week-alert .mute-button:hover {
-    opacity: 1;
+.low52-mute-btn:hover {
+    background: var(--button-hover-bg, #f0f0f0);
+    color: var(--button-hover-color, #111);
+    border-color: var(--border-color, #bdbdbd);
 }
-
-.fifty-two-week-alert.muted {
-    opacity: 0.5;
-    filter: grayscale(80%);
+.low52-alerts-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin-bottom: 12px;
+    align-items: stretch;
+    width: 100%;
 }
-
-.muted-alerts-header {
-    font-size: 0.9em;
-    font-weight: bold;
-    color: var(--text-color);
-    opacity: 0.7;
-    margin-top: 15px;
-    margin-bottom: 5px;
-    padding-left: 10px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 5px;
+/* 52-Week Alert Card: Themed for High/Low, matches global movers/target hit */
+.low52-alert-card {
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-shadow: 0 2px 8px rgba(164,147,147,0.10);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px 0;
+    min-width: 320px;
+    max-width: 540px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    margin: 0;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #333);
+    transition: box-shadow 0.18s, background 0.2s, color 0.2s, border 0.2s;
+    position: relative;
 }
-
 
 /* 52-Week Low: Red theme (dynamic) */
 .low52-alert-card.low52-low {
@@ -963,7 +1073,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Global summary alert item styling */
 /* Global summary alert unified card styling */
 .global-summary-alert.target-hit-item {
-    background-color: var(--modal-content-bg, var(--card-bg, #fff)) !important;
+    background-color: var(--card-bg, #fff) !important;
     border: 1px solid var(--border-color, #333);
     border-radius: 8px;
     padding: 10px 12px;
