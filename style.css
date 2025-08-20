@@ -199,26 +199,26 @@
     margin-left: auto;
     margin-right: auto;
     margin: 0;
-    background: var(--card-bg, #fff);
-    border: 1px solid var(--border-color, #c9d2d4);
-    transition: box-shadow 0.18s, background 0.2s, color 0.2s, border 0.2s;
+    background: var(--card-bg);
+    border: none;
+    transition: box-shadow 0.18s, background 0.2s, color 0.2s;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 /* 52-Week Low: Red theme (dynamic) */
 /* 52-Week Low: Red theme (dynamic) */
 .low52-alert-card.low52-low {
-    background: var(--low52-bg, var(--card-bg, #fff));
-    border-color: var(--low52-border, #b22222);
+    background: var(--low52-bg, var(--card-bg));
+    border: none;
     color: var(--low52-color, #b22222);
 }
 
 /* 52-Week High: Green theme (dynamic) */
 /* 52-Week High: Green theme (dynamic) */
 .low52-alert-card.low52-high {
-    background: var(--high52-bg, var(--card-bg, #fff));
-    border-color: var(--high52-border, #1a6e1a);
+    background: var(--high52-bg, var(--card-bg));
+    border: none;
     color: var(--high52-color, #1a6e1a);
 }
 
@@ -308,15 +308,15 @@
     transition: background 0.2s, color 0.2s, border 0.2s;
     box-shadow: none;
     min-width: 48px;
-    min-height: 22px;
-    line-height: 1.1;
+    min-height: 32px;
+    line-height: 1.5;
     text-align: center;
     white-space: nowrap;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     width: auto;
-    height: 100%;
+    height: auto;
     user-select: none;
 }
 .low52-mute-btn:hover, .low52-mute-btn:active, .low52-mute-btn:focus {

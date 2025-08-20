@@ -72,14 +72,20 @@ function applyLow52AlertTheme(card, type) {
     card.classList.add('low52-alert-card');
 }
 
-// Patch: Ensure mute button is fully clickable
+// Patch: Ensure mute button is fully clickable (entire area, all pointer events)
 function fixLow52MuteButton(card) {
     if (!card) return;
     const muteBtn = card.querySelector('.low52-mute-btn');
     if (muteBtn) {
         // Remove all existing listeners to avoid stacking
         const newBtn = muteBtn.cloneNode(true);
-        muteBtn.parentNode.replaceChild(newBtn, muteBtn);
+        muteBtn.replaceWith(newBtn);
+        // Ensure pointer events are enabled for the full button
+        newBtn.style.pointerEvents = 'auto';
+        newBtn.addEventListener('pointerdown', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
         newBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
