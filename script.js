@@ -10498,6 +10498,21 @@ if (targetHitIconBtn) {
 document.addEventListener('DOMContentLoaded', function() {
     logDebug('script.js DOMContentLoaded fired.');
 
+    // Inject a test 52-week low alert card for CBA (for UI testing only)
+    if (Array.isArray(sharesAt52WeekLow)) {
+        const alreadyHasTest = sharesAt52WeekLow.some(item => item && item.code === 'CBA' && item.isTestCard);
+        if (!alreadyHasTest) {
+            sharesAt52WeekLow.unshift({
+                code: 'CBA',
+                name: 'Commonwealth Bank (Test Card)',
+                type: 'low',
+                low52: 90.00,
+                high52: 120.00,
+                live: 91.23,
+                isTestCard: true
+            });
+        }
+    }
     // Ensure header interactive bindings are attached even on first load
     try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
     // Early notification restore from persisted count
