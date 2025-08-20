@@ -1,3 +1,10 @@
+/* Target hit notification container inside 52-week alert: match global movers width */
+.low52-alert-card .target-hit-item.global-summary-alert {
+    min-width: 320px;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
+}
 /* 52-week alert header row: code/name left, price right */
 .low52-header-row {
     display: flex;
