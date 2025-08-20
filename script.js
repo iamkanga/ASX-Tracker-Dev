@@ -9955,7 +9955,7 @@ function showTargetHitDetailsModal(options={}) {
         sectionHeader.classList.add('low52-low');
     }
     // Refactored to use a themeable SVG arrow icon
-    const arrowSVG = `<svg class="low52-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+    const arrowSVG = `<svg class="low52-arrow-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5H7z"/></svg>`;
     low52Title.innerHTML = `${arrowSVG}<span class="low52-title-text">52 week alerts</span>`;
     sectionHeader.appendChild(low52Title);
     targetHitSharesList.appendChild(sectionHeader);
@@ -9972,6 +9972,8 @@ function showTargetHitDetailsModal(options={}) {
             (isMuted ? muted : unmuted).push({item, idx});
         });
         // Unmuted cards (left)
+        const alertsContainer = document.createElement('div');
+        alertsContainer.className = 'low52-alerts-container';
         unmuted.forEach(({item, idx}) => {
             const card = document.createElement('div');
             card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'}`;
@@ -10017,7 +10019,7 @@ function showTargetHitDetailsModal(options={}) {
             if (window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')]) {
                 card.classList.add('low52-card-hidden');
             }
-            targetHitSharesList.appendChild(card);
+            alertsContainer.appendChild(card);
         });
         // Muted cards (right, can unmute)
         muted.forEach(({item, idx}) => {
@@ -10053,8 +10055,9 @@ function showTargetHitDetailsModal(options={}) {
                 if (e.target === muteBtn) return;
                 if (typeof showStockSearchModal === 'function') showStockSearchModal(item.code);
             };
-            targetHitSharesList.appendChild(card);
+            alertsContainer.appendChild(card);
         });
+        targetHitSharesList.appendChild(alertsContainer);
     }
 
     // Inject headings + global summary card (Global movers heading ABOVE card)

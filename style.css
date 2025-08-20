@@ -68,7 +68,6 @@
     margin-top: auto; /* Pushes to the bottom of the flex container */
     margin-bottom: 0;
     width: 100%;
-    white-space: nowrap;
     padding-top: 8px; /* Add some space above it */
 }
 /* Add margin to code button arrow for better spacing */
@@ -207,18 +206,15 @@
     justify-content: space-between; /* This will push the threshold row to the bottom */
 }
 
-/* 52-Week Low: Red theme (dynamic) */
-/* 52-Week Low: Red theme (dynamic) */
 .low52-alert-card.low52-low {
-    background: var(--low52-bg, var(--card-bg));
+    background-color: var(--card-bg);
     border: none;
     color: var(--low52-color, #b22222);
 }
 
 /* 52-Week High: Green theme (dynamic) */
-/* 52-Week High: Green theme (dynamic) */
 .low52-alert-card.low52-high {
-    background: var(--high52-bg, var(--card-bg));
+    background-color: var(--card-bg);
     border: none;
     color: var(--high52-color, #1a6e1a);
 }
