@@ -21,24 +21,30 @@
     margin-bottom: 0;
 }
 .low52-header-row .low52-code {
-    flex: 0 1 auto;
-    font-weight: 600;
-    font-size: 1.05em;
-    margin-right: 6px;
+    flex: 0 0 auto; /* Don't shrink the code */
+    font-weight: 700; /* Bolder code */
+    font-size: 1em; /* Adjusted size */
+    margin-right: 8px;
+    white-space: nowrap;
 }
 .low52-header-row .low52-name {
-    flex: 0 1 auto;
-    font-weight: 600;
-    font-size: 1.05em;
-    margin-right: 6px;
+    flex: 1 1 auto; /* Allow name to take up space and shrink */
+    font-weight: 400;
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--ghosted-text); /* Muted color for the name */
+    text-align: left;
 }
 .low52-header-row .low52-price {
     margin-left: auto;
-    font-weight: 600;
-    font-size: 1.05em;
+    font-weight: 700; /* Bolder price */
+    font-size: 1em; /* Adjusted size */
     color: var(--text-color, #222);
     text-align: right;
-    min-width: 64px;
+    min-width: 70px; /* A bit more space */
+    flex-shrink: 0; /* Don't shrink the price */
 }
 .low52-action-row {
     display: flex;
@@ -200,22 +206,22 @@
     max-width: 540px;
     margin: 0 auto; /* Center the card horizontally */
     background: var(--card-bg);
-    border: none;
-    transition: box-shadow 0.18s, background 0.2s, color 0.2s;
+    border: 1px solid var(--border-color); /* Default border */
+    transition: box-shadow 0.18s, background 0.2s, color 0.2s, border-color 0.2s;
     min-height: 90px; /* Ensure a minimum height for proper layout */
     justify-content: space-between; /* This will push the threshold row to the bottom */
 }
 
 .low52-alert-card.low52-low {
     background-color: var(--card-bg);
-    border: none;
+    border-color: var(--low52-color, #b22222); /* Themed border color */
     color: var(--low52-color, #b22222);
 }
 
 /* 52-Week High: Green theme (dynamic) */
 .low52-alert-card.low52-high {
     background-color: var(--card-bg);
-    border: none;
+    border-color: var(--high52-color, #1a6e1a); /* Themed border color */
     color: var(--high52-color, #1a6e1a);
 }
 
