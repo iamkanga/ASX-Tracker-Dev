@@ -19,7 +19,13 @@
     gap: 8px;
     margin-bottom: 0;
 }
-.low52-header-row .low52-code, .low52-header-row .low52-name {
+.low52-header-row .low52-code {
+    flex: 0 1 auto;
+    font-weight: 600;
+    font-size: 1.05em;
+    margin-right: 6px;
+}
+.low52-header-row .low52-name {
     flex: 0 1 auto;
     font-weight: 600;
     font-size: 1.05em;
@@ -27,8 +33,8 @@
 }
 .low52-header-row .low52-price {
     margin-left: auto;
-    font-weight: 700;
-    font-size: 1.08em;
+    font-weight: 600;
+    font-size: 1.05em;
     color: var(--text-color, #222);
     text-align: right;
     min-width: 64px;
