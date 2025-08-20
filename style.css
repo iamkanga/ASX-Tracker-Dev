@@ -1,3 +1,7 @@
+/* Hide minimized (muted) 52-week alert cards but keep them in the DOM */
+.low52-card-hidden {
+    display: none !important;
+}
 /* Target hit notification container inside 52-week alert: match global movers width */
 .low52-alert-card .target-hit-item.global-summary-alert {
     min-width: 320px;

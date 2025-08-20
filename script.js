@@ -9951,6 +9951,9 @@ function showTargetHitDetailsModal(options={}) {
                 e.stopPropagation();
                 window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = true;
                 try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
+                // Instead of removing, just hide the card
+                card.classList.add('low52-card-hidden');
+                // Optionally, re-render modal to update state
                 showTargetHitDetailsModal();
             };
             // Click-through to search modal
@@ -9964,6 +9967,10 @@ function showTargetHitDetailsModal(options={}) {
                     showStockSearchModal(item.code);
                 }
             };
+            // If this card is marked as hidden (minimized), add the hidden class
+            if (window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')]) {
+                card.classList.add('low52-card-hidden');
+            }
             targetHitSharesList.appendChild(card);
         });
         // Muted cards (right, can unmute)
