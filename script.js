@@ -2047,10 +2047,9 @@ function showCustomAlert(message, duration = 3000, type = 'info') {
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             toast.setAttribute('role', 'status');
-            toast.innerHTML = `<span class="icon"></span><div class="message"></div><button class="close" aria-label="Dismiss">×</button>`;
+            toast.innerHTML = `<span class="icon"></span><div class="message"></div>`;
             toast.querySelector('.message').textContent = message;
             const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
-            toast.querySelector('.close').addEventListener('click', remove);
             container.appendChild(toast);
             requestAnimationFrame(()=> toast.classList.add('show'));
             if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
@@ -9972,21 +9971,21 @@ function showTargetHitDetailsModal(options={}) {
     low52Title.innerHTML = `<span class="low52-title-text">52 Week Low</span>${arrowSVG}`;
     sectionHeader.appendChild(low52Title);
     targetHitSharesList.appendChild(sectionHeader);
-        // Split into unmuted and muted
-        const unmuted = [], muted = [];
-        sharesAt52WeekLow.forEach((item, idx) => {
-            // Rely on the 'muted' property set during fetch
-            (item.muted ? muted : unmuted).push({item, idx});
-        });
-        // Unmuted cards (left)
         const alertsContainer = document.createElement('div');
         alertsContainer.className = 'low52-alerts-container';
-        unmuted.forEach(({item, idx}) => {
+
+        sharesAt52WeekLow.forEach((item, idx) => {
             const card = document.createElement('div');
-            card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'}`;
-            // Fallback for live price
+            const isMuted = !!item.muted;
+            // Apply theme using the helper function for consistency
+            applyLow52AlertTheme(card, item.type);
+            if (isMuted) {
+                card.classList.add('low52-card-muted');
+            }
+
             let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
             let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : '<span class="low52-price-na">N/A</span>';
+
             card.innerHTML = `
                 <div class="low52-card-row low52-header-row">
                     <span class="low52-code">${item.code}</span>
@@ -9994,92 +9993,37 @@ function showTargetHitDetailsModal(options={}) {
                     <span class="low52-price">${liveDisplay}</span>
                 </div>
                 <div class="low52-card-row low52-action-row">
-                    <button class="low52-mute-btn" data-idx="${idx}">Mute</button>
+                    <button class="low52-mute-btn" data-idx="${idx}">${isMuted ? 'Unmute' : 'Mute'}</button>
                 </div>
                 <div class="low52-thresh-row">
                     <span class="low52-thresh">${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)}</span>
                 </div>
             `;
-            // Mute button logic for each card
+
             const muteBtn = card.querySelector('.low52-mute-btn');
             muteBtn.onclick = function(e) {
                 e.stopPropagation();
-                // Use consistent key format
-                window.__low52MutedMap[item.code + '_' + item.type] = true;
-                try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
-
-                // Find the item in the main array and update its state
                 const shareToUpdate = sharesAt52WeekLow.find(s => s.code === item.code && s.type === item.type);
                 if (shareToUpdate) {
-                    shareToUpdate.muted = true;
+                    shareToUpdate.muted = !isMuted; // Toggle muted state
+                    window.__low52MutedMap[item.code + '_' + item.type] = shareToUpdate.muted;
+                    try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
+                    updateTargetHitBanner();
+                    showTargetHitDetailsModal(); // Re-render the modal
                 }
-                updateTargetHitBanner();
-
-                // Re-render modal to update state
-                showTargetHitDetailsModal();
             };
-            // Click-through to search modal
+
             card.style.cursor = 'pointer';
-            card.style.pointerEvents = 'auto';
-            // Make mute button not block card click
-            muteBtn.style.pointerEvents = 'auto';
             card.onclick = function(e) {
                 if (e.target.closest('.low52-mute-btn')) return;
                 if (typeof showStockSearchModal === 'function') {
                     showStockSearchModal(item.code);
                 }
             };
-            // If this card is marked as hidden (minimized), add the hidden class
-            if (window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')]) {
-                card.classList.add('low52-card-hidden');
-            }
+
             alertsContainer.appendChild(card);
         });
-        // Muted cards (right, can unmute)
-        muted.forEach(({item, idx}) => {
-            const card = document.createElement('div');
-            card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'} low52-card-muted`;
-            // Fallback for live price
-            let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
-            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : '<span class="low52-price-na">N/A</span>';
-            card.innerHTML = `
-                <div class="low52-card-row low52-header-row">
-                    <span class="low52-code">${item.code}</span>
-                    <span class="low52-name">${item.name}</span>
-                    <span class="low52-price">${liveDisplay}</span>
-                </div>
-                <div class="low52-card-row low52-action-row">
-                    <button class="low52-mute-btn" data-idx="${idx}">Unmute</button>
-                </div>
-                <div class="low52-thresh-row">
-                    <span class="low52-thresh">${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)}</span>
-                </div>
-            `;
-            // Unmute button logic for each card
-            const muteBtn = card.querySelector('.low52-mute-btn');
-            muteBtn.onclick = function(e) {
-                e.stopPropagation();
-                // Use consistent key format
-                window.__low52MutedMap[item.code + '_' + item.type] = false;
-                try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
 
-                // Find the item in the main array and update its state
-                const shareToUpdate = sharesAt52WeekLow.find(s => s.code === item.code && s.type === item.type);
-                if (shareToUpdate) {
-                    shareToUpdate.muted = false;
-                }
-                updateTargetHitBanner();
-
-                showTargetHitDetailsModal();
-            };
-            // Click-through to search modal
-            card.style.cursor = 'pointer';
-            card.onclick = function(e) {
-                if (e.target === muteBtn) return;
-                if (typeof showStockSearchModal === 'function') showStockSearchModal(item.code);
-            };
-            alertsContainer.appendChild(card);
-        });
         targetHitSharesList.appendChild(alertsContainer);
     }
 
