@@ -212,12 +212,13 @@
     transition: box-shadow 0.18s, background 0.2s, color 0.2s, border-color 0.2s;
     min-height: 90px; /* Ensure a minimum height for proper layout */
     justify-content: space-between; /* This will push the threshold row to the bottom */
+    width: 100%;
 }
 
 .low52-alert-card.low52-low {
     background-color: var(--card-bg);
-    border-color: var(--low52-color, #b22222); /* Themed border color */
-    color: var(--low52-color, #b22222);
+    border-color: var(--brand-red); /* Themed border color */
+    color: var(--brand-red);
 }
 
 /* 52-Week High: Green theme (dynamic) */
@@ -229,7 +230,7 @@
 
 /* Card heading and value color overrides for contrast (dynamic) */
 .low52-alert-card.low52-low .low52-heading, .low52-alert-card.low52-low .low52-code {
-    color: var(--low52-color, #b22222) !important;
+    color: var(--brand-red) !important;
 }
 .low52-alert-card.low52-high .low52-heading, .low52-alert-card.low52-high .low52-code {
     color: var(--high52-color, #1a6e1a) !important;

@@ -719,8 +719,8 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 // Guard against unintended re-opening of the Share Edit modal shortly after save
 let suppressShareFormReopen = false;
 
-// App version (kept for internal logging; no longer displayed in UI title bar)
-const APP_VERSION = 'v0.1.5';
+// App version (displayed in UI title bar)
+const APP_VERSION = 'v0.1.6';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -8240,6 +8240,31 @@ async function deleteAllUserData() {
     });
 }
 
+function restorePersistedState() {
+    logDebug('State Management: Restoring persisted state from localStorage.');
+
+    // Restore Compact View Mode
+    const savedMobileViewMode = localStorage.getItem('currentMobileViewMode');
+    if (savedMobileViewMode === 'compact' || savedMobileViewMode === 'default') {
+        currentMobileViewMode = savedMobileViewMode;
+        logDebug(`State Management: Restored mobile view mode to '${currentMobileViewMode}'.`);
+    }
+
+    // Restore Last Selected Watchlist/View
+    const savedLastView = localStorage.getItem('lastSelectedView');
+    if (savedLastView) {
+        currentSelectedWatchlistIds = [savedLastView];
+        logDebug(`State Management: Restored last selected view to '${savedLastView}'.`);
+    }
+
+    // Restore Sort Order
+    const savedSortOrder = localStorage.getItem('lastSortOrder');
+    if (savedSortOrder) {
+        currentSortOrder = savedSortOrder;
+        logDebug(`State Management: Restored sort order to '${currentSortOrder}'.`);
+    }
+}
+
 async function initializeAppLogic() {
     applyCompactViewMode();
     // DEBUG: Log when initializeAppLogic starts
@@ -8416,12 +8441,15 @@ async function initializeAppLogic() {
                 div.textContent = `${s.code} - ${s.name}`;
                 div.dataset.code = s.code;
                 // Use pointerdown for earlier capture (prevents blur race) plus click fallback
-                const handler = () => applyShareCodeSelection(s.code, s.name);
-                div.addEventListener('pointerdown', handler, { once: true });
+                const handler = (e) => {
+                    e.preventDefault(); // Prevent input blur on touch
+                    applyShareCodeSelection(s.code, s.name);
+                };
+                div.addEventListener('pointerdown', handler, { once: true, passive: false });
                 div.addEventListener('click', (e) => {
                     // If pointerdown already fired, ignore
-                    if (div.__applied) return; 
-                    handler();
+                    if (div.__applied) return;
+                    handler(e);
                 }, { once: true });
                 div.__applied = false;
                 shareNameSuggestions.appendChild(div);
@@ -10541,6 +10569,12 @@ document.addEventListener('DOMContentLoaded', function() {
             try { updateMainTitle(); } catch(e) {}
         });
     }
+
+    // Display App Version
+    const appVersionEl = document.getElementById('appVersion');
+    if (appVersionEl) {
+        appVersionEl.textContent = APP_VERSION;
+    }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
     window._userAuthenticated = false;
@@ -10640,6 +10674,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 } catch(_) {}
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
+
+                // Restore user's last state from localStorage
+                restorePersistedState();
                 logDebug('AuthState: User email: ' + user.email);
                 try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
                 // Use dynamic update instead of hard-coded label so it reflects current selection
