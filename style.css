@@ -1,7 +1,9 @@
 /* The .low52-title-chevron class has been removed and replaced by .low52-arrow-icon */
-/* Hide minimized (muted) 52-week alert cards but keep them in the DOM */
+/* Ghost out muted 52-week alert cards instead of hiding them */
 .low52-card-hidden {
-    display: none !important;
+    opacity: 0.5;
+    filter: grayscale(80%);
+    transition: opacity 0.3s ease, filter 0.3s ease;
 }
 /* Target hit notification container inside 52-week alert: match global movers width */
 .low52-alert-card .target-hit-item.global-summary-alert {
@@ -479,6 +481,30 @@ function makeFilesAvailableToSourceControlCSS() {
 .alert-target-arrow { font-size:0.85rem; font-weight:700; }
 .alert-target-arrow.up { color: var(--brand-green,#008000); }
 .alert-target-arrow.down { color: var(--brand-red,#c42131); }
+
+/* Enhanced styling for Alert Target on mobile cards */
+.mobile-card .alert-target-row {
+    font-weight: 500;
+    font-size: 0.95em;
+    justify-content: space-between; /* Ensure label and value are spaced */
+}
+
+.mobile-card .alert-target-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.25em 0.6em;
+    border-radius: var(--border-radius);
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.alert-target-intent {
+    font-weight: 700;
+    font-size: 0.9em;
+    margin-right: 0.2em;
+}
 .mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green,#008000) !important; }
 .mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red,#c42131) !important; }
 .alert-target-price { font-weight:600; }
@@ -1113,10 +1139,26 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-summary-alert .global-summary-title { font-weight:700; font-size:1.25rem; letter-spacing:.5px; }
 .global-summary-alert .global-summary-detail { font-size:0.88rem; line-height:1.35; opacity:0.95; }
 .global-summary-alert .global-summary-detail.portfolio-line, .global-summary-alert .global-summary-detail.others-line { margin-top:2px; }
-.global-summary-alert .global-summary-arrows-row { display:flex; gap:18px; font-size:0.85rem; font-weight:600; align-items:center; margin:2px 0 4px; flex-wrap:wrap; }
-.global-summary-alert .global-summary-arrows-row .up { color: var(--price-up-color); }
-.global-summary-alert .global-summary-arrows-row .down { color: var(--price-down-color); }
-.global-summary-alert .global-summary-arrows-row .min-filter { font-weight:500; opacity:0.7; }
+.global-summary-alert .global-summary-arrows-row {
+    display: flex;
+    justify-content: center;
+    align-items: baseline; /* Better for text/icon alignment */
+    gap: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.4rem; /* Unified size */
+}
+
+.global-summary-arrows-row .up,
+.global-summary-arrows-row .down {
+    color: var(--price-up-color);
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.global-summary-arrows-row .down {
+    color: var(--price-down-color);
+}
 /* Right column action stack */
 .global-summary-alert .global-summary-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; justify-content:flex-start; margin-top:auto; }
 /* Substantial action buttons */
@@ -1142,15 +1184,14 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-summary-alert .global-summary-actions button[disabled] { opacity:0.35; cursor:default; }
 /* Mute button matches tiny-toggle style */
 /* arrow size */
-.global-summary-alert .global-summary-arrows-row .arrow { font-size:1.1rem; line-height:1; position:relative; top:0px; }
+.global-summary-alert .global-summary-arrows-row .arrow {
+    font-size: 1em; /* Same size as number */
+    line-height: 1;
+    margin-right: 0.1em;
+}
 /* Increase the font size of the count next to chevron arrows in global movers */
 .global-summary-arrows-row .arrow-count {
-    font-size: 1.25em;
-    font-weight: 700;
-    margin-left: 4px;
-    margin-right: 8px;
-    vertical-align: middle;
-    display: inline-block;
+    font-weight: 600;
 }
 /* #globalMoversTitle ordering override removed to respect DOM sequence (was order:-1 previously) */
 .global-summary-alert .global-summary-detail.ignoring-line { font-size:0.65rem !important; opacity:0.55; letter-spacing:0.35px; text-transform:uppercase; font-weight:500; }
