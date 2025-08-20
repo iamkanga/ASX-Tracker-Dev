@@ -9966,14 +9966,16 @@ function showTargetHitDetailsModal(options={}) {
             const card = document.createElement('div');
             card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'} low52-card-muted`;
             card.innerHTML = `
-                <div class="low52-card-row">
+                <div class="low52-card-row low52-header-row">
                     <span class="low52-code">${item.code}</span>
                     <span class="low52-name">${item.name}</span>
-                </div>
-                <div class="low52-card-row">
                     <span class="low52-price">$${Number(item.live).toFixed(2)}</span>
-                    <span class="low52-thresh">(${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)})</span>
+                </div>
+                <div class="low52-card-row low52-action-row">
                     <button class="low52-mute-btn" data-idx="${idx}">Unmute</button>
+                </div>
+                <div class="low52-thresh-row">
+                    <span class="low52-thresh">${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)}</span>
                 </div>
             `;
             // Unmute button logic for each card
