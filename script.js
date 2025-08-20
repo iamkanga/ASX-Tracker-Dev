@@ -9925,79 +9925,66 @@ function showTargetHitDetailsModal(options={}) {
             const isMuted = !!window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')];
             (isMuted ? muted : unmuted).push({item, idx});
         });
-        // Unmuted cards (left)
-        unmuted.forEach(({item, idx}) => {
+
+        const create52WeekAlertCard = (item, idx, isMuted) => {
             const card = document.createElement('div');
-            card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'}`;
-            // Fallback for live price
+            card.className = `target-hit-item fifty-two-week-alert ${item.type === 'high' ? 'positive' : 'negative'} ${isMuted ? 'muted' : ''}`;
+            
             let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
-            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : 'N/A';
+            let liveDisplay = (liveVal !== null) ? formatMoney(liveVal) : 'N/A';
+            let thresholdDisplay = formatMoney(item.type === 'high' ? item.high52 : item.low52);
+
             card.innerHTML = `
-                <div class="low52-card-row low52-header-row">
-                    <span class="low52-code">${item.code}</span>
-                    <span class="low52-name">${item.name}</span>
-                    <span class="low52-price">${liveDisplay}</span>
+                <div class="target-hit-content">
+                    <div class="target-hit-share-info">
+                        <strong class="share-name-code">${item.code}</strong>
+                        <span class="share-company-name">${item.name}</span>
+                    </div>
+                    <div class="target-hit-price-info">
+                        <span class="live-price-value">${liveDisplay}</span>
+                        <span class="target-price-label">${item.type === 'high' ? '52W High:' : '52W Low:'} ${thresholdDisplay}</span>
+                    </div>
                 </div>
-                <div class="low52-card-row low52-action-row">
-                    <button class="low52-mute-btn" data-idx="${idx}">Mute</button>
-                </div>
-                <div class="low52-thresh-row">
-                    <span class="low52-thresh">${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)}</span>
+                <div class="target-hit-actions">
+                    <button class="mute-button" data-idx="${idx}" title="${isMuted ? 'Unmute' : 'Mute'} this alert for the session">
+                        <i class="fas ${isMuted ? 'fa-volume-up' : 'fa-volume-mute'}"></i>
+                    </button>
                 </div>
             `;
-            // Mute button logic for each card
-            const muteBtn = card.querySelector('.low52-mute-btn');
+
+            const muteBtn = card.querySelector('.mute-button');
             muteBtn.onclick = function(e) {
                 e.stopPropagation();
-                window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = true;
+                window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = !isMuted;
                 try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
-                showTargetHitDetailsModal();
+                showTargetHitDetailsModal(); // Re-render the modal
             };
-            // Click-through to search modal
-            card.style.cursor = 'pointer';
-            card.style.pointerEvents = 'auto';
-            // Make mute button not block card click
-            muteBtn.style.pointerEvents = 'auto';
+
             card.onclick = function(e) {
-                if (e.target.closest('.low52-mute-btn')) return;
+                if (e.target.closest('.mute-button')) return;
                 if (typeof showStockSearchModal === 'function') {
                     showStockSearchModal(item.code);
                 }
             };
+            return card;
+        };
+
+        unmuted.forEach(({item, idx}) => {
+            const card = create52WeekAlertCard(item, idx, false);
             targetHitSharesList.appendChild(card);
         });
-        // Muted cards (right, can unmute)
-        muted.forEach(({item, idx}) => {
-            const card = document.createElement('div');
-            card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'} low52-card-muted`;
-            // Fallback for live price
-            let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
-            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : 'N/A';
-            card.innerHTML = `
-                <div class="low52-card-row low52-header-row">
-                    <span class="low52-code">${item.code}</span>
-                    <span class="low52-name">${item.name}</span>
-                    <span class="low52-price">${liveDisplay}</span>
-                </div>
-                <div class="low52-card-row low52-action-row">
-                    <button class="low52-mute-btn" data-idx="${idx}">Unmute</button>
-                </div>
-                <div class="low52-thresh-row">
-                    <span class="low52-thresh">${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)}</span>
-                </div>
-            `;
-            // Unmute button logic for each card
-            const muteBtn = card.querySelector('.low52-mute-btn');
-            muteBtn.onclick = function(e) {
-                e.stopPropagation();
-                window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = false;
-                try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
-                showTargetHitDetailsModal();
-            };
-            // Click-through to search modal
-            card.style.cursor = 'pointer';
-            card.onclick = function(e) {
-                if (e.target === muteBtn) return;
+
+        if (muted.length > 0) {
+            const mutedHeader = document.createElement('h4');
+            mutedHeader.className = 'muted-alerts-header';
+            mutedHeader.textContent = 'Muted Alerts';
+            targetHitSharesList.appendChild(mutedHeader);
+
+            muted.forEach(({item, idx}) => {
+                const card = create52WeekAlertCard(item, idx, true);
+                targetHitSharesList.appendChild(card);
+            });
+        }
                 if (typeof showStockSearchModal === 'function') showStockSearchModal(item.code);
             };
             targetHitSharesList.appendChild(card);
