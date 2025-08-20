@@ -720,7 +720,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.1.6';
+const APP_VERSION = 'v0.1.14';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -6093,7 +6093,7 @@ function updateTargetHitBanner() {
     }
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
-    const low52Count = Array.isArray(sharesAt52WeekLow) ? sharesAt52WeekLow.length : 0;
+    const low52Count = Array.isArray(sharesAt52WeekLow) ? sharesAt52WeekLow.filter(item => !item.muted).length : 0;
     // Treat global summary counts as zero if directional thresholds are fully inactive (prevents stale badge after clearing)
     const directionalActive = isDirectionalThresholdsActive ? isDirectionalThresholdsActive() : (
         (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ||
