@@ -9927,11 +9927,14 @@ function showTargetHitDetailsModal(options={}) {
         unmuted.forEach(({item, idx}) => {
             const card = document.createElement('div');
             card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'}`;
+            // Fallback for live price
+            let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
+            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : 'N/A';
             card.innerHTML = `
                 <div class="low52-card-row low52-header-row">
                     <span class="low52-code">${item.code}</span>
                     <span class="low52-name">${item.name}</span>
-                    <span class="low52-price">$${Number(item.live).toFixed(2)}</span>
+                    <span class="low52-price">${liveDisplay}</span>
                 </div>
                 <div class="low52-card-row low52-action-row">
                     <button class="low52-mute-btn" data-idx="${idx}">Mute</button>
@@ -9965,11 +9968,14 @@ function showTargetHitDetailsModal(options={}) {
         muted.forEach(({item, idx}) => {
             const card = document.createElement('div');
             card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'} low52-card-muted`;
+            // Fallback for live price
+            let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
+            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : 'N/A';
             card.innerHTML = `
                 <div class="low52-card-row low52-header-row">
                     <span class="low52-code">${item.code}</span>
                     <span class="low52-name">${item.name}</span>
-                    <span class="low52-price">$${Number(item.live).toFixed(2)}</span>
+                    <span class="low52-price">${liveDisplay}</span>
                 </div>
                 <div class="low52-card-row low52-action-row">
                     <button class="low52-mute-btn" data-idx="${idx}">Unmute</button>
