@@ -10034,6 +10034,8 @@ function showTargetHitDetailsModal(options={}) {
                 const shareToUpdate = sharesAt52WeekLow.find(s => s.code === item.code && s.type === item.type);
                 if (shareToUpdate) {
                     shareToUpdate.muted = !isMuted; // Toggle muted state
+                    const toastMessage = `${shareToUpdate.code} alerts ${shareToUpdate.muted ? 'muted' : 'enabled'}.`;
+                    showCustomAlert(toastMessage, 2000, 'info');
                     window.__low52MutedMap[item.code + '_' + item.type] = shareToUpdate.muted;
                     try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
                     updateTargetHitBanner();
