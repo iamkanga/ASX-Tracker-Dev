@@ -171,9 +171,11 @@
     flex-direction: column;
     align-items: stretch;
     gap: 8px 0;
-    min-width: 0;
-    max-width: 100%;
+    min-width: 320px;
+    max-width: 540px;
     width: 100%;
+    margin-left: auto;
+    margin-right: auto;
     margin: 0;
     border: 1px solid var(--border-color, #333);
     transition: box-shadow 0.18s, background 0.2s, color 0.2s, border 0.2s;
@@ -1246,6 +1248,10 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
     border-radius: 12px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.07);
     padding: 8px 0 0 0;
+    min-width: 320px;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
 }
 .global-alerts-form input { padding:8px 10px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--text-color); }
 .global-alerts-form input:focus { outline:2px solid var(--accent-color); }
