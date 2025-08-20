@@ -9931,7 +9931,7 @@ function showTargetHitDetailsModal(options={}) {
             card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'}`;
             // Fallback for live price
             let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
-            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : 'N/A';
+            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : '<span class="low52-price-na">N/A</span>';
             card.innerHTML = `
                 <div class="low52-card-row low52-header-row">
                     <span class="low52-code">${item.code}</span>
@@ -9972,7 +9972,7 @@ function showTargetHitDetailsModal(options={}) {
             card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'} low52-card-muted`;
             // Fallback for live price
             let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
-            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : 'N/A';
+            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : '<span class="low52-price-na">N/A</span>';
             card.innerHTML = `
                 <div class="low52-card-row low52-header-row">
                     <span class="low52-code">${item.code}</span>
