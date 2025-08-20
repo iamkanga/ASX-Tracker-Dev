@@ -1224,7 +1224,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .discover-code-list .discover-mover .delta.positive, .discover-code-list .discover-mover .pct.positive { color: var(--price-up-color); }
 .movement-combo {
     font-weight: 600;
-    font-size: 0.625rem; /* Reduced to 50% of original for target hit notifications */
+    font-size: 0.9rem; /* Reduced to 50% of original for target hit notifications */
     letter-spacing: 0.22px;
     font-variant-numeric: tabular-nums;
     font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
