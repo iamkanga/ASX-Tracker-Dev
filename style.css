@@ -1111,13 +1111,14 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Mute button matches tiny-toggle style */
 /* arrow size */
 .global-summary-alert .global-summary-arrows-row .arrow { font-size:1.75rem; line-height:1; position:relative; top:2px; }
-/* Increase the font size of the chevron arrow count number by 150% */
-.global-summary-arrows-row .arrow-count, .global-summary-arrows-row .chevron-count, .global-summary-arrows-row .mover-count, .global-summary-arrows-row .count {
-    font-size: 1.275em !important;
+/* Increase the font size of the count next to chevron arrows in global movers */
+.global-summary-arrows-row .arrow-count {
+    font-size: 1.5em;
     font-weight: 700;
     margin-left: 2px;
-    margin-right: 6px;
+    margin-right: 8px;
     vertical-align: middle;
+    display: inline-block;
 }
 /* #globalMoversTitle ordering override removed to respect DOM sequence (was order:-1 previously) */
 .global-summary-alert .global-summary-detail.ignoring-line { font-size:0.65rem !important; opacity:0.55; letter-spacing:0.35px; text-transform:uppercase; font-weight:500; }
