@@ -963,7 +963,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Global summary alert item styling */
 /* Global summary alert unified card styling */
 .global-summary-alert.target-hit-item {
-    background-color: var(--card-bg, #fff) !important;
+    background-color: var(--modal-content-bg, var(--card-bg, #fff)) !important;
     border: 1px solid var(--border-color, #333);
     border-radius: 8px;
     padding: 10px 12px;

@@ -9985,11 +9985,6 @@ function showTargetHitDetailsModal(options={}) {
                 targetHitSharesList.appendChild(card);
             });
         }
-                if (typeof showStockSearchModal === 'function') showStockSearchModal(item.code);
-            };
-            targetHitSharesList.appendChild(card);
-        });
-    }
 
     // Inject headings + global summary card (Global movers heading ABOVE card)
     // Only show global summary if thresholds still active to avoid displaying stale counts after clear
@@ -11021,4 +11016,5 @@ try {
         }
     } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
-// --- End Super Debug Always-Install --- OK now on the mobile cards the actual information the sell or buy
+// --- End Super Debug Always-Install ---
+}
