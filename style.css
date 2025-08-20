@@ -122,6 +122,16 @@
     display: inline-block;
     position: relative;
     top: 1px;
+    /* Use CSS variable for stroke color, fallback to theme color */
+    stroke: var(--low52-arrow-color, #b22222);
+    /* For SVGs, set fill to none and allow stroke to inherit */
+    fill: none;
+}
+.low52-high .low52-arrow-icon {
+    stroke: var(--high52-arrow-color, #1a6e1a);
+}
+.low52-low .low52-arrow-icon {
+    stroke: var(--low52-arrow-color, #b22222);
 }
 .low52-title-text {
     vertical-align: middle;
