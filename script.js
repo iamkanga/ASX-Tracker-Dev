@@ -9958,13 +9958,12 @@ function showTargetHitDetailsModal(options={}) {
     }
     let arrowIcon = '';
     if (firstType === 'high') {
-        arrowIcon = `<svg class="low52-arrow-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 13V3M8 3L3 8M8 3l5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         sectionHeader.classList.add('low52-high');
     } else if (firstType === 'low') {
-        arrowIcon = `<svg class="low52-arrow-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 3v10M8 13l5-5M8 13l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
         sectionHeader.classList.add('low52-low');
     }
-    low52Title.innerHTML = `${arrowIcon}<span class="low52-title-text">52 week alerts</span>`;
+    // Add trailing red chevron after the title
+    low52Title.innerHTML = `<span class="low52-title-text">52 week alerts</span><span class="low52-title-chevron">&#8250;</span>`;
     sectionHeader.appendChild(low52Title);
     targetHitSharesList.appendChild(sectionHeader);
         if (!window.__low52MutedMap) {
