@@ -72,21 +72,13 @@ function applyLow52AlertTheme(card, type) {
     card.classList.add('low52-alert-card');
 }
 
-// Patch: Ensure mute button is fully clickable (entire area, all pointer events)
+// Simplified mute button handler after layout fix
 function fixLow52MuteButton(card) {
     if (!card) return;
     const muteBtn = card.querySelector('.low52-mute-btn');
     if (muteBtn) {
-        // Remove all existing listeners to avoid stacking
-        const newBtn = muteBtn.cloneNode(true);
-        muteBtn.replaceWith(newBtn);
-        // Ensure pointer events are enabled for the full button
-        newBtn.style.pointerEvents = 'auto';
-        newBtn.addEventListener('pointerdown', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        });
-        newBtn.addEventListener('click', function(e) {
+        // A simple click listener is now sufficient
+        muteBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             // Custom mute logic (toggle hidden/minimized)
@@ -9962,8 +9954,9 @@ function showTargetHitDetailsModal(options={}) {
     } else if (firstType === 'low') {
         sectionHeader.classList.add('low52-low');
     }
-    // Add trailing red chevron after the title
-    low52Title.innerHTML = `<span class="low52-title-text">52 week alerts</span><span class="low52-title-chevron">&#8250;</span>`;
+    // Refactored to use a themeable SVG arrow icon
+    const arrowSVG = `<svg class="low52-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+    low52Title.innerHTML = `${arrowSVG}<span class="low52-title-text">52 week alerts</span>`;
     sectionHeader.appendChild(low52Title);
     targetHitSharesList.appendChild(sectionHeader);
         if (!window.__low52MutedMap) {
