@@ -9920,12 +9920,12 @@ function showTargetHitDetailsModal(options={}) {
             const card = document.createElement('div');
             card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'}`;
             card.innerHTML = `
-                <div class="low52-card-row">
+                <div class="low52-card-row low52-header-row">
                     <span class="low52-code">${item.code}</span>
                     <span class="low52-name">${item.name}</span>
-                </div>
-                <div class="low52-card-row low52-price-row">
                     <span class="low52-price">$${Number(item.live).toFixed(2)}</span>
+                </div>
+                <div class="low52-card-row low52-action-row">
                     <button class="low52-mute-btn" data-idx="${idx}">Mute</button>
                 </div>
                 <div class="low52-thresh-row">

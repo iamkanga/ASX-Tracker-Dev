@@ -1,3 +1,36 @@
+/* 52-week alert header row: code/name left, price right */
+.low52-header-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+    margin-bottom: 0;
+}
+.low52-header-row .low52-code, .low52-header-row .low52-name {
+    flex: 0 1 auto;
+    font-weight: 600;
+    font-size: 1.05em;
+    margin-right: 6px;
+}
+.low52-header-row .low52-price {
+    margin-left: auto;
+    font-weight: 700;
+    font-size: 1.08em;
+    color: var(--text-color, #222);
+    text-align: right;
+    min-width: 64px;
+}
+.low52-action-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    margin-bottom: 0;
+    margin-top: 2px;
+}
 .low52-price-row {
     display: flex;
     flex-direction: row;
