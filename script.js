@@ -1743,8 +1743,8 @@ async function fetchLivePrices(opts = {}) {
                 const code = (share.shareName || '').toUpperCase();
                 const lpObj = livePrices ? livePrices[code] : undefined;
                 if (!lpObj || lpObj.live == null || isNaN(lpObj.live) || lpObj.Low52 == null || isNaN(lpObj.Low52)) return;
-                const isMuted = window.__low52MutedMap && window.__low52MutedMap[code + '_low'];
-                if (lpObj.live <= lpObj.Low52 && !triggered52WeekLowSet.has(code) && !isMuted) {
+                const isMuted = !!(window.__low52MutedMap && window.__low52MutedMap[code + '_low']);
+                if (lpObj.live <= lpObj.Low52 && !triggered52WeekLowSet.has(code)) {
                     // Try to get the correct company name from allAsxCodes
                     let displayName = code;
                     if (Array.isArray(allAsxCodes)) {
@@ -1756,7 +1756,9 @@ async function fetchLivePrices(opts = {}) {
                         code,
                         name: displayName,
                         live: lpObj.live,
-                        low52: lpObj.Low52
+                        low52: lpObj.Low52,
+                        type: 'low',
+                        muted: isMuted
                     });
                     triggered52WeekLowSet.add(code);
                 }
@@ -1773,7 +1775,8 @@ async function fetchLivePrices(opts = {}) {
                     low52: 90.00,
                     high52: 120.00,
                     live: 91.23,
-                    isTestCard: true
+                    isTestCard: true,
+                    muted: !!window.__low52MutedMap['CBA_low']
                 });
             }
         }
@@ -2073,12 +2076,10 @@ const ToastManager = (() => {
         const iconHTML = `<span class="icon"></span>`;
         const msgHTML = `<div class="message"></div>`;
         const actionsHTML = actions.length ? `<div class="actions">${actions.map(a=>`<button class=\"btn ${a.variant||''}\">${a.label}</button>`).join('')}</div>` : '';
-        const closeHTML = `<button class="close" aria-label="Dismiss">×</button>`;
+        const closeHTML = ``; // REMOVED
         toast.innerHTML = `${iconHTML}${msgHTML}${actionsHTML}${closeHTML}`;
         toast.querySelector('.message').textContent = message || '';
-        const closeBtn = toast.querySelector('.close');
         const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
-        closeBtn.addEventListener('click', remove);
         // Wire actions
         const actionBtns = toast.querySelectorAll('.actions .btn');
         actionBtns.forEach((btn, idx) => {
@@ -9974,8 +9975,8 @@ function showTargetHitDetailsModal(options={}) {
         // Split into unmuted and muted
         const unmuted = [], muted = [];
         sharesAt52WeekLow.forEach((item, idx) => {
-            const isMuted = !!window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')];
-            (isMuted ? muted : unmuted).push({item, idx});
+            // Rely on the 'muted' property set during fetch
+            (item.muted ? muted : unmuted).push({item, idx});
         });
         // Unmuted cards (left)
         const alertsContainer = document.createElement('div');
@@ -10003,13 +10004,14 @@ function showTargetHitDetailsModal(options={}) {
             const muteBtn = card.querySelector('.low52-mute-btn');
             muteBtn.onclick = function(e) {
                 e.stopPropagation();
-                window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = true;
+                // Use consistent key format
+                window.__low52MutedMap[item.code + '_' + item.type] = true;
                 try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
 
-                // Decrement the live count
-                const indexToRemove = sharesAt52WeekLow.findIndex(share => share.code === item.code && share.type === item.type);
-                if (indexToRemove > -1) {
-                    sharesAt52WeekLow.splice(indexToRemove, 1);
+                // Find the item in the main array and update its state
+                const shareToUpdate = sharesAt52WeekLow.find(s => s.code === item.code && s.type === item.type);
+                if (shareToUpdate) {
+                    shareToUpdate.muted = true;
                 }
                 updateTargetHitBanner();
 
@@ -10057,13 +10059,14 @@ function showTargetHitDetailsModal(options={}) {
             const muteBtn = card.querySelector('.low52-mute-btn');
             muteBtn.onclick = function(e) {
                 e.stopPropagation();
-                window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = false;
+                // Use consistent key format
+                window.__low52MutedMap[item.code + '_' + item.type] = false;
                 try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
 
-                // Add back to the list if it's not a duplicate, then update banner
-                const alreadyExists = sharesAt52WeekLow.some(share => share.code === item.code && share.type === item.type);
-                if (!alreadyExists) {
-                    sharesAt52WeekLow.push(item);
+                // Find the item in the main array and update its state
+                const shareToUpdate = sharesAt52WeekLow.find(s => s.code === item.code && s.type === item.type);
+                if (shareToUpdate) {
+                    shareToUpdate.muted = false;
                 }
                 updateTargetHitBanner();
 
