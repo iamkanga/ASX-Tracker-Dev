@@ -1198,6 +1198,22 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-alerts-modal { max-width:420px; }
 .global-alerts-form .form-row { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
 .global-alerts-form label { font-weight:600; font-size:0.85rem; }
+
+/* Force Global Movers modal and list to use dynamic theme backgrounds */
+#discoverGlobalModal.modal {
+    background: var(--modal-bg, #111) !important;
+}
+#discoverGlobalModal .modal-content {
+    background: var(--modal-content-bg, #fff) !important;
+    border-radius: 14px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.18);
+}
+#discoverGlobalList.discover-global-list {
+    background: var(--card-bg, #fff) !important;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    padding: 8px 0 0 0;
+}
 .global-alerts-form input { padding:8px 10px; border:1px solid var(--input-border); border-radius:6px; background:var(--input-bg); color:var(--text-color); }
 .global-alerts-form input:focus { outline:2px solid var(--accent-color); }
 .global-alerts-form .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:10px; }
