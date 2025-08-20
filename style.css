@@ -194,6 +194,7 @@
     margin-bottom: 12px;
     align-items: stretch;
     width: 100%;
+    justify-content: center;
 }
 /* 52-Week Alert Card: Themed for High/Low, matches global movers/target hit */
 .low52-alert-card {
@@ -206,13 +207,11 @@
     gap: 4px 0; /* Reduced gap for a tighter layout */
     min-width: 320px;
     max-width: 540px;
-    margin: 0 auto; /* Center the card horizontally */
     background: var(--card-bg);
-    border: 1px solid var(--border-color); /* Default border */
+    border: 2px solid var(--border-color); /* Default border */
     transition: box-shadow 0.18s, background 0.2s, color 0.2s, border-color 0.2s;
     min-height: 90px; /* Ensure a minimum height for proper layout */
     justify-content: space-between; /* This will push the threshold row to the bottom */
-    width: 100%;
 }
 
 .low52-alert-card.low52-low {
@@ -3576,6 +3575,16 @@ body.sidebar-active {
     flex-direction: column; /* Stack children vertically */
     padding: 15px 20px 0; /* Removed padding-bottom, will be determined by content + gap */
     gap: 10px; /* Space between header rows */
+}
+
+#appVersion {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 0.7em;
+    color: var(--ghosted-text);
+    opacity: 0.6;
+    font-weight: 500;
 }
 /* Force vivid plus icon */
 #appHeader #addShareHeaderBtn i, #appHeader #addShareHeaderBtn svg { opacity:1 !important; color:var(--accent-color,#a49393) !important; mix-blend-mode:normal; }
@@ -6951,6 +6960,7 @@ body.dark-theme .alert-item {
     width: 100%;
     max-height: 200px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* For smoother scrolling on iOS */
     background-color: var(--card-bg); /* Use card background for suggestions */
     border: 1px solid var(--border-color);
     border-top: none; /* No top border, blends with input */
