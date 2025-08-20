@@ -137,15 +137,15 @@
     position: relative;
     top: 1px;
     /* Use CSS variable for stroke color, fallback to theme color */
-    stroke: var(--low52-arrow-color, #b22222);
+    stroke: var(--low52-color);
     /* For SVGs, set fill to none and allow stroke to inherit */
     fill: none;
 }
 .low52-high .low52-arrow-icon {
-    stroke: var(--high52-arrow-color, #1a6e1a);
+    stroke: var(--high52-color);
 }
 .low52-low .low52-arrow-icon {
-    stroke: var(--low52-arrow-color, #b22222);
+    stroke: var(--low52-color);
 }
 .low52-title-text {
     vertical-align: middle;
@@ -1028,8 +1028,8 @@ function makeFilesAvailableToSourceControlCSS() {
     --low52-thresh-color: #fff;
     --low52-bg: rgba(178, 34, 34, 0.1);
     --high52-bg: rgba(26, 110, 26, 0.1);
-    --low52-color: #b22222;
-    --high52-color: #1a6e1a;
+    --low52-color: var(--brand-red);
+    --high52-color: var(--brand-green);
 
     /* UPDATED: Cash & Assets Section Colors */
     --cash-section-bg: #f8f9fa;
@@ -1114,9 +1114,6 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-summary-alert .global-summary-detail { font-size:0.88rem; line-height:1.35; opacity:0.95; }
 .global-summary-alert .global-summary-detail.portfolio-line, .global-summary-alert .global-summary-detail.others-line { margin-top:2px; }
 .global-summary-alert .global-summary-arrows-row { display:flex; gap:18px; font-size:0.85rem; font-weight:600; align-items:center; margin:2px 0 4px; flex-wrap:wrap; }
-.global-summary-alert.target-hit-item .global-summary-arrows-row {
-    font-size: 0.425rem !important;
-}
 .global-summary-alert .global-summary-arrows-row .up { color: var(--price-up-color); }
 .global-summary-alert .global-summary-arrows-row .down { color: var(--price-down-color); }
 .global-summary-alert .global-summary-arrows-row .min-filter { font-weight:500; opacity:0.7; }
@@ -1145,12 +1142,12 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-summary-alert .global-summary-actions button[disabled] { opacity:0.35; cursor:default; }
 /* Mute button matches tiny-toggle style */
 /* arrow size */
-.global-summary-alert .global-summary-arrows-row .arrow { font-size:1.75rem; line-height:1; position:relative; top:2px; }
+.global-summary-alert .global-summary-arrows-row .arrow { font-size:1.1rem; line-height:1; position:relative; top:0px; }
 /* Increase the font size of the count next to chevron arrows in global movers */
 .global-summary-arrows-row .arrow-count {
-    font-size: 2.0em;
+    font-size: 1.25em;
     font-weight: 700;
-    margin-left: 2px;
+    margin-left: 4px;
     margin-right: 8px;
     vertical-align: middle;
     display: inline-block;
