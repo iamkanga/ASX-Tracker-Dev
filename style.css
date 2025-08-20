@@ -1,13 +1,26 @@
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 0;
+}
 /* Ensure 52-week explainer row is horizontal and not wrapped vertically */
 .low52-thresh-row {
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: flex-end;
+    justify-content: flex-start;
     gap: 6px;
-    margin-top: 2px;
+    margin-top: 8px;
     margin-bottom: 0;
     width: 100%;
     white-space: nowrap;
+    position: absolute;
+    left: 18px;
+    bottom: 10px;
+}
 }
 /* Add margin to code button arrow for better spacing */
 .asx-toggle-triangle {
@@ -122,15 +135,16 @@
     padding: 10px 12px;
     box-shadow: 0 2px 8px rgba(164,147,147,0.10);
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: stretch;
-    gap: 8px 18px;
+    gap: 8px 0;
     min-width: 0;
     max-width: 100%;
     width: 100%;
     margin: 0;
     border: 1px solid var(--border-color, #333);
     transition: box-shadow 0.18s, background 0.2s, color 0.2s, border 0.2s;
+    position: relative;
 }
 
 /* 52-Week Low: Red theme */

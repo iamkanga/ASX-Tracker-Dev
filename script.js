@@ -9924,11 +9924,11 @@ function showTargetHitDetailsModal(options={}) {
                     <span class="low52-code">${item.code}</span>
                     <span class="low52-name">${item.name}</span>
                 </div>
-                <div class="low52-card-row">
+                <div class="low52-card-row low52-price-row">
                     <span class="low52-price">$${Number(item.live).toFixed(2)}</span>
                     <button class="low52-mute-btn" data-idx="${idx}">Mute</button>
                 </div>
-                <div class="low52-card-row low52-thresh-row">
+                <div class="low52-thresh-row">
                     <span class="low52-thresh">${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)}</span>
                 </div>
             `;
