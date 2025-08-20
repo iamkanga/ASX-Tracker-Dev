@@ -1,3 +1,4 @@
+.low52-price-row {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -20,7 +21,6 @@
     position: absolute;
     left: 18px;
     bottom: 10px;
-}
 }
 /* Add margin to code button arrow for better spacing */
 .asx-toggle-triangle {
@@ -94,7 +94,7 @@
     color: var(--global-summary-title-color, var(--text-color, #222)) !important;
     box-shadow: none !important;
 }
-}
+
 /* Mute button for 52-week low: charcoal, white, small, compact */
 .low52-mute-btn {
     background: var(--card-bg, #fff);
