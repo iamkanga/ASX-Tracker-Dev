@@ -4502,11 +4502,18 @@ table tbody tr.target-hit-alert td,
 table td .share-code-display { /* New class for the ASX code span */
     font-size: 1.2em; /* Larger for the code */
     font-weight: 700;
+    color: var(--asx-code-color, inherit);
 }
 
 table td .live-price-value {
     font-size: 1.2em; /* Larger for the live price number */
     font-weight: 700;
+    color: var(--live-price-color, inherit);
+}
+/* Force ASX Code and Live Price to pure white in dark theme */
+body.dark-theme table td .share-code-display,
+body.dark-theme table td .live-price-value {
+    color: #fff !important;
 }
 
 /* Apply coloring to specific text elements */
