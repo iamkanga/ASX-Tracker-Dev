@@ -509,7 +509,7 @@ function makeFilesAvailableToSourceControlCSS() {
 .mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green,#008000) !important; }
 .mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red,#c42131) !important; }
 .alert-target-price { font-weight:600; }
-.asx-code-buttons-scroll { max-height:220px; overflow-y:auto; -webkit-overflow-scrolling:touch; position:relative; }
+.asx-code-buttons-scroll { max-height:220px; overflow-y:auto; position:relative; }
 .asx-code-buttons-scroll::-webkit-scrollbar { width:6px; }
 .asx-code-buttons-scroll::-webkit-scrollbar-track { background:transparent; }
 .asx-code-buttons-scroll::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.25); border-radius:3px; }
@@ -3586,11 +3586,11 @@ body.sidebar-active {
 }
 
 #appVersion {
-    font-size: 0.5em; /* Further reduced size */
+    font-size: 0.6rem; /* About 1/3 of the title's size */
     color: var(--ghosted-text);
-    opacity: 0.6;
-    font-weight: 400; /* Not bold */
-    margin-left: 4px; /* A little space from the title */
+    opacity: 0.8; /* More visible */
+    font-weight: 400;
+    margin-left: 8px; /* More space from the title */
 }
 /* Force vivid plus icon */
 #appHeader #addShareHeaderBtn i, #appHeader #addShareHeaderBtn svg { opacity:1 !important; color:var(--accent-color,#a49393) !important; mix-blend-mode:normal; }
@@ -6966,7 +6966,6 @@ body.dark-theme .alert-item {
     width: 100%;
     max-height: 200px;
     overflow-y: auto;
-    -webkit-overflow-scrolling: touch; /* For smoother scrolling on iOS */
     background-color: var(--card-bg); /* Use card background for suggestions */
     border: 1px solid var(--border-color);
     border-top: none; /* No top border, blends with input */

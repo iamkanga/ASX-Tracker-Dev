@@ -1,17 +1,60 @@
 import asyncio
 from playwright.async_api import async_playwright
 import os
+import http.server
+import socketserver
+import threading
+
+PORT = 8000
+
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=".", **kwargs)
+
+def run_server():
+    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+        print(f"serving at port {PORT}")
+        httpd.serve_forever()
+
+def handle_console_message(msg):
+    print(f"Browser console: {msg.text}")
 
 async def main():
+    # Start the server in a separate thread
+    server_thread = threading.Thread(target=run_server)
+    server_thread.daemon = True
+    server_thread.start()
+
+    # Give the server a moment to start
+    await asyncio.sleep(1)
+
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         page = await browser.new_page()
 
-        # Get the absolute path to the index.html file
-        file_path = os.path.abspath('index.html')
+        # Listen for console events and print them
+        page.on("console", handle_console_message)
 
-        # Navigate to the local HTML file
-        await page.goto(f'file://{file_path}')
+        # Navigate to the local server
+        await page.goto(f'http://localhost:{PORT}/index.html')
+
+        # Wait until the function is defined on the window object
+        await page.wait_for_function('typeof window.updateTargetHitBanner === "function"')
+
+        # Inject a dummy 52-week low alert to make the icon visible
+        await page.evaluate('''() => {
+            window.sharesAt52WeekLow = [{
+                code: 'CBA',
+                name: 'Commonwealth Bank (Test Card)',
+                type: 'low',
+                low52: 90.00,
+                high52: 120.00,
+                live: 91.23,
+                isTestCard: true,
+                muted: false
+            }];
+            window.updateTargetHitBanner();
+        }''')
 
         # Wait for the target hit icon to be visible
         target_hit_icon = page.locator('#targetHitIconBtn')
@@ -29,4 +72,8 @@ async def main():
 
         await browser.close()
 
-asyncio.run(main())
+    # The server thread is a daemon, so it will exit when the main thread exits.
+    # No need to explicitly stop it.
+
+if __name__ == "__main__":
+    asyncio.run(main())
