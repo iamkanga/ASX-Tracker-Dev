@@ -61,6 +61,39 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // ...existing code...
 
+// --- 52-Week Alert Card Dynamic Theming & Mute Button Fix ---
+// Helper to apply dynamic theme class to 52-week alert card
+function applyLow52AlertTheme(card, type) {
+    if (!card) return;
+    card.classList.remove('low52-low', 'low52-high');
+    if (type === 'low') card.classList.add('low52-low');
+    else if (type === 'high') card.classList.add('low52-high');
+    // Always ensure .low52-alert-card is present
+    card.classList.add('low52-alert-card');
+}
+
+// Patch: Ensure mute button is fully clickable
+function fixLow52MuteButton(card) {
+    if (!card) return;
+    const muteBtn = card.querySelector('.low52-mute-btn');
+    if (muteBtn) {
+        // Remove all existing listeners to avoid stacking
+        const newBtn = muteBtn.cloneNode(true);
+        muteBtn.parentNode.replaceChild(newBtn, muteBtn);
+        newBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            // Custom mute logic (toggle hidden/minimized)
+            card.classList.add('low52-card-hidden');
+            // Optionally: persist mute state if needed
+        });
+    }
+}
+
+// Example usage after rendering a 52-week alert card:
+// applyLow52AlertTheme(cardEl, 'low');
+// fixLow52MuteButton(cardEl);
+
 // Title mutation observer guard to restore if emptied by outside DOM ops
 try {
     (function installTitleGuard(){
