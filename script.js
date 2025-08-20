@@ -2630,7 +2630,7 @@ function addShareToMobileCards(share) {
             </div>
         </div>
     <!-- Entry Price removed from mobile card main view -->
-    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value"><span class="alert-target-inline">${renderAlertTargetInline(share)}</span></span></p>` : '' })()}
+    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value">${renderAlertTargetInline(share)}</span></p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
@@ -2985,7 +2985,7 @@ function updateOrCreateShareMobileCard(share) {
         <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
         <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
     <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
-    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value"><span class="alert-target-inline">${renderAlertTargetInline(share)}</span></span></p>` : '' })()}
+    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value">${renderAlertTargetInline(share)}</span></p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
