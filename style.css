@@ -1,12 +1,4 @@
-/* Trailing chevron for 52-week alert title */
-.low52-title-chevron {
-    color: #b22222;
-    font-size: 1.15em;
-    font-weight: 700;
-    margin-left: 6px;
-    vertical-align: middle;
-    display: inline-block;
-}
+/* The .low52-title-chevron class has been removed and replaced by .low52-arrow-icon */
 /* Hide minimized (muted) 52-week alert cards but keep them in the DOM */
 .low52-card-hidden {
     display: none !important;
@@ -73,13 +65,11 @@
     align-items: flex-end;
     justify-content: flex-start;
     gap: 6px;
-    margin-top: 8px;
+    margin-top: auto; /* Pushes to the bottom of the flex container */
     margin-bottom: 0;
     width: 100%;
     white-space: nowrap;
-    position: absolute;
-    left: 18px;
-    bottom: 10px;
+    padding-top: 8px; /* Add some space above it */
 }
 /* Add margin to code button arrow for better spacing */
 .asx-toggle-triangle {
@@ -199,7 +189,6 @@
     width: 100%;
 }
 /* 52-Week Alert Card: Themed for High/Low, matches global movers/target hit */
-/* 52-Week Alert Card: Themed for High/Low, matches global movers/target hit */
 .low52-alert-card {
     border-radius: 8px;
     padding: 10px 12px;
@@ -207,18 +196,15 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 8px 0;
+    gap: 4px 0; /* Reduced gap for a tighter layout */
     min-width: 320px;
     max-width: 540px;
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    margin: 0;
+    margin: 0 auto; /* Center the card horizontally */
     background: var(--card-bg);
     border: none;
     transition: box-shadow 0.18s, background 0.2s, color 0.2s;
-    position: relative;
-    overflow: visible;
+    min-height: 90px; /* Ensure a minimum height for proper layout */
+    justify-content: space-between; /* This will push the threshold row to the bottom */
 }
 
 /* 52-Week Low: Red theme (dynamic) */
@@ -1038,7 +1024,10 @@ function makeFilesAvailableToSourceControlCSS() {
 
     /* 52-Week Low Alert Theme Variables */
     --low52-thresh-color: #fff;
-    --low52-card-bg: #f7f7fa;
+    --low52-bg: rgba(178, 34, 34, 0.1);
+    --high52-bg: rgba(26, 110, 26, 0.1);
+    --low52-color: #b22222;
+    --high52-color: #1a6e1a;
 
     /* UPDATED: Cash & Assets Section Colors */
     --cash-section-bg: #f8f9fa;
@@ -1462,7 +1451,10 @@ body.dark-theme {
     --green-color-dark-rgb: 46, 204, 113; /* RGB for #2ECC71 */
     /* 52-Week Low Alert Theme Variables */
     --low52-thresh-color: #fff;
-    --low52-card-bg: #23242a;
+    --low52-bg: rgba(178, 34, 34, 0.25);
+    --high52-bg: rgba(26, 110, 26, 0.25);
+    --low52-color: #ff8a8a;
+    --high52-color: #8aff8a;
     /* UPDATED: Cash & Assets Section Colors (Dark Theme) */
     --cash-section-bg: #282828;
     --cash-card-bg: #333333;
