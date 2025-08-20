@@ -150,6 +150,17 @@ function makeFilesAvailableToSourceControl() {
 // --- 52-Week Low Alert State ---
 let sharesAt52WeekLow = [];
 const triggered52WeekLowSet = new Set();
+// Load muted 52-week alerts from session storage
+let __low52MutedMap = {};
+try {
+    const stored = sessionStorage.getItem('low52MutedMap');
+    if (stored) {
+        __low52MutedMap = JSON.parse(stored);
+    }
+} catch (e) {
+    __low52MutedMap = {};
+}
+window.__low52MutedMap = __low52MutedMap;
 
 // Helper: Sort shares by percentage change
 function sortSharesByPercentageChange(shares) {
@@ -1732,7 +1743,8 @@ async function fetchLivePrices(opts = {}) {
                 const code = (share.shareName || '').toUpperCase();
                 const lpObj = livePrices ? livePrices[code] : undefined;
                 if (!lpObj || lpObj.live == null || isNaN(lpObj.live) || lpObj.Low52 == null || isNaN(lpObj.Low52)) return;
-                if (lpObj.live <= lpObj.Low52 && !triggered52WeekLowSet.has(code)) {
+                const isMuted = window.__low52MutedMap && window.__low52MutedMap[code + '_low'];
+                if (lpObj.live <= lpObj.Low52 && !triggered52WeekLowSet.has(code) && !isMuted) {
                     // Try to get the correct company name from allAsxCodes
                     let displayName = code;
                     if (Array.isArray(allAsxCodes)) {
@@ -9956,15 +9968,9 @@ function showTargetHitDetailsModal(options={}) {
     }
     // Refactored to use a themeable SVG arrow icon
     const arrowSVG = `<svg class="low52-arrow-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5H7z"/></svg>`;
-    low52Title.innerHTML = `${arrowSVG}<span class="low52-title-text">52 week alerts</span>`;
+    low52Title.innerHTML = `<span class="low52-title-text">52 Week Low</span>${arrowSVG}`;
     sectionHeader.appendChild(low52Title);
     targetHitSharesList.appendChild(sectionHeader);
-        if (!window.__low52MutedMap) {
-            try {
-                const stored = sessionStorage.getItem('low52MutedMap');
-                window.__low52MutedMap = stored ? JSON.parse(stored) : {};
-            } catch { window.__low52MutedMap = {}; }
-        }
         // Split into unmuted and muted
         const unmuted = [], muted = [];
         sharesAt52WeekLow.forEach((item, idx) => {
@@ -9999,9 +10005,15 @@ function showTargetHitDetailsModal(options={}) {
                 e.stopPropagation();
                 window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = true;
                 try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
-                // Instead of removing, just hide the card
-                card.classList.add('low52-card-hidden');
-                // Optionally, re-render modal to update state
+
+                // Decrement the live count
+                const indexToRemove = sharesAt52WeekLow.findIndex(share => share.code === item.code && share.type === item.type);
+                if (indexToRemove > -1) {
+                    sharesAt52WeekLow.splice(indexToRemove, 1);
+                }
+                updateTargetHitBanner();
+
+                // Re-render modal to update state
                 showTargetHitDetailsModal();
             };
             // Click-through to search modal
@@ -10047,6 +10059,14 @@ function showTargetHitDetailsModal(options={}) {
                 e.stopPropagation();
                 window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = false;
                 try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
+
+                // Add back to the list if it's not a duplicate, then update banner
+                const alreadyExists = sharesAt52WeekLow.some(share => share.code === item.code && share.type === item.type);
+                if (!alreadyExists) {
+                    sharesAt52WeekLow.push(item);
+                }
+                updateTargetHitBanner();
+
                 showTargetHitDetailsModal();
             };
             // Click-through to search modal
