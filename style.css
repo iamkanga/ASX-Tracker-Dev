@@ -4,6 +4,8 @@
     max-width: 540px;
     margin-left: auto;
     margin-right: auto;
+    width: 100%;
+    overflow: hidden;
 }
 /* 52-week alert header row: code/name left, price right */
 .low52-header-row {
@@ -14,6 +16,7 @@
     width: 100%;
     gap: 8px;
     margin-bottom: 0;
+    flex-wrap: wrap;
 }
 .low52-header-row .low52-code, .low52-header-row .low52-name {
     flex: 0 1 auto;
@@ -28,6 +31,10 @@
     color: var(--text-color, #222);
     text-align: right;
     min-width: 64px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .low52-action-row {
     display: flex;
@@ -193,11 +200,11 @@
     width: 100%;
     margin-left: auto;
     margin-right: auto;
-    margin: 0;
     background: var(--card-bg, #fff);
     border: 1px solid var(--border-color, #333);
     transition: box-shadow 0.18s, background 0.2s, color 0.2s, border 0.2s;
     position: relative;
+    overflow: hidden; /* Prevent overflow */
 }
 
 /* 52-Week Low: Red theme (dynamic) */
