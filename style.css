@@ -72,11 +72,14 @@
 }
 .low52-title-text {
     vertical-align: middle;
-    font-size: 1.05rem;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    color: inherit;
-    padding: 0 2px;
+    font-size:1.05rem;
+    font-weight:600;
+    margin:6px 2px 4px 2px;
+    padding:0 2px;
+    letter-spacing:0.5px;
+    background: none !important;
+    color: var(--global-summary-title-color, var(--text-color, #222)) !important;
+    box-shadow: none !important;
 }
 }
 /* Mute button for 52-week low: charcoal, white, small, compact */
