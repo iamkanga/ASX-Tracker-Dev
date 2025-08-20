@@ -739,12 +739,12 @@ function makeFilesAvailableToSourceControlCSS() {
     text-align: right;
     letter-spacing: 0.01em;
     margin-left: 1em;
-    font-size: 1.18rem;
+    font-size: 0.59rem; /* Reduced to 50% of original for target hit notifications */
 }
 /* Portfolio card percent styling (color set by theme below) */
 /* Portfolio card percent styling (color set by theme below) */
 .portfolio-card .pc-pct {
-    font-size: 1.08rem;
+    font-size: 0.54rem; /* Reduced to 50% of original for target hit notifications */
     font-weight: 600;
     margin-left: 8px;
     color: var(--label-color);
@@ -1257,7 +1257,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Legacy summary block styles replaced by new grid layout above */
 
 /* Global Alerts Modal */
-.global-alerts-modal { max-width:420px; }
+.global-alerts-modal { max-width:420px; background: var(--modal-content-bg, #fff) !important; }
 .global-alerts-form .form-row { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
 .global-alerts-form label { font-weight:600; font-size:0.85rem; }
 
