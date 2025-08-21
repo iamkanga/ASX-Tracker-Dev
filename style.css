@@ -1,15 +1,9 @@
-/* Trailing chevron for 52-week alert title */
-.low52-title-chevron {
-    color: #b22222;
-    font-size: 1.15em;
-    font-weight: 700;
-    margin-left: 6px;
-    vertical-align: middle;
-    display: inline-block;
-}
-/* Hide minimized (muted) 52-week alert cards but keep them in the DOM */
+/* The .low52-title-chevron class has been removed and replaced by .low52-arrow-icon */
+/* Ghost out muted 52-week alert cards instead of hiding them */
 .low52-card-hidden {
-    display: none !important;
+    opacity: 0.5;
+    filter: grayscale(80%);
+    transition: opacity 0.3s ease, filter 0.3s ease;
 }
 /* Target hit notification container inside 52-week alert: match global movers width */
 .low52-alert-card .target-hit-item.global-summary-alert {
@@ -29,24 +23,30 @@
     margin-bottom: 0;
 }
 .low52-header-row .low52-code {
-    flex: 0 1 auto;
-    font-weight: 600;
-    font-size: 1.05em;
-    margin-right: 6px;
+    flex: 0 0 auto; /* Don't shrink the code */
+    font-weight: 700; /* Bolder code */
+    font-size: 1em; /* Adjusted size */
+    margin-right: 8px;
+    white-space: nowrap;
 }
 .low52-header-row .low52-name {
-    flex: 0 1 auto;
-    font-weight: 600;
-    font-size: 1.05em;
-    margin-right: 6px;
+    flex: 1 1 auto; /* Allow name to take up space and shrink */
+    font-weight: 400;
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--ghosted-text); /* Muted color for the name */
+    text-align: left;
 }
 .low52-header-row .low52-price {
     margin-left: auto;
-    font-weight: 600;
-    font-size: 1.05em;
+    font-weight: 700; /* Bolder price */
+    font-size: 1em; /* Adjusted size */
     color: var(--text-color, #222);
     text-align: right;
-    min-width: 64px;
+    min-width: 70px; /* A bit more space */
+    flex-shrink: 0; /* Don't shrink the price */
 }
 .low52-action-row {
     display: flex;
@@ -73,13 +73,10 @@
     align-items: flex-end;
     justify-content: flex-start;
     gap: 6px;
-    margin-top: 8px;
+    margin-top: auto; /* Pushes to the bottom of the flex container */
     margin-bottom: 0;
     width: 100%;
-    white-space: nowrap;
-    position: absolute;
-    left: 18px;
-    bottom: 10px;
+    padding-top: 8px; /* Add some space above it */
 }
 /* Add margin to code button arrow for better spacing */
 .asx-toggle-triangle {
@@ -142,15 +139,15 @@
     position: relative;
     top: 1px;
     /* Use CSS variable for stroke color, fallback to theme color */
-    stroke: var(--low52-arrow-color, #b22222);
+    stroke: var(--low52-color);
     /* For SVGs, set fill to none and allow stroke to inherit */
     fill: none;
 }
 .low52-high .low52-arrow-icon {
-    stroke: var(--high52-arrow-color, #1a6e1a);
+    stroke: var(--high52-color);
 }
 .low52-low .low52-arrow-icon {
-    stroke: var(--low52-arrow-color, #b22222);
+    stroke: var(--low52-color);
 }
 .low52-title-text {
     vertical-align: middle;
@@ -197,8 +194,8 @@
     margin-bottom: 12px;
     align-items: stretch;
     width: 100%;
+    justify-content: center;
 }
-/* 52-Week Alert Card: Themed for High/Low, matches global movers/target hit */
 /* 52-Week Alert Card: Themed for High/Low, matches global movers/target hit */
 .low52-alert-card {
     border-radius: 8px;
@@ -207,39 +204,33 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 8px 0;
-    min-width: 320px;
-    max-width: 540px;
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    margin: 0;
+    gap: 4px 0; /* Reduced gap for a tighter layout */
+    flex: 1 1 300px; /* Allow card to grow and shrink, with a preferred base width */
+    max-width: 100%; /* Prevent it from exceeding its container's width */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
     background: var(--card-bg);
-    border: none;
-    transition: box-shadow 0.18s, background 0.2s, color 0.2s;
-    position: relative;
-    overflow: visible;
+    border: 2px solid var(--border-color); /* Default border */
+    transition: box-shadow 0.18s, background 0.2s, color 0.2s, border-color 0.2s;
+    min-height: 90px; /* Ensure a minimum height for proper layout */
+    justify-content: space-between; /* This will push the threshold row to the bottom */
 }
 
-/* 52-Week Low: Red theme (dynamic) */
-/* 52-Week Low: Red theme (dynamic) */
 .low52-alert-card.low52-low {
-    background: var(--low52-bg, var(--card-bg));
-    border: none;
-    color: var(--low52-color, #b22222);
+    background-color: var(--card-bg);
+    border-color: var(--brand-red); /* Themed border color */
+    color: var(--brand-red);
 }
 
-/* 52-Week High: Green theme (dynamic) */
 /* 52-Week High: Green theme (dynamic) */
 .low52-alert-card.low52-high {
-    background: var(--high52-bg, var(--card-bg));
-    border: none;
+    background-color: var(--card-bg);
+    border-color: var(--high52-color, #1a6e1a); /* Themed border color */
     color: var(--high52-color, #1a6e1a);
 }
 
 /* Card heading and value color overrides for contrast (dynamic) */
 .low52-alert-card.low52-low .low52-heading, .low52-alert-card.low52-low .low52-code {
-    color: var(--low52-color, #b22222) !important;
+    color: var(--brand-red) !important;
 }
 .low52-alert-card.low52-high .low52-heading, .low52-alert-card.low52-high .low52-code {
     color: var(--high52-color, #1a6e1a) !important;
@@ -491,10 +482,34 @@ function makeFilesAvailableToSourceControlCSS() {
 .alert-target-arrow { font-size:0.85rem; font-weight:700; }
 .alert-target-arrow.up { color: var(--brand-green,#008000); }
 .alert-target-arrow.down { color: var(--brand-red,#c42131); }
+
+/* Enhanced styling for Alert Target on mobile cards */
+.mobile-card .alert-target-row {
+    font-weight: 500;
+    font-size: 0.95em;
+    justify-content: space-between; /* Ensure label and value are spaced */
+}
+
+.mobile-card .alert-target-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.25em 0.6em;
+    border-radius: var(--border-radius);
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.alert-target-intent {
+    font-weight: 700;
+    font-size: 0.9em;
+    margin-right: 0.2em;
+}
 .mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green,#008000) !important; }
 .mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red,#c42131) !important; }
 .alert-target-price { font-weight:600; }
-.asx-code-buttons-scroll { max-height:220px; overflow-y:auto; -webkit-overflow-scrolling:touch; position:relative; }
+.asx-code-buttons-scroll { max-height:220px; overflow-y:auto; position:relative; }
 .asx-code-buttons-scroll::-webkit-scrollbar { width:6px; }
 .asx-code-buttons-scroll::-webkit-scrollbar-track { background:transparent; }
 .asx-code-buttons-scroll::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.25); border-radius:3px; }
@@ -1038,7 +1053,10 @@ function makeFilesAvailableToSourceControlCSS() {
 
     /* 52-Week Low Alert Theme Variables */
     --low52-thresh-color: #fff;
-    --low52-card-bg: #f7f7fa;
+    --low52-bg: rgba(178, 34, 34, 0.1);
+    --high52-bg: rgba(26, 110, 26, 0.1);
+    --low52-color: var(--brand-red);
+    --high52-color: var(--brand-green);
 
     /* UPDATED: Cash & Assets Section Colors */
     --cash-section-bg: #f8f9fa;
@@ -1122,13 +1140,26 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-summary-alert .global-summary-title { font-weight:700; font-size:1.25rem; letter-spacing:.5px; }
 .global-summary-alert .global-summary-detail { font-size:0.88rem; line-height:1.35; opacity:0.95; }
 .global-summary-alert .global-summary-detail.portfolio-line, .global-summary-alert .global-summary-detail.others-line { margin-top:2px; }
-.global-summary-alert .global-summary-arrows-row { display:flex; gap:18px; font-size:0.85rem; font-weight:600; align-items:center; margin:2px 0 4px; flex-wrap:wrap; }
-.global-summary-alert.target-hit-item .global-summary-arrows-row {
-    font-size: 0.425rem !important;
+.global-summary-alert .global-summary-arrows-row {
+    display: flex;
+    justify-content: center;
+    align-items: baseline; /* Better for text/icon alignment */
+    gap: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.4rem; /* Unified size */
 }
-.global-summary-alert .global-summary-arrows-row .up { color: var(--price-up-color); }
-.global-summary-alert .global-summary-arrows-row .down { color: var(--price-down-color); }
-.global-summary-alert .global-summary-arrows-row .min-filter { font-weight:500; opacity:0.7; }
+
+.global-summary-arrows-row .up,
+.global-summary-arrows-row .down {
+    color: var(--price-up-color);
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.global-summary-arrows-row .down {
+    color: var(--price-down-color);
+}
 /* Right column action stack */
 .global-summary-alert .global-summary-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; justify-content:flex-start; margin-top:auto; }
 /* Substantial action buttons */
@@ -1154,15 +1185,14 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-summary-alert .global-summary-actions button[disabled] { opacity:0.35; cursor:default; }
 /* Mute button matches tiny-toggle style */
 /* arrow size */
-.global-summary-alert .global-summary-arrows-row .arrow { font-size:1.75rem; line-height:1; position:relative; top:2px; }
+.global-summary-alert .global-summary-arrows-row .arrow {
+    font-size: 1em; /* Same size as number */
+    line-height: 1;
+    margin-right: 0.1em;
+}
 /* Increase the font size of the count next to chevron arrows in global movers */
 .global-summary-arrows-row .arrow-count {
-    font-size: 2.0em;
-    font-weight: 700;
-    margin-left: 2px;
-    margin-right: 8px;
-    vertical-align: middle;
-    display: inline-block;
+    font-weight: 600;
 }
 /* #globalMoversTitle ordering override removed to respect DOM sequence (was order:-1 previously) */
 .global-summary-alert .global-summary-detail.ignoring-line { font-size:0.65rem !important; opacity:0.55; letter-spacing:0.35px; text-transform:uppercase; font-weight:500; }
@@ -1462,7 +1492,10 @@ body.dark-theme {
     --green-color-dark-rgb: 46, 204, 113; /* RGB for #2ECC71 */
     /* 52-Week Low Alert Theme Variables */
     --low52-thresh-color: #fff;
-    --low52-card-bg: #23242a;
+    --low52-bg: rgba(178, 34, 34, 0.25);
+    --high52-bg: rgba(26, 110, 26, 0.25);
+    --low52-color: #ff8a8a;
+    --high52-color: #8aff8a;
     /* UPDATED: Cash & Assets Section Colors (Dark Theme) */
     --cash-section-bg: #282828;
     --cash-card-bg: #333333;
@@ -3543,6 +3576,21 @@ body.sidebar-active {
     flex-direction: column; /* Stack children vertically */
     padding: 15px 20px 0; /* Removed padding-bottom, will be determined by content + gap */
     gap: 10px; /* Space between header rows */
+}
+
+#dynamicWatchlistTitle {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px; /* Space between title and version */
+}
+
+#appVersion {
+    font-size: 0.6rem; /* About 1/3 of the title's size */
+    color: var(--ghosted-text);
+    opacity: 0.8; /* More visible */
+    font-weight: 400;
+    margin-left: 8px; /* More space from the title */
 }
 /* Force vivid plus icon */
 #appHeader #addShareHeaderBtn i, #appHeader #addShareHeaderBtn svg { opacity:1 !important; color:var(--accent-color,#a49393) !important; mix-blend-mode:normal; }
