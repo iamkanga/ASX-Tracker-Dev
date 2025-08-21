@@ -4958,7 +4958,7 @@ function renderWatchlist() {
             portfolioSection = document.createElement('div');
             portfolioSection.id = 'portfolioSection';
             portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
+            portfolioSection.innerHTML = '<div id="portfolioListContainer">Loading portfolio...</div>';
             if (mainContainer) mainContainer.appendChild(portfolioSection);
         }
         portfolioSection.style.display = 'block';
@@ -4969,7 +4969,6 @@ function renderWatchlist() {
     // Title handled by updateMainTitle
     // Show sort dropdown in portfolio too
     sortSelect.classList.remove('app-hidden');
-        refreshLivePricesBtn.classList.add('app-hidden');
         toggleCompactViewBtn.classList.add('app-hidden');
         exportWatchlistBtn.classList.remove('app-hidden'); // Allow export if desired
         // Render the portfolio list
