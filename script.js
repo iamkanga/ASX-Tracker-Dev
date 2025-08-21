@@ -11062,6 +11062,14 @@ try {
 })();
 // --- End Auto SuperDebug Fallback Trigger ---
 
+// --- Keyboard visibility detection ---
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+        const keyboardVisible = window.innerHeight > window.visualViewport.height;
+        document.body.classList.toggle('keyboard-visible', keyboardVisible);
+    });
+}
+
 // --- Super Debug Always-Install (resiliency) ---
 // Some users reported the panel not appearing with ?superdebug. This independent
 // installer guarantees superDebugDump exists early, without waiting for other UI.
