@@ -5937,39 +5937,41 @@ async function loadUserWatchlistsAndSettings() {
     savedSortOrder = null;
     savedTheme = null;
 
+        let loadedSelectedWatchlistIds = null;
         if (userProfileSnap.exists()) {
             const settingsData = userProfileSnap.data();
             savedSortOrder = settingsData.lastSortOrder;
             savedTheme = settingsData.lastTheme;
             applyLoadedGlobalAlertSettings(settingsData);
-            const loadedSelectedWatchlistIds = settingsData.lastSelectedWatchlistIds;
+            loadedSelectedWatchlistIds = settingsData.lastSelectedWatchlistIds;
             // Manual EOD preference removed; behavior is now automatic
-
-            if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
-                // Filter out invalid or non-existent watchlists from loaded preferences
-                // Treat 'portfolio' as a valid special view alongside All Shares and Cash & Assets
-                currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id => 
-                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
-                );
-                logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
-            } else {
-                logDebug('User Settings: No valid last selected watchlists in profile. Will determine default.');
-            }
         } else {
-            logDebug('User Settings: User profile settings not found. Will determine default watchlist selection.');
+            logDebug('User Settings: User profile settings not found. This is a first-time user. Setting default sort order to A-Z.');
+            // This is a first-time user, set default sort order.
+            savedSortOrder = 'shareName-asc';
+            // Also, save this preference to their new profile.
+            await saveSortOrderPreference(savedSortOrder);
         }
 
-        // Prefer local device's last selected view if available and valid
-        try {
-            const lsView = localStorage.getItem('lastSelectedView');
-            if (lsView) {
-                const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || userWatchlists.some(wl => wl.id === lsView);
-                if (isValid) {
-                    currentSelectedWatchlistIds = [lsView];
-                    logDebug('User Settings: Overriding selection with localStorage lastSelectedView: ' + lsView);
+        // Restore last selected view: Profile > localStorage > Default
+        if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
+            currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id =>
+                id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
+            );
+            logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
+        } else {
+            logDebug('User Settings: No valid last selected watchlists in profile. Checking localStorage fallback.');
+            try {
+                const lsView = localStorage.getItem('lastSelectedView');
+                if (lsView) {
+                    const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || userWatchlists.some(wl => wl.id === lsView);
+                    if (isValid) {
+                        currentSelectedWatchlistIds = [lsView];
+                        logDebug('User Settings: Using localStorage lastSelectedView as fallback: ' + lsView);
+                    }
                 }
-            }
-        } catch(e) { /* ignore */ }
+            } catch(e) { /* ignore */ }
+        }
 
         // Determine final currentSelectedWatchlistIds if not set or invalid after loading/filtering
         if (!currentSelectedWatchlistIds || currentSelectedWatchlistIds.length === 0) {

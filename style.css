@@ -442,6 +442,8 @@
     #shareDetailModal .modal-action-icon, #shareDetailModal .close-button,
     #addWatchlistModal .modal-action-icon, #addWatchlistModal .modal-header-with-icon .close-button,
     #manageWatchlistModal .modal-action-icon, #manageWatchlistModal .modal-header-with-icon .close-button,
+    #cashAssetFormModal .modal-action-icon, #cashAssetFormModal .close-button,
+    #cashAssetDetailModal .modal-action-icon, #cashAssetDetailModal .close-button,
     #watchlistViewModal .modal-action-icon, #watchlistViewModal .close-button,
     #alertsModal .modal-action-icon, #alertsModal .close-button,
     .modal-container .modal-action-icon, .modal-container .close-button {
