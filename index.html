@@ -204,7 +204,7 @@
                 <i class="fas fa-bars"></i>
             </button>
             <!-- Single dynamic clickable title acts as the only title bar -->
-            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span><span id="appVersion" class="app-version-badge">v0.1.15</span></h1>
+            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span><span id="appVersion" class="app-version-badge">v0.1.16</span></h1>
             <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right icon-button" aria-label="Add Share">
                 <i class="fas fa-plus"></i>
             </button>
@@ -220,6 +220,7 @@
         
         <div id="asxCodeButtonsContainer" class="asx-code-buttons-container">
             </div>
+    <div id="livePriceTimestamp" style="position: absolute; bottom: 5px; left: 15px; font-size: 1.2rem;"></div>
     </header>
         <!-- Watchlist selection modal -->
         <div id="watchlistPickerModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="watchlistPickerTitle">
@@ -510,13 +511,10 @@
                     <!-- Portfolio Holdings -->
                     <div class="accordion-section" data-section="portfolio">
                         <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-portfolio" id="accordion-header-portfolio">
-                            <span id="portfolioLastUpdatedHeader" class="ghosted-text" style="font-size: 0.98em;"></span>
+                            <span class="accordion-title">Portfolio Holdings</span>
                             <span class="accordion-caret" aria-hidden="true"></span>
                         </button>
                         <div id="accordion-panel-portfolio" class="accordion-panel" role="region" aria-labelledby="accordion-header-portfolio">
-                            <div id="portfolioLastUpdatedContainer" style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 8px;">
-                                <span id="portfolioLastUpdated" class="ghosted-text" style="font-size: 0.95em;"></span>
-                            </div>
                             <label for="portfolioShares">Number of Shares:</label>
                             <input type="number" id="portfolioShares" min="0" step="1" placeholder="1000" class="smart-ph">
 
