@@ -150,17 +150,6 @@ function makeFilesAvailableToSourceControl() {
 // --- 52-Week Low Alert State ---
 let sharesAt52WeekLow = [];
 const triggered52WeekLowSet = new Set();
-// Load muted 52-week alerts from session storage
-let __low52MutedMap = {};
-try {
-    const stored = sessionStorage.getItem('low52MutedMap');
-    if (stored) {
-        __low52MutedMap = JSON.parse(stored);
-    }
-} catch (e) {
-    __low52MutedMap = {};
-}
-window.__low52MutedMap = __low52MutedMap;
 
 // Helper: Sort shares by percentage change
 function sortSharesByPercentageChange(shares) {
@@ -719,8 +708,8 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 // Guard against unintended re-opening of the Share Edit modal shortly after save
 let suppressShareFormReopen = false;
 
-// App version (displayed in UI title bar)
-const APP_VERSION = 'v0.1.14';
+// App version (kept for internal logging; no longer displayed in UI title bar)
+const APP_VERSION = 'v0.1.5';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -1743,7 +1732,6 @@ async function fetchLivePrices(opts = {}) {
                 const code = (share.shareName || '').toUpperCase();
                 const lpObj = livePrices ? livePrices[code] : undefined;
                 if (!lpObj || lpObj.live == null || isNaN(lpObj.live) || lpObj.Low52 == null || isNaN(lpObj.Low52)) return;
-                const isMuted = !!(window.__low52MutedMap && window.__low52MutedMap[code + '_low']);
                 if (lpObj.live <= lpObj.Low52 && !triggered52WeekLowSet.has(code)) {
                     // Try to get the correct company name from allAsxCodes
                     let displayName = code;
@@ -1756,9 +1744,7 @@ async function fetchLivePrices(opts = {}) {
                         code,
                         name: displayName,
                         live: lpObj.live,
-                        low52: lpObj.Low52,
-                        type: 'low',
-                        muted: isMuted
+                        low52: lpObj.Low52
                     });
                     triggered52WeekLowSet.add(code);
                 }
@@ -1775,8 +1761,7 @@ async function fetchLivePrices(opts = {}) {
                     low52: 90.00,
                     high52: 120.00,
                     live: 91.23,
-                    isTestCard: true,
-                    muted: !!window.__low52MutedMap['CBA_low']
+                    isTestCard: true
                 });
             }
         }
@@ -1994,6 +1979,7 @@ function closeModals() {
             modal.style.setProperty('display', 'none', 'important');
         }
     });
+    document.body.classList.remove('modal-open');
     resetCalculator();
     deselectCurrentShare();
 
@@ -2047,9 +2033,10 @@ function showCustomAlert(message, duration = 3000, type = 'info') {
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             toast.setAttribute('role', 'status');
-            toast.innerHTML = `<span class="icon"></span><div class="message"></div>`;
+            toast.innerHTML = `<span class="icon"></span><div class="message"></div><button class="close" aria-label="Dismiss">×</button>`;
             toast.querySelector('.message').textContent = message;
             const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
+            toast.querySelector('.close').addEventListener('click', remove);
             container.appendChild(toast);
             requestAnimationFrame(()=> toast.classList.add('show'));
             if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
@@ -2075,10 +2062,12 @@ const ToastManager = (() => {
         const iconHTML = `<span class="icon"></span>`;
         const msgHTML = `<div class="message"></div>`;
         const actionsHTML = actions.length ? `<div class="actions">${actions.map(a=>`<button class=\"btn ${a.variant||''}\">${a.label}</button>`).join('')}</div>` : '';
-        const closeHTML = ``; // REMOVED
+        const closeHTML = `<button class="close" aria-label="Dismiss">×</button>`;
         toast.innerHTML = `${iconHTML}${msgHTML}${actionsHTML}${closeHTML}`;
         toast.querySelector('.message').textContent = message || '';
+        const closeBtn = toast.querySelector('.close');
         const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
+        closeBtn.addEventListener('click', remove);
         // Wire actions
         const actionBtns = toast.querySelectorAll('.actions .btn');
         actionBtns.forEach((btn, idx) => {
@@ -2985,7 +2974,7 @@ function updateOrCreateShareMobileCard(share) {
         <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
         <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
     <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
-    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value">${renderAlertTargetInline(share)}</span></p>` : '' })()}
+    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value"><span class="alert-target-inline">${renderAlertTargetInline(share)}</span></span></p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
@@ -3055,6 +3044,7 @@ function showModal(modalElement) {
         // Push a new history state for every modal open
         pushAppState({ modalId: modalElement.id }, '', '');
         modalElement.style.setProperty('display', 'flex', 'important');
+        document.body.classList.add('modal-open');
         modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (scrollableContent) {
@@ -6093,7 +6083,7 @@ function updateTargetHitBanner() {
     }
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
-    const low52Count = Array.isArray(sharesAt52WeekLow) ? sharesAt52WeekLow.filter(item => !item.muted).length : 0;
+    const low52Count = Array.isArray(sharesAt52WeekLow) ? sharesAt52WeekLow.length : 0;
     // Treat global summary counts as zero if directional thresholds are fully inactive (prevents stale badge after clearing)
     const directionalActive = isDirectionalThresholdsActive ? isDirectionalThresholdsActive() : (
         (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ||
@@ -8240,31 +8230,6 @@ async function deleteAllUserData() {
     });
 }
 
-function restorePersistedState() {
-    logDebug('State Management: Restoring persisted state from localStorage.');
-
-    // Restore Compact View Mode
-    const savedMobileViewMode = localStorage.getItem('currentMobileViewMode');
-    if (savedMobileViewMode === 'compact' || savedMobileViewMode === 'default') {
-        currentMobileViewMode = savedMobileViewMode;
-        logDebug(`State Management: Restored mobile view mode to '${currentMobileViewMode}'.`);
-    }
-
-    // Restore Last Selected Watchlist/View
-    const savedLastView = localStorage.getItem('lastSelectedView');
-    if (savedLastView) {
-        currentSelectedWatchlistIds = [savedLastView];
-        logDebug(`State Management: Restored last selected view to '${savedLastView}'.`);
-    }
-
-    // Restore Sort Order
-    const savedSortOrder = localStorage.getItem('lastSortOrder');
-    if (savedSortOrder) {
-        currentSortOrder = savedSortOrder;
-        logDebug(`State Management: Restored sort order to '${currentSortOrder}'.`);
-    }
-}
-
 async function initializeAppLogic() {
     applyCompactViewMode();
     // DEBUG: Log when initializeAppLogic starts
@@ -8441,15 +8406,12 @@ async function initializeAppLogic() {
                 div.textContent = `${s.code} - ${s.name}`;
                 div.dataset.code = s.code;
                 // Use pointerdown for earlier capture (prevents blur race) plus click fallback
-                const handler = (e) => {
-                    e.preventDefault(); // Prevent input blur on touch
-                    applyShareCodeSelection(s.code, s.name);
-                };
-                div.addEventListener('pointerdown', handler, { once: true, passive: false });
+                const handler = () => applyShareCodeSelection(s.code, s.name);
+                div.addEventListener('pointerdown', handler, { once: true });
                 div.addEventListener('click', (e) => {
                     // If pointerdown already fired, ignore
                     if (div.__applied) return;
-                    handler(e);
+                    handler();
                 }, { once: true });
                 div.__applied = false;
                 shareNameSuggestions.appendChild(div);
@@ -9995,25 +9957,29 @@ function showTargetHitDetailsModal(options={}) {
         sectionHeader.classList.add('low52-low');
     }
     // Refactored to use a themeable SVG arrow icon
-    const arrowSVG = `<svg class="low52-arrow-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5H7z"/></svg>`;
-    low52Title.innerHTML = `<span class="low52-title-text">52 Week Low</span>${arrowSVG}`;
+    const arrowSVG = `<svg class="low52-arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`;
+    low52Title.innerHTML = `${arrowSVG}<span class="low52-title-text">52 week alerts</span>`;
     sectionHeader.appendChild(low52Title);
     targetHitSharesList.appendChild(sectionHeader);
-        const alertsContainer = document.createElement('div');
-        alertsContainer.className = 'low52-alerts-container';
-
+        if (!window.__low52MutedMap) {
+            try {
+                const stored = sessionStorage.getItem('low52MutedMap');
+                window.__low52MutedMap = stored ? JSON.parse(stored) : {};
+            } catch { window.__low52MutedMap = {}; }
+        }
+        // Split into unmuted and muted
+        const unmuted = [], muted = [];
         sharesAt52WeekLow.forEach((item, idx) => {
+            const isMuted = !!window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')];
+            (isMuted ? muted : unmuted).push({item, idx});
+        });
+        // Unmuted cards (left)
+        unmuted.forEach(({item, idx}) => {
             const card = document.createElement('div');
-            const isMuted = !!item.muted;
-            // Apply theme using the helper function for consistency
-            applyLow52AlertTheme(card, item.type);
-            if (isMuted) {
-                card.classList.add('low52-card-muted');
-            }
-
+            card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'}`;
+            // Fallback for live price
             let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
             let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : '<span class="low52-price-na">N/A</span>';
-
             card.innerHTML = `
                 <div class="low52-card-row low52-header-row">
                     <span class="low52-code">${item.code}</span>
@@ -10021,40 +9987,76 @@ function showTargetHitDetailsModal(options={}) {
                     <span class="low52-price">${liveDisplay}</span>
                 </div>
                 <div class="low52-card-row low52-action-row">
-                    <button class="low52-mute-btn" data-idx="${idx}">${isMuted ? 'Unmute' : 'Mute'}</button>
+                    <button class="low52-mute-btn" data-idx="${idx}">Mute</button>
                 </div>
                 <div class="low52-thresh-row">
                     <span class="low52-thresh">${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)}</span>
                 </div>
             `;
-
+            // Mute button logic for each card
             const muteBtn = card.querySelector('.low52-mute-btn');
             muteBtn.onclick = function(e) {
                 e.stopPropagation();
-                const shareToUpdate = sharesAt52WeekLow.find(s => s.code === item.code && s.type === item.type);
-                if (shareToUpdate) {
-                    shareToUpdate.muted = !isMuted; // Toggle muted state
-                    const toastMessage = `${shareToUpdate.code} alerts ${shareToUpdate.muted ? 'muted' : 'enabled'}.`;
-                    showCustomAlert(toastMessage, 2000, 'info');
-                    window.__low52MutedMap[item.code + '_' + item.type] = shareToUpdate.muted;
-                    try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
-                    updateTargetHitBanner();
-                    showTargetHitDetailsModal(); // Re-render the modal
-                }
+                window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = true;
+                try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
+                // Instead of removing, just hide the card
+                card.classList.add('low52-card-hidden');
+                // Optionally, re-render modal to update state
+                showTargetHitDetailsModal();
             };
-
+            // Click-through to search modal
             card.style.cursor = 'pointer';
+            card.style.pointerEvents = 'auto';
+            // Make mute button not block card click
+            muteBtn.style.pointerEvents = 'auto';
             card.onclick = function(e) {
                 if (e.target.closest('.low52-mute-btn')) return;
                 if (typeof showStockSearchModal === 'function') {
                     showStockSearchModal(item.code);
                 }
             };
-
-            alertsContainer.appendChild(card);
+            // If this card is marked as hidden (minimized), add the hidden class
+            if (window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')]) {
+                card.classList.add('low52-card-hidden');
+            }
+            targetHitSharesList.appendChild(card);
         });
-
-        targetHitSharesList.appendChild(alertsContainer);
+        // Muted cards (right, can unmute)
+        muted.forEach(({item, idx}) => {
+            const card = document.createElement('div');
+            card.className = `low52-alert-card ${item.type === 'high' ? 'low52-high' : 'low52-low'} low52-card-muted`;
+            // Fallback for live price
+            let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
+            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : '<span class="low52-price-na">N/A</span>';
+            card.innerHTML = `
+                <div class="low52-card-row low52-header-row">
+                    <span class="low52-code">${item.code}</span>
+                    <span class="low52-name">${item.name}</span>
+                    <span class="low52-price">${liveDisplay}</span>
+                </div>
+                <div class="low52-card-row low52-action-row">
+                    <button class="low52-mute-btn" data-idx="${idx}">Unmute</button>
+                </div>
+                <div class="low52-thresh-row">
+                    <span class="low52-thresh">${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)}</span>
+                </div>
+            `;
+            // Unmute button logic for each card
+            const muteBtn = card.querySelector('.low52-mute-btn');
+            muteBtn.onclick = function(e) {
+                e.stopPropagation();
+                window.__low52MutedMap[item.code + (item.type === 'high' ? '_high' : '')] = false;
+                try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
+                showTargetHitDetailsModal();
+            };
+            // Click-through to search modal
+            card.style.cursor = 'pointer';
+            card.onclick = function(e) {
+                if (e.target === muteBtn) return;
+                if (typeof showStockSearchModal === 'function') showStockSearchModal(item.code);
+            };
+            targetHitSharesList.appendChild(card);
+        });
     }
 
     // Inject headings + global summary card (Global movers heading ABOVE card)
@@ -10571,12 +10573,6 @@ document.addEventListener('DOMContentLoaded', function() {
             try { updateMainTitle(); } catch(e) {}
         });
     }
-
-    // Display App Version
-    const appVersionEl = document.getElementById('appVersion');
-    if (appVersionEl) {
-        appVersionEl.textContent = APP_VERSION;
-    }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
     window._userAuthenticated = false;
@@ -10676,9 +10672,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 } catch(_) {}
                 currentUserId = user.uid;
                 logDebug('AuthState: User signed in: ' + user.uid);
-
-                // Restore user's last state from localStorage
-                restorePersistedState();
                 logDebug('AuthState: User email: ' + user.email);
                 try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
                 // Use dynamic update instead of hard-coded label so it reflects current selection
