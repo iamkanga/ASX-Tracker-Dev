@@ -949,7 +949,7 @@ function makeFilesAvailableToSourceControlCSS() {
 /* --- End Modern Responsive Controls Row & Dropdowns --- */
 @media (min-width: 769px) {
   .toggle-asx-buttons-group {
-    display: none !important;
+    /* display: none !important; */
   }
 }
 #modalCommSecLink {
@@ -7299,14 +7299,13 @@ body.dark-theme .alert-item {
 }
 
 #livePriceTimestamp {
-    font-size: 0.6rem; /* Smaller font size */
-    opacity: 0.7;      /* Ghosted effect */
-    font-weight: 400;  /* Lighter font weight */
-    text-align: left;
-    position: absolute;
-    bottom: 5px;
-    left: 15px;
+    font-size: 0.8rem; /* ~30% larger */
+    opacity: 0.7;
+    font-weight: 400;
     color: var(--ghosted-text);
+    margin-right: auto;
+    align-self: flex-end;
+    padding-bottom: 5px; /* Add some padding to the bottom */
 }
 
 @media (max-width: 768px) {

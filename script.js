@@ -105,7 +105,7 @@ try {
                     let wid = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
                     let expected;
                     if (wid === '__movers') expected = 'Movers';
-                    else if (wid === 'portfolio') expected = '';
+                    else if (wid === 'portfolio') expected = 'Portfolio';
                     else if (wid === CASH_BANK_WATCHLIST_ID) expected = 'Cash & Assets';
                     else if (wid === ALL_SHARES_ID) expected = 'All Shares';
                     else {
@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const portfolioSection = document.createElement('div');
             portfolioSection.id = 'portfolioSection';
             portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioViewLastUpdated" class="last-updated-timestamp"></div><div class="portfolio-scroll-wrapper"><div id="portfolioListContainer">Loading portfolio...</div></div>';
+            portfolioSection.innerHTML = '<div id="portfolioViewLastUpdated" class="last-updated-timestamp"></div><div class="portfolio-scroll-wrapper"><div id="portfolioListContainer">Loading portfolio...</div></div>';
             mainContainer.appendChild(portfolioSection);
         }
         stockWatchlistSection.style.display = 'none';
@@ -7534,7 +7534,7 @@ function updateMainTitle(overrideTitle) {
         let text = 'Share Watchlist';
         if (activeId === ALL_SHARES_ID) text = 'All Shares';
         else if (activeId === CASH_BANK_WATCHLIST_ID) text = 'Cash & Assets';
-        else if (activeId === 'portfolio') text = '';
+        else if (activeId === 'portfolio') text = 'Portfolio';
         else if (activeId === '__movers') text = 'Movers';
         else if (activeId) {
             const wl = (userWatchlists||[]).find(w=>w.id===activeId); if (wl) text = wl.name;
@@ -7550,7 +7550,7 @@ function updateMainTitle(overrideTitle) {
     let resolved;
     if (selValue === ALL_SHARES_ID) resolved = 'All Shares';
     else if (selValue === CASH_BANK_WATCHLIST_ID) resolved = 'Cash & Assets';
-    else if (selValue === 'portfolio') resolved = '';
+    else if (selValue === 'portfolio') resolved = 'Portfolio';
     else if (selValue === '__movers') resolved = 'Movers';
     else if (selTextRaw && selTextRaw.trim()) resolved = selTextRaw.trim();
     else {
