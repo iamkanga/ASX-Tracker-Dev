@@ -2782,16 +2782,23 @@ body.theme-muted-grey {
     }
     .modal .modal-content.global-alerts-modal,
     #shareFormSection .modal-content {
-        max-height: calc(100dvh - 18px);
+        height: calc(100dvh - 18px); /* Use height based on dynamic viewport height */
+        max-height: none; /* Override previous max-height */
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
-        scroll-padding-bottom: 160px; /* ensure last inputs not hidden behind keyboard */
     }
-    /* When a virtual keyboard is inferred (class toggled via JS), add extra breathing room */
+
+    #shareFormSection .modal-body-scrollable {
+        /* Add significant padding at the bottom to ensure the last element can be scrolled well into view */
+        padding-bottom: 200px;
+    }
+
+    /* When a virtual keyboard is inferred (class toggled via JS), we can make adjustments if needed */
     body.keyboard-visible .modal .modal-content.global-alerts-modal,
     body.keyboard-visible #shareFormSection .modal-content {
-        padding-bottom: 150px;
+        /* dvh should handle this, but we can add fallbacks if needed */
     }
+
     /* Sticky header keeps save / close buttons accessible while scrolling thresholds */
     .global-alerts-modal .modal-header-with-icon,
     #shareFormSection .modal-header-with-icon {
@@ -7289,6 +7296,25 @@ body.dark-theme .alert-item {
     padding: 20px 0;
     font-style: italic;
     grid-column: 1 / -1; /* Span all columns in grid layout */
+}
+
+#livePriceTimestamp {
+    font-size: 0.6rem; /* Smaller font size */
+    opacity: 0.7;      /* Ghosted effect */
+    font-weight: 400;  /* Lighter font weight */
+    text-align: left;
+    position: absolute;
+    bottom: 5px;
+    left: 15px;
+    color: var(--ghosted-text);
+}
+
+@media (max-width: 768px) {
+    #livePriceTimestamp {
+        font-size: 0.5rem; /* Even smaller on mobile */
+        left: 10px;
+        bottom: 3px;
+    }
 }
 
 /* NEW: Cash Asset Modals (2.1, 2.2) */
