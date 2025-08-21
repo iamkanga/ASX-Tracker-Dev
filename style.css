@@ -2774,11 +2774,16 @@ body.theme-muted-grey {
     --cash-edit-icon-color: #999999;
 }
 
-.splash-version {
+.splash-auth-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
     position: absolute;
-    bottom: 5vh;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: 10vh;
+}
+
+.splash-version {
     color: #fff;
     opacity: 0.5;
     font-size: 0.8rem;
