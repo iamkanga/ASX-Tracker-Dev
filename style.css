@@ -5009,7 +5009,7 @@ table td.live-price-cell.negative-change {
     color: var(--text-color);
     display: flex;
     flex-direction: column;
-    max-height: 90vh; 
+    max-height: 90dvh;
     overflow-x: hidden; /* Prevent horizontal spill */
     word-break: break-word; /* Wrap long tokens */
     overscroll-behavior: contain;
@@ -6974,6 +6974,7 @@ body.dark-theme .alert-item {
     width: 100%;
     max-height: 200px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     background-color: var(--card-bg); /* Use card background for suggestions */
     border: 1px solid var(--border-color);
     border-top: none; /* No top border, blends with input */
