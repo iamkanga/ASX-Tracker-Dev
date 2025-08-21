@@ -719,8 +719,6 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 // Guard against unintended re-opening of the Share Edit modal shortly after save
 let suppressShareFormReopen = false;
 
-// App version (displayed in UI title bar)
-const APP_VERSION = 'v0.1.14';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -10571,11 +10569,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Display App Version
-    const appVersionEl = document.getElementById('appVersion');
-    if (appVersionEl) {
-        appVersionEl.textContent = APP_VERSION;
-    }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
     window._userAuthenticated = false;
