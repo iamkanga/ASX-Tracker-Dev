@@ -1979,7 +1979,6 @@ function closeModals() {
             modal.style.setProperty('display', 'none', 'important');
         }
     });
-    document.body.classList.remove('modal-open');
     resetCalculator();
     deselectCurrentShare();
 
@@ -2619,7 +2618,7 @@ function addShareToMobileCards(share) {
             </div>
         </div>
     <!-- Entry Price removed from mobile card main view -->
-    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value">${renderAlertTargetInline(share)}</span></p>` : '' })()}
+    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value"><span class="alert-target-inline">${renderAlertTargetInline(share)}</span></span></p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
         <p class="data-row">
             <span class="label-text">Dividend Yield:</span>
@@ -3044,7 +3043,6 @@ function showModal(modalElement) {
         // Push a new history state for every modal open
         pushAppState({ modalId: modalElement.id }, '', '');
         modalElement.style.setProperty('display', 'flex', 'important');
-        document.body.classList.add('modal-open');
         modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (scrollableContent) {
