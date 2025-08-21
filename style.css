@@ -6908,7 +6908,7 @@ body.dark-theme .alert-item {
     z-index: 2000; /* Ensure it's on top of everything */
     transition: opacity 0.5s ease-out; /* Smooth fade-out transition */
     opacity: 1; /* Initially fully visible */
-    overflow: hidden; /* Prevent scrolling on the splash screen itself */
+    /* overflow: hidden; */ /* Prevent scrolling on the splash screen itself */
 }
 
 .splash-screen.hidden {
