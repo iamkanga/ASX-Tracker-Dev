@@ -2774,22 +2774,25 @@ body.theme-muted-grey {
 
 /* === Mobile Modal Safe Area & Keyboard Handling Enhancements (Appended) === */
 @media (max-width: 820px) {
-    .modal .modal-content.global-alerts-modal, .modal .modal-content.global-alerts-modal *:focus-visible {
+    .modal .modal-content.global-alerts-modal, .modal .modal-content.global-alerts-modal *:focus-visible,
+    #shareFormSection .modal-content, #shareFormSection .modal-content *:focus-visible {
         outline-offset: 2px;
     }
-    .modal .modal-content.global-alerts-modal {
+    .modal .modal-content.global-alerts-modal,
+    #shareFormSection .modal-content {
         max-height: calc(100dvh - 18px);
-        overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
         scroll-padding-bottom: 160px; /* ensure last inputs not hidden behind keyboard */
     }
     /* When a virtual keyboard is inferred (class toggled via JS), add extra breathing room */
-    body.keyboard-visible .modal .modal-content.global-alerts-modal {
+    body.keyboard-visible .modal .modal-content.global-alerts-modal,
+    body.keyboard-visible #shareFormSection .modal-content {
         padding-bottom: 150px;
     }
     /* Sticky header keeps save / close buttons accessible while scrolling thresholds */
-    .global-alerts-modal .modal-header-with-icon {
+    .global-alerts-modal .modal-header-with-icon,
+    #shareFormSection .modal-header-with-icon {
         position: sticky;
         top: 0;
         background: var(--modal-content-bg, #fff);
