@@ -10617,6 +10617,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const cls = discoverModal.querySelector('.close-button');
         if (cls) cls.addEventListener('click', ()=> hideModal(discoverModal));
         discoverModal.addEventListener('mousedown', (e)=>{ if (e.target === discoverModal) hideModal(discoverModal); });
+
+        // --- Discover Modal Header Click to Open Global Alerts ---
+        const discoverHeader = discoverModal.querySelector('.modal-header-with-icon');
+        const globalAlertsModalRef = document.getElementById('globalAlertsModal');
+        if (discoverHeader && globalAlertsModalRef) {
+            discoverHeader.style.cursor = 'pointer';
+            discoverHeader.setAttribute('title', 'Click to edit Global Alert settings');
+            discoverHeader.addEventListener('click', (e) => {
+                // Don't trigger if the close button itself was clicked
+                if (e.target.closest('.close-button')) {
+                    return;
+                }
+                hideModal(discoverModal);
+                showModal(globalAlertsModalRef);
+                logDebug('Discover Modal: Header clicked, opening Global Alerts modal.');
+            });
+        }
     }
     if (appHeader) {
         appHeader.classList.add('app-hidden');

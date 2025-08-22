@@ -2820,7 +2820,8 @@ body.theme-muted-grey {
 
     /* Sticky header keeps save / close buttons accessible while scrolling thresholds */
     .global-alerts-modal .modal-header-with-icon,
-    #shareFormSection .modal-header-with-icon {
+    #shareFormSection .modal-header-with-icon,
+    #discoverGlobalModal .modal-header-with-icon {
         position: sticky;
         top: 0;
         background: var(--modal-content-bg, #fff);
