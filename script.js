@@ -1602,14 +1602,6 @@ const cashFormInputs = [
 
 // --- GLOBAL HELPER FUNCTIONS ---
 
-function updateLivePriceTimestamp() {
-    const timestampEl = document.getElementById('livePriceTimestamp');
-    if (timestampEl) {
-        const now = new Date();
-        timestampEl.textContent = `Live: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    }
-}
-
 // Function to update the sort icon based on the selected sort order
 function updateSortIcon() {
     const sortSelect = document.getElementById('sortSelect');
