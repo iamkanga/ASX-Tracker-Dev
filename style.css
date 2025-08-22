@@ -2779,15 +2779,15 @@ body.theme-muted-grey {
     flex-direction: column;
     align-items: center;
     gap: 15px;
-    position: absolute;
-    bottom: 10vh;
+    /* Removed absolute positioning to allow parent flexbox to control layout */
 }
 
 .splash-version {
     color: #fff;
-    opacity: 0.5;
+    opacity: 0.7; /* Increased opacity for better visibility */
     font-size: 0.8rem;
     font-weight: 400;
+    margin-top: 5px; /* Add a little space above the version number */
 }
 
 /* === Mobile Modal Safe Area & Keyboard Handling Enhancements (Appended) === */
@@ -6928,7 +6928,7 @@ body.dark-theme .alert-item {
     width: auto;  /* Let browser determine width based on aspect ratio */
     height: auto; /* Let browser determine height based on aspect ratio */
     object-fit: contain; /* Crucial to keep this to prevent text cropping */
-    margin-bottom: 20px; /* Space between image and button */
+    margin-bottom: 40px; /* Increased space between image and button container */
     /* Initial state for animation */
     opacity: 1;
 }
