@@ -6,7 +6,7 @@
     <title>Share Watchlist (Updated)</title>
     <link rel="icon" href="favicon.png" type="image/png">
 
-    <link rel="stylesheet" href="style.css?v=0.1.33">
+    <link rel="stylesheet" href="style.css?v=0.1.34">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
@@ -160,7 +160,7 @@
     .sort-icon.down {
         border-top: 7px solid var(--red-color); /* Red down arrow */
     }
-    .watchlist-title-bar-row, .sort-line-row { display:flex; align-items:center; width:100%; }
+    .watchlist-title-bar-row, .sort-line-row { display:flex; align-items:center; justify-content:center; width:100%; }
     .watchlist-dynamic-title { margin:4px 0 2px; font-size:1.85rem; font-weight:650; cursor:pointer; text-align:center; line-height:1.1; flex:0 1 auto; width:auto; outline:none; }
     #dynamicWatchlistTitleText { cursor:pointer; display:inline-block; padding:0 4px; border-radius:4px; pointer-events:auto; }
     #dynamicWatchlistTitle { user-select:none; pointer-events:auto; }
@@ -168,9 +168,9 @@
     #dynamicWatchlistTitleText:focus { outline:none; }
     #dynamicWatchlistTitleText:focus-visible { outline:2px solid var(--green-color); outline-offset:2px; }
         .watchlist-dynamic-title:focus { outline:none; }
-    .sort-line-row { font-size:0.9rem; margin-bottom:6px; }
+    .sort-line-row { justify-content: flex-end; font-size:0.9rem; margin-bottom:6px; }
         /* .live-price-timestamp-container is now absolutely positioned */
-        .sort-controls-container { display: flex; gap: 12px; }
+        .sort-controls-container { display: flex; justify-content: flex-end; gap: 12px; }
         .live-price-timestamp { font-size: 0.8rem; color: var(--ghosted-text); opacity: 0.9; }
         .current-sort-display { min-height:1.2em; font-weight:500; }
     /* Subtle triangle toggle: two chevrons forming minimal arrow */
@@ -240,23 +240,24 @@
             <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
                 <i class="fas fa-bars"></i>
             </button>
-            <!-- Single dynamic clickable title acts as the only title bar -->
-            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
+            <!-- Centered container for Title and Sort controls -->
+            <div class="title-and-sort-wrapper" style="display: flex; align-items: center; justify-content: center; flex-grow: 1; gap: 12px; flex-wrap: wrap;">
+                <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" style="margin: 0;"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
+                <div class="sort-controls-container" style="display: flex; align-items: center; gap: 12px;">
+                    <div class="sort-select-wrapper">
+                        <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
+                        <span id="sortIcon" class="sort-icon"></span>
+                    </div>
+                    <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer"></button>
+                </div>
+            </div>
             <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right icon-button" aria-label="Add Share">
                 <i class="fas fa-plus"></i>
             </button>
-            <div id="livePriceTimestamp" class="live-price-timestamp" style="position: absolute; bottom: 0; left: 10px;"></div>
-        </div>
-        <!-- Sort row with subtle arrow toggle -->
-        <div id="sortLine" class="sort-line-row">
-            <div class="sort-controls-container">
-                <div class="sort-select-wrapper">
-                    <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
-                    <span id="sortIcon" class="sort-icon"></span>
-                </div>
-                <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer"></button>
-            </div>
-        </div>
+    </div>
+    <div style="text-align: center; width: 100%; padding: 0 10px; box-sizing: border-box;">
+        <div id="livePriceTimestamp" class="live-price-timestamp" style="display: inline-block; text-align: left;"></div>
+    </div>
         <select id="watchlistSelect" style="display:none"></select>
     <!-- Market status banner (shown automatically when market is closed) -->
     <div id="marketStatusBanner" class="market-status-banner app-hidden" aria-live="polite"></div>
@@ -1029,7 +1030,7 @@
             console.log("index.html script module loaded and DOMContentLoaded fired.");
         }); 
     </script>
-    <script src="script.js?v=0.1.33" type="module"></script>
+    <script src="script.js?v=0.1.34" type="module"></script>
 </body>
 <!-- Copilot update: 2025-07-29 - change for sync test -->
 </html>
