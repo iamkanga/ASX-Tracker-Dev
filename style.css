@@ -3575,7 +3575,7 @@ body.sidebar-active {
     display: flex; /* Use flexbox for internal layout */
     flex-direction: column; /* Stack children vertically */
     padding: 15px 20px 0; /* Removed padding-bottom, will be determined by content + gap */
-    gap: 4px; /* Space between header rows */
+    gap: 10px; /* Space between header rows */
 }
 
 #dynamicWatchlistTitle {
@@ -3791,32 +3791,9 @@ h1#dynamicWatchlistTitle {
         gap: 0;
         position: relative;
     }
-    .header-action-btn-left {
-        order: 1;
-        margin-right: auto;
-        position: relative;
-        left: 0;
-        z-index: 2;
-    }
-    h1#mainTitle {
-        order: 2;
-        flex: 0 1 auto;
-        margin: 0 auto;
-        left: 0;
-        right: 0;
-        position: absolute;
-        width: 100%;
-        text-align: center;
-        pointer-events: none;
-        z-index: 1;
-    }
-    .header-action-btn-right {
-        order: 3;
-        margin-left: auto;
-        position: relative;
-        right: 0;
-        z-index: 2;
-    }
+    /* Removed incorrect mobile header layout rules.
+       The layout now falls back to the desktop-first flexbox implementation,
+       which correctly centers the title between the buttons. */
 }
 
 /* ASX Code Buttons */
