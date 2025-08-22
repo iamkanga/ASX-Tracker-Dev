@@ -720,7 +720,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.1.14';
+const APP_VERSION = 'v0.1.29';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -4667,27 +4667,27 @@ function renderSortSelect() {
     sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
 
     const stockOptions = [
-        { value: 'percentageChange-desc', text: 'Change % <i class="fas fa-chevron-up" style="color:green;"></i>' },
-        { value: 'percentageChange-asc', text: 'Change % <i class="fas fa-chevron-down" style="color:red;"></i>' },
-        { value: 'shareName-asc', text: 'Code <i class="fas fa-chevron-up" style="color:green;"></i>' },
-        { value: 'shareName-desc', text: 'Code <i class="fas fa-chevron-down" style="color:red;"></i>' },
-        { value: 'entryDate-desc', text: 'Date <i class="fas fa-chevron-up" style="color:green;"></i>' },
-        { value: 'entryDate-asc', text: 'Date <i class="fas fa-chevron-down" style="color:red;"></i>' },
-        { value: 'starRating-desc', text: '⭐ <i class="fas fa-chevron-up" style="color:green;"></i>' },
-        { value: 'starRating-asc', text: '⭐ <i class="fas fa-chevron-down" style="color:red;"></i>' },
-        { value: 'dividendAmount-desc', text: 'Yield % <i class="fas fa-chevron-up" style="color:green;"></i>' },
-        { value: 'dividendAmount-asc', text: 'Yield % <i class="fas fa-chevron-down" style="color:red;"></i>' }
+        { value: 'percentageChange-desc', text: 'Change % (H-L)' },
+        { value: 'percentageChange-asc', text: 'Change % (L-H)' },
+        { value: 'shareName-asc', text: 'Code (A-Z)' },
+        { value: 'shareName-desc', text: 'Code (Z-A)' },
+        { value: 'entryDate-desc', text: 'Date (N-O)' },
+        { value: 'entryDate-asc', text: 'Date (O-N)' },
+        { value: 'starRating-desc', text: '⭐ (H-L)' },
+        { value: 'starRating-asc', text: '⭐ (L-H)' },
+        { value: 'dividendAmount-desc', text: 'Yield % (H-L)' },
+        { value: 'dividendAmount-asc', text: 'Yield % (L-H)' }
     ];
 
     const portfolioOptions = [
-        { value: 'percentageChange-desc', text: 'Change % <i class="fas fa-chevron-up" style="color:green;"></i>' },
-        { value: 'percentageChange-asc', text: 'Change % <i class="fas fa-chevron-down" style="color:red;"></i>' },
-        { value: 'shareName-asc', text: 'Code <i class="fas fa-chevron-up" style="color:green;"></i>' },
-        { value: 'shareName-desc', text: 'Code <i class="fas fa-chevron-down" style="color:red;"></i>' },
-        { value: 'dayDollar-desc', text: 'Day $ <i class="fas fa-chevron-up" style="color:green;"></i>' },
-        { value: 'dayDollar-asc', text: 'Day $ <i class="fas fa-chevron-down" style="color:red;"></i>' },
-        { value: 'totalDollar-desc', text: 'Total $ <i class="fas fa-chevron-up" style="color:green;"></i>' },
-        { value: 'totalDollar-asc', text: 'Total $ <i class="fas fa-chevron-down" style="color:red;"></i>' }
+        { value: 'percentageChange-desc', text: 'Change % (H-L)' },
+        { value: 'percentageChange-asc', text: 'Change % (L-H)' },
+        { value: 'shareName-asc', text: 'Code (A-Z)' },
+        { value: 'shareName-desc', text: 'Code (Z-A)' },
+        { value: 'dayDollar-desc', text: 'Day $ (H-L)' },
+        { value: 'dayDollar-asc', text: 'Day $ (L-H)' },
+        { value: 'totalDollar-desc', text: 'Total $ (H-L)' },
+        { value: 'totalDollar-asc', text: 'Total $ (L-H)' }
     ];
 
     const cashOptions = [
@@ -4718,7 +4718,7 @@ function renderSortSelect() {
     optionsToShow.forEach(opt => {
         const optionElement = document.createElement('option');
         optionElement.value = opt.value;
-        optionElement.innerHTML = opt.text;
+        optionElement.textContent = opt.text;
         sortSelect.appendChild(optionElement);
     });
     logDebug(`Sort Select: Populated with ${logMessage}.`);
@@ -10576,6 +10576,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const appVersionEl = document.getElementById('appVersion');
     if (appVersionEl) {
         appVersionEl.textContent = APP_VERSION;
+    }
+    const splashAppVersionEl = document.getElementById('splashAppVersion');
+    if (splashAppVersionEl) {
+        splashAppVersionEl.textContent = APP_VERSION;
     }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
