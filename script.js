@@ -207,6 +207,17 @@ document.addEventListener('DOMContentLoaded', function () {
         window.watchlistModule.ensurePortfolioOptionPresent();
         setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
     }
+
+    // --- Restore live price timestamp under hamburger menu ---
+    function updateLivePriceTimestamp() {
+        const timestampEl = document.getElementById('livePriceTimestamp');
+        if (timestampEl) {
+            const now = new Date();
+            timestampEl.textContent = `Live: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        }
+    }
+    updateLivePriceTimestamp();
+    setInterval(updateLivePriceTimestamp, 60 * 1000);
     // Automatic closed-market banner and ghosting
     const marketStatusBanner = document.getElementById('marketStatusBanner');
     function formatSydneyDate(d) {
@@ -720,7 +731,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.1.33';
+const APP_VERSION = 'v0.1.34';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
