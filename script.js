@@ -197,6 +197,10 @@ function onLivePricesUpdated() {
 // Compatibility stub (legacy callsites may invoke)
 function forceApplyCurrentSort() { /* legacy no-op retained */ }
 document.addEventListener('DOMContentLoaded', function () {
+    const splashAppVersion = document.getElementById('splashAppVersion');
+    if (splashAppVersion) {
+        splashAppVersion.textContent = APP_VERSION;
+    }
     // --- Watchlist logic moved to watchlist.js ---
     // Import and call watchlist functions
     if (window.watchlistModule) {
@@ -720,7 +724,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.1.31';
+const APP_VERSION = 'v0.1.33';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {

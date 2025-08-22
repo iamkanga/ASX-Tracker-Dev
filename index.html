@@ -111,6 +111,7 @@
         }
 
         .splash-screen {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -168,9 +169,9 @@
     #dynamicWatchlistTitleText:focus { outline:none; }
     #dynamicWatchlistTitleText:focus-visible { outline:2px solid var(--green-color); outline-offset:2px; }
         .watchlist-dynamic-title:focus { outline:none; }
-    .sort-line-row { justify-content: flex-end; font-size:0.9rem; margin-bottom:6px; }
-        /* .live-price-timestamp-container is now absolutely positioned */
-        .sort-controls-container { display: flex; justify-content: flex-end; gap: 12px; }
+    .sort-line-row { justify-content: center; font-size:0.9rem; margin-bottom:6px; }
+        /* .live-price-timestamp-container is now part of the header-left-stack */
+        .sort-controls-container { display: flex; justify-content: center; gap: 12px; }
         .live-price-timestamp { font-size: 0.8rem; color: var(--ghosted-text); opacity: 0.9; }
         .current-sort-display { min-height:1.2em; font-weight:500; }
     /* Subtle triangle toggle: two chevrons forming minimal arrow */
@@ -236,28 +237,28 @@
     </div>
 
     <header id="appHeader" class="app-hidden">
-    <div class="header-top-row single-dynamic-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px; position: relative; padding-bottom: 22px;">
-            <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
-                <i class="fas fa-bars"></i>
-            </button>
-            <!-- Single dynamic clickable title acts as the only title bar -->
-            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
-            <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right icon-button" aria-label="Add Share">
-                <i class="fas fa-plus"></i>
-            </button>
-            <div class="live-price-timestamp-container" style="position: absolute; bottom: 0; left: 10px;">
+        <div class="header-top-row single-dynamic-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px; position: relative;">
+            <div class="header-left-stack" style="display: flex; flex-direction: column; align-items: center; gap: 4px; align-self: flex-start;">
+                <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <span id="livePriceTimestamp" class="live-price-timestamp"></span>
             </div>
-        </div>
-        <!-- Sort row with subtle arrow toggle -->
-        <div id="sortLine" class="sort-line-row">
-            <div class="sort-controls-container">
-                <div class="sort-select-wrapper">
-                    <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
-                    <span id="sortIcon" class="sort-icon"></span>
+            <div class="title-sort-container" style="display: flex; flex-direction: column; align-items: center; flex-grow: 1;">
+                <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
+                <div id="sortLine" class="sort-line-row">
+                    <div class="sort-controls-container">
+                        <div class="sort-select-wrapper">
+                            <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
+                            <span id="sortIcon" class="sort-icon"></span>
+                        </div>
+                        <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer"></button>
+                    </div>
                 </div>
-                <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer"></button>
             </div>
+            <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right icon-button" aria-label="Add Share" style="align-self: flex-start;">
+                <i class="fas fa-plus"></i>
+            </button>
         </div>
         <select id="watchlistSelect" style="display:none"></select>
     <!-- Market status banner (shown automatically when market is closed) -->
