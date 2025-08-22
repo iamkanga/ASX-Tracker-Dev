@@ -1,38 +1,3 @@
-/* --- UI Regression Fixes --- */
-.header-top-row.single-dynamic-title {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    padding-bottom: 8px;
-}
-
-.title-and-sort-container {
-    order: 2;
-    text-align: center;
-}
-
-.header-left-container {
-    order: 1;
-    position: absolute;
-    left: 10px;
-    top: 10px;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.header-action-btn-right {
-    order: 3;
-    position: absolute;
-    right: 10px;
-    top: 10px;
-}
-
-.live-price-timestamp-container {
-    margin-top: 4px;
-}
-
 /* The .low52-title-chevron class has been removed and replaced by .low52-arrow-icon */
 /* Ghost out muted 52-week alert cards instead of hiding them */
 .low52-card-hidden {
@@ -116,19 +81,6 @@
 /* Add margin to code button arrow for better spacing */
 .asx-toggle-triangle {
     margin-right: 10px;
-}
-
-.title-and-sort-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.header-left-container {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
 }
 /* Center the discover sort bar vertically and remove label spacing */
 .discover-sort-bar-centered {
@@ -3611,110 +3563,128 @@ body.sidebar-active {
 
 
 /* Header Styles */
-
-/* --- NEW HEADER BAR FLEX LAYOUT --- */
-#appHeader {
+#appHeader { /* Target the header by its ID */
     background-color: var(--header-bg);
     box-shadow: 0 2px 4px var(--shadow-color);
-    position: fixed;
+    position: fixed; /* Make the entire header fixed */
     top: 0;
     left: 0;
     width: 100%;
-    z-index: 500;
+    z-index: 500; /* Ensure it's above main content */
     box-sizing: border-box;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-}
-
-.header-bar-flex {
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
-    width: 100%;
-    min-height: 64px;
-    padding: 10px 12px 0 12px;
-    box-sizing: border-box;
-    gap: 0;
-}
-
-.header-bar-left {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    min-width: 56px;
-    flex: 0 0 56px;
-    gap: 4px;
-}
-
-.header-bar-center {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1 1 auto;
-    min-width: 0;
-    gap: 0;
-}
-
-.header-bar-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    justify-content: flex-start;
-    min-width: 56px;
-    flex: 0 0 56px;
-    gap: 4px;
-}
-
-.header-title-row {
-    display: flex;
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: center;
-    width: 100%;
-    margin-bottom: 0;
+    display: flex; /* Use flexbox for internal layout */
+    flex-direction: column; /* Stack children vertically */
+    padding: 15px 20px 0; /* Removed padding-bottom, will be determined by content + gap */
+    gap: 10px; /* Space between header rows */
 }
 
 #dynamicWatchlistTitle {
     display: flex;
     align-items: baseline;
     justify-content: center;
-    gap: 8px;
-    margin: 0;
-    font-size: 1.85rem;
-    font-weight: 650;
-    line-height: 1.1;
-    text-align: center;
-    pointer-events: auto;
-    z-index: 1;
-    outline: none;
+    gap: 8px; /* Space between title and version */
 }
 
 #appVersion {
-    font-size: 0.6rem;
+    font-size: 0.6rem; /* About 1/3 of the title's size */
     color: var(--ghosted-text);
-    opacity: 0.8;
+    opacity: 0.8; /* More visible */
     font-weight: 400;
-    margin-left: 8px;
+    margin-left: 8px; /* More space from the title */
+}
+/* Force vivid plus icon */
+#appHeader #addShareHeaderBtn i, #appHeader #addShareHeaderBtn svg { opacity:1 !important; color:var(--accent-color,#a49393) !important; mix-blend-mode:normal; }
+
+/**/
+
+/* Optional subtle style for neutral price change badge inside cards */
+.mobile-card .price-change.neutral, .price-change.neutral {
+    color: var(--price-neutral-color);
 }
 
-.header-sort-row {
+/* Adjust main content padding to account for fixed header - REMOVED FROM CSS, NOW HANDLED BY JS */
+main.container {
+    margin-top: 0; /* Ensure no extra margin pushes content down */
+    /* Padding will be set by JavaScript */
+}
+
+/* Header Top Row (now part of the fixed header) */
+.header-top-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    gap: 0;
+    position: relative;
+}
+
+/* Ensure hamburger, title, and add button are always in correct order and position */
+.header-action-btn-left {
+    order: 1;
+    margin-right: auto;
+}
+/* Center the single dynamic title */
+h1#dynamicWatchlistTitle {
+    order: 2;
+    flex: 1 1 auto;
+    margin: 0;
+    text-align: center;
+    font-size: 1.85rem;
+    font-weight: 650;
+    line-height: 1.1;
+    pointer-events: auto;
+    z-index: 1;
+    outline: none; /* Remove default focus outline */
+}
+
+/* Accessible keyboard-only focus for dynamic title text/button */
+#dynamicWatchlistTitle:focus { outline: none; }
+#dynamicWatchlistTitle:focus-visible { outline: 2px solid var(--green-color); outline-offset: 2px; }
+#dynamicWatchlistTitleText:focus { outline: none; }
+#dynamicWatchlistTitleText:focus-visible { outline: 2px solid var(--green-color); outline-offset: 2px; }
+.header-action-btn-right {
+    order: 3;
+    margin-left: auto;
+}
+
+/* Ensure buttons are clickable above the title */
+.header-action-btn-left, .header-action-btn-right {
+    z-index: 2;
+    position: relative;
+    pointer-events: auto;
+}
+
+/* Watchlist and Sort controls */
+
+.watchlist-controls-row {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px 15px;
+}
+
+.dropdowns-center-row {
     display: flex;
     flex-direction: row;
-    align-items: center;
     justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
     width: 100%;
-    margin-top: 2px;
-    margin-bottom: 0;
+    margin: 0 auto;
+    flex-wrap: wrap;
 }
 
-.sort-group {
+.dropdowns-center-row .watchlist-group,
+    .dropdowns-center-row .sort-group {
     display: flex;
     align-items: center;
-    gap: 6px;
+    flex: 0 1 200px;
+    min-width: 120px;
+    max-width: 200px;
+    margin: 0 0.5em;
 }
 
 .dropdown-large {
@@ -3730,87 +3700,124 @@ body.sidebar-active {
     box-sizing: border-box;
 }
 
-.chevron {
-    font-size: 1.1em;
-    color: var(--ghosted-text);
-    margin-left: 2px;
+@media (max-width: 768px) {
+  .dropdowns-center-row {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+  .dropdowns-center-row .watchlist-group,
+  .dropdowns-center-row .sort-group {
+    min-width: 100px;
+    max-width: 100%;
+    width: 100%;
+    margin: 0.25em 0;
+  }
+  .dropdown-large {
+    min-width: 100px;
+    max-width: 100%;
+    width: 100%;
+    margin: 0.25em 0;
+    font-size: 0.95em;
+    padding: 6px 8px;
+  }
 }
 
-.header-action-btn {
-    background: none;
-    border: none;
-    color: var(--text-color);
-    font-size: 2rem;
-    cursor: pointer;
-    padding: 4px 4px;
-    z-index: 11;
-    display: block;
-    flex-shrink: 0;
-    line-height: 1;
+.watchlist-controls-row .watchlist-group,
+.watchlist-controls-row .sort-group {
+    flex: 0 1 220px;
+    min-width: 120px;
+    max-width: 220px;
+    margin: 0 5px;
 }
 
-.header-action-btn:hover {
-    color: var(--button-hover-bg);
+.watchlist-controls-row {
+    justify-content: center;
 }
 
-.hamburger-btn {
-    background: none;
-    border: none;
-    color: var(--text-color);
-    font-size: 2rem;
-    cursor: pointer;
-    padding: 4px 4px;
-    z-index: 11;
-    display: block;
-    flex-shrink: 0;
-    line-height: 1;
+@media (min-width: 769px) {
+  .watchlist-controls-row {
+    justify-content: center;
+  }
+  .watchlist-group,
+  .sort-group {
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
-.live-price-timestamp-container {
-    margin-top: 2px;
-    margin-left: 2px;
+.watchlist-group,
+.sort-group {
+    flex: 0 1 220px;
+    min-width: 120px;
+    max-width: 220px;
+    margin: 0 5px;
 }
 
-#livePriceTimestamp {
-    font-size: 0.85em;
-    color: var(--ghosted-text);
-    opacity: 0.85;
-    font-weight: 500;
+.dropdown-large {
+    width: 100%;
+    font-size: 1em;
+    padding: 8px 12px;
+    box-sizing: border-box;
 }
 
 @media (max-width: 768px) {
-    .header-bar-flex {
-        flex-direction: row;
-        align-items: stretch;
-        padding: 6px 2px 0 2px;
-        min-height: 48px;
+    .watchlist-controls-row {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 10px 10px 10px;
     }
-    .header-bar-left, .header-bar-right {
-        min-width: 44px;
-        flex: 0 0 44px;
-    }
-    #dynamicWatchlistTitle {
-        font-size: 1.25rem;
-    }
-    .header-title-row {
-        margin-bottom: 0;
-    }
-    .header-sort-row {
-        margin-top: 0;
+    .watchlist-group,
+    .sort-group {
+        width: 100%;
+        max-width: 320px;
+        display: flex;
+        justify-content: center;
+        margin: 0;
     }
     .dropdown-large {
-        min-width: 80px;
-        max-width: 100%;
         font-size: 0.95em;
-        padding: 6px 8px;
+        padding: 6px 10px;
+        text-align: center;
     }
-    .live-price-timestamp-container {
-        margin-top: 0;
-        margin-left: 0;
+    .header-top-row {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0;
+        gap: 0;
+        position: relative;
+    }
+    .header-action-btn-left {
+        order: 1;
+        margin-right: auto;
+        position: relative;
+        left: 0;
+        z-index: 2;
+    }
+    h1#mainTitle {
+        order: 2;
+        flex: 0 1 auto;
+        margin: 0 auto;
+        left: 0;
+        right: 0;
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        pointer-events: none;
+        z-index: 1;
+    }
+    .header-action-btn-right {
+        order: 3;
+        margin-left: auto;
+        position: relative;
+        right: 0;
+        z-index: 2;
     }
 }
-
-/* End new header bar styles */
 
 /* ASX Code Buttons */
 .asx-code-buttons-container {
