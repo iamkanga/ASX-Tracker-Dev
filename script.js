@@ -1758,6 +1758,7 @@ async function fetchLivePrices(opts = {}) {
         });
 
         livePrices = newLivePrices;
+        updateLivePriceTimestamp();
     // After updating livePrices but before recomputeTriggeredAlerts, evaluate global alert thresholds
     try { evaluateGlobalPriceAlerts(); } catch(e){ console.warn('Global Alerts: evaluation failed', e); }
         if (DEBUG_MODE) {
@@ -10612,6 +10613,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const appVersionEl = document.getElementById('appVersion');
     if (appVersionEl) {
         appVersionEl.textContent = APP_VERSION;
+    }
+    const splashAppVersionEl = document.getElementById('splashAppVersion');
+    if (splashAppVersionEl) {
+        splashAppVersionEl.textContent = APP_VERSION;
     }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
