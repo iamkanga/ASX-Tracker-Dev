@@ -38,8 +38,24 @@ async def main():
         # Navigate to the local server
         await page.goto(f'http://localhost:{PORT}/index.html')
 
-        # Wait until the function is defined on the window object
-        await page.wait_for_function('typeof window.updateTargetHitBanner === "function"')
+        # Wait for the page to be fully loaded to prevent race conditions
+        await page.wait_for_load_state('load')
+
+        # Wait for firebase to be ready
+        await page.wait_for_function('window._firebaseInitialized')
+
+        # Wait for initializeAppLogic to be defined
+        await page.wait_for_function('typeof window.initializeAppLogic === "function"')
+
+        # Simulate user authentication and initialize the app
+        await page.evaluate('''() => {
+            window.currentUserId = 'test-user';
+            window.db = window.firestoreDb;
+            window.auth = window.firebaseAuth;
+            window.currentAppId = window.getFirebaseAppId();
+            window.initializeAppLogic();
+            window._appLogicInitialized = true;
+        }''')
 
         # Inject a dummy 52-week low alert to make the icon visible
         await page.evaluate('''() => {
@@ -63,9 +79,15 @@ async def main():
         # Click the target hit icon to open the modal
         await target_hit_icon.click()
 
+        # Add a small delay to handle potential flickering
+        await page.wait_for_timeout(500)
+
         # Wait for the modal to be visible
         modal = page.locator('#targetHitDetailsModal')
         await modal.wait_for(state='visible')
+
+        # Hide the splash screen before taking the screenshot
+        await page.evaluate("() => { document.getElementById('splashScreen').style.display = 'none'; }")
 
         # Take a screenshot of the modal
         await modal.screenshot(path='jules-scratch/verification/verification.png')

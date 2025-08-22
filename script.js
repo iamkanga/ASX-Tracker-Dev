@@ -731,7 +731,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.1.35';
+const APP_VERSION = 'v0.1.36';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -6132,6 +6132,7 @@ function updateTargetHitBanner() {
         console.warn('Target Alert: UI elements missing. Cannot update banner/highlights.');
         return;
     }
+    window.updateTargetHitBanner = updateTargetHitBanner;
     // Lightweight change-detection snapshot to suppress redundant DOM/log churn
     if (!window.__lastTargetBannerSnapshot) {
         window.__lastTargetBannerSnapshot = { enabledCount: null, displayCount: null, dismissed: null };
@@ -9990,7 +9991,8 @@ if (sortSelect) {
     // NEW: Set initial state for the compact view button
     updateCompactViewButtonState();
     applyCompactViewMode();
-} 
+}
+window.initializeAppLogic = initializeAppLogic;
 // This closing brace correctly ends the `initializeAppLogic` function here.
 // Build Marker: v0.1.13 (Network-first CSS/JS, cache bust deploy)
 // Also expose as a runtime variable for lightweight diagnostics
