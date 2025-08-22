@@ -6,7 +6,7 @@
     <title>Share Watchlist (Updated)</title>
     <link rel="icon" href="favicon.png" type="image/png">
 
-    <link rel="stylesheet" href="style.css?v=v0.1.31">
+    <link rel="stylesheet" href="style.css?v=0.1.32">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
@@ -170,7 +170,7 @@
         .watchlist-dynamic-title:focus { outline:none; }
     .sort-line-row { justify-content: center; font-size:0.9rem; margin-bottom:6px; }
         /* .live-price-timestamp-container is now absolutely positioned */
-        .sort-controls-container { display: flex; justify-content: flex-end; gap: 12px; }
+        .sort-controls-container { display: flex; justify-content: center; gap: 12px; }
         .live-price-timestamp { font-size: 0.8rem; color: var(--ghosted-text); opacity: 0.9; }
         .current-sort-display { min-height:1.2em; font-weight:500; }
     /* Subtle triangle toggle: two chevrons forming minimal arrow */
@@ -209,6 +209,7 @@
     <!-- Toast notifications container (single instance) -->
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
     <div id="splashScreen" class="splash-screen">
+        <p id="splashAppVersion" class="app-version-splash"></p>
         <img id="splashKangarooIcon" src="Kangaicon.jpg" alt="Kangaroo App Icon" class="splash-icon">
         <button id="splashSignInBtn" class="google-auth-btn">
             <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
@@ -232,11 +233,10 @@
                         </svg>
                         <span>Use popup instead</span>
                 </button>
-        <p id="splashAppVersion" style="color: var(--ghosted-text); font-size: 0.8rem; margin-top: 15px;"></p>
     </div>
 
     <header id="appHeader" class="app-hidden">
-    <div class="header-top-row single-dynamic-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px; position: relative; padding-bottom: 22px;">
+    <div class="header-top-row single-dynamic-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px; position: relative;">
             <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
                 <i class="fas fa-bars"></i>
             </button>
@@ -1031,7 +1031,7 @@
             console.log("index.html script module loaded and DOMContentLoaded fired.");
         }); 
     </script>
-    <script src="script.js?v=v0.1.31" type="module"></script>
+    <script src="script.js?v=0.1.32" type="module"></script>
 </body>
 <!-- Copilot update: 2025-07-29 - change for sync test -->
 </html>
