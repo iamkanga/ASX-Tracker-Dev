@@ -82,6 +82,19 @@
 .asx-toggle-triangle {
     margin-right: 10px;
 }
+
+.title-and-sort-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.header-left-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
 /* Center the discover sort bar vertically and remove label spacing */
 .discover-sort-bar-centered {
     display: flex;
@@ -3563,20 +3576,19 @@ body.sidebar-active {
 
 
 /* Header Styles */
-#appHeader {
+#appHeader { /* Target the header by its ID */
     background-color: var(--header-bg);
     box-shadow: 0 2px 4px var(--shadow-color);
-    position: fixed;
+    position: fixed; /* Make the entire header fixed */
     top: 0;
     left: 0;
     width: 100%;
-    z-index: 500;
+    z-index: 500; /* Ensure it's above main content */
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    padding: 8px 12px 0; /* Reduced padding */
-    gap: 4px; /* Reduced gap */
-    transition: margin-left 0.3s ease, width 0.3s ease;
+    display: flex; /* Use flexbox for internal layout */
+    flex-direction: column; /* Stack children vertically */
+    padding: 15px 20px 0; /* Removed padding-bottom, will be determined by content + gap */
+    gap: 10px; /* Space between header rows */
 }
 
 #dynamicWatchlistTitle {
@@ -3613,36 +3625,11 @@ main.container {
 .header-top-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     width: 100%;
-}
-
-.header-left-stack {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-#livePriceTimestamp {
-    font-size: 0.7rem;
-    color: var(--ghosted-text);
-    margin-top: -8px; /* Pull it closer to the hamburger */
-    padding-bottom: 4px;
-}
-
-.sort-row {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    padding: 4px 0 8px;
-}
-
-.sort-box {
-    margin: 0; /* Remove default margins */
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    box-sizing: border-box;
+    padding: 0;
+    gap: 0;
+    position: relative;
 }
 
 /* Ensure hamburger, title, and add button are always in correct order and position */
