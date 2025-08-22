@@ -720,7 +720,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.1.29';
+const APP_VERSION = 'v0.1.31';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -1602,38 +1602,35 @@ const cashFormInputs = [
 
 // --- GLOBAL HELPER FUNCTIONS ---
 
+// Function to update the sort icon based on the selected sort order
+function updateSortIcon() {
+    const sortSelect = document.getElementById('sortSelect');
+    const sortIcon = document.getElementById('sortIcon');
+    if (!sortSelect || !sortIcon) return;
+
+    const selectedOption = sortSelect.options[sortSelect.selectedIndex];
+    if (!selectedOption) return;
+
+    const sortValue = selectedOption.value;
+
+    sortIcon.className = 'sort-icon'; // Reset classes
+
+    // Green up arrow for descending (e.g., price_desc -> high to low)
+    if (sortValue.endsWith('_desc')) {
+        sortIcon.classList.add('up');
+    }
+    // Red down arrow for ascending (e.g., price_asc -> low to high)
+    else if (sortValue.endsWith('_asc')) {
+        sortIcon.classList.add('down');
+    }
+}
+
 function updateLivePriceTimestamp() {
     const timestampEl = document.getElementById('livePriceTimestamp');
     if (timestampEl) {
         const now = new Date();
         timestampEl.textContent = `Live: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     }
-}
-
-function updateSortIcon() {
-    const sortIcon = document.getElementById('sortIcon');
-    if (!sortIcon) return;
-
-    const sortValue = currentSortOrder;
-    if (!sortValue) {
-        sortIcon.innerHTML = '';
-        return;
-    }
-
-    const [field, order] = sortValue.split('-');
-
-    let iconClass = '';
-    let faIcon = '';
-
-    if (order === 'desc') {
-        iconClass = 'desc';
-        faIcon = 'fas fa-chevron-up';
-    } else { // asc
-        iconClass = 'asc';
-        faIcon = 'fas fa-chevron-down';
-    }
-
-    sortIcon.innerHTML = `<i class="${faIcon} ${iconClass}"></i>`;
 }
 
 const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
@@ -1657,7 +1654,6 @@ async function fetchLivePricesAndUpdateUI() {
 async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
     try {
-        updateLivePriceTimestamp();
         // Set last updated timestamp for portfolio view
         window._portfolioLastUpdated = new Date().toLocaleString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
         // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
@@ -8304,8 +8300,6 @@ function restorePersistedState() {
 }
 
 async function initializeAppLogic() {
-    updateLivePriceTimestamp();
-    updateSortIcon();
     applyCompactViewMode();
     // DEBUG: Log when initializeAppLogic starts
     logDebug('initializeAppLogic: Firebase is ready. Starting app logic.');
@@ -9188,6 +9182,7 @@ if (sortSelect) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         logDebug('Sort: Scrolled to top after sorting.');
     });
+    updateSortIcon();
 }
 
     // New Share Button (from sidebar) - Now contextual, handled by updateSidebarAddButtonContext
@@ -10617,10 +10612,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const appVersionEl = document.getElementById('appVersion');
     if (appVersionEl) {
         appVersionEl.textContent = APP_VERSION;
-    }
-    const splashAppVersionEl = document.getElementById('splashAppVersion');
-    if (splashAppVersionEl) {
-        splashAppVersionEl.textContent = APP_VERSION;
     }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
