@@ -3575,7 +3575,7 @@ body.sidebar-active {
     display: flex; /* Use flexbox for internal layout */
     flex-direction: column; /* Stack children vertically */
     padding: 15px 20px 0; /* Removed padding-bottom, will be determined by content + gap */
-    gap: 10px; /* Space between header rows */
+    gap: 4px; /* Space between header rows */
 }
 
 #dynamicWatchlistTitle {
