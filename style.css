@@ -2783,11 +2783,14 @@ body.theme-muted-grey {
 }
 
 .splash-version {
+    position: absolute;
+    top: 15px;
+    left: 15px;
     color: #fff;
-    opacity: 0.7; /* Increased opacity for better visibility */
-    font-size: 0.8rem;
-    font-weight: 400;
-    margin-top: 5px; /* Add a little space above the version number */
+    opacity: 0.8; /* Further increased opacity */
+    font-size: 0.9rem; /* Slightly larger font */
+    font-weight: 500;
+    z-index: 2001; /* Ensure it's on top of other splash screen elements */
 }
 
 /* === Mobile Modal Safe Area & Keyboard Handling Enhancements (Appended) === */
