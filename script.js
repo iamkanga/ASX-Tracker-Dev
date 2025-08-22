@@ -719,6 +719,8 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 // Guard against unintended re-opening of the Share Edit modal shortly after save
 let suppressShareFormReopen = false;
 
+// App version (displayed in UI title bar)
+const APP_VERSION = 'v0.1.14';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -1620,11 +1622,6 @@ async function fetchLivePricesAndUpdateUI() {
 async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
     try {
-        const timestampEl = document.getElementById('livePriceTimestamp');
-        if (timestampEl) {
-            const now = new Date();
-            timestampEl.textContent = `Live Prices: ${now.toLocaleTimeString()}`;
-        }
         // Set last updated timestamp for portfolio view
         window._portfolioLastUpdated = new Date().toLocaleString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
         // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
@@ -4670,27 +4667,27 @@ function renderSortSelect() {
     sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
 
     const stockOptions = [
-        { value: 'percentageChange-desc', text: 'Change % (H-L)' },
-        { value: 'percentageChange-asc', text: 'Change % (L-H)' },
-        { value: 'shareName-asc', text: 'Code (A-Z)' },
-        { value: 'shareName-desc', text: 'Code (Z-A)' },
-        { value: 'entryDate-desc', text: 'Date (N-O)' },
-        { value: 'entryDate-asc', text: 'Date (O-N)' },
-        { value: 'starRating-desc', text: '⭐ (H-L)' },
-        { value: 'starRating-asc', text: '⭐ (L-H)' },
-        { value: 'dividendAmount-desc', text: 'Yield % (H-L)' },
-        { value: 'dividendAmount-asc', text: 'Yield % (L-H)' }
+        { value: 'percentageChange-desc', text: 'Change % <i class="fas fa-chevron-up" style="color:green;"></i>' },
+        { value: 'percentageChange-asc', text: 'Change % <i class="fas fa-chevron-down" style="color:red;"></i>' },
+        { value: 'shareName-asc', text: 'Code <i class="fas fa-chevron-up" style="color:green;"></i>' },
+        { value: 'shareName-desc', text: 'Code <i class="fas fa-chevron-down" style="color:red;"></i>' },
+        { value: 'entryDate-desc', text: 'Date <i class="fas fa-chevron-up" style="color:green;"></i>' },
+        { value: 'entryDate-asc', text: 'Date <i class="fas fa-chevron-down" style="color:red;"></i>' },
+        { value: 'starRating-desc', text: '⭐ <i class="fas fa-chevron-up" style="color:green;"></i>' },
+        { value: 'starRating-asc', text: '⭐ <i class="fas fa-chevron-down" style="color:red;"></i>' },
+        { value: 'dividendAmount-desc', text: 'Yield % <i class="fas fa-chevron-up" style="color:green;"></i>' },
+        { value: 'dividendAmount-asc', text: 'Yield % <i class="fas fa-chevron-down" style="color:red;"></i>' }
     ];
 
     const portfolioOptions = [
-        { value: 'percentageChange-desc', text: 'Change % (H-L)' },
-        { value: 'percentageChange-asc', text: 'Change % (L-H)' },
-        { value: 'shareName-asc', text: 'Code (A-Z)' },
-        { value: 'shareName-desc', text: 'Code (Z-A)' },
-        { value: 'dayDollar-desc', text: 'Day $ (H-L)' },
-        { value: 'dayDollar-asc', text: 'Day $ (L-H)' },
-        { value: 'totalDollar-desc', text: 'Total $ (H-L)' },
-        { value: 'totalDollar-asc', text: 'Total $ (L-H)' }
+        { value: 'percentageChange-desc', text: 'Change % <i class="fas fa-chevron-up" style="color:green;"></i>' },
+        { value: 'percentageChange-asc', text: 'Change % <i class="fas fa-chevron-down" style="color:red;"></i>' },
+        { value: 'shareName-asc', text: 'Code <i class="fas fa-chevron-up" style="color:green;"></i>' },
+        { value: 'shareName-desc', text: 'Code <i class="fas fa-chevron-down" style="color:red;"></i>' },
+        { value: 'dayDollar-desc', text: 'Day $ <i class="fas fa-chevron-up" style="color:green;"></i>' },
+        { value: 'dayDollar-asc', text: 'Day $ <i class="fas fa-chevron-down" style="color:red;"></i>' },
+        { value: 'totalDollar-desc', text: 'Total $ <i class="fas fa-chevron-up" style="color:green;"></i>' },
+        { value: 'totalDollar-asc', text: 'Total $ <i class="fas fa-chevron-down" style="color:red;"></i>' }
     ];
 
     const cashOptions = [
@@ -4721,7 +4718,7 @@ function renderSortSelect() {
     optionsToShow.forEach(opt => {
         const optionElement = document.createElement('option');
         optionElement.value = opt.value;
-        optionElement.textContent = opt.text;
+        optionElement.innerHTML = opt.text;
         sortSelect.appendChild(optionElement);
     });
     logDebug(`Sort Select: Populated with ${logMessage}.`);
@@ -4961,7 +4958,7 @@ function renderWatchlist() {
             portfolioSection = document.createElement('div');
             portfolioSection.id = 'portfolioSection';
             portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<div id="portfolioListContainer">Loading portfolio...</div>';
+            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
             if (mainContainer) mainContainer.appendChild(portfolioSection);
         }
         portfolioSection.style.display = 'block';
@@ -4972,6 +4969,7 @@ function renderWatchlist() {
     // Title handled by updateMainTitle
     // Show sort dropdown in portfolio too
     sortSelect.classList.remove('app-hidden');
+        refreshLivePricesBtn.classList.add('app-hidden');
         toggleCompactViewBtn.classList.add('app-hidden');
         exportWatchlistBtn.classList.remove('app-hidden'); // Allow export if desired
         // Render the portfolio list
@@ -5937,41 +5935,39 @@ async function loadUserWatchlistsAndSettings() {
     savedSortOrder = null;
     savedTheme = null;
 
-        let loadedSelectedWatchlistIds = null;
         if (userProfileSnap.exists()) {
             const settingsData = userProfileSnap.data();
             savedSortOrder = settingsData.lastSortOrder;
             savedTheme = settingsData.lastTheme;
             applyLoadedGlobalAlertSettings(settingsData);
-            loadedSelectedWatchlistIds = settingsData.lastSelectedWatchlistIds;
+            const loadedSelectedWatchlistIds = settingsData.lastSelectedWatchlistIds;
             // Manual EOD preference removed; behavior is now automatic
+
+            if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
+                // Filter out invalid or non-existent watchlists from loaded preferences
+                // Treat 'portfolio' as a valid special view alongside All Shares and Cash & Assets
+                currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id =>
+                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
+                );
+                logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
+            } else {
+                logDebug('User Settings: No valid last selected watchlists in profile. Will determine default.');
+            }
         } else {
-            logDebug('User Settings: User profile settings not found. This is a first-time user. Setting default sort order to A-Z.');
-            // This is a first-time user, set default sort order.
-            savedSortOrder = 'shareName-asc';
-            // Also, save this preference to their new profile.
-            await saveSortOrderPreference(savedSortOrder);
+            logDebug('User Settings: User profile settings not found. Will determine default watchlist selection.');
         }
 
-        // Restore last selected view: Profile > localStorage > Default
-        if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
-            currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id =>
-                id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
-            );
-            logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
-        } else {
-            logDebug('User Settings: No valid last selected watchlists in profile. Checking localStorage fallback.');
-            try {
-                const lsView = localStorage.getItem('lastSelectedView');
-                if (lsView) {
-                    const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || userWatchlists.some(wl => wl.id === lsView);
-                    if (isValid) {
-                        currentSelectedWatchlistIds = [lsView];
-                        logDebug('User Settings: Using localStorage lastSelectedView as fallback: ' + lsView);
-                    }
+        // Prefer local device's last selected view if available and valid
+        try {
+            const lsView = localStorage.getItem('lastSelectedView');
+            if (lsView) {
+                const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || userWatchlists.some(wl => wl.id === lsView);
+                if (isValid) {
+                    currentSelectedWatchlistIds = [lsView];
+                    logDebug('User Settings: Overriding selection with localStorage lastSelectedView: ' + lsView);
                 }
-            } catch(e) { /* ignore */ }
-        }
+            }
+        } catch(e) { /* ignore */ }
 
         // Determine final currentSelectedWatchlistIds if not set or invalid after loading/filtering
         if (!currentSelectedWatchlistIds || currentSelectedWatchlistIds.length === 0) {
@@ -10576,6 +10572,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Display App Version
+    const appVersionEl = document.getElementById('appVersion');
+    if (appVersionEl) {
+        appVersionEl.textContent = APP_VERSION;
+    }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
     window._userAuthenticated = false;
@@ -10617,23 +10618,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const cls = discoverModal.querySelector('.close-button');
         if (cls) cls.addEventListener('click', ()=> hideModal(discoverModal));
         discoverModal.addEventListener('mousedown', (e)=>{ if (e.target === discoverModal) hideModal(discoverModal); });
-
-        // --- Discover Modal Header Click to Open Global Alerts ---
-        const discoverHeader = discoverModal.querySelector('.modal-header-with-icon');
-        const globalAlertsModalRef = document.getElementById('globalAlertsModal');
-        if (discoverHeader && globalAlertsModalRef) {
-            discoverHeader.style.cursor = 'pointer';
-            discoverHeader.setAttribute('title', 'Click to edit Global Alert settings');
-            discoverHeader.addEventListener('click', (e) => {
-                // Don't trigger if the close button itself was clicked
-                if (e.target.closest('.close-button')) {
-                    return;
-                }
-                hideModal(discoverModal);
-                showModal(globalAlertsModalRef);
-                logDebug('Discover Modal: Header clicked, opening Global Alerts modal.');
-            });
-        }
     }
     if (appHeader) {
         appHeader.classList.add('app-hidden');
@@ -11078,14 +11062,6 @@ try {
     }
 })();
 // --- End Auto SuperDebug Fallback Trigger ---
-
-// --- Keyboard visibility detection ---
-if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => {
-        const keyboardVisible = window.innerHeight > window.visualViewport.height;
-        document.body.classList.toggle('keyboard-visible', keyboardVisible);
-    });
-}
 
 // --- Super Debug Always-Install (resiliency) ---
 // Some users reported the panel not appearing with ?superdebug. This independent
