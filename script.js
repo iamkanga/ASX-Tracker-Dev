@@ -720,11 +720,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-<<<<<<< HEAD
-const APP_VERSION = 'v0.1.14';
-=======
 const APP_VERSION = 'v0.1.34';
->>>>>>> 595b447ae68ca55d0a372c044b7df27748ea4eac
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -1605,6 +1601,38 @@ const cashFormInputs = [
 
 
 // --- GLOBAL HELPER FUNCTIONS ---
+
+// Function to update the sort icon based on the selected sort order
+function updateSortIcon() {
+    const sortSelect = document.getElementById('sortSelect');
+    const sortIcon = document.getElementById('sortIcon');
+    if (!sortSelect || !sortIcon) return;
+
+    const selectedOption = sortSelect.options[sortSelect.selectedIndex];
+    if (!selectedOption) return;
+
+    const sortValue = selectedOption.value;
+
+    sortIcon.className = 'sort-icon'; // Reset classes
+
+    // Green up arrow for descending (e.g., price_desc -> high to low)
+    if (sortValue.endsWith('_desc')) {
+        sortIcon.classList.add('up');
+    }
+    // Red down arrow for ascending (e.g., price_asc -> low to high)
+    else if (sortValue.endsWith('_asc')) {
+        sortIcon.classList.add('down');
+    }
+}
+
+function updateLivePriceTimestamp() {
+    const timestampEl = document.getElementById('livePriceTimestamp');
+    if (timestampEl) {
+        const now = new Date();
+        timestampEl.textContent = `Live: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+}
+
 const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
 
 async function fetchLivePricesAndUpdateUI() {
@@ -3032,6 +3060,7 @@ function updateMainButtonsState(enable) {
 
     logDebug('UI State: Sort Select Disabled: ' + (sortSelect ? sortSelect.disabled : 'N/A'));
     logDebug('UI State: Watchlist Select Disabled: ' + (watchlistSelect ? watchlistSelect.disabled : 'N/A'));
+    updateSortIcon();
 }
 
 /**
@@ -4744,6 +4773,7 @@ function renderSortSelect() {
     }
 
     logDebug('UI Update: Sort select rendered. Sort select disabled: ' + sortSelect.disabled);
+    updateSortIcon();
 }
 
 
@@ -5950,7 +5980,7 @@ async function loadUserWatchlistsAndSettings() {
             if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
                 // Filter out invalid or non-existent watchlists from loaded preferences
                 // Treat 'portfolio' as a valid special view alongside All Shares and Cash & Assets
-                currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id => 
+                currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id =>
                     id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
                 );
                 logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
@@ -9132,6 +9162,7 @@ if (sortSelect) {
     sortSelect.addEventListener('change', async (event) => {
         logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
         currentSortOrder = sortSelect.value;
+        updateSortIcon();
         
         // AGGRESSIVE FIX: Force apply sort immediately for percentage change sorts
         if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
@@ -9151,6 +9182,7 @@ if (sortSelect) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         logDebug('Sort: Scrolled to top after sorting.');
     });
+    updateSortIcon();
 }
 
     // New Share Button (from sidebar) - Now contextual, handled by updateSidebarAddButtonContext

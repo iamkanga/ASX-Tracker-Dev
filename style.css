@@ -5014,7 +5014,7 @@ table td.live-price-cell.negative-change {
     color: var(--text-color);
     display: flex;
     flex-direction: column;
-    max-height: 90vh; 
+    max-height: 90vh;
     overflow-x: hidden; /* Prevent horizontal spill */
     word-break: break-word; /* Wrap long tokens */
     overscroll-behavior: contain;
