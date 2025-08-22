@@ -1601,6 +1601,41 @@ const cashFormInputs = [
 
 
 // --- GLOBAL HELPER FUNCTIONS ---
+
+function updateLivePriceTimestamp() {
+    const timestampEl = document.getElementById('livePriceTimestamp');
+    if (timestampEl) {
+        const now = new Date();
+        timestampEl.textContent = `Live: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+}
+
+function updateSortIcon() {
+    const sortIcon = document.getElementById('sortIcon');
+    if (!sortIcon) return;
+
+    const sortValue = currentSortOrder;
+    if (!sortValue) {
+        sortIcon.innerHTML = '';
+        return;
+    }
+
+    const [field, order] = sortValue.split('-');
+
+    let iconClass = '';
+    let faIcon = '';
+
+    if (order === 'desc') {
+        iconClass = 'desc';
+        faIcon = 'fas fa-chevron-up';
+    } else { // asc
+        iconClass = 'asc';
+        faIcon = 'fas fa-chevron-down';
+    }
+
+    sortIcon.innerHTML = `<i class="${faIcon} ${iconClass}"></i>`;
+}
+
 const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
 
 async function fetchLivePricesAndUpdateUI() {
@@ -1622,6 +1657,7 @@ async function fetchLivePricesAndUpdateUI() {
 async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
     try {
+        updateLivePriceTimestamp();
         // Set last updated timestamp for portfolio view
         window._portfolioLastUpdated = new Date().toLocaleString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
         // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
@@ -3028,6 +3064,7 @@ function updateMainButtonsState(enable) {
 
     logDebug('UI State: Sort Select Disabled: ' + (sortSelect ? sortSelect.disabled : 'N/A'));
     logDebug('UI State: Watchlist Select Disabled: ' + (watchlistSelect ? watchlistSelect.disabled : 'N/A'));
+    updateSortIcon();
 }
 
 /**
@@ -4740,6 +4777,7 @@ function renderSortSelect() {
     }
 
     logDebug('UI Update: Sort select rendered. Sort select disabled: ' + sortSelect.disabled);
+    updateSortIcon();
 }
 
 
@@ -8266,6 +8304,8 @@ function restorePersistedState() {
 }
 
 async function initializeAppLogic() {
+    updateLivePriceTimestamp();
+    updateSortIcon();
     applyCompactViewMode();
     // DEBUG: Log when initializeAppLogic starts
     logDebug('initializeAppLogic: Firebase is ready. Starting app logic.');
@@ -9128,6 +9168,7 @@ if (sortSelect) {
     sortSelect.addEventListener('change', async (event) => {
         logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
         currentSortOrder = sortSelect.value;
+        updateSortIcon();
         
         // AGGRESSIVE FIX: Force apply sort immediately for percentage change sorts
         if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
