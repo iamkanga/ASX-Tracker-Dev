@@ -1,3 +1,38 @@
+/* --- UI Regression Fixes --- */
+.header-top-row.single-dynamic-title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding-bottom: 8px;
+}
+
+.title-and-sort-container {
+    order: 2;
+    text-align: center;
+}
+
+.header-left-container {
+    order: 1;
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.header-action-btn-right {
+    order: 3;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+}
+
+.live-price-timestamp-container {
+    margin-top: 4px;
+}
+
 /* The .low52-title-chevron class has been removed and replaced by .low52-arrow-icon */
 /* Ghost out muted 52-week alert cards instead of hiding them */
 .low52-card-hidden {
