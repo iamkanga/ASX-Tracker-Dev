@@ -1602,6 +1602,14 @@ const cashFormInputs = [
 
 // --- GLOBAL HELPER FUNCTIONS ---
 
+function updateLivePriceTimestamp() {
+    const timestampEl = document.getElementById('livePriceTimestamp');
+    if (timestampEl) {
+        const now = new Date();
+        timestampEl.textContent = `Live: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+}
+
 // Function to update the sort icon based on the selected sort order
 function updateSortIcon() {
     const sortSelect = document.getElementById('sortSelect');
@@ -1654,6 +1662,7 @@ async function fetchLivePricesAndUpdateUI() {
 async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
     try {
+        updateLivePriceTimestamp();
         // Set last updated timestamp for portfolio view
         window._portfolioLastUpdated = new Date().toLocaleString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
         // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
@@ -1758,7 +1767,6 @@ async function fetchLivePrices(opts = {}) {
         });
 
         livePrices = newLivePrices;
-        updateLivePriceTimestamp();
     // After updating livePrices but before recomputeTriggeredAlerts, evaluate global alert thresholds
     try { evaluateGlobalPriceAlerts(); } catch(e){ console.warn('Global Alerts: evaluation failed', e); }
         if (DEBUG_MODE) {
@@ -10610,13 +10618,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Display App Version
-    const appVersionEl = document.getElementById('appVersion');
+    const appVersionEl = document.getElementById('splashAppVersion');
     if (appVersionEl) {
         appVersionEl.textContent = APP_VERSION;
-    }
-    const splashAppVersionEl = document.getElementById('splashAppVersion');
-    if (splashAppVersionEl) {
-        splashAppVersionEl.textContent = APP_VERSION;
     }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;

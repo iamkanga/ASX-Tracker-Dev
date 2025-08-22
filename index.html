@@ -125,16 +125,12 @@
             }
         }
         .app-version-splash {
+            position: absolute;
+            top: 10px;
+            left: 10px;
             font-size: 0.8rem;
             color: var(--ghosted-text);
             opacity: 0.7;
-            margin-top: 15px;
-        }
-        .app-version-title-bar {
-            font-size: 0.8rem;
-            color: var(--ghosted-text);
-            opacity: 0.7;
-            white-space: nowrap;
         }
     </style>
         <style>
@@ -174,7 +170,7 @@
         .watchlist-dynamic-title:focus { outline:none; }
     .sort-line-row { justify-content: center; font-size:0.9rem; margin-bottom:6px; }
         /* .live-price-timestamp-container is now absolutely positioned */
-        .sort-controls-container { display: flex; justify-content: center; gap: 12px; }
+        .sort-controls-container { display: flex; justify-content: flex-end; gap: 12px; }
         .live-price-timestamp { font-size: 0.8rem; color: var(--ghosted-text); opacity: 0.9; }
         .current-sort-display { min-height:1.2em; font-weight:500; }
     /* Subtle triangle toggle: two chevrons forming minimal arrow */
@@ -236,17 +232,14 @@
                         </svg>
                         <span>Use popup instead</span>
                 </button>
-        <p id="splashAppVersion" class="app-version-splash"></p>
+        <p id="splashAppVersion" style="color: var(--ghosted-text); font-size: 0.8rem; margin-top: 15px;"></p>
     </div>
 
     <header id="appHeader" class="app-hidden">
     <div class="header-top-row single-dynamic-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px; position: relative; padding-bottom: 22px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <span id="appVersion" class="app-version-title-bar"></span>
-            </div>
+            <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
+                <i class="fas fa-bars"></i>
+            </button>
             <!-- Single dynamic clickable title acts as the only title bar -->
             <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
             <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right icon-button" aria-label="Add Share">
