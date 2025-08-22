@@ -236,30 +236,39 @@
     </div>
 
     <header id="appHeader" class="app-hidden">
-    <div class="header-top-row single-dynamic-title">
-            <div class="header-left-container">
-                <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
+        <div class="header-bar-flex">
+            <div class="header-bar-left">
+                <button id="hamburgerBtn" class="header-action-btn hamburger-btn" aria-label="Open menu" tabindex="0">
                     <i class="fas fa-bars"></i>
                 </button>
                 <div class="live-price-timestamp-container">
                     <span id="livePriceTimestamp" class="live-price-timestamp"></span>
                 </div>
             </div>
-            <div class="title-and-sort-container">
-                <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
-                <div class="sort-line-row" style="display: flex; justify-content: center; align-items: center; width: 100%; margin-top: 2px;">
-                    <div class="sort-controls-container" style="margin: 0 auto;">
-                        <div class="sort-select-wrapper">
-                            <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
-                            <span id="sortIcon" class="sort-icon"></span>
-                        </div>
-                        <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer"></button>
+            <div class="header-bar-center">
+                <div class="header-title-row">
+                    <h1 id="dynamicWatchlistTitle" tabindex="0">
+                        <span id="dynamicWatchlistTitleText">ASX Watchlist</span>
+                        <span id="appVersion" class="ghosted-text">v0.1.36</span>
+                    </h1>
+                </div>
+                <div class="header-sort-row">
+                    <div class="sort-group">
+                        <select id="sortSelect" class="dropdown-large" aria-label="Sort by">
+                            <option value="name">Sort: Name</option>
+                            <option value="price">Sort: Price</option>
+                            <option value="change">Sort: Change</option>
+                            <option value="star">Sort: Star</option>
+                        </select>
+                        <span id="sortChevron" class="chevron">&#x25BC;</span>
                     </div>
                 </div>
             </div>
-            <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right icon-button" aria-label="Add Share">
-                <i class="fas fa-plus"></i>
-            </button>
+            <div class="header-bar-right">
+                <button id="addShareHeaderBtn" class="header-action-btn" aria-label="Add share" tabindex="0">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
         </div>
         <select id="watchlistSelect" style="display:none"></select>
     <!-- Market status banner (shown automatically when market is closed) -->
