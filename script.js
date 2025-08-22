@@ -720,7 +720,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.1.33';
+const APP_VERSION = 'v0.1.34';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -1758,7 +1758,6 @@ async function fetchLivePrices(opts = {}) {
         });
 
         livePrices = newLivePrices;
-        updateLivePriceTimestamp();
     // After updating livePrices but before recomputeTriggeredAlerts, evaluate global alert thresholds
     try { evaluateGlobalPriceAlerts(); } catch(e){ console.warn('Global Alerts: evaluation failed', e); }
         if (DEBUG_MODE) {
@@ -10610,7 +10609,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Display App Version
-    const appVersionEl = document.getElementById('splashAppVersion');
+    const appVersionEl = document.getElementById('appVersion');
     if (appVersionEl) {
         appVersionEl.textContent = APP_VERSION;
     }

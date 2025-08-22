@@ -3574,7 +3574,7 @@ body.sidebar-active {
     box-sizing: border-box;
     display: flex; /* Use flexbox for internal layout */
     flex-direction: column; /* Stack children vertically */
-    padding: 15px 10px 0; /* Reduced horizontal padding */
+    padding: 15px 20px 0; /* Removed padding-bottom, will be determined by content + gap */
     gap: 10px; /* Space between header rows */
 }
 
@@ -6964,9 +6964,8 @@ body.dark-theme .alert-item {
     top: 100%; /* Position below the input */
     left: 0;
     width: 100%;
-    max-height: 220px; /* Increased max-height */
-    overflow-y: auto; /* Ensure vertical scrolling is enabled */
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    max-height: 200px;
+    overflow-y: auto;
     background-color: var(--card-bg); /* Use card background for suggestions */
     border: 1px solid var(--border-color);
     border-top: none; /* No top border, blends with input */
