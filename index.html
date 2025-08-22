@@ -136,6 +136,10 @@
     #dynamicWatchlistTitleText:focus-visible { outline:2px solid var(--green-color); outline-offset:2px; }
         .watchlist-dynamic-title:focus { outline:none; }
     .sort-line-row { gap:12px; font-size:0.9rem; margin-bottom:6px; }
+    .last-updated-timestamp { font-size: 0.8em; color: var(--ghosted-text, #888); }
+    #sortIcon i { font-size: 1em; }
+    #sortIcon i.desc { color: var(--positive-color, #27ae60); }
+    #sortIcon i.asc { color: var(--negative-color, #c0392b); }
         .current-sort-display { min-height:1.2em; font-weight:500; }
     /* Subtle triangle toggle: two chevrons forming minimal arrow */
     /* Reworked subtle chevron toggle (single arrow) */
@@ -213,6 +217,8 @@
         <!-- Sort row with subtle arrow toggle -->
         <div id="sortLine" class="sort-line-row">
             <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
+            <span id="sortIcon"></span>
+            <span id="livePriceTimestamp" class="last-updated-timestamp"></span>
             <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer"></button>
         </div>
         <select id="watchlistSelect" style="display:none"></select>
