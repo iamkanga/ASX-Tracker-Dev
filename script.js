@@ -735,7 +735,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.2.2';
+const APP_VERSION = 'v2.1.1';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -11204,4 +11204,4 @@ try {
         }
     } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
-// --- End Super Debug Always-Install --- OK now on the mobile cards the actual information the sell or buy
+// --- End Super Debug Always-Install ---
