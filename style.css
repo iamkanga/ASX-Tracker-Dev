@@ -894,7 +894,7 @@ function makeFilesAvailableToSourceControlCSS() {
   margin-right: auto;
   margin-top: 0;
   margin-bottom: 0.5em;
-  flex-wrap: nowrap;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
   position: relative;
 }
 .controls-flex-row.no-gap > * {
@@ -3620,14 +3620,26 @@ main.container {
 }
 
 /* Ensure hamburger, title, and add button are always in correct order and position */
-.header-action-btn-left {
-    order: 1;
-    /* margin-right: auto; */
+.header-left-container, .header-action-btn-right {
+    flex: 0 0 80px; /* Give both left and right containers a fixed base width */
+    display: flex;
+    align-items: center;
 }
+
+.header-left-container {
+    justify-content: flex-start;
+     order: 1;
+}
+
+.header-action-btn-right {
+    justify-content: flex-end;
+    order: 3;
+}
+
 /* Center the single dynamic title */
 h1#dynamicWatchlistTitle {
     order: 2;
-    flex: 1 1 auto;
+    flex: 1 1 auto; /* Allow title to grow and fill the space */
     margin: 0;
     text-align: center;
     font-size: 1.85rem;
