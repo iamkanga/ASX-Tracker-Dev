@@ -460,6 +460,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         <span class="pc-label">Day Change</span>
                         <span class="pc-val ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></span>
                     </div>
+                    <div class="pc-metric-line alert-target-row">
+                        <span class="pc-label">Alert Target</span>
+                        <span class="pc-val">${renderAlertTargetInline(share)}</span>
+                    </div>
                 </div>
                 <div class="pc-controls-row">
                     <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand"><span class="chevron">▼</span></button>
@@ -2358,13 +2362,6 @@ try { accordionObserver.observe(document.body, { childList: true, subtree: true 
 
 // Helper: Render unified Alert Target (Intent + Direction + Price) B/S + Arrow + $Price
 function renderAlertTargetInline(share, opts = {}) {
-    console.log('[DEBUG][renderAlertTargetInline]', {
-        shareId: share ? share.id : 'N/A',
-        shareName: share ? share.shareName : 'N/A',
-        intent: share ? (share.alertIntent || share.intent || share.targetIntent) : 'N/A',
-        targetPrice: share ? share.targetPrice : 'N/A',
-        hasPrice: share ? !isNaN(Number(share.targetPrice)) && Number(share.targetPrice) !== 0 : false
-    });
     if (!share) return opts.emptyReturn || '';
     const priceNum = Number(share.targetPrice);
     const hasPrice = !isNaN(priceNum) && priceNum !== 0;
