@@ -7650,3 +7650,62 @@ body.dark-theme .alert-item {
     width: 20px;
     text-align: center;
 }
+
+/* Centered, dynamically-sized sort controls row */
+.sort-line-row {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin: 8px 0 4px 0; /* Space below the title */
+}
+
+.sort-controls-container {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between sort dropdown and toggle arrow */
+}
+
+.sort-select-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Override dropdown-large for this specific context to be dynamically sized */
+.sort-controls-container .dropdown-large {
+    width: auto; /* Key change: allow width to fit content */
+    min-width: 140px; /* Set a reasonable minimum */
+    padding-right: 28px; /* Ensure space for sort icon */
+    text-align: center; /* Center text within the select box */
+    text-align-last: center; /* For Firefox */
+    -moz-text-align-last: center; /* For Firefox */
+}
+
+.sort-icon {
+    position: absolute;
+    right: 8px; /* Position icon inside the select box */
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 0.8em;
+    color: var(--ghosted-text);
+    transition: transform 0.2s ease-in-out;
+}
+
+.sort-icon.up::before {
+    content: '▲';
+    color: var(--price-up-color);
+}
+
+.sort-icon.down::before {
+    content: '▼';
+    color: var(--price-down-color);
+}
+
+/* Ensure toggle button is vertically aligned and has appropriate size */
+.sort-controls-container .asx-toggle-triangle {
+    margin: 0;
+    padding: 6px;
+    font-size: 1.2em;
+    flex-shrink: 0; /* Prevent button from shrinking */
+}
