@@ -57,20 +57,17 @@
                 <i class="fas fa-plus"></i>
             </button>
         </div>
-        <!-- Watchlist and Sort controls -->
-        <div class="watchlist-controls-row">
-            <div class="dropdowns-center-row">
-                <div class="watchlist-group">
-                    <select id="watchlistSelect" class="dropdown-large"></select>
+        <!-- Sort row with subtle arrow toggle -->
+        <div id="sortLine" class="sort-line-row">
+            <div class="sort-controls-container">
+                <div class="sort-select-wrapper">
+                    <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
+                    <span id="sortIcon" class="sort-icon"></span>
                 </div>
-                <div class="sort-group">
-                    <select id="sortSelect" class="dropdown-large"></select>
-                </div>
-                <div class="toggle-asx-buttons-group">
-                    <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle ASX code buttons" aria-pressed="false"></button>
-                </div>
+                <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer"></button>
             </div>
         </div>
+        <select id="watchlistSelect" style="display:none"></select>
     <!-- Market status banner (shown automatically when market is closed) -->
     <div id="marketStatusBanner" class="market-status-banner app-hidden" aria-live="polite"></div>
         
