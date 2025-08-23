@@ -735,7 +735,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.2.1';
+const APP_VERSION = 'v0.2.2';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -4799,18 +4799,47 @@ function openWatchlistPicker() {
     }
     console.log('[WatchlistPicker] Opening picker...');
     watchlistPickerList.innerHTML='';
+
     const items=[];
-    items.push({id:ALL_SHARES_ID,name:'All Shares'});
+    items.push({id:ALL_SHARES_ID,name:'All Shares', icon: 'fa-globe'});
     if ((globalAlertSummary && globalAlertSummary.totalCount > 0) || (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries && window.__lastMoversSnapshot.entries.length)) {
-        items.push({id:'__movers',name:'Movers'});
+        items.push({id:'__movers',name:'Movers', icon: 'fa-chart-line'});
     }
-    items.push({id:'portfolio',name:'Portfolio'});
-    userWatchlists.filter(w=>w.id!==ALL_SHARES_ID && w.id!==CASH_BANK_WATCHLIST_ID).forEach(w=>items.push(w));
-    items.push({id:CASH_BANK_WATCHLIST_ID,name:'Cash & Assets'});
-    items.forEach(it=>{
+    items.push({id:'portfolio',name:'Portfolio', icon: 'fa-briefcase'});
+    userWatchlists.filter(w=>w.id!==ALL_SHARES_ID && w.id!==CASH_BANK_WATCHLIST_ID).forEach(w=>items.push({...w, icon: 'fa-list-alt'}));
+    items.push({id:CASH_BANK_WATCHLIST_ID,name:'Cash & Assets', icon: 'fa-dollar-sign'});
+
+    const specialOrder = [ALL_SHARES_ID, 'portfolio', CASH_BANK_WATCHLIST_ID];
+    const defaultWatchlist = userWatchlists.find(w => w.name === DEFAULT_WATCHLIST_NAME);
+    if (defaultWatchlist) {
+        specialOrder.push(defaultWatchlist.id);
+    }
+
+    const sortedItems = items.sort((a, b) => {
+        const aIndex = specialOrder.indexOf(a.id);
+        const bIndex = specialOrder.indexOf(b.id);
+
+        if (aIndex > -1 && bIndex > -1) {
+            return aIndex - bIndex;
+        }
+        if (aIndex > -1) {
+            return -1;
+        }
+        if (bIndex > -1) {
+            return 1;
+        }
+        return a.name.localeCompare(b.name);
+    });
+
+    sortedItems.forEach(it=>{
         const div=document.createElement('div');
         div.className='picker-item'+(currentSelectedWatchlistIds[0]===it.id?' active':'');
-        div.textContent=it.name;
+        div.innerHTML = `
+            <div class="picker-item-content">
+                <i class="fas ${it.icon}"></i>
+                <span>${it.name}</span>
+            </div>
+        `;
         div.tabIndex=0;
         div.onclick=()=>{
             console.log('[WatchlistPicker] Selecting watchlist', it.id);
