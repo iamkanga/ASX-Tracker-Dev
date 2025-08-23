@@ -731,7 +731,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.1.36';
+const APP_VERSION = 'v0.1.38';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -9997,6 +9997,20 @@ window.initializeAppLogic = initializeAppLogic;
 // Build Marker: v0.1.13 (Network-first CSS/JS, cache bust deploy)
 // Also expose as a runtime variable for lightweight diagnostics
 window.BUILD_MARKER = 'v0.1.13';
+
+async function runVerificationTest() {
+    currentUserId = 'DUMMY_USER_FOR_TESTING';
+    await loadUserWatchlistsAndSettings();
+    await loadUserPreferences();
+    restoreViewAndModeFromPreferences();
+    await loadTriggeredAlertsListener();
+    startGlobalSummaryListener();
+    await fetchLivePrices();
+    startLivePriceUpdates();
+    await loadAsxCodesFromCSV();
+    initializeAppLogic();
+}
+window.runVerificationTest = runVerificationTest;
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal(options={}) {

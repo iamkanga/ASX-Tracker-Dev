@@ -3,7 +3,7 @@ from playwright.async_api import async_playwright
 import os
 import http.server
 import socketserver
-import threading
+import multiprocessing
 
 PORT = 8000
 
@@ -20,82 +20,81 @@ def handle_console_message(msg):
     print(f"Browser console: {msg.text}")
 
 async def main():
-    # Start the server in a separate thread
-    server_thread = threading.Thread(target=run_server)
-    server_thread.daemon = True
-    server_thread.start()
-
-    # Give the server a moment to start
+    # Start the server in a separate process
+    server_process = multiprocessing.Process(target=run_server)
+    server_process.start()
     await asyncio.sleep(1)
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page()
+    browser = None
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page()
 
-        # Listen for console events and print them
-        page.on("console", handle_console_message)
+            # Add an initialization script to capture the auth handler
+            await page.add_init_script('''
+                window.capturedAuthHandler = null;
+                Object.defineProperty(window, 'authFunctions', {
+                    configurable: true,
+                    get() {
+                        return this._authFunctions;
+                    },
+                    set(value) {
+                        if (value && value.onAuthStateChanged) {
+                            const realOnAuthStateChanged = value.onAuthStateChanged;
+                            value.onAuthStateChanged = (auth, handler) => {
+                                window.capturedAuthHandler = handler;
+                            };
+                        }
+                        this._authFunctions = value;
+                    }
+                });
+            ''')
 
-        # Navigate to the local server
-        await page.goto(f'http://localhost:{PORT}/index.html')
+            # Listen for console events and print them
+            page.on("console", handle_console_message)
 
-        # Wait for the page to be fully loaded to prevent race conditions
-        await page.wait_for_load_state('load')
+            # Navigate to the local server
+            await page.goto(f'http://localhost:{PORT}/index.html')
 
-        # Wait for firebase to be ready
-        await page.wait_for_function('window._firebaseInitialized')
+            # Wait for the handler to be captured
+            await page.wait_for_function('window.capturedAuthHandler != null')
 
-        # Wait for initializeAppLogic to be defined
-        await page.wait_for_function('typeof window.initializeAppLogic === "function"')
+            # Now, manually trigger the authentication state change with a mock user
+            await page.evaluate('''() => {
+                const mockUser = { uid: 'test-user-id', email: 'test@example.com' };
+                window.capturedAuthHandler(mockUser);
+            }''')
 
-        # Simulate user authentication and initialize the app
-        await page.evaluate('''() => {
-            window.currentUserId = 'test-user';
-            window.db = window.firestoreDb;
-            window.auth = window.firebaseAuth;
-            window.currentAppId = window.getFirebaseAppId();
-            window.initializeAppLogic();
-            window._appLogicInitialized = true;
-        }''')
+            # Add a dummy share to the watchlist to make the ASX buttons appear
+            await page.evaluate('''() => {
+                window.allSharesData = [{id: '1', shareName: 'BHP', starRating: 3, watchlistIds: ['all_shares_option']}];
+                if (typeof window.renderWatchlist === 'function') {
+                    window.renderWatchlist();
+                }
+            }''')
 
-        # Inject a dummy 52-week low alert to make the icon visible
-        await page.evaluate('''() => {
-            window.sharesAt52WeekLow = [{
-                code: 'CBA',
-                name: 'Commonwealth Bank (Test Card)',
-                type: 'low',
-                low52: 90.00,
-                high52: 120.00,
-                live: 91.23,
-                isTestCard: true,
-                muted: false
-            }];
-            window.updateTargetHitBanner();
-        }''')
+            # Wait for the main content to be visible after initialization
+            await page.wait_for_selector('main.container:not(.app-hidden)')
 
-        # Wait for the target hit icon to be visible
-        target_hit_icon = page.locator('#targetHitIconBtn')
-        await target_hit_icon.wait_for(state='visible')
+            # Hide the splash screen before taking the screenshot
+            await page.evaluate("() => { document.getElementById('splashScreen').style.display = 'none'; }")
 
-        # Click the target hit icon to open the modal
-        await target_hit_icon.click()
+            # Check if the sort select and toggle button are in the DOM
+            sort_select_visible = await page.is_visible("#sortSelect")
+            print(f"Sort select visible: {sort_select_visible}")
+            toggle_btn_visible = await page.is_visible("#toggleAsxButtonsBtn")
+            print(f"Toggle button visible: {toggle_btn_visible}")
 
-        # Add a small delay to handle potential flickering
-        await page.wait_for_timeout(500)
+            # Take a screenshot of the page
+            await page.screenshot(path='jules-scratch/verification/verification.png')
 
-        # Wait for the modal to be visible
-        modal = page.locator('#targetHitDetailsModal')
-        await modal.wait_for(state='visible')
+    finally:
+        if browser:
+            await browser.close()
+        server_process.terminate()
+        server_process.join()
 
-        # Hide the splash screen before taking the screenshot
-        await page.evaluate("() => { document.getElementById('splashScreen').style.display = 'none'; }")
-
-        # Take a screenshot of the modal
-        await modal.screenshot(path='jules-scratch/verification/verification.png')
-
-        await browser.close()
-
-    # The server thread is a daemon, so it will exit when the main thread exits.
-    # No need to explicitly stop it.
 
 if __name__ == "__main__":
     asyncio.run(main())
