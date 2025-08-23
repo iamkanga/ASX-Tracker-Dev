@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const timestampEl = document.getElementById('livePriceTimestamp');
         if (timestampEl) {
             const now = new Date();
-            timestampEl.textContent = `Live: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            timestampEl.textContent = `Last update: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
         }
     }
     updateLivePriceTimestamp();
@@ -735,7 +735,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.2.3';
+const APP_VERSION = 'v2.1.1';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
