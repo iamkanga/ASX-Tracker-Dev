@@ -7611,3 +7611,42 @@ body.dark-theme .alert-item {
         padding: 12px;
     }
 }
+
+/* Watchlist Picker Modal */
+.watchlist-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.picker-item {
+    padding: 12px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.picker-item:hover, .picker-item:focus {
+    background-color: var(--table-row-hover-bg);
+    outline: none;
+}
+
+.picker-item.active {
+    background-color: var(--accent-color);
+    color: var(--button-text);
+    font-weight: 600;
+    border-color: var(--accent-color);
+}
+
+.picker-item-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.1em;
+}
+
+.picker-item-content i {
+    width: 20px;
+    text-align: center;
+}
