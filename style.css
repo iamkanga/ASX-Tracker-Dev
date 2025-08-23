@@ -78,23 +78,9 @@
     width: 100%;
     padding-top: 8px; /* Add some space above it */
 }
-/* Minimalist chevron toggle for ASX buttons */
+/* Add margin to code button arrow for better spacing */
 .asx-toggle-triangle {
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0 10px 0 0; /* Keep right margin */
-    color: var(--text-color);
-    cursor: pointer;
-    font-size: 1.2em;
-}
-
-.asx-toggle-triangle i {
-    transition: transform 0.3s ease-in-out;
-}
-
-.asx-toggle-triangle.expanded i {
-    transform: rotate(180deg);
+    margin-right: 10px;
 }
 /* Center the discover sort bar vertically and remove label spacing */
 .discover-sort-bar-centered {
@@ -3588,7 +3574,7 @@ body.sidebar-active {
     box-sizing: border-box;
     display: flex; /* Use flexbox for internal layout */
     flex-direction: column; /* Stack children vertically */
-    padding: 8px 10px 0; /* Reduced padding for compact look */
+    padding: 15px 20px 0; /* Removed padding-bottom, will be determined by content + gap */
     gap: 4px; /* Space between header rows */
 }
 
@@ -3625,17 +3611,17 @@ main.container {
 /* Header Top Row (now part of the fixed header) */
 .header-top-row {
     display: flex;
-    align-items: flex-start; /* Align items to the top for vertical alignment */
+    align-items: center;
     width: 100%;
     box-sizing: border-box;
     padding: 0;
-    gap: 4px; /* Reduced gap */
+    gap: 0;
     position: relative;
 }
 
 /* Ensure hamburger, title, and add button are always in correct order and position */
 .header-action-btn-right {
-    flex: 0 0 60px; /* Reduced width for compact look */
+    flex: 0 0 80px; /* Give both left and right containers a fixed base width */
     display: flex;
     align-items: center;
 }
@@ -3643,7 +3629,7 @@ main.container {
 .header-left-container {
     justify-content: flex-start; /* Align to the top */
     order: 1;
-    flex: 0 0 60px; /* Reduced width for compact look */
+    flex: 0 0 80px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
