@@ -3620,15 +3620,32 @@ main.container {
 }
 
 /* Ensure hamburger, title, and add button are always in correct order and position */
-.header-left-container, .header-action-btn-right {
+.header-action-btn-right {
     flex: 0 0 80px; /* Give both left and right containers a fixed base width */
     display: flex;
     align-items: center;
 }
 
 .header-left-container {
-    justify-content: flex-start;
-     order: 1;
+    justify-content: flex-start; /* Align to the top */
+    order: 1;
+    flex: 0 0 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.live-price-timestamp-container {
+    display: block;
+    margin-top: 4px;
+    text-align: left;
+    width: 100%;
+}
+
+.live-price-timestamp {
+    font-size: 0.7rem;
+    color: var(--ghosted-text);
+    opacity: 0.9;
 }
 
 .header-action-btn-right {
@@ -3726,12 +3743,13 @@ h1#dynamicWatchlistTitle {
     margin: 0.25em 0;
   }
   .dropdown-large {
-    min-width: 100px;
-    max-width: 100%;
-    width: 100%;
-    margin: 0.25em 0;
+    width: auto;
+    min-width: 200px;
+    max-width: 80%;
+    margin: 0.25em auto; /* Center it */
     font-size: 0.95em;
-    padding: 6px 8px;
+    padding: 6px 10px;
+    text-align: center;
   }
 }
 
