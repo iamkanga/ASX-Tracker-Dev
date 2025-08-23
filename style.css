@@ -3622,7 +3622,7 @@ main.container {
 /* Ensure hamburger, title, and add button are always in correct order and position */
 .header-action-btn-left {
     order: 1;
-    margin-right: auto;
+    /* margin-right: auto; */
 }
 /* Center the single dynamic title */
 h1#dynamicWatchlistTitle {
@@ -3645,7 +3645,7 @@ h1#dynamicWatchlistTitle {
 #dynamicWatchlistTitleText:focus-visible { outline: 2px solid var(--green-color); outline-offset: 2px; }
 .header-action-btn-right {
     order: 3;
-    margin-left: auto;
+    /* margin-left: auto; */
 }
 
 /* Ensure buttons are clickable above the title */
@@ -3791,6 +3791,7 @@ h1#dynamicWatchlistTitle {
         gap: 0;
         position: relative;
     }
+    /* DESKTOP STYLES NOW APPLY TO MOBILE. NO OVERRIDE NEEDED.
     .header-action-btn-left {
         order: 1;
         margin-right: auto;
@@ -3817,6 +3818,7 @@ h1#dynamicWatchlistTitle {
         right: 0;
         z-index: 2;
     }
+    */
 }
 
 /* ASX Code Buttons */
