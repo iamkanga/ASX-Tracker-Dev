@@ -735,7 +735,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v2.1.1';
+const APP_VERSION = 'v2.2.0';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -1193,6 +1193,18 @@ function applyAsxButtonsState() {
         toggleAsxButtonsBtn.removeAttribute('aria-disabled');
     toggleAsxButtonsBtn.classList.toggle('expanded', shouldShow);
         toggleAsxButtonsBtn.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
+
+        // Chevron icon update
+        const chevronIcon = toggleAsxButtonsBtn.querySelector('i');
+        if (chevronIcon) {
+            if (shouldShow) {
+                chevronIcon.classList.remove('fa-chevron-down');
+                chevronIcon.classList.add('fa-chevron-up');
+            } else {
+                chevronIcon.classList.remove('fa-chevron-up');
+                chevronIcon.classList.add('fa-chevron-down');
+            }
+        }
     }
     // After any state change, adjust content padding to account for header height change
     // Use rAF to wait for styles/transition to apply
