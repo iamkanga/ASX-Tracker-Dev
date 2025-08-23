@@ -2358,6 +2358,13 @@ try { accordionObserver.observe(document.body, { childList: true, subtree: true 
 
 // Helper: Render unified Alert Target (Intent + Direction + Price) B/S + Arrow + $Price
 function renderAlertTargetInline(share, opts = {}) {
+    console.log('[DEBUG][renderAlertTargetInline]', {
+        shareId: share ? share.id : 'N/A',
+        shareName: share ? share.shareName : 'N/A',
+        intent: share ? (share.alertIntent || share.intent || share.targetIntent) : 'N/A',
+        targetPrice: share ? share.targetPrice : 'N/A',
+        hasPrice: share ? !isNaN(Number(share.targetPrice)) && Number(share.targetPrice) !== 0 : false
+    });
     if (!share) return opts.emptyReturn || '';
     const priceNum = Number(share.targetPrice);
     const hasPrice = !isNaN(priceNum) && priceNum !== 0;
@@ -6978,7 +6985,9 @@ let splashScreenReady = false; // Flag to ensure splash screen is ready before h
  * Hides the splash screen with a fade-out effect.
  */
 function hideSplashScreen() {
+    console.log('[Debug] hideSplashScreen function called.');
     if (splashScreen) {
+        console.log('[Debug] splashScreen element found. Adding "hidden" class.');
         splashScreen.classList.add('hidden'); // Start fade-out
         if (splashKangarooIcon) {
             splashKangarooIcon.classList.remove('pulsing'); // Stop animation
@@ -7003,6 +7012,13 @@ function hideSplashScreen() {
  * This function is called after each major data loading step.
  */
 function hideSplashScreenIfReady() {
+    console.log('[Debug] hideSplashScreenIfReady called. State:', {
+        firebase: window._firebaseInitialized,
+        auth: window._userAuthenticated,
+        appData: window._appDataLoaded,
+        livePrices: window._livePricesLoaded,
+        splashReady: splashScreenReady
+    });
     // Only hide if Firebase is initialized, user is authenticated, and all data flags are true
     if (window._firebaseInitialized && window._userAuthenticated && window._appDataLoaded && window._livePricesLoaded) {
         if (splashScreenReady) { // Ensure splash screen itself is ready to be hidden
@@ -10620,9 +10636,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Display App Version
+    console.log('[Debug] Attempting to set splash screen version...');
     const appVersionEl = document.getElementById('splashAppVersion');
     if (appVersionEl) {
+        console.log('[Debug] Found splashAppVersion element. Setting version to:', APP_VERSION);
         appVersionEl.textContent = APP_VERSION;
+    } else {
+        console.error('[Debug] CRITICAL: splashAppVersion element NOT found in DOM.');
     }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
