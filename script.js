@@ -1193,18 +1193,6 @@ function applyAsxButtonsState() {
         toggleAsxButtonsBtn.removeAttribute('aria-disabled');
     toggleAsxButtonsBtn.classList.toggle('expanded', shouldShow);
         toggleAsxButtonsBtn.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
-
-        // Chevron icon update
-        const chevronIcon = toggleAsxButtonsBtn.querySelector('i');
-        if (chevronIcon) {
-            if (shouldShow) {
-                chevronIcon.classList.remove('fa-chevron-down');
-                chevronIcon.classList.add('fa-chevron-up');
-            } else {
-                chevronIcon.classList.remove('fa-chevron-up');
-                chevronIcon.classList.add('fa-chevron-down');
-            }
-        }
     }
     // After any state change, adjust content padding to account for header height change
     // Use rAF to wait for styles/transition to apply
@@ -11216,4 +11204,4 @@ try {
         }
     } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
-// --- End Super Debug Always-Install ---
+// --- End Super Debug Always-Install --- OK now on the mobile cards the actual information the sell or buy
