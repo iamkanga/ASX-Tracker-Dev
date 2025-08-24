@@ -4640,15 +4640,10 @@ function renderWatchlistSelect() {
     allSharesOption.textContent = 'All Shares';
     watchlistSelect.appendChild(allSharesOption);
 
-    // Ensure Movers virtual option always present (even if counts not ready yet)
-    if (!watchlistSelect.querySelector('option[value="__movers"]')) {
-        const moversOpt = document.createElement('option');
-        moversOpt.value='__movers';
-        moversOpt.textContent='Movers';
-        watchlistSelect.appendChild(moversOpt);
-    }
+    // Add All Shares
+    // (already added above)
 
-    // Ensure Portfolio is always present as a special option
+    // Add Portfolio
     if (!watchlistSelect.querySelector('option[value="portfolio"]')) {
         const portfolioOption = document.createElement('option');
         portfolioOption.value = 'portfolio';
@@ -4656,25 +4651,38 @@ function renderWatchlistSelect() {
         watchlistSelect.appendChild(portfolioOption);
     }
 
-    userWatchlists.forEach(watchlist => {
-        // Skip adding "Cash & Assets" if it's already a hardcoded option in HTML
-        if (watchlist.id === CASH_BANK_WATCHLIST_ID) {
-            return; 
-        }
+    // Add Cash & Assets
+    if (!watchlistSelect.querySelector(`option[value="${CASH_BANK_WATCHLIST_ID}"]`)) {
+        const cashBankOption = document.createElement('option');
+        cashBankOption.value = CASH_BANK_WATCHLIST_ID;
+        cashBankOption.textContent = 'Cash & Assets';
+        watchlistSelect.appendChild(cashBankOption);
+    }
+
+    // Insert Movers as 4th option
+    let moversOpt = watchlistSelect.querySelector('option[value="__movers"]');
+    if (!moversOpt) {
+        moversOpt = document.createElement('option');
+        moversOpt.value = '__movers';
+        moversOpt.textContent = 'Movers';
+    } else if (moversOpt.parentElement === watchlistSelect) {
+        watchlistSelect.removeChild(moversOpt);
+    }
+    if (watchlistSelect.children.length >= 3) {
+        watchlistSelect.insertBefore(moversOpt, watchlistSelect.children[3]);
+    } else {
+        watchlistSelect.appendChild(moversOpt);
+    }
+
+    // Add all other user watchlists alphabetically after Movers
+    const filtered = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== 'portfolio' && wl.id !== '__movers');
+    filtered.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    filtered.forEach(watchlist => {
         const option = document.createElement('option');
         option.value = watchlist.id;
         option.textContent = watchlist.name;
         watchlistSelect.appendChild(option);
     });
-
-    // Add the "Cash & Assets" option explicitly if it's not already in the HTML
-    // This assumes it's added in HTML, but as a fallback, we ensure it's there.
-    if (!watchlistSelect.querySelector(`option[value="${CASH_BANK_WATCHLIST_ID}"]`)) {
-        const cashBankOption = document.createElement('option');
-        cashBankOption.value = CASH_BANK_WATCHLIST_ID;
-        cashBankOption.textContent = 'Cash & Assets'; // UPDATED TEXT
-        watchlistSelect.appendChild(cashBankOption);
-    }
 
     // Attempt to select the watchlist specified in currentSelectedWatchlistIds.
     // This array should already contain the correct ID (e.g., the newly created watchlist's ID)
