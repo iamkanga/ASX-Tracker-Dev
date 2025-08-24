@@ -730,6 +730,59 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
 const APP_VERSION = '2.10.6';
+
+// Wire splash version display and Force Update helper
+document.addEventListener('DOMContentLoaded', function () {
+    // Splash version display
+    try {
+        const splashVerEl = document.getElementById('splashAppVersion');
+        if (splashVerEl) splashVerEl.textContent = 'v' + APP_VERSION;
+    } catch (e) { /* ignore */ }
+
+    // Force Update button handler - posts SKIP_WAITING to waiting worker or triggers update
+    try {
+        const forceBtn = document.getElementById('forceUpdateBtn');
+        async function requestSWUpdate() {
+            if (!('serviceWorker' in navigator)) {
+                console.log('[SW] Service Worker not supported in this browser.');
+                if (window.showCustomAlert) window.showCustomAlert('Service worker not supported in this browser.', 3000);
+                return;
+            }
+            try {
+                const reg = await navigator.serviceWorker.getRegistration();
+                if (!reg) {
+                    console.log('[SW] No service worker registration found.');
+                    if (window.showCustomAlert) window.showCustomAlert('No service worker registered.', 3000);
+                    return;
+                }
+                if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    console.log('[SW] Sent SKIP_WAITING to waiting worker.');
+                    if (window.showCustomAlert) window.showCustomAlert('Updating app... Reloading when ready.', 2500);
+                    return;
+                }
+                // No waiting worker -> check for update which may install a new worker
+                await reg.update();
+                if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    if (window.showCustomAlert) window.showCustomAlert('New update found — activating.', 2500);
+                } else {
+                    if (window.showCustomAlert) window.showCustomAlert('No update available.', 2000);
+                }
+            } catch (err) {
+                console.error('[SW] Force update failed', err);
+                if (window.showCustomAlert) window.showCustomAlert('Update request failed.', 3000);
+            }
+        }
+
+        if (forceBtn) {
+            forceBtn.addEventListener('click', function () { requestSWUpdate(); }, { passive: true });
+        }
+        // Expose helper for console debugging
+        window.requestServiceWorkerUpdate = requestSWUpdate;
+    } catch (e) { /* ignore */ }
+});
+
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 
 // Runtime enforcement: ensure modals follow the single-scroll-container pattern
