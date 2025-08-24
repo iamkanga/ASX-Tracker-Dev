@@ -4659,7 +4659,7 @@ function renderWatchlistSelect() {
         watchlistSelect.appendChild(cashBankOption);
     }
 
-    // Insert Movers as 4th option
+    // Insert Movers as 4th option (after All Shares, Portfolio, Cash & Assets)
     let moversOpt = watchlistSelect.querySelector('option[value="__movers"]');
     if (!moversOpt) {
         moversOpt = document.createElement('option');
@@ -4674,7 +4674,7 @@ function renderWatchlistSelect() {
         watchlistSelect.appendChild(moversOpt);
     }
 
-    // Add all other user watchlists alphabetically after Movers
+    // Add all other user watchlists alphabetically after Movers (exclude Movers from this list)
     const filtered = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== 'portfolio' && wl.id !== '__movers');
     filtered.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     filtered.forEach(watchlist => {

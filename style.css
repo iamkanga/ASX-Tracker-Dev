@@ -121,6 +121,12 @@
     z-index: 2;
     background: transparent;
 }
+@media (max-width: 600px) {
+    .live-price-timestamp-container {
+        font-size: 0.74em !important;
+    }
+}
+}
 #livePriceTimestamp {
     font-weight: 500;
     letter-spacing: 0.02em;
