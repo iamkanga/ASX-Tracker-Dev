@@ -90,6 +90,8 @@
 }
 
 .asx-toggle-triangle {
+    display: inline-block; /* Ensure it's rendered */
+    font-weight: 900; /* For Font Awesome 6 solid icons */
     font-size: 0.9em; /* Adjust size to be subtle */
     color: var(--ghosted-text, #888);
     transition: transform 0.2s ease-in-out;
@@ -3624,6 +3626,16 @@ main.container {
     /* Padding will be set by JavaScript */
 }
 
+#live-price-timestamp {
+    font-size: 0.7rem;
+    color: var(--ghosted-text);
+    opacity: 0.9;
+    margin-top: 4px;
+    text-align: left;
+    width: 100%;
+    display: block;
+}
+
 /* Header Top Row (now part of the fixed header) */
 .header-top-row {
     display: flex;
@@ -3662,6 +3674,26 @@ main.container {
     font-size: 0.7rem;
     color: var(--ghosted-text);
     opacity: 0.9;
+}
+
+#live-price-timestamp {
+    font-size: 0.7rem;
+    color: var(--ghosted-text);
+    opacity: 0.9;
+    margin-top: 4px;
+    text-align: left;
+    width: 100%;
+    display: block;
+}
+
+#live-price-timestamp {
+    font-size: 0.7rem;
+    color: var(--ghosted-text);
+    opacity: 0.9;
+    margin-top: 4px;
+    text-align: left;
+    width: 100%;
+    display: block;
 }
 
 .header-action-btn-right {

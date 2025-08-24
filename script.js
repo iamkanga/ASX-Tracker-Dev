@@ -725,7 +725,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v2.9.0';
+const APP_VERSION = 'v2.10.0';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -1179,7 +1179,7 @@ function applyAsxButtonsState() {
         toggleAsxButtonsBtn.removeAttribute('aria-disabled');
     }
     // Update chevron rotation
-    const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
+    const chevronIcon = toggleAsxButtonsBtn.querySelector('.fa-chevron-down');
     if (chevronIcon) {
         chevronIcon.classList.toggle('expanded', shouldShow);
     }
@@ -1650,7 +1650,13 @@ async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
     try {
         // Set last updated timestamp for portfolio view
-        window._portfolioLastUpdated = new Date().toLocaleString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+        const timestamp = new Date().toLocaleString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+        window._portfolioLastUpdated = timestamp;
+        const timestampEl = document.getElementById('live-price-timestamp');
+        if (timestampEl) {
+            timestampEl.textContent = `Live: ${timestamp}`;
+            timestampEl.style.display = 'block';
+        }
         // Prefer GOOGLE_APPS_SCRIPT_URL if defined, fallback to appsScriptUrl constant.
     const baseUrl = typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined' ? GOOGLE_APPS_SCRIPT_URL : (typeof appsScriptUrl !== 'undefined' ? appsScriptUrl : null);
     if (!baseUrl) throw new Error('Apps Script URL not defined');
@@ -6992,6 +6998,9 @@ let splashScreenReady = false; // Flag to ensure splash screen is ready before h
  */
 function hideSplashScreen() {
     console.log('[Debug] hideSplashScreen function called.');
+    if (window.clearSplashVersionInterval) {
+        window.clearSplashVersionInterval();
+    }
     if (splashScreen) {
         // Set version text just before hiding
         const versionEl = document.getElementById('splashAppVersion');
@@ -10617,6 +10626,32 @@ if (targetHitIconBtn) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // --- Splash Screen Version (Aggressive Approach) ---
+    let splashVersionInterval = null;
+
+    const ensureSplashScreenVersion = () => {
+        const splashScreenEl = document.getElementById('splashScreen');
+        if (splashScreenEl && !document.getElementById('splashAppVersion')) {
+            const versionEl = document.createElement('p');
+            versionEl.id = 'splashAppVersion';
+            versionEl.className = 'app-version-splash';
+            versionEl.textContent = APP_VERSION;
+            splashScreenEl.prepend(versionEl);
+            console.log('[Debug][Interval] Re-created splash screen version.');
+        }
+    };
+
+    splashVersionInterval = setInterval(ensureSplashScreenVersion, 100);
+
+    // Add a function to the window scope to clear the interval, which will be called from hideSplashScreen
+    window.clearSplashVersionInterval = () => {
+        if (splashVersionInterval) {
+            clearInterval(splashVersionInterval);
+            splashVersionInterval = null;
+            console.log('[Debug] Splash version interval cleared.');
+        }
+    };
+
     logDebug('script.js DOMContentLoaded fired.');
 
     // Inject a test 52-week low alert card for CBA (for UI testing only)
@@ -10647,23 +10682,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Display App Version
-    console.log('[Debug] Attempting to set splash screen version...');
-    const splashScreenEl = document.getElementById('splashScreen');
-    if (splashScreenEl) {
-        let versionEl = document.getElementById('splashAppVersion');
-        if (!versionEl) {
-            console.warn('[Debug] splashAppVersion element not found, creating it.');
-            versionEl = document.createElement('p');
-            versionEl.id = 'splashAppVersion';
-            versionEl.className = 'app-version-splash';
-            splashScreenEl.prepend(versionEl);
-        }
-        console.log('[Debug] Setting splash screen version to:', APP_VERSION);
-        versionEl.textContent = APP_VERSION;
-    } else {
-        console.error('[Debug] CRITICAL: splashScreen element itself NOT found in DOM.');
-    }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
     window._userAuthenticated = false;
