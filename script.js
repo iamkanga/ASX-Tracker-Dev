@@ -4818,89 +4818,80 @@ function openWatchlistPicker() {
         return;
     }
     console.log('[WatchlistPicker] Opening picker...');
-    watchlistPickerList.innerHTML='';
+    watchlistPickerList.innerHTML = '';
 
-    const items=[];
-    items.push({id:ALL_SHARES_ID,name:'All Shares', icon: 'fa-globe'});
-    if ((globalAlertSummary && globalAlertSummary.totalCount > 0) || (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries && window.__lastMoversSnapshot.entries.length)) {
-        items.push({id:'__movers',name:'Movers', icon: 'fa-chart-line'});
+    const specialWatchlistOrder = [
+        { id: ALL_SHARES_ID, name: 'All Shares', icon: 'fa-globe' },
+        { id: 'portfolio', name: 'Portfolio', icon: 'fa-briefcase' },
+        { id: CASH_BANK_WATCHLIST_ID, name: 'Cash & Assets', icon: 'fa-dollar-sign' },
+        { id: '__movers', name: 'Movers', icon: 'fa-chart-line' }
+    ];
+
+    const specialIds = specialWatchlistOrder.map(sw => sw.id);
+
+    const userCreatedWatchlists = userWatchlists
+        .filter(wl => !specialIds.includes(wl.id))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(wl => ({ ...wl, icon: 'fa-list-alt' }));
+
+    let finalWatchlistItems = [...specialWatchlistOrder, ...userCreatedWatchlists];
+
+    // Conditionally remove Movers if no data
+    const hasMoversData = (globalAlertSummary && globalAlertSummary.totalCount > 0) ||
+                          (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries && window.__lastMoversSnapshot.entries.length > 0);
+    if (!hasMoversData) {
+        finalWatchlistItems = finalWatchlistItems.filter(it => it.id !== '__movers');
     }
-    items.push({id:'portfolio',name:'Portfolio', icon: 'fa-briefcase'});
-    userWatchlists.filter(w=>w.id!==ALL_SHARES_ID && w.id!==CASH_BANK_WATCHLIST_ID).forEach(w=>items.push({...w, icon: 'fa-list-alt'}));
-    items.push({id:CASH_BANK_WATCHLIST_ID,name:'Cash & Assets', icon: 'fa-dollar-sign'});
 
-    const specialOrder = [ALL_SHARES_ID, 'portfolio', CASH_BANK_WATCHLIST_ID];
-    const defaultWatchlist = userWatchlists.find(w => w.name === DEFAULT_WATCHLIST_NAME);
-    if (defaultWatchlist) {
-        specialOrder.push(defaultWatchlist.id);
-    }
-
-    const sortedItems = items.sort((a, b) => {
-        const aIndex = specialOrder.indexOf(a.id);
-        const bIndex = specialOrder.indexOf(b.id);
-
-        if (aIndex > -1 && bIndex > -1) {
-            return aIndex - bIndex;
-        }
-        if (aIndex > -1) {
-            return -1;
-        }
-        if (bIndex > -1) {
-            return 1;
-        }
-        return a.name.localeCompare(b.name);
-    });
-
-    sortedItems.forEach(it=>{
-        const div=document.createElement('div');
-        div.className='picker-item'+(currentSelectedWatchlistIds[0]===it.id?' active':'');
+    finalWatchlistItems.forEach(it => {
+        const div = document.createElement('div');
+        const isActive = Array.isArray(currentSelectedWatchlistIds) && currentSelectedWatchlistIds[0] === it.id;
+        div.className = 'picker-item' + (isActive ? ' active' : '');
         div.innerHTML = `
             <div class="picker-item-content">
-                <i class="fas ${it.icon}"></i>
+                <i class="fas ${it.icon || 'fa-list-alt'}"></i>
                 <span>${it.name}</span>
             </div>
         `;
-        div.tabIndex=0;
-        div.onclick=()=>{
-            console.log('[WatchlistPicker] Selecting watchlist', it.id);
-            currentSelectedWatchlistIds=[it.id];
-            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
-            if (watchlistSelect) watchlistSelect.value=it.id; // sync hidden select
-            try { setLastSelectedView(it.id); } catch(e) {}
-            try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
+        div.tabIndex = 0;
+        div.setAttribute('role', 'button');
+        div.setAttribute('aria-label', it.name);
 
-            // Always perform a full render cycle for consistency
+        div.onclick = () => {
+            console.log('[WatchlistPicker] Selecting watchlist', it.id);
+            currentSelectedWatchlistIds = [it.id];
+            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch (_) { }
+            if (watchlistSelect) watchlistSelect.value = it.id;
+            try { setLastSelectedView(it.id); } catch (e) { }
+            try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch (e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
+
             if (it.id === '__movers') {
                 updateMainTitle('Movers');
             } else {
                 updateMainTitle();
             }
-            // Render watchlist UI first (ensures DOM elements present before filtering)
-            try { renderSortSelect(); } catch(_) {}
-            try { renderWatchlist(); } catch(e) { console.warn('WatchlistPicker: renderWatchlist failed', e); }
-            // Enforce movers filtering if in movers view
-            try { enforceMoversVirtualView(); } catch(e) { console.warn('WatchlistPicker: enforceMoversVirtualView failed', e); }
-            // Immediate consistency debug when entering Movers
+            try { renderSortSelect(); } catch (_) { }
+            try { renderWatchlist(); } catch (e) { console.warn('WatchlistPicker: renderWatchlist failed', e); }
+            try { enforceMoversVirtualView(); } catch (e) { console.warn('WatchlistPicker: enforceMoversVirtualView failed', e); }
             if (it.id === '__movers' && typeof debugMoversConsistency === 'function') {
-                try { debugMoversConsistency({ includeLists: true }); } catch(_) {}
+                try { debugMoversConsistency({ includeLists: true }); } catch (_) { }
             }
 
-            try { updateAddHeaderButton(); updateSidebarAddButtonContext(); } catch(e) {}
+            try { updateAddHeaderButton(); updateSidebarAddButtonContext(); } catch (e) { }
             toggleCodeButtonsArrow();
-            try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); watchlistPickerModal.style.display='none'; }
-            if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false');
+            try { hideModal(watchlistPickerModal); } catch (_) { watchlistPickerModal.classList.add('app-hidden'); watchlistPickerModal.style.display = 'none'; }
+            if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded', 'false');
             if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus();
         };
-        div.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); div.click(); } };
+        div.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); div.click(); } };
         watchlistPickerList.appendChild(div);
     });
-    // Use centralized modal open so history/back works consistently
+
     try {
         showModal(watchlistPickerModal);
-    } catch(e) {
-        // Fallback if showModal is unavailable for some reason
+    } catch (e) {
         watchlistPickerModal.classList.remove('app-hidden');
-        watchlistPickerModal.style.display='flex';
+        watchlistPickerModal.style.display = 'flex';
     }
     console.log('[WatchlistPicker] Modal shown. Item count:', watchlistPickerList.children.length);
 }
