@@ -532,17 +532,26 @@
         padding:0 !important;
     }
 
-/* Fix: Remove duplicate watchlist dropdown button visually and center modal dropdowns */
-/* Hide the enhanced dropdown button so users only see the main native select (prevents duplicate UI) */
+/* Fix: Ensure the functioning watchlist control is visible and hide the non-functional enhanced button.
+   The app primarily wires the native <select> for data binding; keep it visible and centered while
+   hiding the visually duplicated JS-enhanced button. */
 #shareFormSection #shareWatchlistDropdownBtn {
+    /* Keep the JS-enhanced duplicate button hidden; the native select is the working control. */
     display: none !important;
+}
+
+#shareFormSection #shareWatchlistSelect {
+    /* Ensure the native select is visible and can be centered with other inputs */
+    display: block !important;
+    width: auto !important;
 }
 
 /* Center-align dropdowns in the Add/Edit Share modal to match other input fields */
 #shareFormSection .dropdown-large,
 #shareFormSection select,
 #shareFormSection #shareRating,
-#shareFormSection #shareWatchlistSelect {
+#shareFormSection #shareWatchlistSelect,
+#shareFormSection #shareWatchlistDropdownBtn {
     display: block !important;
     width: auto !important; /* let max-width control sizing */
     max-width: 420px !important; /* keep inputs centered and consistent */
