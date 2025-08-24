@@ -10630,14 +10630,19 @@ document.addEventListener('DOMContentLoaded', function() {
     let splashVersionInterval = null;
 
     const ensureSplashScreenVersion = () => {
-        const splashScreenEl = document.getElementById('splashScreen');
-        if (splashScreenEl && !document.getElementById('splashAppVersion')) {
-            const versionEl = document.createElement('p');
-            versionEl.id = 'splashAppVersion';
-            versionEl.className = 'app-version-splash';
+        const versionEl = document.getElementById('splashAppVersion');
+        if (versionEl) {
             versionEl.textContent = APP_VERSION;
-            splashScreenEl.prepend(versionEl);
-            console.log('[Debug][Interval] Re-created splash screen version.');
+        } else {
+            const splashScreenEl = document.getElementById('splashScreen');
+            if (splashScreenEl) {
+                const newVersionEl = document.createElement('p');
+                newVersionEl.id = 'splashAppVersion';
+                newVersionEl.className = 'app-version-splash';
+                newVersionEl.textContent = APP_VERSION;
+                splashScreenEl.prepend(newVersionEl);
+                console.log('[Debug][Interval] Created splash screen version.');
+            }
         }
     };
 

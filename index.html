@@ -38,6 +38,7 @@
                         </svg>
                         <span>Use popup instead</span>
                 </button>
+        <p id="splashAppVersion" class="app-version-splash"></p>
     </div>
 
     <header id="appHeader" class="app-hidden">
@@ -46,15 +47,17 @@
                 <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
                     <i class="fas fa-bars"></i>
                 </button>
+            </div>
+            <!-- Single dynamic clickable title acts as the only title bar -->
+            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
+            <div class="header-right-container">
+                <button id="addShareHeaderBtn" class="header-action-btn icon-button" aria-label="Add Share">
+                    <i class="fas fa-plus"></i>
+                </button>
                 <div id="live-price-timestamp-container" class="live-price-timestamp-container">
                     <span id="live-price-timestamp" class="live-price-timestamp"></span>
                 </div>
             </div>
-            <!-- Single dynamic clickable title acts as the only title bar -->
-            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
-            <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right icon-button" aria-label="Add Share">
-                <i class="fas fa-plus"></i>
-            </button>
         </div>
         <!-- Sort row with subtle arrow toggle -->
         <div id="sortLine" class="sort-line-row">
@@ -64,7 +67,7 @@
                     <span id="sortIcon" class="sort-icon"></span>
                 </div>
                 <button id="toggleAsxButtonsBtn" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer">
-                    <span class="asx-toggle-triangle"></span>
+                    <i class="fas fa-chevron-down"></i>
                 </button>
             </div>
         </div>

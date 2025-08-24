@@ -89,7 +89,7 @@
     justify-content: center;
 }
 
-.asx-toggle-triangle {
+#toggleAsxButtonsBtn .fa-chevron-down {
     display: inline-block; /* Ensure it's rendered */
     font-weight: 900; /* For Font Awesome 6 solid icons */
     font-size: 0.9em; /* Adjust size to be subtle */
@@ -97,7 +97,7 @@
     transition: transform 0.2s ease-in-out;
 }
 
-.asx-toggle-triangle.expanded {
+#toggleAsxButtonsBtn .fa-chevron-down.expanded {
     transform: rotate(180deg);
 }
 /* Center the discover sort bar vertically and remove label spacing */
@@ -3631,7 +3631,7 @@ main.container {
     color: var(--ghosted-text);
     opacity: 0.9;
     margin-top: 4px;
-    text-align: left;
+    text-align: right;
     width: 100%;
     display: block;
 }
@@ -3696,9 +3696,12 @@ main.container {
     display: block;
 }
 
-.header-action-btn-right {
-    justify-content: flex-end;
+.header-right-container {
     order: 3;
+    flex: 0 0 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
 }
 
 /* Center the single dynamic title */
@@ -7763,7 +7766,7 @@ body.dark-theme .alert-item {
 }
 
 /* Ensure toggle button is vertically aligned and has appropriate size */
-.sort-controls-container .asx-toggle-triangle {
+.sort-controls-container .fa-chevron-down {
     margin: 0;
     padding: 6px;
     font-size: 1.2em;
