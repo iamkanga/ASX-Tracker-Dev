@@ -515,6 +515,25 @@
     }
 }
 
+/* Single-container modal: ensure the modal content itself scrolls as one block (improves mobile keyboard/scroll behavior) */
+.single-scroll-modal {
+    max-height: calc(100vh - 80px); /* Leave room for header and safe area */
+    overflow-y: auto; /* Single scrolling container */
+    -webkit-overflow-scrolling: touch; /* Smooth native scrolling on iOS */
+    padding: 18px 18px 24px; /* Ensure comfortable padding inside modal */
+    box-sizing: border-box;
+}
+
+/* Ensure internal accordions don't create independent scroll zones */
+.single-scroll-modal .accordion { max-height: none; }
+.single-scroll-modal .accordion-panel { max-height: none; padding: 0; }
+.single-scroll-modal .accordion-toggle { padding: 12px 8px; }
+
+/* Small viewport tweak: reduce modal top margin and padding to fit mobile screens */
+@media (max-width: 640px) {
+    .single-scroll-modal { max-height: calc(100vh - 48px); padding: 12px; }
+}
+
 /* Utility: hide visually but keep accessible to screen readers */
 .visually-hidden { position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 /* Helper function for source control in style.css (for documentation only, not executable in CSS) */
