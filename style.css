@@ -79,36 +79,14 @@
     padding-top: 8px; /* Add some space above it */
 }
 /* Minimalistic chevron for ASX code toggle */
-
 #toggleAsxButtonsBtn {
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 10px 10px 10px 0;
+    padding: 10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    z-index: 10;
-}
-
-@media (max-width: 700px) {
-    #toggleAsxButtonsBtn {
-        padding: 8px 4px 8px 0;
-        min-width: 36px;
-        min-height: 36px;
-    }
-    .header-left-container {
-        min-width: 44px;
-    }
-}
-
-.header-left-container {
-    display: flex;
-    align-items: flex-start;
-    gap: 0;
-    position: relative;
-    min-width: 60px;
 }
 
 .asx-toggle-triangle {
@@ -7026,7 +7004,7 @@ body.dark-theme .alert-item {
 }
 
 /* Live price timestamp bottom right in header */
-#appHeader .live-price-timestamp-container {
+.live-price-timestamp-container {
     position: absolute;
     right: 18px;
     bottom: 2px;
@@ -7036,7 +7014,6 @@ body.dark-theme .alert-item {
     color: var(--ghosted-text, #888);
     pointer-events: none;
     z-index: 2;
-    background: transparent;
 }
 #livePriceTimestamp {
     font-weight: 500;

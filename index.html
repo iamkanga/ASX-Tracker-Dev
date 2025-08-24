@@ -44,16 +44,9 @@
     <header id="appHeader" class="app-hidden">
     <div class="header-top-row single-dynamic-title">
         <div class="header-left-container">
-                <button id="toggleAsxButtonsBtn" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer">
-                    <span class="asx-toggle-triangle" aria-hidden="true">
-                        <svg width="18" height="18" viewBox="0 0 18 18" class="chevron-svg" style="display:inline;vertical-align:middle;">
-                            <polyline points="4,7 9,12 14,7" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </span>
-                </button>
-                <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
-                    <i class="fas fa-bars"></i>
-                </button>
+            <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
         <!-- Watchlist title in center -->
         <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
@@ -67,12 +60,19 @@
     </div>
         <!-- Sort row with subtle arrow toggle -->
         <div id="sortLine" class="sort-line-row">
-                <div class="sort-controls-container">
-                    <div class="sort-select-wrapper">
-                        <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
-                        <span id="sortIcon" class="sort-icon"></span>
-                    </div>
+            <div class="sort-controls-container">
+                <div class="sort-select-wrapper">
+                    <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
+                    <span id="sortIcon" class="sort-icon"></span>
                 </div>
+                <button id="toggleAsxButtonsBtn" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer">
+                    <span class="asx-toggle-triangle" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 18 18" class="chevron-svg" style="display:inline;vertical-align:middle;">
+                            <polyline points="4,7 9,12 14,7" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </button>
+            </div>
         </div>
         <select id="watchlistSelect" style="display:none"></select>
     <!-- Market status banner (shown automatically when market is closed) -->
