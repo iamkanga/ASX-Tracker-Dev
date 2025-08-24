@@ -729,6 +729,22 @@ document.addEventListener('DOMContentLoaded', function () {
 // Firebase app, db, auth instances, and userId are made globally available
 // via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
 // from the <script type="module"> block in index.html.
+// --- ASX Code Buttons State ---
+let asxButtonsExpanded = false; // State for the ASX code buttons container
+
+// Function to apply visibility and arrow direction
+function applyAsxButtonsState() {
+    if (!toggleAsxButtonsBtn || !asxCodeButtonsContainer) return;
+    const isVisible = asxCodeButtonsContainer.style.display === 'flex';
+    toggleAsxButtonsBtn.classList.toggle('expanded', isVisible);
+    // Hide ASX buttons in compact view, otherwise respect expanded state
+    if (currentMobileViewMode === 'compact') {
+        asxCodeButtonsContainer.classList.add('app-hidden');
+    } else {
+        asxCodeButtonsContainer.classList.toggle('app-hidden', !asxButtonsExpanded);
+    }
+}
+let allAsxCodes = []; // To store all loaded ASX codes for autocomplete
 
 // --- GLOBAL VARIABLES ---
 let DEBUG_MODE = false; // Quiet by default; enable via window.toggleDebug(true)
