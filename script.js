@@ -725,7 +725,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v2.8.0';
+const APP_VERSION = 'v2.9.0';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -6993,6 +6993,12 @@ let splashScreenReady = false; // Flag to ensure splash screen is ready before h
 function hideSplashScreen() {
     console.log('[Debug] hideSplashScreen function called.');
     if (splashScreen) {
+        // Set version text just before hiding
+        const versionEl = document.getElementById('splashAppVersion');
+        if (versionEl) {
+            versionEl.textContent = APP_VERSION;
+        }
+
         console.log('[Debug] splashScreen element found. Adding "hidden" class.');
         splashScreen.classList.add('hidden'); // Start fade-out
         if (splashKangarooIcon) {
