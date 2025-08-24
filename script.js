@@ -725,7 +725,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v2.6.0';
+const APP_VERSION = 'v2.7.0';
 document.addEventListener('DOMContentLoaded', function() {
     const splashVersionEl = document.getElementById('splashAppVersion');
     if (splashVersionEl) {
