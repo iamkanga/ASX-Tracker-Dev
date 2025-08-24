@@ -15,7 +15,7 @@
     <!-- Toast notifications container (single instance) -->
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
     <div id="splashScreen" class="splash-screen">
-    <!-- Version number now shown in header, not on splash screen -->
+    <p id="splashAppVersion" class="app-version-splash"></p>
         <img id="splashKangarooIcon" src="Kangaicon.jpg" alt="Kangaroo App Icon" class="splash-icon">
         <button id="splashSignInBtn" class="google-auth-btn">
             <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
@@ -43,11 +43,10 @@
 
     <header id="appHeader" class="app-hidden">
     <div class="header-top-row single-dynamic-title">
-            <div class="header-left-container" style="display: flex; align-items: center;">
+            <div class="header-left-container">
                 <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
                     <i class="fas fa-bars"></i>
                 </button>
-                <span id="appVersion" class="app-version-header"></span>
             </div>
             <!-- Single dynamic clickable title acts as the only title bar -->
             <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
@@ -69,7 +68,7 @@
                         </svg>
                     </span>
                 </button>
-        <!-- Live price timestamp in bottom right of title bar -->
+        <!-- Live price timestamp in bottom left of title bar -->
         <div id="livePriceTimestampContainer" class="live-price-timestamp-container">
             <span id="livePriceTimestamp"></span>
         </div>

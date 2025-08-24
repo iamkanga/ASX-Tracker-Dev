@@ -10679,10 +10679,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Display App Version in header
-    const appVersionEl = document.getElementById('appVersion');
-    if (appVersionEl) {
-        appVersionEl.textContent = APP_VERSION;
+    // Display App Version on splash screen
+    const splashScreenEl = document.getElementById('splashScreen');
+    if (splashScreenEl) {
+        let versionEl = document.getElementById('splashAppVersion');
+        if (!versionEl) {
+            versionEl = document.createElement('p');
+            versionEl.id = 'splashAppVersion';
+            versionEl.className = 'app-version-splash';
+            splashScreenEl.prepend(versionEl);
+        }
+        versionEl.textContent = APP_VERSION;
     }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
