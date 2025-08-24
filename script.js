@@ -726,7 +726,7 @@ let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
-const APP_VERSION = 'v2.10.2';
+const APP_VERSION = 'v2.10.3';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
