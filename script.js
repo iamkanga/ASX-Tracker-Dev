@@ -724,13 +724,25 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 // Guard against unintended re-opening of the Share Edit modal shortly after save
 let suppressShareFormReopen = false;
 
+
 // App version (displayed in UI title bar and splash)
-const APP_VERSION = 'v2.9.0';
+let APP_VERSION = 'v2.9.0';
+// Auto-increment patch for dev iteration (increments minor version on every load)
+try {
+    const vMatch = APP_VERSION.match(/v(\d+)\.(\d+)\.(\d+)/);
+    if (vMatch) {
+        let [_, maj, min, patch] = vMatch;
+        min = parseInt(min, 10) + 1;
+        APP_VERSION = `v${maj}.${min}.${patch}`;
+    }
+} catch(_) {}
 
 // Set version on splash screen if present
 document.addEventListener('DOMContentLoaded', function() {
     const splashVer = document.getElementById('splashAppVersion');
     if (splashVer) splashVer.textContent = `Version ${APP_VERSION}`;
+    // Demo: set a fake live price timestamp for visibility
+    updateLivePriceTimestamp(new Date().toLocaleTimeString());
 });
 // --- Live Price Timestamp Placement ---
 function updateLivePriceTimestamp(ts) {
