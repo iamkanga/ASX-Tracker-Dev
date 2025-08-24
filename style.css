@@ -7074,6 +7074,8 @@ body.dark-theme .alert-item {
     width: 100%;
     max-height: 200px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* Smooth native scrolling on iOS */
+    touch-action: auto; /* Allow touch-driven scrolling */
     background-color: var(--card-bg); /* Use card background for suggestions */
     border: 1px solid var(--border-color);
     border-top: none; /* No top border, blends with input */

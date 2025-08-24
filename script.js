@@ -726,7 +726,8 @@ let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
-const APP_VERSION = 'v2.10.3';
+// Release: 2025-08-24 - Fix autocomplete mobile scrolling
+const APP_VERSION = 'v2.10.4';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -8544,18 +8545,17 @@ async function initializeAppLogic() {
                 div.classList.add('suggestion-item');
                 div.textContent = `${s.code} - ${s.name}`;
                 div.dataset.code = s.code;
-                // Use pointerdown for earlier capture (prevents blur race) plus click fallback
+                // Use pointerup or click for selection to avoid blocking touch scroll; keep pointerdown passive
                 const handler = (e) => {
-                    e.preventDefault(); // Prevent input blur on touch
+                    // Selection handler; do not call preventDefault here to allow scrolling on touch devices
                     applyShareCodeSelection(s.code, s.name);
                 };
-                div.addEventListener('pointerdown', handler, { once: true, passive: false });
+                // pointerdown kept passive to avoid preventing scrolling; use pointerup for stable selection
+                div.addEventListener('pointerup', handler, { once: true, passive: true });
                 div.addEventListener('click', (e) => {
-                    // If pointerdown already fired, ignore
-                    if (div.__applied) return;
+                    // click as a fallback
                     handler(e);
                 }, { once: true });
-                div.__applied = false;
                 shareNameSuggestions.appendChild(div);
             });
             shareNameSuggestions.classList.add('active');
@@ -8625,16 +8625,14 @@ async function initializeAppLogic() {
                     div.textContent = `${stock.code} - ${stock.name}`;
                     div.dataset.code = stock.code;
                     div.dataset.name = stock.name;
-                    // Use pointerdown/mousedown to capture before blur/hide
+                    // Use pointerup/click for selection to avoid blocking touch scrolling
                     const handler = (ev) => {
-                        ev.preventDefault();
                         console.log('[Autocomplete] Select suggestion', stock.code, stock.name);
                         asxSearchInput.value = stock.code;
                         asxSuggestions.classList.remove('active');
                         quickAddFromSearch(stock.code, stock.name);
                     };
-                    div.addEventListener('pointerdown', handler, { passive: false });
-                    div.addEventListener('mousedown', handler, { passive: false });
+                    div.addEventListener('pointerup', handler, { passive: true });
                     div.addEventListener('click', handler); // fallback
                     asxSuggestions.appendChild(div);
                 });
