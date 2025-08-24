@@ -532,6 +532,38 @@
         padding:0 !important;
     }
 
+/* Fix: Remove duplicate watchlist dropdown button visually and center modal dropdowns */
+/* Hide the enhanced dropdown button so users only see the main native select (prevents duplicate UI) */
+#shareFormSection #shareWatchlistDropdownBtn {
+    display: none !important;
+}
+
+/* Center-align dropdowns in the Add/Edit Share modal to match other input fields */
+#shareFormSection .dropdown-large,
+#shareFormSection select,
+#shareFormSection #shareRating,
+#shareFormSection #shareWatchlistSelect {
+    display: block !important;
+    width: auto !important; /* let max-width control sizing */
+    max-width: 420px !important; /* keep inputs centered and consistent */
+    margin-left: auto !important;
+    margin-right: auto !important;
+    box-sizing: border-box !important;
+}
+
+/* On very small screens, let the dropdowns use full available width */
+@media (max-width: 480px) {
+    #shareFormSection .dropdown-large,
+    #shareFormSection select,
+    #shareFormSection #shareRating,
+    #shareFormSection #shareWatchlistSelect {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
+
 /* Mobile-only refinement: reduce Add/Edit Share modal icons to match other modal visual scale on small screens */
 @media (max-width: 640px) {
     #shareFormSection .modal-action-icon, #shareFormSection .close-button {
