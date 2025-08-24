@@ -208,16 +208,6 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
     }
 
-    // --- Restore live price timestamp under hamburger menu ---
-    function updateLivePriceTimestamp() {
-        const timestampEl = document.getElementById('livePriceTimestamp');
-        if (timestampEl) {
-            const now = new Date();
-            timestampEl.textContent = `Live: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-        }
-    }
-    updateLivePriceTimestamp();
-    setInterval(updateLivePriceTimestamp, 60 * 1000);
     // Automatic closed-market banner and ghosting
     const marketStatusBanner = document.getElementById('marketStatusBanner');
     function formatSydneyDate(d) {
@@ -1640,13 +1630,6 @@ function updateSortIcon() {
     }
 }
 
-function updateLivePriceTimestamp() {
-    const timestampEl = document.getElementById('livePriceTimestamp');
-    if (timestampEl) {
-        const now = new Date();
-        timestampEl.textContent = `Live: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    }
-}
 
 const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
 
