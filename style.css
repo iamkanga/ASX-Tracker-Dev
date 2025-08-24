@@ -108,13 +108,14 @@
     transform: rotate(180deg);
 }
 
-/* Live price timestamp pinned to bottom-right of header/title bar */
+/* Live price timestamp: display as a full-width block under the header/title bar
+   so it sits visually between the header and main content on all viewports. */
 .live-price-timestamp-container {
-    position: absolute;
-    right: 16px; /* moved from left to right */
-    bottom: 2px;
-    min-width: 120px;
-    text-align: right; /* align text to right to sit flush with the edge */
+    position: static; /* flow normally in document under the header */
+    display: block;
+    width: 100%;
+    text-align: right; /* keep aligned to the right edge; change to left/center if preferred */
+    padding: 6px 16px 0 16px; /* give breathing room from header edges */
     font-size: 0.98em;
     color: var(--ghosted-text, #888);
     pointer-events: none;
@@ -124,8 +125,9 @@
 @media (max-width: 600px) {
     .live-price-timestamp-container {
         font-size: 0.74em !important;
+        padding: 4px 12px 0 12px;
+        text-align: right;
     }
-}
 }
 #livePriceTimestamp {
     font-weight: 500;
@@ -133,6 +135,30 @@
 }
 .header-top-row.single-dynamic-title {
     position: relative;
+}
+
+/* Ensure sort controls area can wrap so the timestamp can occupy its own line
+   and appear between the header and the main content. */
+.sort-controls-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.sort-controls-container .live-price-timestamp-container {
+    /* Force to its own row and stretch across the header width */
+    flex: 0 0 100%;
+    order: 2; /* place after primary controls within the container */
+    text-align: right; /* keep aligned to right edge; change to left if preferred */
+    padding: 6px 16px 0 16px;
+}
+
+@media (max-width: 600px) {
+    .sort-controls-container .live-price-timestamp-container {
+        text-align: right;
+        padding: 4px 12px 0 12px;
+    }
 }
 /* Center the discover sort bar vertically and remove label spacing */
 .discover-sort-bar-centered {
