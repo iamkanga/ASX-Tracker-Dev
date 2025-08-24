@@ -6971,56 +6971,13 @@ body.dark-theme .alert-item {
 .app-version-splash {
     position: absolute;
     bottom: 2vh;
-    left: 0;
-    width: 100%;
-    color: #888;
-    font-size: 1.08em;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-align: center;
-    word-break: break-all;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
     z-index: 2001;
     text-transform: uppercase;
-}
-
-/* Minimalist chevron for ASX code toggle */
-.asx-toggle-triangle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--ghosted-text, #888);
-    transition: transform 0.2s ease-in-out;
-    width: 18px;
-    height: 18px;
-    padding: 0;
-}
-.asx-toggle-triangle .chevron-svg {
-    width: 18px;
-    height: 18px;
-    display: block;
-}
-.asx-toggle-triangle.expanded .chevron-svg {
-    transform: rotate(180deg);
-}
-
-/* Live price timestamp bottom right in header */
-.live-price-timestamp-container {
-    position: absolute;
-    right: 18px;
-    bottom: 2px;
-    min-width: 120px;
-    text-align: right;
-    font-size: 0.98em;
-    color: var(--ghosted-text, #888);
-    pointer-events: none;
-    z-index: 2;
-}
-#livePriceTimestamp {
-    font-weight: 500;
-    letter-spacing: 0.02em;
-}
-.header-top-row.single-dynamic-title {
-    position: relative;
 }
 
 /* Adjust the sign-in button on the splash screen */
