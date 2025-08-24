@@ -724,8 +724,23 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 // Guard against unintended re-opening of the Share Edit modal shortly after save
 let suppressShareFormReopen = false;
 
-// App version (displayed in UI title bar)
+// App version (displayed in UI title bar and splash)
 const APP_VERSION = 'v2.9.0';
+
+// Set version on splash screen if present
+document.addEventListener('DOMContentLoaded', function() {
+    const splashVer = document.getElementById('splashAppVersion');
+    if (splashVer) splashVer.textContent = `Version ${APP_VERSION}`;
+});
+// --- Live Price Timestamp Placement ---
+function updateLivePriceTimestamp(ts) {
+    const el = document.getElementById('livePriceTimestamp');
+    if (!el) return;
+    el.textContent = ts ? `Live: ${ts}` : '';
+}
+
+// Example: call updateLivePriceTimestamp with the latest timestamp string after fetching live prices
+// You should call updateLivePriceTimestamp(latestTimestamp) after each live price fetch.
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
