@@ -728,7 +728,8 @@ let suppressShareFormReopen = false;
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
-const APP_VERSION = 'v2.10.5';
+// Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
+const APP_VERSION = 'v2.10.6';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {

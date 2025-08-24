@@ -643,16 +643,15 @@
 
 
     <div id="targetHitDetailsModal" class="modal target-hit-details-modal">
-        <div class="modal-content">
+        <div class="modal-content single-scroll-modal">
             <div class="modal-header-with-icon">
                 <h2 id="targetHitModalTitle">Notifications</h2>
-                </div>
-            
-            <div class="modal-body-scrollable">
-                <div id="targetHitSharesList" class="target-hit-shares-list">
-                    <p class="no-alerts-message">No shares currently at alert target.</p>
-                </div>
             </div>
+
+            <div id="targetHitSharesList" class="target-hit-shares-list">
+                <p class="no-alerts-message">No shares currently at alert target.</p>
+            </div>
+
             <div class="modal-action-buttons-footer">
                 <button id="alertModalMinimizeBtn" class="button secondary-buttons">Minimize</button>
                 <button id="alertModalDismissAllBtn" class="button secondary-buttons">Dismiss All</button>
@@ -744,16 +743,14 @@
 
     <!-- Global Alert Discovery Modal -->
     <div id="discoverGlobalModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content single-scroll-modal">
             <div class="modal-header-with-icon">
                 <h2>Discover Moving Shares</h2>
                 <div class="modal-header-action-group">
                     <span class="close-button" title="Close">&times;</span>
                 </div>
             </div>
-            <div class="modal-body-scrollable">
-                <div id="discoverGlobalList" class="discover-global-list"><p class="ghosted-text">Loading...</p></div>
-            </div>
+            <div id="discoverGlobalList" class="discover-global-list"><p class="ghosted-text">Loading...</p></div>
         </div>
     </div>
 
