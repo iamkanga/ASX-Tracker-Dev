@@ -783,6 +783,57 @@ document.addEventListener('DOMContentLoaded', function () {
     } catch (e) { /* ignore */ }
 });
 
+// Service Worker / Version diagnostics helper
+async function getAppVersionReport() {
+    const report = { APP_VERSION };
+    try {
+        if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.getRegistration();
+            report.registration = !!reg;
+            if (reg) {
+                report.scope = reg.scope || null;
+                report.activeScript = reg.active && reg.active.scriptURL ? reg.active.scriptURL : null;
+                report.waitingScript = reg.waiting && reg.waiting.scriptURL ? reg.waiting.scriptURL : null;
+                report.installingScript = reg.installing && reg.installing.scriptURL ? reg.installing.scriptURL : null;
+            }
+            if (navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL) {
+                report.controllerScript = navigator.serviceWorker.controller.scriptURL;
+            }
+        }
+    } catch (e) {
+        report.swError = String(e);
+    }
+    // Inspect cache names for APP_VERSION token
+    try {
+        if (window.caches && typeof caches.keys === 'function') {
+            const keys = await caches.keys();
+            report.caches = keys;
+            // Find caches that contain the APP_VERSION token (loose match)
+            report.versionedCaches = keys.filter(k => k && k.indexOf(String(APP_VERSION)) !== -1);
+        }
+    } catch (e) {
+        report.cacheError = String(e);
+    }
+    return report;
+}
+
+// Update splash element title with SW diagnostic info for quick visibility
+(async function annotateSplashWithSW(){
+    try {
+        const el = document.getElementById('splashAppVersion');
+        if (!el) return;
+        const rep = await getAppVersionReport();
+        const parts = [];
+        if (rep.controllerScript) parts.push('controller:' + rep.controllerScript.split('/').pop());
+        if (rep.activeScript) parts.push('active:' + rep.activeScript.split('/').pop());
+        if (Array.isArray(rep.versionedCaches) && rep.versionedCaches.length) parts.push('cache:' + rep.versionedCaches.join(','));
+        if (parts.length) el.title = parts.join(' | ');
+    } catch(_) {}
+})();
+
+// Expose reporter to console for manual inspection
+window.getAppVersionReport = getAppVersionReport;
+
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 
 // Runtime enforcement: ensure modals follow the single-scroll-container pattern
