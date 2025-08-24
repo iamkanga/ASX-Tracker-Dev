@@ -94,7 +94,7 @@
     height: 0;
     border-left: 6px solid transparent;
     border-right: 6px solid transparent;
-    border-top: 6px solid var(--icon-action-color, #888); /* Use a reliable, high-contrast icon color */
+    border-top: 6px solid var(--text-color-secondary, #888); /* Use a neutral, secondary text color */
     transition: transform 0.2s ease-in-out;
     margin-right: 0; /* Removed margin */
 }
