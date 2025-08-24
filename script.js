@@ -992,7 +992,7 @@ function restoreViewAndModeFromPreferences() {
             } else if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
                 // If movers virtual view
                 if (lastView === '__movers') {
-                    try { watchlistSelect.value = ALL_SHARES_ID; } catch(_) {}
+                    try { watchlistSelect.value = watchlistModule.ALL_SHARES_ID; } catch(_) {}
                     watchlistModule.setSelectedWatchlistIds(['__movers']);
                     renderWatchlist();
                     enforceMoversVirtualView();
@@ -1071,28 +1071,38 @@ const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 
 
 // --- UI Element References ---
-// Copilot: No-op change to trigger source control detection
-const appHeader = document.getElementById('appHeader'); // Reference to the main header
-const mainContainer = document.querySelector('main.container'); // Reference to the main content container
-// mainTitle removed in favour of dynamicWatchlistTitle only
-const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
-const newShareBtn = document.getElementById('newShareBtn');
-const standardCalcBtn = document.getElementById('standardCalcBtn');
-const dividendCalcBtn = document.getElementById('dividendCalcBtn');
-const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
-// Ensure scroll class applied (id container present in DOM from HTML)
-if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
-    asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll');
-}
-const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
-const shareFormSection = document.getElementById('shareFormSection');
-const formCloseButton = document.querySelector('.form-close-button');
-const formTitle = document.getElementById('formTitle');
-const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
-const saveShareBtn = document.getElementById('saveShareBtn');
-const deleteShareBtn = document.getElementById('deleteShareBtn');
-const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
-const currentPriceInput = document.getElementById('currentPrice'); // Reference (reinstated) to Reference Price input
+// All UI element variables are declared here with `let`, and will be assigned in the DOMContentLoaded listener.
+let appHeader, mainContainer, addShareHeaderBtn, newShareBtn, standardCalcBtn, dividendCalcBtn, asxCodeButtonsContainer,
+    toggleAsxButtonsBtn, shareFormSection, formCloseButton, formTitle, formCompanyName, saveShareBtn, deleteShareBtn,
+    addShareLivePriceDisplay, currentPriceInput, shareNameInput, targetPriceInput, dividendAmountInput, frankingCreditsInput,
+    shareRatingSelect, commentsFormContainer, modalStarRating, autoEntryDateDisplay, autoReferencePriceDisplay,
+    dividendCalculatorModal, calcCloseButton, calcCurrentPriceInput, calcDividendAmountInput, calcFrankingCreditsInput,
+    calcUnfrankedYieldSpan, calcFrankedYieldSpan, investmentValueSelect, calcEstimatedDividend, sortSelect,
+    calculatorModal, calculatorInput, calculatorResult, calculatorButtons, watchlistSelect, dynamicWatchlistTitle,
+    dynamicWatchlistTitleText, watchlistPickerModal, watchlistPickerList, closeWatchlistPickerBtn, themeToggleBtn,
+    colorThemeSelect, revertToDefaultThemeBtn, scrollToTopBtn, hamburgerBtn, appSidebar, closeMenuBtn, addWatchlistBtn,
+    editWatchlistBtn, addWatchlistModal, newWatchlistNameInput, saveWatchlistBtn, manageWatchlistModal,
+    editWatchlistNameInput, saveWatchlistNameBtn, deleteWatchlistInModalBtn, shareContextMenu, contextEditShareBtn,
+    contextDeleteShareBtn, logoutBtn, deleteAllUserDataBtn, exportWatchlistBtn, refreshLivePricesBtn,
+    shareWatchlistSelect, shareWatchlistCheckboxes, shareWatchlistDropdownBtn, modalLivePriceDisplaySection,
+    targetHitIconBtn, targetHitIconCount, targetHitDetailsModal, targetHitModalTitle, targetHitSharesList,
+    toggleCompactViewBtn, targetHitModalCloseTopBtn, alertModalMinimizeBtn, alertModalDismissAllBtn,
+    targetAboveCheckbox, targetBelowCheckbox, targetIntentBuyBtn, targetIntentSellBtn, targetDirAboveBtn, targetDirBelowBtn,
+    splashScreen, searchStockBtn, stockSearchModal, stockSearchTitle, asxSearchInput, asxSuggestions,
+    shareNameSuggestions, searchResultDisplay, searchModalActionButtons, searchModalCloseButton,
+    splashKangarooIcon, splashSignInBtn, alertPanel, alertList, closeAlertPanelBtn, clearAllAlertsBtn,
+    stockWatchlistSection, hideCashAssetCheckbox, cashAssetsSection, cashCategoriesContainer,
+    addCashCategoryBtn, saveCashBalancesBtn, totalCashDisplay, addCashAssetSidebarBtn, cashAssetFormModal,
+    cashFormTitle, cashAssetNameInput, cashAssetBalanceInput, saveCashAssetBtn, deleteCashAssetBtn,
+    cashAssetFormCloseButton, cashAssetCommentsContainer, addCashAssetCommentBtn, cashAssetDetailModal,
+    modalCashAssetName, detailCashAssetName, detailCashAssetBalance, detailCashAssetLastUpdated,
+    editCashAssetFromDetailBtn, deleteCashAssetFromDetailBtn, modalCashAssetCommentsContainer, sidebarOverlay,
+    shareTableBody, mobileShareCardsContainer, tableContainer, loadingIndicator, shareDetailModal, modalShareName,
+    modalCompanyName, modalEnteredPrice, modalTargetPrice, modalDividendAmount, modalFrankingCredits,
+    modalEntryDate, modalCommentsContainer, modalUnfrankedYieldSpan, modalFrankedYieldSpan,
+    editShareFromDetailBtn, deleteShareFromDetailBtn, modalNewsLink, modalMarketIndexLink, modalFoolLink,
+    modalListcorpLink, modalCommSecLink, commSecLoginMessage, formInputs, cashFormInputs;
+
 // Centralized single-code snapshot handling
 let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
 async function updateAddFormLiveSnapshot(code) {
@@ -1157,485 +1167,6 @@ async function updateAddFormLiveSnapshot(code) {
         }
     }
 }
-const shareNameInput = document.getElementById('shareName');
-// Removed manual Reference Price input; currentPrice now auto-captured
-const targetPriceInput = document.getElementById('targetPrice');
-const dividendAmountInput = document.getElementById('dividendAmount');
-const frankingCreditsInput = document.getElementById('frankingCredits');
-const shareRatingSelect = document.getElementById('shareRating');
-const commentsFormContainer = document.getElementById('dynamicCommentsArea');
-const modalStarRating = document.getElementById('modalStarRating');
-
-// UX improvement: clear default 0 / 0.0 values on focus for numeric inputs (behave like true placeholders)
-const zeroClearInputs = [currentPriceInput, targetPriceInput, dividendAmountInput, frankingCreditsInput].filter(Boolean);
-zeroClearInputs.forEach(inp => {
-    inp.addEventListener('focus', () => {
-        const v = inp.value.trim();
-        if (v === '0' || v === '0.0' || v === '0.00') {
-            inp.dataset.wasZeroPlaceholder = '1';
-            inp.value = '';
-        } else {
-            delete inp.dataset.wasZeroPlaceholder;
-        }
-    });
-    inp.addEventListener('blur', () => {
-        // If user leaves it empty, restore a clean 0 (or leave blank?) — choose to leave blank to avoid confusion
-        if (inp.dataset.wasZeroPlaceholder && inp.value.trim() === '') {
-            inp.value = ''; // blank so validation can decide; remove flag
-            delete inp.dataset.wasZeroPlaceholder;
-        }
-    });
-});
-
-// --- ASX Code Toggle Button Functionality ---
-// Persisted ASX code buttons expanded state
-let asxButtonsExpanded = false;
-try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 'true') asxButtonsExpanded = true; } catch(e) {}
-
-function applyAsxButtonsState() {
-    if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
-    const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
-    const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
-    const shouldShow = !!hasButtons && asxButtonsExpanded;
-
-    if (shouldShow) {
-        asxCodeButtonsContainer.classList.add('expanded');
-        asxCodeButtonsContainer.classList.remove('app-hidden');
-        asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
-    } else {
-        asxCodeButtonsContainer.classList.remove('expanded');
-        asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
-    }
-    // Chevron visibility and state
-    if (!hasButtons) {
-        toggleAsxButtonsBtn.style.display = 'none';
-        toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
-    } else {
-        toggleAsxButtonsBtn.style.display = 'inline-flex'; // Use inline-flex for proper alignment
-        toggleAsxButtonsBtn.removeAttribute('aria-disabled');
-    }
-    // Update chevron rotation
-    const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
-    if (chevronIcon) {
-        chevronIcon.classList.toggle('expanded', shouldShow);
-    }
-    requestAnimationFrame(adjustMainContentPadding);
-}
-
-if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
-    applyAsxButtonsState();
-    toggleAsxButtonsBtn.addEventListener('click', () => {
-        asxButtonsExpanded = !asxButtonsExpanded;
-        try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
-        applyAsxButtonsState();
-        console.log('[ASX Toggle] Toggled. Expanded=', asxButtonsExpanded);
-        // Schedule padding adjustment after the CSS transition window
-        // Transition duration in CSS: 300-400ms; allow a buffer
-        setTimeout(adjustMainContentPadding, 450);
-        // A second safety call in case the first fires mid-transition
-        setTimeout(adjustMainContentPadding, 700);
-    // New: Always scroll to top smoothly after toggling for visibility of top cards
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); } catch(_) { window.scrollTo(0,0); }
-    });
-    // Also adjust precisely on transition end of the container
-    asxCodeButtonsContainer.addEventListener('transitionend', (ev) => {
-        if (ev.propertyName === 'max-height' || ev.propertyName === 'padding' || ev.propertyName === 'opacity') {
-            adjustMainContentPadding();
-        }
-    });
-}
-const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
-const shareTableBody = document.querySelector('#shareTable tbody');
-const mobileShareCardsContainer = document.getElementById('mobileShareCards');
-const tableContainer = document.querySelector('.table-container');
-const loadingIndicator = document.getElementById('loadingIndicator');
-const shareDetailModal = document.getElementById('shareDetailModal');
-const modalShareName = document.getElementById('modalShareName');
-const modalCompanyName = document.getElementById('modalCompanyName');
-const modalEnteredPrice = document.getElementById('modalEnteredPrice');
-const modalTargetPrice = document.getElementById('modalTargetPrice');
-const modalDividendAmount = document.getElementById('modalDividendAmount');
-const modalFrankingCredits = document.getElementById('modalFrankingCredits');
-const modalEntryDate = document.getElementById('modalEntryDate');
-const modalCommentsContainer = document.getElementById('modalCommentsContainer');
-const modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
-const modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
-const editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
-const deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
-const modalNewsLink = document.getElementById('modalNewsLink');
-const modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
-const modalFoolLink = document.getElementById('modalFoolLink');
-const modalListcorpLink = document.getElementById('modalListcorpLink'); // NEW: Reference for Listcorp link
-const modalCommSecLink = document.getElementById('modalCommSecLink');
-const commSecLoginMessage = document.getElementById('commSecLoginMessage');
-// NEW: Auto (read-only) fields in Other Details section of Share Form
-const autoEntryDateDisplay = document.getElementById('autoEntryDateDisplay');
-const autoReferencePriceDisplay = document.getElementById('autoReferencePriceDisplay');
-const dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
-const calcCloseButton = document.querySelector('.calc-close-button');
-const calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
-const calcDividendAmountInput = document.getElementById('calcDividendAmount');
-const calcFrankingCreditsInput = document.getElementById('calcFrankingCredits');
-const calcUnfrankedYieldSpan = document.getElementById('calcUnfrankedYield');
-const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
-const investmentValueSelect = document.getElementById('investmentValueSelect');
-const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
-const sortSelect = document.getElementById('sortSelect');
-// Legacy customDialogModal removed; toast system fully replaces it.
-const calculatorModal = document.getElementById('calculatorModal');
-const calculatorInput = document.getElementById('calculatorInput');
-const calculatorResult = document.getElementById('calculatorResult');
-const calculatorButtons = document.querySelector('.calculator-buttons');
-const watchlistSelect = document.getElementById('watchlistSelect');
-// Dynamic watchlist title + picker modal + sort display (new UI layer)
-const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
-const dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
-// --- Watchlist Title Click: Open Watchlist Picker Modal ---
-// (Moved below watchlistPickerModal initialization to avoid ReferenceError)
-const watchlistPickerModal = document.getElementById('watchlistPickerModal');
-// --- Watchlist Title Click: Open Watchlist Picker Modal ---
-if (dynamicWatchlistTitleText && watchlistPickerModal) {
-    dynamicWatchlistTitleText.addEventListener('click', function(e) {
-        e.preventDefault();
-        if (typeof showModal === 'function') {
-            showModal(watchlistPickerModal);
-        } else {
-            watchlistPickerModal.style.display = 'block';
-        }
-    });
-    dynamicWatchlistTitleText.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            if (typeof showModal === 'function') {
-                showModal(watchlistPickerModal);
-            } else {
-                watchlistPickerModal.style.display = 'block';
-            }
-        }
-    });
-}
-const watchlistPickerList = document.getElementById('watchlistPickerList');
-const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
-
-// --- Close Watchlist Picker Modal ---
-if (closeWatchlistPickerBtn && watchlistPickerModal) {
-    closeWatchlistPickerBtn.addEventListener('click', function() {
-        if (typeof hideModal === 'function') {
-            hideModal(watchlistPickerModal);
-        } else {
-            watchlistPickerModal.style.display = 'none';
-        }
-    });
-}
-// ...existing code...
-
-// Removed legacy currentSortDisplay element (text summary of sort) now that dropdown itself is visible
-const themeToggleBtn = document.getElementById('themeToggleBtn');
-const colorThemeSelect = document.getElementById('colorThemeSelect');
-const revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
-const scrollToTopBtn = document.getElementById('scrollToTopBtn');
-const hamburgerBtn = document.getElementById('hamburgerBtn');
-const appSidebar = document.getElementById('appSidebar');
-const closeMenuBtn = document.getElementById('closeMenuBtn');
-const addWatchlistBtn = document.getElementById('addWatchlistBtn');
-const editWatchlistBtn = document.getElementById('editWatchlistBtn');
-const addWatchlistModal = document.getElementById('addWatchlistModal');
-const newWatchlistNameInput = document.getElementById('newWatchlistName');
-const saveWatchlistBtn = document.getElementById('saveWatchlistBtn');
-const manageWatchlistModal = document.getElementById('manageWatchlistModal');
-const editWatchlistNameInput = document.getElementById('editWatchlistName');
-const saveWatchlistNameBtn = document.getElementById('saveWatchlistNameBtn');
-const deleteWatchlistInModalBtn = document.getElementById('deleteWatchlistInModalBtn');
-const shareContextMenu = document.getElementById('shareContextMenu');
-const contextEditShareBtn = document.getElementById('contextEditShareBtn');
-const contextDeleteShareBtn = document.getElementById('contextDeleteShareBtn');
-const logoutBtn = document.getElementById('logoutBtn');
-const deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
-const exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
-const refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
-const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
-const shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
-const shareWatchlistDropdownBtn = document.getElementById('shareWatchlistDropdownBtn');
-const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection'); 
-const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
-const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
-// NEW: Target Hit Details Modal Elements
-const targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
-const targetHitModalTitle = document.getElementById('targetHitModalTitle');
-// Removed: minimizeTargetHitModalBtn, dismissAllTargetHitsBtn (now explicit buttons at bottom)
-const targetHitSharesList = document.getElementById('targetHitSharesList');
-const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
-    // Initial load suppression flags (prevent auto reopening of Target Hit modal after hard reload)
-    window.__initialLoadPhase = true; // cleared after first interaction or timeout
-    let __userInitiatedTargetModal = false;
-    window.addEventListener('pointerdown', ()=>{ window.__initialLoadPhase=false; }, { once:true, passive:true });
-    window.addEventListener('keydown', ()=>{ window.__initialLoadPhase=false; }, { once:true });
-    setTimeout(()=>{ window.__initialLoadPhase=false; }, 6000);
-
-// Ensure initial ARIA state for hamburger
-if (hamburgerBtn && !hamburgerBtn.hasAttribute('aria-expanded')) {
-    hamburgerBtn.setAttribute('aria-expanded','false');
-}
-
-// NEW: References for the reconfigured buttons in the Target Hit Details Modal
-const targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTopBtn'); // New 'X' button at the top
-const alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn'); // New "Minimize" button at the bottom
-const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn'); // New "Dismiss All" button at the bottom
-
-// NEW: Target Direction Checkbox UI Elements
-const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
-const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
-// New Phase 1 segmented toggle buttons (UI-only)
-const targetIntentBuyBtn = document.getElementById('targetIntentBuyBtn');
-const targetIntentSellBtn = document.getElementById('targetIntentSellBtn');
-const targetDirAboveBtn = document.getElementById('targetDirAboveBtn');
-const targetDirBelowBtn = document.getElementById('targetDirBelowBtn');
-let userManuallyOverrodeDirection = false; // reset per form open
-// Debounced auto-save for target alert related inputs (intent, direction, target price)
-let _alertAutoSaveTimer = null;
-function scheduleAlertAutoSave(trigger){
-    // Only auto-save when editing an existing share (avoid accidental creation of duplicates during new entry form fills)
-    if (!selectedShareDocId) { try { logDebug('AlertAutoSave: skipped (no selectedShareDocId) trigger='+trigger); } catch(_){} return; }
-    try { logDebug('AlertAutoSave: schedule ('+trigger+') for shareId='+selectedShareDocId); } catch(_){ }
-    if (_alertAutoSaveTimer) clearTimeout(_alertAutoSaveTimer);
-    _alertAutoSaveTimer = setTimeout(()=>{
-        try { if (typeof saveShareData === 'function') saveShareData(true); } catch(e){ console.warn('AlertAutoSave failed', e); }
-    }, 400);
-}
-const splashScreen = document.getElementById('splashScreen');
-const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
-const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
-const stockSearchTitle = document.getElementById('stockSearchTitle'); // NEW: Title for search modal
-const asxSearchInput = document.getElementById('asxSearchInput'); // NEW: Search input field
-const asxSuggestions = document.getElementById('asxSuggestions'); // NEW: Autocomplete suggestions container
-const shareNameSuggestions = document.getElementById('shareNameSuggestions'); // NEW: Autocomplete for share form code input
-const searchResultDisplay = document.getElementById('searchResultDisplay'); // NEW: Display area for search results
-const searchModalActionButtons = document.querySelector('#stockSearchModal .modal-action-buttons-footer'); // NEW: Action buttons container
-const searchModalCloseButton = document.querySelector('.search-close-button'); // NEW: Close button for search modal
-
-// NEW: Global variable for storing loaded ASX code data from CSV
-let allAsxCodes = []; // { code: 'BHP', name: 'BHP Group Ltd' }
-let currentSelectedSuggestionIndex = -1; // For keyboard navigation in autocomplete
-let shareNameAutocompleteBound = false; // Prevent duplicate binding
-
-function initializeShareNameAutocomplete(force=false){
-    if (shareNameAutocompleteBound && !force) return;
-    if (!shareNameInput || !shareNameSuggestions) return;
-    // If already has an input listener tagged, skip unless force
-    if (shareNameInput.dataset.autocompleteBound && !force) return;
-    shareNameInput.dataset.autocompleteBound = '1';
-    shareNameAutocompleteBound = true;
-    // Listeners are already defined further below (conditional block). This function can serve as a future hook.
-}
-let currentSearchShareData = null; // Stores data of the currently displayed stock in search modal
-const splashKangarooIcon = document.getElementById('splashKangarooIcon');
-const splashSignInBtn = document.getElementById('splashSignInBtn');
-const alertPanel = document.getElementById('alertPanel'); // NEW: Reference to the alert panel (not in current HTML, but kept for consistency)
-const alertList = document.getElementById('alertList'); // NEW: Reference to the alert list container (not in current HTML, but kept for consistency)
-const closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn'); // NEW: Reference to close alert panel button (not in current HTML, but kept for consistency)
-const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: Reference to clear all alerts button (not in current HTML, but kept for consistency)
-
-// NEW: Cash & Assets UI Elements (1)
-const stockWatchlistSection = document.getElementById('stockWatchlistSection');
-// Generic number formatting helper (adds commas to large numbers while preserving decimals)
-function formatWithCommas(value) {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'number') return value.toLocaleString(undefined, { maximumFractionDigits: 8 });
-    const str = value.toString();
-    if (!/^[-+]?\d*(\.\d+)?$/.test(str)) return value; // not a plain number string
-    const parts = str.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.join('.');
-}
-
-// Global helpers for consistent numeric formatting across the UI
-function formatMoney(val, opts = {}) {
-    const { hideZero = false, decimals } = opts; // if decimals supplied explicitly, override adaptive logic
-    if (val === null || val === undefined) return '';
-    const n = Number(val);
-    if (!isFinite(n)) return '';
-    if (hideZero && n === 0) return '';
-    // Adaptive decimals: < 1 cent show 3 decimals (e.g., $0.005), otherwise 2.
-    const useDecimals = (typeof decimals === 'number') ? decimals : (Math.abs(n) < 0.01 && n !== 0 ? 3 : 2);
-    const fixed = n.toFixed(useDecimals);
-    const parts = fixed.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return '$' + parts.join('.');
-}
-
-function formatPercent(val, opts = {}) {
-    const { maxDecimals = 2 } = opts; // allow specifying maximum decimals
-    if (val === null || val === undefined) return '';
-    const n = Number(val);
-    if (!isFinite(n)) return '';
-    // Show whole number when no fractional component (e.g., 100 instead of 100.00)
-    if (Math.abs(n % 1) < 1e-9) return n.toFixed(0) + '%';
-    return n.toFixed(maxDecimals) + '%';
-}
-
-// Lean wrappers for adaptive decimals outside of currency symbol contexts
-// Revised adaptive price: default 2 decimals; optionally preserve up to 3 if user entered (pass userRaw); force2 to clamp.
-function formatAdaptivePrice(value, opts = {}) {
-    if (value === null || value === undefined || isNaN(value)) return '0.00';
-    const n = Number(value);
-    if (opts.force2) return n.toFixed(2);
-    if (opts.userRaw) {
-        const m = String(opts.userRaw).trim().match(/^[-+]?\d+(?:\.(\d{1,3}))?$/);
-        if (m && m[1] && m[1].length > 2) return n.toFixed(Math.min(3, m[1].length));
-    }
-    return n.toFixed(2);
-}
-function formatAdaptivePercent(pct) {
-    if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
-    const n = Number(pct);
-    const abs = Math.abs(n);
-    // Use 3 decimals for very small magnitudes (under 0.1%), else 2
-    const decimals = (abs > 0 && abs < 0.1) ? 3 : 2;
-    return n.toFixed(decimals);
-}
-
-// Fallback for missing formatUserDecimalStrict (called in edit form population)
-if (typeof window.formatUserDecimalStrict !== 'function') {
-    window.formatUserDecimalStrict = function(v){
-        if (v === null || v === undefined || v === '') return '';
-        const num = Number(v);
-        if (isNaN(num)) return '';
-        // Keep up to 4 decimals if needed, trim trailing zeros
-        let str = num.toFixed(4); // start with 4
-        str = str.replace(/\.0+$/,'');
-        str = str.replace(/(\.\d*[1-9])0+$/,'$1');
-        return str;
-    };
-}
-
-// ----- Lightweight Back Stack Handling (limit to 2 states) -----
-const appBackStack = [];
-function pushAppStateEntry(type, ref) {
-    appBackStack.push({type, ref});
-    if (appBackStack.length > 2) appBackStack.shift();
-}
-function popAppStateEntry() { return appBackStack.pop(); }
-
-// Removed legacy early hamburger push listener (consolidated later) – now handled in unified sidebar setup
-// Override showModal to push (wrap existing if not already wrapped)
-if (!window.__origShowModalForBack) {
-    window.__origShowModalForBack = showModal;
-    showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
-}
-
-window.addEventListener('popstate', ()=>{
-    // Not using deep browser history here; rely on our own stack
-    const last = popAppStateEntry();
-    if (!last) return;
-    if (last.type === 'modal') {
-        // Smart modal back: hide current modal and restore the previous one (if any)
-        const currentModal = last.ref && last.ref.nodeType === 1 ? last.ref : (last.ref ? document.getElementById(last.ref.id || last.ref) : null);
-        // Targeted auto-save when backing out of the Share Form modal
-        if (currentModal && shareFormSection && currentModal === shareFormSection) {
-            try { autoSaveShareFormOnClose(); } catch(e) { console.warn('Auto-save on back (share form) failed', e); }
-        }
-        if (currentModal && typeof hideModal === 'function') {
-            hideModal(currentModal);
-        } else {
-            // Fallback: hide all if we cannot resolve the modal element
-            closeModals();
-            return;
-        }
-        // Peek previous stack entry; if it is also a modal, show it without pushing history
-        const prev = appBackStack[appBackStack.length - 1];
-        if (prev && prev.type === 'modal') {
-            const prevModal = prev.ref && prev.ref.nodeType === 1 ? prev.ref : (prev.ref ? document.getElementById(prev.ref.id || prev.ref) : null);
-            if (prevModal) {
-                try { showModalNoHistory(prevModal); } catch(e) { console.warn('Failed to restore previous modal on back', e); }
-            }
-        }
-    } else if (last.type === 'sidebar') {
-        // Use the unified closer to fully reset layout, overlay, and scroll locks
-        if (typeof toggleAppSidebar === 'function') {
-            toggleAppSidebar(false);
-        } else if (appSidebar) {
-            // Fallback: ensure classes and styles are reset to avoid layout gaps
-            appSidebar.classList.remove('open');
-            document.body.classList.remove('sidebar-active');
-            document.body.style.overflow = '';
-            if (typeof sidebarOverlay !== 'undefined' && sidebarOverlay) {
-                sidebarOverlay.classList.remove('open');
-                sidebarOverlay.style.pointerEvents = 'none';
-            }
-        }
-    }
-});
-
-// Hardware / browser back key mapping (mobile)
-window.addEventListener('keydown', e=>{
-    if (e.key === 'Escape') {
-        const last = appBackStack[appBackStack.length-1];
-        if (last) { e.preventDefault(); history.back(); }
-    }
-});
-const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
-const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
-const addCashCategoryBtn = document.getElementById('addCashCategoryBtn'); // This will be removed or repurposed
-const saveCashBalancesBtn = document.getElementById('saveCashBalancesBtn'); // This will be removed or repurposed
-const totalCashDisplay = document.getElementById('totalCashDisplay');
-const addCashAssetSidebarBtn = document.getElementById('addCashAssetSidebarBtn'); // NEW: Sidebar button for cash asset
-
-// NEW: Cash Asset Modal Elements (2.1, 2.2)
-const cashAssetFormModal = document.getElementById('cashAssetFormModal');
-const cashFormTitle = document.getElementById('cashFormTitle');
-const cashAssetNameInput = document.getElementById('cashAssetName');
-const cashAssetBalanceInput = document.getElementById('cashAssetBalance');
-const saveCashAssetBtn = document.getElementById('saveCashAssetBtn');
-const deleteCashAssetBtn = document.getElementById('deleteCashAssetBtn');
-const cashAssetFormCloseButton = document.querySelector('.cash-form-close-button'); // NEW: Specific close button for cash asset form
-const cashAssetCommentsContainer = document.getElementById('cashAssetCommentsArea'); // NEW: Comments container for cash asset form
-const addCashAssetCommentBtn = document.getElementById('addCashAssetCommentBtn'); // NEW: Add comment button for cash asset form
-
-const cashAssetDetailModal = document.getElementById('cashAssetDetailModal');
-const modalCashAssetName = document.getElementById('modalCashAssetName');
-const detailCashAssetName = document.getElementById('detailCashAssetName');
-const detailCashAssetBalance = document.getElementById('detailCashAssetBalance');
-const detailCashAssetLastUpdated = document.getElementById('detailCashAssetLastUpdated');
-const editCashAssetFromDetailBtn = document.getElementById('editCashAssetFromDetailBtn');
-const deleteCashAssetFromDetailBtn = document.getElementById('deleteCashAssetFromDetailBtn');
-const modalCashAssetCommentsContainer = document.getElementById('modalCashAssetCommentsContainer'); // NEW: Comments container for cash asset details
-
-
-let sidebarOverlay = document.querySelector('.sidebar-overlay');
-if (!sidebarOverlay) {
-    sidebarOverlay = document.createElement('div');
-    sidebarOverlay.classList.add('sidebar-overlay');
-    document.body.appendChild(sidebarOverlay);
-}
-// Ensure Force Update button exists in sidebar (idempotent injection for diagnostics)
-try {
-    if (appSidebar && !document.getElementById('forceUpdateBtn')) {
-        const btn = document.createElement('button');
-        btn.id = 'forceUpdateBtn';
-        btn.className = 'menu-button-item';
-        btn.textContent = 'Force Update';
-        btn.setAttribute('data-action-closes-menu','true');
-        // Insert near end
-        appSidebar.appendChild(btn);
-    }
-} catch(_) {}
-
-const formInputs = [
-    shareNameInput,
-    // currentPriceInput removed (auto mode)
-    targetPriceInput,
-    dividendAmountInput,
-    frankingCreditsInput,
-    // Include portfolio-specific fields so Save enables when they change
-    document.getElementById('portfolioShares'),
-    document.getElementById('portfolioAvgPrice'),
-    shareRatingSelect
-];
-
-// NEW: Form inputs for Cash Asset Modal
-const cashFormInputs = [
-    cashAssetNameInput, cashAssetBalanceInput
-];
 
 
 // --- GLOBAL HELPER FUNCTIONS ---
@@ -7352,7 +6883,7 @@ function updateMainTitle(overrideTitle) {
                 const opt = document.createElement('option');
                 opt.value='__movers'; opt.textContent='Movers'; opt.dataset.ephemeral='1';
                 // Insert after All Shares if present
-                const allOpt = watchlistSelect.querySelector('option[value="'+ALL_SHARES_ID+'"]');
+                const allOpt = watchlistSelect.querySelector('option[value="'+watchlistModule.ALL_SHARES_ID+'"]');
                 if (allOpt && allOpt.nextSibling) allOpt.parentNode.insertBefore(opt, allOpt.nextSibling); else watchlistSelect.appendChild(opt);
                 logDebug('UI: Injected ephemeral Movers option into select.');
             }
@@ -7405,8 +6936,8 @@ function updateMainTitle(overrideTitle) {
     // Persist resolved selection if it maps to a concrete logical view (avoid noisy writes during early boot with undefined)
     if (resolved === 'Movers') { try { setLastSelectedView('__movers'); } catch(_) {} }
     else if (resolved === 'Portfolio') { try { setLastSelectedView('portfolio'); } catch(_) {} }
-    else if (resolved === 'All Shares') { try { setLastSelectedView(ALL_SHARES_ID); } catch(_) {} }
-    else if (activeId && activeId !== '__movers' && activeId !== 'portfolio' && activeId !== ALL_SHARES_ID && activeId !== CASH_BANK_WATCHLIST_ID) {
+    else if (resolved === 'All Shares') { try { setLastSelectedView(watchlistModule.ALL_SHARES_ID); } catch(_) {} }
+    else if (activeId && activeId !== '__movers' && activeId !== 'portfolio' && activeId !== watchlistModule.ALL_SHARES_ID && activeId !== watchlistModule.CASH_BANK_WATCHLIST_ID) {
         // Persist actual watchlist id
         try { setLastSelectedView(activeId); } catch(_) {}
     }
