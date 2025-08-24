@@ -90,13 +90,9 @@
 }
 
 .asx-toggle-triangle {
-    width: 0;
-    height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-top: 6px solid var(--text-color-secondary, #888); /* Use a neutral, secondary text color */
+    font-size: 0.9em; /* Adjust size to be subtle */
+    color: var(--ghosted-text, #888);
     transition: transform 0.2s ease-in-out;
-    margin-right: 0; /* Removed margin */
 }
 
 .asx-toggle-triangle.expanded {
