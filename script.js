@@ -1,3 +1,5 @@
+import * as watchlistModule from './watchlist.js';
+
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
 // (Moved below DOM references to avoid ReferenceError)
 
@@ -102,14 +104,14 @@ try {
                 const span = document.getElementById('dynamicWatchlistTitleText');
                 if (!span) return;
                 if (!span.textContent || !span.textContent.trim()) {
-                    let wid = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
+                    let wid = watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0];
                     let expected;
                     if (wid === '__movers') expected = 'Movers';
                     else if (wid === 'portfolio') expected = 'Portfolio';
                     else if (wid === CASH_BANK_WATCHLIST_ID) expected = 'Cash & Assets';
                     else if (wid === ALL_SHARES_ID) expected = 'All Shares';
                     else {
-                        const wl = (userWatchlists||[]).find(w=>w.id===wid);
+                        const wl = (watchlistModule.userWatchlists||[]).find(w=>w.id===wid);
                         expected = (wl && wl.name) ? wl.name : 'Share Watchlist';
                     }
                     span.textContent = expected;
@@ -200,6 +202,19 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Watchlist logic moved to watchlist.js ---
     // Import and call watchlist functions
     if (window.watchlistModule) {
+        window.watchlistModule.init({
+            watchlistSelect: watchlistSelect,
+            updateMainTitle: updateMainTitle,
+            updateAddHeaderButton: updateAddHeaderButton,
+            setLastSelectedView: setLastSelectedView,
+            logDebug: logDebug,
+            shareWatchlistSelect: shareWatchlistSelect,
+            allSharesData: allSharesData,
+            selectedShareDocId: selectedShareDocId,
+            shareWatchlistEnhanced: document.getElementById('shareWatchlistEnhanced'),
+            shareWatchlistDropdownBtn: shareWatchlistDropdownBtn,
+            checkFormDirtyState: checkFormDirtyState
+        });
         window.watchlistModule.renderWatchlistSelect();
     // If we have a persisted lastKnownTargetCount, ensure the notification icon restores pre-live-load
     try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
@@ -268,8 +283,8 @@ document.addEventListener('DOMContentLoaded', function () {
         stockWatchlistSection.style.display = 'none';
         // Ensure selection state reflects Portfolio for downstream filters (e.g., ASX buttons)
         // But do not auto-switch away from a forced initial Movers selection unless user explicitly chose portfolio
-        if (!__forcedInitialMovers || (watchlistSelect && watchlistSelect.value === 'portfolio')) {
-            currentSelectedWatchlistIds = ['portfolio'];
+        if (!watchlistModule.__forcedInitialMovers || (watchlistSelect && watchlistSelect.value === 'portfolio')) {
+            watchlistModule.currentSelectedWatchlistIds = ['portfolio'];
         }
         // Reflect in dropdown if present
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
@@ -617,10 +632,6 @@ let previousCalculatorInput = '';
 let resultDisplayed = false;
 const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
 const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
-let userWatchlists = []; // Stores all watchlists for the user
-let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
-// Guard: track if an initial forced movers selection was applied so later routines do not override
-let __forcedInitialMovers = false;
 let __moversFallbackScheduled = false;
 
 function ensureMoversPlaceholder() {
@@ -648,13 +659,13 @@ function scheduleMoversFallback() {
     setTimeout(()=>{
         try {
             const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
-            const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+            const haveMovers = watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers';
             if (wantMovers && !haveMovers) {
                 // Fallback to All Shares (user request) while preserving intent logs
-                currentSelectedWatchlistIds = [ALL_SHARES_ID];
-                if (typeof watchlistSelect !== 'undefined' && watchlistSelect) watchlistSelect.value = ALL_SHARES_ID;
-                try { setLastSelectedView(ALL_SHARES_ID); } catch(_) {}
-                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+                watchlistModule.currentSelectedWatchlistIds = [watchlistModule.ALL_SHARES_ID];
+                if (typeof watchlistSelect !== 'undefined' && watchlistSelect) watchlistSelect.value = watchlistModule.ALL_SHARES_ID;
+                try { setLastSelectedView(watchlistModule.ALL_SHARES_ID); } catch(_) {}
+                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(watchlistModule.currentSelectedWatchlistIds)); } catch(_) {}
                 if (typeof renderWatchlist === 'function') { try { renderWatchlist(); } catch(_) {} }
                 console.warn('[Movers restore][fallback->allShares] Movers failed to attach; defaulted to All Shares.');
             }
@@ -667,7 +678,7 @@ try {
     if (lsLastWatch) {
         const parsed = JSON.parse(lsLastWatch);
         if (Array.isArray(parsed) && parsed.length) {
-            currentSelectedWatchlistIds = parsed;
+            watchlistModule.currentSelectedWatchlistIds = parsed;
         }
     }
 } catch(_) {}
@@ -678,8 +689,8 @@ try {
     const lastView = localStorage.getItem('lastSelectedView');
     if (lastView === '__movers') {
         // Immediate forced selection BEFORE any data. Will re-render later as data arrives.
-        currentSelectedWatchlistIds = ['__movers'];
-        __forcedInitialMovers = true;
+        watchlistModule.currentSelectedWatchlistIds = ['__movers'];
+        watchlistModule.__forcedInitialMovers = true;
     try { console.log('[Movers init] Forced initial Movers selection before data load'); } catch(_) {}
         // Set select value if present
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = '__movers'; }
@@ -693,7 +704,7 @@ try {
     // Schedule fallback to All Shares if movers never attaches
     scheduleMoversFallback();
     } else if (lastView === 'portfolio') {
-        currentSelectedWatchlistIds = ['portfolio'];
+        watchlistModule.currentSelectedWatchlistIds = ['portfolio'];
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
         // Defer actual DOM switch until initial data load completes; hook into data load readiness
         window.addEventListener('load', () => {
@@ -705,15 +716,13 @@ try {
     try { ensureTitleStructure(); } catch(e) {}
     try { updateTargetHitBanner(); } catch(e) {}
     } else if (lastView && lastView !== 'portfolio') {
-        currentSelectedWatchlistIds = [lastView];
+        watchlistModule.currentSelectedWatchlistIds = [lastView];
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = lastView; }
         try { updateMainTitle(); } catch(e) {}
         try { ensureTitleStructure(); } catch(e) {}
         try { updateTargetHitBanner(); } catch(e) {}
     }
 } catch(e) { /* ignore */ }
-const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
-const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
 let currentSortOrder = 'entryDate-desc'; // Default sort order
 try { const lsSort = localStorage.getItem('lastSortOrder'); if (lsSort) { currentSortOrder = lsSort; } } catch(e) {}
 let contextMenuOpen = false; // To track if the custom context menu is open
@@ -1978,7 +1987,7 @@ function closeModals() {
         } else { // New share
             // Only attempt to save if a share name was entered AND a watchlist was selected (if applicable)
             const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
-            const needsWatchlistSelection = currentSelectedWatchlistIds.includes(ALL_SHARES_ID);
+            const needsWatchlistSelection = watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.ALL_SHARES_ID);
             
             if (isShareNameValid && isWatchlistSelected) { // Always require watchlist selection for new shares
                 logDebug('Auto-Save: New share detected with valid name and watchlist. Attempting silent save.');
@@ -2315,16 +2324,6 @@ function updateWatchlistPulse(isNewShareContext = false) {
     }
 }
 
-// Hook into existing populateShareWatchlistSelect to reapply pulse after population
-const originalPopulateShareWatchlistSelect = typeof populateShareWatchlistSelect === 'function' ? populateShareWatchlistSelect : null;
-if (originalPopulateShareWatchlistSelect) {
-    window.populateShareWatchlistSelect = function(currentShareWatchlistId = null, isNewShare = true) {
-        const res = originalPopulateShareWatchlistSelect(currentShareWatchlistId, isNewShare);
-        // Defer to ensure DOM checkboxes inserted
-        setTimeout(() => updateWatchlistPulse(isNewShare), 30);
-        return res;
-    };
-}
 
 // Monitor checkbox changes
 document.addEventListener('change', (e) => {
@@ -3062,7 +3061,7 @@ function updateMainButtonsState(enable) {
     if (editWatchlistBtn) {
         const selectedValue = watchlistSelect ? watchlistSelect.value : '';
         // Enable button if there's a selected watchlist and it's not ALL_SHARES or CASH_BANK
-        const isAnEditableWatchlistSelected = selectedValue && selectedValue !== ALL_SHARES_ID && selectedValue !== CASH_BANK_WATCHLIST_ID;
+        const isAnEditableWatchlistSelected = selectedValue && selectedValue !== watchlistModule.ALL_SHARES_ID && selectedValue !== watchlistModule.CASH_BANK_WATCHLIST_ID;
         // Remove extra conditions and only check if an editable watchlist is selected
         editWatchlistBtn.disabled = !isAnEditableWatchlistSelected;
         logDebug('Edit Watchlist Button State: ' + (editWatchlistBtn.disabled ? 'disabled' : 'enabled') + 
@@ -3167,8 +3166,8 @@ function clearWatchlistUI() {
     portfolioOption.value = 'portfolio';
     portfolioOption.textContent = 'Portfolio';
     watchlistSelect.appendChild(portfolioOption);
-    userWatchlists = [];
-    currentSelectedWatchlistIds = [];
+    watchlistModule.userWatchlists = [];
+    watchlistModule.currentSelectedWatchlistIds = [];
     logDebug('UI: Watchlist UI cleared.');
 }
 
@@ -3328,175 +3327,6 @@ function clearForm() {
  * @param {string|null} currentShareWatchlistId The ID of the watchlist the share is currently in (for editing).
  * @param {boolean} isNewShare True if adding a new share, false if editing.
 */
-function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare = true) {
-    logDebug('populateShareWatchlistSelect called. isNewShare: ' + isNewShare + ', currentShareWatchlistId: ' + currentShareWatchlistId);
-    logDebug('Current currentSelectedWatchlistIds: ' + currentSelectedWatchlistIds.join(', '));
-    logDebug('User watchlists available: ' + userWatchlists.map(wl => wl.name + ' (' + wl.id + ')').join(', '));
-
-    if (!shareWatchlistSelect) {
-        console.error('populateShareWatchlistSelect: shareWatchlistSelect element not found.');
-        return;
-    }
-
-    // Prepare native select (hidden) as multi-select for data binding; UI uses checkboxes
-    try { shareWatchlistSelect.multiple = true; } catch(e) {}
-    shareWatchlistSelect.innerHTML = '<option value="" disabled>Select a Watchlist</option>';
-
-    // Always include Portfolio as a special option
-    const PORTFOLIO_WATCHLIST_ID = 'portfolio';
-    const PORTFOLIO_WATCHLIST_NAME = 'Portfolio';
-    const portfolioOption = document.createElement('option');
-    portfolioOption.value = PORTFOLIO_WATCHLIST_ID;
-    portfolioOption.textContent = PORTFOLIO_WATCHLIST_NAME;
-    shareWatchlistSelect.appendChild(portfolioOption);
-
-    // Filter out the "Cash & Assets" option from the share watchlist dropdown
-    const stockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
-    stockWatchlists.forEach(watchlist => {
-        // Don't duplicate Portfolio if userWatchlists already has it
-        if (watchlist.id === PORTFOLIO_WATCHLIST_ID) return;
-        const option = document.createElement('option');
-        option.value = watchlist.id;
-        option.textContent = watchlist.name;
-        shareWatchlistSelect.appendChild(option);
-    });
-
-    let preselectedIds = []; // For multi-select
-    let selectedOptionId = ''; // For legacy single-select scenarios
-    let disableDropdown = false; // Variable to control if dropdown should be disabled
-
-    if (isNewShare) {
-        // For new shares, always default to the blank placeholder and keep the dropdown enabled.
-        selectedOptionId = ''; // Forces selection of the disabled placeholder option
-        disableDropdown = false; // Always allow user to select a watchlist
-        logDebug('Share Form: New share: Watchlist selector forced to blank placeholder, enabled for user selection.');
-    } else { // Editing an existing share
-        // If editing, prefer the share's existing watchlistIds array if present
-        if (selectedShareDocId) {
-            const s = allSharesData.find(w => w.id === selectedShareDocId);
-            if (s && Array.isArray(s.watchlistIds) && s.watchlistIds.length) {
-                preselectedIds = s.watchlistIds.slice();
-            }
-        }
-        // Always honor 'portfolio' explicitly even if userWatchlists doesn't include it
-        if (currentShareWatchlistId === 'portfolio') {
-            selectedOptionId = 'portfolio';
-            if (!preselectedIds.includes('portfolio')) preselectedIds.push('portfolio');
-            logDebug('Share Form: Editing share: Detected portfolio watchlist, pre-selecting Portfolio.');
-        } else if (currentShareWatchlistId && stockWatchlists.some(wl => wl.id === currentShareWatchlistId)) {
-            selectedOptionId = currentShareWatchlistId;
-            if (currentShareWatchlistId && !preselectedIds.includes(currentShareWatchlistId)) preselectedIds.push(currentShareWatchlistId);
-            logDebug('Share Form: Editing share: Pre-selected to existing share\'s watchlist: ' + selectedOptionId);
-        } else if (currentShareWatchlistId) {
-            // If the original watchlist isn't in the filtered stock lists, inject a temporary option to preserve it
-            const original = userWatchlists.find(wl => wl.id === currentShareWatchlistId);
-            if (original && original.id !== CASH_BANK_WATCHLIST_ID) {
-                const opt = document.createElement('option');
-                opt.value = original.id;
-                opt.textContent = original.name + ' (original)';
-                shareWatchlistSelect.appendChild(opt);
-                selectedOptionId = original.id;
-                if (original.id && !preselectedIds.includes(original.id)) preselectedIds.push(original.id);
-                console.warn('Share Form: Editing share: Original watchlist not in stock list; temporarily added original to dropdown.');
-            } else {
-                // Unknown/removed list or Cash; require explicit user choice instead of defaulting silently
-                selectedOptionId = '';
-                console.warn('Share Form: Editing share: Original watchlist missing or not applicable. Please select a watchlist.');
-            }
-        } else if (stockWatchlists.length > 0) {
-            // No original ID on the share; default to current view if it's Portfolio, else leave blank
-            if (Array.isArray(currentSelectedWatchlistIds) && currentSelectedWatchlistIds[0] === 'portfolio') {
-                selectedOptionId = 'portfolio';
-                if (!preselectedIds.includes('portfolio')) preselectedIds.push('portfolio');
-                logDebug('Share Form: Editing share: No original watchlist; defaulting to current view Portfolio.');
-            } else {
-                selectedOptionId = '';
-                logDebug('Share Form: Editing share: No original watchlist set; leaving blank for user to choose.');
-            }
-        } else {
-            selectedOptionId = '';
-            console.warn('Share Form: Editing share: No stock watchlists available to select.');
-        }
-        disableDropdown = false; // Always allow changing watchlist when editing
-    }
-
-    // Apply the determined selection(s) and disabled state to native select
-    if (preselectedIds.length > 0) {
-        Array.from(shareWatchlistSelect.options).forEach(option => {
-            option.selected = preselectedIds.includes(option.value);
-        });
-    } else {
-        shareWatchlistSelect.value = selectedOptionId;
-    }
-    shareWatchlistSelect.disabled = disableDropdown;
-
-    // Explicitly set the 'selected' attribute on the option for visual update reliability
-    // This loop is crucial to ensure the visual selection is correctly applied.
-    Array.from(shareWatchlistSelect.options).forEach(option => {
-        if (preselectedIds.length > 0) {
-            option.selected = preselectedIds.includes(option.value);
-        } else {
-            option.selected = (option.value === selectedOptionId);
-        }
-    });
-
-    // Build enhanced toggle list
-    if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
-        shareWatchlistEnhanced.innerHTML = '';
-        const opts = Array.from(shareWatchlistSelect.options).filter(o => o.value !== '' && o.value !== CASH_BANK_WATCHLIST_ID);
-        const selectedSet = new Set(preselectedIds.length ? preselectedIds : (selectedOptionId ? [selectedOptionId] : []));
-        opts.forEach(o => {
-            const item = document.createElement('div');
-            item.className = 'watchlist-enhanced-item';
-            const checked = selectedSet.has(o.value);
-            item.innerHTML = `
-                <span class="watchlist-enhanced-name">${o.textContent || o.value}</span>
-                <label class="watchlist-toggle" aria-label="Toggle ${o.textContent || o.value}">
-                    <input type="checkbox" value="${o.value}" ${checked ? 'checked' : ''}>
-                    <span class="watchlist-toggle-track"><span class="watchlist-toggle-thumb"></span></span>
-                </label>`;
-            const input = item.querySelector('input');
-            input.addEventListener('change', () => {
-                const toggled = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
-                Array.from(shareWatchlistSelect.options).forEach(opt => { opt.selected = toggled.includes(opt.value); });
-                shareWatchlistSelect.value = toggled[0] || '';
-                updateWatchlistDropdownButton();
-                checkFormDirtyState();
-            });
-            shareWatchlistEnhanced.appendChild(item);
-        });
-    }
-
-    // Initialize dropdown button label/state
-    if (shareWatchlistDropdownBtn) {
-        updateWatchlistDropdownButton();
-        shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
-        shareWatchlistDropdownBtn.onclick = (e) => {
-            e.stopPropagation();
-            if (!shareWatchlistEnhanced) return;
-            const isOpen = shareWatchlistEnhanced.style.display === 'block';
-            shareWatchlistEnhanced.style.display = isOpen ? 'none' : 'block';
-            shareWatchlistDropdownBtn.setAttribute('aria-expanded', String(!isOpen));
-        };
-        document.addEventListener('click', (evt) => {
-            if (!shareWatchlistEnhanced || shareWatchlistEnhanced.style.display !== 'block') return;
-            const within = shareWatchlistEnhanced.contains(evt.target) || shareWatchlistDropdownBtn.contains(evt.target);
-            if (!within) {
-                shareWatchlistEnhanced.style.display='none';
-                shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
-            }
-        });
-    }
-
-    // Listen for native select change too (in case of programmatic changes)
-    shareWatchlistSelect.addEventListener('change', () => {
-        if (!shareWatchlistEnhanced) return;
-        const selected = Array.from(shareWatchlistSelect.options).filter(o => o.selected).map(o => o.value);
-        shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = selected.includes(cb.value); });
-        updateWatchlistDropdownButton();
-        checkFormDirtyState();
-    });
-}
 
 function updateWatchlistDropdownButton() {
     if (!shareWatchlistDropdownBtn) return;
@@ -3845,7 +3675,7 @@ async function saveShareData(isSilent = false) {
         return selectedWatchlistIdForSave ? [selectedWatchlistIdForSave] : null;
     })();
     // For new shares from 'All Shares' view, force watchlist selection
-    if (!selectedShareDocId && currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
+    if (!selectedShareDocId && watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.ALL_SHARES_ID)) {
         if (!selectedWatchlistIdForSave || selectedWatchlistIdForSave === '') { // Check for empty string too
             if (!isSilent) showCustomAlert('Please select a watchlist to assign the new share to.');
             console.warn('Save Share: New share from All Shares: Watchlist not selected. Skipping save.');
@@ -4380,7 +4210,7 @@ function showShareDetails() {
             const names = [];
             wlIds.forEach(id => {
                 if (!id || id === '__movers' || id === 'portfolio') return;
-                const wl = userWatchlists.find(w => w.id === id);
+                const wl = watchlistModule.userWatchlists.find(w => w.id === id);
                 if (wl && wl.name) names.push(wl.name.trim());
             });
             // Check if share is in portfolio (by id)
@@ -4621,97 +4451,6 @@ function sortCashCategories() {
     return sortedCategories;
 }
 
-function renderWatchlistSelect() {
-    if (!watchlistSelect) { console.error('renderWatchlistSelect: watchlistSelect element not found.'); return; }
-    // Store the currently selected value before clearing
-    const currentSelectedValue = watchlistSelect.value;
-    
-    // Set the initial placeholder text to "Watch List"
-    watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>';
-
-    const allSharesOption = document.createElement('option');
-    allSharesOption.value = ALL_SHARES_ID;
-    allSharesOption.textContent = 'All Shares';
-    watchlistSelect.appendChild(allSharesOption);
-
-    // Ensure Movers virtual option always present (even if counts not ready yet)
-    if (!watchlistSelect.querySelector('option[value="__movers"]')) {
-        const moversOpt = document.createElement('option');
-        moversOpt.value='__movers';
-        moversOpt.textContent='Movers';
-        watchlistSelect.appendChild(moversOpt);
-    }
-
-    // Ensure Portfolio is always present as a special option
-    if (!watchlistSelect.querySelector('option[value="portfolio"]')) {
-        const portfolioOption = document.createElement('option');
-        portfolioOption.value = 'portfolio';
-        portfolioOption.textContent = 'Portfolio';
-        watchlistSelect.appendChild(portfolioOption);
-    }
-
-    userWatchlists.forEach(watchlist => {
-        // Skip adding "Cash & Assets" if it's already a hardcoded option in HTML
-        if (watchlist.id === CASH_BANK_WATCHLIST_ID) {
-            return; 
-        }
-        const option = document.createElement('option');
-        option.value = watchlist.id;
-        option.textContent = watchlist.name;
-        watchlistSelect.appendChild(option);
-    });
-
-    // Add the "Cash & Assets" option explicitly if it's not already in the HTML
-    // This assumes it's added in HTML, but as a fallback, we ensure it's there.
-    if (!watchlistSelect.querySelector(`option[value="${CASH_BANK_WATCHLIST_ID}"]`)) {
-        const cashBankOption = document.createElement('option');
-        cashBankOption.value = CASH_BANK_WATCHLIST_ID;
-        cashBankOption.textContent = 'Cash & Assets'; // UPDATED TEXT
-        watchlistSelect.appendChild(cashBankOption);
-    }
-
-    // Attempt to select the watchlist specified in currentSelectedWatchlistIds.
-    // This array should already contain the correct ID (e.g., the newly created watchlist's ID)
-    // from loadUserWatchlistsAndSettings.
-    let desiredWatchlistId = currentSelectedWatchlistIds.length === 1 ? currentSelectedWatchlistIds[0] : '';
-    // Highest precedence: persisted Movers intent when __forcedInitialMovers flag set
-    try {
-        if (__forcedInitialMovers) {
-            desiredWatchlistId='__movers';
-        } else {
-            const persisted = localStorage.getItem('lastSelectedView');
-            if (persisted === '__movers') desiredWatchlistId='__movers';
-        }
-    } catch(_) {}
-    
-    if (desiredWatchlistId && Array.from(watchlistSelect.options).some(opt => opt.value === desiredWatchlistId)) {
-        watchlistSelect.value = desiredWatchlistId;
-    } else {
-        // Fallback: Prefer the last selected view from localStorage if valid, especially for 'portfolio'
-        try {
-            const lsView = localStorage.getItem('lastSelectedView');
-            const hasLs = lsView && Array.from(watchlistSelect.options).some(opt => opt.value === lsView);
-            if (hasLs) {
-                // If persisted is movers, keep it even if data not yet loaded
-                watchlistSelect.value = lsView;
-                currentSelectedWatchlistIds = [lsView];
-                logDebug('UI Update: Watchlist select applied lastSelectedView from localStorage: ' + lsView);
-            } else {
-                watchlistSelect.value = ALL_SHARES_ID;
-                currentSelectedWatchlistIds = [ALL_SHARES_ID];
-                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
-                logDebug('UI Update: Watchlist select defaulted to All Shares (no valid preference).');
-            }
-        } catch(e) {
-            watchlistSelect.value = ALL_SHARES_ID;
-            currentSelectedWatchlistIds = [ALL_SHARES_ID];
-            logDebug('UI Update: Watchlist select defaulted to All Shares due to error reading localStorage.');
-        }
-    }
-    logDebug('UI Update: Watchlist select dropdown rendered. Selected value: ' + watchlistSelect.value);
-    updateMainTitle(); // Update main title based on newly selected watchlist
-    updateAddHeaderButton(); // Update the plus button context (and sidebar button context)
-}
 
 function renderSortSelect() {
     if (!sortSelect) { console.error('renderSortSelect: sortSelect element not found.'); return; }
@@ -4756,11 +4495,11 @@ function renderSortSelect() {
     let logMessage;
     let defaultSortValue;
 
-    if (currentSelectedWatchlistIds.includes('portfolio')) {
+    if (watchlistModule.currentSelectedWatchlistIds.includes('portfolio')) {
         optionsToShow = portfolioOptions;
         logMessage = 'Portfolio options';
         defaultSortValue = 'totalDollar-desc';
-    } else if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    } else if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.CASH_BANK_WATCHLIST_ID)) {
         optionsToShow = cashOptions;
         logMessage = 'Cash Asset options';
         defaultSortValue = 'name-asc';
@@ -4808,16 +4547,16 @@ function openWatchlistPicker() {
     watchlistPickerList.innerHTML='';
 
     const items=[];
-    items.push({id:ALL_SHARES_ID,name:'All Shares', icon: 'fa-globe'});
+    items.push({id:watchlistModule.ALL_SHARES_ID,name:'All Shares', icon: 'fa-globe'});
     if ((globalAlertSummary && globalAlertSummary.totalCount > 0) || (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries && window.__lastMoversSnapshot.entries.length)) {
         items.push({id:'__movers',name:'Movers', icon: 'fa-chart-line'});
     }
     items.push({id:'portfolio',name:'Portfolio', icon: 'fa-briefcase'});
-    userWatchlists.filter(w=>w.id!==ALL_SHARES_ID && w.id!==CASH_BANK_WATCHLIST_ID).forEach(w=>items.push({...w, icon: 'fa-list-alt'}));
-    items.push({id:CASH_BANK_WATCHLIST_ID,name:'Cash & Assets', icon: 'fa-dollar-sign'});
+    watchlistModule.userWatchlists.filter(w=>w.id!==watchlistModule.ALL_SHARES_ID && w.id!==watchlistModule.CASH_BANK_WATCHLIST_ID).forEach(w=>items.push({...w, icon: 'fa-list-alt'}));
+    items.push({id:watchlistModule.CASH_BANK_WATCHLIST_ID,name:'Cash & Assets', icon: 'fa-dollar-sign'});
 
-    const specialOrder = [ALL_SHARES_ID, 'portfolio', CASH_BANK_WATCHLIST_ID];
-    const defaultWatchlist = userWatchlists.find(w => w.name === DEFAULT_WATCHLIST_NAME);
+    const specialOrder = [watchlistModule.ALL_SHARES_ID, 'portfolio', watchlistModule.CASH_BANK_WATCHLIST_ID];
+    const defaultWatchlist = watchlistModule.userWatchlists.find(w => w.name === DEFAULT_WATCHLIST_NAME);
     if (defaultWatchlist) {
         specialOrder.push(defaultWatchlist.id);
     }
@@ -4840,7 +4579,7 @@ function openWatchlistPicker() {
 
     sortedItems.forEach(it=>{
         const div=document.createElement('div');
-        div.className='picker-item'+(currentSelectedWatchlistIds[0]===it.id?' active':'');
+        div.className='picker-item'+(watchlistModule.currentSelectedWatchlistIds[0]===it.id?' active':'');
         div.innerHTML = `
             <div class="picker-item-content">
                 <i class="fas ${it.icon}"></i>
@@ -4850,11 +4589,11 @@ function openWatchlistPicker() {
         div.tabIndex=0;
         div.onclick=()=>{
             console.log('[WatchlistPicker] Selecting watchlist', it.id);
-            currentSelectedWatchlistIds=[it.id];
-            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+            watchlistModule.currentSelectedWatchlistIds=[it.id];
+            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(watchlistModule.currentSelectedWatchlistIds)); } catch(_) {}
             if (watchlistSelect) watchlistSelect.value=it.id; // sync hidden select
             try { setLastSelectedView(it.id); } catch(e) {}
-            try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
+            try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(watchlistModule.currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
 
             // Always perform a full render cycle for consistency
             if (it.id === '__movers') {
@@ -4893,8 +4632,8 @@ function openWatchlistPicker() {
 }
 function toggleCodeButtonsArrow() {
     if (!toggleAsxButtonsBtn) return;
-    const current=currentSelectedWatchlistIds[0];
-    if (current===CASH_BANK_WATCHLIST_ID) {
+    const current=watchlistModule.currentSelectedWatchlistIds[0];
+    if (current===watchlistModule.CASH_BANK_WATCHLIST_ID) {
     toggleAsxButtonsBtn.style.display='none';
     if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.add('app-hidden'); asxCodeButtonsContainer.style.display='none'; }
     } else {
@@ -4941,9 +4680,9 @@ loadUserWatchlistsAndSettings = async function() {
     // Post-load Movers enforcement: if persisted as lastSelectedView but not active (race conditions), activate now
     try {
         const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
-        const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+        const haveMovers = watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers';
         if (wantMovers && !haveMovers) {
-            currentSelectedWatchlistIds = ['__movers'];
+            watchlistModule.currentSelectedWatchlistIds = ['__movers'];
             const sel = typeof watchlistSelect !== 'undefined' ? watchlistSelect : document.getElementById('watchlistSelect');
             if (sel) sel.value = '__movers';
             if (typeof renderWatchlist === 'function') renderWatchlist();
@@ -4987,10 +4726,10 @@ function bindHeaderInteractiveElements() {
  * Optimized to update existing elements rather than recreating them, reducing flickering.
  */
 function renderWatchlist() {
-    logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + currentSelectedWatchlistIds[0]);
+    logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + watchlistModule.currentSelectedWatchlistIds[0]);
     // If first load and user restored to movers, enforce immediately after minimal delay
     try {
-        if (!window.__moversInitialEnforced && currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+        if (!window.__moversInitialEnforced && watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers') {
             window.__moversInitialEnforced = true;
             setTimeout(()=>{ try { enforceMoversVirtualView(); } catch(e){ console.warn('Initial movers enforce failed', e); } }, 150);
         }
@@ -5025,7 +4764,7 @@ function renderWatchlist() {
         }
     }
 
-    const selectedWatchlistId = currentSelectedWatchlistIds[0];
+    const selectedWatchlistId = watchlistModule.currentSelectedWatchlistIds[0];
 
     // Hide both sections initially
     stockWatchlistSection.classList.add('app-hidden');
@@ -5070,7 +4809,7 @@ function renderWatchlist() {
         }
         adjustMainContentPadding();
         return;
-    } else if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
+    } else if (selectedWatchlistId !== watchlistModule.CASH_BANK_WATCHLIST_ID) {
     // Hide portfolio section if it exists from previous view
     const existingPortfolio = document.getElementById('portfolioSection');
     if (existingPortfolio) existingPortfolio.style.display='none';
@@ -5080,8 +4819,8 @@ function renderWatchlist() {
         if (typeof stockWatchlistSection.style !== 'undefined') {
             stockWatchlistSection.style.display = '';
         }
-        const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
-        if (selectedWatchlistId === ALL_SHARES_ID) {
+        const selectedWatchlist = watchlistModule.userWatchlists.find(wl => wl.id === selectedWatchlistId);
+        if (selectedWatchlistId === watchlistModule.ALL_SHARES_ID) {
             // Title handled by updateMainTitle
         } else if (selectedWatchlist) {
             // Title handled by updateMainTitle
@@ -5117,16 +4856,16 @@ function renderWatchlist() {
             if (sharesToRender.length === 0 && base.length > 0 && !window.__moversRenderRetry) {
                 window.__moversRenderRetry = setTimeout(()=>{
                     window.__moversRenderRetry = null;
-                    if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+                    if (watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers') {
                         try { renderWatchlist(); } catch(e){ console.warn('Movers re-render retry failed', e); }
                     }
                 }, 900);
             }
-        } else if (selectedWatchlistId === ALL_SHARES_ID) {
+        } else if (selectedWatchlistId === watchlistModule.ALL_SHARES_ID) {
             sharesToRender = dedupeSharesById(allSharesData);
             logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
-        } else if (currentSelectedWatchlistIds.length === 1) {
-            sharesToRender = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
+        } else if (watchlistModule.currentSelectedWatchlistIds.length === 1) {
+            sharesToRender = dedupeSharesById(allSharesData).filter(share => watchlistModule.currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
             logDebug('Render: Displaying shares from watchlist: ' + selectedWatchlistId);
         } else {
             logDebug('Render: No specific stock watchlists selected or multiple selected, showing empty state.');
@@ -5269,10 +5008,10 @@ function renderAsxCodeButtons() {
     const uniqueAsxCodes = new Set();
     
     let sharesForButtons = [];
-    if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) { 
+    if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.ALL_SHARES_ID)) {
         sharesForButtons = dedupeSharesById(allSharesData);
     } else {
-        sharesForButtons = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
+        sharesForButtons = dedupeSharesById(allSharesData).filter(share => watchlistModule.currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
     }
 
     sharesForButtons.forEach(share => {
@@ -5980,41 +5719,41 @@ async function loadUserWatchlistsAndSettings() {
         hideSplashScreenIfReady();
         return;
     }
-    userWatchlists = [];
+    watchlistModule.userWatchlists = [];
     const watchlistsColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists');
     const userProfileDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
 
     try {
         logDebug('User Settings: Fetching user watchlists and profile settings...');
         const querySnapshot = await window.firestore.getDocs(window.firestore.query(watchlistsColRef));
-        querySnapshot.forEach(doc => { userWatchlists.push({ id: doc.id, name: doc.data().name }); });
-        logDebug('User Settings: Found ' + userWatchlists.length + ' existing watchlists (before default check).');
+        querySnapshot.forEach(doc => { watchlistModule.userWatchlists.push({ id: doc.id, name: doc.data().name }); });
+        logDebug('User Settings: Found ' + watchlistModule.userWatchlists.length + ' existing watchlists (before default check).');
 
         // Ensure "Cash & Assets" is always an option in `userWatchlists` for internal logic
-        if (!userWatchlists.some(wl => wl.id === CASH_BANK_WATCHLIST_ID)) {
-            userWatchlists.push({ id: CASH_BANK_WATCHLIST_ID, name: 'Cash & Assets' });
+        if (!watchlistModule.userWatchlists.some(wl => wl.id === CASH_BANK_WATCHLIST_ID)) {
+            watchlistModule.userWatchlists.push({ id: CASH_BANK_WATCHLIST_ID, name: 'Cash & Assets' });
             logDebug('User Settings: Added "Cash & Assets" to internal watchlists array.');
         }
 
         // If no user-defined watchlists (excluding Cash & Assets), create a default one
-        const userDefinedStockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== ALL_SHARES_ID);
+        const userDefinedStockWatchlists = watchlistModule.userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== ALL_SHARES_ID);
         if (userDefinedStockWatchlists.length === 0) {
             const defaultWatchlistId = getDefaultWatchlistId(currentUserId);
             const defaultWatchlistRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists/' + defaultWatchlistId);
             await window.firestore.setDoc(defaultWatchlistRef, { name: DEFAULT_WATCHLIST_NAME, createdAt: new Date().toISOString() });
-            userWatchlists.push({ id: defaultWatchlistId, name: DEFAULT_WATCHLIST_NAME });
+            watchlistModule.userWatchlists.push({ id: defaultWatchlistId, name: DEFAULT_WATCHLIST_NAME });
             // Ensure currentSelectedWatchlistIds points to the newly created default watchlist
             currentSelectedWatchlistIds = [defaultWatchlistId]; 
             logDebug('User Settings: Created default watchlist and set it as current selection.');
         }
 
         // Sort watchlists (excluding Cash & Assets for sorting, then re-add it if needed)
-        userWatchlists.sort((a, b) => {
+        watchlistModule.userWatchlists.sort((a, b) => {
             if (a.id === CASH_BANK_WATCHLIST_ID) return 1;
             if (b.id === CASH_BANK_WATCHLIST_ID) return -1;
             return a.name.localeCompare(b.name);
         });
-        logDebug('User Settings: Watchlists after sorting: ' + userWatchlists.map(wl => wl.name).join(', '));
+        logDebug('User Settings: Watchlists after sorting: ' + watchlistModule.userWatchlists.map(wl => wl.name).join(', '));
 
         const userProfileSnap = await window.firestore.getDoc(userProfileDocRef);
     savedSortOrder = null;
@@ -6032,7 +5771,7 @@ async function loadUserWatchlistsAndSettings() {
                 // Filter out invalid or non-existent watchlists from loaded preferences
                 // Treat 'portfolio' as a valid special view alongside All Shares and Cash & Assets
                 currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id =>
-                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
+                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || watchlistModule.userWatchlists.some(wl => wl.id === id)
                 );
                 logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
             } else {
@@ -6046,7 +5785,7 @@ async function loadUserWatchlistsAndSettings() {
         try {
             const lsView = localStorage.getItem('lastSelectedView');
             if (lsView) {
-                const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || userWatchlists.some(wl => wl.id === lsView);
+                const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || watchlistModule.userWatchlists.some(wl => wl.id === lsView);
                 if (isValid) {
                     currentSelectedWatchlistIds = [lsView];
                     logDebug('User Settings: Overriding selection with localStorage lastSelectedView: ' + lsView);
@@ -6056,7 +5795,7 @@ async function loadUserWatchlistsAndSettings() {
 
         // Determine final currentSelectedWatchlistIds if not set or invalid after loading/filtering
         if (!currentSelectedWatchlistIds || currentSelectedWatchlistIds.length === 0) {
-            const firstAvailableStockWatchlist = userWatchlists.find(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
+            const firstAvailableStockWatchlist = watchlistModule.userWatchlists.find(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
             if (firstAvailableStockWatchlist) {
                 currentSelectedWatchlistIds = [firstAvailableStockWatchlist.id];
                 logDebug('User Settings: Defaulting currentSelectedWatchlistIds to first available stock watchlist: ' + firstAvailableStockWatchlist.name);
@@ -7628,12 +7367,12 @@ function updateMainTitle(overrideTitle) {
     // If no select yet, derive directly from activeId
     if (!watchlistSelect) {
         let text = 'Share Watchlist';
-        if (activeId === ALL_SHARES_ID) text = 'All Shares';
-        else if (activeId === CASH_BANK_WATCHLIST_ID) text = 'Cash & Assets';
+        if (activeId === watchlistModule.ALL_SHARES_ID) text = 'All Shares';
+        else if (activeId === watchlistModule.CASH_BANK_WATCHLIST_ID) text = 'Cash & Assets';
         else if (activeId === 'portfolio') text = 'Portfolio';
         else if (activeId === '__movers') text = 'Movers';
         else if (activeId) {
-            const wl = (userWatchlists||[]).find(w=>w.id===activeId); if (wl) text = wl.name;
+            const wl = (watchlistModule.userWatchlists||[]).find(w=>w.id===activeId); if (wl) text = wl.name;
         }
         try { ensureTitleStructure(); } catch(_) {}
         if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = text; else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = text;
@@ -7644,13 +7383,13 @@ function updateMainTitle(overrideTitle) {
     const selValue = watchlistSelect.value;
     const selTextRaw = watchlistSelect.selectedIndex >=0 ? (watchlistSelect.options[watchlistSelect.selectedIndex]?.textContent || '') : '';
     let resolved;
-    if (selValue === ALL_SHARES_ID) resolved = 'All Shares';
-    else if (selValue === CASH_BANK_WATCHLIST_ID) resolved = 'Cash & Assets';
+    if (selValue === watchlistModule.ALL_SHARES_ID) resolved = 'All Shares';
+    else if (selValue === watchlistModule.CASH_BANK_WATCHLIST_ID) resolved = 'Cash & Assets';
     else if (selValue === 'portfolio') resolved = 'Portfolio';
     else if (selValue === '__movers') resolved = 'Movers';
     else if (selTextRaw && selTextRaw.trim()) resolved = selTextRaw.trim();
     else {
-        const wl = (userWatchlists||[]).find(w=>w.id===selValue);
+        const wl = (watchlistModule.userWatchlists||[]).find(w=>w.id===selValue);
         resolved = (wl && wl.name) ? wl.name : 'Share Watchlist';
     }
 
@@ -7703,7 +7442,7 @@ function ensureTitleStructure() {
  * If 'Cash & Assets' is selected, they open the cash asset form. Otherwise, they open the share form.
  */
 function updateAddHeaderButton() {
-    logDebug('DEBUG: updateAddHeaderButton called. Current selected watchlist IDs: ' + currentSelectedWatchlistIds.join(', '));
+    logDebug('DEBUG: updateAddHeaderButton called. Current selected watchlist IDs: ' + watchlistModule.currentSelectedWatchlistIds.join(', '));
     if (!addShareHeaderBtn) {
         console.warn('updateAddHeaderButton: addShareHeaderBtn not found.');
         return;
@@ -7714,7 +7453,7 @@ function updateAddHeaderButton() {
     addShareHeaderBtn.removeEventListener('click', handleAddCashAssetClick);
 
     // Set the appropriate event listener for the header button
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.CASH_BANK_WATCHLIST_ID)) {
         addShareHeaderBtn.addEventListener('click', handleAddCashAssetClick);
         logDebug('DEBUG: Header Plus Button (addShareHeaderBtn) now opens Add Cash Asset modal.');
     } else {
@@ -7784,7 +7523,7 @@ function handleAddCashAssetClick() {
  * It will open the Share Form or Cash Asset Form based on the selected watchlist.
  */
 function updateSidebarAddButtonContext() {
-    logDebug('DEBUG: updateSidebarAddButtonContext called. Current selected watchlist IDs: ' + currentSelectedWatchlistIds.join(', '));
+    logDebug('DEBUG: updateSidebarAddButtonContext called. Current selected watchlist IDs: ' + watchlistModule.currentSelectedWatchlistIds.join(', '));
     if (!newShareBtn) {
         console.warn('updateSidebarAddButtonContext: newShareBtn not found.');
         return;
@@ -7795,7 +7534,7 @@ function updateSidebarAddButtonContext() {
     newShareBtn.removeEventListener('click', handleAddCashAssetClick);
 
     // Set the appropriate event listener for the sidebar button
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.CASH_BANK_WATCHLIST_ID)) {
         newShareBtn.addEventListener('click', handleAddCashAssetClick);
         // Update the text/icon if needed (optional, but good for clarity)
         const sidebarSpan = newShareBtn.querySelector('span');
@@ -8025,13 +7764,13 @@ function escapeCsvValue(value) {
  * Exports the current watchlist data to a CSV file.
  */
 function exportWatchlistToCSV() {
-    if (!currentUserId || currentSelectedWatchlistIds.length === 0) {
+    if (!currentUserId || watchlistModule.currentSelectedWatchlistIds.length === 0) {
         showCustomAlert('Please sign in and select watchlists to export.');
         return;
     }
     
     // Do not export cash data via this function
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.CASH_BANK_WATCHLIST_ID)) {
         showCustomAlert('Cash & Assets data cannot be exported via this function. Please switch to a stock watchlist.', 3000); // UPDATED TEXT
         return;
     }
@@ -8039,14 +7778,14 @@ function exportWatchlistToCSV() {
     let sharesToExport = [];
     let exportFileNamePrefix = 'selected_watchlists';
 
-    if (currentSelectedWatchlistIds.length === 1) {
-        const selectedWatchlistId = currentSelectedWatchlistIds[0];
-        if (selectedWatchlistId === ALL_SHARES_ID) {
+    if (watchlistModule.currentSelectedWatchlistIds.length === 1) {
+        const selectedWatchlistId = watchlistModule.currentSelectedWatchlistIds[0];
+        if (selectedWatchlistId === watchlistModule.ALL_SHARES_ID) {
             sharesToExport = [...allSharesData];
             exportFileNamePrefix = 'all_shares';
         } else {
             sharesToExport = allSharesData.filter(share => shareBelongsTo(share, selectedWatchlistId));
-            const wl = userWatchlists.find(w => w.id === selectedWatchlistId);
+            const wl = watchlistModule.userWatchlists.find(w => w.id === selectedWatchlistId);
             if (wl) { exportFileNamePrefix = wl.name; }
         }
     } else {
@@ -8196,7 +7935,7 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
 
     // Check for duplicate name (case-insensitive, excluding current watchlist if editing)
     // Check for duplicate name (case-insensitive, excluding current watchlist if editing)
-    const isDuplicate = userWatchlists.some(w => {
+    const isDuplicate = watchlistModule.userWatchlists.some(w => {
         const isMatch = w.name.toLowerCase() === newName.toLowerCase() && w.id !== watchlistId;
         if (isMatch && DEBUG_MODE) {
             logDebug('Save Watchlist: Duplicate name detected against existing watchlist: ' + w.name + ' (ID: ' + w.id + ')');
@@ -8238,18 +7977,18 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             logDebug('Firestore: Watchlist \'' + newName + '\' added with ID: ' + newDocRef.id);
 
             // Set the newly created watchlist as the current selection and save this preference.
-            currentSelectedWatchlistIds = [newDocRef.id];
-            await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
+            watchlistModule.currentSelectedWatchlistIds = [newDocRef.id];
+            await saveLastSelectedWatchlistIds(watchlistModule.currentSelectedWatchlistIds);
 
             // --- IMPORTANT FIX: Update in-memory userWatchlists array immediately ---
             // This ensures renderWatchlistSelect has the new watchlist available
             // when loadUserWatchlistsAndSettings is called.
-            userWatchlists.push({ id: newDocRef.id, name: newName });
+            watchlistModule.userWatchlists.push({ id: newDocRef.id, name: newName });
             // Re-sort userWatchlists to ensure the new watchlist is in the correct order for the dropdown
-            userWatchlists.sort((a, b) => {
+            watchlistModule.userWatchlists.sort((a, b) => {
                 // Keep "Cash & Assets" at the bottom if it's there
-                if (a.id === CASH_BANK_WATCHLIST_ID) return 1;
-                if (b.id === CASH_BANK_WATCHLIST_ID) return -1;
+                if (a.id === watchlistModule.CASH_BANK_WATCHLIST_ID) return 1;
+                if (b.id === watchlistModule.CASH_BANK_WATCHLIST_ID) return -1;
                 return a.name.localeCompare(b.name);
             });
             logDebug('Firestore: userWatchlists array updated in memory with new watchlist and re-sorted.');
@@ -9213,10 +8952,10 @@ if (deleteAllUserDataBtn) {
     if (watchlistSelect) {
         watchlistSelect.addEventListener('change', async (event) => {
             logDebug('Watchlist Select: Change event fired. New value: ' + event.target.value);
-            currentSelectedWatchlistIds = [event.target.value];
-            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+            watchlistModule.currentSelectedWatchlistIds = [event.target.value];
+            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(watchlistModule.currentSelectedWatchlistIds)); } catch(_) {}
                     try { setLastSelectedView(event.target.value); } catch(_) {}
-            await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
+            await saveLastSelectedWatchlistIds(watchlistModule.currentSelectedWatchlistIds);
             // Just render the watchlist. The listeners for shares/cash are already active.
             renderWatchlist();
             try { enforceMoversVirtualView(); } catch(_) {}
@@ -9237,7 +8976,7 @@ if (sortSelect) {
         }
         
         // Determine whether to sort shares or cash assets
-        if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.CASH_BANK_WATCHLIST_ID)) {
             renderCashCategories(); // Re-render cash categories with new sort order
         } else {
             sortShares(); // Sorts allSharesData and calls renderWatchlist
@@ -9438,16 +9177,16 @@ if (sortSelect) {
             let watchlistToEditId = watchlistSelect.value;
 
             // Prevent editing "All Shares" or "Cash & Assets"
-            if (watchlistToEditId === ALL_SHARES_ID || watchlistToEditId === CASH_BANK_WATCHLIST_ID) {
+            if (watchlistToEditId === watchlistModule.ALL_SHARES_ID || watchlistToEditId === watchlistModule.CASH_BANK_WATCHLIST_ID) {
                 showCustomAlert('Cannot edit this special watchlist.', 2000);
                 return;
             }
 
-            if (!watchlistToEditId || !userWatchlists.some(w => w.id === watchlistToEditId)) {
+            if (!watchlistToEditId || !watchlistModule.userWatchlists.some(w => w.id === watchlistToEditId)) {
                 showCustomAlert('Please select a watchlist to edit.');
                 return;
             }
-            const selectedWatchlistObj = userWatchlists.find(w => w.id === watchlistToEditId);
+            const selectedWatchlistObj = watchlistModule.userWatchlists.find(w => w.id === watchlistToEditId);
             const watchlistToEditName = selectedWatchlistObj ? selectedWatchlistObj.name : '';
 
             logDebug('Edit Watchlist Button Click: Watchlist to edit ID: ' + watchlistToEditId + ', Name: ' + watchlistToEditName);
@@ -9457,7 +9196,7 @@ if (sortSelect) {
 
             editWatchlistNameInput.value = watchlistToEditName;
             // Keep at least one real watchlist + Cash & Assets
-            const actualWatchlists = userWatchlists.filter(wl => wl.id !== ALL_SHARES_ID && wl.id !== CASH_BANK_WATCHLIST_ID);
+            const actualWatchlists = watchlistModule.userWatchlists.filter(wl => wl.id !== watchlistModule.ALL_SHARES_ID && wl.id !== watchlistModule.CASH_BANK_WATCHLIST_ID);
             const isDisabledDelete = actualWatchlists.length <= 1; 
             setIconDisabled(deleteWatchlistInModalBtn, isDisabledDelete); 
             logDebug('Edit Watchlist: deleteWatchlistInModalBtn disabled: ' + isDisabledDelete);
@@ -9512,19 +9251,19 @@ if (sortSelect) {
             }
 
             // Prevent deleting "All Shares" or "Cash & Assets"
-            if (watchlistToDeleteId === ALL_SHARES_ID || watchlistToDeleteId === CASH_BANK_WATCHLIST_ID) {
+            if (watchlistToDeleteId === watchlistModule.ALL_SHARES_ID || watchlistToDeleteId === watchlistModule.CASH_BANK_WATCHLIST_ID) {
                 showCustomAlert('Cannot delete this special watchlist.', 2000);
                 return;
             }
 
             // Ensure at least one actual watchlist remains (excluding Cash & Assets)
-            const actualWatchlists = userWatchlists.filter(wl => wl.id !== ALL_SHARES_ID && wl.id !== CASH_BANK_WATCHLIST_ID);
+            const actualWatchlists = watchlistModule.userWatchlists.filter(wl => wl.id !== watchlistModule.ALL_SHARES_ID && wl.id !== watchlistModule.CASH_BANK_WATCHLIST_ID);
             if (actualWatchlists.length <= 1) {
                 showCustomAlert('Cannot delete the last stock watchlist. Please create another stock watchlist first.', 3000);
                 return;
             }
 
-            const watchlistToDeleteName = userWatchlists.find(w => w.id === watchlistToDeleteId)?.name || 'Unknown Watchlist';
+            const watchlistToDeleteName = watchlistModule.userWatchlists.find(w => w.id === watchlistToDeleteId)?.name || 'Unknown Watchlist';
             
             try {
                 const sharesColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
@@ -9547,8 +9286,8 @@ if (sortSelect) {
                 closeModals();
 
                 // After deleting a watchlist, switch the current view to "All Shares"
-                currentSelectedWatchlistIds = [ALL_SHARES_ID];
-                await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); // Save this preference
+                watchlistModule.currentSelectedWatchlistIds = [watchlistModule.ALL_SHARES_ID];
+                await saveLastSelectedWatchlistIds(watchlistModule.currentSelectedWatchlistIds); // Save this preference
 
                 await loadUserWatchlistsAndSettings(); // This will re-render everything correctly
             } catch (error) {
