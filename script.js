@@ -923,6 +923,44 @@ window.getAppVersionReport = getAppVersionReport;
     // Expose for manual debugging from console
     window.__enforceSingleScrollModals = run;
 })();
+// Non-mutating diagnostic: returns a report of what the enforcement would change
+// Usage (from console): await window.__enforceSingleScrollModalsReport()
+window.__enforceSingleScrollModalsReport = function() {
+    function describeNode(n) {
+        if (!n) return null;
+        const id = n.id ? `#${n.id}` : '';
+        const classes = n.classList && n.classList.length ? `.${Array.from(n.classList).join('.')}` : '';
+        const short = `${n.tagName.toLowerCase()}${id}${classes}`;
+        return short;
+    }
+
+    const modalContents = Array.from(document.querySelectorAll('.modal .modal-content'));
+    const report = {
+        timestamp: new Date().toISOString(),
+        totalModalContents: modalContents.length,
+        missingSingleScrollClass: 0,
+        totalNestedWrappersFound: 0,
+        details: []
+    };
+
+    modalContents.forEach((mc, idx) => {
+        const hasSingle = mc.classList.contains('single-scroll-modal');
+        const inners = Array.from(mc.querySelectorAll('.modal-body-scrollable'));
+        if (!hasSingle) report.missingSingleScrollClass++;
+        if (inners.length) report.totalNestedWrappersFound += inners.length;
+
+        report.details.push({
+            index: idx,
+            descriptor: describeNode(mc),
+            hasSingleScrollModalClass: hasSingle,
+            nestedWrappers: inners.map(n => describeNode(n)),
+            sampleInnerHTMLLength: mc.innerHTML ? Math.min(mc.innerHTML.length, 200) : 0
+        });
+    });
+
+    return report;
+};
+
 
 // Runtime enforcement: ensure modals follow the single-scroll-container pattern
 (function enforceSingleScrollModals(){
