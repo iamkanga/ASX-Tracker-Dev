@@ -108,13 +108,13 @@
     transform: rotate(180deg);
 }
 
-/* Live price timestamp bottom right in header/title bar */
+/* Live price timestamp pinned to bottom-right of header/title bar */
 .live-price-timestamp-container {
     position: absolute;
-    left: 16px;
+    right: 16px; /* moved from left to right */
     bottom: 2px;
     min-width: 120px;
-    text-align: left;
+    text-align: right; /* align text to right to sit flush with the edge */
     font-size: 0.98em;
     color: var(--ghosted-text, #888);
     pointer-events: none;
