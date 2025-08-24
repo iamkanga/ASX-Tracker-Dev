@@ -84,11 +84,13 @@
         <!-- Watchlist selection modal -->
         <div id="watchlistPickerModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="watchlistPickerTitle">
             <div class="modal-content watchlist-picker">
-                <h3 id="watchlistPickerTitle">Select Watchlist</h3>
-                <div id="watchlistPickerList" class="watchlist-picker-list"></div>
-                <div class="modal-actions">
-                        <button id="closeWatchlistPickerBtn" class="header-action-btn">Close</button>
+                <div class="modal-header-with-icon">
+                    <h3 id="watchlistPickerTitle">Select Watchlist</h3>
+                    <div class="modal-header-action-group">
+                        <button id="closeWatchlistPickerBtn" class="icon-button close-button" title="Close" aria-label="Close"><i class="fas fa-times"></i></button>
+                    </div>
                 </div>
+                <div id="watchlistPickerList" class="watchlist-picker-list"></div>
             </div>
         </div>
 

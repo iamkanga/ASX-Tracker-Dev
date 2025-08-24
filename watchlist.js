@@ -58,29 +58,13 @@ export function renderWatchlistSelect() {
     // Set the initial placeholder text to "Watch List"
     watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>';
 
-    // Always add All Shares first
+    // Add All Shares first
     const allSharesOption = document.createElement('option');
     allSharesOption.value = ALL_SHARES_ID;
     allSharesOption.textContent = 'All Shares';
     watchlistSelect.appendChild(allSharesOption);
 
-    // Add Cash & Assets next (if not already present)
-    if (!watchlistSelect.querySelector(`option[value="${CASH_BANK_WATCHLIST_ID}"]`)) {
-        const cashBankOption = document.createElement('option');
-        cashBankOption.value = CASH_BANK_WATCHLIST_ID;
-        cashBankOption.textContent = 'Cash & Assets';
-        watchlistSelect.appendChild(cashBankOption);
-    }
-
-    // Add Movers next (if not already present)
-    if (!watchlistSelect.querySelector('option[value="__movers"]')) {
-        const moversOpt = document.createElement('option');
-        moversOpt.value = '__movers';
-        moversOpt.textContent = 'Movers';
-        watchlistSelect.appendChild(moversOpt);
-    }
-
-    // Add Portfolio next (if not already present)
+    // Add Portfolio next
     if (!watchlistSelect.querySelector('option[value="portfolio"]')) {
         const portfolioOption = document.createElement('option');
         portfolioOption.value = 'portfolio';
@@ -88,7 +72,23 @@ export function renderWatchlistSelect() {
         watchlistSelect.appendChild(portfolioOption);
     }
 
-    // Filter and sort userWatchlists for custom order: skip Cash & Assets, skip Movers, skip Portfolio, sort rest alphabetically
+    // Add Cash & Assets next
+    if (!watchlistSelect.querySelector(`option[value="${CASH_BANK_WATCHLIST_ID}"]`)) {
+        const cashBankOption = document.createElement('option');
+        cashBankOption.value = CASH_BANK_WATCHLIST_ID;
+        cashBankOption.textContent = 'Cash & Assets';
+        watchlistSelect.appendChild(cashBankOption);
+    }
+
+    // Add Movers next
+    if (!watchlistSelect.querySelector('option[value="__movers"]')) {
+        const moversOpt = document.createElement('option');
+        moversOpt.value = '__movers';
+        moversOpt.textContent = 'Movers';
+        watchlistSelect.appendChild(moversOpt);
+    }
+
+    // Add all other watchlists alphabetically
     const filtered = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== 'portfolio' && wl.id !== '__movers');
     filtered.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     filtered.forEach(watchlist => {
