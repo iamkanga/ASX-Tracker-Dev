@@ -199,6 +199,164 @@ function onLivePricesUpdated() {
 // Compatibility stub (legacy callsites may invoke)
 function forceApplyCurrentSort() { /* legacy no-op retained */ }
 document.addEventListener('DOMContentLoaded', function () {
+    // --- Centralized UI Element Assignments ---
+    appHeader = document.getElementById('appHeader');
+    mainContainer = document.getElementById('mainContainer');
+    addShareHeaderBtn = document.getElementById('addShareHeaderBtn');
+    newShareBtn = document.getElementById('newShareBtn');
+    standardCalcBtn = document.getElementById('standardCalcBtn');
+    dividendCalcBtn = document.getElementById('dividendCalcBtn');
+    asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
+    toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn');
+    shareFormSection = document.getElementById('shareFormSection');
+    formCloseButton = document.querySelector('.form-close-button');
+    formTitle = document.getElementById('formTitle');
+    formCompanyName = document.getElementById('formCompanyName');
+    saveShareBtn = document.getElementById('saveShareBtn');
+    deleteShareBtn = document.getElementById('deleteShareBtn');
+    addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay');
+    currentPriceInput = document.getElementById('currentPrice');
+    shareNameInput = document.getElementById('shareName');
+    targetPriceInput = document.getElementById('targetPrice');
+    dividendAmountInput = document.getElementById('dividendAmount');
+    frankingCreditsInput = document.getElementById('frankingCredits');
+    shareRatingSelect = document.getElementById('shareRating');
+    commentsFormContainer = document.getElementById('dynamicCommentsArea');
+    modalStarRating = document.getElementById('modalStarRating');
+    autoEntryDateDisplay = document.getElementById('autoEntryDateDisplay');
+    autoReferencePriceDisplay = document.getElementById('autoReferencePriceDisplay');
+    dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
+    calcCloseButton = document.querySelector('.calc-close-button');
+    calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
+    calcDividendAmountInput = document.getElementById('calcDividendAmount');
+    calcFrankingCreditsInput = document.getElementById('calcFrankingCredits');
+    calcUnfrankedYieldSpan = document.getElementById('calcUnfrankedYield');
+    calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
+    investmentValueSelect = document.getElementById('investmentValueSelect');
+    calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
+    sortSelect = document.getElementById('sortSelect');
+    calculatorModal = document.getElementById('calculatorModal');
+    calculatorInput = document.getElementById('calculatorInput');
+    calculatorResult = document.getElementById('calculatorResult');
+    calculatorButtons = document.querySelector('.calculator-buttons');
+    watchlistSelect = document.getElementById('watchlistSelect');
+    dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
+    dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
+    watchlistPickerModal = document.getElementById('watchlistPickerModal');
+    watchlistPickerList = document.getElementById('watchlistPickerList');
+    closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
+    themeToggleBtn = document.getElementById('themeToggleBtn');
+    colorThemeSelect = document.getElementById('colorThemeSelect');
+    revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
+    scrollToTopBtn = document.getElementById('scrollToTopBtn');
+    hamburgerBtn = document.getElementById('hamburgerBtn');
+    appSidebar = document.getElementById('appSidebar');
+    closeMenuBtn = document.getElementById('closeMenuBtn');
+    addWatchlistBtn = document.getElementById('addWatchlistBtn');
+    editWatchlistBtn = document.getElementById('editWatchlistBtn');
+    addWatchlistModal = document.getElementById('addWatchlistModal');
+    newWatchlistNameInput = document.getElementById('newWatchlistName');
+    saveWatchlistBtn = document.getElementById('saveWatchlistBtn');
+    manageWatchlistModal = document.getElementById('manageWatchlistModal');
+    editWatchlistNameInput = document.getElementById('editWatchlistName');
+    saveWatchlistNameBtn = document.getElementById('saveWatchlistNameBtn');
+    deleteWatchlistInModalBtn = document.getElementById('deleteWatchlistInModalBtn');
+    shareContextMenu = document.getElementById('shareContextMenu');
+    contextEditShareBtn = document.getElementById('contextEditShareBtn');
+    contextDeleteShareBtn = document.getElementById('contextDeleteShareBtn');
+    logoutBtn = document.getElementById('logoutBtn');
+    deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
+    exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
+    refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
+    shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
+    shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
+    shareWatchlistDropdownBtn = document.getElementById('shareWatchlistDropdownBtn');
+    modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection');
+    targetHitIconBtn = document.getElementById('targetHitIconBtn');
+    targetHitIconCount = document.getElementById('targetHitIconCount');
+    targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
+    targetHitModalTitle = document.getElementById('targetHitModalTitle');
+    targetHitSharesList = document.getElementById('targetHitSharesList');
+    toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
+    targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTopBtn');
+    alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn');
+    alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn');
+    targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
+    targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
+    targetIntentBuyBtn = document.getElementById('targetIntentBuyBtn');
+    targetIntentSellBtn = document.getElementById('targetIntentSellBtn');
+    targetDirAboveBtn = document.getElementById('targetDirAboveBtn');
+    targetDirBelowBtn = document.getElementById('targetDirBelowBtn');
+    splashScreen = document.getElementById('splashScreen');
+    searchStockBtn = document.getElementById('searchStockBtn');
+    stockSearchModal = document.getElementById('stockSearchModal');
+    stockSearchTitle = document.getElementById('stockSearchTitle');
+    asxSearchInput = document.getElementById('asxSearchInput');
+    asxSuggestions = document.getElementById('asxSuggestions');
+    shareNameSuggestions = document.getElementById('shareNameSuggestions');
+    searchResultDisplay = document.getElementById('searchResultDisplay');
+    searchModalActionButtons = document.querySelector('#stockSearchModal .modal-action-buttons-footer');
+    searchModalCloseButton = document.querySelector('.search-close-button');
+    splashKangarooIcon = document.getElementById('splashKangarooIcon');
+    splashSignInBtn = document.getElementById('splashSignInBtn');
+    alertPanel = document.getElementById('alertPanel');
+    alertList = document.getElementById('alertList');
+    closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn');
+    clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn');
+    stockWatchlistSection = document.getElementById('stockWatchlistSection');
+    hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
+    cashAssetsSection = document.getElementById('cashAssetsSection');
+    cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
+    addCashCategoryBtn = document.getElementById('addCashCategoryBtn');
+    saveCashBalancesBtn = document.getElementById('saveCashBalancesBtn');
+    totalCashDisplay = document.getElementById('totalCashDisplay');
+    addCashAssetSidebarBtn = document.getElementById('addCashAssetSidebarBtn');
+    cashAssetFormModal = document.getElementById('cashAssetFormModal');
+    cashFormTitle = document.getElementById('cashFormTitle');
+    cashAssetNameInput = document.getElementById('cashAssetName');
+    cashAssetBalanceInput = document.getElementById('cashAssetBalance');
+    saveCashAssetBtn = document.getElementById('saveCashAssetBtn');
+    deleteCashAssetBtn = document.getElementById('deleteCashAssetBtn');
+    cashAssetFormCloseButton = document.querySelector('.cash-form-close-button');
+    cashAssetCommentsContainer = document.getElementById('cashAssetCommentsArea');
+    addCashAssetCommentBtn = document.getElementById('addCashAssetCommentBtn');
+    cashAssetDetailModal = document.getElementById('cashAssetDetailModal');
+    modalCashAssetName = document.getElementById('modalCashAssetName');
+    detailCashAssetName = document.getElementById('detailCashAssetName');
+    detailCashAssetBalance = document.getElementById('detailCashAssetBalance');
+    detailCashAssetLastUpdated = document.getElementById('detailCashAssetLastUpdated');
+    editCashAssetFromDetailBtn = document.getElementById('editCashAssetFromDetailBtn');
+    deleteCashAssetFromDetailBtn = document.getElementById('deleteCashAssetFromDetailBtn');
+    modalCashAssetCommentsContainer = document.getElementById('modalCashAssetCommentsContainer');
+    sidebarOverlay = document.querySelector('.sidebar-overlay');
+    shareTableBody = document.querySelector('#shareTable tbody');
+    mobileShareCardsContainer = document.getElementById('mobileShareCards');
+    tableContainer = document.querySelector('.table-container');
+    loadingIndicator = document.getElementById('loadingIndicator');
+    shareDetailModal = document.getElementById('shareDetailModal');
+    modalShareName = document.getElementById('modalShareName');
+    modalCompanyName = document.getElementById('modalCompanyName');
+    modalEnteredPrice = document.getElementById('modalEnteredPrice');
+    modalTargetPrice = document.getElementById('modalTargetPrice');
+    modalDividendAmount = document.getElementById('modalDividendAmount');
+    modalFrankingCredits = document.getElementById('modalFrankingCredits');
+    modalEntryDate = document.getElementById('modalEntryDate');
+    modalCommentsContainer = document.getElementById('modalCommentsContainer');
+    modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
+    modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
+    editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
+    deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
+    modalNewsLink = document.getElementById('modalNewsLink');
+    modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
+    modalFoolLink = document.getElementById('modalFoolLink');
+    modalListcorpLink = document.getElementById('modalListcorpLink');
+    modalCommSecLink = document.getElementById('modalCommSecLink');
+    commSecLoginMessage = document.getElementById('commSecLoginMessage');
+
+    // Form Inputs collection
+    formInputs = [shareNameInput, targetPriceInput, dividendAmountInput, frankingCreditsInput, document.getElementById('portfolioShares'), document.getElementById('portfolioAvgPrice'), shareRatingSelect];
+    cashFormInputs = [cashAssetNameInput, cashAssetBalanceInput];
+
     // --- Watchlist logic moved to watchlist.js ---
     // Import and call watchlist functions
     if (window.watchlistModule) {
@@ -1066,10 +1224,6 @@ let originalCashAssetData = null; // NEW: To store original cash asset data for 
 // NEW: Global variable to store visibility state of cash assets (temporary, not persisted)
 // This will now be managed directly by the 'isHidden' property on the cash asset object itself.
 let cashAssetVisibility = {}; // This object will still track the *current session's* visibility.
-// NEW: Reference for the hide/show checkbox in the cash asset form modal
-const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
-
-
 // --- UI Element References ---
 // All UI element variables are declared here with `let`, and will be assigned in the DOMContentLoaded listener.
 let appHeader, mainContainer, addShareHeaderBtn, newShareBtn, standardCalcBtn, dividendCalcBtn, asxCodeButtonsContainer,
