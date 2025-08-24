@@ -6,7 +6,7 @@
     <title>Share Watchlist (Updated)</title>
     <link rel="icon" href="favicon.png" type="image/png">
 
-    <link rel="stylesheet" href="style.css?v=2.9.0">
+    <link rel="stylesheet" href="style.css?v=v2.10.6">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
@@ -831,7 +831,37 @@
             console.log("index.html script module loaded and DOMContentLoaded fired.");
         }); 
     </script>
-    <script src="script.js?v=2.9.0" type="module"></script>
+    <script src="script.js?v=v2.10.6" type="module"></script>
+    <!-- Service worker registration and immediate update helper -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js').then(reg => {
+                try { reg.update(); } catch(e){}
+                // If a new worker is already waiting, ask it to skipWaiting
+                if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+                reg.addEventListener('updatefound', () => {
+                    const newSW = reg.installing;
+                    if (!newSW) return;
+                    newSW.addEventListener('statechange', () => {
+                        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New worker installed; ask it to activate immediately
+                            newSW.postMessage({ type: 'SKIP_WAITING' });
+                        }
+                    });
+                });
+            }).catch(() => {});
+
+            // Reload page when the new service worker takes control
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+            });
+        }
+    </script>
     <!-- Copilot update: 2025-07-29 - change for sync test -->
 </body>
 </html>
