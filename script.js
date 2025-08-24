@@ -108,8 +108,8 @@ try {
                     let expected;
                     if (wid === '__movers') expected = 'Movers';
                     else if (wid === 'portfolio') expected = 'Portfolio';
-                    else if (wid === CASH_BANK_WATCHLIST_ID) expected = 'Cash & Assets';
-                    else if (wid === ALL_SHARES_ID) expected = 'All Shares';
+                    else if (wid === watchlistModule.CASH_BANK_WATCHLIST_ID) expected = 'Cash & Assets';
+                    else if (wid === watchlistModule.ALL_SHARES_ID) expected = 'All Shares';
                     else {
                         const wl = (watchlistModule.userWatchlists||[]).find(w=>w.id===wid);
                         expected = (wl && wl.name) ? wl.name : 'Share Watchlist';
