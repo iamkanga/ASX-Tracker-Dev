@@ -58,20 +58,29 @@ export function renderWatchlistSelect() {
     // Set the initial placeholder text to "Watch List"
     watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>';
 
+    // Always add All Shares first
     const allSharesOption = document.createElement('option');
     allSharesOption.value = ALL_SHARES_ID;
     allSharesOption.textContent = 'All Shares';
     watchlistSelect.appendChild(allSharesOption);
 
-    // Ensure Movers virtual option always present (even if counts not ready yet)
+    // Add Cash & Assets next (if not already present)
+    if (!watchlistSelect.querySelector(`option[value="${CASH_BANK_WATCHLIST_ID}"]`)) {
+        const cashBankOption = document.createElement('option');
+        cashBankOption.value = CASH_BANK_WATCHLIST_ID;
+        cashBankOption.textContent = 'Cash & Assets';
+        watchlistSelect.appendChild(cashBankOption);
+    }
+
+    // Add Movers next (if not already present)
     if (!watchlistSelect.querySelector('option[value="__movers"]')) {
         const moversOpt = document.createElement('option');
-        moversOpt.value='__movers';
-        moversOpt.textContent='Movers';
+        moversOpt.value = '__movers';
+        moversOpt.textContent = 'Movers';
         watchlistSelect.appendChild(moversOpt);
     }
 
-    // Ensure Portfolio is always present as a special option
+    // Add Portfolio next (if not already present)
     if (!watchlistSelect.querySelector('option[value="portfolio"]')) {
         const portfolioOption = document.createElement('option');
         portfolioOption.value = 'portfolio';
@@ -79,25 +88,15 @@ export function renderWatchlistSelect() {
         watchlistSelect.appendChild(portfolioOption);
     }
 
-    userWatchlists.forEach(watchlist => {
-        // Skip adding "Cash & Assets" if it's already a hardcoded option in HTML
-        if (watchlist.id === CASH_BANK_WATCHLIST_ID) {
-            return;
-        }
+    // Filter and sort userWatchlists for custom order: skip Cash & Assets, skip Movers, skip Portfolio, sort rest alphabetically
+    const filtered = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== 'portfolio' && wl.id !== '__movers');
+    filtered.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    filtered.forEach(watchlist => {
         const option = document.createElement('option');
         option.value = watchlist.id;
         option.textContent = watchlist.name;
         watchlistSelect.appendChild(option);
     });
-
-    // Add the "Cash & Assets" option explicitly if it's not already in the HTML
-    // This assumes it's added in HTML, but as a fallback, we ensure it's there.
-    if (!watchlistSelect.querySelector(`option[value="${CASH_BANK_WATCHLIST_ID}"]`)) {
-        const cashBankOption = document.createElement('option');
-        cashBankOption.value = CASH_BANK_WATCHLIST_ID;
-        cashBankOption.textContent = 'Cash & Assets'; // UPDATED TEXT
-        watchlistSelect.appendChild(cashBankOption);
-    }
 
     // Attempt to select the watchlist specified in currentSelectedWatchlistIds.
     // This array should already contain the correct ID (e.g., the newly created watchlist's ID)

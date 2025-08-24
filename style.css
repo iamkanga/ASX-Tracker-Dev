@@ -7002,9 +7002,6 @@ body.dark-theme .alert-item {
 
 .app-version-splash {
     position: absolute;
-    bottom: 2vh;
-    left: 0;
-    width: 100%;
     color: rgba(255, 255, 255, 0.4);
     font-size: 0.75rem;
     font-weight: 700;
@@ -7012,7 +7009,12 @@ body.dark-theme .alert-item {
     text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
     z-index: 2001;
     text-transform: uppercase;
-    text-align: center;
+}
+.app-version-splash-top {
+    top: 2vh;
+    left: 2vw;
+    width: auto;
+    text-align: left;
 }
 
 /* Adjust the sign-in button on the splash screen */
