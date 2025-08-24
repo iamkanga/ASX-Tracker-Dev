@@ -78,9 +78,29 @@
     width: 100%;
     padding-top: 8px; /* Add some space above it */
 }
-/* Add margin to code button arrow for better spacing */
+/* Minimalistic chevron for ASX code toggle */
+#toggleAsxButtonsBtn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .asx-toggle-triangle {
-    margin-right: 10px;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid var(--text-color);
+    transition: transform 0.2s ease-in-out;
+    margin-right: 0; /* Removed margin */
+}
+
+.asx-toggle-triangle.expanded {
+    transform: rotate(180deg);
 }
 /* Center the discover sort bar vertically and remove label spacing */
 .discover-sort-bar-centered {

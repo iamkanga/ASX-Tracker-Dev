@@ -725,7 +725,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v2.3.0';
+const APP_VERSION = 'v2.5.0';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -1159,9 +1159,7 @@ try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 't
 function applyAsxButtonsState() {
     if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
     const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
-    // If there are no buttons, never show and hide chevron
     const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
-    // In compact mode, still allow showing the buttons (they can be horizontally scrollable)
     const shouldShow = !!hasButtons && asxButtonsExpanded;
 
     if (shouldShow) {
@@ -1176,16 +1174,15 @@ function applyAsxButtonsState() {
     if (!hasButtons) {
         toggleAsxButtonsBtn.style.display = 'none';
         toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
-        toggleAsxButtonsBtn.classList.remove('expanded');
-        toggleAsxButtonsBtn.setAttribute('aria-pressed', 'false');
     } else {
-        toggleAsxButtonsBtn.style.display = '';
+        toggleAsxButtonsBtn.style.display = 'inline-flex'; // Use inline-flex for proper alignment
         toggleAsxButtonsBtn.removeAttribute('aria-disabled');
-    toggleAsxButtonsBtn.classList.toggle('expanded', shouldShow);
-        toggleAsxButtonsBtn.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
     }
-    // After any state change, adjust content padding to account for header height change
-    // Use rAF to wait for styles/transition to apply
+    // Update chevron rotation
+    const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
+    if (chevronIcon) {
+        chevronIcon.classList.toggle('expanded', shouldShow);
+    }
     requestAnimationFrame(adjustMainContentPadding);
 }
 
