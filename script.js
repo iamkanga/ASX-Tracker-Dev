@@ -725,13 +725,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v2.7.0';
-document.addEventListener('DOMContentLoaded', function() {
-    const splashVersionEl = document.getElementById('splashAppVersion');
-    if (splashVersionEl) {
-        splashVersionEl.textContent = APP_VERSION;
-    }
-});
+const APP_VERSION = 'v2.8.0';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -10649,12 +10643,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Display App Version
     console.log('[Debug] Attempting to set splash screen version...');
-    const appVersionEl = document.getElementById('splashAppVersion');
-    if (appVersionEl) {
-        console.log('[Debug] Found splashAppVersion element. Setting version to:', APP_VERSION);
-        appVersionEl.textContent = APP_VERSION;
+    const splashScreenEl = document.getElementById('splashScreen');
+    if (splashScreenEl) {
+        let versionEl = document.getElementById('splashAppVersion');
+        if (!versionEl) {
+            console.warn('[Debug] splashAppVersion element not found, creating it.');
+            versionEl = document.createElement('p');
+            versionEl.id = 'splashAppVersion';
+            versionEl.className = 'app-version-splash';
+            splashScreenEl.prepend(versionEl);
+        }
+        console.log('[Debug] Setting splash screen version to:', APP_VERSION);
+        versionEl.textContent = APP_VERSION;
     } else {
-        console.error('[Debug] CRITICAL: splashAppVersion element NOT found in DOM.');
+        console.error('[Debug] CRITICAL: splashScreen element itself NOT found in DOM.');
     }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;
