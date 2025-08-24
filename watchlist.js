@@ -80,22 +80,20 @@ export function renderWatchlistSelect() {
         watchlistSelect.appendChild(cashBankOption);
     }
 
-    // Add Movers directly after Cash & Assets
-    let moversInserted = false;
+    // Add Movers as the 4th option (after All Shares, Portfolio, Cash & Assets)
     const filtered = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== 'portfolio' && wl.id !== '__movers');
     filtered.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    // Insert Movers as 4th option
     if (!watchlistSelect.querySelector('option[value="__movers"]')) {
         const moversOpt = document.createElement('option');
         moversOpt.value = '__movers';
         moversOpt.textContent = 'Movers';
-        // Find Cash & Assets in the select and insert after it
-        const cashOpt = watchlistSelect.querySelector(`option[value="${CASH_BANK_WATCHLIST_ID}"]`);
-        if (cashOpt && cashOpt.nextSibling) {
-            watchlistSelect.insertBefore(moversOpt, cashOpt.nextSibling);
+        // Insert as 4th child (index 3, after 3 existing options)
+        if (watchlistSelect.children.length >= 3) {
+            watchlistSelect.insertBefore(moversOpt, watchlistSelect.children[3]);
         } else {
             watchlistSelect.appendChild(moversOpt);
         }
-        moversInserted = true;
     }
     filtered.forEach(watchlist => {
         const option = document.createElement('option');
