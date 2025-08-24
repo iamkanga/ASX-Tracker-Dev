@@ -1009,6 +1009,28 @@ function makeFilesAvailableToSourceControlCSS() {
 .dropdown-large option {
     text-align: left;
 }
+
+/* Force selects inside the Add/Edit Share modal to span the full width of the modal content.
+   This overrides the general .dropdown-large max-width so inputs inside the modal match other fields. */
+#shareFormSection .dropdown-large,
+#shareFormSection select,
+#shareFormSection .modal-content .dropdown-large,
+#shareFormSection .modal-content select {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    text-align: left !important;
+}
+
+/* Target known selects explicitly for extra specificity */
+#shareFormSection #shareRating,
+#shareFormSection #shareWatchlistSelect {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+}
 .dropdown-large.left-rounded {
   border-top-left-radius: 6px;
   border-bottom-left-radius: 6px;
