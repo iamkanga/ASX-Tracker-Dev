@@ -36,6 +36,20 @@ export function init(dependencies) {
 }
 
 // --- EXPORTED FUNCTIONS ---
+
+export function resetWatchlists() {
+    userWatchlists = [];
+    currentSelectedWatchlistIds = [];
+}
+
+export function setSelectedWatchlistIds(ids) {
+    if (Array.isArray(ids)) {
+        currentSelectedWatchlistIds = ids;
+    } else {
+        console.error("setSelectedWatchlistIds expects an array.");
+    }
+}
+
 export function renderWatchlistSelect() {
     if (!watchlistSelect) { console.error('renderWatchlistSelect: watchlistSelect element not found.'); return; }
     // Store the currently selected value before clearing
