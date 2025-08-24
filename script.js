@@ -735,6 +735,94 @@ const APP_VERSION = 'v2.10.6';
 // Runtime enforcement: ensure modals follow the single-scroll-container pattern
 (function enforceSingleScrollModals(){
     function normalizeModalContent(mc) {
+        if (!mc) return { added: false, unwrapped: 0 };
+        let added = false;
+        if (!mc.classList.contains('single-scroll-modal')) {
+            mc.classList.add('single-scroll-modal');
+            added = true;
+        }
+        // Move children out of any nested .modal-body-scrollable wrappers
+        const inners = Array.from(mc.querySelectorAll('.modal-body-scrollable'));
+        let unwrapped = 0;
+        inners.forEach(inner => {
+            try {
+                while (inner.firstChild) mc.appendChild(inner.firstChild);
+                inner.remove();
+                unwrapped++;
+            } catch(e) { console.warn('[SingleScroll] Failed to unwrap inner container', e); }
+        });
+        // Ensure touch-scrolling styles present (defensive)
+        try {
+            mc.style.overflowY = mc.style.overflowY || 'auto';
+            mc.style.webkitOverflowScrolling = 'touch';
+            if (!mc.style.maxHeight) mc.style.maxHeight = 'calc(100vh - 80px)';
+        } catch(e) {}
+        return { added, unwrapped };
+    }
+
+    function run() {
+        try {
+            const modalContents = document.querySelectorAll('.modal .modal-content');
+            const report = { total: modalContents.length, changed: 0, unwrapped: 0 };
+            modalContents.forEach(mc => {
+                const r = normalizeModalContent(mc);
+                if (r.added) report.changed++;
+                report.unwrapped += r.unwrapped || 0;
+            });
+            if (report.changed || report.unwrapped) {
+                console.info('[SingleScroll] Enforced single-scroll on', report.total, 'modals — added class to', report.changed, 'and unwrapped', report.unwrapped, 'inner containers.');
+            } else {
+                console.debug('[SingleScroll] No changes required — modals already normalized (count:', report.total, ')');
+            }
+        } catch(e) { console.warn('[SingleScroll] Enforcement failed', e); }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run, { once: true });
+    } else {
+        setTimeout(run, 0);
+    }
+
+    // Re-run automatically when DOM changes (e.g., modals injected dynamically)
+    (function installObserver(){
+        let timer = null;
+        const debouncedRun = () => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(() => { run(); timer = null; }, 120);
+        };
+
+        try {
+            const observer = new MutationObserver((mutations) => {
+                for (const m of mutations) {
+                    if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
+                        for (const n of m.addedNodes) {
+                            if (n.nodeType === 1) {
+                                const el = n;
+                                if (el.classList && (el.classList.contains('modal') || el.classList.contains('modal-content') || el.querySelector && el.querySelector('.modal-content'))) {
+                                    debouncedRun();
+                                    return;
+                                }
+                            }
+                        }
+                    } else if (m.type === 'attributes' && m.attributeName === 'class') {
+                        debouncedRun();
+                        return;
+                    }
+                }
+            });
+            observer.observe(document.documentElement || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        } catch(e) {
+            // noop
+        }
+    })();
+
+    // Expose for manual debugging from console
+    window.__enforceSingleScrollModals = run;
+})();
+
+// Runtime enforcement: ensure modals follow the single-scroll-container pattern
+(function enforceSingleScrollModals(){
+    function normalizeModalContent(mc) {
         if (!mc) return { added:false, unwrapped:0 };
         let added = false;
         if (!mc.classList.contains('single-scroll-modal')) {
