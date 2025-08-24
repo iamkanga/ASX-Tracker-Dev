@@ -96,7 +96,7 @@
 
         <!-- Global Alerts Modal (Advanced) -->
         <div id="globalAlertsModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="globalAlertsTitle">
-            <div class="modal-content global-alerts-modal">
+            <div class="modal-content global-alerts-modal single-scroll-modal">
                 <div class="modal-header-with-icon">
                     <h2 id="globalAlertsTitle">Global Price Alerts</h2>
                     <div class="modal-header-action-group">
@@ -483,7 +483,7 @@
     </div>
 
     <div id="shareDetailModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content single-scroll-modal">
             <div class="modal-header-with-icon">
                 <div class="modal-title-container">
                     <h2 id="modalShareName">Share Details</h2>
@@ -496,7 +496,6 @@
                 </div>
             </div>
             
-            <div class="modal-body-scrollable">
                 <div class="share-detail-sections">
                     <section class="detail-card" data-section="investment">
                         <h3 class="detail-card-title">Investment</h3>
@@ -539,7 +538,6 @@
                         <div class="detail-row"><span class="detail-label">Star Rating</span><span id="modalStarRating" class="detail-value"></span></div>
                     </section>
                 </div>
-            </div>
         </div>
     </div>
 
@@ -664,7 +662,7 @@
     </div>
 
     <div id="cashAssetFormModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content single-scroll-modal">
             <div class="modal-header-with-icon">
                 <h2 id="cashFormTitle">Add New Cash Asset</h2>
                 <div class="modal-header-action-group">
@@ -673,7 +671,6 @@
                     <span class="close-button cash-form-close-button">&times;</span>
                 </div>
             </div>
-            <div class="modal-body-scrollable">
                 <label for="cashAssetName">Asset Name:</label>
                 <input type="text" id="cashAssetName" placeholder="e.g., Savings Account" required>
 
@@ -691,20 +688,17 @@
                     <input type="checkbox" id="hideCashAssetCheckbox">
                     <label for="hideCashAssetCheckbox">Temporarily hide this asset and exclude from total</label>
                 </div>
-            </div>
         </div>
     </div>
 
 <div id="stockSearchModal" class="modal">
-        <div class="modal-content stock-search-modal-content">
+        <div class="modal-content stock-search-modal-content single-scroll-modal">
             <div class="modal-header-with-icon">
                 <h2 id="stockSearchTitle">Search ASX Stocks</h2>
                 <div class="modal-header-action-group">
                     <span class="close-button search-close-button">&times;</span>
                 </div>
             </div>
-            
-            <div class="modal-body-scrollable">
                 <div class="search-input-container">
                     <input type="text" id="asxSearchInput" placeholder="Search by Code (e.g., BHP)" autocomplete="off">
                     <div id="asxSuggestions" class="autocomplete-suggestions">
@@ -714,14 +708,13 @@
                 <div id="searchResultDisplay" class="search-result-display">
                     <p class="initial-message">Start typing an ASX code to search.</p>
                 </div>
-            </div>
 
             <div class="modal-action-buttons-footer">
                 </div>
         </div>
     </div>
     <div id="cashAssetDetailModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content single-scroll-modal">
             <div class="modal-header-with-icon">
                 <h2 id="modalCashAssetName">Asset Details</h2>
                 <div class="modal-header-action-group">
@@ -730,14 +723,12 @@
                     <span class="close-button">&times;</span>
                 </div>
             </div>
-            <div class="modal-body-scrollable">
                 <p><strong>Asset Name:</strong> <span id="detailCashAssetName"></span></p>
                 <p><strong>Balance:</strong> <span id="detailCashAssetBalance"></span></p>
                 <p><strong>Last Updated:</strong> <span id="detailCashAssetLastUpdated"></span></p>
                 <div id="modalCashAssetCommentsContainer" class="modal-comments-sections">
                     <h3>Comments</h3>
                     </div>
-            </div>
         </div>
     </div>
 
