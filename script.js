@@ -796,6 +796,38 @@ const LIVE_PRICE_FETCH_INTERVAL_MS = 5 * 60 * 1000; // Fetch every 5 minutes
 // Global discovery: store external (non-portfolio) price rows each fetch for global alert discovery logic
 let globalExternalPriceRows = []; // [{ code, live, prevClose }]
 
+// --- Live Price Timestamp Update ---
+function updateLivePriceTimestamp(ts) {
+    const el = document.getElementById('livePriceTimestamp');
+    if (!el) return;
+    let dateObj;
+    if (ts instanceof Date) {
+        dateObj = ts;
+    } else if (typeof ts === 'number') {
+        dateObj = new Date(ts);
+    } else {
+        dateObj = new Date();
+    }
+    // Format: e.g. '12:34:56 pm' or '12:34 pm' (24h/12h based on locale)
+    const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    el.textContent = `Updated: ${timeStr}`;
+}
+
+// Patch live price fetch logic to update timestamp after fetch
+if (typeof fetchLivePrices === 'function') {
+    const origFetchLivePrices = fetchLivePrices;
+    window.fetchLivePrices = fetchLivePrices = async function(...args) {
+        const result = await origFetchLivePrices.apply(this, args);
+        updateLivePriceTimestamp(Date.now());
+        return result;
+    };
+}
+
+// Also update timestamp on DOMContentLoaded (in case prices are preloaded)
+document.addEventListener('DOMContentLoaded', function() {
+    updateLivePriceTimestamp(Date.now());
+});
+
 // Theme related variables
 const CUSTOM_THEMES = [
     'bold-1', 'bold-2', 'bold-3', 'bold-4', 'bold-5', 'bold-6', 'bold-7', 'bold-8', 'bold-9', 'bold-10',

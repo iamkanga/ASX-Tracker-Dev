@@ -90,13 +90,43 @@
 }
 
 .asx-toggle-triangle {
-    font-size: 0.9em; /* Adjust size to be subtle */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     color: var(--ghosted-text, #888);
     transition: transform 0.2s ease-in-out;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+}
+.asx-toggle-triangle .chevron-svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+.asx-toggle-triangle.expanded .chevron-svg {
+    transform: rotate(180deg);
 }
 
-.asx-toggle-triangle.expanded {
-    transform: rotate(180deg);
+/* Live price timestamp bottom right in header/title bar */
+.live-price-timestamp-container {
+    position: absolute;
+    right: 18px;
+    bottom: 2px;
+    min-width: 120px;
+    text-align: right;
+    font-size: 0.98em;
+    color: var(--ghosted-text, #888);
+    pointer-events: none;
+    z-index: 2;
+    background: transparent;
+}
+#livePriceTimestamp {
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+.header-top-row.single-dynamic-title {
+    position: relative;
 }
 /* Center the discover sort bar vertically and remove label spacing */
 .discover-sort-bar-centered {
