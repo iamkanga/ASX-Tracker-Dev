@@ -1,3 +1,5 @@
+import * as watchlistModule from './watchlist.js';
+
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
 // (Moved below DOM references to avoid ReferenceError)
 
@@ -102,14 +104,14 @@ try {
                 const span = document.getElementById('dynamicWatchlistTitleText');
                 if (!span) return;
                 if (!span.textContent || !span.textContent.trim()) {
-                    let wid = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
+                    let wid = watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0];
                     let expected;
                     if (wid === '__movers') expected = 'Movers';
                     else if (wid === 'portfolio') expected = 'Portfolio';
-                    else if (wid === CASH_BANK_WATCHLIST_ID) expected = 'Cash & Assets';
-                    else if (wid === ALL_SHARES_ID) expected = 'All Shares';
+                    else if (wid === watchlistModule.CASH_BANK_WATCHLIST_ID) expected = 'Cash & Assets';
+                    else if (wid === watchlistModule.ALL_SHARES_ID) expected = 'All Shares';
                     else {
-                        const wl = (userWatchlists||[]).find(w=>w.id===wid);
+                        const wl = (watchlistModule.userWatchlists||[]).find(w=>w.id===wid);
                         expected = (wl && wl.name) ? wl.name : 'Share Watchlist';
                     }
                     span.textContent = expected;
@@ -197,9 +199,180 @@ function onLivePricesUpdated() {
 // Compatibility stub (legacy callsites may invoke)
 function forceApplyCurrentSort() { /* legacy no-op retained */ }
 document.addEventListener('DOMContentLoaded', function () {
+    // --- Centralized UI Element Assignments ---
+    appHeader = document.getElementById('appHeader');
+    mainContainer = document.getElementById('mainContainer');
+    addShareHeaderBtn = document.getElementById('addShareHeaderBtn');
+    newShareBtn = document.getElementById('newShareBtn');
+    standardCalcBtn = document.getElementById('standardCalcBtn');
+    dividendCalcBtn = document.getElementById('dividendCalcBtn');
+    asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
+    toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn');
+    shareFormSection = document.getElementById('shareFormSection');
+    formCloseButton = document.querySelector('.form-close-button');
+    formTitle = document.getElementById('formTitle');
+    formCompanyName = document.getElementById('formCompanyName');
+    saveShareBtn = document.getElementById('saveShareBtn');
+    deleteShareBtn = document.getElementById('deleteShareBtn');
+    addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay');
+    currentPriceInput = document.getElementById('currentPrice');
+    shareNameInput = document.getElementById('shareName');
+    targetPriceInput = document.getElementById('targetPrice');
+    dividendAmountInput = document.getElementById('dividendAmount');
+    frankingCreditsInput = document.getElementById('frankingCredits');
+    shareRatingSelect = document.getElementById('shareRating');
+    commentsFormContainer = document.getElementById('dynamicCommentsArea');
+    modalStarRating = document.getElementById('modalStarRating');
+    autoEntryDateDisplay = document.getElementById('autoEntryDateDisplay');
+    autoReferencePriceDisplay = document.getElementById('autoReferencePriceDisplay');
+    dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
+    calcCloseButton = document.querySelector('.calc-close-button');
+    calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
+    calcDividendAmountInput = document.getElementById('calcDividendAmount');
+    calcFrankingCreditsInput = document.getElementById('calcFrankingCredits');
+    calcUnfrankedYieldSpan = document.getElementById('calcUnfrankedYield');
+    calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
+    investmentValueSelect = document.getElementById('investmentValueSelect');
+    calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
+    sortSelect = document.getElementById('sortSelect');
+    calculatorModal = document.getElementById('calculatorModal');
+    calculatorInput = document.getElementById('calculatorInput');
+    calculatorResult = document.getElementById('calculatorResult');
+    calculatorButtons = document.querySelector('.calculator-buttons');
+    watchlistSelect = document.getElementById('watchlistSelect');
+    dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
+    dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
+    watchlistPickerModal = document.getElementById('watchlistPickerModal');
+    watchlistPickerList = document.getElementById('watchlistPickerList');
+    closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
+    themeToggleBtn = document.getElementById('themeToggleBtn');
+    colorThemeSelect = document.getElementById('colorThemeSelect');
+    revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
+    scrollToTopBtn = document.getElementById('scrollToTopBtn');
+    hamburgerBtn = document.getElementById('hamburgerBtn');
+    appSidebar = document.getElementById('appSidebar');
+    closeMenuBtn = document.getElementById('closeMenuBtn');
+    addWatchlistBtn = document.getElementById('addWatchlistBtn');
+    editWatchlistBtn = document.getElementById('editWatchlistBtn');
+    addWatchlistModal = document.getElementById('addWatchlistModal');
+    newWatchlistNameInput = document.getElementById('newWatchlistName');
+    saveWatchlistBtn = document.getElementById('saveWatchlistBtn');
+    manageWatchlistModal = document.getElementById('manageWatchlistModal');
+    editWatchlistNameInput = document.getElementById('editWatchlistName');
+    saveWatchlistNameBtn = document.getElementById('saveWatchlistNameBtn');
+    deleteWatchlistInModalBtn = document.getElementById('deleteWatchlistInModalBtn');
+    shareContextMenu = document.getElementById('shareContextMenu');
+    contextEditShareBtn = document.getElementById('contextEditShareBtn');
+    contextDeleteShareBtn = document.getElementById('contextDeleteShareBtn');
+    logoutBtn = document.getElementById('logoutBtn');
+    deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
+    exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
+    refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
+    shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
+    shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
+    shareWatchlistDropdownBtn = document.getElementById('shareWatchlistDropdownBtn');
+    modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection');
+    targetHitIconBtn = document.getElementById('targetHitIconBtn');
+    targetHitIconCount = document.getElementById('targetHitIconCount');
+    targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
+    targetHitModalTitle = document.getElementById('targetHitModalTitle');
+    targetHitSharesList = document.getElementById('targetHitSharesList');
+    toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
+    targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTopBtn');
+    alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn');
+    alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn');
+    targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
+    targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
+    targetIntentBuyBtn = document.getElementById('targetIntentBuyBtn');
+    targetIntentSellBtn = document.getElementById('targetIntentSellBtn');
+    targetDirAboveBtn = document.getElementById('targetDirAboveBtn');
+    targetDirBelowBtn = document.getElementById('targetDirBelowBtn');
+    splashScreen = document.getElementById('splashScreen');
+    searchStockBtn = document.getElementById('searchStockBtn');
+    stockSearchModal = document.getElementById('stockSearchModal');
+    stockSearchTitle = document.getElementById('stockSearchTitle');
+    asxSearchInput = document.getElementById('asxSearchInput');
+    asxSuggestions = document.getElementById('asxSuggestions');
+    shareNameSuggestions = document.getElementById('shareNameSuggestions');
+    searchResultDisplay = document.getElementById('searchResultDisplay');
+    searchModalActionButtons = document.querySelector('#stockSearchModal .modal-action-buttons-footer');
+    searchModalCloseButton = document.querySelector('.search-close-button');
+    splashKangarooIcon = document.getElementById('splashKangarooIcon');
+    splashSignInBtn = document.getElementById('splashSignInBtn');
+    alertPanel = document.getElementById('alertPanel');
+    alertList = document.getElementById('alertList');
+    closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn');
+    clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn');
+    stockWatchlistSection = document.getElementById('stockWatchlistSection');
+    hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
+    cashAssetsSection = document.getElementById('cashAssetsSection');
+    cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
+    addCashCategoryBtn = document.getElementById('addCashCategoryBtn');
+    saveCashBalancesBtn = document.getElementById('saveCashBalancesBtn');
+    totalCashDisplay = document.getElementById('totalCashDisplay');
+    addCashAssetSidebarBtn = document.getElementById('addCashAssetSidebarBtn');
+    cashAssetFormModal = document.getElementById('cashAssetFormModal');
+    cashFormTitle = document.getElementById('cashFormTitle');
+    cashAssetNameInput = document.getElementById('cashAssetName');
+    cashAssetBalanceInput = document.getElementById('cashAssetBalance');
+    saveCashAssetBtn = document.getElementById('saveCashAssetBtn');
+    deleteCashAssetBtn = document.getElementById('deleteCashAssetBtn');
+    cashAssetFormCloseButton = document.querySelector('.cash-form-close-button');
+    cashAssetCommentsContainer = document.getElementById('cashAssetCommentsArea');
+    addCashAssetCommentBtn = document.getElementById('addCashAssetCommentBtn');
+    cashAssetDetailModal = document.getElementById('cashAssetDetailModal');
+    modalCashAssetName = document.getElementById('modalCashAssetName');
+    detailCashAssetName = document.getElementById('detailCashAssetName');
+    detailCashAssetBalance = document.getElementById('detailCashAssetBalance');
+    detailCashAssetLastUpdated = document.getElementById('detailCashAssetLastUpdated');
+    editCashAssetFromDetailBtn = document.getElementById('editCashAssetFromDetailBtn');
+    deleteCashAssetFromDetailBtn = document.getElementById('deleteCashAssetFromDetailBtn');
+    modalCashAssetCommentsContainer = document.getElementById('modalCashAssetCommentsContainer');
+    sidebarOverlay = document.querySelector('.sidebar-overlay');
+    shareTableBody = document.querySelector('#shareTable tbody');
+    mobileShareCardsContainer = document.getElementById('mobileShareCards');
+    tableContainer = document.querySelector('.table-container');
+    loadingIndicator = document.getElementById('loadingIndicator');
+    shareDetailModal = document.getElementById('shareDetailModal');
+    modalShareName = document.getElementById('modalShareName');
+    modalCompanyName = document.getElementById('modalCompanyName');
+    modalEnteredPrice = document.getElementById('modalEnteredPrice');
+    modalTargetPrice = document.getElementById('modalTargetPrice');
+    modalDividendAmount = document.getElementById('modalDividendAmount');
+    modalFrankingCredits = document.getElementById('modalFrankingCredits');
+    modalEntryDate = document.getElementById('modalEntryDate');
+    modalCommentsContainer = document.getElementById('modalCommentsContainer');
+    modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
+    modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
+    editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
+    deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
+    modalNewsLink = document.getElementById('modalNewsLink');
+    modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
+    modalFoolLink = document.getElementById('modalFoolLink');
+    modalListcorpLink = document.getElementById('modalListcorpLink');
+    modalCommSecLink = document.getElementById('modalCommSecLink');
+    commSecLoginMessage = document.getElementById('commSecLoginMessage');
+
+    // Form Inputs collection
+    formInputs = [shareNameInput, targetPriceInput, dividendAmountInput, frankingCreditsInput, document.getElementById('portfolioShares'), document.getElementById('portfolioAvgPrice'), shareRatingSelect];
+    cashFormInputs = [cashAssetNameInput, cashAssetBalanceInput];
+
     // --- Watchlist logic moved to watchlist.js ---
     // Import and call watchlist functions
     if (window.watchlistModule) {
+        window.watchlistModule.init({
+            watchlistSelect: watchlistSelect,
+            updateMainTitle: updateMainTitle,
+            updateAddHeaderButton: updateAddHeaderButton,
+            setLastSelectedView: setLastSelectedView,
+            logDebug: logDebug,
+            shareWatchlistSelect: shareWatchlistSelect,
+            allSharesData: allSharesData,
+            selectedShareDocId: selectedShareDocId,
+            shareWatchlistEnhanced: document.getElementById('shareWatchlistEnhanced'),
+            shareWatchlistDropdownBtn: shareWatchlistDropdownBtn,
+            checkFormDirtyState: checkFormDirtyState
+        });
         window.watchlistModule.renderWatchlistSelect();
     // If we have a persisted lastKnownTargetCount, ensure the notification icon restores pre-live-load
     try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
@@ -268,8 +441,8 @@ document.addEventListener('DOMContentLoaded', function () {
         stockWatchlistSection.style.display = 'none';
         // Ensure selection state reflects Portfolio for downstream filters (e.g., ASX buttons)
         // But do not auto-switch away from a forced initial Movers selection unless user explicitly chose portfolio
-        if (!__forcedInitialMovers || (watchlistSelect && watchlistSelect.value === 'portfolio')) {
-            currentSelectedWatchlistIds = ['portfolio'];
+        if (!watchlistModule.__forcedInitialMovers || (watchlistSelect && watchlistSelect.value === 'portfolio')) {
+            watchlistModule.setSelectedWatchlistIds(['portfolio']);
         }
         // Reflect in dropdown if present
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
@@ -556,6 +729,22 @@ document.addEventListener('DOMContentLoaded', function () {
 // Firebase app, db, auth instances, and userId are made globally available
 // via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
 // from the <script type="module"> block in index.html.
+// --- ASX Code Buttons State ---
+let asxButtonsExpanded = false; // State for the ASX code buttons container
+
+// Function to apply visibility and arrow direction
+function applyAsxButtonsState() {
+    if (!toggleAsxButtonsBtn || !asxCodeButtonsContainer) return;
+    const isVisible = asxCodeButtonsContainer.style.display === 'flex';
+    toggleAsxButtonsBtn.classList.toggle('expanded', isVisible);
+    // Hide ASX buttons in compact view, otherwise respect expanded state
+    if (currentMobileViewMode === 'compact') {
+        asxCodeButtonsContainer.classList.add('app-hidden');
+    } else {
+        asxCodeButtonsContainer.classList.toggle('app-hidden', !asxButtonsExpanded);
+    }
+}
+let allAsxCodes = []; // To store all loaded ASX codes for autocomplete
 
 // --- GLOBAL VARIABLES ---
 let DEBUG_MODE = false; // Quiet by default; enable via window.toggleDebug(true)
@@ -617,10 +806,6 @@ let previousCalculatorInput = '';
 let resultDisplayed = false;
 const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
 const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
-let userWatchlists = []; // Stores all watchlists for the user
-let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
-// Guard: track if an initial forced movers selection was applied so later routines do not override
-let __forcedInitialMovers = false;
 let __moversFallbackScheduled = false;
 
 function ensureMoversPlaceholder() {
@@ -648,13 +833,13 @@ function scheduleMoversFallback() {
     setTimeout(()=>{
         try {
             const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
-            const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+            const haveMovers = watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers';
             if (wantMovers && !haveMovers) {
                 // Fallback to All Shares (user request) while preserving intent logs
-                currentSelectedWatchlistIds = [ALL_SHARES_ID];
-                if (typeof watchlistSelect !== 'undefined' && watchlistSelect) watchlistSelect.value = ALL_SHARES_ID;
-                try { setLastSelectedView(ALL_SHARES_ID); } catch(_) {}
-                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+                watchlistModule.setSelectedWatchlistIds([watchlistModule.ALL_SHARES_ID]);
+                if (typeof watchlistSelect !== 'undefined' && watchlistSelect) watchlistSelect.value = watchlistModule.ALL_SHARES_ID;
+                try { setLastSelectedView(watchlistModule.ALL_SHARES_ID); } catch(_) {}
+                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(watchlistModule.currentSelectedWatchlistIds)); } catch(_) {}
                 if (typeof renderWatchlist === 'function') { try { renderWatchlist(); } catch(_) {} }
                 console.warn('[Movers restore][fallback->allShares] Movers failed to attach; defaulted to All Shares.');
             }
@@ -667,7 +852,7 @@ try {
     if (lsLastWatch) {
         const parsed = JSON.parse(lsLastWatch);
         if (Array.isArray(parsed) && parsed.length) {
-            currentSelectedWatchlistIds = parsed;
+            watchlistModule.setSelectedWatchlistIds(parsed);
         }
     }
 } catch(_) {}
@@ -678,8 +863,8 @@ try {
     const lastView = localStorage.getItem('lastSelectedView');
     if (lastView === '__movers') {
         // Immediate forced selection BEFORE any data. Will re-render later as data arrives.
-        currentSelectedWatchlistIds = ['__movers'];
-        __forcedInitialMovers = true;
+        watchlistModule.setSelectedWatchlistIds(['__movers']);
+        watchlistModule.__forcedInitialMovers = true;
     try { console.log('[Movers init] Forced initial Movers selection before data load'); } catch(_) {}
         // Set select value if present
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = '__movers'; }
@@ -693,7 +878,7 @@ try {
     // Schedule fallback to All Shares if movers never attaches
     scheduleMoversFallback();
     } else if (lastView === 'portfolio') {
-        currentSelectedWatchlistIds = ['portfolio'];
+        watchlistModule.setSelectedWatchlistIds(['portfolio']);
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
         // Defer actual DOM switch until initial data load completes; hook into data load readiness
         window.addEventListener('load', () => {
@@ -705,15 +890,13 @@ try {
     try { ensureTitleStructure(); } catch(e) {}
     try { updateTargetHitBanner(); } catch(e) {}
     } else if (lastView && lastView !== 'portfolio') {
-        currentSelectedWatchlistIds = [lastView];
+        watchlistModule.setSelectedWatchlistIds([lastView]);
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = lastView; }
         try { updateMainTitle(); } catch(e) {}
         try { ensureTitleStructure(); } catch(e) {}
         try { updateTargetHitBanner(); } catch(e) {}
     }
 } catch(e) { /* ignore */ }
-const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
-const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
 let currentSortOrder = 'entryDate-desc'; // Default sort order
 try { const lsSort = localStorage.getItem('lastSortOrder'); if (lsSort) { currentSortOrder = lsSort; } } catch(e) {}
 let contextMenuOpen = false; // To track if the custom context menu is open
@@ -971,8 +1154,8 @@ function restoreViewAndModeFromPreferences() {
             } else if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
                 // If movers virtual view
                 if (lastView === '__movers') {
-                    try { watchlistSelect.value = ALL_SHARES_ID; } catch(_) {}
-                    currentSelectedWatchlistIds = ['__movers'];
+                    try { watchlistSelect.value = watchlistModule.ALL_SHARES_ID; } catch(_) {}
+                    watchlistModule.setSelectedWatchlistIds(['__movers']);
                     renderWatchlist();
                     enforceMoversVirtualView();
                     updateMainTitle('Movers');
@@ -983,7 +1166,7 @@ function restoreViewAndModeFromPreferences() {
                     const opt = Array.from(watchlistSelect.options).find(o => o.value === lastView);
                     if (opt) {
                         watchlistSelect.value = lastView;
-                        currentSelectedWatchlistIds = [lastView];
+                        watchlistModule.setSelectedWatchlistIds([lastView]);
                         renderWatchlist();
                         updateMainTitle();
                     }
@@ -1045,33 +1228,39 @@ let originalCashAssetData = null; // NEW: To store original cash asset data for 
 // NEW: Global variable to store visibility state of cash assets (temporary, not persisted)
 // This will now be managed directly by the 'isHidden' property on the cash asset object itself.
 let cashAssetVisibility = {}; // This object will still track the *current session's* visibility.
-// NEW: Reference for the hide/show checkbox in the cash asset form modal
-const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
-
-
 // --- UI Element References ---
-// Copilot: No-op change to trigger source control detection
-const appHeader = document.getElementById('appHeader'); // Reference to the main header
-const mainContainer = document.querySelector('main.container'); // Reference to the main content container
-// mainTitle removed in favour of dynamicWatchlistTitle only
-const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
-const newShareBtn = document.getElementById('newShareBtn');
-const standardCalcBtn = document.getElementById('standardCalcBtn');
-const dividendCalcBtn = document.getElementById('dividendCalcBtn');
-const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
-// Ensure scroll class applied (id container present in DOM from HTML)
-if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
-    asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll');
-}
-const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
-const shareFormSection = document.getElementById('shareFormSection');
-const formCloseButton = document.querySelector('.form-close-button');
-const formTitle = document.getElementById('formTitle');
-const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
-const saveShareBtn = document.getElementById('saveShareBtn');
-const deleteShareBtn = document.getElementById('deleteShareBtn');
-const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
-const currentPriceInput = document.getElementById('currentPrice'); // Reference (reinstated) to Reference Price input
+// All UI element variables are declared here with `let`, and will be assigned in the DOMContentLoaded listener.
+let appHeader, mainContainer, addShareHeaderBtn, newShareBtn, standardCalcBtn, dividendCalcBtn, asxCodeButtonsContainer,
+    toggleAsxButtonsBtn, shareFormSection, formCloseButton, formTitle, formCompanyName, saveShareBtn, deleteShareBtn,
+    addShareLivePriceDisplay, currentPriceInput, shareNameInput, targetPriceInput, dividendAmountInput, frankingCreditsInput,
+    shareRatingSelect, commentsFormContainer, modalStarRating, autoEntryDateDisplay, autoReferencePriceDisplay,
+    dividendCalculatorModal, calcCloseButton, calcCurrentPriceInput, calcDividendAmountInput, calcFrankingCreditsInput,
+    calcUnfrankedYieldSpan, calcFrankedYieldSpan, investmentValueSelect, calcEstimatedDividend, sortSelect,
+    calculatorModal, calculatorInput, calculatorResult, calculatorButtons, watchlistSelect, dynamicWatchlistTitle,
+    dynamicWatchlistTitleText, watchlistPickerModal, watchlistPickerList, closeWatchlistPickerBtn, themeToggleBtn,
+    colorThemeSelect, revertToDefaultThemeBtn, scrollToTopBtn, hamburgerBtn, appSidebar, closeMenuBtn, addWatchlistBtn,
+    editWatchlistBtn, addWatchlistModal, newWatchlistNameInput, saveWatchlistBtn, manageWatchlistModal,
+    editWatchlistNameInput, saveWatchlistNameBtn, deleteWatchlistInModalBtn, shareContextMenu, contextEditShareBtn,
+    contextDeleteShareBtn, logoutBtn, deleteAllUserDataBtn, exportWatchlistBtn, refreshLivePricesBtn,
+    shareWatchlistSelect, shareWatchlistCheckboxes, shareWatchlistDropdownBtn, modalLivePriceDisplaySection,
+    targetHitIconBtn, targetHitIconCount, targetHitDetailsModal, targetHitModalTitle, targetHitSharesList,
+    toggleCompactViewBtn, targetHitModalCloseTopBtn, alertModalMinimizeBtn, alertModalDismissAllBtn,
+    targetAboveCheckbox, targetBelowCheckbox, targetIntentBuyBtn, targetIntentSellBtn, targetDirAboveBtn, targetDirBelowBtn,
+    splashScreen, searchStockBtn, stockSearchModal, stockSearchTitle, asxSearchInput, asxSuggestions,
+    shareNameSuggestions, searchResultDisplay, searchModalActionButtons, searchModalCloseButton,
+    splashKangarooIcon, splashSignInBtn, alertPanel, alertList, closeAlertPanelBtn, clearAllAlertsBtn,
+    stockWatchlistSection, hideCashAssetCheckbox, cashAssetsSection, cashCategoriesContainer,
+    addCashCategoryBtn, saveCashBalancesBtn, totalCashDisplay, addCashAssetSidebarBtn, cashAssetFormModal,
+    cashFormTitle, cashAssetNameInput, cashAssetBalanceInput, saveCashAssetBtn, deleteCashAssetBtn,
+    cashAssetFormCloseButton, cashAssetCommentsContainer, addCashAssetCommentBtn, cashAssetDetailModal,
+    modalCashAssetName, detailCashAssetName, detailCashAssetBalance, detailCashAssetLastUpdated,
+    editCashAssetFromDetailBtn, deleteCashAssetFromDetailBtn, modalCashAssetCommentsContainer, sidebarOverlay,
+    shareTableBody, mobileShareCardsContainer, tableContainer, loadingIndicator, shareDetailModal, modalShareName,
+    modalCompanyName, modalEnteredPrice, modalTargetPrice, modalDividendAmount, modalFrankingCredits,
+    modalEntryDate, modalCommentsContainer, modalUnfrankedYieldSpan, modalFrankedYieldSpan,
+    editShareFromDetailBtn, deleteShareFromDetailBtn, modalNewsLink, modalMarketIndexLink, modalFoolLink,
+    modalListcorpLink, modalCommSecLink, commSecLoginMessage, formInputs, cashFormInputs;
+
 // Centralized single-code snapshot handling
 let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
 async function updateAddFormLiveSnapshot(code) {
@@ -1136,485 +1325,6 @@ async function updateAddFormLiveSnapshot(code) {
         }
     }
 }
-const shareNameInput = document.getElementById('shareName');
-// Removed manual Reference Price input; currentPrice now auto-captured
-const targetPriceInput = document.getElementById('targetPrice');
-const dividendAmountInput = document.getElementById('dividendAmount');
-const frankingCreditsInput = document.getElementById('frankingCredits');
-const shareRatingSelect = document.getElementById('shareRating');
-const commentsFormContainer = document.getElementById('dynamicCommentsArea');
-const modalStarRating = document.getElementById('modalStarRating');
-
-// UX improvement: clear default 0 / 0.0 values on focus for numeric inputs (behave like true placeholders)
-const zeroClearInputs = [currentPriceInput, targetPriceInput, dividendAmountInput, frankingCreditsInput].filter(Boolean);
-zeroClearInputs.forEach(inp => {
-    inp.addEventListener('focus', () => {
-        const v = inp.value.trim();
-        if (v === '0' || v === '0.0' || v === '0.00') {
-            inp.dataset.wasZeroPlaceholder = '1';
-            inp.value = '';
-        } else {
-            delete inp.dataset.wasZeroPlaceholder;
-        }
-    });
-    inp.addEventListener('blur', () => {
-        // If user leaves it empty, restore a clean 0 (or leave blank?) — choose to leave blank to avoid confusion
-        if (inp.dataset.wasZeroPlaceholder && inp.value.trim() === '') {
-            inp.value = ''; // blank so validation can decide; remove flag
-            delete inp.dataset.wasZeroPlaceholder;
-        }
-    });
-});
-
-// --- ASX Code Toggle Button Functionality ---
-// Persisted ASX code buttons expanded state
-let asxButtonsExpanded = false;
-try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 'true') asxButtonsExpanded = true; } catch(e) {}
-
-function applyAsxButtonsState() {
-    if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
-    const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
-    const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
-    const shouldShow = !!hasButtons && asxButtonsExpanded;
-
-    if (shouldShow) {
-        asxCodeButtonsContainer.classList.add('expanded');
-        asxCodeButtonsContainer.classList.remove('app-hidden');
-        asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
-    } else {
-        asxCodeButtonsContainer.classList.remove('expanded');
-        asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
-    }
-    // Chevron visibility and state
-    if (!hasButtons) {
-        toggleAsxButtonsBtn.style.display = 'none';
-        toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
-    } else {
-        toggleAsxButtonsBtn.style.display = 'inline-flex'; // Use inline-flex for proper alignment
-        toggleAsxButtonsBtn.removeAttribute('aria-disabled');
-    }
-    // Update chevron rotation
-    const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
-    if (chevronIcon) {
-        chevronIcon.classList.toggle('expanded', shouldShow);
-    }
-    requestAnimationFrame(adjustMainContentPadding);
-}
-
-if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
-    applyAsxButtonsState();
-    toggleAsxButtonsBtn.addEventListener('click', () => {
-        asxButtonsExpanded = !asxButtonsExpanded;
-        try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
-        applyAsxButtonsState();
-        console.log('[ASX Toggle] Toggled. Expanded=', asxButtonsExpanded);
-        // Schedule padding adjustment after the CSS transition window
-        // Transition duration in CSS: 300-400ms; allow a buffer
-        setTimeout(adjustMainContentPadding, 450);
-        // A second safety call in case the first fires mid-transition
-        setTimeout(adjustMainContentPadding, 700);
-    // New: Always scroll to top smoothly after toggling for visibility of top cards
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); } catch(_) { window.scrollTo(0,0); }
-    });
-    // Also adjust precisely on transition end of the container
-    asxCodeButtonsContainer.addEventListener('transitionend', (ev) => {
-        if (ev.propertyName === 'max-height' || ev.propertyName === 'padding' || ev.propertyName === 'opacity') {
-            adjustMainContentPadding();
-        }
-    });
-}
-const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
-const shareTableBody = document.querySelector('#shareTable tbody');
-const mobileShareCardsContainer = document.getElementById('mobileShareCards');
-const tableContainer = document.querySelector('.table-container');
-const loadingIndicator = document.getElementById('loadingIndicator');
-const shareDetailModal = document.getElementById('shareDetailModal');
-const modalShareName = document.getElementById('modalShareName');
-const modalCompanyName = document.getElementById('modalCompanyName');
-const modalEnteredPrice = document.getElementById('modalEnteredPrice');
-const modalTargetPrice = document.getElementById('modalTargetPrice');
-const modalDividendAmount = document.getElementById('modalDividendAmount');
-const modalFrankingCredits = document.getElementById('modalFrankingCredits');
-const modalEntryDate = document.getElementById('modalEntryDate');
-const modalCommentsContainer = document.getElementById('modalCommentsContainer');
-const modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
-const modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
-const editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
-const deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
-const modalNewsLink = document.getElementById('modalNewsLink');
-const modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
-const modalFoolLink = document.getElementById('modalFoolLink');
-const modalListcorpLink = document.getElementById('modalListcorpLink'); // NEW: Reference for Listcorp link
-const modalCommSecLink = document.getElementById('modalCommSecLink');
-const commSecLoginMessage = document.getElementById('commSecLoginMessage');
-// NEW: Auto (read-only) fields in Other Details section of Share Form
-const autoEntryDateDisplay = document.getElementById('autoEntryDateDisplay');
-const autoReferencePriceDisplay = document.getElementById('autoReferencePriceDisplay');
-const dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
-const calcCloseButton = document.querySelector('.calc-close-button');
-const calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
-const calcDividendAmountInput = document.getElementById('calcDividendAmount');
-const calcFrankingCreditsInput = document.getElementById('calcFrankingCredits');
-const calcUnfrankedYieldSpan = document.getElementById('calcUnfrankedYield');
-const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
-const investmentValueSelect = document.getElementById('investmentValueSelect');
-const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
-const sortSelect = document.getElementById('sortSelect');
-// Legacy customDialogModal removed; toast system fully replaces it.
-const calculatorModal = document.getElementById('calculatorModal');
-const calculatorInput = document.getElementById('calculatorInput');
-const calculatorResult = document.getElementById('calculatorResult');
-const calculatorButtons = document.querySelector('.calculator-buttons');
-const watchlistSelect = document.getElementById('watchlistSelect');
-// Dynamic watchlist title + picker modal + sort display (new UI layer)
-const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
-const dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
-// --- Watchlist Title Click: Open Watchlist Picker Modal ---
-// (Moved below watchlistPickerModal initialization to avoid ReferenceError)
-const watchlistPickerModal = document.getElementById('watchlistPickerModal');
-// --- Watchlist Title Click: Open Watchlist Picker Modal ---
-if (dynamicWatchlistTitleText && watchlistPickerModal) {
-    dynamicWatchlistTitleText.addEventListener('click', function(e) {
-        e.preventDefault();
-        if (typeof showModal === 'function') {
-            showModal(watchlistPickerModal);
-        } else {
-            watchlistPickerModal.style.display = 'block';
-        }
-    });
-    dynamicWatchlistTitleText.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            if (typeof showModal === 'function') {
-                showModal(watchlistPickerModal);
-            } else {
-                watchlistPickerModal.style.display = 'block';
-            }
-        }
-    });
-}
-const watchlistPickerList = document.getElementById('watchlistPickerList');
-const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
-
-// --- Close Watchlist Picker Modal ---
-if (closeWatchlistPickerBtn && watchlistPickerModal) {
-    closeWatchlistPickerBtn.addEventListener('click', function() {
-        if (typeof hideModal === 'function') {
-            hideModal(watchlistPickerModal);
-        } else {
-            watchlistPickerModal.style.display = 'none';
-        }
-    });
-}
-// ...existing code...
-
-// Removed legacy currentSortDisplay element (text summary of sort) now that dropdown itself is visible
-const themeToggleBtn = document.getElementById('themeToggleBtn');
-const colorThemeSelect = document.getElementById('colorThemeSelect');
-const revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
-const scrollToTopBtn = document.getElementById('scrollToTopBtn');
-const hamburgerBtn = document.getElementById('hamburgerBtn');
-const appSidebar = document.getElementById('appSidebar');
-const closeMenuBtn = document.getElementById('closeMenuBtn');
-const addWatchlistBtn = document.getElementById('addWatchlistBtn');
-const editWatchlistBtn = document.getElementById('editWatchlistBtn');
-const addWatchlistModal = document.getElementById('addWatchlistModal');
-const newWatchlistNameInput = document.getElementById('newWatchlistName');
-const saveWatchlistBtn = document.getElementById('saveWatchlistBtn');
-const manageWatchlistModal = document.getElementById('manageWatchlistModal');
-const editWatchlistNameInput = document.getElementById('editWatchlistName');
-const saveWatchlistNameBtn = document.getElementById('saveWatchlistNameBtn');
-const deleteWatchlistInModalBtn = document.getElementById('deleteWatchlistInModalBtn');
-const shareContextMenu = document.getElementById('shareContextMenu');
-const contextEditShareBtn = document.getElementById('contextEditShareBtn');
-const contextDeleteShareBtn = document.getElementById('contextDeleteShareBtn');
-const logoutBtn = document.getElementById('logoutBtn');
-const deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
-const exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
-const refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
-const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
-const shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
-const shareWatchlistDropdownBtn = document.getElementById('shareWatchlistDropdownBtn');
-const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection'); 
-const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
-const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
-// NEW: Target Hit Details Modal Elements
-const targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
-const targetHitModalTitle = document.getElementById('targetHitModalTitle');
-// Removed: minimizeTargetHitModalBtn, dismissAllTargetHitsBtn (now explicit buttons at bottom)
-const targetHitSharesList = document.getElementById('targetHitSharesList');
-const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
-    // Initial load suppression flags (prevent auto reopening of Target Hit modal after hard reload)
-    window.__initialLoadPhase = true; // cleared after first interaction or timeout
-    let __userInitiatedTargetModal = false;
-    window.addEventListener('pointerdown', ()=>{ window.__initialLoadPhase=false; }, { once:true, passive:true });
-    window.addEventListener('keydown', ()=>{ window.__initialLoadPhase=false; }, { once:true });
-    setTimeout(()=>{ window.__initialLoadPhase=false; }, 6000);
-
-// Ensure initial ARIA state for hamburger
-if (hamburgerBtn && !hamburgerBtn.hasAttribute('aria-expanded')) {
-    hamburgerBtn.setAttribute('aria-expanded','false');
-}
-
-// NEW: References for the reconfigured buttons in the Target Hit Details Modal
-const targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTopBtn'); // New 'X' button at the top
-const alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn'); // New "Minimize" button at the bottom
-const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn'); // New "Dismiss All" button at the bottom
-
-// NEW: Target Direction Checkbox UI Elements
-const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
-const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
-// New Phase 1 segmented toggle buttons (UI-only)
-const targetIntentBuyBtn = document.getElementById('targetIntentBuyBtn');
-const targetIntentSellBtn = document.getElementById('targetIntentSellBtn');
-const targetDirAboveBtn = document.getElementById('targetDirAboveBtn');
-const targetDirBelowBtn = document.getElementById('targetDirBelowBtn');
-let userManuallyOverrodeDirection = false; // reset per form open
-// Debounced auto-save for target alert related inputs (intent, direction, target price)
-let _alertAutoSaveTimer = null;
-function scheduleAlertAutoSave(trigger){
-    // Only auto-save when editing an existing share (avoid accidental creation of duplicates during new entry form fills)
-    if (!selectedShareDocId) { try { logDebug('AlertAutoSave: skipped (no selectedShareDocId) trigger='+trigger); } catch(_){} return; }
-    try { logDebug('AlertAutoSave: schedule ('+trigger+') for shareId='+selectedShareDocId); } catch(_){ }
-    if (_alertAutoSaveTimer) clearTimeout(_alertAutoSaveTimer);
-    _alertAutoSaveTimer = setTimeout(()=>{
-        try { if (typeof saveShareData === 'function') saveShareData(true); } catch(e){ console.warn('AlertAutoSave failed', e); }
-    }, 400);
-}
-const splashScreen = document.getElementById('splashScreen');
-const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
-const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
-const stockSearchTitle = document.getElementById('stockSearchTitle'); // NEW: Title for search modal
-const asxSearchInput = document.getElementById('asxSearchInput'); // NEW: Search input field
-const asxSuggestions = document.getElementById('asxSuggestions'); // NEW: Autocomplete suggestions container
-const shareNameSuggestions = document.getElementById('shareNameSuggestions'); // NEW: Autocomplete for share form code input
-const searchResultDisplay = document.getElementById('searchResultDisplay'); // NEW: Display area for search results
-const searchModalActionButtons = document.querySelector('#stockSearchModal .modal-action-buttons-footer'); // NEW: Action buttons container
-const searchModalCloseButton = document.querySelector('.search-close-button'); // NEW: Close button for search modal
-
-// NEW: Global variable for storing loaded ASX code data from CSV
-let allAsxCodes = []; // { code: 'BHP', name: 'BHP Group Ltd' }
-let currentSelectedSuggestionIndex = -1; // For keyboard navigation in autocomplete
-let shareNameAutocompleteBound = false; // Prevent duplicate binding
-
-function initializeShareNameAutocomplete(force=false){
-    if (shareNameAutocompleteBound && !force) return;
-    if (!shareNameInput || !shareNameSuggestions) return;
-    // If already has an input listener tagged, skip unless force
-    if (shareNameInput.dataset.autocompleteBound && !force) return;
-    shareNameInput.dataset.autocompleteBound = '1';
-    shareNameAutocompleteBound = true;
-    // Listeners are already defined further below (conditional block). This function can serve as a future hook.
-}
-let currentSearchShareData = null; // Stores data of the currently displayed stock in search modal
-const splashKangarooIcon = document.getElementById('splashKangarooIcon');
-const splashSignInBtn = document.getElementById('splashSignInBtn');
-const alertPanel = document.getElementById('alertPanel'); // NEW: Reference to the alert panel (not in current HTML, but kept for consistency)
-const alertList = document.getElementById('alertList'); // NEW: Reference to the alert list container (not in current HTML, but kept for consistency)
-const closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn'); // NEW: Reference to close alert panel button (not in current HTML, but kept for consistency)
-const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: Reference to clear all alerts button (not in current HTML, but kept for consistency)
-
-// NEW: Cash & Assets UI Elements (1)
-const stockWatchlistSection = document.getElementById('stockWatchlistSection');
-// Generic number formatting helper (adds commas to large numbers while preserving decimals)
-function formatWithCommas(value) {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'number') return value.toLocaleString(undefined, { maximumFractionDigits: 8 });
-    const str = value.toString();
-    if (!/^[-+]?\d*(\.\d+)?$/.test(str)) return value; // not a plain number string
-    const parts = str.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.join('.');
-}
-
-// Global helpers for consistent numeric formatting across the UI
-function formatMoney(val, opts = {}) {
-    const { hideZero = false, decimals } = opts; // if decimals supplied explicitly, override adaptive logic
-    if (val === null || val === undefined) return '';
-    const n = Number(val);
-    if (!isFinite(n)) return '';
-    if (hideZero && n === 0) return '';
-    // Adaptive decimals: < 1 cent show 3 decimals (e.g., $0.005), otherwise 2.
-    const useDecimals = (typeof decimals === 'number') ? decimals : (Math.abs(n) < 0.01 && n !== 0 ? 3 : 2);
-    const fixed = n.toFixed(useDecimals);
-    const parts = fixed.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return '$' + parts.join('.');
-}
-
-function formatPercent(val, opts = {}) {
-    const { maxDecimals = 2 } = opts; // allow specifying maximum decimals
-    if (val === null || val === undefined) return '';
-    const n = Number(val);
-    if (!isFinite(n)) return '';
-    // Show whole number when no fractional component (e.g., 100 instead of 100.00)
-    if (Math.abs(n % 1) < 1e-9) return n.toFixed(0) + '%';
-    return n.toFixed(maxDecimals) + '%';
-}
-
-// Lean wrappers for adaptive decimals outside of currency symbol contexts
-// Revised adaptive price: default 2 decimals; optionally preserve up to 3 if user entered (pass userRaw); force2 to clamp.
-function formatAdaptivePrice(value, opts = {}) {
-    if (value === null || value === undefined || isNaN(value)) return '0.00';
-    const n = Number(value);
-    if (opts.force2) return n.toFixed(2);
-    if (opts.userRaw) {
-        const m = String(opts.userRaw).trim().match(/^[-+]?\d+(?:\.(\d{1,3}))?$/);
-        if (m && m[1] && m[1].length > 2) return n.toFixed(Math.min(3, m[1].length));
-    }
-    return n.toFixed(2);
-}
-function formatAdaptivePercent(pct) {
-    if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
-    const n = Number(pct);
-    const abs = Math.abs(n);
-    // Use 3 decimals for very small magnitudes (under 0.1%), else 2
-    const decimals = (abs > 0 && abs < 0.1) ? 3 : 2;
-    return n.toFixed(decimals);
-}
-
-// Fallback for missing formatUserDecimalStrict (called in edit form population)
-if (typeof window.formatUserDecimalStrict !== 'function') {
-    window.formatUserDecimalStrict = function(v){
-        if (v === null || v === undefined || v === '') return '';
-        const num = Number(v);
-        if (isNaN(num)) return '';
-        // Keep up to 4 decimals if needed, trim trailing zeros
-        let str = num.toFixed(4); // start with 4
-        str = str.replace(/\.0+$/,'');
-        str = str.replace(/(\.\d*[1-9])0+$/,'$1');
-        return str;
-    };
-}
-
-// ----- Lightweight Back Stack Handling (limit to 2 states) -----
-const appBackStack = [];
-function pushAppStateEntry(type, ref) {
-    appBackStack.push({type, ref});
-    if (appBackStack.length > 2) appBackStack.shift();
-}
-function popAppStateEntry() { return appBackStack.pop(); }
-
-// Removed legacy early hamburger push listener (consolidated later) – now handled in unified sidebar setup
-// Override showModal to push (wrap existing if not already wrapped)
-if (!window.__origShowModalForBack) {
-    window.__origShowModalForBack = showModal;
-    showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
-}
-
-window.addEventListener('popstate', ()=>{
-    // Not using deep browser history here; rely on our own stack
-    const last = popAppStateEntry();
-    if (!last) return;
-    if (last.type === 'modal') {
-        // Smart modal back: hide current modal and restore the previous one (if any)
-        const currentModal = last.ref && last.ref.nodeType === 1 ? last.ref : (last.ref ? document.getElementById(last.ref.id || last.ref) : null);
-        // Targeted auto-save when backing out of the Share Form modal
-        if (currentModal && shareFormSection && currentModal === shareFormSection) {
-            try { autoSaveShareFormOnClose(); } catch(e) { console.warn('Auto-save on back (share form) failed', e); }
-        }
-        if (currentModal && typeof hideModal === 'function') {
-            hideModal(currentModal);
-        } else {
-            // Fallback: hide all if we cannot resolve the modal element
-            closeModals();
-            return;
-        }
-        // Peek previous stack entry; if it is also a modal, show it without pushing history
-        const prev = appBackStack[appBackStack.length - 1];
-        if (prev && prev.type === 'modal') {
-            const prevModal = prev.ref && prev.ref.nodeType === 1 ? prev.ref : (prev.ref ? document.getElementById(prev.ref.id || prev.ref) : null);
-            if (prevModal) {
-                try { showModalNoHistory(prevModal); } catch(e) { console.warn('Failed to restore previous modal on back', e); }
-            }
-        }
-    } else if (last.type === 'sidebar') {
-        // Use the unified closer to fully reset layout, overlay, and scroll locks
-        if (typeof toggleAppSidebar === 'function') {
-            toggleAppSidebar(false);
-        } else if (appSidebar) {
-            // Fallback: ensure classes and styles are reset to avoid layout gaps
-            appSidebar.classList.remove('open');
-            document.body.classList.remove('sidebar-active');
-            document.body.style.overflow = '';
-            if (typeof sidebarOverlay !== 'undefined' && sidebarOverlay) {
-                sidebarOverlay.classList.remove('open');
-                sidebarOverlay.style.pointerEvents = 'none';
-            }
-        }
-    }
-});
-
-// Hardware / browser back key mapping (mobile)
-window.addEventListener('keydown', e=>{
-    if (e.key === 'Escape') {
-        const last = appBackStack[appBackStack.length-1];
-        if (last) { e.preventDefault(); history.back(); }
-    }
-});
-const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
-const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
-const addCashCategoryBtn = document.getElementById('addCashCategoryBtn'); // This will be removed or repurposed
-const saveCashBalancesBtn = document.getElementById('saveCashBalancesBtn'); // This will be removed or repurposed
-const totalCashDisplay = document.getElementById('totalCashDisplay');
-const addCashAssetSidebarBtn = document.getElementById('addCashAssetSidebarBtn'); // NEW: Sidebar button for cash asset
-
-// NEW: Cash Asset Modal Elements (2.1, 2.2)
-const cashAssetFormModal = document.getElementById('cashAssetFormModal');
-const cashFormTitle = document.getElementById('cashFormTitle');
-const cashAssetNameInput = document.getElementById('cashAssetName');
-const cashAssetBalanceInput = document.getElementById('cashAssetBalance');
-const saveCashAssetBtn = document.getElementById('saveCashAssetBtn');
-const deleteCashAssetBtn = document.getElementById('deleteCashAssetBtn');
-const cashAssetFormCloseButton = document.querySelector('.cash-form-close-button'); // NEW: Specific close button for cash asset form
-const cashAssetCommentsContainer = document.getElementById('cashAssetCommentsArea'); // NEW: Comments container for cash asset form
-const addCashAssetCommentBtn = document.getElementById('addCashAssetCommentBtn'); // NEW: Add comment button for cash asset form
-
-const cashAssetDetailModal = document.getElementById('cashAssetDetailModal');
-const modalCashAssetName = document.getElementById('modalCashAssetName');
-const detailCashAssetName = document.getElementById('detailCashAssetName');
-const detailCashAssetBalance = document.getElementById('detailCashAssetBalance');
-const detailCashAssetLastUpdated = document.getElementById('detailCashAssetLastUpdated');
-const editCashAssetFromDetailBtn = document.getElementById('editCashAssetFromDetailBtn');
-const deleteCashAssetFromDetailBtn = document.getElementById('deleteCashAssetFromDetailBtn');
-const modalCashAssetCommentsContainer = document.getElementById('modalCashAssetCommentsContainer'); // NEW: Comments container for cash asset details
-
-
-let sidebarOverlay = document.querySelector('.sidebar-overlay');
-if (!sidebarOverlay) {
-    sidebarOverlay = document.createElement('div');
-    sidebarOverlay.classList.add('sidebar-overlay');
-    document.body.appendChild(sidebarOverlay);
-}
-// Ensure Force Update button exists in sidebar (idempotent injection for diagnostics)
-try {
-    if (appSidebar && !document.getElementById('forceUpdateBtn')) {
-        const btn = document.createElement('button');
-        btn.id = 'forceUpdateBtn';
-        btn.className = 'menu-button-item';
-        btn.textContent = 'Force Update';
-        btn.setAttribute('data-action-closes-menu','true');
-        // Insert near end
-        appSidebar.appendChild(btn);
-    }
-} catch(_) {}
-
-const formInputs = [
-    shareNameInput,
-    // currentPriceInput removed (auto mode)
-    targetPriceInput,
-    dividendAmountInput,
-    frankingCreditsInput,
-    // Include portfolio-specific fields so Save enables when they change
-    document.getElementById('portfolioShares'),
-    document.getElementById('portfolioAvgPrice'),
-    shareRatingSelect
-];
-
-// NEW: Form inputs for Cash Asset Modal
-const cashFormInputs = [
-    cashAssetNameInput, cashAssetBalanceInput
-];
 
 
 // --- GLOBAL HELPER FUNCTIONS ---
@@ -1966,7 +1676,7 @@ function closeModals() {
         } else { // New share
             // Only attempt to save if a share name was entered AND a watchlist was selected (if applicable)
             const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
-            const needsWatchlistSelection = currentSelectedWatchlistIds.includes(ALL_SHARES_ID);
+            const needsWatchlistSelection = watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.ALL_SHARES_ID);
             
             if (isShareNameValid && isWatchlistSelected) { // Always require watchlist selection for new shares
                 logDebug('Auto-Save: New share detected with valid name and watchlist. Attempting silent save.');
@@ -2303,16 +2013,6 @@ function updateWatchlistPulse(isNewShareContext = false) {
     }
 }
 
-// Hook into existing populateShareWatchlistSelect to reapply pulse after population
-const originalPopulateShareWatchlistSelect = typeof populateShareWatchlistSelect === 'function' ? populateShareWatchlistSelect : null;
-if (originalPopulateShareWatchlistSelect) {
-    window.populateShareWatchlistSelect = function(currentShareWatchlistId = null, isNewShare = true) {
-        const res = originalPopulateShareWatchlistSelect(currentShareWatchlistId, isNewShare);
-        // Defer to ensure DOM checkboxes inserted
-        setTimeout(() => updateWatchlistPulse(isNewShare), 30);
-        return res;
-    };
-}
 
 // Monitor checkbox changes
 document.addEventListener('change', (e) => {
@@ -3050,7 +2750,7 @@ function updateMainButtonsState(enable) {
     if (editWatchlistBtn) {
         const selectedValue = watchlistSelect ? watchlistSelect.value : '';
         // Enable button if there's a selected watchlist and it's not ALL_SHARES or CASH_BANK
-        const isAnEditableWatchlistSelected = selectedValue && selectedValue !== ALL_SHARES_ID && selectedValue !== CASH_BANK_WATCHLIST_ID;
+        const isAnEditableWatchlistSelected = selectedValue && selectedValue !== watchlistModule.ALL_SHARES_ID && selectedValue !== watchlistModule.CASH_BANK_WATCHLIST_ID;
         // Remove extra conditions and only check if an editable watchlist is selected
         editWatchlistBtn.disabled = !isAnEditableWatchlistSelected;
         logDebug('Edit Watchlist Button State: ' + (editWatchlistBtn.disabled ? 'disabled' : 'enabled') + 
@@ -3155,8 +2855,7 @@ function clearWatchlistUI() {
     portfolioOption.value = 'portfolio';
     portfolioOption.textContent = 'Portfolio';
     watchlistSelect.appendChild(portfolioOption);
-    userWatchlists = [];
-    currentSelectedWatchlistIds = [];
+    watchlistModule.resetWatchlists();
     logDebug('UI: Watchlist UI cleared.');
 }
 
@@ -3316,175 +3015,6 @@ function clearForm() {
  * @param {string|null} currentShareWatchlistId The ID of the watchlist the share is currently in (for editing).
  * @param {boolean} isNewShare True if adding a new share, false if editing.
 */
-function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare = true) {
-    logDebug('populateShareWatchlistSelect called. isNewShare: ' + isNewShare + ', currentShareWatchlistId: ' + currentShareWatchlistId);
-    logDebug('Current currentSelectedWatchlistIds: ' + currentSelectedWatchlistIds.join(', '));
-    logDebug('User watchlists available: ' + userWatchlists.map(wl => wl.name + ' (' + wl.id + ')').join(', '));
-
-    if (!shareWatchlistSelect) {
-        console.error('populateShareWatchlistSelect: shareWatchlistSelect element not found.');
-        return;
-    }
-
-    // Prepare native select (hidden) as multi-select for data binding; UI uses checkboxes
-    try { shareWatchlistSelect.multiple = true; } catch(e) {}
-    shareWatchlistSelect.innerHTML = '<option value="" disabled>Select a Watchlist</option>';
-
-    // Always include Portfolio as a special option
-    const PORTFOLIO_WATCHLIST_ID = 'portfolio';
-    const PORTFOLIO_WATCHLIST_NAME = 'Portfolio';
-    const portfolioOption = document.createElement('option');
-    portfolioOption.value = PORTFOLIO_WATCHLIST_ID;
-    portfolioOption.textContent = PORTFOLIO_WATCHLIST_NAME;
-    shareWatchlistSelect.appendChild(portfolioOption);
-
-    // Filter out the "Cash & Assets" option from the share watchlist dropdown
-    const stockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
-    stockWatchlists.forEach(watchlist => {
-        // Don't duplicate Portfolio if userWatchlists already has it
-        if (watchlist.id === PORTFOLIO_WATCHLIST_ID) return;
-        const option = document.createElement('option');
-        option.value = watchlist.id;
-        option.textContent = watchlist.name;
-        shareWatchlistSelect.appendChild(option);
-    });
-
-    let preselectedIds = []; // For multi-select
-    let selectedOptionId = ''; // For legacy single-select scenarios
-    let disableDropdown = false; // Variable to control if dropdown should be disabled
-
-    if (isNewShare) {
-        // For new shares, always default to the blank placeholder and keep the dropdown enabled.
-        selectedOptionId = ''; // Forces selection of the disabled placeholder option
-        disableDropdown = false; // Always allow user to select a watchlist
-        logDebug('Share Form: New share: Watchlist selector forced to blank placeholder, enabled for user selection.');
-    } else { // Editing an existing share
-        // If editing, prefer the share's existing watchlistIds array if present
-        if (selectedShareDocId) {
-            const s = allSharesData.find(w => w.id === selectedShareDocId);
-            if (s && Array.isArray(s.watchlistIds) && s.watchlistIds.length) {
-                preselectedIds = s.watchlistIds.slice();
-            }
-        }
-        // Always honor 'portfolio' explicitly even if userWatchlists doesn't include it
-        if (currentShareWatchlistId === 'portfolio') {
-            selectedOptionId = 'portfolio';
-            if (!preselectedIds.includes('portfolio')) preselectedIds.push('portfolio');
-            logDebug('Share Form: Editing share: Detected portfolio watchlist, pre-selecting Portfolio.');
-        } else if (currentShareWatchlistId && stockWatchlists.some(wl => wl.id === currentShareWatchlistId)) {
-            selectedOptionId = currentShareWatchlistId;
-            if (currentShareWatchlistId && !preselectedIds.includes(currentShareWatchlistId)) preselectedIds.push(currentShareWatchlistId);
-            logDebug('Share Form: Editing share: Pre-selected to existing share\'s watchlist: ' + selectedOptionId);
-        } else if (currentShareWatchlistId) {
-            // If the original watchlist isn't in the filtered stock lists, inject a temporary option to preserve it
-            const original = userWatchlists.find(wl => wl.id === currentShareWatchlistId);
-            if (original && original.id !== CASH_BANK_WATCHLIST_ID) {
-                const opt = document.createElement('option');
-                opt.value = original.id;
-                opt.textContent = original.name + ' (original)';
-                shareWatchlistSelect.appendChild(opt);
-                selectedOptionId = original.id;
-                if (original.id && !preselectedIds.includes(original.id)) preselectedIds.push(original.id);
-                console.warn('Share Form: Editing share: Original watchlist not in stock list; temporarily added original to dropdown.');
-            } else {
-                // Unknown/removed list or Cash; require explicit user choice instead of defaulting silently
-                selectedOptionId = '';
-                console.warn('Share Form: Editing share: Original watchlist missing or not applicable. Please select a watchlist.');
-            }
-        } else if (stockWatchlists.length > 0) {
-            // No original ID on the share; default to current view if it's Portfolio, else leave blank
-            if (Array.isArray(currentSelectedWatchlistIds) && currentSelectedWatchlistIds[0] === 'portfolio') {
-                selectedOptionId = 'portfolio';
-                if (!preselectedIds.includes('portfolio')) preselectedIds.push('portfolio');
-                logDebug('Share Form: Editing share: No original watchlist; defaulting to current view Portfolio.');
-            } else {
-                selectedOptionId = '';
-                logDebug('Share Form: Editing share: No original watchlist set; leaving blank for user to choose.');
-            }
-        } else {
-            selectedOptionId = '';
-            console.warn('Share Form: Editing share: No stock watchlists available to select.');
-        }
-        disableDropdown = false; // Always allow changing watchlist when editing
-    }
-
-    // Apply the determined selection(s) and disabled state to native select
-    if (preselectedIds.length > 0) {
-        Array.from(shareWatchlistSelect.options).forEach(option => {
-            option.selected = preselectedIds.includes(option.value);
-        });
-    } else {
-        shareWatchlistSelect.value = selectedOptionId;
-    }
-    shareWatchlistSelect.disabled = disableDropdown;
-
-    // Explicitly set the 'selected' attribute on the option for visual update reliability
-    // This loop is crucial to ensure the visual selection is correctly applied.
-    Array.from(shareWatchlistSelect.options).forEach(option => {
-        if (preselectedIds.length > 0) {
-            option.selected = preselectedIds.includes(option.value);
-        } else {
-            option.selected = (option.value === selectedOptionId);
-        }
-    });
-
-    // Build enhanced toggle list
-    if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
-        shareWatchlistEnhanced.innerHTML = '';
-        const opts = Array.from(shareWatchlistSelect.options).filter(o => o.value !== '' && o.value !== CASH_BANK_WATCHLIST_ID);
-        const selectedSet = new Set(preselectedIds.length ? preselectedIds : (selectedOptionId ? [selectedOptionId] : []));
-        opts.forEach(o => {
-            const item = document.createElement('div');
-            item.className = 'watchlist-enhanced-item';
-            const checked = selectedSet.has(o.value);
-            item.innerHTML = `
-                <span class="watchlist-enhanced-name">${o.textContent || o.value}</span>
-                <label class="watchlist-toggle" aria-label="Toggle ${o.textContent || o.value}">
-                    <input type="checkbox" value="${o.value}" ${checked ? 'checked' : ''}>
-                    <span class="watchlist-toggle-track"><span class="watchlist-toggle-thumb"></span></span>
-                </label>`;
-            const input = item.querySelector('input');
-            input.addEventListener('change', () => {
-                const toggled = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
-                Array.from(shareWatchlistSelect.options).forEach(opt => { opt.selected = toggled.includes(opt.value); });
-                shareWatchlistSelect.value = toggled[0] || '';
-                updateWatchlistDropdownButton();
-                checkFormDirtyState();
-            });
-            shareWatchlistEnhanced.appendChild(item);
-        });
-    }
-
-    // Initialize dropdown button label/state
-    if (shareWatchlistDropdownBtn) {
-        updateWatchlistDropdownButton();
-        shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
-        shareWatchlistDropdownBtn.onclick = (e) => {
-            e.stopPropagation();
-            if (!shareWatchlistEnhanced) return;
-            const isOpen = shareWatchlistEnhanced.style.display === 'block';
-            shareWatchlistEnhanced.style.display = isOpen ? 'none' : 'block';
-            shareWatchlistDropdownBtn.setAttribute('aria-expanded', String(!isOpen));
-        };
-        document.addEventListener('click', (evt) => {
-            if (!shareWatchlistEnhanced || shareWatchlistEnhanced.style.display !== 'block') return;
-            const within = shareWatchlistEnhanced.contains(evt.target) || shareWatchlistDropdownBtn.contains(evt.target);
-            if (!within) {
-                shareWatchlistEnhanced.style.display='none';
-                shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
-            }
-        });
-    }
-
-    // Listen for native select change too (in case of programmatic changes)
-    shareWatchlistSelect.addEventListener('change', () => {
-        if (!shareWatchlistEnhanced) return;
-        const selected = Array.from(shareWatchlistSelect.options).filter(o => o.selected).map(o => o.value);
-        shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = selected.includes(cb.value); });
-        updateWatchlistDropdownButton();
-        checkFormDirtyState();
-    });
-}
 
 function updateWatchlistDropdownButton() {
     if (!shareWatchlistDropdownBtn) return;
@@ -3833,7 +3363,7 @@ async function saveShareData(isSilent = false) {
         return selectedWatchlistIdForSave ? [selectedWatchlistIdForSave] : null;
     })();
     // For new shares from 'All Shares' view, force watchlist selection
-    if (!selectedShareDocId && currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
+    if (!selectedShareDocId && watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.ALL_SHARES_ID)) {
         if (!selectedWatchlistIdForSave || selectedWatchlistIdForSave === '') { // Check for empty string too
             if (!isSilent) showCustomAlert('Please select a watchlist to assign the new share to.');
             console.warn('Save Share: New share from All Shares: Watchlist not selected. Skipping save.');
@@ -4368,7 +3898,7 @@ function showShareDetails() {
             const names = [];
             wlIds.forEach(id => {
                 if (!id || id === '__movers' || id === 'portfolio') return;
-                const wl = userWatchlists.find(w => w.id === id);
+                const wl = watchlistModule.userWatchlists.find(w => w.id === id);
                 if (wl && wl.name) names.push(wl.name.trim());
             });
             // Check if share is in portfolio (by id)
@@ -4609,97 +4139,6 @@ function sortCashCategories() {
     return sortedCategories;
 }
 
-function renderWatchlistSelect() {
-    if (!watchlistSelect) { console.error('renderWatchlistSelect: watchlistSelect element not found.'); return; }
-    // Store the currently selected value before clearing
-    const currentSelectedValue = watchlistSelect.value;
-    
-    // Set the initial placeholder text to "Watch List"
-    watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>';
-
-    const allSharesOption = document.createElement('option');
-    allSharesOption.value = ALL_SHARES_ID;
-    allSharesOption.textContent = 'All Shares';
-    watchlistSelect.appendChild(allSharesOption);
-
-    // Ensure Movers virtual option always present (even if counts not ready yet)
-    if (!watchlistSelect.querySelector('option[value="__movers"]')) {
-        const moversOpt = document.createElement('option');
-        moversOpt.value='__movers';
-        moversOpt.textContent='Movers';
-        watchlistSelect.appendChild(moversOpt);
-    }
-
-    // Ensure Portfolio is always present as a special option
-    if (!watchlistSelect.querySelector('option[value="portfolio"]')) {
-        const portfolioOption = document.createElement('option');
-        portfolioOption.value = 'portfolio';
-        portfolioOption.textContent = 'Portfolio';
-        watchlistSelect.appendChild(portfolioOption);
-    }
-
-    userWatchlists.forEach(watchlist => {
-        // Skip adding "Cash & Assets" if it's already a hardcoded option in HTML
-        if (watchlist.id === CASH_BANK_WATCHLIST_ID) {
-            return; 
-        }
-        const option = document.createElement('option');
-        option.value = watchlist.id;
-        option.textContent = watchlist.name;
-        watchlistSelect.appendChild(option);
-    });
-
-    // Add the "Cash & Assets" option explicitly if it's not already in the HTML
-    // This assumes it's added in HTML, but as a fallback, we ensure it's there.
-    if (!watchlistSelect.querySelector(`option[value="${CASH_BANK_WATCHLIST_ID}"]`)) {
-        const cashBankOption = document.createElement('option');
-        cashBankOption.value = CASH_BANK_WATCHLIST_ID;
-        cashBankOption.textContent = 'Cash & Assets'; // UPDATED TEXT
-        watchlistSelect.appendChild(cashBankOption);
-    }
-
-    // Attempt to select the watchlist specified in currentSelectedWatchlistIds.
-    // This array should already contain the correct ID (e.g., the newly created watchlist's ID)
-    // from loadUserWatchlistsAndSettings.
-    let desiredWatchlistId = currentSelectedWatchlistIds.length === 1 ? currentSelectedWatchlistIds[0] : '';
-    // Highest precedence: persisted Movers intent when __forcedInitialMovers flag set
-    try {
-        if (__forcedInitialMovers) {
-            desiredWatchlistId='__movers';
-        } else {
-            const persisted = localStorage.getItem('lastSelectedView');
-            if (persisted === '__movers') desiredWatchlistId='__movers';
-        }
-    } catch(_) {}
-    
-    if (desiredWatchlistId && Array.from(watchlistSelect.options).some(opt => opt.value === desiredWatchlistId)) {
-        watchlistSelect.value = desiredWatchlistId;
-    } else {
-        // Fallback: Prefer the last selected view from localStorage if valid, especially for 'portfolio'
-        try {
-            const lsView = localStorage.getItem('lastSelectedView');
-            const hasLs = lsView && Array.from(watchlistSelect.options).some(opt => opt.value === lsView);
-            if (hasLs) {
-                // If persisted is movers, keep it even if data not yet loaded
-                watchlistSelect.value = lsView;
-                currentSelectedWatchlistIds = [lsView];
-                logDebug('UI Update: Watchlist select applied lastSelectedView from localStorage: ' + lsView);
-            } else {
-                watchlistSelect.value = ALL_SHARES_ID;
-                currentSelectedWatchlistIds = [ALL_SHARES_ID];
-                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
-                logDebug('UI Update: Watchlist select defaulted to All Shares (no valid preference).');
-            }
-        } catch(e) {
-            watchlistSelect.value = ALL_SHARES_ID;
-            currentSelectedWatchlistIds = [ALL_SHARES_ID];
-            logDebug('UI Update: Watchlist select defaulted to All Shares due to error reading localStorage.');
-        }
-    }
-    logDebug('UI Update: Watchlist select dropdown rendered. Selected value: ' + watchlistSelect.value);
-    updateMainTitle(); // Update main title based on newly selected watchlist
-    updateAddHeaderButton(); // Update the plus button context (and sidebar button context)
-}
 
 function renderSortSelect() {
     if (!sortSelect) { console.error('renderSortSelect: sortSelect element not found.'); return; }
@@ -4744,11 +4183,11 @@ function renderSortSelect() {
     let logMessage;
     let defaultSortValue;
 
-    if (currentSelectedWatchlistIds.includes('portfolio')) {
+    if (watchlistModule.currentSelectedWatchlistIds.includes('portfolio')) {
         optionsToShow = portfolioOptions;
         logMessage = 'Portfolio options';
         defaultSortValue = 'totalDollar-desc';
-    } else if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    } else if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.CASH_BANK_WATCHLIST_ID)) {
         optionsToShow = cashOptions;
         logMessage = 'Cash Asset options';
         defaultSortValue = 'name-asc';
@@ -4796,16 +4235,16 @@ function openWatchlistPicker() {
     watchlistPickerList.innerHTML='';
 
     const items=[];
-    items.push({id:ALL_SHARES_ID,name:'All Shares', icon: 'fa-globe'});
+    items.push({id:watchlistModule.ALL_SHARES_ID,name:'All Shares', icon: 'fa-globe'});
     if ((globalAlertSummary && globalAlertSummary.totalCount > 0) || (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries && window.__lastMoversSnapshot.entries.length)) {
         items.push({id:'__movers',name:'Movers', icon: 'fa-chart-line'});
     }
     items.push({id:'portfolio',name:'Portfolio', icon: 'fa-briefcase'});
-    userWatchlists.filter(w=>w.id!==ALL_SHARES_ID && w.id!==CASH_BANK_WATCHLIST_ID).forEach(w=>items.push({...w, icon: 'fa-list-alt'}));
-    items.push({id:CASH_BANK_WATCHLIST_ID,name:'Cash & Assets', icon: 'fa-dollar-sign'});
+    watchlistModule.userWatchlists.filter(w=>w.id!==watchlistModule.ALL_SHARES_ID && w.id!==watchlistModule.CASH_BANK_WATCHLIST_ID).forEach(w=>items.push({...w, icon: 'fa-list-alt'}));
+    items.push({id:watchlistModule.CASH_BANK_WATCHLIST_ID,name:'Cash & Assets', icon: 'fa-dollar-sign'});
 
-    const specialOrder = [ALL_SHARES_ID, 'portfolio', CASH_BANK_WATCHLIST_ID];
-    const defaultWatchlist = userWatchlists.find(w => w.name === DEFAULT_WATCHLIST_NAME);
+    const specialOrder = [watchlistModule.ALL_SHARES_ID, 'portfolio', watchlistModule.CASH_BANK_WATCHLIST_ID];
+    const defaultWatchlist = watchlistModule.userWatchlists.find(w => w.name === DEFAULT_WATCHLIST_NAME);
     if (defaultWatchlist) {
         specialOrder.push(defaultWatchlist.id);
     }
@@ -4828,7 +4267,7 @@ function openWatchlistPicker() {
 
     sortedItems.forEach(it=>{
         const div=document.createElement('div');
-        div.className='picker-item'+(currentSelectedWatchlistIds[0]===it.id?' active':'');
+        div.className='picker-item'+(watchlistModule.currentSelectedWatchlistIds[0]===it.id?' active':'');
         div.innerHTML = `
             <div class="picker-item-content">
                 <i class="fas ${it.icon}"></i>
@@ -4838,11 +4277,11 @@ function openWatchlistPicker() {
         div.tabIndex=0;
         div.onclick=()=>{
             console.log('[WatchlistPicker] Selecting watchlist', it.id);
-            currentSelectedWatchlistIds=[it.id];
-            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+            watchlistModule.setSelectedWatchlistIds([it.id]);
+            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(watchlistModule.currentSelectedWatchlistIds)); } catch(_) {}
             if (watchlistSelect) watchlistSelect.value=it.id; // sync hidden select
             try { setLastSelectedView(it.id); } catch(e) {}
-            try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
+            try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(watchlistModule.currentSelectedWatchlistIds); } } catch(e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
 
             // Always perform a full render cycle for consistency
             if (it.id === '__movers') {
@@ -4881,8 +4320,8 @@ function openWatchlistPicker() {
 }
 function toggleCodeButtonsArrow() {
     if (!toggleAsxButtonsBtn) return;
-    const current=currentSelectedWatchlistIds[0];
-    if (current===CASH_BANK_WATCHLIST_ID) {
+    const current=watchlistModule.currentSelectedWatchlistIds[0];
+    if (current===watchlistModule.CASH_BANK_WATCHLIST_ID) {
     toggleAsxButtonsBtn.style.display='none';
     if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.add('app-hidden'); asxCodeButtonsContainer.style.display='none'; }
     } else {
@@ -4929,9 +4368,9 @@ loadUserWatchlistsAndSettings = async function() {
     // Post-load Movers enforcement: if persisted as lastSelectedView but not active (race conditions), activate now
     try {
         const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
-        const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+        const haveMovers = watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers';
         if (wantMovers && !haveMovers) {
-            currentSelectedWatchlistIds = ['__movers'];
+            watchlistModule.setSelectedWatchlistIds(['__movers']);
             const sel = typeof watchlistSelect !== 'undefined' ? watchlistSelect : document.getElementById('watchlistSelect');
             if (sel) sel.value = '__movers';
             if (typeof renderWatchlist === 'function') renderWatchlist();
@@ -4971,14 +4410,14 @@ function bindHeaderInteractiveElements() {
 }
 
 /**
- * Renders the watchlist based on the currentSelectedWatchlistIds. (1)
+ * Renders the watchlist based on the watchlistModule.currentSelectedWatchlistIds. (1)
  * Optimized to update existing elements rather than recreating them, reducing flickering.
  */
 function renderWatchlist() {
-    logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + currentSelectedWatchlistIds[0]);
+    logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + watchlistModule.currentSelectedWatchlistIds[0]);
     // If first load and user restored to movers, enforce immediately after minimal delay
     try {
-        if (!window.__moversInitialEnforced && currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+        if (!window.__moversInitialEnforced && watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers') {
             window.__moversInitialEnforced = true;
             setTimeout(()=>{ try { enforceMoversVirtualView(); } catch(e){ console.warn('Initial movers enforce failed', e); } }, 150);
         }
@@ -5013,7 +4452,7 @@ function renderWatchlist() {
         }
     }
 
-    const selectedWatchlistId = currentSelectedWatchlistIds[0];
+    const selectedWatchlistId = watchlistModule.currentSelectedWatchlistIds[0];
 
     // Hide both sections initially
     stockWatchlistSection.classList.add('app-hidden');
@@ -5058,7 +4497,7 @@ function renderWatchlist() {
         }
         adjustMainContentPadding();
         return;
-    } else if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
+    } else if (selectedWatchlistId !== watchlistModule.CASH_BANK_WATCHLIST_ID) {
     // Hide portfolio section if it exists from previous view
     const existingPortfolio = document.getElementById('portfolioSection');
     if (existingPortfolio) existingPortfolio.style.display='none';
@@ -5068,8 +4507,8 @@ function renderWatchlist() {
         if (typeof stockWatchlistSection.style !== 'undefined') {
             stockWatchlistSection.style.display = '';
         }
-        const selectedWatchlist = userWatchlists.find(wl => wl.id === selectedWatchlistId);
-        if (selectedWatchlistId === ALL_SHARES_ID) {
+        const selectedWatchlist = watchlistModule.userWatchlists.find(wl => wl.id === selectedWatchlistId);
+        if (selectedWatchlistId === watchlistModule.ALL_SHARES_ID) {
             // Title handled by updateMainTitle
         } else if (selectedWatchlist) {
             // Title handled by updateMainTitle
@@ -5105,16 +4544,16 @@ function renderWatchlist() {
             if (sharesToRender.length === 0 && base.length > 0 && !window.__moversRenderRetry) {
                 window.__moversRenderRetry = setTimeout(()=>{
                     window.__moversRenderRetry = null;
-                    if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+                    if (watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers') {
                         try { renderWatchlist(); } catch(e){ console.warn('Movers re-render retry failed', e); }
                     }
                 }, 900);
             }
-        } else if (selectedWatchlistId === ALL_SHARES_ID) {
+        } else if (selectedWatchlistId === watchlistModule.ALL_SHARES_ID) {
             sharesToRender = dedupeSharesById(allSharesData);
             logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
-        } else if (currentSelectedWatchlistIds.length === 1) {
-            sharesToRender = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
+        } else if (watchlistModule.currentSelectedWatchlistIds.length === 1) {
+            sharesToRender = dedupeSharesById(allSharesData).filter(share => watchlistModule.currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
             logDebug('Render: Displaying shares from watchlist: ' + selectedWatchlistId);
         } else {
             logDebug('Render: No specific stock watchlists selected or multiple selected, showing empty state.');
@@ -5257,10 +4696,10 @@ function renderAsxCodeButtons() {
     const uniqueAsxCodes = new Set();
     
     let sharesForButtons = [];
-    if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) { 
+    if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.ALL_SHARES_ID)) {
         sharesForButtons = dedupeSharesById(allSharesData);
     } else {
-        sharesForButtons = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
+        sharesForButtons = dedupeSharesById(allSharesData).filter(share => watchlistModule.currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
     }
 
     sharesForButtons.forEach(share => {
@@ -5299,7 +4738,7 @@ function renderAsxCodeButtons() {
             button.classList.add(buttonPriceChangeClass);
         }
         // Additional context class when in portfolio for stronger theme coloring
-        if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] === 'portfolio') {
+        if (watchlistModule.currentSelectedWatchlistIds.length === 1 && watchlistModule.currentSelectedWatchlistIds[0] === 'portfolio') {
             button.classList.add('portfolio-context');
         }
 
@@ -5968,41 +5407,41 @@ async function loadUserWatchlistsAndSettings() {
         hideSplashScreenIfReady();
         return;
     }
-    userWatchlists = [];
+    watchlistModule.resetWatchlists();
     const watchlistsColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists');
     const userProfileDocRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
 
     try {
         logDebug('User Settings: Fetching user watchlists and profile settings...');
         const querySnapshot = await window.firestore.getDocs(window.firestore.query(watchlistsColRef));
-        querySnapshot.forEach(doc => { userWatchlists.push({ id: doc.id, name: doc.data().name }); });
-        logDebug('User Settings: Found ' + userWatchlists.length + ' existing watchlists (before default check).');
+        querySnapshot.forEach(doc => { watchlistModule.userWatchlists.push({ id: doc.id, name: doc.data().name }); });
+        logDebug('User Settings: Found ' + watchlistModule.userWatchlists.length + ' existing watchlists (before default check).');
 
         // Ensure "Cash & Assets" is always an option in `userWatchlists` for internal logic
-        if (!userWatchlists.some(wl => wl.id === CASH_BANK_WATCHLIST_ID)) {
-            userWatchlists.push({ id: CASH_BANK_WATCHLIST_ID, name: 'Cash & Assets' });
+        if (!watchlistModule.userWatchlists.some(wl => wl.id === watchlistModule.CASH_BANK_WATCHLIST_ID)) {
+            watchlistModule.userWatchlists.push({ id: watchlistModule.CASH_BANK_WATCHLIST_ID, name: 'Cash & Assets' });
             logDebug('User Settings: Added "Cash & Assets" to internal watchlists array.');
         }
 
         // If no user-defined watchlists (excluding Cash & Assets), create a default one
-        const userDefinedStockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== ALL_SHARES_ID);
+        const userDefinedStockWatchlists = watchlistModule.userWatchlists.filter(wl => wl.id !== watchlistModule.CASH_BANK_WATCHLIST_ID && wl.id !== watchlistModule.ALL_SHARES_ID);
         if (userDefinedStockWatchlists.length === 0) {
             const defaultWatchlistId = getDefaultWatchlistId(currentUserId);
             const defaultWatchlistRef = window.firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists/' + defaultWatchlistId);
             await window.firestore.setDoc(defaultWatchlistRef, { name: DEFAULT_WATCHLIST_NAME, createdAt: new Date().toISOString() });
-            userWatchlists.push({ id: defaultWatchlistId, name: DEFAULT_WATCHLIST_NAME });
+            watchlistModule.userWatchlists.push({ id: defaultWatchlistId, name: DEFAULT_WATCHLIST_NAME });
             // Ensure currentSelectedWatchlistIds points to the newly created default watchlist
-            currentSelectedWatchlistIds = [defaultWatchlistId]; 
+            watchlistModule.setSelectedWatchlistIds([defaultWatchlistId]);
             logDebug('User Settings: Created default watchlist and set it as current selection.');
         }
 
         // Sort watchlists (excluding Cash & Assets for sorting, then re-add it if needed)
-        userWatchlists.sort((a, b) => {
-            if (a.id === CASH_BANK_WATCHLIST_ID) return 1;
-            if (b.id === CASH_BANK_WATCHLIST_ID) return -1;
+        watchlistModule.userWatchlists.sort((a, b) => {
+            if (a.id === watchlistModule.CASH_BANK_WATCHLIST_ID) return 1;
+            if (b.id === watchlistModule.CASH_BANK_WATCHLIST_ID) return -1;
             return a.name.localeCompare(b.name);
         });
-        logDebug('User Settings: Watchlists after sorting: ' + userWatchlists.map(wl => wl.name).join(', '));
+        logDebug('User Settings: Watchlists after sorting: ' + watchlistModule.userWatchlists.map(wl => wl.name).join(', '));
 
         const userProfileSnap = await window.firestore.getDoc(userProfileDocRef);
     savedSortOrder = null;
@@ -6019,10 +5458,10 @@ async function loadUserWatchlistsAndSettings() {
             if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
                 // Filter out invalid or non-existent watchlists from loaded preferences
                 // Treat 'portfolio' as a valid special view alongside All Shares and Cash & Assets
-                currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id =>
-                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
-                );
-                logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
+                watchlistModule.setSelectedWatchlistIds(loadedSelectedWatchlistIds.filter(id =>
+                    id === watchlistModule.ALL_SHARES_ID || id === watchlistModule.CASH_BANK_WATCHLIST_ID || id === 'portfolio' || watchlistModule.userWatchlists.some(wl => wl.id === id)
+                ));
+                logDebug('User Settings: Loaded last selected watchlists from profile: ' + watchlistModule.currentSelectedWatchlistIds.join(', '));
             } else {
                 logDebug('User Settings: No valid last selected watchlists in profile. Will determine default.');
             }
@@ -6034,28 +5473,28 @@ async function loadUserWatchlistsAndSettings() {
         try {
             const lsView = localStorage.getItem('lastSelectedView');
             if (lsView) {
-                const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || userWatchlists.some(wl => wl.id === lsView);
+                const isValid = (lsView === watchlistModule.ALL_SHARES_ID) || (lsView === watchlistModule.CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || watchlistModule.userWatchlists.some(wl => wl.id === lsView);
                 if (isValid) {
-                    currentSelectedWatchlistIds = [lsView];
+                    watchlistModule.setSelectedWatchlistIds([lsView]);
                     logDebug('User Settings: Overriding selection with localStorage lastSelectedView: ' + lsView);
                 }
             }
         } catch(e) { /* ignore */ }
 
         // Determine final currentSelectedWatchlistIds if not set or invalid after loading/filtering
-        if (!currentSelectedWatchlistIds || currentSelectedWatchlistIds.length === 0) {
-            const firstAvailableStockWatchlist = userWatchlists.find(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
+        if (!watchlistModule.currentSelectedWatchlistIds || watchlistModule.currentSelectedWatchlistIds.length === 0) {
+            const firstAvailableStockWatchlist = watchlistModule.userWatchlists.find(wl => wl.id !== watchlistModule.CASH_BANK_WATCHLIST_ID);
             if (firstAvailableStockWatchlist) {
-                currentSelectedWatchlistIds = [firstAvailableStockWatchlist.id];
+                watchlistModule.setSelectedWatchlistIds([firstAvailableStockWatchlist.id]);
                 logDebug('User Settings: Defaulting currentSelectedWatchlistIds to first available stock watchlist: ' + firstAvailableStockWatchlist.name);
             } else {
-                currentSelectedWatchlistIds = [CASH_BANK_WATCHLIST_ID];
+                watchlistModule.setSelectedWatchlistIds([watchlistModule.CASH_BANK_WATCHLIST_ID]);
                 logDebug('User Settings: No stock watchlists found, defaulting to Cash & Assets.');
             }
         }
-        logDebug('User Settings: Final currentSelectedWatchlistIds before renderWatchlistSelect: ' + currentSelectedWatchlistIds.join(', '));
+        logDebug('User Settings: Final currentSelectedWatchlistIds before renderWatchlistSelect: ' + watchlistModule.currentSelectedWatchlistIds.join(', '));
 
-        renderWatchlistSelect(); // Populate and select in the header dropdown
+        watchlistModule.renderWatchlistSelect(); // Populate and select in the header dropdown
 
         // Also re-populate the share modal dropdown if present
         if (typeof populateShareWatchlistSelect === 'function') {
@@ -6073,7 +5512,7 @@ async function loadUserWatchlistsAndSettings() {
             logDebug('Sort: Using saved sort order: ' + currentSortOrder);
         } else {
             // Set to default sort for the current view type
-            currentSortOrder = currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'entryDate-desc';
+            currentSortOrder = watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'entryDate-desc';
             logDebug('Sort: No saved sort order found, defaulting to: ' + currentSortOrder);
         }
         renderSortSelect(); // Build options, then apply currentSortOrder
@@ -6383,7 +5822,7 @@ function applyGlobalSummaryFilter(options = {}) {
 
 // Enforce virtual Movers view: after a render, hide non-mover rows/cards; restore when leaving
 function enforceMoversVirtualView(force) {
-    const isMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+    const isMovers = watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers';
     if (isMovers) {
         // Safety: ensure persistence keys reflect Movers so reload restores correctly even if earlier writes were skipped
     try { setLastSelectedView('__movers'); } catch(_) {}
@@ -6435,7 +5874,7 @@ function enforceMoversVirtualView(force) {
             window.__moversRetryTimer = setTimeout(() => {
                 window.__moversRetryTimer = null;
                 // Re-run only if still in movers view and nothing visible
-                const stillMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+                const stillMovers = watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers';
                 const anyVisible = Array.from(document.querySelectorAll('#shareTable tbody tr,.mobile-share-cards .mobile-card'))
                     .some(el => el.style.display !== 'none');
                 if (stillMovers && !anyVisible) {
@@ -6526,7 +5965,7 @@ window.debugMoversConsistency = debugMoversConsistency; // expose globally
 document.addEventListener('keydown', (e)=>{
     try {
         if (e.altKey && e.shiftKey && e.code === 'KeyM') {
-            if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+            if (watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers') {
                 debugMoversConsistency({ includeLists: true });
             } else {
                 console.info('[MoversDebug] Hotkey pressed but not in Movers view.');
@@ -6875,7 +6314,7 @@ function initGlobalAlertsUI(force) {
                 } catch(_) {}
                 // Recompute banner (will drop globalSummaryCount to zero)
                 try { updateTargetHitBanner(); } catch(_) {}
-                if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+                if (watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers') {
                     try { enforceMoversVirtualView(true); } catch(e2){ console.warn('Movers refresh after clear failed', e2); }
                     showCustomAlert('Directional thresholds cleared – Movers list & global movers reset', 1600);
                 } else {
@@ -7591,7 +7030,7 @@ function updateMainTitle(overrideTitle) {
         return;
     }
 
-    const activeId = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
+    const activeId = watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0];
 
     // Ensure an ephemeral Movers option exists if Movers is active but missing from select (prevents fallback to generic label)
     function ensureEphemeralMoversOption(){
@@ -7602,7 +7041,7 @@ function updateMainTitle(overrideTitle) {
                 const opt = document.createElement('option');
                 opt.value='__movers'; opt.textContent='Movers'; opt.dataset.ephemeral='1';
                 // Insert after All Shares if present
-                const allOpt = watchlistSelect.querySelector('option[value="'+ALL_SHARES_ID+'"]');
+                const allOpt = watchlistSelect.querySelector('option[value="'+watchlistModule.ALL_SHARES_ID+'"]');
                 if (allOpt && allOpt.nextSibling) allOpt.parentNode.insertBefore(opt, allOpt.nextSibling); else watchlistSelect.appendChild(opt);
                 logDebug('UI: Injected ephemeral Movers option into select.');
             }
@@ -7616,12 +7055,12 @@ function updateMainTitle(overrideTitle) {
     // If no select yet, derive directly from activeId
     if (!watchlistSelect) {
         let text = 'Share Watchlist';
-        if (activeId === ALL_SHARES_ID) text = 'All Shares';
-        else if (activeId === CASH_BANK_WATCHLIST_ID) text = 'Cash & Assets';
+        if (activeId === watchlistModule.ALL_SHARES_ID) text = 'All Shares';
+        else if (activeId === watchlistModule.CASH_BANK_WATCHLIST_ID) text = 'Cash & Assets';
         else if (activeId === 'portfolio') text = 'Portfolio';
         else if (activeId === '__movers') text = 'Movers';
         else if (activeId) {
-            const wl = (userWatchlists||[]).find(w=>w.id===activeId); if (wl) text = wl.name;
+            const wl = (watchlistModule.userWatchlists||[]).find(w=>w.id===activeId); if (wl) text = wl.name;
         }
         try { ensureTitleStructure(); } catch(_) {}
         if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = text; else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = text;
@@ -7632,13 +7071,13 @@ function updateMainTitle(overrideTitle) {
     const selValue = watchlistSelect.value;
     const selTextRaw = watchlistSelect.selectedIndex >=0 ? (watchlistSelect.options[watchlistSelect.selectedIndex]?.textContent || '') : '';
     let resolved;
-    if (selValue === ALL_SHARES_ID) resolved = 'All Shares';
-    else if (selValue === CASH_BANK_WATCHLIST_ID) resolved = 'Cash & Assets';
+    if (selValue === watchlistModule.ALL_SHARES_ID) resolved = 'All Shares';
+    else if (selValue === watchlistModule.CASH_BANK_WATCHLIST_ID) resolved = 'Cash & Assets';
     else if (selValue === 'portfolio') resolved = 'Portfolio';
     else if (selValue === '__movers') resolved = 'Movers';
     else if (selTextRaw && selTextRaw.trim()) resolved = selTextRaw.trim();
     else {
-        const wl = (userWatchlists||[]).find(w=>w.id===selValue);
+        const wl = (watchlistModule.userWatchlists||[]).find(w=>w.id===selValue);
         resolved = (wl && wl.name) ? wl.name : 'Share Watchlist';
     }
 
@@ -7655,8 +7094,8 @@ function updateMainTitle(overrideTitle) {
     // Persist resolved selection if it maps to a concrete logical view (avoid noisy writes during early boot with undefined)
     if (resolved === 'Movers') { try { setLastSelectedView('__movers'); } catch(_) {} }
     else if (resolved === 'Portfolio') { try { setLastSelectedView('portfolio'); } catch(_) {} }
-    else if (resolved === 'All Shares') { try { setLastSelectedView(ALL_SHARES_ID); } catch(_) {} }
-    else if (activeId && activeId !== '__movers' && activeId !== 'portfolio' && activeId !== ALL_SHARES_ID && activeId !== CASH_BANK_WATCHLIST_ID) {
+    else if (resolved === 'All Shares') { try { setLastSelectedView(watchlistModule.ALL_SHARES_ID); } catch(_) {} }
+    else if (activeId && activeId !== '__movers' && activeId !== 'portfolio' && activeId !== watchlistModule.ALL_SHARES_ID && activeId !== watchlistModule.CASH_BANK_WATCHLIST_ID) {
         // Persist actual watchlist id
         try { setLastSelectedView(activeId); } catch(_) {}
     }
@@ -7691,7 +7130,7 @@ function ensureTitleStructure() {
  * If 'Cash & Assets' is selected, they open the cash asset form. Otherwise, they open the share form.
  */
 function updateAddHeaderButton() {
-    logDebug('DEBUG: updateAddHeaderButton called. Current selected watchlist IDs: ' + currentSelectedWatchlistIds.join(', '));
+    logDebug('DEBUG: updateAddHeaderButton called. Current selected watchlist IDs: ' + watchlistModule.currentSelectedWatchlistIds.join(', '));
     if (!addShareHeaderBtn) {
         console.warn('updateAddHeaderButton: addShareHeaderBtn not found.');
         return;
@@ -7702,7 +7141,7 @@ function updateAddHeaderButton() {
     addShareHeaderBtn.removeEventListener('click', handleAddCashAssetClick);
 
     // Set the appropriate event listener for the header button
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.CASH_BANK_WATCHLIST_ID)) {
         addShareHeaderBtn.addEventListener('click', handleAddCashAssetClick);
         logDebug('DEBUG: Header Plus Button (addShareHeaderBtn) now opens Add Cash Asset modal.');
     } else {
@@ -7772,7 +7211,7 @@ function handleAddCashAssetClick() {
  * It will open the Share Form or Cash Asset Form based on the selected watchlist.
  */
 function updateSidebarAddButtonContext() {
-    logDebug('DEBUG: updateSidebarAddButtonContext called. Current selected watchlist IDs: ' + currentSelectedWatchlistIds.join(', '));
+    logDebug('DEBUG: updateSidebarAddButtonContext called. Current selected watchlist IDs: ' + watchlistModule.currentSelectedWatchlistIds.join(', '));
     if (!newShareBtn) {
         console.warn('updateSidebarAddButtonContext: newShareBtn not found.');
         return;
@@ -7783,7 +7222,7 @@ function updateSidebarAddButtonContext() {
     newShareBtn.removeEventListener('click', handleAddCashAssetClick);
 
     // Set the appropriate event listener for the sidebar button
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.CASH_BANK_WATCHLIST_ID)) {
         newShareBtn.addEventListener('click', handleAddCashAssetClick);
         // Update the text/icon if needed (optional, but good for clarity)
         const sidebarSpan = newShareBtn.querySelector('span');
@@ -8013,13 +7452,13 @@ function escapeCsvValue(value) {
  * Exports the current watchlist data to a CSV file.
  */
 function exportWatchlistToCSV() {
-    if (!currentUserId || currentSelectedWatchlistIds.length === 0) {
+    if (!currentUserId || watchlistModule.currentSelectedWatchlistIds.length === 0) {
         showCustomAlert('Please sign in and select watchlists to export.');
         return;
     }
     
     // Do not export cash data via this function
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.CASH_BANK_WATCHLIST_ID)) {
         showCustomAlert('Cash & Assets data cannot be exported via this function. Please switch to a stock watchlist.', 3000); // UPDATED TEXT
         return;
     }
@@ -8027,14 +7466,14 @@ function exportWatchlistToCSV() {
     let sharesToExport = [];
     let exportFileNamePrefix = 'selected_watchlists';
 
-    if (currentSelectedWatchlistIds.length === 1) {
-        const selectedWatchlistId = currentSelectedWatchlistIds[0];
-        if (selectedWatchlistId === ALL_SHARES_ID) {
+    if (watchlistModule.currentSelectedWatchlistIds.length === 1) {
+        const selectedWatchlistId = watchlistModule.currentSelectedWatchlistIds[0];
+        if (selectedWatchlistId === watchlistModule.ALL_SHARES_ID) {
             sharesToExport = [...allSharesData];
             exportFileNamePrefix = 'all_shares';
         } else {
             sharesToExport = allSharesData.filter(share => shareBelongsTo(share, selectedWatchlistId));
-            const wl = userWatchlists.find(w => w.id === selectedWatchlistId);
+            const wl = watchlistModule.userWatchlists.find(w => w.id === selectedWatchlistId);
             if (wl) { exportFileNamePrefix = wl.name; }
         }
     } else {
@@ -8184,7 +7623,7 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
 
     // Check for duplicate name (case-insensitive, excluding current watchlist if editing)
     // Check for duplicate name (case-insensitive, excluding current watchlist if editing)
-    const isDuplicate = userWatchlists.some(w => {
+    const isDuplicate = watchlistModule.userWatchlists.some(w => {
         const isMatch = w.name.toLowerCase() === newName.toLowerCase() && w.id !== watchlistId;
         if (isMatch && DEBUG_MODE) {
             logDebug('Save Watchlist: Duplicate name detected against existing watchlist: ' + w.name + ' (ID: ' + w.id + ')');
@@ -8226,18 +7665,18 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             logDebug('Firestore: Watchlist \'' + newName + '\' added with ID: ' + newDocRef.id);
 
             // Set the newly created watchlist as the current selection and save this preference.
-            currentSelectedWatchlistIds = [newDocRef.id];
-            await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
+            watchlistModule.setSelectedWatchlistIds([newDocRef.id]);
+            await saveLastSelectedWatchlistIds(watchlistModule.currentSelectedWatchlistIds);
 
             // --- IMPORTANT FIX: Update in-memory userWatchlists array immediately ---
             // This ensures renderWatchlistSelect has the new watchlist available
             // when loadUserWatchlistsAndSettings is called.
-            userWatchlists.push({ id: newDocRef.id, name: newName });
+            watchlistModule.userWatchlists.push({ id: newDocRef.id, name: newName });
             // Re-sort userWatchlists to ensure the new watchlist is in the correct order for the dropdown
-            userWatchlists.sort((a, b) => {
+            watchlistModule.userWatchlists.sort((a, b) => {
                 // Keep "Cash & Assets" at the bottom if it's there
-                if (a.id === CASH_BANK_WATCHLIST_ID) return 1;
-                if (b.id === CASH_BANK_WATCHLIST_ID) return -1;
+                if (a.id === watchlistModule.CASH_BANK_WATCHLIST_ID) return 1;
+                if (b.id === watchlistModule.CASH_BANK_WATCHLIST_ID) return -1;
                 return a.name.localeCompare(b.name);
             });
             logDebug('Firestore: userWatchlists array updated in memory with new watchlist and re-sorted.');
@@ -8341,7 +7780,7 @@ function restorePersistedState() {
     // Restore Last Selected Watchlist/View
     const savedLastView = localStorage.getItem('lastSelectedView');
     if (savedLastView) {
-        currentSelectedWatchlistIds = [savedLastView];
+        watchlistModule.setSelectedWatchlistIds([savedLastView]);
         logDebug(`State Management: Restored last selected view to '${savedLastView}'.`);
     }
 
@@ -9201,10 +8640,10 @@ if (deleteAllUserDataBtn) {
     if (watchlistSelect) {
         watchlistSelect.addEventListener('change', async (event) => {
             logDebug('Watchlist Select: Change event fired. New value: ' + event.target.value);
-            currentSelectedWatchlistIds = [event.target.value];
-            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+            watchlistModule.setSelectedWatchlistIds([event.target.value]);
+            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(watchlistModule.currentSelectedWatchlistIds)); } catch(_) {}
                     try { setLastSelectedView(event.target.value); } catch(_) {}
-            await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
+            await saveLastSelectedWatchlistIds(watchlistModule.currentSelectedWatchlistIds);
             // Just render the watchlist. The listeners for shares/cash are already active.
             renderWatchlist();
             try { enforceMoversVirtualView(); } catch(_) {}
@@ -9225,7 +8664,7 @@ if (sortSelect) {
         }
         
         // Determine whether to sort shares or cash assets
-        if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (watchlistModule.currentSelectedWatchlistIds.includes(watchlistModule.CASH_BANK_WATCHLIST_ID)) {
             renderCashCategories(); // Re-render cash categories with new sort order
         } else {
             sortShares(); // Sorts allSharesData and calls renderWatchlist
@@ -9426,16 +8865,16 @@ if (sortSelect) {
             let watchlistToEditId = watchlistSelect.value;
 
             // Prevent editing "All Shares" or "Cash & Assets"
-            if (watchlistToEditId === ALL_SHARES_ID || watchlistToEditId === CASH_BANK_WATCHLIST_ID) {
+            if (watchlistToEditId === watchlistModule.ALL_SHARES_ID || watchlistToEditId === watchlistModule.CASH_BANK_WATCHLIST_ID) {
                 showCustomAlert('Cannot edit this special watchlist.', 2000);
                 return;
             }
 
-            if (!watchlistToEditId || !userWatchlists.some(w => w.id === watchlistToEditId)) {
+            if (!watchlistToEditId || !watchlistModule.userWatchlists.some(w => w.id === watchlistToEditId)) {
                 showCustomAlert('Please select a watchlist to edit.');
                 return;
             }
-            const selectedWatchlistObj = userWatchlists.find(w => w.id === watchlistToEditId);
+            const selectedWatchlistObj = watchlistModule.userWatchlists.find(w => w.id === watchlistToEditId);
             const watchlistToEditName = selectedWatchlistObj ? selectedWatchlistObj.name : '';
 
             logDebug('Edit Watchlist Button Click: Watchlist to edit ID: ' + watchlistToEditId + ', Name: ' + watchlistToEditName);
@@ -9445,7 +8884,7 @@ if (sortSelect) {
 
             editWatchlistNameInput.value = watchlistToEditName;
             // Keep at least one real watchlist + Cash & Assets
-            const actualWatchlists = userWatchlists.filter(wl => wl.id !== ALL_SHARES_ID && wl.id !== CASH_BANK_WATCHLIST_ID);
+            const actualWatchlists = watchlistModule.userWatchlists.filter(wl => wl.id !== watchlistModule.ALL_SHARES_ID && wl.id !== watchlistModule.CASH_BANK_WATCHLIST_ID);
             const isDisabledDelete = actualWatchlists.length <= 1; 
             setIconDisabled(deleteWatchlistInModalBtn, isDisabledDelete); 
             logDebug('Edit Watchlist: deleteWatchlistInModalBtn disabled: ' + isDisabledDelete);
@@ -9500,19 +8939,19 @@ if (sortSelect) {
             }
 
             // Prevent deleting "All Shares" or "Cash & Assets"
-            if (watchlistToDeleteId === ALL_SHARES_ID || watchlistToDeleteId === CASH_BANK_WATCHLIST_ID) {
+            if (watchlistToDeleteId === watchlistModule.ALL_SHARES_ID || watchlistToDeleteId === watchlistModule.CASH_BANK_WATCHLIST_ID) {
                 showCustomAlert('Cannot delete this special watchlist.', 2000);
                 return;
             }
 
             // Ensure at least one actual watchlist remains (excluding Cash & Assets)
-            const actualWatchlists = userWatchlists.filter(wl => wl.id !== ALL_SHARES_ID && wl.id !== CASH_BANK_WATCHLIST_ID);
+            const actualWatchlists = watchlistModule.userWatchlists.filter(wl => wl.id !== watchlistModule.ALL_SHARES_ID && wl.id !== watchlistModule.CASH_BANK_WATCHLIST_ID);
             if (actualWatchlists.length <= 1) {
                 showCustomAlert('Cannot delete the last stock watchlist. Please create another stock watchlist first.', 3000);
                 return;
             }
 
-            const watchlistToDeleteName = userWatchlists.find(w => w.id === watchlistToDeleteId)?.name || 'Unknown Watchlist';
+            const watchlistToDeleteName = watchlistModule.userWatchlists.find(w => w.id === watchlistToDeleteId)?.name || 'Unknown Watchlist';
             
             try {
                 const sharesColRef = window.firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
@@ -9535,8 +8974,8 @@ if (sortSelect) {
                 closeModals();
 
                 // After deleting a watchlist, switch the current view to "All Shares"
-                currentSelectedWatchlistIds = [ALL_SHARES_ID];
-                await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); // Save this preference
+                watchlistModule.setSelectedWatchlistIds([watchlistModule.ALL_SHARES_ID]);
+                await saveLastSelectedWatchlistIds(watchlistModule.currentSelectedWatchlistIds); // Save this preference
 
                 await loadUserWatchlistsAndSettings(); // This will re-render everything correctly
             } catch (error) {
@@ -10187,15 +9626,15 @@ function showTargetHitDetailsModal(options={}) {
                 const act = btn.getAttribute('data-action');
                 if (act === 'view-portfolio') {
                     try { applyGlobalSummaryFilter({ silent:true, computeOnly:true }); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal);
-                    currentSelectedWatchlistIds = ['__movers'];
-                    try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+                    watchlistModule.setSelectedWatchlistIds(['__movers']);
+                    try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(watchlistModule.currentSelectedWatchlistIds)); } catch(_) {}
                     // Sync hidden/native select so subsequent title updates reflect Movers
                     if (watchlistSelect) {
                         try { watchlistSelect.value = '__movers'; } catch(_) {}
                     }
                     try { setLastSelectedView('__movers'); } catch(_) {}
                     // Persist to Firestore if helper available (cross-device restore consistency)
-                    try { if (typeof saveLastSelectedWatchlistIds === 'function') saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } catch(_) {}
+                    try { if (typeof saveLastSelectedWatchlistIds === 'function') saveLastSelectedWatchlistIds(watchlistModule.currentSelectedWatchlistIds); } catch(_) {}
                     updateMainTitle('Movers');
                     // Re-render and enforce virtual view now
                     try { renderWatchlist(); enforceMoversVirtualView(); } catch(_) {}
@@ -10729,9 +10168,9 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(()=>{
         try {
             const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
-            const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+            const haveMovers = watchlistModule.currentSelectedWatchlistIds && watchlistModule.currentSelectedWatchlistIds[0] === '__movers';
             if (wantMovers && !haveMovers) {
-                currentSelectedWatchlistIds = ['__movers'];
+                watchlistModule.setSelectedWatchlistIds(['__movers']);
                 if (watchlistSelect) watchlistSelect.value = '__movers';
                 if (typeof renderWatchlist === 'function') renderWatchlist();
                 enforceMoversVirtualView(true);
@@ -10958,8 +10397,8 @@ try {
                     diag.buildMarker = 'v0.1.13';
                     diag.time = new Date().toISOString();
                     diag.userId = (typeof currentUserId!=='undefined')? currentUserId : null;
-                    diag.activeWatchlistId = (typeof activeWatchlistId!=='undefined')? activeWatchlistId : null;
-                    diag.selectedWatchlists = (typeof currentSelectedWatchlistIds!=='undefined')? currentSelectedWatchlistIds : [];
+                    diag.activeWatchlistId = watchlistModule.currentSelectedWatchlistIds[0] || null;
+                    diag.selectedWatchlists = watchlistModule.currentSelectedWatchlistIds || [];
                     diag.alertCounts = {
                         enabled: Array.isArray(sharesAtTargetPrice)? sharesAtTargetPrice.length : null,
                         muted: Array.isArray(sharesAtTargetPriceMuted)? sharesAtTargetPriceMuted.length : null,
@@ -11026,7 +10465,7 @@ try {
                             muted: Array.isArray(sharesAtTargetPriceMuted)? sharesAtTargetPriceMuted.length : null
                         };
                         data.currentUserId = (typeof currentUserId!=='undefined')? currentUserId : null;
-                        data.selectedWatchlists = (typeof currentSelectedWatchlistIds!=='undefined')? currentSelectedWatchlistIds : [];
+                        data.selectedWatchlists = watchlistModule.currentSelectedWatchlistIds || [];
                         // Resource timing for script/style
                         try {
                             data.resourceEntries = performance.getEntriesByType('resource').filter(r=>/script\.js|style\.css/.test(r.name)).map(r=>({ name:r.name, transferSize:r.transferSize, encodedBodySize:r.encodedBodySize, initiator:r.initiatorType }));
