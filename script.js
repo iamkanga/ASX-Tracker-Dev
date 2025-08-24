@@ -208,16 +208,6 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
     }
 
-    // --- Restore live price timestamp under hamburger menu ---
-    function updateLivePriceTimestamp() {
-        const timestampEl = document.getElementById('livePriceTimestamp');
-        if (timestampEl) {
-            const now = new Date();
-            timestampEl.textContent = `Live: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-        }
-    }
-    updateLivePriceTimestamp();
-    setInterval(updateLivePriceTimestamp, 60 * 1000);
     // Automatic closed-market banner and ghosting
     const marketStatusBanner = document.getElementById('marketStatusBanner');
     function formatSydneyDate(d) {
@@ -459,6 +449,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="pc-metric-line">
                         <span class="pc-label">Day Change</span>
                         <span class="pc-val ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></span>
+                    </div>
+                    <div class="pc-metric-line alert-target-row">
+                        <span class="pc-label">Alert Target</span>
+                        <span class="pc-val">${renderAlertTargetInline(share)}</span>
                     </div>
                 </div>
                 <div class="pc-controls-row">
@@ -731,7 +725,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
-const APP_VERSION = 'v0.1.34';
+const APP_VERSION = 'v2.9.0';
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
@@ -1165,9 +1159,7 @@ try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 't
 function applyAsxButtonsState() {
     if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
     const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
-    // If there are no buttons, never show and hide chevron
     const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
-    // In compact mode, still allow showing the buttons (they can be horizontally scrollable)
     const shouldShow = !!hasButtons && asxButtonsExpanded;
 
     if (shouldShow) {
@@ -1182,16 +1174,15 @@ function applyAsxButtonsState() {
     if (!hasButtons) {
         toggleAsxButtonsBtn.style.display = 'none';
         toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
-        toggleAsxButtonsBtn.classList.remove('expanded');
-        toggleAsxButtonsBtn.setAttribute('aria-pressed', 'false');
     } else {
-        toggleAsxButtonsBtn.style.display = '';
+        toggleAsxButtonsBtn.style.display = 'inline-flex'; // Use inline-flex for proper alignment
         toggleAsxButtonsBtn.removeAttribute('aria-disabled');
-    toggleAsxButtonsBtn.classList.toggle('expanded', shouldShow);
-        toggleAsxButtonsBtn.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
     }
-    // After any state change, adjust content padding to account for header height change
-    // Use rAF to wait for styles/transition to apply
+    // Update chevron rotation
+    const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
+    if (chevronIcon) {
+        chevronIcon.classList.toggle('expanded', shouldShow);
+    }
     requestAnimationFrame(adjustMainContentPadding);
 }
 
@@ -1636,13 +1627,6 @@ function updateSortIcon() {
     }
 }
 
-function updateLivePriceTimestamp() {
-    const timestampEl = document.getElementById('livePriceTimestamp');
-    if (timestampEl) {
-        const now = new Date();
-        timestampEl.textContent = `Live: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    }
-}
 
 const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
 
@@ -4795,18 +4779,47 @@ function openWatchlistPicker() {
     }
     console.log('[WatchlistPicker] Opening picker...');
     watchlistPickerList.innerHTML='';
+
     const items=[];
-    items.push({id:ALL_SHARES_ID,name:'All Shares'});
+    items.push({id:ALL_SHARES_ID,name:'All Shares', icon: 'fa-globe'});
     if ((globalAlertSummary && globalAlertSummary.totalCount > 0) || (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries && window.__lastMoversSnapshot.entries.length)) {
-        items.push({id:'__movers',name:'Movers'});
+        items.push({id:'__movers',name:'Movers', icon: 'fa-chart-line'});
     }
-    items.push({id:'portfolio',name:'Portfolio'});
-    userWatchlists.filter(w=>w.id!==ALL_SHARES_ID && w.id!==CASH_BANK_WATCHLIST_ID).forEach(w=>items.push(w));
-    items.push({id:CASH_BANK_WATCHLIST_ID,name:'Cash & Assets'});
-    items.forEach(it=>{
+    items.push({id:'portfolio',name:'Portfolio', icon: 'fa-briefcase'});
+    userWatchlists.filter(w=>w.id!==ALL_SHARES_ID && w.id!==CASH_BANK_WATCHLIST_ID).forEach(w=>items.push({...w, icon: 'fa-list-alt'}));
+    items.push({id:CASH_BANK_WATCHLIST_ID,name:'Cash & Assets', icon: 'fa-dollar-sign'});
+
+    const specialOrder = [ALL_SHARES_ID, 'portfolio', CASH_BANK_WATCHLIST_ID];
+    const defaultWatchlist = userWatchlists.find(w => w.name === DEFAULT_WATCHLIST_NAME);
+    if (defaultWatchlist) {
+        specialOrder.push(defaultWatchlist.id);
+    }
+
+    const sortedItems = items.sort((a, b) => {
+        const aIndex = specialOrder.indexOf(a.id);
+        const bIndex = specialOrder.indexOf(b.id);
+
+        if (aIndex > -1 && bIndex > -1) {
+            return aIndex - bIndex;
+        }
+        if (aIndex > -1) {
+            return -1;
+        }
+        if (bIndex > -1) {
+            return 1;
+        }
+        return a.name.localeCompare(b.name);
+    });
+
+    sortedItems.forEach(it=>{
         const div=document.createElement('div');
         div.className='picker-item'+(currentSelectedWatchlistIds[0]===it.id?' active':'');
-        div.textContent=it.name;
+        div.innerHTML = `
+            <div class="picker-item-content">
+                <i class="fas ${it.icon}"></i>
+                <span>${it.name}</span>
+            </div>
+        `;
         div.tabIndex=0;
         div.onclick=()=>{
             console.log('[WatchlistPicker] Selecting watchlist', it.id);
@@ -6978,7 +6991,15 @@ let splashScreenReady = false; // Flag to ensure splash screen is ready before h
  * Hides the splash screen with a fade-out effect.
  */
 function hideSplashScreen() {
+    console.log('[Debug] hideSplashScreen function called.');
     if (splashScreen) {
+        // Set version text just before hiding
+        const versionEl = document.getElementById('splashAppVersion');
+        if (versionEl) {
+            versionEl.textContent = APP_VERSION;
+        }
+
+        console.log('[Debug] splashScreen element found. Adding "hidden" class.');
         splashScreen.classList.add('hidden'); // Start fade-out
         if (splashKangarooIcon) {
             splashKangarooIcon.classList.remove('pulsing'); // Stop animation
@@ -7003,6 +7024,13 @@ function hideSplashScreen() {
  * This function is called after each major data loading step.
  */
 function hideSplashScreenIfReady() {
+    console.log('[Debug] hideSplashScreenIfReady called. State:', {
+        firebase: window._firebaseInitialized,
+        auth: window._userAuthenticated,
+        appData: window._appDataLoaded,
+        livePrices: window._livePricesLoaded,
+        splashReady: splashScreenReady
+    });
     // Only hide if Firebase is initialized, user is authenticated, and all data flags are true
     if (window._firebaseInitialized && window._userAuthenticated && window._appDataLoaded && window._livePricesLoaded) {
         if (splashScreenReady) { // Ensure splash screen itself is ready to be hidden
@@ -10620,9 +10648,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Display App Version
-    const appVersionEl = document.getElementById('splashAppVersion');
-    if (appVersionEl) {
-        appVersionEl.textContent = APP_VERSION;
+    console.log('[Debug] Attempting to set splash screen version...');
+    const splashScreenEl = document.getElementById('splashScreen');
+    if (splashScreenEl) {
+        let versionEl = document.getElementById('splashAppVersion');
+        if (!versionEl) {
+            console.warn('[Debug] splashAppVersion element not found, creating it.');
+            versionEl = document.createElement('p');
+            versionEl.id = 'splashAppVersion';
+            versionEl.className = 'app-version-splash';
+            splashScreenEl.prepend(versionEl);
+        }
+        console.log('[Debug] Setting splash screen version to:', APP_VERSION);
+        versionEl.textContent = APP_VERSION;
+    } else {
+        console.error('[Debug] CRITICAL: splashScreen element itself NOT found in DOM.');
     }
     // NEW: Initialize splash screen related flags
     window._firebaseInitialized = false;

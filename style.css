@@ -78,9 +78,25 @@
     width: 100%;
     padding-top: 8px; /* Add some space above it */
 }
-/* Add margin to code button arrow for better spacing */
+/* Minimalistic chevron for ASX code toggle */
+#toggleAsxButtonsBtn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .asx-toggle-triangle {
-    margin-right: 10px;
+    font-size: 0.9em; /* Adjust size to be subtle */
+    color: var(--ghosted-text, #888);
+    transition: transform 0.2s ease-in-out;
+}
+
+.asx-toggle-triangle.expanded {
+    transform: rotate(180deg);
 }
 /* Center the discover sort bar vertically and remove label spacing */
 .discover-sort-bar-centered {
@@ -894,7 +910,7 @@ function makeFilesAvailableToSourceControlCSS() {
   margin-right: auto;
   margin-top: 0;
   margin-bottom: 0.5em;
-  flex-wrap: nowrap;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
   position: relative;
 }
 .controls-flex-row.no-gap > * {
@@ -3575,7 +3591,7 @@ body.sidebar-active {
     display: flex; /* Use flexbox for internal layout */
     flex-direction: column; /* Stack children vertically */
     padding: 15px 20px 0; /* Removed padding-bottom, will be determined by content + gap */
-    gap: 10px; /* Space between header rows */
+    gap: 4px; /* Space between header rows */
 }
 
 #dynamicWatchlistTitle {
@@ -3620,14 +3636,43 @@ main.container {
 }
 
 /* Ensure hamburger, title, and add button are always in correct order and position */
-.header-action-btn-left {
-    order: 1;
-    margin-right: auto;
+.header-action-btn-right {
+    flex: 0 0 80px; /* Give both left and right containers a fixed base width */
+    display: flex;
+    align-items: center;
 }
+
+.header-left-container {
+    justify-content: flex-start; /* Align to the top */
+    order: 1;
+    flex: 0 0 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.live-price-timestamp-container {
+    display: block;
+    margin-top: 4px;
+    text-align: left;
+    width: 100%;
+}
+
+.live-price-timestamp {
+    font-size: 0.7rem;
+    color: var(--ghosted-text);
+    opacity: 0.9;
+}
+
+.header-action-btn-right {
+    justify-content: flex-end;
+    order: 3;
+}
+
 /* Center the single dynamic title */
 h1#dynamicWatchlistTitle {
     order: 2;
-    flex: 1 1 auto;
+    flex: 1 1 auto; /* Allow title to grow and fill the space */
     margin: 0;
     text-align: center;
     font-size: 1.85rem;
@@ -3645,7 +3690,7 @@ h1#dynamicWatchlistTitle {
 #dynamicWatchlistTitleText:focus-visible { outline: 2px solid var(--green-color); outline-offset: 2px; }
 .header-action-btn-right {
     order: 3;
-    margin-left: auto;
+    /* margin-left: auto; */
 }
 
 /* Ensure buttons are clickable above the title */
@@ -3714,12 +3759,13 @@ h1#dynamicWatchlistTitle {
     margin: 0.25em 0;
   }
   .dropdown-large {
-    min-width: 100px;
-    max-width: 100%;
-    width: 100%;
-    margin: 0.25em 0;
+    width: auto;
+    min-width: 200px;
+    max-width: 80%;
+    margin: 0.25em auto; /* Center it */
     font-size: 0.95em;
-    padding: 6px 8px;
+    padding: 6px 10px;
+    text-align: center;
   }
 }
 
@@ -3791,6 +3837,7 @@ h1#dynamicWatchlistTitle {
         gap: 0;
         position: relative;
     }
+    /* DESKTOP STYLES NOW APPLY TO MOBILE. NO OVERRIDE NEEDED.
     .header-action-btn-left {
         order: 1;
         margin-right: auto;
@@ -3817,6 +3864,7 @@ h1#dynamicWatchlistTitle {
         right: 0;
         z-index: 2;
     }
+    */
 }
 
 /* ASX Code Buttons */
@@ -6920,6 +6968,18 @@ body.dark-theme .alert-item {
     animation: pulsing-fade 5s ease-in-out infinite; /* Apply the animation, now 6 seconds */
 }
 
+.app-version-splash {
+    position: absolute;
+    bottom: 2vh;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+    z-index: 2001;
+    text-transform: uppercase;
+}
+
 /* Adjust the sign-in button on the splash screen */
 #splashScreen .google-auth-btn {
     position: absolute; /* Position relative to splash screen */
@@ -7578,4 +7638,102 @@ body.dark-theme .alert-item {
         font-size: 1.2em; /* Slightly smaller total display */
         padding: 12px;
     }
+}
+
+/* Watchlist Picker Modal */
+.watchlist-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.picker-item {
+    padding: 12px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.picker-item:hover, .picker-item:focus {
+    background-color: var(--table-row-hover-bg);
+    outline: none;
+}
+
+.picker-item.active {
+    background-color: var(--accent-color);
+    color: var(--button-text);
+    font-weight: 600;
+    border-color: var(--accent-color);
+}
+
+.picker-item-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.1em;
+}
+
+.picker-item-content i {
+    width: 20px;
+    text-align: center;
+}
+
+/* Centered, dynamically-sized sort controls row */
+.sort-line-row {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin: 8px 0 4px 0; /* Space below the title */
+}
+
+.sort-controls-container {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between sort dropdown and toggle arrow */
+}
+
+.sort-select-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Override dropdown-large for this specific context to be dynamically sized */
+.sort-controls-container .dropdown-large {
+    width: auto; /* Key change: allow width to fit content */
+    min-width: 140px; /* Set a reasonable minimum */
+    padding-right: 28px; /* Ensure space for sort icon */
+    text-align: center; /* Center text within the select box */
+    text-align-last: center; /* For Firefox */
+    -moz-text-align-last: center; /* For Firefox */
+}
+
+.sort-icon {
+    position: absolute;
+    right: 8px; /* Position icon inside the select box */
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 0.8em;
+    color: var(--ghosted-text);
+    transition: transform 0.2s ease-in-out;
+}
+
+.sort-icon.up::before {
+    content: '▲';
+    color: var(--price-up-color);
+}
+
+.sort-icon.down::before {
+    content: '▼';
+    color: var(--price-down-color);
+}
+
+/* Ensure toggle button is vertically aligned and has appropriate size */
+.sort-controls-container .asx-toggle-triangle {
+    margin: 0;
+    padding: 6px;
+    font-size: 1.2em;
+    flex-shrink: 0; /* Prevent button from shrinking */
 }

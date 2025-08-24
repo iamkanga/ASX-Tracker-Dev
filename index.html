@@ -6,204 +6,10 @@
     <title>Share Watchlist (Updated)</title>
     <link rel="icon" href="favicon.png" type="image/png">
 
-    <link rel="stylesheet" href="style.css?v=0.1.32">
+    <link rel="stylesheet" href="style.css?v=2.9.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
-    <style>
-        /* Modal dropdowns and inputs: consistent alignment and centering */
-        .modal-content .dropdown-large,
-        .modal-content input[type="number"],
-        .modal-content input[type="text"] {
-            display: block;
-            width: 95%;
-            min-width: 0;
-            max-width: 100%;
-            box-sizing: border-box;
-            margin-bottom: 18px;
-            margin-top: 4px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        /* --- Controls row: all controls on one line, maximize mobile area --- */
-        .controls-flex-row {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            flex-wrap: nowrap;
-        }
-        .watchlist-group, .sort-group, .toggle-asx-buttons-group {
-            display: flex;
-            align-items: center;
-            min-width: 0;
-            flex-shrink: 1;
-        }
-        .dropdown-large {
-            font-size: 1.1rem;
-            padding: 7px 8px;
-            margin-bottom: 0;
-            box-sizing: border-box;
-            width: auto;
-            min-width: 70px;
-            max-width: 100vw;
-            flex-shrink: 1;
-        }
-        .toggle-asx-buttons-group {
-            flex-shrink: 1;
-        }
-        .header-action-btn {
-            padding: 7px 10px;
-            font-size: 1.1rem;
-        }
-        @media (max-width: 500px) {
-            .controls-flex-row {
-                gap: 4px;
-            }
-            .dropdown-large {
-                padding: 5px 4px;
-                font-size: 0.98rem;
-                min-width: 48px;
-            }
-            .header-action-btn {
-                padding: 5px 6px;
-                font-size: 1rem;
-            }
-        }
-        /* Basic spinner animation for loading overlay */
-        .loader {
-            border: 8px solid #f3f3f3; /* Light grey */
-            border-top: 8px solid #3498db; /* Blue */
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 2s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Style for the Google Sign-In button */
-        .google-auth-btn {
-            background-color: #847c74; /* Custom background color. */
-            color: white; /* Text color. Change to 'black' or another color if you use a light background. */
-            border: 2px solid black; /* Black border as requested. */
-            padding: 12px 24px;
-            font-size: 16px;
-            font-weight: 600;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Slightly stronger shadow for contrast */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px; /* Adds space between the icon and the text */
-        }
-
-        .google-auth-btn:hover {
-            background-color: #756f68; /* A slightly darker shade for hover effect. */
-            box-shadow: 0 4px 8px rgba(0,0,0,0.25);
-        }
-
-        .splash-screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-end;
-            min-height: 100vh;
-            padding-bottom: 10vh;
-        }
-        @media (min-width: 769px) {
-            .splash-screen {
-                justify-content: center;
-                padding-bottom: 0;
-            }
-        }
-        .app-version-splash {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            font-size: 0.8rem;
-            color: var(--ghosted-text);
-            opacity: 0.7;
-        }
-    </style>
-        <style>
-        /* Dynamic Watchlist Title + Sort Row */
-    .sort-select-wrapper { position: relative; display: flex; align-items: center; }
-    #sortSelect {
-        padding-right: 24px !important; /* Space for custom icon */
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        appearance: none;
-        background-image: none; /* Remove default arrow in some browsers */
-    }
-    .sort-icon {
-        position: absolute;
-        right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 0;
-        height: 0;
-        pointer-events: none;
-        border-left: 5px solid transparent;
-        border-right: 5px solid transparent;
-    }
-    .sort-icon.up {
-        border-bottom: 7px solid var(--green-color); /* Green up arrow */
-    }
-    .sort-icon.down {
-        border-top: 7px solid var(--red-color); /* Red down arrow */
-    }
-    .watchlist-title-bar-row, .sort-line-row { display:flex; align-items:center; justify-content:center; width:100%; }
-    .watchlist-dynamic-title { margin:4px 0 2px; font-size:1.85rem; font-weight:650; cursor:pointer; text-align:center; line-height:1.1; flex:0 1 auto; width:auto; outline:none; }
-    #dynamicWatchlistTitleText { cursor:pointer; display:inline-block; padding:0 4px; border-radius:4px; pointer-events:auto; }
-    #dynamicWatchlistTitle { user-select:none; pointer-events:auto; }
-    /* Keyboard-only focus ring should be green; suppress mouse focus ring */
-    #dynamicWatchlistTitleText:focus { outline:none; }
-    #dynamicWatchlistTitleText:focus-visible { outline:2px solid var(--green-color); outline-offset:2px; }
-        .watchlist-dynamic-title:focus { outline:none; }
-    .sort-line-row { justify-content: center; font-size:0.9rem; margin-bottom:6px; }
-        /* .live-price-timestamp-container is now absolutely positioned */
-        .sort-controls-container { display: flex; justify-content: center; gap: 12px; }
-        .live-price-timestamp { font-size: 0.8rem; color: var(--ghosted-text); opacity: 0.9; }
-        .current-sort-display { min-height:1.2em; font-weight:500; }
-    /* Subtle triangle toggle: two chevrons forming minimal arrow */
-    /* Reworked subtle chevron toggle (single arrow) */
-    .asx-toggle-triangle { position:relative; width:30px; height:26px; background:transparent; border:none !important; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; -webkit-tap-highlight-color: transparent; }
-    .asx-toggle-triangle::before { content:""; width:0; height:0; border-left:7px solid transparent; border-right:7px solid transparent; border-top:10px solid var(--text-color); transition:transform .28s ease; transform-origin:center; }
-    .asx-toggle-triangle.expanded::before { transform:rotate(180deg); }
-    .asx-toggle-triangle::after { display:none; }
-    /* Remove mouse/touch focus ring but keep keyboard focus-visible */
-    .asx-toggle-triangle:focus { outline:none; }
-    .asx-toggle-triangle:focus-visible { outline:2px solid var(--accent-color,#a49393); outline-offset:2px; border-radius:4px; }
-    .asx-toggle-triangle:active { outline:none; }
-    @media (hover:hover){ .asx-toggle-triangle:hover::before, .asx-toggle-triangle:hover::after { opacity:1; } }
-        /* Watchlist picker modal */
-        .watchlist-picker-list { display:flex; flex-direction:column; gap:6px; margin:12px 0; }
-    .watchlist-picker-list .picker-item { padding:10px 12px; border:1px solid var(--border-color,#d0d0d0); border-radius:6px; cursor:pointer; background:var(--card-bg,#fff); color:var(--text-color); font-size:0.95rem; display:flex; justify-content:space-between; align-items:center; transition:background .18s,color .18s,border-color .18s; }
-    .watchlist-picker-list .picker-item.active { background:var(--accent-color,#a49393); color:#fff; border-color:var(--accent-color,#a49393); font-weight:600; box-shadow:0 0 0 2px rgba(255,255,255,0.18) inset; }
-    .watchlist-picker-list .picker-item:hover { background:var(--hover-bg,#f5f7fa); }
-    /* Dark theme override (assumes a body.dark or body.dark-theme class if present) */
-    body.dark .watchlist-picker-list .picker-item { background:var(--card-bg,#222); border-color:var(--border-color,#444); }
-    body.dark .watchlist-picker-list .picker-item:hover { background:#2e2e2e; }
-    body.dark .watchlist-picker-list .picker-item.active { background:var(--accent-color,#a49393); color:#fff; border-color:var(--accent-color,#a49393); box-shadow:0 0 0 2px rgba(0,0,0,0.4) inset; }
-        .modal-content.watchlist-picker { max-width:400px; width:94%; }
-        .modal-actions { text-align:right; margin-top:8px; }
-        @media (max-width:600px){
-            .watchlist-dynamic-title { font-size:1.25rem; }
-            .sort-line-row { gap:10px; }
-            .code-buttons-toggle { font-size:0.8rem; }
-        }
-    /* Flash highlight for scrolled share */
-    .flash-highlight { animation: flashFade 1.2s ease-in-out; }
-    @keyframes flashFade { 0% { box-shadow:0 0 0 3px var(--accent-color,#a49393); } 50% { box-shadow:0 0 0 1px var(--accent-color,#a49393); } 100% { box-shadow:none; } }
-        </style>
 </head>
 <body>
     <!-- Toast notifications container (single instance) -->
@@ -236,14 +42,11 @@
     </div>
 
     <header id="appHeader" class="app-hidden">
-    <div class="header-top-row single-dynamic-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px; position: relative;">
+    <div class="header-top-row single-dynamic-title">
             <div class="header-left-container">
                 <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
                     <i class="fas fa-bars"></i>
                 </button>
-                <div class="live-price-timestamp-container">
-                    <span id="livePriceTimestamp" class="live-price-timestamp"></span>
-                </div>
             </div>
             <!-- Single dynamic clickable title acts as the only title bar -->
             <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
@@ -258,7 +61,9 @@
                     <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
                     <span id="sortIcon" class="sort-icon"></span>
                 </div>
-                <button id="toggleAsxButtonsBtn" class="asx-toggle-triangle" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer"></button>
+                <button id="toggleAsxButtonsBtn" aria-label="Toggle code buttons" aria-pressed="false" aria-controls="asxCodeButtonsContainer">
+                    <span class="asx-toggle-triangle">▼</span>
+                </button>
             </div>
         </div>
         <select id="watchlistSelect" style="display:none"></select>
@@ -1033,7 +838,7 @@
             console.log("index.html script module loaded and DOMContentLoaded fired.");
         }); 
     </script>
-    <script src="script.js?v=0.1.32" type="module"></script>
+    <script src="script.js?v=2.9.0" type="module"></script>
+    <!-- Copilot update: 2025-07-29 - change for sync test -->
 </body>
-<!-- Copilot update: 2025-07-29 - change for sync test -->
 </html>
