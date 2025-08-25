@@ -5246,9 +5246,9 @@ table td.live-price-cell.negative-change {
 
 .google-auth-btn {
     background-color: var(--google-auth-btn-bg);
-    color: var(--google-auth-btn-text);
+    color: #ffffff; /* Force white text for better contrast */
     padding: 12px 25px;
-    border: 1px solid var(--google-auth-btn-text);
+    border: 1px solid #000000; /* Black border */
     border-radius: 25px;
     cursor: pointer;
     font-size: 1.1em;
