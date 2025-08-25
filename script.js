@@ -431,15 +431,15 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             // Card HTML (collapsed/expandable)
-            // Border color logic: always use plClass (overall P/L), never todayClass
+            // Border color logic: use today's change (todayClass) to reflect recent movement
             let borderColor = '';
             let testNeutral = false;
             // Only apply the test border/background for the explicit TEST-NEUTRAL card
             if (share.shareName === 'TEST-NEUTRAL') {
                 borderColor = 'border: 4px solid #a49393; background: repeating-linear-gradient(135deg, #a49393, #a49393 10px, #fff 10px, #fff 20px);';
                 testNeutral = true;
-            } else if (plClass === 'positive') borderColor = 'border: 4px solid #008000;';
-            else if (plClass === 'negative') borderColor = 'border: 4px solid #c42131;';
+            } else if (todayClass === 'positive') borderColor = 'border: 4px solid #008000;';
+            else if (todayClass === 'negative') borderColor = 'border: 4px solid #c42131;';
             // For real neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
             return `<div class="portfolio-card ${testNeutral ? 'neutral' : plClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor && testNeutral ? ` style=\"${borderColor}\"` : ''}>
@@ -760,7 +760,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.15';
+const APP_VERSION = '2.10.17';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
