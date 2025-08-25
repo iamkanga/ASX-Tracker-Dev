@@ -11262,7 +11262,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Toggle open/close
         const close = () => { btn.setAttribute('aria-expanded','false'); list.classList.remove('open'); };
         const open = () => { btn.setAttribute('aria-expanded','true'); list.classList.add('open'); list.focus(); };
-        btn.addEventListener('click', (e)=>{ e.preventDefault(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close(); else open(); });
+    btn.addEventListener('click', (e)=>{ e.preventDefault(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close(); else open(); });
+    // Also respond to pointerdown to improve responsiveness on touch devices and avoid focus race
+    btn.addEventListener('pointerdown', (e)=>{ try { e.preventDefault(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close(); else open(); } catch(_){} });
         // Keyboard: Down/Up to navigate, Enter to select, Escape to close
         btn.addEventListener('keydown', (e)=>{
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); const first = list.querySelector('.custom-dropdown-option'); if (first) first.focus(); }
@@ -11276,8 +11278,10 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); focused.click(); }
             else if (e.key === 'Escape') { e.preventDefault(); close(); btn.focus(); }
         });
-        // Close on outside click
-        document.addEventListener('click', (e)=>{ if (!btn.contains(e.target) && !list.contains(e.target)) close(); });
+    // Close on outside click
+    document.addEventListener('click', (e)=>{ if (!btn.contains(e.target) && !list.contains(e.target)) close(); });
+    // Debugging helper: log when init runs and elements exist
+    try { console.log('[InitSortDropdown] wired btn/list/hidden:', !!btn, !!list, !!hidden); } catch(_) {}
         // Sync visible button label when native select value changes programmatically
         hidden.addEventListener('change', ()=>{
             try {
