@@ -1560,7 +1560,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .movement-combo.negative { color: var(--price-down-color); }
 .movement-combo.neutral { color: var(--price-neutral-color); }
 
-.discover-global-list { /* max-height:60vh; overflow-y:auto; */ }
+.discover-global-list { /* This rule is intentionally left empty to fix a nested scrollbar issue. */ }
 .discover-sort-bar { display:flex; align-items:center; flex-wrap:wrap; column-gap:6px; row-gap:4px; padding:4px 6px 4px; position:sticky; top:0; background:var(--modal-bg, #111); z-index:2; border-bottom:1px solid var(--border-color,#222); }
 .discover-sort-bar label { font-size:1.1rem; text-transform:uppercase; letter-spacing:1.2px; opacity:0.7; font-weight:700; margin-right:6px; }
 .discover-sort-bar select { background:var(--input-bg,#202020); color:var(--text-color); border:2px solid var(--border-color,#3a3a3a); border-radius:6px; padding:8px 16px 10px; font-size:1.1rem; line-height:1.2; min-width:180px; }
