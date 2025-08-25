@@ -5338,7 +5338,7 @@ function renderSortSelect() {
                 _customFrag.appendChild(li);
             };
             // Add ASX toggle first (to fragment). Use a textual label only; the visible glyph is provided by an inline SVG
-            appendCustomItem('__asx_toggle', (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show'), false);
+            appendCustomItem('__asx_toggle', (asxButtonsExpanded ? 'ASX Codes Hide' : 'ASX Codes Show'), false);
         }
     } catch(_) {}
 
@@ -5424,7 +5424,7 @@ function renderSortSelect() {
         } catch(_) {}
 
         // Native option uses a text-only fallback (some browsers strip HTML in <option>)
-        optionElement.textContent = textPrefix + opt.text.replace(/\(H-L\)|\(L-H\)/g, '').trim();
+    optionElement.textContent = textPrefix + opt.text.replace(/\(H-L\)|\(L-H\)/g, '').trim();
         sortSelect.appendChild(optionElement);
 
         // Mirror to custom list fragment if present (use fragment to avoid duplicate appends on re-render)
@@ -5437,7 +5437,9 @@ function renderSortSelect() {
                 li.dataset.value = opt.value;
                 li.className = 'custom-dropdown-option';
                 // Use inline SVG with fill controlled by CSS (currentColor) so colors and sizing are consistent.
-                li.innerHTML = `<span class="custom-dropdown-option-label">${svgHtml} <span class="option-text">${opt.text.replace(/\(H-L\)|\(L-H\)/g,'').trim()}</span></span>`;
+                // Keep the SVG icon but remove the visible textual label to avoid redundancy with icons.
+                // We still set the native <option> text above for accessibility/fallback.
+                li.innerHTML = `<span class="custom-dropdown-option-label">${svgHtml}<span class="option-text visually-hidden">${opt.text.replace(/\(H-L\)|\(L-H\)/g,'').trim()}</span></span>`;
                 li.addEventListener('click', (e) => {
                     e.preventDefault(); e.stopPropagation();
                     try { sortSelect.value = opt.value; const ev = new Event('change', { bubbles: true }); sortSelect.dispatchEvent(ev); } catch(err) { console.warn('CustomDropdown click sync failed', err); }
@@ -5954,9 +5956,12 @@ function renderAsxCodeButtons() {
     }
     const sortedAsxCodes = Array.from(uniqueAsxCodes).sort();
     sortedAsxCodes.forEach(asxCode => {
-        const button = document.createElement('button');
-        button.className = 'asx-code-btn';
-        button.textContent = asxCode;
+    const button = document.createElement('button');
+    button.className = 'asx-code-btn';
+    // Prefix the button label with an inline triangle that mirrors the color used for price change.
+    const triClass = (buttonPriceChangeClass === 'positive') ? 'tri-positive' : (buttonPriceChangeClass === 'negative') ? 'tri-negative' : 'tri-neutral';
+    const triSvg = `<svg class="tri-svg ${triClass}" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="3,0 6,6 0,6" fill="currentColor"></polygon></svg>`;
+    button.innerHTML = `${triSvg} <span class="asx-code-text">${asxCode}</span>`;
         button.dataset.asxCode = asxCode;
 
         // Determine price change class for the button
