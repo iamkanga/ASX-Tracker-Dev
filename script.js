@@ -729,7 +729,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.14';
+const APP_VERSION = '2.10.15';
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
@@ -5222,6 +5222,48 @@ function renderSortSelect() {
         sortSelect.appendChild(asxToggleOption);
     } catch (e) { /* ignore */ }
 
+    // Also populate the visible custom dropdown list (if present). We keep the native select as a hidden shim
+    // so existing code paths that read sortSelect.value/options still work. The custom UI will dispatch
+    // a native 'change' event on the hidden select when user selects an item.
+    // Use a DocumentFragment to batch DOM updates and guard against duplicates on re-renders.
+    let _customFrag = null;
+    try {
+        const customList = document.getElementById('sortDropdownList');
+        const customBtn = document.getElementById('sortDropdownBtn');
+        if (customList) {
+            // clear existing entries safely
+            customList.innerHTML = '';
+            _customFrag = document.createDocumentFragment();
+            // create a helper to add items to the fragment (will be appended later)
+            const appendCustomItem = (val, label, isDisabled) => {
+                const li = document.createElement('li');
+                li.setAttribute('role','option');
+                li.tabIndex = -1;
+                li.dataset.value = val;
+                if (isDisabled) li.setAttribute('aria-disabled','true');
+                li.className = 'custom-dropdown-option';
+                li.innerHTML = `<span class="custom-dropdown-option-label">${label}</span>`;
+                li.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Sync hidden native select value and dispatch change so old handlers run unchanged
+                    try {
+                        sortSelect.value = val;
+                        const ev = new Event('change', { bubbles: true });
+                        sortSelect.dispatchEvent(ev);
+                    } catch(err) { console.warn('CustomDropdown: sync to native select failed', err); }
+                    // close list
+                    if (customBtn) customBtn.setAttribute('aria-expanded','false');
+                    if (customList) customList.classList.remove('open');
+                    if (customBtn) customBtn.focus();
+                });
+                _customFrag.appendChild(li);
+            };
+            // Add ASX toggle first (to fragment)
+            appendCustomItem('__asx_toggle', (asxButtonsExpanded ? '▲ ASX Codes — Hide' : '▼ ASX Codes — Show'), false);
+        }
+    } catch(_) {}
+
     const stockOptions = [
         { value: 'percentageChange-desc', text: 'Change % (H-L)' },
         { value: 'percentageChange-asc', text: 'Change % (L-H)' },
@@ -5279,15 +5321,45 @@ function renderSortSelect() {
         try {
             if (opt.value && opt.value.includes('-desc')) {
                 // descending (H-L): green upward triangle marker
-                label = '🟢▲ ' + opt.text.replace('(H-L)', '').trim();
+                label = '<svg class="tri-svg tri-positive" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="3,0 6,6 0,6" fill="currentColor"></polygon></svg> ' + opt.text.replace('(H-L)', '').trim();
             } else if (opt.value && opt.value.includes('-asc')) {
                 // ascending (L-H): red downward triangle marker
-                label = '🔴▼ ' + opt.text.replace('(L-H)', '').trim();
+                label = '<svg class="tri-svg tri-negative" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="0,0 6,0 3,6" fill="currentColor"></polygon></svg> ' + opt.text.replace('(L-H)', '').trim();
             }
         } catch(_) {}
-        optionElement.textContent = label;
+        // For native option we fallback to text-only label (some browsers strip HTML in option). Include a simple text prefix so it's readable.
+        const textPrefix = (opt.value && opt.value.includes('-desc')) ? '\u25B2 ' : (opt.value && opt.value.includes('-asc') ? '\u25BC ' : '');
+        optionElement.textContent = textPrefix + opt.text.replace(/\(H-L\)|\(L-H\)/g, '').trim();
         sortSelect.appendChild(optionElement);
+
+        // Mirror to custom list fragment if present (use fragment to avoid duplicate appends on re-render)
+        try {
+            const customList = document.getElementById('sortDropdownList');
+            if (customList && _customFrag) {
+                const li = document.createElement('li');
+                li.setAttribute('role','option');
+                li.tabIndex = -1;
+                li.dataset.value = opt.value;
+                li.className = 'custom-dropdown-option';
+                // Use inline SVG for color triangles sized to match text via 1em units
+                const svgHtml = opt.value.includes('-desc')
+                    ? '<svg class="tri-svg tri-positive" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="3,0 6,6 0,6" fill="#2ecc71"></polygon></svg>'
+                    : (opt.value.includes('-asc')
+                        ? '<svg class="tri-svg tri-negative" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="0,0 6,0 3,6" fill="#e74c3c"></polygon></svg>'
+                        : '');
+                li.innerHTML = `<span class="custom-dropdown-option-label">${svgHtml} <span class="option-text">${opt.text.replace(/\(H-L\)|\(L-H\)/g,'').trim()}</span></span>`;
+                li.addEventListener('click', (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    try { sortSelect.value = opt.value; const ev = new Event('change', { bubbles: true }); sortSelect.dispatchEvent(ev); } catch(err) { console.warn('CustomDropdown click sync failed', err); }
+                    const btn = document.getElementById('sortDropdownBtn'); if (btn) { btn.setAttribute('aria-expanded','false'); btn.focus(); }
+                    const customListEl = document.getElementById('sortDropdownList'); if (customListEl) customListEl.classList.remove('open');
+                });
+                _customFrag.appendChild(li);
+            }
+        } catch(_) {}
     });
+    // Append any collected custom items in one operation (if created)
+    try { if (_customFrag) { const cl = document.getElementById('sortDropdownList'); if (cl) cl.appendChild(_customFrag); } } catch(_) {}
     logDebug(`Sort Select: Populated with ${logMessage}.`);
 
     // Prefer an explicitly set currentSortOrder if it's valid for this view
@@ -11181,6 +11253,41 @@ document.addEventListener('DOMContentLoaded', function() {
     try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
     // Early notification restore from persisted count
     try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
+    // Initialize custom dropdown behavior (if present)
+    (function initCustomSortDropdown(){
+        const btn = document.getElementById('sortDropdownBtn');
+        const list = document.getElementById('sortDropdownList');
+        const hidden = document.getElementById('sortSelect');
+        if (!btn || !list || !hidden) return;
+        // Toggle open/close
+        const close = () => { btn.setAttribute('aria-expanded','false'); list.classList.remove('open'); };
+        const open = () => { btn.setAttribute('aria-expanded','true'); list.classList.add('open'); list.focus(); };
+        btn.addEventListener('click', (e)=>{ e.preventDefault(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close(); else open(); });
+        // Keyboard: Down/Up to navigate, Enter to select, Escape to close
+        btn.addEventListener('keydown', (e)=>{
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); const first = list.querySelector('.custom-dropdown-option'); if (first) first.focus(); }
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); const first = list.querySelector('.custom-dropdown-option'); if (first) first.focus(); }
+        });
+        list.addEventListener('keydown', (e)=>{
+            const focused = document.activeElement;
+            if (!focused || !focused.classList.contains('custom-dropdown-option')) return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); const next = focused.nextElementSibling || list.querySelector('.custom-dropdown-option'); if (next) next.focus(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); const prev = focused.previousElementSibling || list.querySelector('.custom-dropdown-option:last-child'); if (prev) prev.focus(); }
+            else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); focused.click(); }
+            else if (e.key === 'Escape') { e.preventDefault(); close(); btn.focus(); }
+        });
+        // Close on outside click
+        document.addEventListener('click', (e)=>{ if (!btn.contains(e.target) && !list.contains(e.target)) close(); });
+        // Sync visible button label when native select value changes programmatically
+        hidden.addEventListener('change', ()=>{
+            try {
+                const v = hidden.value;
+                const opt = Array.from(hidden.options).find(o=>o.value===v);
+                const btnLabel = document.getElementById('sortDropdownBtn');
+                if (btnLabel && opt) btnLabel.textContent = opt.textContent || 'Sort List';
+            } catch(_){}
+        });
+    })();
 
     // Ensure Edit Current Watchlist button updates when watchlist selection changes
     if (watchlistSelect) {
