@@ -137,10 +137,12 @@
 .custom-dropdown-option:hover, .custom-dropdown-option:focus { background: var(--hover-bg,#f4f6f8); outline: none; }
 .custom-dropdown-option[aria-disabled="true"] { opacity: 0.6; cursor: default; }
 .custom-dropdown-option-label { display: inline-flex; align-items: center; gap: 0.5rem; }
-.tri-svg { width: 1em; height: 1em; flex: 0 0 auto; vertical-align: middle; }
+.tri-svg { width: 1em; height: 1em; flex: 0 0 auto; vertical-align: middle; display: inline-block; }
+/* SVG shapes inherit currentColor so CSS classes control fill/stroke reliably */
+.tri-svg polygon, .tri-svg polyline { fill: currentColor; stroke: currentColor; }
 .tri-positive { color: #2ecc71; }
 .tri-negative { color: #e74c3c; }
-.custom-dropdown .option-text { font-size: 0.95rem; }
+.custom-dropdown .option-text { font-size: 0.95rem; color: var(--text-color, #222); }
 .asx-toggle-triangle .chevron-svg {
     width: 18px;
     height: 18px;
@@ -233,9 +235,15 @@
     box-sizing: border-box;
 }
 .sort-controls-container .toggle-asx-btn {
-    /* Hide the external ASX toggle button — the ASX control is now provided
-       as the first interactive option inside the sortSelect dropdown. */
-    display: none !important;
+    /* Restore visibility of the ASX toggle button so it remains a separate control
+       and does not interfere with the sort dropdown. */
+    display: inline-flex !important;
+    align-items: center;
+    gap: 8px;
+    margin-left: 6px;
+    color: var(--ghosted-text, #666);
+    background: transparent;
+    border: none;
 }
 .sort-select-wrapper .toggle-asx-btn:focus {
     outline: none;

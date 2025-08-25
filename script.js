@@ -5319,19 +5319,36 @@ function renderSortSelect() {
     optionsToShow.forEach(opt => {
         const optionElement = document.createElement('option');
         optionElement.value = opt.value;
-        // Replace H-L / L-H textual hints with triangle icons: green up/down for H-L, red for L-H
-        let label = opt.text;
+
+        // Determine SVG and text prefix mapping.
+        // Special-case name/code sorts so A-Z shows a green up arrow and Z-A shows a red down arrow.
+        let svgHtml = '';
+        let textPrefix = '';
         try {
-            if (opt.value && opt.value.includes('-desc')) {
-                // descending (H-L): green upward triangle marker
-                label = '<svg class="tri-svg tri-positive" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="3,0 6,6 0,6" fill="currentColor"></polygon></svg> ' + opt.text.replace('(H-L)', '').trim();
-            } else if (opt.value && opt.value.includes('-asc')) {
-                // ascending (L-H): red downward triangle marker
-                label = '<svg class="tri-svg tri-negative" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="0,0 6,0 3,6" fill="currentColor"></polygon></svg> ' + opt.text.replace('(L-H)', '').trim();
+            const isNameSort = /shareName|name/.test(opt.value);
+            if (isNameSort) {
+                if (opt.value.endsWith('-asc')) {
+                    // A to Z -> green up
+                    svgHtml = '<svg class="tri-svg tri-positive" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="3,0 6,6 0,6" fill="currentColor"></polygon></svg>';
+                    textPrefix = '\u25B2 ';
+                } else if (opt.value.endsWith('-desc')) {
+                    // Z to A -> red down
+                    svgHtml = '<svg class="tri-svg tri-negative" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="0,0 6,0 3,6" fill="currentColor"></polygon></svg>';
+                    textPrefix = '\u25BC ';
+                }
+            } else {
+                // Preserve existing semantics for other sorts (H-L shown as up, L-H shown as down)
+                if (opt.value.includes('-desc')) {
+                    svgHtml = '<svg class="tri-svg tri-positive" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="3,0 6,6 0,6" fill="currentColor"></polygon></svg>';
+                    textPrefix = '\u25B2 ';
+                } else if (opt.value.includes('-asc')) {
+                    svgHtml = '<svg class="tri-svg tri-negative" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="0,0 6,0 3,6" fill="currentColor"></polygon></svg>';
+                    textPrefix = '\u25BC ';
+                }
             }
         } catch(_) {}
-        // For native option we fallback to text-only label (some browsers strip HTML in option). Include a simple text prefix so it's readable.
-        const textPrefix = (opt.value && opt.value.includes('-desc')) ? '\u25B2 ' : (opt.value && opt.value.includes('-asc') ? '\u25BC ' : '');
+
+        // Native option uses a text-only fallback (some browsers strip HTML in <option>)
         optionElement.textContent = textPrefix + opt.text.replace(/\(H-L\)|\(L-H\)/g, '').trim();
         sortSelect.appendChild(optionElement);
 
@@ -5344,12 +5361,7 @@ function renderSortSelect() {
                 li.tabIndex = -1;
                 li.dataset.value = opt.value;
                 li.className = 'custom-dropdown-option';
-                // Use inline SVG for color triangles sized to match text via 1em units
-                const svgHtml = opt.value.includes('-desc')
-                    ? '<svg class="tri-svg tri-positive" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="3,0 6,6 0,6" fill="#2ecc71"></polygon></svg>'
-                    : (opt.value.includes('-asc')
-                        ? '<svg class="tri-svg tri-negative" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="0,0 6,0 3,6" fill="#e74c3c"></polygon></svg>'
-                        : '');
+                // Use inline SVG with fill controlled by CSS (currentColor) so colors and sizing are consistent.
                 li.innerHTML = `<span class="custom-dropdown-option-label">${svgHtml} <span class="option-text">${opt.text.replace(/\(H-L\)|\(L-H\)/g,'').trim()}</span></span>`;
                 li.addEventListener('click', (e) => {
                     e.preventDefault(); e.stopPropagation();
