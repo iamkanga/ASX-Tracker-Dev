@@ -2127,13 +2127,18 @@ function updateSortIcon() {
 
     sortIcon.className = 'sort-icon'; // Reset classes
 
-    // Green up arrow for descending (e.g., price_desc -> high to low)
-    if (sortValue.endsWith('_desc')) {
-        sortIcon.classList.add('up');
-    }
-    // Red down arrow for ascending (e.g., price_asc -> low to high)
-    else if (sortValue.endsWith('_asc')) {
-        sortIcon.classList.add('down');
+    // Determine suffix (support both legacy underscore and current hyphen styles)
+    const isDesc = sortValue.endsWith('_desc') || sortValue.endsWith('-desc');
+    const isAsc = sortValue.endsWith('_asc') || sortValue.endsWith('-asc');
+    // Special-case name/code sorts: A→Z should show a green UP triangle, Z→A a red DOWN triangle.
+    const isNameSort = /shareName|name/.test(sortValue);
+    if (isNameSort) {
+        if (isAsc) sortIcon.classList.add('up'); // A -> Z => up/positive
+        else if (isDesc) sortIcon.classList.add('down'); // Z -> A => down/negative
+    } else {
+        // Preserve existing semantics for other sorts: desc => up (high->low), asc => down (low->high)
+        if (isDesc) sortIcon.classList.add('up');
+        else if (isAsc) sortIcon.classList.add('down');
     }
 }
 
@@ -11331,13 +11336,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Debugging helper: log when init runs and elements exist
     try { console.log('[InitSortDropdown] wired btn/list/hidden:', !!btn, !!list, !!hidden); } catch(_) {}
         // Sync visible button label when native select value changes programmatically
+        // Do NOT update the visible label when the special ASX toggle pseudo-option is selected.
         hidden.addEventListener('change', ()=>{
             try {
                 const v = hidden.value;
+                if (v === '__asx_toggle') return; // preserve visible label when toggling ASX codes
                 const opt = Array.from(hidden.options).find(o=>o.value===v);
                 const btnLabel = document.getElementById('sortDropdownBtn');
                 if (btnLabel && opt) btnLabel.textContent = opt.textContent || 'Sort List';
-            } catch(_){}
+            } catch(_){ }
         });
     })();
 
