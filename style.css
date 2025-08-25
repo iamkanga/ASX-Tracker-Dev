@@ -7134,7 +7134,7 @@ body.dark-theme .alert-item {
     z-index: 2000; /* Ensure it's on top of everything */
     transition: opacity 0.5s ease-out; /* Smooth fade-out transition */
     opacity: 1; /* Initially fully visible */
-    overflow: hidden; /* Prevent scrolling on the splash screen itself */
+    overflow: auto; /* Allow scrolling if content is larger than viewport */
 }
 
 .splash-screen.hidden {
@@ -7144,14 +7144,16 @@ body.dark-theme .alert-item {
 
 .splash-icon {
     /* Allow it to take up full width/height of splash screen while maintaining aspect ratio */
-    max-width: 100%;
-    max-height: 100%;
+    /* Constrain splash image so it doesn't fill the entire viewport and push controls off-screen */
+    max-width: 60vw;
+    max-height: 48vh;
     width: auto;  /* Let browser determine width based on aspect ratio */
     height: auto; /* Let browser determine height based on aspect ratio */
     object-fit: contain; /* Crucial to keep this to prevent text cropping */
     margin-bottom: 20px; /* Space between image and button */
     /* Initial state for animation */
     opacity: 1;
+    z-index: 2000; /* sit behind splash buttons */
 }
 
 /* Pulsing animation for the splash icon */
@@ -7194,6 +7196,7 @@ body.dark-theme .alert-item {
     font-size: 1.2em; /* Slightly larger text */
     border-radius: 30px; /* More rounded corners */
     box-shadow: 0 5px 15px rgba(0,0,0,0.3); /* More prominent shadow */
+    z-index: 2003; /* ensure button sits above the splash image */
 }
 
 /* NEW: Stock Search Modal Styles */
@@ -7586,12 +7589,14 @@ body.dark-theme .alert-item {
         padding: 0; /* Remove any padding that might constrain the image */
     }
 
-    /* Make the splash icon truly fill the entire screen area */
+    /* Constrain splash icon on small screens so controls remain accessible and scrolling works */
     .splash-icon {
-        width: 100%;    /* Force width to 100% of its container */
-        height: 100%;   /* Force height to 100% of its container */
-        object-fit: cover; /* Make the image cover the entire area, potentially cropping edges (but text is safe now) */
-        margin-bottom: 0; /* Ensure no margin pushes it up */
+        width: auto;    /* let intrinsic scale but constrained by max dimensions */
+        height: auto;
+        max-width: 90vw;
+        max-height: 60vh;
+        object-fit: contain; /* keep the image visible without cropping */
+        margin-bottom: 12px; /* keep space for sign-in button */
     }
 
     /* Adjust the sign-in button position to be clearly above mobile browser UI */
