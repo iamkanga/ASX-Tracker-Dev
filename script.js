@@ -1672,21 +1672,28 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     try {
         const sortWrapper = document.querySelector('.sort-select-wrapper');
         if (sortWrapper) {
-            // If the click target is the select element, let the browser handle it (opening the select)
+            // Clicking the wrapper should open the sort select by default.
+            // Only allow the ASX toggle button itself to toggle ASX codes.
             sortWrapper.addEventListener('click', (e) => {
                 const target = e.target;
+                // If the native select (or something inside it) was clicked, let the browser handle it
                 if (target && (target.tagName === 'SELECT' || (target.closest && target.closest('select')))) {
                     return; // let select handle interaction
                 }
-                try { e.stopPropagation(); e.preventDefault(); } catch(_) {}
-                // Toggle the ASX buttons and persist state
-                asxButtonsExpanded = !asxButtonsExpanded;
-                try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
-                applyAsxButtonsState();
-                // Mirror visual feedback on the button
-                try { toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!asxButtonsExpanded)); toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!asxButtonsExpanded)); } catch(_) {}
-                // Close native select if it is open to ensure the sort box collapses visually
-                try { if (typeof sortSelect !== 'undefined' && sortSelect && document.activeElement === sortSelect) sortSelect.blur(); } catch(_) {}
+                // If the click originated on the ASX toggle button (or inside it), do nothing here;
+                // the toggle button has its own click handler that will run.
+                if (toggleAsxButtonsBtn && (target === toggleAsxButtonsBtn || (target.closest && target.closest('#toggleAsxButtonsBtn')))) {
+                    return;
+                }
+                // Otherwise, open/focus the native sort select so the options are shown
+                try {
+                    if (typeof sortSelect !== 'undefined' && sortSelect) {
+                        // Focus first
+                        sortSelect.focus();
+                        // Attempt to open the native select dropdown by simulating a click
+                        try { sortSelect.click(); } catch(_) {}
+                    }
+                } catch(_) {}
             }, { passive: false });
         }
     } catch(_) {}
