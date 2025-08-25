@@ -146,6 +146,25 @@
     stroke: currentColor !important;
 }
 
+/* Strongly enforce triangle colors inside the custom dropdown so broad inheritance
+   rules cannot grey them out. Target the polygon/polyline directly with high specificity. */
+.custom-dropdown-list .custom-dropdown-option .tri-positive polygon,
+.custom-dropdown-list .custom-dropdown-option .tri-positive polyline,
+.custom-dropdown .custom-dropdown-option .tri-positive polygon,
+.custom-dropdown .custom-dropdown-option .tri-positive polyline {
+    fill: #2ecc71 !important;
+    stroke: #2ecc71 !important;
+    color: #2ecc71 !important;
+}
+.custom-dropdown-list .custom-dropdown-option .tri-negative polygon,
+.custom-dropdown-list .custom-dropdown-option .tri-negative polyline,
+.custom-dropdown .custom-dropdown-option .tri-negative polygon,
+.custom-dropdown .custom-dropdown-option .tri-negative polyline {
+    fill: #e74c3c !important;
+    stroke: #e74c3c !important;
+    color: #e74c3c !important;
+}
+
 /* Extra safety: ensure toggle label inside list items uses theme colour and remains visible on small screens */
 .custom-dropdown .asx-toggle-label {
     color: var(--text-color) !important;
