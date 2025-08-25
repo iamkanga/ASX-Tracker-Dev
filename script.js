@@ -729,7 +729,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.10';
+const APP_VERSION = '2.10.11';
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
@@ -1621,6 +1621,13 @@ function applyAsxButtonsState() {
         toggleAsxButtonsBtn.style.display = 'inline-flex'; // Use inline-flex for proper alignment
         toggleAsxButtonsBtn.removeAttribute('aria-disabled');
     }
+    // Update accessible pressed/expanded state and label text
+    try {
+        toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
+        toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
+        const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
+        if (labelSpan) labelSpan.textContent = 'ASX Codes';
+    } catch(_) {}
     // Update chevron rotation
     const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
     if (chevronIcon) {
@@ -1643,6 +1650,12 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
         setTimeout(adjustMainContentPadding, 700);
     // New: Always scroll to top smoothly after toggling for visibility of top cards
     try { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); } catch(_) { window.scrollTo(0,0); }
+    // Update aria states and visual pressed attribute for button
+    try {
+        toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!asxButtonsExpanded));
+        toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!asxButtonsExpanded));
+        const tri = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle'); if (tri) tri.classList.toggle('expanded', !!asxButtonsExpanded);
+    } catch(_) {}
     });
     // Also adjust precisely on transition end of the container
     asxCodeButtonsContainer.addEventListener('transitionend', (ev) => {
