@@ -23,7 +23,7 @@
     margin-bottom: 0;
 }
 .low52-header-row .low52-code {
-    flex: 0 0 auto; /* Don't shrink the  code */
+    flex: 0 0 auto; /* Don't shrink the code */
     font-weight: 700; /* Bolder code */
     font-size: 1em; /* Adjusted size */
     margin-right: 8px;
@@ -78,7 +78,16 @@
     width: 100%;
     padding-top: 8px; /* Add some space above it */
 }
-/* Minimalistic chevron for ASX code toggle (header instance removed; generic .toggle-asx-btn retained) */
+/* Minimalistic chevron for ASX code toggle */
+#toggleAsxButtonsBtn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
 
 .toggle-asx-btn {
     background: transparent;
@@ -109,78 +118,6 @@
     width: 18px;
     height: 18px;
     padding: 0;
-}
-
-/* Ensure the dropdown ASX toggle triangle transitions and color correctly */
-.custom-dropdown-option .asx-toggle-triangle {
-    transition: transform 0.22s ease, color 0.18s ease;
-    transform-origin: 50% 50%;
-}
-.custom-dropdown-option .asx-toggle-triangle.expanded {
-    transform: rotate(180deg);
-}
-.custom-dropdown-option .asx-toggle-triangle.tri-positive { color: #2ecc71 !important; }
-.custom-dropdown-option .asx-toggle-triangle.tri-negative { color: #e74c3c !important; }
-.custom-dropdown-option .asx-toggle-triangle .chevron-svg polygon { fill: currentColor !important; }
-
-/* Hidden helper for accessibility when preserving native select shim */
-.visually-hidden {
-    position: absolute !important;
-    height: 1px; width: 1px; overflow: hidden;
-    clip: rect(1px, 1px, 1px, 1px); white-space: nowrap; border: 0; padding: 0; margin: -1px;
-}
-
-/* Custom dropdown visible control */
-.custom-dropdown { position: relative; display: inline-block; }
-.custom-dropdown-trigger { display: inline-flex; align-items: center; gap: 0.5rem; padding: 8px 10px; background: var(--panel-bg,#fff); border: 1px solid var(--border-color,#ddd); border-radius: 6px; cursor: pointer; font-size: 1rem; color: var(--text-color) !important; }
-.custom-dropdown-trigger:focus { outline: 3px solid rgba(59,130,246,0.25); outline-offset: 2px; }
-.custom-dropdown-list { position: absolute; top: calc(100% + 6px); left: 0; z-index: 600; min-width: 220px; max-width: 420px; max-height: 320px; overflow: auto; background: var(--panel-bg, var(--card-bg, #fff)) !important; border: 1px solid var(--border-color,#ddd); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.12); padding: 6px 6px; display: none; pointer-events: auto; color: var(--text-color) !important; }
-.custom-dropdown-list.open { display: block; }
-.custom-dropdown-option { display: flex; align-items: center; gap: 0.6rem; padding: 8px 10px; cursor: pointer; border-radius: 6px; color: var(--text-color,#222) !important; }
-.custom-dropdown-option:hover, .custom-dropdown-option:focus { background: var(--hover-bg,#f4f6f8); outline: none; }
-.custom-dropdown-option[aria-disabled="true"] { opacity: 0.6; cursor: default; }
-.custom-dropdown-option-label { display: inline-flex; align-items: center; gap: 0.5rem; }
-.tri-svg { width: 1em; height: 1em; flex: 0 0 auto; vertical-align: middle; display: inline-block; }
-/* SVG shapes inherit currentColor so CSS classes control fill/stroke reliably */
-.tri-svg polygon, .tri-svg polyline { fill: currentColor; stroke: currentColor; }
-.tri-positive { color: #2ecc71 !important; }
-.tri-negative { color: #e74c3c !important; }
-.custom-dropdown .option-text { font-size: 0.95rem; color: var(--text-color, #222) !important; display: inline-block !important; }
-
-/* Ensure dropdown content always inherits theme text colour and that nested elements don't accidentally become invisible */
-.custom-dropdown-option, .custom-dropdown-option * {
-    color: inherit !important;
-}
-/* Allow SVG elements to keep their specified currentColor styling from .tri-positive / .tri-negative */
-.custom-dropdown-option svg, .custom-dropdown-option polygon, .custom-dropdown-option polyline {
-    color: unset !important;
-    fill: currentColor !important;
-    stroke: currentColor !important;
-}
-
-/* Strongly enforce triangle colors inside the custom dropdown so broad inheritance
-   rules cannot grey them out. Target the polygon/polyline directly with high specificity. */
-.custom-dropdown-list .custom-dropdown-option .tri-positive polygon,
-.custom-dropdown-list .custom-dropdown-option .tri-positive polyline,
-.custom-dropdown .custom-dropdown-option .tri-positive polygon,
-.custom-dropdown .custom-dropdown-option .tri-positive polyline {
-    fill: #2ecc71 !important;
-    stroke: #2ecc71 !important;
-    color: #2ecc71 !important;
-}
-.custom-dropdown-list .custom-dropdown-option .tri-negative polygon,
-.custom-dropdown-list .custom-dropdown-option .tri-negative polyline,
-.custom-dropdown .custom-dropdown-option .tri-negative polygon,
-.custom-dropdown .custom-dropdown-option .tri-negative polyline {
-    fill: #e74c3c !important;
-    stroke: #e74c3c !important;
-    color: #e74c3c !important;
-}
-
-/* Extra safety: ensure toggle label inside list items uses theme colour and remains visible on small screens */
-.custom-dropdown .asx-toggle-label {
-    color: var(--text-color) !important;
-    display: inline-block !important;
 }
 .asx-toggle-triangle .chevron-svg {
     width: 18px;
@@ -274,15 +211,9 @@
     box-sizing: border-box;
 }
 .sort-controls-container .toggle-asx-btn {
-    /* Restore visibility of the ASX toggle button so it remains a separate control
-       and does not interfere with the sort dropdown. */
-    display: inline-flex !important;
-    align-items: center;
-    gap: 8px;
-    margin-left: 6px;
-    color: var(--ghosted-text, #666);
-    background: transparent;
-    border: none;
+    /* Hide the external ASX toggle button — the ASX control is now provided
+       as the first interactive option inside the sortSelect dropdown. */
+    display: none !important;
 }
 .sort-select-wrapper .toggle-asx-btn:focus {
     outline: none;
@@ -295,16 +226,6 @@
 @media (max-width: 480px) {
     .sort-select-wrapper .asx-toggle-label { display: none; }
     .sort-select-wrapper .toggle-asx-btn { padding: 6px; }
-}
-/* Ensure option text and ASX toggle label remain visible in all themes, including dark mode */
-.custom-dropdown .option-text,
-.sort-select-wrapper .asx-toggle-label {
-    display: inline-block !important;
-    color: var(--text-color) !important;
-}
-/* Small screens: keep label truncated but visible instead of hidden completely */
-@media (max-width: 480px) {
-    .sort-select-wrapper .asx-toggle-label { display: inline-block !important; max-width: 7ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
 @media (max-width: 600px) {
@@ -1776,7 +1697,6 @@ body.dark-theme .mobile-share-cards.compact-view .target-hit-alert {
 /* Dark Theme Variables */
 body.dark-theme {
     /* Dark Theme Variables */
-    --panel-bg: var(--card-bg);
     --background-color: #1a1a1a; /* Very dark gray/almost black */
     --text-color: #ffffff; /* White for all primary data/content text */
     --header-bg: #282828; /* Darker gray for header */
@@ -8046,8 +7966,6 @@ body.dark-theme .alert-item {
 }
 
 .sort-icon {
-    /* Keep element present for accessibility but hide its permanent graphical display.
-       The visible label is managed by the custom dropdown trigger. */
     position: absolute;
     right: 8px; /* Position icon inside the select box */
     top: 50%;
@@ -8056,12 +7974,7 @@ body.dark-theme .alert-item {
     font-size: 0.8em;
     color: var(--ghosted-text);
     transition: transform 0.2s ease-in-out;
-    opacity: 0; /* hide the permanent icon */
-    width: 0; height: 0; overflow: hidden; /* remove from layout */
-    display: none !important; /* fully remove from rendering/layout to eliminate permanent chevron */
 }
-.custom-dropdown-trigger .trigger-label { display: inline-block; }
-.custom-dropdown-trigger .trigger-chevron { margin-left: 8px; font-size: 0.9em; color: var(--ghosted-text); }
 
 .sort-icon.up::before {
     content: '▲';
@@ -8072,11 +7985,6 @@ body.dark-theme .alert-item {
     content: '▼';
     color: var(--price-down-color);
 }
-
-/* Force high-specificity fallback to ensure icons pick up the intended color even when
-   broader inheritance rules are present. This targets the concrete header sort wrapper. */
-.sort-select-wrapper .sort-icon.up::before { color: var(--price-up-color) !important; }
-.sort-select-wrapper .sort-icon.down::before { color: var(--price-down-color) !important; }
 
 /* Ensure toggle button is vertically aligned and has appropriate size */
 .sort-controls-container .asx-toggle-triangle {

@@ -729,7 +729,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.17';
+const APP_VERSION = '2.10.13';
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
@@ -1608,13 +1608,10 @@ let asxButtonsExpanded = false;
 try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 'true') asxButtonsExpanded = true; } catch(e) {}
 
 function applyAsxButtonsState() {
-    // Only require the ASX code buttons container. The header toggle button may be removed
-    // (we keep the single toggle inside the sort dropdown). Make this function resilient
-    // so clicking the dropdown's __asx_toggle still shows/hides the buttons.
-    if (!asxCodeButtonsContainer) return;
+    if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
     const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
-    const hasButtons = !!asxCodeButtonsContainer.querySelector('button.asx-code-btn');
-    const shouldShow = !!hasButtons && !!asxButtonsExpanded;
+    const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
+    const shouldShow = !!hasButtons && asxButtonsExpanded;
 
     if (shouldShow) {
         asxCodeButtonsContainer.classList.add('expanded');
@@ -1622,33 +1619,28 @@ function applyAsxButtonsState() {
         asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
     } else {
         asxCodeButtonsContainer.classList.remove('expanded');
-        asxCodeButtonsContainer.classList.add('app-hidden');
         asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
     }
-
-    // If the header toggle button exists, update its visibility and ARIA state.
-    if (typeof toggleAsxButtonsBtn !== 'undefined' && toggleAsxButtonsBtn && toggleAsxButtonsBtn.nodeType === 1) {
-        if (!hasButtons) {
-            try { toggleAsxButtonsBtn.style.display = 'none'; } catch(_) {}
-            try { toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true'); } catch(_) {}
-        } else {
-            try { toggleAsxButtonsBtn.style.display = 'inline-flex'; } catch(_) {}
-            try { toggleAsxButtonsBtn.removeAttribute('aria-disabled'); } catch(_) {}
-        }
-        // Update accessible pressed/expanded state and label text
-        try {
-            toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
-            toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
-            const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
-            if (labelSpan) labelSpan.textContent = 'ASX Codes';
-        } catch(_) {}
-        // Update chevron rotation
-        try {
-            const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
-            if (chevronIcon) chevronIcon.classList.toggle('expanded', shouldShow);
-        } catch(_) {}
+    // Chevron visibility and state
+    if (!hasButtons) {
+        toggleAsxButtonsBtn.style.display = 'none';
+        toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
+    } else {
+        toggleAsxButtonsBtn.style.display = 'inline-flex'; // Use inline-flex for proper alignment
+        toggleAsxButtonsBtn.removeAttribute('aria-disabled');
     }
-
+    // Update accessible pressed/expanded state and label text
+    try {
+        toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
+        toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
+        const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
+        if (labelSpan) labelSpan.textContent = 'ASX Codes';
+    } catch(_) {}
+    // Update chevron rotation
+    const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
+    if (chevronIcon) {
+        chevronIcon.classList.toggle('expanded', shouldShow);
+    }
     requestAnimationFrame(adjustMainContentPadding);
 }
 
@@ -2135,18 +2127,13 @@ function updateSortIcon() {
 
     sortIcon.className = 'sort-icon'; // Reset classes
 
-    // Determine suffix (support both legacy underscore and current hyphen styles)
-    const isDesc = sortValue.endsWith('_desc') || sortValue.endsWith('-desc');
-    const isAsc = sortValue.endsWith('_asc') || sortValue.endsWith('-asc');
-    // Special-case name/code sorts: A→Z should show a green UP triangle, Z→A a red DOWN triangle.
-    const isNameSort = /shareName|name/.test(sortValue);
-    if (isNameSort) {
-        if (isAsc) sortIcon.classList.add('up'); // A -> Z => up/positive
-        else if (isDesc) sortIcon.classList.add('down'); // Z -> A => down/negative
-    } else {
-        // Preserve existing semantics for other sorts: desc => up (high->low), asc => down (low->high)
-        if (isDesc) sortIcon.classList.add('up');
-        else if (isAsc) sortIcon.classList.add('down');
+    // Green up arrow for descending (e.g., price_desc -> high to low)
+    if (sortValue.endsWith('_desc')) {
+        sortIcon.classList.add('up');
+    }
+    // Red down arrow for ascending (e.g., price_asc -> low to high)
+    else if (sortValue.endsWith('_asc')) {
+        sortIcon.classList.add('down');
     }
 }
 
@@ -5228,119 +5215,11 @@ function renderSortSelect() {
     try {
         const asxToggleOption = document.createElement('option');
         asxToggleOption.value = '__asx_toggle';
-        // Use a triangle icon to indicate state: green triangle when expanded, red when collapsed
-    asxToggleOption.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+        asxToggleOption.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
         asxToggleOption.dataset.toggle = 'asx';
         // Insert as the first selectable option after the disabled placeholder
         sortSelect.appendChild(asxToggleOption);
     } catch (e) { /* ignore */ }
-
-    // Also populate the visible custom dropdown list (if present). We keep the native select as a hidden shim
-    // so existing code paths that read sortSelect.value/options still work. The custom UI will dispatch
-    // a native 'change' event on the hidden select when user selects an item.
-    // Use a DocumentFragment to batch DOM updates and guard against duplicates on re-renders.
-    let _customFrag = null;
-    try {
-        const customList = document.getElementById('sortDropdownList');
-        const customBtn = document.getElementById('sortDropdownBtn');
-        if (customList) {
-            // clear existing entries safely
-            try { console.log('[renderSortSelect] Clearing customList and creating fragment'); } catch(_){}
-            customList.innerHTML = '';
-            _customFrag = document.createDocumentFragment();
-            // create a helper to add items to the fragment (will be appended later)
-            const appendCustomItem = (val, label, isDisabled) => {
-                // Idempotent guard: if an element with this data-value already exists in the document
-                // or has been queued on the fragment, skip creating another one. This prevents duplicate
-                // ASX toggle buttons when renderSortSelect runs multiple times.
-                try {
-                    if (document.querySelector('.custom-dropdown-option[data-value="' + val + '"]')) {
-                        try { console.log('[renderSortSelect] skipping append, already exists in DOM for', val); } catch(_){}
-                        return;
-                    }
-                    if (_customFrag && Array.from(_customFrag.childNodes).some(n => n.dataset && n.dataset.value === val)) {
-                        try { console.log('[renderSortSelect] skipping append, already queued in fragment for', val); } catch(_){}
-                        return;
-                    }
-                } catch(_) {}
-
-                const li = document.createElement('li');
-                li.setAttribute('role','option');
-                li.tabIndex = -1;
-                li.dataset.value = val;
-                if (isDisabled) li.setAttribute('aria-disabled','true');
-                li.className = 'custom-dropdown-option';
-                // If this is the ASX toggle pseudo-option, inject an inline SVG triangle that we can
-                // rotate and recolor via CSS classes. Otherwise render a plain label.
-                if (val === '__asx_toggle') {
-                    // SVG: single triangle pointing up (we will rotate via CSS for collapsed state)
-                    const triClass = asxButtonsExpanded ? 'tri-positive expanded' : 'tri-negative';
-                    li.innerHTML = `
-                        <span class="custom-dropdown-option-label asx-toggle-label">
-                            <span class="asx-toggle-text">${label}</span>
-                            <span class="asx-toggle-triangle ${triClass}" aria-hidden="true">
-                                <svg class="chevron-svg" viewBox="0 0 6 6" width="1em" height="1em" focusable="false" aria-hidden="true">
-                                    <polygon points="3,0 6,6 0,6" fill="currentColor"></polygon>
-                                </svg>
-                            </span>
-                        </span>`;
-                } else {
-                    li.innerHTML = `<span class="custom-dropdown-option-label">${label}</span>`;
-                }
-                li.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    try { console.log('[CustomDropdown][appendCustomItem] click', { value: val, label: label }); } catch(_){ }
-                    // Special-case ASX toggle pseudo-option: perform the toggle directly here and
-                    // avoid triggering the main sort flow. This is more reliable than relying
-                    // on synthetic change events across browsers/hidden selects.
-                    if (val === '__asx_toggle') {
-                        try {
-                            asxButtonsExpanded = !asxButtonsExpanded;
-                            try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true' : 'false'); } catch(e){}
-                            // If expanding, ensure the ASX code buttons are rendered first so they can be shown
-                            try { if (asxButtonsExpanded && typeof renderAsxCodeButtons === 'function') renderAsxCodeButtons(); } catch(_){}
-                            applyAsxButtonsState();
-                            // Keep native option label in sync so anyone reading the hidden select
-                            // sees the correct state (but do not dispatch a change which would trigger sorting).
-                            const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
-                            if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
-                            // Update the inline triangle's classes for color and rotation
-                            try {
-                                const tri = li.querySelector('.asx-toggle-triangle');
-                                if (tri) {
-                                    tri.classList.toggle('expanded', !!asxButtonsExpanded);
-                                    tri.classList.toggle('tri-positive', !!asxButtonsExpanded);
-                                    tri.classList.toggle('tri-negative', !asxButtonsExpanded);
-                                }
-                            } catch(_) {}
-                        } catch (err) { console.warn('CustomDropdown: ASX toggle click handler failed', err); }
-                        // close list and restore focus
-                        if (customBtn) customBtn.setAttribute('aria-expanded','false');
-                        if (customList) customList.classList.remove('open');
-                        if (customBtn) customBtn.focus();
-                        return;
-                    }
-
-                    // For regular options, sync hidden native select value and dispatch change so
-                    // existing code paths continue to work unchanged.
-                    try {
-                        sortSelect.value = val;
-                        const ev = new Event('change', { bubbles: true });
-                        sortSelect.dispatchEvent(ev);
-                    } catch(err) { console.warn('CustomDropdown: sync to native select failed', err); }
-                    // close list
-                    if (customBtn) customBtn.setAttribute('aria-expanded','false');
-                    if (customList) customList.classList.remove('open');
-                    if (customBtn) customBtn.focus();
-                });
-                try { console.log('[renderSortSelect] append custom li for', val); } catch(_){}
-                _customFrag.appendChild(li);
-            };
-            // Add ASX toggle first (to fragment). Use a textual label only; the visible glyph is provided by an inline SVG
-            appendCustomItem('__asx_toggle', (asxButtonsExpanded ? 'ASX Codes Hide' : 'ASX Codes Show'), false);
-        }
-    } catch(_) {}
 
     const stockOptions = [
         { value: 'percentageChange-desc', text: 'Change % (H-L)' },
@@ -5394,64 +5273,9 @@ function renderSortSelect() {
     optionsToShow.forEach(opt => {
         const optionElement = document.createElement('option');
         optionElement.value = opt.value;
-
-        // Determine SVG and text prefix mapping.
-        // Special-case name/code sorts so A-Z shows a green up arrow and Z-A shows a red down arrow.
-        let svgHtml = '';
-        let textPrefix = '';
-        try {
-            const isNameSort = /shareName|name/.test(opt.value);
-            if (isNameSort) {
-                if (opt.value.endsWith('-asc')) {
-                    // A to Z -> green up
-                    svgHtml = '<svg class="tri-svg tri-positive" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="3,0 6,6 0,6" fill="currentColor"></polygon></svg>';
-                    textPrefix = '\u25B2 ';
-                } else if (opt.value.endsWith('-desc')) {
-                    // Z to A -> red down
-                    svgHtml = '<svg class="tri-svg tri-negative" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="0,0 6,0 3,6" fill="currentColor"></polygon></svg>';
-                    textPrefix = '\u25BC ';
-                }
-            } else {
-                // Preserve existing semantics for other sorts (H-L shown as up, L-H shown as down)
-                if (opt.value.includes('-desc')) {
-                    svgHtml = '<svg class="tri-svg tri-positive" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="3,0 6,6 0,6" fill="currentColor"></polygon></svg>';
-                    textPrefix = '\u25B2 ';
-                } else if (opt.value.includes('-asc')) {
-                    svgHtml = '<svg class="tri-svg tri-negative" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="0,0 6,0 3,6" fill="currentColor"></polygon></svg>';
-                    textPrefix = '\u25BC ';
-                }
-            }
-        } catch(_) {}
-
-        // Native option uses a text-only fallback (some browsers strip HTML in <option>)
-    optionElement.textContent = textPrefix + opt.text.replace(/\(H-L\)|\(L-H\)/g, '').trim();
+        optionElement.textContent = opt.text;
         sortSelect.appendChild(optionElement);
-
-        // Mirror to custom list fragment if present (use fragment to avoid duplicate appends on re-render)
-        try {
-            const customList = document.getElementById('sortDropdownList');
-            if (customList && _customFrag) {
-                const li = document.createElement('li');
-                li.setAttribute('role','option');
-                li.tabIndex = -1;
-                li.dataset.value = opt.value;
-                li.className = 'custom-dropdown-option';
-                // Use inline SVG with fill controlled by CSS (currentColor) so colors and sizing are consistent.
-                // Keep the SVG icon but remove the visible textual label to avoid redundancy with icons.
-                // We still set the native <option> text above for accessibility/fallback.
-                li.innerHTML = `<span class="custom-dropdown-option-label">${svgHtml}<span class="option-text visually-hidden">${opt.text.replace(/\(H-L\)|\(L-H\)/g,'').trim()}</span></span>`;
-                li.addEventListener('click', (e) => {
-                    e.preventDefault(); e.stopPropagation();
-                    try { sortSelect.value = opt.value; const ev = new Event('change', { bubbles: true }); sortSelect.dispatchEvent(ev); } catch(err) { console.warn('CustomDropdown click sync failed', err); }
-                    const btn = document.getElementById('sortDropdownBtn'); if (btn) { btn.setAttribute('aria-expanded','false'); btn.focus(); }
-                    const customListEl = document.getElementById('sortDropdownList'); if (customListEl) customListEl.classList.remove('open');
-                });
-                _customFrag.appendChild(li);
-            }
-        } catch(_) {}
     });
-    // Append any collected custom items in one operation (if created)
-    try { if (_customFrag) { const cl = document.getElementById('sortDropdownList'); if (cl) { try { console.log('[renderSortSelect] appending fragment with children:', _customFrag.childNodes.length); } catch(_){} cl.appendChild(_customFrag); } } } catch(_) {}
     logDebug(`Sort Select: Populated with ${logMessage}.`);
 
     // Prefer an explicitly set currentSortOrder if it's valid for this view
@@ -5956,12 +5780,9 @@ function renderAsxCodeButtons() {
     }
     const sortedAsxCodes = Array.from(uniqueAsxCodes).sort();
     sortedAsxCodes.forEach(asxCode => {
-    const button = document.createElement('button');
-    button.className = 'asx-code-btn';
-    // Prefix the button label with an inline triangle that mirrors the color used for price change.
-    const triClass = (buttonPriceChangeClass === 'positive') ? 'tri-positive' : (buttonPriceChangeClass === 'negative') ? 'tri-negative' : 'tri-neutral';
-    const triSvg = `<svg class="tri-svg ${triClass}" viewBox="0 0 6 6" width="1em" height="1em" aria-hidden="true"><polygon points="3,0 6,6 0,6" fill="currentColor"></polygon></svg>`;
-    button.innerHTML = `${triSvg} <span class="asx-code-text">${asxCode}</span>`;
+        const button = document.createElement('button');
+        button.className = 'asx-code-btn';
+        button.textContent = asxCode;
         button.dataset.asxCode = asxCode;
 
         // Determine price change class for the button
@@ -9899,21 +9720,10 @@ if (sortSelect) {
             try {
                 asxButtonsExpanded = !asxButtonsExpanded;
                 try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
-                // If expanding from native select, ensure the code buttons exist first
-                try { if (asxButtonsExpanded && typeof renderAsxCodeButtons === 'function') renderAsxCodeButtons(); } catch(_) {}
                 applyAsxButtonsState();
                 // Update the ASX option label to reflect new state
                 const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
-                if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? '🔺 ASX Codes — Hide' : '🔻 ASX Codes — Show');
-                // Also update the inline triangle in the custom dropdown (if present)
-                try {
-                    const tri = document.querySelector('.custom-dropdown-option[data-value="__asx_toggle"] .asx-toggle-triangle');
-                    if (tri) {
-                        tri.classList.toggle('expanded', !!asxButtonsExpanded);
-                        tri.classList.toggle('tri-positive', !!asxButtonsExpanded);
-                        tri.classList.toggle('tri-negative', !asxButtonsExpanded);
-                    }
-                } catch(_) {}
+                if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
             } catch (e) { console.warn('ASX toggle option handler failed', e); }
             // Restore the visible selection back to the active sort (do not trigger a sort)
             try { sortSelect.value = currentSortOrder || (currentSelectedWatchlistIds.includes('portfolio') ? 'totalDollar-desc' : 'entryDate-desc'); } catch(_) {}
@@ -11359,105 +11169,6 @@ document.addEventListener('DOMContentLoaded', function() {
     try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
     // Early notification restore from persisted count
     try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
-    // Initialize custom dropdown behavior (if present)
-    (function initCustomSortDropdown(){
-        const btn = document.getElementById('sortDropdownBtn');
-        const list = document.getElementById('sortDropdownList');
-        const hidden = document.getElementById('sortSelect');
-        if (!btn || !list || !hidden) return;
-    // Note: header static #toggleAsxButtonsBtn was removed from markup.
-    // The ASX toggle is now created only inside the sort dropdown; no runtime dedupe required here.
-        // Toggle open/close (instrumented)
-        // Micro-guard: ignore outside clicks that occur immediately after opening (race from focus/click sequencing)
-        const __DROP_IGNORE_MS = 220; // timeframe to ignore accidental outside clicks after open
-    const close = (reason) => { try { console.log('[SortDropdown] close', reason || 'unknown'); } catch(_){}; btn.setAttribute('aria-expanded','false'); list.classList.remove('open'); };
-    const open = () => { try { console.log('[SortDropdown] open'); } catch(_){}; btn.setAttribute('aria-expanded','true'); list.classList.add('open'); try { window.__lastSortDropdownOpenTs = Date.now(); } catch(_){}; /* defer focus slightly to avoid focus/click race */ setTimeout(()=>{ try { list.focus(); } catch(_){} }, 20); };
-    btn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close('btn-click'); else open(); });
-    // Also respond to pointerdown for touch/pen only to improve responsiveness on touch devices and avoid focus race
-    btn.addEventListener('pointerdown', (e)=>{ try { if (e.pointerType && e.pointerType !== 'touch' && e.pointerType !== 'pen') return; e.preventDefault(); e.stopPropagation(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close('pointerdown'); else open(); } catch(_){} });
-        // Keyboard: Down/Up to navigate, Enter to select, Escape to close
-        btn.addEventListener('keydown', (e)=>{
-            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); const first = list.querySelector('.custom-dropdown-option'); if (first) first.focus(); }
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); const first = list.querySelector('.custom-dropdown-option'); if (first) first.focus(); }
-        });
-        list.addEventListener('keydown', (e)=>{
-            const focused = document.activeElement;
-            if (!focused || !focused.classList.contains('custom-dropdown-option')) return;
-            if (e.key === 'ArrowDown') { e.preventDefault(); const next = focused.nextElementSibling || list.querySelector('.custom-dropdown-option'); if (next) next.focus(); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); const prev = focused.previousElementSibling || list.querySelector('.custom-dropdown-option:last-child'); if (prev) prev.focus(); }
-            else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); focused.click(); }
-            else if (e.key === 'Escape') { e.preventDefault(); close(); btn.focus(); }
-        });
-        // Prevent clicks/pointer events on the list from bubbling to document and closing the dropdown immediately
-        try {
-            list.addEventListener('click', (e) => { e.stopPropagation(); });
-            list.addEventListener('pointerdown', (e) => { try { e.stopPropagation(); } catch(_){} }, { passive: false });
-        } catch(_){}
-    // Close on outside click (instrumented)
-    document.addEventListener('click', (e)=>{
-        try {
-            if (!btn.contains(e.target) && !list.contains(e.target)) {
-                const since = Date.now() - (window.__lastSortDropdownOpenTs || 0);
-                if (since > 0 && since < __DROP_IGNORE_MS) {
-                    // Likely a focus/click race immediately after opening — ignore once and log for diagnosis
-                    console.log('[SortDropdown] ignoring outside click shortly after open (ms):', since, 'target:', e.target);
-                    return;
-                }
-                // Optional: when debugging, enable window.__enableDropdownTrace = true in the console to capture stack traces
-                if (window.__enableDropdownTrace) {
-                    try { console.groupCollapsed('[SortDropdown] document click outside -> trace target:'); console.log('target:', e.target); console.trace(); console.groupEnd(); } catch(_){}
-                }
-                console.log('[SortDropdown] document click outside -> closing. target:', e.target);
-                close('outside-click');
-            }
-        } catch(_){}
-    });
-    // Debugging helper: log when init runs and elements exist
-    try { console.log('[InitSortDropdown] wired btn/list/hidden:', !!btn, !!list, !!hidden); } catch(_) {}
-        // Helper to set the visible trigger label. When no selection, show placeholder + chevron.
-        const setTriggerLabel = (text) => {
-            try {
-                const triggerLabel = btn.querySelector('.trigger-label');
-                const triggerChevron = btn.querySelector('.trigger-chevron');
-                if (!triggerLabel || !triggerChevron) {
-                    // Rebuild the default structure
-                    btn.innerHTML = `<span class="trigger-label"></span><span class="trigger-chevron">▾</span>`;
-                }
-                const labelEl = btn.querySelector('.trigger-label');
-                const chevronEl = btn.querySelector('.trigger-chevron');
-                if (!text || text === '') {
-                    labelEl.textContent = 'Sort...';
-                    chevronEl.style.display = '';
-                } else {
-                    // Replace button content with just the selected option text (no chevron)
-                    btn.textContent = text;
-                }
-            } catch(_){}
-        };
-
-        // Initialize the trigger label based on current hidden select value
-        try {
-            const initialVal = hidden.value;
-            if (!initialVal || initialVal === '') {
-                setTriggerLabel('');
-            } else {
-                const initialOpt = Array.from(hidden.options).find(o=>o.value===initialVal);
-                if (initialOpt && initialOpt.value !== '__asx_toggle') setTriggerLabel(initialOpt.textContent || '');
-                else setTriggerLabel('');
-            }
-        } catch(_){}
-
-        // Sync visible button label when native select value changes programmatically
-        // Do NOT update the visible label when the special ASX toggle pseudo-option is selected.
-        hidden.addEventListener('change', ()=>{
-            try {
-                const v = hidden.value;
-                if (v === '__asx_toggle') return; // preserve visible label when toggling ASX codes
-                const opt = Array.from(hidden.options).find(o=>o.value===v);
-                if (opt) setTriggerLabel(opt.textContent || '');
-            } catch(_){ }
-        });
-    })();
 
     // Ensure Edit Current Watchlist button updates when watchlist selection changes
     if (watchlistSelect) {
@@ -12013,4 +11724,4 @@ try {
         }
     } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
-// --- End Super Debug Always-Install --- OK  now on the mobile cards the actual information the sell or buy
+// --- End Super Debug Always-Install --- OK now on the mobile cards the actual information the sell or buy

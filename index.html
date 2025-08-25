@@ -6,7 +6,7 @@
     <title>Share Watchlist (Updated)</title>
     <link rel="icon" href="favicon.png" type="image/png">
 
-    <link rel="stylesheet" href="style.css?v=2.10.18">
+    <link rel="stylesheet" href="style.css?v=2.10.13">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
@@ -58,16 +58,17 @@
         <div id="sortLine" class="sort-line-row">
             <div class="sort-controls-container">
                 <div class="sort-select-wrapper">
-                    <!-- Hidden native select preserved as a shim for existing script logic. The visible custom dropdown mirrors and updates this hidden select. -->
-                    <select id="sortSelect" class="dropdown-large visually-hidden" aria-label="Sort" style="display:none"></select>
-                    <!-- Visible accessible custom dropdown -->
-                    <div class="custom-dropdown" id="sortCustomDropdown">
-                        <button id="sortDropdownBtn" type="button" class="custom-dropdown-trigger dropdown-large" aria-haspopup="listbox" aria-expanded="false" aria-controls="sortDropdownList"><span class="trigger-label">Sort...</span><span class="trigger-chevron">▾</span></button>
-                        <ul id="sortDropdownList" class="custom-dropdown-list" role="listbox" tabindex="-1" aria-label="Sort options"></ul>
-                    </div>
+                    <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
                     <span id="sortIcon" class="sort-icon"></span>
                 </div>
-                <!-- Removed static header ASX toggle button; the ASX toggle now lives at the top of the sort dropdown menu -->
+                <button id="toggleAsxButtonsBtn" aria-label="Toggle ASX Codes" aria-pressed="false" aria-expanded="false" aria-controls="asxCodeButtonsContainer" class="toggle-asx-btn">
+                    <span class="asx-toggle-label">ASX Codes</span>
+                    <span class="asx-toggle-triangle" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 18 18" class="chevron-svg" style="display:inline;vertical-align:middle;">
+                            <polyline points="4,7 9,12 14,7" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </button>
             </div>
         </div>
         <select id="watchlistSelect" style="display:none"></select>
@@ -831,7 +832,7 @@
             console.log("index.html script module loaded and DOMContentLoaded fired.");
         }); 
     </script>
-    <script src="script.js?v=2.10.18" type="module"></script>
+    <script src="script.js?v=2.10.12" type="module"></script>
     <!-- Service worker registration and immediate update helper -->
     <script>
         if ('serviceWorker' in navigator) {
