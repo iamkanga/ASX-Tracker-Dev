@@ -8035,6 +8035,11 @@ body.dark-theme .alert-item {
     color: var(--price-down-color);
 }
 
+/* Force high-specificity fallback to ensure icons pick up the intended color even when
+   broader inheritance rules are present. This targets the concrete header sort wrapper. */
+.sort-select-wrapper .sort-icon.up::before { color: var(--price-up-color) !important; }
+.sort-select-wrapper .sort-icon.down::before { color: var(--price-down-color) !important; }
+
 /* Ensure toggle button is vertically aligned and has appropriate size */
 .sort-controls-container .asx-toggle-triangle {
     margin: 0;

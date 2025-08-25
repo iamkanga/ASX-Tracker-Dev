@@ -1608,10 +1608,13 @@ let asxButtonsExpanded = false;
 try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 'true') asxButtonsExpanded = true; } catch(e) {}
 
 function applyAsxButtonsState() {
-    if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
+    // Only require the ASX code buttons container. The header toggle button may be removed
+    // (we keep the single toggle inside the sort dropdown). Make this function resilient
+    // so clicking the dropdown's __asx_toggle still shows/hides the buttons.
+    if (!asxCodeButtonsContainer) return;
     const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
-    const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
-    const shouldShow = !!hasButtons && asxButtonsExpanded;
+    const hasButtons = !!asxCodeButtonsContainer.querySelector('button.asx-code-btn');
+    const shouldShow = !!hasButtons && !!asxButtonsExpanded;
 
     if (shouldShow) {
         asxCodeButtonsContainer.classList.add('expanded');
@@ -1619,28 +1622,33 @@ function applyAsxButtonsState() {
         asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
     } else {
         asxCodeButtonsContainer.classList.remove('expanded');
+        asxCodeButtonsContainer.classList.add('app-hidden');
         asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
     }
-    // Chevron visibility and state
-    if (!hasButtons) {
-        toggleAsxButtonsBtn.style.display = 'none';
-        toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
-    } else {
-        toggleAsxButtonsBtn.style.display = 'inline-flex'; // Use inline-flex for proper alignment
-        toggleAsxButtonsBtn.removeAttribute('aria-disabled');
+
+    // If the header toggle button exists, update its visibility and ARIA state.
+    if (typeof toggleAsxButtonsBtn !== 'undefined' && toggleAsxButtonsBtn && toggleAsxButtonsBtn.nodeType === 1) {
+        if (!hasButtons) {
+            try { toggleAsxButtonsBtn.style.display = 'none'; } catch(_) {}
+            try { toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true'); } catch(_) {}
+        } else {
+            try { toggleAsxButtonsBtn.style.display = 'inline-flex'; } catch(_) {}
+            try { toggleAsxButtonsBtn.removeAttribute('aria-disabled'); } catch(_) {}
+        }
+        // Update accessible pressed/expanded state and label text
+        try {
+            toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
+            toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
+            const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
+            if (labelSpan) labelSpan.textContent = 'ASX Codes';
+        } catch(_) {}
+        // Update chevron rotation
+        try {
+            const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
+            if (chevronIcon) chevronIcon.classList.toggle('expanded', shouldShow);
+        } catch(_) {}
     }
-    // Update accessible pressed/expanded state and label text
-    try {
-        toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
-        toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
-        const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
-        if (labelSpan) labelSpan.textContent = 'ASX Codes';
-    } catch(_) {}
-    // Update chevron rotation
-    const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
-    if (chevronIcon) {
-        chevronIcon.classList.toggle('expanded', shouldShow);
-    }
+
     requestAnimationFrame(adjustMainContentPadding);
 }
 
@@ -5274,6 +5282,8 @@ function renderSortSelect() {
                         try {
                             asxButtonsExpanded = !asxButtonsExpanded;
                             try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true' : 'false'); } catch(e){}
+                            // If expanding, ensure the ASX code buttons are rendered first so they can be shown
+                            try { if (asxButtonsExpanded && typeof renderAsxCodeButtons === 'function') renderAsxCodeButtons(); } catch(_){}
                             applyAsxButtonsState();
                             // Keep native option label in sync so anyone reading the hidden select
                             // sees the correct state (but do not dispatch a change which would trigger sorting).
@@ -9859,6 +9869,8 @@ if (sortSelect) {
             try {
                 asxButtonsExpanded = !asxButtonsExpanded;
                 try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
+                // If expanding from native select, ensure the code buttons exist first
+                try { if (asxButtonsExpanded && typeof renderAsxCodeButtons === 'function') renderAsxCodeButtons(); } catch(_) {}
                 applyAsxButtonsState();
                 // Update the ASX option label to reflect new state
                 const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
