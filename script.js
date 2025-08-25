@@ -729,7 +729,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.11';
+const APP_VERSION = '2.10.12';
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
@@ -1657,6 +1657,25 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
         const tri = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle'); if (tri) tri.classList.toggle('expanded', !!asxButtonsExpanded);
     } catch(_) {}
     });
+    // Allow clicking the surrounding sort-select-wrapper to toggle ASX Codes as well
+    try {
+        const sortWrapper = document.querySelector('.sort-select-wrapper');
+        if (sortWrapper) {
+            // Only attach if the click target is not the actual select element (so selecting still works)
+            sortWrapper.addEventListener('click', (e) => {
+                const target = e.target;
+                if (target && (target.tagName === 'SELECT' || target.closest && target.closest('select'))) {
+                    return; // let select handle interaction
+                }
+                // Toggle the ASX buttons
+                asxButtonsExpanded = !asxButtonsExpanded;
+                try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
+                applyAsxButtonsState();
+                // Mirror visual feedback on the button
+                try { toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!asxButtonsExpanded)); toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!asxButtonsExpanded)); } catch(_) {}
+            }, { passive: true });
+        }
+    } catch(_) {}
     // Also adjust precisely on transition end of the container
     asxCodeButtonsContainer.addEventListener('transitionend', (ev) => {
         if (ev.propertyName === 'max-height' || ev.propertyName === 'padding' || ev.propertyName === 'opacity') {
