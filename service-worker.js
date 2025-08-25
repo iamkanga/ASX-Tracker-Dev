@@ -73,6 +73,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     // Only cache GET requests
     if (event.request.method === 'GET') {
+        // Pre-compute whether this is a cross-origin request so we can avoid noisy logging for CDN failures
+        let requestUrl;
+        let isCrossOrigin = false;
+        try { requestUrl = new URL(event.request.url); isCrossOrigin = requestUrl.origin !== self.location.origin; } catch(_) { /* ignore */ }
         // IMPORTANT: Do NOT cache Firestore API calls (or any dynamic API calls).
         // These are real-time data streams or dynamic queries and should always go to the network.
         if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('script.google.com/macros')) {
@@ -144,7 +148,8 @@ self.addEventListener('fetch', (event) => {
 
                     return networkResponse; // Always return the original network response
                 }).catch(error => {
-                    console.error(`Service Worker: Network fetch failed for ${event.request.url}. Returning offline fallback if available.`, error);
+                    // Only log as an error for same-origin/core app assets to avoid noisy CDN timeout logs
+                    if (!isCrossOrigin) console.error(`Service Worker: Network fetch failed for ${event.request.url}. Returning offline fallback if available.`, error);
                     // If network fails, try to return a cached response as a fallback
                     return safeMatchOrFallback(event.request);
                 });
