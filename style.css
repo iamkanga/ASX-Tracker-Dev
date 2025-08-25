@@ -23,7 +23,7 @@
     margin-bottom: 0;
 }
 .low52-header-row .low52-code {
-    flex: 0 0 auto; /* Don't shrink the code */
+    flex: 0 0 auto; /* Don't shrink the  code */
     font-weight: 700; /* Bolder code */
     font-size: 1em; /* Adjusted size */
     margin-right: 8px;
