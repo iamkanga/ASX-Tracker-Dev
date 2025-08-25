@@ -449,12 +449,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
                 <div class="pc-metrics-row">
                     <div class="pc-metric-line">
-                        <span class="pc-label">Total Return</span>
-                        <span class="pc-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-pct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></span>
-                    </div>
-                    <div class="pc-metric-line">
                         <span class="pc-label">Day Change</span>
                         <span class="pc-val ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></span>
+                    </div>
+                    <div class="pc-metric-line">
+                        <span class="pc-label">Total Return</span>
+                        <span class="pc-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-pct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></span>
                     </div>
                     <div class="pc-metric-line alert-target-row">
                         <span class="pc-label">Alert Target</span>
@@ -760,7 +760,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.14';
+const APP_VERSION = '2.10.15';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
