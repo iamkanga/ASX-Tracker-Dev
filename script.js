@@ -255,6 +255,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Helper: scroll main content to top in a resilient way
+    function scrollMainToTop(instant = false) {
+        try {
+            const el = document.querySelector('main.container');
+            if (el) {
+                el.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' });
+                return;
+            }
+        } catch (e) { /* ignore */ }
+        try { window.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' }); } catch(_) { /* ignore */ }
+    }
+
     // Portfolio view logic
     window.showPortfolioView = function() {
         // Hide normal stock watchlist section, show a dedicated portfolio section (create if needed)
@@ -583,6 +595,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 });
+
+// On full page load (including reload), ensure main content starts at the top
+window.addEventListener('load', () => {
+    try { scrollMainToTop(true); } catch(_) {}
+});
 //  This script interacts with Firebase Firestore for data storage.
 // Firebase app, db, auth instances, and userId are made globally available
 // via window.firestoreDb, window.firebaseAuth, window.getFirebaseAppId(), etc.,
@@ -760,7 +777,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.17';
+const APP_VERSION = '2.10.18';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
@@ -7544,6 +7561,8 @@ function toggleMobileViewMode() {
     renderWatchlist(); // Re-render to apply new card styling and layout
     // Update button label/state
     try { updateCompactViewButtonState(); } catch(_) {}
+    // UX: scroll to top after changing compact/default view
+    try { scrollMainToTop(); } catch(_) {}
 }
 
 // NEW: Splash Screen Functions
@@ -9752,6 +9771,8 @@ if (deleteAllUserDataBtn) {
             // Just render the watchlist. The listeners for shares/cash are already active.
             renderWatchlist();
             try { enforceMoversVirtualView(); } catch(_) {}
+        // UX: scroll to top after changing watchlist so users see top content
+        try { scrollMainToTop(); } catch(_) {}
         });
     }
 
@@ -9792,9 +9813,9 @@ if (sortSelect) {
         }
         await saveSortOrderPreference(currentSortOrder);
 
-        // NEW: Scroll to the top of the page after sorting/rendering
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        logDebug('Sort: Scrolled to top after sorting.');
+    // NEW: Scroll to the top of the main content after sorting/rendering
+    try { scrollMainToTop(); } catch(_) {}
+    logDebug('Sort: Scrolled to top after sorting.');
     });
     updateSortIcon();
 }
