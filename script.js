@@ -458,6 +458,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return `<div class="portfolio-card ${testNeutral ? 'neutral' : plClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
                 <div class="pc-main-row">
                     <div class="pc-code">${share.shareName || ''}</div>
+                    <div class="pc-live-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
                     <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
                 </div>
                 <div class="pc-metrics-row">
