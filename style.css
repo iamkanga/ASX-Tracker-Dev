@@ -120,11 +120,11 @@
 
 /* Custom dropdown visible control */
 .custom-dropdown { position: relative; display: inline-block; }
-.custom-dropdown-trigger { display: inline-flex; align-items: center; gap: 0.5rem; padding: 8px 10px; background: var(--panel-bg,#fff); border: 1px solid var(--border-color,#ddd); border-radius: 6px; cursor: pointer; font-size: 1rem; }
+.custom-dropdown-trigger { display: inline-flex; align-items: center; gap: 0.5rem; padding: 8px 10px; background: var(--panel-bg,#fff); border: 1px solid var(--border-color,#ddd); border-radius: 6px; cursor: pointer; font-size: 1rem; color: var(--text-color) !important; }
 .custom-dropdown-trigger:focus { outline: 3px solid rgba(59,130,246,0.25); outline-offset: 2px; }
-.custom-dropdown-list { position: absolute; top: calc(100% + 6px); left: 0; z-index: 600; min-width: 220px; max-width: 420px; max-height: 320px; overflow: auto; background: var(--panel-bg,#fff); border: 1px solid var(--border-color,#ddd); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.12); padding: 6px 6px; display: none; pointer-events: auto; }
+.custom-dropdown-list { position: absolute; top: calc(100% + 6px); left: 0; z-index: 600; min-width: 220px; max-width: 420px; max-height: 320px; overflow: auto; background: var(--panel-bg, var(--card-bg, #fff)) !important; border: 1px solid var(--border-color,#ddd); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.12); padding: 6px 6px; display: none; pointer-events: auto; color: var(--text-color) !important; }
 .custom-dropdown-list.open { display: block; }
-.custom-dropdown-option { display: flex; align-items: center; gap: 0.6rem; padding: 8px 10px; cursor: pointer; border-radius: 6px; color: var(--text-color,#222); }
+.custom-dropdown-option { display: flex; align-items: center; gap: 0.6rem; padding: 8px 10px; cursor: pointer; border-radius: 6px; color: var(--text-color,#222) !important; }
 .custom-dropdown-option:hover, .custom-dropdown-option:focus { background: var(--hover-bg,#f4f6f8); outline: none; }
 .custom-dropdown-option[aria-disabled="true"] { opacity: 0.6; cursor: default; }
 .custom-dropdown-option-label { display: inline-flex; align-items: center; gap: 0.5rem; }
@@ -133,7 +133,18 @@
 .tri-svg polygon, .tri-svg polyline { fill: currentColor; stroke: currentColor; }
 .tri-positive { color: #2ecc71; }
 .tri-negative { color: #e74c3c; }
-.custom-dropdown .option-text { font-size: 0.95rem; color: var(--text-color, #222); }
+.custom-dropdown .option-text { font-size: 0.95rem; color: var(--text-color, #222) !important; display: inline-block !important; }
+
+/* Ensure dropdown content always inherits theme text colour and that nested elements don't accidentally become invisible */
+.custom-dropdown-option, .custom-dropdown-option * {
+    color: inherit !important;
+}
+
+/* Extra safety: ensure toggle label inside list items uses theme colour and remains visible on small screens */
+.custom-dropdown .asx-toggle-label {
+    color: var(--text-color) !important;
+    display: inline-block !important;
+}
 .asx-toggle-triangle .chevron-svg {
     width: 18px;
     height: 18px;
@@ -1728,6 +1739,7 @@ body.dark-theme .mobile-share-cards.compact-view .target-hit-alert {
 /* Dark Theme Variables */
 body.dark-theme {
     /* Dark Theme Variables */
+    --panel-bg: var(--card-bg);
     --background-color: #1a1a1a; /* Very dark gray/almost black */
     --text-color: #ffffff; /* White for all primary data/content text */
     --header-bg: #282828; /* Darker gray for header */
