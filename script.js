@@ -5242,6 +5242,20 @@ function renderSortSelect() {
             _customFrag = document.createDocumentFragment();
             // create a helper to add items to the fragment (will be appended later)
             const appendCustomItem = (val, label, isDisabled) => {
+                // Idempotent guard: if an element with this data-value already exists in the document
+                // or has been queued on the fragment, skip creating another one. This prevents duplicate
+                // ASX toggle buttons when renderSortSelect runs multiple times.
+                try {
+                    if (document.querySelector('.custom-dropdown-option[data-value="' + val + '"]')) {
+                        try { console.log('[renderSortSelect] skipping append, already exists in DOM for', val); } catch(_){}
+                        return;
+                    }
+                    if (_customFrag && Array.from(_customFrag.childNodes).some(n => n.dataset && n.dataset.value === val)) {
+                        try { console.log('[renderSortSelect] skipping append, already queued in fragment for', val); } catch(_){}
+                        return;
+                    }
+                } catch(_) {}
+
                 const li = document.createElement('li');
                 li.setAttribute('role','option');
                 li.tabIndex = -1;
@@ -11279,15 +11293,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const list = document.getElementById('sortDropdownList');
         const hidden = document.getElementById('sortSelect');
         if (!btn || !list || !hidden) return;
-        // Defensive: if multiple toggleAsxButtonsBtn exist (runtime duplication), keep only the first
-        try {
-            const toggles = Array.from(document.querySelectorAll('#toggleAsxButtonsBtn'));
-            if (toggles.length > 1) {
-                for (let i = 1; i < toggles.length; i++) {
-                    try { toggles[i].remove(); console.log('[InitSortDropdown] removed duplicate toggleAsxButtonsBtn', toggles[i]); } catch(_){}
-                }
-            }
-        } catch(_){}
+    // Note: header static #toggleAsxButtonsBtn was removed from markup.
+    // The ASX toggle is now created only inside the sort dropdown; no runtime dedupe required here.
         // Toggle open/close (instrumented)
         // Micro-guard: ignore outside clicks that occur immediately after opening (race from focus/click sequencing)
         const __DROP_IGNORE_MS = 220; // timeframe to ignore accidental outside clicks after open

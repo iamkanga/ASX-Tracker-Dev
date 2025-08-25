@@ -78,16 +78,7 @@
     width: 100%;
     padding-top: 8px; /* Add some space above it */
 }
-/* Minimalistic chevron for ASX code toggle */
-#toggleAsxButtonsBtn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 10px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
+/* Minimalistic chevron for ASX code toggle (header instance removed; generic .toggle-asx-btn retained) */
 
 .toggle-asx-btn {
     background: transparent;
@@ -256,6 +247,16 @@
 @media (max-width: 480px) {
     .sort-select-wrapper .asx-toggle-label { display: none; }
     .sort-select-wrapper .toggle-asx-btn { padding: 6px; }
+}
+/* Ensure option text and ASX toggle label remain visible in all themes, including dark mode */
+.custom-dropdown .option-text,
+.sort-select-wrapper .asx-toggle-label {
+    display: inline-block !important;
+    color: var(--text-color) !important;
+}
+/* Small screens: keep label truncated but visible instead of hidden completely */
+@media (max-width: 480px) {
+    .sort-select-wrapper .asx-toggle-label { display: inline-block !important; max-width: 7ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
 @media (max-width: 600px) {
