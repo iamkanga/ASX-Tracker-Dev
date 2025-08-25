@@ -729,7 +729,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.13';
+const APP_VERSION = '2.10.14';
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
@@ -5215,7 +5215,8 @@ function renderSortSelect() {
     try {
         const asxToggleOption = document.createElement('option');
         asxToggleOption.value = '__asx_toggle';
-        asxToggleOption.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+        // Use a triangle icon to indicate state: green triangle when expanded, red when collapsed
+        asxToggleOption.textContent = (asxButtonsExpanded ? '🔺 ASX Codes — Hide' : '🔻 ASX Codes — Show');
         asxToggleOption.dataset.toggle = 'asx';
         // Insert as the first selectable option after the disabled placeholder
         sortSelect.appendChild(asxToggleOption);
@@ -5273,7 +5274,18 @@ function renderSortSelect() {
     optionsToShow.forEach(opt => {
         const optionElement = document.createElement('option');
         optionElement.value = opt.value;
-        optionElement.textContent = opt.text;
+        // Replace H-L / L-H textual hints with triangle icons: green up/down for H-L, red for L-H
+        let label = opt.text;
+        try {
+            if (opt.value && opt.value.includes('-desc')) {
+                // descending (H-L): green upward triangle marker
+                label = '🟢▲ ' + opt.text.replace('(H-L)', '').trim();
+            } else if (opt.value && opt.value.includes('-asc')) {
+                // ascending (L-H): red downward triangle marker
+                label = '🔴▼ ' + opt.text.replace('(L-H)', '').trim();
+            }
+        } catch(_) {}
+        optionElement.textContent = label;
         sortSelect.appendChild(optionElement);
     });
     logDebug(`Sort Select: Populated with ${logMessage}.`);
@@ -9723,7 +9735,7 @@ if (sortSelect) {
                 applyAsxButtonsState();
                 // Update the ASX option label to reflect new state
                 const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
-                if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+                if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? '🔺 ASX Codes — Hide' : '🔻 ASX Codes — Show');
             } catch (e) { console.warn('ASX toggle option handler failed', e); }
             // Restore the visible selection back to the active sort (do not trigger a sort)
             try { sortSelect.value = currentSortOrder || (currentSelectedWatchlistIds.includes('portfolio') ? 'totalDollar-desc' : 'entryDate-desc'); } catch(_) {}
