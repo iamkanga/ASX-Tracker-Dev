@@ -121,20 +121,7 @@
     pointer-events: none;
     z-index: 2;
     background: transparent;
-    .live-price-timestamp-container {
-        position: absolute; /* position within header-left container */
-        right: 12px; /* bottom-right of the header area */
-        bottom: 8px;
-        display: block;
-        width: auto;
-        text-align: right;
-        padding: 2px 6px;
-        font-size: 0.86rem;
-        color: var(--ghosted-text, #888);
-        pointer-events: none;
-        z-index: 6;
-        background: transparent;
-    }
+}
 @media (max-width: 600px) {
     .live-price-timestamp-container {
         font-size: 0.74em !important;
@@ -166,13 +153,6 @@
     text-align: right; /* keep aligned to right edge; change to left if preferred */
     padding: 6px 16px 0 16px;
 }
-    .sort-controls-container .live-price-timestamp-container {
-        /* Keep fallback styling intact for older DOM placements */
-        flex: 0 0 100%;
-        order: 2;
-        text-align: right;
-        padding: 6px 16px 0 16px;
-    }
 
 @media (max-width: 600px) {
     .sort-controls-container .live-price-timestamp-container {
@@ -555,38 +535,29 @@
 /* Fix: Ensure the functioning watchlist control is visible and hide the non-functional enhanced button.
    The app primarily wires the native <select> for data binding; keep it visible and centered while
    hiding the visually duplicated JS-enhanced button. */
-        .asx-toggle-triangle {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--ghosted-text, #888);
-            transition: transform 0.18s ease-in-out;
-            width: 22px;
-            height: 22px;
-            padding: 0;
-        }
-/* Add/Edit Share modal: hide native select and use enhanced dropdown button full-width */
-#shareFormSection #shareWatchlistSelect {
+#shareFormSection #shareWatchlistDropdownBtn {
+    /* Keep the JS-enhanced duplicate button hidden; the native select is the working control. */
     display: none !important;
 }
-#shareFormSection #shareWatchlistDropdownBtn {
+
+#shareFormSection #shareWatchlistSelect {
+    /* Ensure the native select is visible and can be centered with other inputs */
     display: block !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 8px 0 0 0 !important;
-    box-sizing: border-box !important;
-    padding: 10px 12px !important;
-    text-align: left !important;
+    width: auto !important;
 }
-/* Ensure other modal dropdowns use full width for consistency */
+
+/* Center-align dropdowns in the Add/Edit Share modal to match other input fields */
 #shareFormSection .dropdown-large,
 #shareFormSection select,
-#shareFormSection #shareRating {
+#shareFormSection #shareRating,
+#shareFormSection #shareWatchlistSelect,
+#shareFormSection #shareWatchlistDropdownBtn {
     display: block !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    width: auto !important; /* let max-width control sizing */
+    max-width: 420px !important; /* keep inputs centered and consistent */
+    margin-left: auto !important;
+    margin-right: auto !important;
     box-sizing: border-box !important;
-    margin: 8px 0 !important;
 }
 
 /* On very small screens, let the dropdowns use full available width */
@@ -7134,7 +7105,7 @@ body.dark-theme .alert-item {
     z-index: 2000; /* Ensure it's on top of everything */
     transition: opacity 0.5s ease-out; /* Smooth fade-out transition */
     opacity: 1; /* Initially fully visible */
-    overflow: auto; /* Allow scrolling if content is larger than viewport */
+    overflow: hidden; /* Prevent scrolling on the splash screen itself */
 }
 
 .splash-screen.hidden {
@@ -7144,16 +7115,14 @@ body.dark-theme .alert-item {
 
 .splash-icon {
     /* Allow it to take up full width/height of splash screen while maintaining aspect ratio */
-    /* Constrain splash image so it doesn't fill the entire viewport and push controls off-screen */
-    max-width: 60vw;
-    max-height: 48vh;
+    max-width: 100%;
+    max-height: 100%;
     width: auto;  /* Let browser determine width based on aspect ratio */
     height: auto; /* Let browser determine height based on aspect ratio */
     object-fit: contain; /* Crucial to keep this to prevent text cropping */
     margin-bottom: 20px; /* Space between image and button */
     /* Initial state for animation */
     opacity: 1;
-    z-index: 2000; /* sit behind splash buttons */
 }
 
 /* Pulsing animation for the splash icon */
@@ -7196,7 +7165,6 @@ body.dark-theme .alert-item {
     font-size: 1.2em; /* Slightly larger text */
     border-radius: 30px; /* More rounded corners */
     box-shadow: 0 5px 15px rgba(0,0,0,0.3); /* More prominent shadow */
-    z-index: 2003; /* ensure button sits above the splash image */
 }
 
 /* NEW: Stock Search Modal Styles */
@@ -7589,14 +7557,12 @@ body.dark-theme .alert-item {
         padding: 0; /* Remove any padding that might constrain the image */
     }
 
-    /* Constrain splash icon on small screens so controls remain accessible and scrolling works */
+    /* Make the splash icon truly fill the entire screen area */
     .splash-icon {
-        width: auto;    /* let intrinsic scale but constrained by max dimensions */
-        height: auto;
-        max-width: 90vw;
-        max-height: 60vh;
-        object-fit: contain; /* keep the image visible without cropping */
-        margin-bottom: 12px; /* keep space for sign-in button */
+        width: 100%;    /* Force width to 100% of its container */
+        height: 100%;   /* Force height to 100% of its container */
+        object-fit: cover; /* Make the image cover the entire area, potentially cropping edges (but text is safe now) */
+        margin-bottom: 0; /* Ensure no margin pushes it up */
     }
 
     /* Adjust the sign-in button position to be clearly above mobile browser UI */
