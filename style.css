@@ -131,13 +131,19 @@
 .tri-svg { width: 1em; height: 1em; flex: 0 0 auto; vertical-align: middle; display: inline-block; }
 /* SVG shapes inherit currentColor so CSS classes control fill/stroke reliably */
 .tri-svg polygon, .tri-svg polyline { fill: currentColor; stroke: currentColor; }
-.tri-positive { color: #2ecc71; }
-.tri-negative { color: #e74c3c; }
+.tri-positive { color: #2ecc71 !important; }
+.tri-negative { color: #e74c3c !important; }
 .custom-dropdown .option-text { font-size: 0.95rem; color: var(--text-color, #222) !important; display: inline-block !important; }
 
 /* Ensure dropdown content always inherits theme text colour and that nested elements don't accidentally become invisible */
 .custom-dropdown-option, .custom-dropdown-option * {
     color: inherit !important;
+}
+/* Allow SVG elements to keep their specified currentColor styling from .tri-positive / .tri-negative */
+.custom-dropdown-option svg, .custom-dropdown-option polygon, .custom-dropdown-option polyline {
+    color: unset !important;
+    fill: currentColor !important;
+    stroke: currentColor !important;
 }
 
 /* Extra safety: ensure toggle label inside list items uses theme colour and remains visible on small screens */
