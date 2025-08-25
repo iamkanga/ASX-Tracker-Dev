@@ -5211,6 +5211,16 @@ function renderSortSelect() {
     // Set the initial placeholder text to "Sort List"
     sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
 
+    // Prepend an interactive ASX Codes toggle option that appears as the first item in the dropdown.
+    try {
+        const asxToggleOption = document.createElement('option');
+        asxToggleOption.value = '__asx_toggle';
+        asxToggleOption.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+        asxToggleOption.dataset.toggle = 'asx';
+        // Insert as the first selectable option after the disabled placeholder
+        sortSelect.appendChild(asxToggleOption);
+    } catch (e) { /* ignore */ }
+
     const stockOptions = [
         { value: 'percentageChange-desc', text: 'Change % (H-L)' },
         { value: 'percentageChange-asc', text: 'Change % (L-H)' },
@@ -9705,6 +9715,22 @@ if (deleteAllUserDataBtn) {
 if (sortSelect) {
     sortSelect.addEventListener('change', async (event) => {
         logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
+        // If the ASX toggle pseudo-option was chosen, toggle ASX buttons and restore the current sort selection.
+        if (event.target.value === '__asx_toggle') {
+            try {
+                asxButtonsExpanded = !asxButtonsExpanded;
+                try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
+                applyAsxButtonsState();
+                // Update the ASX option label to reflect new state
+                const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
+                if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+            } catch (e) { console.warn('ASX toggle option handler failed', e); }
+            // Restore the visible selection back to the active sort (do not trigger a sort)
+            try { sortSelect.value = currentSortOrder || (currentSelectedWatchlistIds.includes('portfolio') ? 'totalDollar-desc' : 'entryDate-desc'); } catch(_) {}
+            try { updateSortIcon(); } catch(_) {}
+            return; // do not apply sorting when toggling ASX codes
+        }
+
         currentSortOrder = sortSelect.value;
         updateSortIcon();
         

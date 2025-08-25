@@ -203,20 +203,15 @@
 
 /* Integrated ASX toggle inside the sort select wrapper */
 .sort-select-wrapper {
-    display: inline-block; /* allow absolute-positioned child to sit "inside" the select box */
+    display: inline-block;
     position: relative;
     vertical-align: middle;
 }
 .sort-select-wrapper .dropdown-large {
-    /* Reserve space on the right so the toggle can sit visually inside the select box */
-    padding-right: 44px;
     box-sizing: border-box;
 }
-.sort-select-wrapper .toggle-asx-btn {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
+.sort-controls-container .toggle-asx-btn {
+    margin-left: 8px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
