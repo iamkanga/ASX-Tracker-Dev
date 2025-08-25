@@ -454,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function () {
             else if (todayClass === 'negative') borderColor = 'border: 4px solid #c42131;';
             // For real neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
-            return `<div class="portfolio-card ${testNeutral ? 'neutral' : plClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor && testNeutral ? ` style=\"${borderColor}\"` : ''}>
+            return `<div class="portfolio-card ${testNeutral ? 'neutral' : plClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
                 <div class="pc-main-row">
                     <div class="pc-code">${share.shareName || ''}</div>
                     <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
@@ -777,7 +777,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.18';
+const APP_VERSION = '2.10.19';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
@@ -5296,12 +5296,12 @@ function renderSortSelect() {
     ];
 
     const portfolioOptions = [
+        { value: 'dayDollar-desc', text: 'Day $ (H-L)' },
+        { value: 'dayDollar-asc', text: 'Day $ (L-H)' },
         { value: 'percentageChange-desc', text: 'Change % (H-L)' },
         { value: 'percentageChange-asc', text: 'Change % (L-H)' },
         { value: 'shareName-asc', text: 'Code (A-Z)' },
         { value: 'shareName-desc', text: 'Code (Z-A)' },
-        { value: 'dayDollar-desc', text: 'Day $ (H-L)' },
-        { value: 'dayDollar-asc', text: 'Day $ (L-H)' },
         { value: 'totalDollar-desc', text: 'Total $ (H-L)' },
         { value: 'totalDollar-asc', text: 'Total $ (L-H)' }
     ];
