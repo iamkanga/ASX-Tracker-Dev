@@ -729,7 +729,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.12';
+const APP_VERSION = '2.10.13';
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
@@ -1237,6 +1237,14 @@ if (typeof fetchLivePrices === 'function') {
 // Also update timestamp on DOMContentLoaded (in case prices are preloaded)
 document.addEventListener('DOMContentLoaded', function() {
     updateLivePriceTimestamp(Date.now());
+    // If the live timestamp container exists inside the header, apply right-bottom positioning helper
+    try {
+        const lpCont = document.getElementById('livePriceTimestampContainer');
+        const header = document.getElementById('appHeader');
+        if (lpCont && header && header.contains(lpCont)) {
+            lpCont.classList.add('live-price-inside-header');
+        }
+    } catch(_) {}
 });
 
 // Theme related variables

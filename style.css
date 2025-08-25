@@ -128,6 +128,14 @@
     transform: rotate(180deg);
 }
 
+/* Minimal chevron appearance: two stroked lines (already using polyline SVG). Ensure stroke color is visible */
+.asx-toggle-triangle .chevron-svg polyline {
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 /* Rotate chevron when parent button has aria-expanded true for extra robustness */
 .toggle-asx-btn[aria-expanded="true"] .asx-toggle-triangle .chevron-svg {
     transform: rotate(180deg);
@@ -158,6 +166,20 @@
     font-weight: 500;
     letter-spacing: 0.02em;
 }
+
+/* When the timestamp is placed inside the header-top-row, position it bottom-right of the title bar */
+.live-price-inside-header {
+    position: absolute;
+    right: 12px;
+    bottom: 8px; /* sit just below the title baseline */
+    width: auto;
+    text-align: right;
+    pointer-events: none;
+}
+
+/* Ensure splash version is visible even on dark/light backgrounds */
+.app-version-splash { color: rgba(255,255,255,0.85); }
+.app-version-splash.app-version-splash-top { left: 12px; top: 12px; }
 .header-top-row.single-dynamic-title {
     position: relative;
 }
@@ -181,25 +203,37 @@
 
 /* Integrated ASX toggle inside the sort select wrapper */
 .sort-select-wrapper {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+    display: inline-block; /* allow absolute-positioned child to sit "inside" the select box */
     position: relative;
+    vertical-align: middle;
 }
 .sort-select-wrapper .dropdown-large {
-    padding-right: 12px; /* leave room for integrated button */
+    /* Reserve space on the right so the toggle can sit visually inside the select box */
+    padding-right: 44px;
+    box-sizing: border-box;
 }
 .sort-select-wrapper .toggle-asx-btn {
-    margin-left: 8px;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 6px 8px;
     background: transparent;
+    border: none;
     border-radius: 6px;
-    border: 1px solid transparent;
     color: var(--ghosted-text, #666);
-    gap: 6px;
-    align-items: center;
+    cursor: pointer;
 }
-.sort-select-wrapper .toggle-asx-btn:hover { border-color: var(--border-color); }
+.sort-select-wrapper .toggle-asx-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(164,147,147,0.10);
+}
+.sort-select-wrapper .toggle-asx-btn:hover {
+    background: rgba(0,0,0,0.03);
+}
 /* On very small screens, hide the label and show just the chevron to save space */
 @media (max-width: 480px) {
     .sort-select-wrapper .asx-toggle-label { display: none; }
