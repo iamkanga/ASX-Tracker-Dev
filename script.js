@@ -5266,8 +5266,29 @@ function renderSortSelect() {
                 li.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    try { console.log('[CustomDropdown][appendCustomItem] click', { value: val, label: label }); } catch(_){}
-                    // Sync hidden native select value and dispatch change so old handlers run unchanged
+                    try { console.log('[CustomDropdown][appendCustomItem] click', { value: val, label: label }); } catch(_){ }
+                    // Special-case ASX toggle pseudo-option: perform the toggle directly here and
+                    // avoid triggering the main sort flow. This is more reliable than relying
+                    // on synthetic change events across browsers/hidden selects.
+                    if (val === '__asx_toggle') {
+                        try {
+                            asxButtonsExpanded = !asxButtonsExpanded;
+                            try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true' : 'false'); } catch(e){}
+                            applyAsxButtonsState();
+                            // Keep native option label in sync so anyone reading the hidden select
+                            // sees the correct state (but do not dispatch a change which would trigger sorting).
+                            const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
+                            if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? '🔺 ASX Codes — Hide' : '🔻 ASX Codes — Show');
+                        } catch (err) { console.warn('CustomDropdown: ASX toggle click handler failed', err); }
+                        // close list and restore focus
+                        if (customBtn) customBtn.setAttribute('aria-expanded','false');
+                        if (customList) customList.classList.remove('open');
+                        if (customBtn) customBtn.focus();
+                        return;
+                    }
+
+                    // For regular options, sync hidden native select value and dispatch change so
+                    // existing code paths continue to work unchanged.
                     try {
                         sortSelect.value = val;
                         const ev = new Event('change', { bubbles: true });
