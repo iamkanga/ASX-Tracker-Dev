@@ -5232,6 +5232,7 @@ function renderSortSelect() {
         const customBtn = document.getElementById('sortDropdownBtn');
         if (customList) {
             // clear existing entries safely
+            try { console.log('[renderSortSelect] Clearing customList and creating fragment'); } catch(_){}
             customList.innerHTML = '';
             _customFrag = document.createDocumentFragment();
             // create a helper to add items to the fragment (will be appended later)
@@ -5246,6 +5247,7 @@ function renderSortSelect() {
                 li.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    try { console.log('[CustomDropdown][appendCustomItem] click', { value: val, label: label }); } catch(_){}
                     // Sync hidden native select value and dispatch change so old handlers run unchanged
                     try {
                         sortSelect.value = val;
@@ -5257,6 +5259,7 @@ function renderSortSelect() {
                     if (customList) customList.classList.remove('open');
                     if (customBtn) customBtn.focus();
                 });
+                try { console.log('[renderSortSelect] append custom li for', val); } catch(_){}
                 _customFrag.appendChild(li);
             };
             // Add ASX toggle first (to fragment)
@@ -5359,7 +5362,7 @@ function renderSortSelect() {
         } catch(_) {}
     });
     // Append any collected custom items in one operation (if created)
-    try { if (_customFrag) { const cl = document.getElementById('sortDropdownList'); if (cl) cl.appendChild(_customFrag); } } catch(_) {}
+    try { if (_customFrag) { const cl = document.getElementById('sortDropdownList'); if (cl) { try { console.log('[renderSortSelect] appending fragment with children:', _customFrag.childNodes.length); } catch(_){} cl.appendChild(_customFrag); } } } catch(_) {}
     logDebug(`Sort Select: Populated with ${logMessage}.`);
 
     // Prefer an explicitly set currentSortOrder if it's valid for this view
@@ -11259,12 +11262,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const list = document.getElementById('sortDropdownList');
         const hidden = document.getElementById('sortSelect');
         if (!btn || !list || !hidden) return;
-        // Toggle open/close
-        const close = () => { btn.setAttribute('aria-expanded','false'); list.classList.remove('open'); };
-        const open = () => { btn.setAttribute('aria-expanded','true'); list.classList.add('open'); list.focus(); };
-    btn.addEventListener('click', (e)=>{ e.preventDefault(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close(); else open(); });
-    // Also respond to pointerdown to improve responsiveness on touch devices and avoid focus race
-    btn.addEventListener('pointerdown', (e)=>{ try { e.preventDefault(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close(); else open(); } catch(_){} });
+        // Toggle open/close (instrumented)
+        const close = (reason) => { try { console.log('[SortDropdown] close', reason || 'unknown'); } catch(_){}; btn.setAttribute('aria-expanded','false'); list.classList.remove('open'); };
+        const open = () => { try { console.log('[SortDropdown] open'); } catch(_){}; btn.setAttribute('aria-expanded','true'); list.classList.add('open'); list.focus(); };
+    btn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close('btn-click'); else open(); });
+    // Also respond to pointerdown for touch/pen only to improve responsiveness on touch devices and avoid focus race
+    btn.addEventListener('pointerdown', (e)=>{ try { if (e.pointerType && e.pointerType !== 'touch' && e.pointerType !== 'pen') return; e.preventDefault(); e.stopPropagation(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close('pointerdown'); else open(); } catch(_){} });
         // Keyboard: Down/Up to navigate, Enter to select, Escape to close
         btn.addEventListener('keydown', (e)=>{
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); const first = list.querySelector('.custom-dropdown-option'); if (first) first.focus(); }
@@ -11278,8 +11281,8 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); focused.click(); }
             else if (e.key === 'Escape') { e.preventDefault(); close(); btn.focus(); }
         });
-    // Close on outside click
-    document.addEventListener('click', (e)=>{ if (!btn.contains(e.target) && !list.contains(e.target)) close(); });
+    // Close on outside click (instrumented)
+    document.addEventListener('click', (e)=>{ try { if (!btn.contains(e.target) && !list.contains(e.target)) { console.log('[SortDropdown] document click outside -> closing. target:', e.target); close('outside-click'); } } catch(_){} });
     // Debugging helper: log when init runs and elements exist
     try { console.log('[InitSortDropdown] wired btn/list/hidden:', !!btn, !!list, !!hidden); } catch(_) {}
         // Sync visible button label when native select value changes programmatically
