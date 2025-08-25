@@ -729,7 +729,11 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
+<<<<<<< HEAD
 const APP_VERSION = '2.10.14';
+=======
+const APP_VERSION = '2.10.12';
+>>>>>>> 175ed77eea87b8b231eb69faf957f077c5acb7f7
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
