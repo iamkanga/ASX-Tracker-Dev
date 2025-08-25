@@ -1274,8 +1274,8 @@ function makeFilesAvailableToSourceControlCSS() {
     --danger-button-hover-bg: var(--brand-red);
     --secondary-button-bg: #6c757d;
     --secondary-button-hover-bg: #545b62;
-    --google-auth-btn-bg: #FFFFFF;
-    --google-auth-btn-hover-bg: #F0F0F0;
+    --google-auth-btn-bg: var(--button-bg, #a49393);
+    --google-auth-btn-hover-bg: var(--button-hover-bg, #8d7f7f);
     --google-auth-btn-text: #4285F4;
     --label-color: #555;
     --shadow-color: rgba(0, 0, 0, 0.15);
