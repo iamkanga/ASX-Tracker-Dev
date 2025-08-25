@@ -11274,11 +11274,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const list = document.getElementById('sortDropdownList');
         const hidden = document.getElementById('sortSelect');
         if (!btn || !list || !hidden) return;
+        // Defensive: if multiple toggleAsxButtonsBtn exist (runtime duplication), keep only the first
+        try {
+            const toggles = Array.from(document.querySelectorAll('#toggleAsxButtonsBtn'));
+            if (toggles.length > 1) {
+                for (let i = 1; i < toggles.length; i++) {
+                    try { toggles[i].remove(); console.log('[InitSortDropdown] removed duplicate toggleAsxButtonsBtn', toggles[i]); } catch(_){}
+                }
+            }
+        } catch(_){}
         // Toggle open/close (instrumented)
         // Micro-guard: ignore outside clicks that occur immediately after opening (race from focus/click sequencing)
         const __DROP_IGNORE_MS = 220; // timeframe to ignore accidental outside clicks after open
-        const close = (reason) => { try { console.log('[SortDropdown] close', reason || 'unknown'); } catch(_){}; btn.setAttribute('aria-expanded','false'); list.classList.remove('open'); };
-        const open = () => { try { console.log('[SortDropdown] open'); } catch(_){}; btn.setAttribute('aria-expanded','true'); list.classList.add('open'); list.focus(); try { window.__lastSortDropdownOpenTs = Date.now(); } catch(_){} };
+    const close = (reason) => { try { console.log('[SortDropdown] close', reason || 'unknown'); } catch(_){}; btn.setAttribute('aria-expanded','false'); list.classList.remove('open'); };
+    const open = () => { try { console.log('[SortDropdown] open'); } catch(_){}; btn.setAttribute('aria-expanded','true'); list.classList.add('open'); try { window.__lastSortDropdownOpenTs = Date.now(); } catch(_){}; /* defer focus slightly to avoid focus/click race */ setTimeout(()=>{ try { list.focus(); } catch(_){} }, 20); };
     btn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close('btn-click'); else open(); });
     // Also respond to pointerdown for touch/pen only to improve responsiveness on touch devices and avoid focus race
     btn.addEventListener('pointerdown', (e)=>{ try { if (e.pointerType && e.pointerType !== 'touch' && e.pointerType !== 'pen') return; e.preventDefault(); e.stopPropagation(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close('pointerdown'); else open(); } catch(_){} });
@@ -11295,6 +11304,11 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); focused.click(); }
             else if (e.key === 'Escape') { e.preventDefault(); close(); btn.focus(); }
         });
+        // Prevent clicks/pointer events on the list from bubbling to document and closing the dropdown immediately
+        try {
+            list.addEventListener('click', (e) => { e.stopPropagation(); });
+            list.addEventListener('pointerdown', (e) => { try { e.stopPropagation(); } catch(_){} }, { passive: false });
+        } catch(_){}
     // Close on outside click (instrumented)
     document.addEventListener('click', (e)=>{
         try {
