@@ -211,16 +211,9 @@
     box-sizing: border-box;
 }
 .sort-controls-container .toggle-asx-btn {
-    margin-left: 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 8px;
-    background: transparent;
-    border: none;
-    border-radius: 6px;
-    color: var(--ghosted-text, #666);
-    cursor: pointer;
+    /* Hide the external ASX toggle button — the ASX control is now provided
+       as the first interactive option inside the sortSelect dropdown. */
+    display: none !important;
 }
 .sort-select-wrapper .toggle-asx-btn:focus {
     outline: none;
