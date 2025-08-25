@@ -11275,8 +11275,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const hidden = document.getElementById('sortSelect');
         if (!btn || !list || !hidden) return;
         // Toggle open/close (instrumented)
+        // Micro-guard: ignore outside clicks that occur immediately after opening (race from focus/click sequencing)
+        const __DROP_IGNORE_MS = 220; // timeframe to ignore accidental outside clicks after open
         const close = (reason) => { try { console.log('[SortDropdown] close', reason || 'unknown'); } catch(_){}; btn.setAttribute('aria-expanded','false'); list.classList.remove('open'); };
-        const open = () => { try { console.log('[SortDropdown] open'); } catch(_){}; btn.setAttribute('aria-expanded','true'); list.classList.add('open'); list.focus(); };
+        const open = () => { try { console.log('[SortDropdown] open'); } catch(_){}; btn.setAttribute('aria-expanded','true'); list.classList.add('open'); list.focus(); try { window.__lastSortDropdownOpenTs = Date.now(); } catch(_){} };
     btn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close('btn-click'); else open(); });
     // Also respond to pointerdown for touch/pen only to improve responsiveness on touch devices and avoid focus race
     btn.addEventListener('pointerdown', (e)=>{ try { if (e.pointerType && e.pointerType !== 'touch' && e.pointerType !== 'pen') return; e.preventDefault(); e.stopPropagation(); const expanded = btn.getAttribute('aria-expanded') === 'true'; if (expanded) close('pointerdown'); else open(); } catch(_){} });
@@ -11294,7 +11296,24 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (e.key === 'Escape') { e.preventDefault(); close(); btn.focus(); }
         });
     // Close on outside click (instrumented)
-    document.addEventListener('click', (e)=>{ try { if (!btn.contains(e.target) && !list.contains(e.target)) { console.log('[SortDropdown] document click outside -> closing. target:', e.target); close('outside-click'); } } catch(_){} });
+    document.addEventListener('click', (e)=>{
+        try {
+            if (!btn.contains(e.target) && !list.contains(e.target)) {
+                const since = Date.now() - (window.__lastSortDropdownOpenTs || 0);
+                if (since > 0 && since < __DROP_IGNORE_MS) {
+                    // Likely a focus/click race immediately after opening — ignore once and log for diagnosis
+                    console.log('[SortDropdown] ignoring outside click shortly after open (ms):', since, 'target:', e.target);
+                    return;
+                }
+                // Optional: when debugging, enable window.__enableDropdownTrace = true in the console to capture stack traces
+                if (window.__enableDropdownTrace) {
+                    try { console.groupCollapsed('[SortDropdown] document click outside -> trace target:'); console.log('target:', e.target); console.trace(); console.groupEnd(); } catch(_){}
+                }
+                console.log('[SortDropdown] document click outside -> closing. target:', e.target);
+                close('outside-click');
+            }
+        } catch(_){}
+    });
     // Debugging helper: log when init runs and elements exist
     try { console.log('[InitSortDropdown] wired btn/list/hidden:', !!btn, !!list, !!hidden); } catch(_) {}
         // Sync visible button label when native select value changes programmatically
