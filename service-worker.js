@@ -13,7 +13,7 @@ const CACHED_ASSETS = [
     `./script.js?v=${APP_VERSION}`,
     `./style.css?v=${APP_VERSION}`,
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
+    // Font Awesome served from CDN removed from precache because cross-origin fetches can time out.
     // Firebase SDKs are loaded as modules, so they might not be directly in the cache list
     // if not explicitly requested by the main app. However, if they are, it's good to list them.
     'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js',
