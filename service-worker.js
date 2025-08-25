@@ -82,7 +82,7 @@ self.addEventListener('fetch', (event) => {
         }
 
         // Network-first strategy for core versioned assets (CSS / JS) so updates propagate immediately
-        try {
+    try {
             const url = new URL(event.request.url);
             const isSameOrigin = url.origin === self.location.origin;
             const isCoreAsset = isSameOrigin && (url.pathname.endsWith('/style.css') || url.pathname.endsWith('/script.js'));
@@ -97,11 +97,24 @@ self.addEventListener('fetch', (event) => {
                             }
                             return resp;
                         })
-                        .catch(() => caches.match(event.request)) // Fallback to cached
+                        .catch(() => safeMatchOrFallback(event.request)) // Fallback to cached or offline
                 );
                 return; // Prevent falling through to cache-first path
             }
         } catch(_e) { /* noop */ }
+
+    // Helper to safely return a cached response or a harmless offline Response
+    async function safeMatchOrFallback(request) {
+        try {
+            const match = await caches.match(request);
+            if (match) return match;
+            const root = await caches.match('./');
+            if (root) return root;
+        } catch (e) {
+            // ignore
+        }
+        return new Response('Service Unavailable', { status: 503, statusText: 'Service Unavailable', headers: { 'Content-Type': 'text/plain' } });
+    }
 
     event.respondWith(
             caches.match(event.request).then((cachedResponse) => {
@@ -133,7 +146,7 @@ self.addEventListener('fetch', (event) => {
                 }).catch(error => {
                     console.error(`Service Worker: Network fetch failed for ${event.request.url}. Returning offline fallback if available.`, error);
                     // If network fails, try to return a cached response as a fallback
-                    return caches.match(event.request);
+                    return safeMatchOrFallback(event.request);
                 });
 
             }) // No second .catch here, as the inner fetch promise already handles its own errors and returns a fallback
