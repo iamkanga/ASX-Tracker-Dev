@@ -455,7 +455,7 @@ document.addEventListener('DOMContentLoaded', function () {
             else if (todayClass === 'negative') borderColor = 'border: 4px solid #c42131;';
             // For real neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
-            return `<div class="portfolio-card ${testNeutral ? 'neutral' : plClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
+            return `<div class="portfolio-card ${testNeutral ? 'neutral' : todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
                 <div class="pc-main-row">
                     <div class="pc-code">${share.shareName || ''}</div>
                     <div class="pc-live-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
