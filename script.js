@@ -294,6 +294,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let portfolioSection = document.getElementById('portfolioSection');
         portfolioSection.style.display = 'block';
     renderPortfolioList();
+    try { scrollMainToTop(); } catch(_) {}
     // Keep header text in sync
     try { updateMainTitle(); } catch(e) {}
     // Ensure sort options and alerts are correct for Portfolio view
@@ -705,6 +706,7 @@ function scheduleMoversFallback() {
                 try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
                 if (typeof renderWatchlist === 'function') { try { renderWatchlist(); } catch(_) {} }
                 console.warn('[Movers restore][fallback->allShares] Movers failed to attach; defaulted to All Shares.');
+                try { scrollMainToTop(); } catch(_) {}
             }
         } catch(e) { console.warn('[Movers fallback] failed', e); }
     }, 2500);
@@ -1465,6 +1467,7 @@ function restoreViewAndModeFromPreferences() {
         if (lastView) {
             if (lastView === 'portfolio') {
                 showPortfolioView();
+                try { scrollMainToTop(true); } catch(_) {}
             } else if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
                 // If movers virtual view
                 if (lastView === '__movers') {
@@ -1482,6 +1485,7 @@ function restoreViewAndModeFromPreferences() {
                         watchlistSelect.value = lastView;
                         currentSelectedWatchlistIds = [lastView];
                         renderWatchlist();
+                        try { scrollMainToTop(); } catch(_) {}
                         updateMainTitle();
                     }
                 }
@@ -5420,6 +5424,8 @@ function openWatchlistPicker() {
             }
             try { renderSortSelect(); } catch (_) { }
             try { renderWatchlist(); } catch (e) { console.warn('WatchlistPicker: renderWatchlist failed', e); }
+            // Ensure the main view scrolls to top after programmatic watchlist selection
+            try { scrollMainToTop(); } catch(_) {}
             try { enforceMoversVirtualView(); } catch (e) { console.warn('WatchlistPicker: enforceMoversVirtualView failed', e); }
             if (it.id === '__movers' && typeof debugMoversConsistency === 'function') {
                 try { debugMoversConsistency({ includeLists: true }); } catch (_) { }
@@ -5499,6 +5505,7 @@ loadUserWatchlistsAndSettings = async function() {
             const sel = typeof watchlistSelect !== 'undefined' ? watchlistSelect : document.getElementById('watchlistSelect');
             if (sel) sel.value = '__movers';
             if (typeof renderWatchlist === 'function') renderWatchlist();
+            try { scrollMainToTop(); } catch(_) {}
             enforceMoversVirtualView(true);
             console.log('[Movers restore][post-user-data] enforced after loadUserWatchlistsAndSettings');
         }
