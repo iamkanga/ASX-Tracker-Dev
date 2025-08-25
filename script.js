@@ -399,10 +399,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (typeof shares === 'number' && typeof priceNow === 'number' && typeof prevClose === 'number') {
                 todayChange = (priceNow - prevClose) * shares;
                 todayChangePct = prevClose > 0 ? ((priceNow - prevClose) / prevClose) * 100 : 0;
-                todayNet += todayChange;
-                todayNetPct += todayChangePct;
-                if (todayChange > 0) daysGain += todayChange;
-                if (todayChange < 0) daysLoss += todayChange;
+                // Only include today's movements in aggregates when the share is NOT hidden
+                if (!isHidden) {
+                    todayNet += todayChange;
+                    if (todayChange > 0) daysGain += todayChange;
+                    if (todayChange < 0) daysLoss += todayChange;
+                }
             }
             // P/L %
 
@@ -440,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function () {
             else if (plClass === 'negative') borderColor = 'border: 4px solid #c42131;';
             // For real neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
-            return `<div class="portfolio-card ${testNeutral ? 'neutral' : plClass}" data-doc-id="${share.id}"${borderColor && testNeutral ? ` style=\"${borderColor}\"` : ''}>
+            return `<div class="portfolio-card ${testNeutral ? 'neutral' : plClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor && testNeutral ? ` style=\"${borderColor}\"` : ''}>
                 <div class="pc-main-row">
                     <div class="pc-code">${share.shareName || ''}</div>
                     <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
@@ -478,7 +480,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // After mapping, inject a test neutral card at the start for debug/visual confirmation
 
-        // --- Summary Bar ---
+    // Compute overall today percentage from aggregated totalValue (excluding hidden shares)
+    todayNetPct = (totalValue > 0) ? ((todayNet / totalValue) * 100) : 0;
+
+    // --- Summary Bar ---
         const summaryBar = `<div class="portfolio-summary-bar">
             <div class="summary-card ${daysGain > 0 ? 'positive' : daysGain < 0 ? 'negative' : 'neutral'}">
                 <div class="summary-label">Day's Gain</div>
@@ -537,8 +542,11 @@ document.addEventListener('DOMContentLoaded', function () {
             // Eye icon logic: toggle hide-from-totals (Option A). Click still opens details when CTRL/Meta is held.
             const eyeBtn = card.querySelector('.pc-eye-btn');
             if (eyeBtn) {
-                // Set initial visual state
-                if (hiddenFromTotalsShareIds.has(share.id)) eyeBtn.classList.add('hidden-from-totals');
+                // Set initial visual state on eye button and card
+                if (hiddenFromTotalsShareIds.has(share.id)) {
+                    eyeBtn.classList.add('hidden-from-totals');
+                    card.classList.add('hidden-from-totals');
+                }
                 eyeBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
                     // If user held Ctrl/Meta or Shift while clicking, treat as 'open details' to preserve previous flow
@@ -551,9 +559,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (wasHidden) {
                         hiddenFromTotalsShareIds.delete(share.id);
                         eyeBtn.classList.remove('hidden-from-totals');
+                        card.classList.remove('hidden-from-totals');
                     } else {
                         hiddenFromTotalsShareIds.add(share.id);
                         eyeBtn.classList.add('hidden-from-totals');
+                        card.classList.add('hidden-from-totals');
                     }
                     persistHiddenFromTotals();
                     // Re-render totals and summary immediately

@@ -5276,6 +5276,16 @@ table td.live-price-cell.negative-change {
     opacity: 0.5;
 }
 
+/* Ghosted portfolio card when hidden from totals */
+.portfolio-card.hidden-from-totals {
+    opacity: 0.45;
+    filter: grayscale(30%);
+}
+
+.portfolio-card.hidden-from-totals .pc-eye-btn.hidden-from-totals {
+    color: var(--ghosted-text) !important;
+}
+
 /* Modals - General */
 .modal {
     display: none;
