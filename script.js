@@ -729,7 +729,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.9';
+const APP_VERSION = '2.10.10';
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
@@ -1760,7 +1760,20 @@ const logoutBtn = document.getElementById('logoutBtn');
 const deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
 const exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
 const refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
-const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
+let shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
+// Defensive: if the DOM does not include the native select (we use enhanced toggles), create a hidden off-DOM select
+if (!shareWatchlistSelect) {
+    try {
+        shareWatchlistSelect = document.createElement('select');
+        shareWatchlistSelect.id = 'shareWatchlistSelect';
+        shareWatchlistSelect.style.display = 'none';
+        shareWatchlistSelect.multiple = true;
+        // Keep it off-DOM but accessible to scripts. Some older code queries by id; this preserves behavior.
+        // Do not append to document.body to avoid duplicate UI; remain off-DOM.
+    } catch(_) {
+        shareWatchlistSelect = null;
+    }
+}
 const shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
 const shareWatchlistDropdownBtn = document.getElementById('shareWatchlistDropdownBtn');
 const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection'); 
