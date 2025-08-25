@@ -520,6 +520,15 @@
     line-height: 1;
     transition: color 0.18s;
 }
+/* Visual cue for eye button when a portfolio card is hidden from totals */
+.portfolio-card .pc-eye-btn.hidden-from-totals {
+    color: var(--ghosted-text, #9aa0a6) !important;
+    opacity: 0.75;
+}
+.portfolio-card .pc-eye-btn.hidden-from-totals .fa-eye {
+    text-decoration: line-through;
+    text-decoration-thickness: 2px;
+}
 .portfolio-card .pc-eye-btn {
     background: none;
     border: none;

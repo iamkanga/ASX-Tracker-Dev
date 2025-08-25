@@ -382,12 +382,16 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             // Value, P/L, Cost Basis
             const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
-            if (typeof rowValue === 'number') totalValue += rowValue;
             const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
-            if (typeof shares === 'number' && typeof avgPrice === 'number') totalCostBasis += (shares * avgPrice);
-            if (typeof rowPL === 'number') {
-                totalPL += rowPL;
-                if (rowPL > 0) profitPLSum += rowPL; else if (rowPL < 0) lossPLSum += rowPL;
+            // If this share has been hidden from totals, skip adding its numbers to aggregates
+            const isHidden = hiddenFromTotalsShareIds.has(share.id);
+            if (!isHidden) {
+                if (typeof rowValue === 'number') totalValue += rowValue;
+                if (typeof shares === 'number' && typeof avgPrice === 'number') totalCostBasis += (shares * avgPrice);
+                if (typeof rowPL === 'number') {
+                    totalPL += rowPL;
+                    if (rowPL > 0) profitPLSum += rowPL; else if (rowPL < 0) lossPLSum += rowPL;
+                }
             }
             // Today change
             let todayChange = 0;
@@ -530,13 +534,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 card.classList.toggle('expanded', !expanded);
                 btn.querySelector('.chevron').textContent = !expanded ? '▲' : '▼';
             });
-            // Eye icon logic
+            // Eye icon logic: toggle hide-from-totals (Option A). Click still opens details when CTRL/Meta is held.
             const eyeBtn = card.querySelector('.pc-eye-btn');
             if (eyeBtn) {
+                // Set initial visual state
+                if (hiddenFromTotalsShareIds.has(share.id)) eyeBtn.classList.add('hidden-from-totals');
                 eyeBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    selectShare(share.id);
-                    showShareDetails();
+                    // If user held Ctrl/Meta or Shift while clicking, treat as 'open details' to preserve previous flow
+                    if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                        selectShare(share.id);
+                        showShareDetails();
+                        return;
+                    }
+                    const wasHidden = hiddenFromTotalsShareIds.has(share.id);
+                    if (wasHidden) {
+                        hiddenFromTotalsShareIds.delete(share.id);
+                        eyeBtn.classList.remove('hidden-from-totals');
+                    } else {
+                        hiddenFromTotalsShareIds.add(share.id);
+                        eyeBtn.classList.add('hidden-from-totals');
+                    }
+                    persistHiddenFromTotals();
+                    // Re-render totals and summary immediately
+                    try { renderPortfolioList(); } catch(_) {}
                 });
             }
             // Plus shortcut icon logic (in expanded details)
@@ -729,7 +750,20 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.13';
+const APP_VERSION = '2.10.14';
+
+// Persisted set of share IDs to hide from totals (Option A)
+let hiddenFromTotalsShareIds = new Set();
+try {
+    const stored = localStorage.getItem('hiddenFromTotalsShareIds');
+    if (stored) {
+        JSON.parse(stored).forEach(id => hiddenFromTotalsShareIds.add(id));
+    }
+} catch (e) { /* ignore parse errors */ }
+
+function persistHiddenFromTotals() {
+    try { localStorage.setItem('hiddenFromTotalsShareIds', JSON.stringify(Array.from(hiddenFromTotalsShareIds))); } catch(_) {}
+}
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
