@@ -487,6 +487,12 @@
 /* --- Phase 1: Modern segmented toggles for Intent/Direction --- */
 /* Enhanced Watchlist Selector */
 .watchlist-enhanced-list { display:none; margin:8px 0 4px; padding:8px 10px; border:1px solid var(--border-color); border-radius:8px; background:var(--card-bg); max-height:240px; overflow-y:auto; }
+/* Ensure enhanced multi-select list matches the width of the dropdown button in the modal */
+#shareFormSection .watchlist-enhanced-list {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
 .watchlist-enhanced-item { display:flex; align-items:center; justify-content:space-between; padding:6px 4px; border-bottom:1px solid var(--border-color); gap:10px; }
 .watchlist-enhanced-item:last-child { border-bottom:none; }
 .watchlist-enhanced-name { font-size:0.92rem; font-weight:500; color:var(--text-color); flex:1; }
@@ -532,28 +538,26 @@
         padding:0 !important;
     }
 
-/* Fix: Ensure the functioning watchlist control is visible and hide the non-functional enhanced button.
-   The app primarily wires the native <select> for data binding; keep it visible and centered while
-   hiding the visually duplicated JS-enhanced button. */
+/* Ensure the enhanced watchlist dropdown button is visible and spans full-width like other inputs */
 #shareFormSection #shareWatchlistDropdownBtn {
-    /* Keep the JS-enhanced duplicate button hidden; the native select is the working control. */
+    display: block !important;
+    width: 100% !important; /* match full width of form inputs */
+    max-width: 100% !important;
+    margin: 8px 0 6px 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* The legacy native select was removed from the DOM; keep a defensive rule in case it's present */
+#shareFormSection #shareWatchlistSelect {
     display: none !important;
 }
 
-#shareFormSection #shareWatchlistSelect {
-    /* Ensure the native select is visible and can be centered with other inputs */
-    display: block !important;
-    width: auto !important;
-}
-
-/* Center-align dropdowns in the Add/Edit Share modal to match other input fields */
+/* Keep other dropdown-like inputs consistent but allow the enhanced control to occupy full width */
 #shareFormSection .dropdown-large,
 #shareFormSection select,
-#shareFormSection #shareRating,
-#shareFormSection #shareWatchlistSelect,
-#shareFormSection #shareWatchlistDropdownBtn {
+#shareFormSection #shareRating {
     display: block !important;
-    width: auto !important; /* let max-width control sizing */
+    width: auto !important; /* let container control sizing for these elements */
     max-width: 420px !important; /* keep inputs centered and consistent */
     margin-left: auto !important;
     margin-right: auto !important;
@@ -565,7 +569,8 @@
     #shareFormSection .dropdown-large,
     #shareFormSection select,
     #shareFormSection #shareRating,
-    #shareFormSection #shareWatchlistSelect {
+    #shareFormSection #shareWatchlistSelect,
+    #shareFormSection #shareWatchlistDropdownBtn {
         width: 100% !important;
         max-width: 100% !important;
         margin-left: 0 !important;

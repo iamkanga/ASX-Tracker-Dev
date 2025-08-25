@@ -729,14 +729,14 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.8';
+const APP_VERSION = '2.10.9';
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
     // Splash version display
     try {
         const splashVerEl = document.getElementById('splashAppVersion');
-        if (splashVerEl) splashVerEl.textContent = 'v' + APP_VERSION;
+    if (splashVerEl) splashVerEl.textContent = 'v' + APP_VERSION;
     } catch (e) { /* ignore */ }
 
     // Force Update button handler - posts SKIP_WAITING to waiting worker or triggers update
