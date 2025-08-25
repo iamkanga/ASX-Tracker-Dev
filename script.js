@@ -729,7 +729,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.16';
+const APP_VERSION = '2.10.17';
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
@@ -5229,7 +5229,7 @@ function renderSortSelect() {
         const asxToggleOption = document.createElement('option');
         asxToggleOption.value = '__asx_toggle';
         // Use a triangle icon to indicate state: green triangle when expanded, red when collapsed
-        asxToggleOption.textContent = (asxButtonsExpanded ? '🔺 ASX Codes — Hide' : '🔻 ASX Codes — Show');
+    asxToggleOption.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
         asxToggleOption.dataset.toggle = 'asx';
         // Insert as the first selectable option after the disabled placeholder
         sortSelect.appendChild(asxToggleOption);
@@ -5270,7 +5270,23 @@ function renderSortSelect() {
                 li.dataset.value = val;
                 if (isDisabled) li.setAttribute('aria-disabled','true');
                 li.className = 'custom-dropdown-option';
-                li.innerHTML = `<span class="custom-dropdown-option-label">${label}</span>`;
+                // If this is the ASX toggle pseudo-option, inject an inline SVG triangle that we can
+                // rotate and recolor via CSS classes. Otherwise render a plain label.
+                if (val === '__asx_toggle') {
+                    // SVG: single triangle pointing up (we will rotate via CSS for collapsed state)
+                    const triClass = asxButtonsExpanded ? 'tri-positive expanded' : 'tri-negative';
+                    li.innerHTML = `
+                        <span class="custom-dropdown-option-label asx-toggle-label">
+                            <span class="asx-toggle-text">${label}</span>
+                            <span class="asx-toggle-triangle ${triClass}" aria-hidden="true">
+                                <svg class="chevron-svg" viewBox="0 0 6 6" width="1em" height="1em" focusable="false" aria-hidden="true">
+                                    <polygon points="3,0 6,6 0,6" fill="currentColor"></polygon>
+                                </svg>
+                            </span>
+                        </span>`;
+                } else {
+                    li.innerHTML = `<span class="custom-dropdown-option-label">${label}</span>`;
+                }
                 li.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -5288,7 +5304,16 @@ function renderSortSelect() {
                             // Keep native option label in sync so anyone reading the hidden select
                             // sees the correct state (but do not dispatch a change which would trigger sorting).
                             const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
-                            if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? '🔺 ASX Codes — Hide' : '🔻 ASX Codes — Show');
+                            if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+                            // Update the inline triangle's classes for color and rotation
+                            try {
+                                const tri = li.querySelector('.asx-toggle-triangle');
+                                if (tri) {
+                                    tri.classList.toggle('expanded', !!asxButtonsExpanded);
+                                    tri.classList.toggle('tri-positive', !!asxButtonsExpanded);
+                                    tri.classList.toggle('tri-negative', !asxButtonsExpanded);
+                                }
+                            } catch(_) {}
                         } catch (err) { console.warn('CustomDropdown: ASX toggle click handler failed', err); }
                         // close list and restore focus
                         if (customBtn) customBtn.setAttribute('aria-expanded','false');
@@ -5312,8 +5337,8 @@ function renderSortSelect() {
                 try { console.log('[renderSortSelect] append custom li for', val); } catch(_){}
                 _customFrag.appendChild(li);
             };
-            // Add ASX toggle first (to fragment)
-            appendCustomItem('__asx_toggle', (asxButtonsExpanded ? '▲ ASX Codes — Hide' : '▼ ASX Codes — Show'), false);
+            // Add ASX toggle first (to fragment). Use a textual label only; the visible glyph is provided by an inline SVG
+            appendCustomItem('__asx_toggle', (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show'), false);
         }
     } catch(_) {}
 
@@ -9875,6 +9900,15 @@ if (sortSelect) {
                 // Update the ASX option label to reflect new state
                 const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
                 if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? '🔺 ASX Codes — Hide' : '🔻 ASX Codes — Show');
+                // Also update the inline triangle in the custom dropdown (if present)
+                try {
+                    const tri = document.querySelector('.custom-dropdown-option[data-value="__asx_toggle"] .asx-toggle-triangle');
+                    if (tri) {
+                        tri.classList.toggle('expanded', !!asxButtonsExpanded);
+                        tri.classList.toggle('tri-positive', !!asxButtonsExpanded);
+                        tri.classList.toggle('tri-negative', !asxButtonsExpanded);
+                    }
+                } catch(_) {}
             } catch (e) { console.warn('ASX toggle option handler failed', e); }
             // Restore the visible selection back to the active sort (do not trigger a sort)
             try { sortSelect.value = currentSortOrder || (currentSelectedWatchlistIds.includes('portfolio') ? 'totalDollar-desc' : 'entryDate-desc'); } catch(_) {}

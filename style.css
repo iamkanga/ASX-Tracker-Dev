@@ -111,6 +111,18 @@
     padding: 0;
 }
 
+/* Ensure the dropdown ASX toggle triangle transitions and color correctly */
+.custom-dropdown-option .asx-toggle-triangle {
+    transition: transform 0.22s ease, color 0.18s ease;
+    transform-origin: 50% 50%;
+}
+.custom-dropdown-option .asx-toggle-triangle.expanded {
+    transform: rotate(180deg);
+}
+.custom-dropdown-option .asx-toggle-triangle.tri-positive { color: #2ecc71 !important; }
+.custom-dropdown-option .asx-toggle-triangle.tri-negative { color: #e74c3c !important; }
+.custom-dropdown-option .asx-toggle-triangle .chevron-svg polygon { fill: currentColor !important; }
+
 /* Hidden helper for accessibility when preserving native select shim */
 .visually-hidden {
     position: absolute !important;
