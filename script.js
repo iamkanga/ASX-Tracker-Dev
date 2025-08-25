@@ -729,7 +729,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.15';
+const APP_VERSION = '2.10.16';
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
@@ -11375,6 +11375,39 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     // Debugging helper: log when init runs and elements exist
     try { console.log('[InitSortDropdown] wired btn/list/hidden:', !!btn, !!list, !!hidden); } catch(_) {}
+        // Helper to set the visible trigger label. When no selection, show placeholder + chevron.
+        const setTriggerLabel = (text) => {
+            try {
+                const triggerLabel = btn.querySelector('.trigger-label');
+                const triggerChevron = btn.querySelector('.trigger-chevron');
+                if (!triggerLabel || !triggerChevron) {
+                    // Rebuild the default structure
+                    btn.innerHTML = `<span class="trigger-label"></span><span class="trigger-chevron">▾</span>`;
+                }
+                const labelEl = btn.querySelector('.trigger-label');
+                const chevronEl = btn.querySelector('.trigger-chevron');
+                if (!text || text === '') {
+                    labelEl.textContent = 'Sort...';
+                    chevronEl.style.display = '';
+                } else {
+                    // Replace button content with just the selected option text (no chevron)
+                    btn.textContent = text;
+                }
+            } catch(_){}
+        };
+
+        // Initialize the trigger label based on current hidden select value
+        try {
+            const initialVal = hidden.value;
+            if (!initialVal || initialVal === '') {
+                setTriggerLabel('');
+            } else {
+                const initialOpt = Array.from(hidden.options).find(o=>o.value===initialVal);
+                if (initialOpt && initialOpt.value !== '__asx_toggle') setTriggerLabel(initialOpt.textContent || '');
+                else setTriggerLabel('');
+            }
+        } catch(_){}
+
         // Sync visible button label when native select value changes programmatically
         // Do NOT update the visible label when the special ASX toggle pseudo-option is selected.
         hidden.addEventListener('change', ()=>{
@@ -11382,8 +11415,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const v = hidden.value;
                 if (v === '__asx_toggle') return; // preserve visible label when toggling ASX codes
                 const opt = Array.from(hidden.options).find(o=>o.value===v);
-                const btnLabel = document.getElementById('sortDropdownBtn');
-                if (btnLabel && opt) btnLabel.textContent = opt.textContent || 'Sort List';
+                if (opt) setTriggerLabel(opt.textContent || '');
             } catch(_){ }
         });
     })();

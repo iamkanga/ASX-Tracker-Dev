@@ -8034,6 +8034,8 @@ body.dark-theme .alert-item {
 }
 
 .sort-icon {
+    /* Keep element present for accessibility but hide its permanent graphical display.
+       The visible label is managed by the custom dropdown trigger. */
     position: absolute;
     right: 8px; /* Position icon inside the select box */
     top: 50%;
@@ -8042,7 +8044,11 @@ body.dark-theme .alert-item {
     font-size: 0.8em;
     color: var(--ghosted-text);
     transition: transform 0.2s ease-in-out;
+    opacity: 0; /* hide the permanent icon */
+    width: 0; height: 0; overflow: hidden; /* remove from layout */
 }
+.custom-dropdown-trigger .trigger-label { display: inline-block; }
+.custom-dropdown-trigger .trigger-chevron { margin-left: 8px; font-size: 0.9em; color: var(--ghosted-text); }
 
 .sort-icon.up::before {
     content: '▲';
