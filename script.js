@@ -1638,44 +1638,51 @@ function applyAsxButtonsState() {
 
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     applyAsxButtonsState();
-    toggleAsxButtonsBtn.addEventListener('click', () => {
+    toggleAsxButtonsBtn.addEventListener('click', (e) => {
+        // Prevent the click from falling through to the sort select and other handlers
+        try { e.stopPropagation(); e.preventDefault(); } catch(_) {}
         asxButtonsExpanded = !asxButtonsExpanded;
         try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
         applyAsxButtonsState();
         console.log('[ASX Toggle] Toggled. Expanded=', asxButtonsExpanded);
+        // Close native select popup if it is open
+        try { if (typeof sortSelect !== 'undefined' && sortSelect && document.activeElement === sortSelect) sortSelect.blur(); } catch(_) {}
         // Schedule padding adjustment after the CSS transition window
-        // Transition duration in CSS: 300-400ms; allow a buffer
         setTimeout(adjustMainContentPadding, 450);
-        // A second safety call in case the first fires mid-transition
         setTimeout(adjustMainContentPadding, 700);
-    // New: Always scroll to top smoothly after toggling for visibility of top cards
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); } catch(_) { window.scrollTo(0,0); }
-    // Update aria states and visual pressed attribute for button
-    try {
-        toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!asxButtonsExpanded));
-        toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!asxButtonsExpanded));
-        const tri = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle'); if (tri) tri.classList.toggle('expanded', !!asxButtonsExpanded);
-    } catch(_) {}
+        // Update aria states and visual pressed attribute for button
+        try {
+            toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!asxButtonsExpanded));
+            toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!asxButtonsExpanded));
+            const tri = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle'); if (tri) tri.classList.toggle('expanded', !!asxButtonsExpanded);
+        } catch(_) {}
+        // Try to keep page view stable (avoid abrupt jumps)
+        try { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); } catch(_) {}
     });
+
     // Allow clicking the surrounding sort-select-wrapper to toggle ASX Codes as well
     try {
         const sortWrapper = document.querySelector('.sort-select-wrapper');
         if (sortWrapper) {
-            // Only attach if the click target is not the actual select element (so selecting still works)
+            // If the click target is the select element, let the browser handle it (opening the select)
             sortWrapper.addEventListener('click', (e) => {
                 const target = e.target;
-                if (target && (target.tagName === 'SELECT' || target.closest && target.closest('select'))) {
+                if (target && (target.tagName === 'SELECT' || (target.closest && target.closest('select')))) {
                     return; // let select handle interaction
                 }
-                // Toggle the ASX buttons
+                try { e.stopPropagation(); e.preventDefault(); } catch(_) {}
+                // Toggle the ASX buttons and persist state
                 asxButtonsExpanded = !asxButtonsExpanded;
                 try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
                 applyAsxButtonsState();
                 // Mirror visual feedback on the button
                 try { toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!asxButtonsExpanded)); toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!asxButtonsExpanded)); } catch(_) {}
-            }, { passive: true });
+                // Close native select if it is open to ensure the sort box collapses visually
+                try { if (typeof sortSelect !== 'undefined' && sortSelect && document.activeElement === sortSelect) sortSelect.blur(); } catch(_) {}
+            }, { passive: false });
         }
     } catch(_) {}
+
     // Also adjust precisely on transition end of the container
     asxCodeButtonsContainer.addEventListener('transitionend', (ev) => {
         if (ev.propertyName === 'max-height' || ev.propertyName === 'padding' || ev.propertyName === 'opacity') {
