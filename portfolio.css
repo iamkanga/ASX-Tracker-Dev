@@ -572,6 +572,7 @@ function makeFilesAvailableToSourceControlCSS() {
     overflow: hidden; /* prevent accidental overflow from long numbers or codes */
     min-width: 0; /* allow children to shrink inside this container */
 }
+.portfolio-card { position: relative; }
 .portfolio-card .pc-top-left {
     display: inline-flex;
     flex-direction: row; /* keep code + eye on same line */
@@ -630,8 +631,8 @@ function makeFilesAvailableToSourceControlCSS() {
 /* Ensure the ASX code doesn't overflow and force wrapping */
 .portfolio-card .pc-code { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Style the combined day-change (dollar + pct) */
-.portfolio-card .pc-day-change { display:inline-flex; align-items:baseline; gap:8px; margin-left: auto; text-align: right; min-width: 0; }
-.portfolio-card .pc-day-change .pc-pct { font-size:0.95rem; font-weight:600; opacity:0.9; }
+.portfolio-card .pc-day-change { display:inline-flex; align-items:baseline; gap:6px; text-align: right; min-width: 0; position: absolute; top: 12px; right: 12px; background: transparent; padding: 0 4px; }
+.portfolio-card .pc-day-change .pc-pct { font-size:0.92rem; font-weight:700; opacity:0.95; margin-left:4px; }
 .portfolio-card .pc-top-spacer { height: 8px; width: 100%; }
 
 .portfolio-card .pc-mid-row {
@@ -680,6 +681,15 @@ function makeFilesAvailableToSourceControlCSS() {
     .portfolio-card .pc-code { font-size: 1.05rem; }
     .portfolio-card .pc-mid-row { flex-direction: row; gap: 8px; font-size: 0.98rem; }
     .portfolio-card .pc-top-spacer { height: 4px; }
+}
+
+/* On small screens keep day-change inline so it doesn't overlap the compact layout */
+@media (max-width: 600px) {
+    .portfolio-card .pc-day-change { position: static; display:inline-flex; margin-left: auto; padding:0; top: auto; right: auto; }
+}
+
+@media (max-width: 420px) {
+    .portfolio-card .pc-day-change { position: static; display:inline-flex; margin-left: 6px; padding:0; }
 }
 
 @media (max-width: 420px) {
