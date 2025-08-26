@@ -1322,7 +1322,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const lpCont = document.getElementById('livePriceTimestampContainer');
         const header = document.getElementById('appHeader');
         if (lpCont && header) {
-                // Move the timestamp into the header top row so we can absolutely position it bottom-right
+                // Move the timestamp into the header element so we can absolutely position it bottom-right
                 const headerTop = header.querySelector('.header-top-row') || header;
                 try {
                     // Ensure the container has a stacked label + time structure
@@ -1330,7 +1330,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Preserve existing time span id by recreating inner content
                         lpCont.innerHTML = '<div class="live-price-label">Updated</div><div id="livePriceTimestamp"></div>';
                     }
-                    headerTop.appendChild(lpCont);
+                    // Append to the root header so absolute positioning is relative to the header area
+                    header.appendChild(lpCont);
                     lpCont.classList.remove('live-price-inside-header-left');
                     lpCont.classList.add('live-price-inside-header');
                 } catch (e) {

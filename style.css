@@ -217,6 +217,15 @@
     position: relative;
 }
 
+/* Make header the positioning context for absolutely positioned children like the timestamp */
+#appHeader { position: relative; }
+
+/* Keep hamburger on top-left and above any positioned timestamp */
+#hamburgerBtn { position: relative; z-index: 80; }
+
+/* Timestamp should be positioned at bottom-right but not overlay interactive controls */
+.live-price-inside-header { z-index: 10; }
+
 /* Ensure sort controls area can wrap so the timestamp can occupy its own line
    and appear between the header and the main content. */
 .sort-controls-container {
