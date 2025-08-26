@@ -456,33 +456,50 @@ document.addEventListener('DOMContentLoaded', function () {
             // For real neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
             return `<div class="portfolio-card ${testNeutral ? 'neutral' : todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
-                <div class="pc-main-row">
-                    <div class="pc-code">${share.shareName || ''}</div>
-                    <div class="pc-live-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
-                    <div class="pc-value">${rowValue !== null ? fmtMoney(rowValue) : ''}</div>
-                </div>
-                <div class="pc-metrics-row">
-                    <div class="pc-metric-line">
-                        <span class="pc-label">Day Change</span>
-                        <span class="pc-val ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct ${todayClass}">${todayChangePct !== null ? fmtPct(todayChangePct) : ''}</span></span>
+                <!-- Top line: code left (with eye under it), live price center, day pct right -->
+                <div class="pc-top-line">
+                    <div class="pc-top-left">
+                        <div class="pc-code">${share.shareName || ''}</div>
+                        <button class="pc-eye-btn" aria-label="Hide or show from totals"><span class="fa fa-eye"></span></button>
                     </div>
-                    <div class="pc-metric-line">
-                        <span class="pc-label">Total Return</span>
-                        <span class="pc-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''} <span class="pc-pct ${plClass}">${rowPLPct !== null ? fmtPct(rowPLPct) : ''}</span></span>
+                    <div class="pc-top-center">
+                        <div class="pc-live-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
                     </div>
-                    <div class="pc-metric-line alert-target-row">
-                        <span class="pc-label">Alert Target</span>
-                        <span class="pc-val">${renderAlertTargetInline(share)}</span>
+                    <div class="pc-top-right">
+                        <div class="pc-pct ${todayClass}">${todayChange !== null ? fmtPct(todayChangePct) : ''}</div>
                     </div>
                 </div>
+
+                <!-- Two-line gap -->
+                <div class="pc-top-spacer" aria-hidden="true"></div>
+                <div class="pc-top-spacer" aria-hidden="true"></div>
+
+                <!-- Middle metrics: Capital Gain and Current Value -->
+                <div class="pc-mid-row">
+                    <div class="pc-metric-line">
+                        <span class="pc-label">Capital Gain</span>
+                        <span class="pc-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</span>
+                    </div>
+                    <div class="pc-metric-line">
+                        <span class="pc-label">Current Value</span>
+                        <span class="pc-val">${rowValue !== null ? fmtMoney(rowValue) : ''}</span>
+                    </div>
+                </div>
+
+                <!-- Controls: centered chevron for dropdown -->
                 <div class="pc-controls-row">
-                    <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand"><span class="chevron">▼</span></button>
-                    <button class="pc-eye-btn" aria-label="View Details"><span class="fa fa-eye"></span></button>
+                    <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand"><span class="chevron">▾</span></button>
                 </div>
+
+                <!-- Dropdown details: conditional Alert Target then Units, Cost per Unit, Total Cost -->
                 <div class="pc-details" style="display:none;">
-                    <div class="pc-detail-row"><span>Quantity:</span> <span>${shares !== '' ? shares : ''}</span></div>
-                    <div class="pc-detail-row"><span>Average Cost:</span> <span>${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
-                    <div class="pc-detail-row"><span>Total Cost:</span> <span>${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
+                    ${(() => {
+                        const at = renderAlertTargetInline(share);
+                        return at ? `<div class="pc-detail-row"><span class="pc-label">Alert Target</span><span class="pc-val">${at}</span></div>` : '';
+                    })()}
+                    <div class="pc-detail-row"><span class="pc-label">Units</span><span class="pc-val">${shares !== '' ? shares : ''}</span></div>
+                    <div class="pc-detail-row"><span class="pc-label">Cost per Unit</span><span class="pc-val">${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
+                    <div class="pc-detail-row"><span class="pc-label">Total Cost</span><span class="pc-val">${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
                     <button class="pc-shortcut-btn" aria-label="View Details"><span class="fa fa-plus"></span></button>
                 </div>
             </div>`;
@@ -777,10 +794,8 @@ let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
-// Release: 2025-08-24 - Fix autocomplete mobile scrolling
-// Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
-// Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.20';
+// Release: 2025-08-26 - Portfolio card redesign
+const APP_VERSION = '2.10.21';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
