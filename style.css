@@ -6129,10 +6129,10 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
     cursor:pointer;
     font-size:1.9rem; /* larger */
     display:flex;
-    align-items:center;
-    justify-content:center;
-    transition:background-color .2s ease, color .2s ease, transform .1s ease;
-    flex-shrink:0;
+    align-items: center;
+    justify-content: flex-start; /* left-align timestamp */
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
     width:54px;
     height:54px;
     color:var(--icon-action-color);
