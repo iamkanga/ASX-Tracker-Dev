@@ -7,6 +7,7 @@
 window.showStockSearchModal = function(asxCode) {
     if (!stockSearchModal || !asxSearchInput) return;
     showModal(stockSearchModal);
+    try { scrollMainToTop(); } catch(_) {}
     asxSearchInput.value = asxCode || '';
     asxSearchInput.focus();
     if (asxCode && typeof displayStockDetailsInSearchModal === 'function') {
@@ -4214,6 +4215,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     } catch(e) { console.warn('Auto Details: Failed to populate auto fields', e); }
 
     showModal(shareFormSection);
+    try { scrollMainToTop(); } catch(_) {}
     shareNameInput.focus();
     // Always show live price snapshot if code is present
     if (shareNameInput && shareNameInput.value.trim()) {
@@ -4952,6 +4954,7 @@ function showShareDetails() {
     }
 
     showModal(shareDetailModal);
+    try { scrollMainToTop(); } catch(_) {}
     logDebug('Details: Displayed details for share: ' + share.shareName + ' (ID: ' + selectedShareDocId + ')');
 
     // Inject Watchlists membership footer inside Investment section (centered, subtle)
@@ -7457,7 +7460,7 @@ function initGlobalAlertsUI(force) {
     globalMinimumPriceInput = document.getElementById('globalMinimumPrice');
     if (globalAlertsBtn && globalAlertsModal) {
         globalAlertsBtn.addEventListener('click', () => {
-            try { showModal(globalAlertsModal); if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(e){ console.error('Global Alerts: failed to open modal', e);} });
+            try { showModal(globalAlertsModal); try { scrollMainToTop(); } catch(_) {} if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(e){ console.error('Global Alerts: failed to open modal', e);} });
     }
     if (closeGlobalAlertsBtn && globalAlertsModal) {
         closeGlobalAlertsBtn.addEventListener('click', (e) => { e.preventDefault(); try { hideModal(globalAlertsModal); } catch(e){} });
@@ -8033,6 +8036,7 @@ function showAddEditCashCategoryModal(assetIdToEdit = null) {
     }
     setIconDisabled(saveCashAssetBtn, true); // Save button disabled initially
     showModal(cashAssetFormModal);
+    try { scrollMainToTop(); } catch(_) {}
     cashAssetNameInput.focus();
     checkCashAssetFormDirtyState(); // Initial dirty state check
 }
@@ -8223,6 +8227,7 @@ function showCashCategoryDetailsModal(assetId) {
     }
 
     showModal(cashAssetDetailModal);
+    try { scrollMainToTop(); } catch(_) {}
     logDebug('Details: Displayed details for cash asset: ' + asset.name + ' (ID: ' + assetId + ')');
 }
 
@@ -8398,6 +8403,7 @@ function handleAddShareClick() {
     if (deleteShareBtn) { deleteShareBtn.classList.add('hidden'); }
     populateShareWatchlistSelect(null, true); // true indicates new share
     showModal(shareFormSection);
+    try { scrollMainToTop(); } catch(_) {}
     shareNameInput.focus();
     // Always show live price snapshot if code is present
     if (shareNameInput && shareNameInput.value.trim()) {
@@ -9647,6 +9653,7 @@ if (targetPriceInput) {
             logDebug('Target Alert: Icon button clicked. Opening details modal.');
             // Ensure the modal is explicitly shown
             showModal(targetHitDetailsModal);
+            try { scrollMainToTop(); } catch(_) {}
         });
     }
     */
@@ -10060,6 +10067,7 @@ if (sortSelect) {
             logDebug('Add Watchlist: saveWatchlistBtn disabled initially.');
             originalWatchlistData = getCurrentWatchlistFormData(true); // Store initial state for dirty check
             showModal(addWatchlistModal);
+            try { scrollMainToTop(); } catch(_) {}
             newWatchlistNameInput.focus();
             toggleAppSidebar(false);
             checkWatchlistFormDirtyState(true); // Check dirty state immediately after opening
@@ -10121,6 +10129,7 @@ if (sortSelect) {
             logDebug('Edit Watchlist: saveWatchlistNameBtn disabled initially.');
             originalWatchlistData = getCurrentWatchlistFormData(false); // Store initial state for dirty check
             showModal(manageWatchlistModal);
+            try { scrollMainToTop(); } catch(_) {}
             editWatchlistNameInput.focus();
             toggleAppSidebar(false);
             checkWatchlistFormDirtyState(false); // Check dirty state immediately after opening
@@ -10227,6 +10236,7 @@ if (sortSelect) {
             if (calcEstimatedDividend) calcEstimatedDividend.textContent = '-'; 
             if (investmentValueSelect) investmentValueSelect.value = '10000'; // Reset dropdown
             showModal(dividendCalculatorModal);
+            try { scrollMainToTop(); } catch(_) {}
             if (calcCurrentPriceInput) calcCurrentPriceInput.focus(); 
             logDebug('UI: Dividend Calculator modal opened.');
             toggleAppSidebar(false);
@@ -10262,6 +10272,7 @@ if (sortSelect) {
             logDebug('UI: Standard Calculator button clicked.');
             resetCalculator();
             showModal(calculatorModal);
+            try { scrollMainToTop(); } catch(_) {}
             logDebug('UI: Standard Calculator modal opened.');
             toggleAppSidebar(false);
         });
@@ -10633,6 +10644,7 @@ if (sortSelect) {
             currentSelectedSuggestionIndex = -1;
             currentSearchShareData = null;
             showModal(stockSearchModal);
+            try { scrollMainToTop(); } catch(_) {}
             asxSearchInput.focus();
             toggleAppSidebar(false); // Close sidebar
         });
