@@ -488,7 +488,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 <!-- Controls: centered carat chevron for dropdown -->
                 <div class="pc-controls-row pc-chevron-wrap">
-                    <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand/Collapse details"><span class="chevron">▾</span></button>
+                    <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand/Collapse details">
+                        <span class="chevron" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" focusable="false">
+                                <polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </span>
+                    </button>
                 </div>
 
                 <!-- Dropdown details: conditional Alert Target then Units, Cost per Unit, Total Cost -->
@@ -556,11 +562,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (otherCard !== card) {
                         const otherBtn = otherCard.querySelector('.pc-chevron-btn');
                         const otherDetails = otherCard.querySelector('.pc-details');
-                        if (otherBtn && otherDetails) {
+                            if (otherBtn && otherDetails) {
                             otherBtn.setAttribute('aria-expanded', false);
                             otherDetails.style.display = 'none';
                             otherCard.classList.remove('expanded');
-                            otherBtn.querySelector('.chevron').textContent = '▼';
+                            // Do not overwrite the chevron content (SVG); rotation is handled by CSS using .portfolio-card.expanded
                         }
                     }
                 });
@@ -568,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 btn.setAttribute('aria-expanded', !expanded);
                 details.style.display = expanded ? 'none' : 'block';
                 card.classList.toggle('expanded', !expanded);
-                btn.querySelector('.chevron').textContent = !expanded ? '▲' : '▼';
+                // Chevron content is an inline SVG; visual open/close is handled via the .portfolio-card.expanded selector in CSS
             });
             // Eye icon logic: toggle hide-from-totals (Option A). Click still opens details when CTRL/Meta is held.
             const eyeBtn = card.querySelector('.pc-eye-btn');
@@ -795,7 +801,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.10.22';
+const APP_VERSION = '2.10.25';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
@@ -1322,7 +1328,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const lpCont = document.getElementById('livePriceTimestampContainer');
         const header = document.getElementById('appHeader');
         if (lpCont && header) {
-                // Move the timestamp into the header top row so we can absolutely position it bottom-right
+                // Move the timestamp into the header element so we can absolutely position it bottom-right
                 const headerTop = header.querySelector('.header-top-row') || header;
                 try {
                     // Ensure the container has a stacked label + time structure
@@ -1330,7 +1336,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Preserve existing time span id by recreating inner content
                         lpCont.innerHTML = '<div class="live-price-label">Updated</div><div id="livePriceTimestamp"></div>';
                     }
-                    headerTop.appendChild(lpCont);
+                    // Append to the root header so absolute positioning is relative to the header area
+                    header.appendChild(lpCont);
                     lpCont.classList.remove('live-price-inside-header-left');
                     lpCont.classList.add('live-price-inside-header');
                 } catch (e) {

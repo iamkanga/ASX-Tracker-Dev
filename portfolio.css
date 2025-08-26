@@ -569,12 +569,16 @@ function makeFilesAvailableToSourceControlCSS() {
     align-items: center;
     gap: 12px;
     white-space: nowrap; /* keep items on single line */
+    flex-wrap: nowrap; /* explicitly prevent wrapping */
 }
 .portfolio-card .pc-top-left {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 88px; /* reduced to avoid wrapping on narrow cards */
+    flex-direction: row; /* ensure code + optional icon remain on the same line */
+    align-items: center;
+    gap: 8px;
+    min-width: 56px; /* compact to avoid forcing center to wrap */
+    flex: 0 0 auto; /* do not grow or shrink unpredictably */
+    margin-right: 6px;
 }
 .portfolio-card .pc-top-left .pc-code {
     font-size: 1.55rem;
@@ -586,30 +590,40 @@ function makeFilesAvailableToSourceControlCSS() {
     border: none;
     padding: 0;
     margin: 0;
-    margin-top: 6px;
+    margin-left: 6px;
     color: var(--icon-action-color);
     cursor: pointer;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 .portfolio-card .pc-top-center {
     flex: 1 1 auto;
+    min-width: 0; /* allow center to shrink inside flexbox */
     text-align: center;
     font-weight: 700;
-    font-size: 1.35rem;
+    font-size: 1.12rem;
     color: var(--text-color);
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .portfolio-card .pc-top-right {
-    min-width: 110px;
+    flex: 0 0 auto;
+    min-width: 72px;
+    max-width: 120px;
     text-align: right;
     font-weight: 700;
-    font-size: 1.12rem;
+    font-size: 1.02rem;
     color: var(--label-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
+
+/* Ensure the ASX code doesn't overflow and force wrapping */
+.portfolio-card .pc-code { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Style the combined day-change (dollar + pct) */
 .portfolio-card .pc-day-change { display:inline-flex; align-items:baseline; gap:8px; }
 .portfolio-card .pc-day-change .pc-pct { font-size:0.95rem; font-weight:600; opacity:0.9; }
@@ -647,6 +661,40 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-card .pc-chevron-btn .chevron { font-size:1.25rem; display:inline-block; transform-origin:center; }
 .portfolio-card.expanded .pc-chevron-btn .chevron { transform: rotate(180deg); }
 
+/* Smooth rotation for the inline SVG chevron and ensure SVG fills the chevron container */
+.portfolio-card .pc-chevron-btn .chevron { transition: transform .18s ease; }
+.portfolio-card .pc-chevron-btn .chevron svg { width: 100%; height: 100%; display: block; }
+
+/* Stronger, high-specificity overrides to avoid global .chevron conflicts */
+.portfolio-cards-grid .portfolio-card .pc-top-line {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 12px !important;
+    white-space: nowrap !important; /* keep items on single line */
+    flex-wrap: nowrap !important; /* explicitly prevent wrapping */
+}
+.portfolio-cards-grid .portfolio-card .pc-top-left { min-width: 56px !important; flex: 0 0 auto !important; }
+.portfolio-cards-grid .portfolio-card .pc-top-center { flex: 1 1 0% !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+.portfolio-cards-grid .portfolio-card .pc-top-right { flex: 0 0 auto !important; min-width: 64px !important; max-width: 140px !important; }
+
+/* Ensure the chevron button is visually centered and not affected by global chevron rules */
+.portfolio-cards-grid .portfolio-card .pc-chevron-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 42px !important;
+    height: 34px !important;
+}
+.portfolio-cards-grid .portfolio-card .pc-chevron-btn .chevron {
+    display: inline-block !important;
+    width: 18px !important;
+    height: 18px !important;
+    line-height: 1 !important;
+    font-size: 1.25rem !important;
+    text-align: center !important;
+}
+
 .portfolio-card .pc-details { padding-top: 12px; }
 .portfolio-card .pc-details .pc-detail-row { display:flex; justify-content:space-between; padding:6px 0; margin-bottom:8px; }
 .portfolio-card .pc-details .pc-detail-row span:first-child { text-align:left; color:var(--label-color); font-weight:500; }
@@ -654,12 +702,22 @@ function makeFilesAvailableToSourceControlCSS() {
 
 /* Slight visual tweaks for the top/center/right on smaller screens */
 @media (max-width: 600px) {
-    .portfolio-card .pc-top-line { align-items: flex-start; gap: 8px; }
-    .portfolio-card .pc-top-left { min-width: 72px; }
-    .portfolio-card .pc-top-center { font-size: 1.08rem; }
-    .portfolio-card .pc-top-right { font-size: 1rem; min-width: 60px; }
+    .portfolio-card .pc-top-line { align-items: center; gap: 6px; }
+    .portfolio-card .pc-top-left { min-width: 48px; }
+    .portfolio-card .pc-top-center { font-size: 0.98rem; }
+    .portfolio-card .pc-top-right { font-size: 0.9rem; min-width: 48px; }
+    .portfolio-card .pc-code { font-size: 1.05rem; }
     .portfolio-card .pc-mid-row { flex-direction: row; gap: 8px; font-size: 0.98rem; }
     .portfolio-card .pc-top-spacer { height: 4px; }
+}
+
+@media (max-width: 420px) {
+    /* Aggressively compact for very narrow screens to keep top line single-line */
+    .portfolio-card { padding-left: 10px; padding-right: 10px; }
+    .portfolio-card .pc-code { font-size: 0.98rem; max-width: 80px; }
+    .portfolio-card .pc-top-center { font-size: 0.95rem; }
+    .portfolio-card .pc-top-right { font-size: 0.85rem; max-width: 72px; }
+    .portfolio-card .pc-eye-btn { display: none; } /* hide the eye on very small screens to avoid wrap */
 }
 
 /* Ensure detail rows and numeric alignment remain consistent */
