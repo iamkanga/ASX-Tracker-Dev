@@ -569,14 +569,16 @@ function makeFilesAvailableToSourceControlCSS() {
     align-items: center;
     gap: 12px;
     white-space: nowrap; /* keep items on single line */
+    flex-wrap: nowrap; /* explicitly prevent wrapping */
 }
 .portfolio-card .pc-top-left {
     display: flex;
     flex-direction: row; /* ensure code + optional icon remain on the same line */
     align-items: center;
     gap: 8px;
-    min-width: 72px; /* compact to avoid forcing center to wrap */
+    min-width: 56px; /* compact to avoid forcing center to wrap */
     flex: 0 0 auto; /* do not grow or shrink unpredictably */
+    margin-right: 6px;
 }
 .portfolio-card .pc-top-left .pc-code {
     font-size: 1.55rem;
@@ -597,11 +599,11 @@ function makeFilesAvailableToSourceControlCSS() {
     gap: 6px;
 }
 .portfolio-card .pc-top-center {
-    flex: 1 1 40%;
+    flex: 1 1 auto;
     min-width: 0; /* allow center to shrink inside flexbox */
     text-align: center;
     font-weight: 700;
-    font-size: 1.28rem;
+    font-size: 1.12rem;
     color: var(--text-color);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -609,16 +611,19 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 .portfolio-card .pc-top-right {
     flex: 0 0 auto;
-    min-width: 80px;
-    max-width: 140px;
+    min-width: 72px;
+    max-width: 120px;
     text-align: right;
     font-weight: 700;
-    font-size: 1.05rem;
+    font-size: 1.02rem;
     color: var(--label-color);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* Ensure the ASX code doesn't overflow and force wrapping */
+.portfolio-card .pc-code { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Style the combined day-change (dollar + pct) */
 .portfolio-card .pc-day-change { display:inline-flex; align-items:baseline; gap:8px; }
 .portfolio-card .pc-day-change .pc-pct { font-size:0.95rem; font-weight:600; opacity:0.9; }
@@ -663,12 +668,22 @@ function makeFilesAvailableToSourceControlCSS() {
 
 /* Slight visual tweaks for the top/center/right on smaller screens */
 @media (max-width: 600px) {
-    .portfolio-card .pc-top-line { align-items: center; gap: 8px; }
-    .portfolio-card .pc-top-left { min-width: 56px; }
-    .portfolio-card .pc-top-center { font-size: 1.02rem; }
-    .portfolio-card .pc-top-right { font-size: 0.95rem; min-width: 56px; }
+    .portfolio-card .pc-top-line { align-items: center; gap: 6px; }
+    .portfolio-card .pc-top-left { min-width: 48px; }
+    .portfolio-card .pc-top-center { font-size: 0.98rem; }
+    .portfolio-card .pc-top-right { font-size: 0.9rem; min-width: 48px; }
+    .portfolio-card .pc-code { font-size: 1.05rem; }
     .portfolio-card .pc-mid-row { flex-direction: row; gap: 8px; font-size: 0.98rem; }
     .portfolio-card .pc-top-spacer { height: 4px; }
+}
+
+@media (max-width: 420px) {
+    /* Aggressively compact for very narrow screens to keep top line single-line */
+    .portfolio-card { padding-left: 10px; padding-right: 10px; }
+    .portfolio-card .pc-code { font-size: 0.98rem; max-width: 80px; }
+    .portfolio-card .pc-top-center { font-size: 0.95rem; }
+    .portfolio-card .pc-top-right { font-size: 0.85rem; max-width: 72px; }
+    .portfolio-card .pc-eye-btn { display: none; } /* hide the eye on very small screens to avoid wrap */
 }
 
 /* Ensure detail rows and numeric alignment remain consistent */
