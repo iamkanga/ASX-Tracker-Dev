@@ -502,7 +502,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="pc-detail-row"><span class="pc-label">Units</span><span class="pc-val">${shares !== '' ? shares : ''}</span></div>
                     <div class="pc-detail-row"><span class="pc-label">Cost per Unit</span><span class="pc-val">${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
                     <div class="pc-detail-row"><span class="pc-label">Total Cost</span><span class="pc-val">${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
-                    <button class="pc-shortcut-btn" aria-label="View Details">View</button>
                 </div>
             </div>`;
     });
@@ -603,22 +602,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     try { renderPortfolioList(); } catch(_) {}
                 });
             }
-            // Plus shortcut icon logic (in expanded details)
-            const shortcutBtn = card.querySelector('.pc-shortcut-btn');
-            if (shortcutBtn) {
-                shortcutBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    selectShare(share.id);
-                    showShareDetails();
-                });
-            }
+            // (Removed deprecated shortcut button — click-to-open is handled by card click-through)
 
             // Click-through: clicking a portfolio card (except interactive controls) opens the viewing modal
             if (!card.__clickThroughAttached) {
                 card.addEventListener('click', function(e) {
                     // Ignore clicks on buttons, links, inputs or elements that handle their own click
-                    const interactive = e.target.closest('button, a, input, .pc-eye-btn, .pc-chevron-btn, .pc-shortcut-btn');
+                    const interactive = e.target.closest('button, a, input, .pc-eye-btn, .pc-chevron-btn');
                     if (interactive) return;
                     try {
                         selectShare(share.id);
@@ -811,7 +801,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.10.27';
+const APP_VERSION = '2.10.29';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();

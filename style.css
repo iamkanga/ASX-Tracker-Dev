@@ -1188,23 +1188,7 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-card .pc-detail-row span:last-child {
     font-weight: 600;
 }
-.portfolio-card .pc-shortcut-btn {
-    background: var(--accent-color);
-    color: #fff;
-    border: none;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.45rem;
-    cursor: pointer;
-    margin-left: auto;
-    margin-top: 8px;
-    transition: background 0.18s;
-}
-.portfolio-card .pc-shortcut-btn:hover { background: var(--accent-color-hover); }
+/* pc-shortcut-btn removed: dropdown shortcut icon deleted per UI cleanup */
 
 @media (max-width: 600px) {
     .portfolio-card { padding: 12px 4px 10px 4px; font-size: 1.08rem; min-height: 90px; }
@@ -1215,7 +1199,7 @@ function makeFilesAvailableToSourceControlCSS() {
     .portfolio-card .pc-value { font-size: 1.02rem; }
     .portfolio-card .pc-metrics-row { font-size: 0.98rem; gap: 6px 0; }
     .portfolio-card .pc-details { font-size: 0.95rem; }
-    .portfolio-card .pc-shortcut-btn { width: 26px; height: 26px; font-size: 0.98rem; }
+    /* pc-shortcut-btn removed on small screens */
 }
 
 /* Accordion logic: only one expanded at a time (handled in JS, but style for expanded) */
@@ -8049,10 +8033,13 @@ body.dark-theme .alert-item {
 }
 
 .picker-item.active {
-    background-color: var(--accent-color);
-    color: var(--button-text);
+    /* Use a subtle highlight for the active watchlist instead of a heavy accent fill
+       to avoid dark/black blocks when accent color is strong in some themes. */
+    background-color: var(--card-bg);
+    color: var(--text-color);
     font-weight: 600;
-    border-color: var(--accent-color);
+    border-color: var(--border-color);
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.03) inset;
 }
 
 .picker-item-content {
