@@ -679,18 +679,28 @@ function makeFilesAvailableToSourceControlCSS() {
 
 /* Stronger, high-specificity overrides to avoid global .chevron conflicts */
 .portfolio-cards-grid .portfolio-card .pc-top-line {
-    display: flex !important;
-    justify-content: space-between !important;
+    /* Keep the redesigned 4-column grid in high-specificity contexts so
+       the live price can be centered reliably. This override avoids
+       forcing a flexbox layout which was preventing the center column
+       from aligning to the middle. */
+    display: grid !important;
+    grid-template-columns: auto 1fr 1fr 1fr !important;
     align-items: center !important;
     gap: 12px !important;
     white-space: nowrap !important; /* keep items on single line */
-    flex-wrap: nowrap !important; /* explicitly prevent wrapping */
 }
 .portfolio-cards-grid .portfolio-card .pc-top-left { min-width: 56px !important; flex: 0 0 auto !important; }
-.portfolio-cards-grid .portfolio-card .pc-top-center { flex: 1 1 0% !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+.portfolio-cards-grid .portfolio-card .pc-top-center {
+    /* Use grid alignment to center the live price cell */
+    justify-self: center !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
 .portfolio-cards-grid .portfolio-card .pc-top-right {
     /* High-specificity override: permit shrinking and ensure overflow is clipped */
-    flex: 0 1 auto !important;
+    justify-self: end !important;
     min-width: 0 !important;
     max-width: 140px !important;
     overflow: hidden !important;
