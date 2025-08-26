@@ -252,6 +252,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 try { setLastSelectedView(watchlistSelect.value); } catch(e){}
             }
             updateMainButtonsState(true);
+            // Ensure main content scrolls to the top after a view change for consistent UX
+            try { scrollMainToTop(); } catch(_) {}
         });
     }
 
@@ -466,8 +468,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="pc-live-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
                     </div>
                     <div class="pc-top-right">
-                        <div class="pc-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct">${todayChange !== null ? fmtPct(todayChangePct) : ''}</span></div>
-                    </div>
+                            <div class="pc-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct">${todayChange !== null ? fmtPct(todayChangePct) : ''}</span></div>
+                        </div>
                 </div>
 
                 <!-- Two-line gap -->
@@ -500,7 +502,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="pc-detail-row"><span class="pc-label">Units</span><span class="pc-val">${shares !== '' ? shares : ''}</span></div>
                     <div class="pc-detail-row"><span class="pc-label">Cost per Unit</span><span class="pc-val">${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
                     <div class="pc-detail-row"><span class="pc-label">Total Cost</span><span class="pc-val">${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
-                    <button class="pc-shortcut-btn" aria-label="View Details"><span class="fa fa-eye"></span></button>
+                    <button class="pc-shortcut-btn" aria-label="View Details">View</button>
                 </div>
             </div>`;
     });
@@ -809,7 +811,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.10.24';
+const APP_VERSION = '2.10.26';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
