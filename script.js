@@ -801,7 +801,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.10.25';
+const APP_VERSION = '2.10.26';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
@@ -1325,24 +1325,34 @@ document.addEventListener('DOMContentLoaded', function() {
     updateLivePriceTimestamp(Date.now());
     // If the live timestamp container exists inside the header, apply right-bottom positioning helper
     try {
-        const lpCont = document.getElementById('livePriceTimestampContainer');
         const header = document.getElementById('appHeader');
-        if (lpCont && header) {
-                // Move the timestamp into the header element so we can absolutely position it bottom-right
-                const headerTop = header.querySelector('.header-top-row') || header;
-                try {
-                    // Ensure the container has a stacked label + time structure
-                    if (!lpCont.querySelector('.live-price-label')) {
-                        // Preserve existing time span id by recreating inner content
-                        lpCont.innerHTML = '<div class="live-price-label">Updated</div><div id="livePriceTimestamp"></div>';
-                    }
-                    // Append to the root header so absolute positioning is relative to the header area
-                    header.appendChild(lpCont);
-                    lpCont.classList.remove('live-price-inside-header-left');
-                    lpCont.classList.add('live-price-inside-header');
-                } catch (e) {
-                    if (header.contains(lpCont)) lpCont.classList.add('live-price-inside-header');
+        if (header) {
+            let lpCont = document.getElementById('livePriceTimestampContainer');
+            // If missing, create a new container and inject into DOM (defensive fix for restored/older HTML)
+            if (!lpCont) {
+                lpCont = document.createElement('div');
+                lpCont.id = 'livePriceTimestampContainer';
+                lpCont.className = 'live-price-timestamp-container';
+                lpCont.innerHTML = '<div class="live-price-label">Updated</div><div id="livePriceTimestamp"></div>';
+                // Insert near header-top-row for consistent positioning
+            }
+            try {
+                // Ensure inner structure contains label + time element
+                if (!lpCont.querySelector('.live-price-label')) {
+                    lpCont.innerHTML = '<div class="live-price-label">Updated</div><div id="livePriceTimestamp"></div>';
                 }
+                // Append to header so absolute positioning is relative to header
+                if (!header.contains(lpCont)) header.appendChild(lpCont);
+                lpCont.classList.remove('live-price-inside-header-left');
+                lpCont.classList.add('live-price-inside-header');
+                // Ensure id for inner time element exists
+                if (!document.getElementById('livePriceTimestamp')) {
+                    const t = document.createElement('div'); t.id = 'livePriceTimestamp';
+                    lpCont.appendChild(t);
+                }
+            } catch (e) {
+                if (header.contains(lpCont)) lpCont.classList.add('live-price-inside-header');
+            }
         }
     } catch(_) {}
 });
