@@ -488,13 +488,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 <!-- Controls: centered carat chevron for dropdown -->
                 <div class="pc-controls-row pc-chevron-wrap">
-                    <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand/Collapse details">
-                        <span class="chevron" aria-hidden="true">
-                            <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" focusable="false">
-                                <polyline points="6 9 12 15 18 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                        </span>
-                    </button>
+                    <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand/Collapse details"><span class="chevron">▾</span></button>
                 </div>
 
                 <!-- Dropdown details: conditional Alert Target then Units, Cost per Unit, Total Cost -->
@@ -562,11 +556,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (otherCard !== card) {
                         const otherBtn = otherCard.querySelector('.pc-chevron-btn');
                         const otherDetails = otherCard.querySelector('.pc-details');
-                            if (otherBtn && otherDetails) {
+                        if (otherBtn && otherDetails) {
                             otherBtn.setAttribute('aria-expanded', false);
                             otherDetails.style.display = 'none';
                             otherCard.classList.remove('expanded');
-                            // Do not overwrite the chevron content (SVG); rotation is handled by CSS using .portfolio-card.expanded
+                            otherBtn.querySelector('.chevron').textContent = '▼';
                         }
                     }
                 });
@@ -574,7 +568,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 btn.setAttribute('aria-expanded', !expanded);
                 details.style.display = expanded ? 'none' : 'block';
                 card.classList.toggle('expanded', !expanded);
-                // Chevron content is an inline SVG; visual open/close is handled via the .portfolio-card.expanded selector in CSS
+                btn.querySelector('.chevron').textContent = !expanded ? '▲' : '▼';
             });
             // Eye icon logic: toggle hide-from-totals (Option A). Click still opens details when CTRL/Meta is held.
             const eyeBtn = card.querySelector('.pc-eye-btn');
@@ -801,7 +795,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.10.25';
+const APP_VERSION = '2.10.24';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
