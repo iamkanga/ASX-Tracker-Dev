@@ -207,6 +207,41 @@
     overflow-wrap: anywhere;
 }
 
+/* New: allow summary values to wrap to multiple lines on very narrow viewports
+   instead of forcing overflow — keep truncation by default but allow a graceful
+   multi-line fallback when numbers are long (e.g., large currency strings). */
+.portfolio-summary-bar .summary-card .summary-value.allow-wrap {
+    white-space: normal; /* allow wrapping */
+    overflow: visible;
+    text-overflow: clip;
+    display: block; /* let value occupy its own line if needed */
+    line-height: 1.05;
+}
+
+/* Shrink numeric font slightly when content is long so it fits more often.
+   This uses a clamp so desktop remains large but small screens scale down. */
+.portfolio-summary-bar .summary-card .summary-value.shrinkable {
+    font-size: clamp(1.0rem, 1.8rem, 1.85rem); /* responsive cap */
+}
+
+/* Final safety: on very small screens allow the card content to wrap and reduce
+   padding so the layout stays stable even with extremely long numbers. */
+@media (max-width: 420px) {
+    .portfolio-summary-bar .summary-card {
+        padding: 10px 8px; /* reduce horizontal padding */
+    }
+    .portfolio-summary-bar .summary-card .summary-value {
+        white-space: normal; /* allow break */
+        overflow-wrap: anywhere;
+        font-size: 1.0rem; /* keep legible but small */
+        line-height: 1.05;
+    }
+    .portfolio-summary-bar .summary-card .summary-pct {
+        font-size: 0.9rem;
+        margin-left: 4px;
+    }
+}
+
 /* Totals / portfolio summary card variants (ps-card used in alternate layout) */
 .portfolio-summary-bar .ps-card,
 .portfolio-summary-bar .ps-value,

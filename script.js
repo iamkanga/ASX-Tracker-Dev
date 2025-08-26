@@ -561,6 +561,26 @@ function logPortfolioOverflowDiagnostics() {
         const cardsGrid = `<div class="portfolio-cards-grid">${cards.join('')}</div>`;
         portfolioListContainer.innerHTML = summaryBar + cardsGrid;
 
+        // Post-render: detect overflowing summary values and apply wrap/shrink helpers
+        try {
+            const summaryValues = portfolioListContainer.querySelectorAll('.portfolio-summary-bar .summary-value');
+            summaryValues.forEach(el => {
+                // Reset any helper classes first
+                el.classList.remove('allow-wrap', 'shrinkable');
+                // If the content overflows horizontally, prefer slight shrink; if still overflowing on tiny screens allow wrap
+                const isOverflowing = el.scrollWidth > el.clientWidth + 2; // small tolerance
+                if (isOverflowing) {
+                    // First try a small font shrink by adding shrinkable which uses clamp()
+                    el.classList.add('shrinkable');
+                    // Recompute after style change; if still overflowing on small screens, allow wrap
+                    if (el.scrollWidth > el.clientWidth + 2) {
+                        el.classList.remove('shrinkable');
+                        el.classList.add('allow-wrap');
+                    }
+                }
+            });
+        } catch (e) { /* non-fatal */ }
+
         // --- Expand/Collapse Logic (Accordion) & Eye Button ---
         const cardNodes = portfolioListContainer.querySelectorAll('.portfolio-card');
         cardNodes.forEach((card, idx) => {
@@ -853,8 +873,8 @@ let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
-// Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.10.38';
+// Release: 2025-08-26 - Portfolio card redesign (updated); overflow fix
+const APP_VERSION = '2.10.39';
 
 // Refactor shim: apply stable layout classes to header, sort area, and portfolio
 document.addEventListener('DOMContentLoaded', () => {
