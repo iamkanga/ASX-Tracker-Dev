@@ -8027,9 +8027,15 @@ body.dark-theme .alert-item {
     border: 1px solid transparent;
 }
 
-.picker-item:hover, .picker-item:focus {
+.picker-item:hover {
     background-color: var(--table-row-hover-bg);
-    outline: none;
+}
+.picker-item:focus {
+    /* Keep accessibility focus but avoid a filled/pale box background that varies by theme.
+       Use a subtle outline instead so the item does not get a pale background fill on open. */
+    outline: 2px solid rgba(0,0,0,0.06);
+    outline-offset: 2px;
+    background-color: transparent;
 }
 
 .picker-item.active {
