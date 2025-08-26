@@ -252,6 +252,16 @@
 /* Make header the positioning context for absolutely positioned children like the timestamp */
 #appHeader { position: relative; }
 
+/* Ensure the live price timestamp sits in the header bottom-right by default */
+#appHeader .live-price-timestamp-container.live-price-inside-header {
+    position: absolute !important;
+    right: calc(env(safe-area-inset-right, 0px) + 12px) !important;
+    bottom: 8px !important;
+    text-align: right;
+    z-index: 60;
+    max-width: calc(100% - 96px);
+}
+
 /* Keep hamburger on top-left and above any positioned timestamp */
 #hamburgerBtn { position: relative; z-index: 80; }
 
