@@ -209,6 +209,55 @@
     white-space: nowrap;
 }
 
+/* Stronger header-scoped positioning to prevent the timestamp from being pushed into
+   the sort controls area or appearing next to the sort box. This forces the timestamp
+   to the bottom-right of the header/title bar on all viewports. */
+.header-top-row .live-price-timestamp-container,
+.header-top-row .live-price-inside-header,
+.live-price-inside-header {
+    position: absolute !important;
+    right: 12px !important; /* offset from the viewport edge/header padding */
+    bottom: 8px !important;  /* align to bottom of header/title box */
+    width: auto !important;
+    max-width: calc(100% - 96px) !important; /* leave room for left controls and sort box */
+    text-align: right !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    align-items: flex-end !important;
+    pointer-events: none !important; /* keep non-interactive */
+    z-index: 120 !important; /* ensure visible above header content but below modals */
+}
+
+/* Support safe-area insets on mobile devices (iPhone notch and similar). */
+.header-top-row .live-price-timestamp-container,
+.header-top-row .live-price-inside-header {
+    right: calc(env(safe-area-inset-right, 0px) + 12px) !important;
+}
+
+@media (max-width: 640px) {
+    .header-top-row .live-price-timestamp-container,
+    .header-top-row .live-price-inside-header,
+    .live-price-inside-header {
+        right: calc(env(safe-area-inset-right, 0px) + 8px) !important;
+        bottom: 6px !important;
+        max-width: calc(100% - 72px) !important; /* give more space for compact controls */
+        font-size: 0.86rem !important;
+    }
+}
+
+/* If the timestamp accidentally appears inside the sort-controls container, force it
+   to be removed from normal flow so it doesn't take up a row next to the sort select. */
+.sort-controls-container > .live-price-timestamp-container {
+    position: absolute !important;
+    right: 12px !important;
+    bottom: 8px !important;
+    flex: 0 0 auto !important;
+    order: 0 !important;
+    width: auto !important;
+    text-align: right !important;
+}
+
 @media (max-width: 640px) {
     .live-price-inside-header {
         right: 8px;
