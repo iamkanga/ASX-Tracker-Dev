@@ -2,36 +2,211 @@
 /* Ghost out muted 52-week alert cards instead of hiding them */
 .low52-card-hidden {
     opacity: 0.5;
-    /* Portfolio styles have been moved to the dedicated `portfolio.css` file to remove duplication.
-        Edit `portfolio.css` (loaded from index.html) to change portfolio layout and card styles.
-        This placeholder keeps the original file intact while deferring canonical rules to portfolio.css. */
-/* Support safe-area insets on mobile devices (iPhone notch and similar). */
-.header-top-row .live-price-timestamp-container,
-.header-top-row .live-price-inside-header {
-    right: calc(env(safe-area-inset-right, 0px) + 12px) !important;
+    filter: grayscale(80%);
+    transition: opacity 0.3s ease, filter 0.3s ease;
+}
+/* Target hit notification container inside 52-week alert: match global movers width */
+.low52-alert-card .target-hit-item.global-summary-alert {
+    min-width: 320px;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
+}
+/* 52-week alert header row: code/name left, price right */
+.low52-header-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+    margin-bottom: 0;
+}
+.low52-header-row .low52-code {
+    flex: 0 0 auto; /* Don't shrink the code */
+    font-weight: 700; /* Bolder code */
+    font-size: 1em; /* Adjusted size */
+    margin-right: 8px;
+    white-space: nowrap;
+}
+.low52-header-row .low52-name {
+    flex: 1 1 auto; /* Allow name to take up space and shrink */
+    font-weight: 400;
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--ghosted-text); /* Muted color for the name */
+    text-align: left;
+}
+.low52-header-row .low52-price {
+    margin-left: auto;
+    font-weight: 700; /* Bolder price */
+    font-size: 1em; /* Adjusted size */
+    color: var(--text-color, #222);
+    text-align: right;
+    min-width: 70px; /* A bit more space */
+    flex-shrink: 0; /* Don't shrink the price */
+}
+.low52-action-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    margin-bottom: 0;
+    margin-top: 2px;
+}
+.low52-price-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 0;
+}
+/* Ensure 52-week explainer row is horizontal and not wrapped vertically */
+.low52-thresh-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 6px;
+    margin-top: auto; /* Pushes to the bottom of the flex container */
+    margin-bottom: 0;
+    width: 100%;
+    padding-top: 8px; /* Add some space above it */
+}
+/* Minimalistic chevron for ASX code toggle */
+#toggleAsxButtonsBtn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-@media (max-width: 640px) {
-    .header-top-row .live-price-timestamp-container,
-    .header-top-row .live-price-inside-header,
-    .live-price-inside-header {
-        right: calc(env(safe-area-inset-right, 0px) + 8px) !important;
-        bottom: 6px !important;
-        max-width: calc(100% - 72px) !important; /* give more space for compact controls */
-        font-size: 0.86rem !important;
+.toggle-asx-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ghosted-text, #666);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+.toggle-asx-btn[aria-pressed="true"] {
+    color: var(--asx-button-active-text, #fff);
+}
+.asx-toggle-label {
+    display: inline-block;
+    line-height: 1;
+}
+
+.asx-toggle-triangle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ghosted-text, #888);
+    transition: transform 0.2s ease-in-out;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+}
+.asx-toggle-triangle .chevron-svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+.asx-toggle-triangle.expanded .chevron-svg {
+    transform: rotate(180deg);
+}
+
+/* Minimal chevron appearance: two stroked lines (already using polyline SVG). Ensure stroke color is visible */
+.asx-toggle-triangle .chevron-svg polyline {
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Rotate chevron when parent button has aria-expanded true for extra robustness */
+.toggle-asx-btn[aria-expanded="true"] .asx-toggle-triangle .chevron-svg {
+    transform: rotate(180deg);
+}
+
+/* Live price timestamp: display as a full-width block under the header/title bar
+   so it sits visually between the header and main content on all viewports. */
+.live-price-timestamp-container {
+    position: static; /* flow normally in document under the header */
+    display: block;
+    width: 100%;
+    text-align: right; /* keep aligned to the right edge; change to left/center if preferred */
+    padding: 6px 16px 0 16px; /* give breathing room from header edges */
+    font-size: 0.98em;
+    color: var(--ghosted-text, #888);
+    pointer-events: none;
+    z-index: 2;
+    background: transparent;
+}
+@media (max-width: 600px) {
+    .live-price-timestamp-container {
+        font-size: 0.74em !important;
+        padding: 4px 12px 0 12px;
+        text-align: right;
     }
 }
+#livePriceTimestamp {
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
 
-/* If the timestamp accidentally appears inside the sort-controls container, force it
-   to be removed from normal flow so it doesn't take up a row next to the sort select. */
-.sort-controls-container > .live-price-timestamp-container {
-    position: absolute !important;
-    right: 12px !important;
-    bottom: 8px !important;
-    flex: 0 0 auto !important;
-    order: 0 !important;
-    width: auto !important;
-    /* text-align intentionally omitted so contained timestamp's own alignment rules win */
+/* When the timestamp is placed inside the header-top-row, position it bottom-right of the title bar */
+.live-price-inside-header {
+    position: absolute;
+    right: 12px;
+    bottom: 8px; /* sit at the bottom-right corner of the header */
+    width: auto;
+    text-align: right;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-end;
+}
+.live-price-inside-header .live-price-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ghosted-text, rgba(255,255,255,0.75));
+    opacity: 0.95;
+    pointer-events: none;
+}
+.live-price-inside-header #livePriceTimestamp {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-color, #fff);
+    opacity: 0.95;
+}
+
+/* Prevent timestamp from overflowing left side: constrain width relative to header */
+.live-price-inside-header {
+    box-sizing: border-box;
+    padding-left: 8px; /* ensure some breathing room when truncated */
+    max-width: calc(100% - 120px); /* leave space for left-side controls */
+    overflow: visible; /* container can be visible but inner text will ellipsize */
+}
+.live-price-inside-header .live-price-label,
+.live-price-inside-header #livePriceTimestamp {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 @media (max-width: 640px) {
@@ -77,39 +252,6 @@
 /* Make header the positioning context for absolutely positioned children like the timestamp */
 #appHeader { position: relative; }
 
-/* Compact header: reduce vertical padding and make title shallower */
-.header-top-row {
-    padding: 6px 8px; /* shallower vertical padding */
-    gap: 8px;
-    align-items: center;
-}
-.header-top-row .watchlist-dynamic-title { font-size: 1.05rem; margin: 0; padding: 2px 6px; }
-
-/* Place live timestamp inline on the sort line, left of the sort menu */
-.sort-line-row { display:flex; align-items:center; gap:8px; padding: 6px 8px; }
-.sort-line-row .sort-controls-container { display:flex; align-items:center; gap:8px; }
-.live-price-inside-sort-left {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    order: 1;
-    margin-right: 6px;
-}
-/* Ensure timestamp is left-aligned when used inside the sort controls */
-.live-price-inside-sort-left {
-    justify-content: flex-start; /* left align timestamp and label */
-    text-align: left;
-}
-.live-price-inside-sort-left .live-price-label { font-size: 0.82rem; color: var(--muted-text-color, #888); }
-.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.92rem; font-variant-numeric: tabular-nums; }
-
-/* On narrow screens, keep timestamp compact */
-@media (max-width: 640px) {
-    .header-top-row { padding: 4px 6px; }
-    .sort-line-row { padding: 4px 6px; }
-    .live-price-inside-sort-left .live-price-label { display:none; }
-}
-
 /* Keep hamburger on top-left and above any positioned timestamp */
 #hamburgerBtn { position: relative; z-index: 80; }
 
@@ -129,7 +271,7 @@
     /* Force to its own row and stretch across the header width */
     flex: 0 0 100%;
     order: 2; /* place after primary controls within the container */
-    /* text-align removed so .live-price-inside-sort-left can control alignment */
+    text-align: right; /* keep aligned to right edge; change to left if preferred */
     padding: 6px 16px 0 16px;
 }
 
@@ -153,148 +295,6 @@
 }
 .sort-select-wrapper .toggle-asx-btn:hover {
     background: rgba(0,0,0,0.03);
-}
-/* Fix: ensure flex/grid children can shrink and numeric fields truncate instead of overflowing */
-.pc-top-line, .portfolio-summary-bar, .summary-card, .portfolio-card {
-    min-width: 0; /* allow children to shrink within flex/grid */
-}
-.pc-top-center, .pc-top-right, .pc-mid-row {
-    min-width: 0;
-    overflow: hidden;
-}
-.pc-live-price, .pc-day-change, .pc-pct, .summary-value, .summary-label {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-variant-numeric: tabular-nums;
-}
-.pc-top-right { max-width: 140px; }
-.portfolio-summary-bar .summary-card { min-width: 0; }
-/* --- Overflow fixes for totals and numeric fields ---
-   Ensure totals containers and numeric values truncate instead of
-   leaking out of flex/grid containers on narrow screens or with long numbers. */
-.portfolio-summary-bar .summary-card,
-.portfolio-summary-bar .summary-value,
-.portfolio-summary-bar .summary-pct,
-.portfolio-summary-bar .summary-label,
-.portfolio-summary-bar .summary-card .summary-value,
-.portfolio-summary-bar .summary-card .summary-pct {
-    min-width: 0; /* allow flex/grid children to shrink */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* Extra safety: prevent the summary cards and their numeric children from overflowing
-   by constraining widths and allowing numbers to truncate instead of pushing layout. */
-.portfolio-summary-bar .summary-card {
-    box-sizing: border-box;
-    overflow: hidden; /* clip children that are too wide */
-    max-width: 100%;
-}
-.portfolio-summary-bar .summary-card .summary-value,
-.portfolio-summary-bar .summary-card .summary-pct {
-    display: inline-block;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-}
-
-/* Allow very long numeric strings to break if necessary on tiny screens, but prefer truncation */
-.portfolio-summary-bar .summary-card .summary-value.break-anywhere {
-    overflow-wrap: anywhere;
-}
-
-/* New: allow summary values to wrap to multiple lines on very narrow viewports
-   instead of forcing overflow — keep truncation by default but allow a graceful
-   multi-line fallback when numbers are long (e.g., large currency strings). */
-.portfolio-summary-bar .summary-card .summary-value.allow-wrap {
-    white-space: normal; /* allow wrapping */
-    overflow: visible;
-    text-overflow: clip;
-    display: block; /* let value occupy its own line if needed */
-    line-height: 1.05;
-}
-
-/* Shrink numeric font slightly when content is long so it fits more often.
-   This uses a clamp so desktop remains large but small screens scale down. */
-.portfolio-summary-bar .summary-card .summary-value.shrinkable {
-    font-size: clamp(1.0rem, 1.8rem, 1.85rem); /* responsive cap */
-}
-
-/* Final safety: on very small screens allow the card content to wrap and reduce
-   padding so the layout stays stable even with extremely long numbers. */
-@media (max-width: 420px) {
-    .portfolio-summary-bar .summary-card {
-        padding: 10px 8px; /* reduce horizontal padding */
-    }
-    .portfolio-summary-bar .summary-card .summary-value {
-        white-space: normal; /* allow break */
-        overflow-wrap: anywhere;
-        font-size: 1.0rem; /* keep legible but small */
-        line-height: 1.05;
-    }
-    .portfolio-summary-bar .summary-card .summary-pct {
-        font-size: 0.9rem;
-        margin-left: 4px;
-    }
-}
-
-/* Totals / portfolio summary card variants (ps-card used in alternate layout) */
-.portfolio-summary-bar .ps-card,
-.portfolio-summary-bar .ps-value,
-.portfolio-summary-bar .ps-percent {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* Live price and daily change numeric fields */
-.pc-live-price, .pc-day-change, .pc-pct, .pc-val {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums; /* improves numeric layout */
-}
-
-/* Constrain the top-right area inside portfolio cards so very long numbers cannot push layout */
-.pc-top-right {
-    min-width: 0;
-    max-width: 130px; /* narrower cap to keep layout stable */
-    text-align: right;
-    overflow: hidden;
-}
-
-/* Totals and cash display: force truncation instead of overflow */
-.total-cash-display, .total-cash-display h3, .total-cash-display span {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* Totals footer and total cash display should safely truncate long numbers */
-.portfolio-cards .totals-footer-wrapper,
-.portfolio-card.total.wide,
-.total-cash-display,
-.total-cash-display h3,
-.total-cash-display span {
-    box-sizing: border-box;
-    min-width: 0;
-    overflow: hidden;
-}
-
-@media (max-width: 480px) {
-    /* Slightly reduce font-size for very long numbers on tiny screens */
-    .portfolio-summary-bar .summary-value,
-    .portfolio-summary-bar .ps-value,
-    .pc-live-price {
-        font-size: 0.95rem;
-    }
 }
 /* On very small screens, hide the label and show just the chevron to save space */
 @media (max-width: 480px) {
@@ -603,8 +603,67 @@
     text-decoration: line-through;
     text-decoration-thickness: 2px;
 }
-/* Portfolio card control styles were moved to `portfolio.css` to avoid duplication.
-    Keep portfolio.css loaded (see index.html) and edit there for canonical portfolio styles. */
+.portfolio-card .pc-eye-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--icon-action-color);
+    font-size: 1.45rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    line-height: 1;
+    transition: color 0.18s;
+}
+.portfolio-card .pc-eye-btn:hover,
+.portfolio-card .pc-chevron-btn:hover {
+    filter: brightness(1.2);
+}
+@media (max-width: 600px) {
+    .portfolio-card .pc-controls-row {
+        margin-top: 10px;
+    }
+    .portfolio-card .pc-chevron-btn, .portfolio-card .pc-eye-btn {
+        font-size: 1.08rem;
+    }
+}
+/* [Copilot Update] Source control helper (style.css)
+    Deploy bump marker: 2025-08-18T12:02Z (no functional change) */
+/* This comment and the function below are placeholders for automating source control actions (e.g., git add/commit)
+   and for tracking how many times files have been made available to source control from style.css.
+   Usage: Call makeFilesAvailableToSourceControlCSS() after major changes if you want to automate this. */
+
+@layer copilot-source-control {
+  :root {
+    --source-control-make-available-count: 0;
+  }
+
+/* --- Phase 1: Modern segmented toggles for Intent/Direction --- */
+/* Enhanced Watchlist Selector */
+.watchlist-enhanced-list { display:none; margin:8px 0 4px; padding:8px 10px; border:1px solid var(--border-color); border-radius:8px; background:var(--card-bg); max-height:240px; overflow-y:auto; }
+/* Ensure enhanced multi-select list matches the width of the dropdown button in the modal */
+#shareFormSection .watchlist-enhanced-list {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+.watchlist-enhanced-item { display:flex; align-items:center; justify-content:space-between; padding:6px 4px; border-bottom:1px solid var(--border-color); gap:10px; }
+.watchlist-enhanced-item:last-child { border-bottom:none; }
+.watchlist-enhanced-name { font-size:0.92rem; font-weight:500; color:var(--text-color); flex:1; }
+.watchlist-toggle { position:relative; width:44px; height:22px; cursor:pointer; }
+.watchlist-toggle input { opacity:0; width:0; height:0; position:absolute; }
+.watchlist-toggle-track { position:absolute; top:0; left:0; right:0; bottom:0; background:#c94b4b; border-radius:22px; transition:background .25s; box-shadow:inset 0 0 0 1px var(--border-color); }
+.watchlist-toggle-thumb { position:absolute; top:2px; left:3px; width:18px; height:18px; background:#fff; border-radius:50%; transition: transform .25s; box-shadow:0 1px 2px rgba(0,0,0,0.35); }
+.watchlist-toggle input:checked + .watchlist-toggle-track { background:#2e7d32; }
+.watchlist-toggle input:checked + .watchlist-toggle-track .watchlist-toggle-thumb { transform: translateX(20px); }
+.watchlist-enhanced-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+.watchlist-enhanced-actions button { padding:6px 12px; font-size:0.8rem; border-radius:6px; cursor:pointer; border:1px solid var(--border-color); background:var(--button-bg); color:var(--button-text); }
+.watchlist-enhanced-actions button.secondary { background:var(--card-bg); color:var(--text-color); }
+.watchlist-enhanced-actions button:hover { background:var(--button-hover-bg); }
+.autofill-pulse { animation: autofillPulse 0.9s ease-in-out 1; position:relative; }
 @keyframes autofillPulse { 0% { box-shadow:0 0 0 0 var(--accent-color,#a49393);} 60% { box-shadow:0 0 0 6px rgba(164,147,147,0);} 100% { box-shadow:0 0 0 0 rgba(164,147,147,0);} }
 .toggle-row { display:flex; gap:10px; align-items:center; margin: 6px 0 10px; }
 .segmented-toggle { display:inline-flex; border:1px solid var(--border-color, #d0d0d0); border-radius:10px; overflow:hidden; background:var(--card-bg,#fff); }
@@ -6260,10 +6319,10 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
     cursor:pointer;
     font-size:1.9rem; /* larger */
     display:flex;
-    align-items: center;
-    justify-content: flex-start; /* left-align timestamp */
-    gap: 8px;
-    padding: 6px 12px 6px 6px;
+    align-items:center;
+    justify-content:center;
+    transition:background-color .2s ease, color .2s ease, transform .1s ease;
+    flex-shrink:0;
     width:54px;
     height:54px;
     color:var(--icon-action-color);

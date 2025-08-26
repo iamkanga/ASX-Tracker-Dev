@@ -239,6 +239,22 @@ document.addEventListener('DOMContentLoaded', function () {
     updateMarketStatusUI();
     setInterval(updateMarketStatusUI, 60 * 1000);
 
+    // Ensure Edit Current Watchlist button updates when selection changes
+    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+        watchlistSelect.addEventListener('change', function () {
+            // If Portfolio is selected, show portfolio view
+            if (watchlistSelect.value === 'portfolio') {
+                showPortfolioView();
+                try { setLastSelectedView('portfolio'); } catch(e){}
+            } else {
+                // Default: show normal watchlist view
+                showWatchlistView();
+                try { setLastSelectedView(watchlistSelect.value); } catch(e){}
+            }
+            updateMainButtonsState(true);
+        });
+    }
+
     // Helper: scroll main content to top in a resilient way
     function scrollMainToTop(instant = false) {
         try {
@@ -250,32 +266,6 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (e) { /* ignore */ }
         try { window.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' }); } catch(_) { /* ignore */ }
     }
-
-// Diagnostic helper: log computed styles and inline styles for portfolio top-right cell
-function logPortfolioOverflowDiagnostics() {
-    try {
-        const cell = document.querySelector('.portfolio-card .pc-top-right');
-        if (!cell) { console.log('[Diag] No .pc-top-right element found'); return; }
-        const comp = window.getComputedStyle(cell);
-        console.log('[Diag] .pc-top-right computed styles:', {
-            display: comp.display,
-            flex: comp.flexBasis + ' ' + comp.flexGrow + ' ' + comp.flexShrink,
-            minWidth: comp.minWidth,
-            maxWidth: comp.maxWidth,
-            whiteSpace: comp.whiteSpace,
-            overflow: comp.overflow,
-            textAlign: comp.textAlign
-        });
-        console.log('[Diag] .pc-top-right inline style:', cell.getAttribute('style'));
-        // Log ancestors that can affect layout
-        const ancestors = [cell.parentElement, cell.closest('.portfolio-card'), document.querySelector('.portfolio-cards-grid'), document.querySelector('main.container')];
-        ancestors.forEach((a, i) => {
-            if (!a) return;
-            const cs = window.getComputedStyle(a);
-            console.log(`[Diag] ancestor[${i}] tag=${a.tagName}, classes=${a.className}`, { display: cs.display, flexWrap: cs.flexWrap, whiteSpace: cs.whiteSpace, minWidth: cs.minWidth });
-        });
-    } catch (e) { console.warn('[Diag] logPortfolioOverflowDiagnostics failed', e); }
-}
 
     // Portfolio view logic
     window.showPortfolioView = function() {
@@ -466,7 +456,7 @@ function logPortfolioOverflowDiagnostics() {
             // For real neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
             return `<div class="portfolio-card ${testNeutral ? 'neutral' : todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
-                <!-- Top line: code | live price | day value | pct (three equal numeric columns) -->
+                <!-- Top line: code left (eye under it), live price center, day dollar + pct right (single-line) -->
                 <div class="pc-top-line" role="group" aria-label="Top line summary">
                     <div class="pc-top-left">
                         <div class="pc-code">${share.shareName || ''}</div>
@@ -475,11 +465,8 @@ function logPortfolioOverflowDiagnostics() {
                     <div class="pc-top-center">
                         <div class="pc-live-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
                     </div>
-                    <div class="pc-top-day">
-                        <div class="pc-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''}</div>
-                    </div>
-                    <div class="pc-top-pct">
-                        <div class="pc-pct ${todayClass}">${todayChange !== null ? fmtPct(todayChangePct) : ''}</div>
+                    <div class="pc-top-right">
+                        <div class="pc-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct">${todayChange !== null ? fmtPct(todayChangePct) : ''}</span></div>
                     </div>
                 </div>
 
@@ -561,26 +548,6 @@ function logPortfolioOverflowDiagnostics() {
         const cardsGrid = `<div class="portfolio-cards-grid">${cards.join('')}</div>`;
         portfolioListContainer.innerHTML = summaryBar + cardsGrid;
 
-        // Post-render: detect overflowing summary values and apply wrap/shrink helpers
-        try {
-            const summaryValues = portfolioListContainer.querySelectorAll('.portfolio-summary-bar .summary-value');
-            summaryValues.forEach(el => {
-                // Reset any helper classes first
-                el.classList.remove('allow-wrap', 'shrinkable');
-                // If the content overflows horizontally, prefer slight shrink; if still overflowing on tiny screens allow wrap
-                const isOverflowing = el.scrollWidth > el.clientWidth + 2; // small tolerance
-                if (isOverflowing) {
-                    // First try a small font shrink by adding shrinkable which uses clamp()
-                    el.classList.add('shrinkable');
-                    // Recompute after style change; if still overflowing on small screens, allow wrap
-                    if (el.scrollWidth > el.clientWidth + 2) {
-                        el.classList.remove('shrinkable');
-                        el.classList.add('allow-wrap');
-                    }
-                }
-            });
-        } catch (e) { /* non-fatal */ }
-
         // --- Expand/Collapse Logic (Accordion) & Eye Button ---
         const cardNodes = portfolioListContainer.querySelectorAll('.portfolio-card');
         cardNodes.forEach((card, idx) => {
@@ -650,46 +617,6 @@ function logPortfolioOverflowDiagnostics() {
                     showShareDetails();
                 });
             }
-            // Open viewing modal on mobile single-tap or desktop double-click
-            (function attachOpenHandlers(cardEl, shareObj) {
-                let touchStart = null;
-                cardEl.addEventListener('touchstart', function (ev) {
-                    try {
-                        if (ev.touches && ev.touches.length > 1) { touchStart = null; return; }
-                        const t = ev.touches && ev.touches[0];
-                        touchStart = t ? { x: t.clientX, y: t.clientY, time: Date.now() } : { x: 0, y: 0, time: Date.now() };
-                    } catch(_) { touchStart = null; }
-                }, { passive: true });
-
-                cardEl.addEventListener('touchend', function (ev) {
-                    try {
-                        if (!touchStart) return;
-                        const t = ev.changedTouches && ev.changedTouches[0];
-                        const endX = t ? t.clientX : 0;
-                        const endY = t ? t.clientY : 0;
-                        const dt = Date.now() - touchStart.time;
-                        const dx = Math.abs(endX - touchStart.x);
-                        const dy = Math.abs(endY - touchStart.y);
-                        // treat as tap when short duration and little movement
-                        if (dt < 350 && dx < 12 && dy < 12) {
-                            // If the tap landed on an interactive control, don't open modal
-                            if (ev.target && ev.target.closest && ev.target.closest('button, a, input, .pc-shortcut-btn, .pc-eye-btn, .pc-chevron-btn')) return;
-                            try { selectShare(shareObj.id); showShareDetails(); } catch(_) {}
-                        }
-                    } catch(_) {
-                        // ignore
-                    } finally { touchStart = null; }
-                }, { passive: true });
-
-                // Desktop double-click
-                cardEl.addEventListener('dblclick', function (ev) {
-                    try {
-                        if (ev.target && ev.target.closest && ev.target.closest('button, a, input, .pc-shortcut-btn, .pc-eye-btn, .pc-chevron-btn')) return;
-                        selectShare(shareObj.id);
-                        showShareDetails();
-                    } catch(_) {}
-                });
-            })(card, share);
         });
     };
 });
@@ -873,21 +800,8 @@ let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
-// Release: 2025-08-26 - Portfolio card redesign (updated); overflow fix
-const APP_VERSION = '2.10.39';
-
-// Refactor shim: apply stable layout classes to header, sort area, and portfolio
-document.addEventListener('DOMContentLoaded', () => {
-    try {
-        document.documentElement.classList.add('refactor-active');
-        const header = document.getElementById('appHeader');
-        if (header) header.classList.add('ref-header');
-        const sortLine = document.getElementById('sortLine');
-        if (sortLine) sortLine.classList.add('ref-sort');
-        const portfolioSection = document.getElementById('portfolioSection') || document.querySelector('.portfolio-section');
-        if (portfolioSection) portfolioSection.classList.add('ref-portfolio');
-    } catch (e) { console.warn('Refactor shim failed:', e); }
-});
+// Release: 2025-08-26 - Portfolio card redesign (updated)
+const APP_VERSION = '2.10.25';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
@@ -1402,54 +1316,33 @@ if (typeof fetchLivePrices === 'function') {
     window.fetchLivePrices = fetchLivePrices = async function(...args) {
         const result = await origFetchLivePrices.apply(this, args);
         updateLivePriceTimestamp(Date.now());
-        try { scrollMainToTop(); } catch(_) {}
         return result;
     };
 }
-
-// Auto-scroll to top when the app becomes active (visibility/focus)
-try {
-    document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'visible') {
-            try { scrollMainToTop(); } catch(_) {}
-        }
-    });
-    window.addEventListener('focus', function() { try { scrollMainToTop(); } catch(_) {} });
-} catch(_) {}
 
 // Also update timestamp on DOMContentLoaded (in case prices are preloaded)
 document.addEventListener('DOMContentLoaded', function() {
     updateLivePriceTimestamp(Date.now());
     // If the live timestamp container exists inside the header, apply right-bottom positioning helper
     try {
+        const lpCont = document.getElementById('livePriceTimestampContainer');
         const header = document.getElementById('appHeader');
-        if (header) {
-            let lpCont = document.getElementById('livePriceTimestampContainer');
-            // If missing, create a new container and inject into DOM (defensive fix for restored/older HTML)
-            if (!lpCont) {
-                lpCont = document.createElement('div');
-                lpCont.id = 'livePriceTimestampContainer';
-                lpCont.className = 'live-price-timestamp-container';
-                lpCont.innerHTML = '<div class="live-price-label">Updated</div><div id="livePriceTimestamp"></div>';
-                // Insert near header-top-row for consistent positioning
-            }
-            try {
-                // Ensure inner structure contains label + time element
-                if (!lpCont.querySelector('.live-price-label')) {
-                    lpCont.innerHTML = '<div class="live-price-label">Updated</div><div id="livePriceTimestamp"></div>';
+        if (lpCont && header) {
+                // Move the timestamp into the header element so we can absolutely position it bottom-right
+                const headerTop = header.querySelector('.header-top-row') || header;
+                try {
+                    // Ensure the container has a stacked label + time structure
+                    if (!lpCont.querySelector('.live-price-label')) {
+                        // Preserve existing time span id by recreating inner content
+                        lpCont.innerHTML = '<div class="live-price-label">Updated</div><div id="livePriceTimestamp"></div>';
+                    }
+                    // Append to the root header so absolute positioning is relative to the header area
+                    header.appendChild(lpCont);
+                    lpCont.classList.remove('live-price-inside-header-left');
+                    lpCont.classList.add('live-price-inside-header');
+                } catch (e) {
+                    if (header.contains(lpCont)) lpCont.classList.add('live-price-inside-header');
                 }
-                // Append to header so absolute positioning is relative to header
-                if (!header.contains(lpCont)) header.appendChild(lpCont);
-                lpCont.classList.remove('live-price-inside-header-left');
-                lpCont.classList.add('live-price-inside-header');
-                // Ensure id for inner time element exists
-                if (!document.getElementById('livePriceTimestamp')) {
-                    const t = document.createElement('div'); t.id = 'livePriceTimestamp';
-                    lpCont.appendChild(t);
-                }
-            } catch (e) {
-                if (header.contains(lpCont)) lpCont.classList.add('live-price-inside-header');
-            }
         }
     } catch(_) {}
 });
@@ -1708,15 +1601,7 @@ const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer
 if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
     asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll');
 }
-// Try to locate an explicit toggle button first; if not present, look for a
-// fallback element inside the sort-select-wrapper that acts as the toggle.
-let toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
-if (!toggleAsxButtonsBtn) {
-    try {
-        const wrapperBtn = document.querySelector('.sort-select-wrapper .toggle-asx-btn');
-        if (wrapperBtn) toggleAsxButtonsBtn = wrapperBtn;
-    } catch(_) {}
-}
+const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
 const shareFormSection = document.getElementById('shareFormSection');
 const formCloseButton = document.querySelector('.form-close-button');
 const formTitle = document.getElementById('formTitle');
@@ -1825,48 +1710,39 @@ let asxButtonsExpanded = false;
 try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 'true') asxButtonsExpanded = true; } catch(e) {}
 
 function applyAsxButtonsState() {
-    // Make the ASX toggle logic resilient: prefer a visible toggle button if present
-    // but fall back to updating the in-select "__asx_toggle" option and the
-    // asxCodeButtonsContainer directly when the external button was removed.
+    if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
+    const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
     const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
     const shouldShow = !!hasButtons && asxButtonsExpanded;
 
-    if (asxCodeButtonsContainer) {
-        if (shouldShow) {
-            asxCodeButtonsContainer.classList.add('expanded');
-            asxCodeButtonsContainer.classList.remove('app-hidden');
-            asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
-            // Ensure display style is usable when expanded
-            try { asxCodeButtonsContainer.style.display = 'flex'; } catch(_) {}
-        } else {
-            asxCodeButtonsContainer.classList.remove('expanded');
-            asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
-        }
+    if (shouldShow) {
+        asxCodeButtonsContainer.classList.add('expanded');
+        asxCodeButtonsContainer.classList.remove('app-hidden');
+        asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
+    } else {
+        asxCodeButtonsContainer.classList.remove('expanded');
+        asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
     }
-
-    // If an external toggle button exists, update it. Otherwise update the
-    // interactive option inside the sort select so users still get feedback.
+    // Chevron visibility and state
+    if (!hasButtons) {
+        toggleAsxButtonsBtn.style.display = 'none';
+        toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
+    } else {
+        toggleAsxButtonsBtn.style.display = 'inline-flex'; // Use inline-flex for proper alignment
+        toggleAsxButtonsBtn.removeAttribute('aria-disabled');
+    }
+    // Update accessible pressed/expanded state and label text
     try {
-        if (toggleAsxButtonsBtn) {
-            if (!hasButtons) {
-                toggleAsxButtonsBtn.style.display = 'none';
-                toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
-            } else {
-                toggleAsxButtonsBtn.style.display = 'inline-flex';
-                toggleAsxButtonsBtn.removeAttribute('aria-disabled');
-            }
-            toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
-            toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
-            const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
-            if (labelSpan) labelSpan.textContent = 'ASX Codes';
-            const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
-            if (chevronIcon) chevronIcon.classList.toggle('expanded', shouldShow);
-        } else if (typeof sortSelect !== 'undefined' && sortSelect) {
-            const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
-            if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
-        }
+        toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
+        toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
+        const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
+        if (labelSpan) labelSpan.textContent = 'ASX Codes';
     } catch(_) {}
-
+    // Update chevron rotation
+    const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
+    if (chevronIcon) {
+        chevronIcon.classList.toggle('expanded', shouldShow);
+    }
     requestAnimationFrame(adjustMainContentPadding);
 }
 
@@ -5611,26 +5487,14 @@ function openWatchlistPicker() {
     console.log('[WatchlistPicker] Modal shown. Item count:', watchlistPickerList.children.length);
 }
 function toggleCodeButtonsArrow() {
-    // Gracefully handle missing external toggle button: update the container
-    // and the in-select option label instead.
-    const current = currentSelectedWatchlistIds[0];
-    if (current === CASH_BANK_WATCHLIST_ID) {
-        try {
-            if (toggleAsxButtonsBtn) toggleAsxButtonsBtn.style.display = 'none';
-        } catch(_) {}
-        if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.add('app-hidden'); try { asxCodeButtonsContainer.style.display = 'none'; } catch(_) {} }
-        // ensure select option is updated too
-        try {
-            if (typeof sortSelect !== 'undefined' && sortSelect) {
-                const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
-                if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
-            }
-        } catch(_) {}
+    if (!toggleAsxButtonsBtn) return;
+    const current=currentSelectedWatchlistIds[0];
+    if (current===CASH_BANK_WATCHLIST_ID) {
+    toggleAsxButtonsBtn.style.display='none';
+    if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.add('app-hidden'); asxCodeButtonsContainer.style.display='none'; }
     } else {
-        try {
-            if (toggleAsxButtonsBtn) toggleAsxButtonsBtn.style.display = '';
-        } catch(_) {}
-        if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.remove('app-hidden'); if (asxButtonsExpanded) try { asxCodeButtonsContainer.style.display = 'flex'; } catch(_) {} }
+    toggleAsxButtonsBtn.style.display='';
+    if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.remove('app-hidden'); if (asxButtonsExpanded) asxCodeButtonsContainer.style.display='flex'; }
         applyAsxButtonsState();
     }
 }
@@ -5775,7 +5639,7 @@ function renderWatchlist() {
             portfolioSection = document.createElement('div');
             portfolioSection.id = 'portfolioSection';
             portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<div id="portfolioListContainer">Loading portfolio...</div>';
+            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
             if (mainContainer) mainContainer.appendChild(portfolioSection);
         }
         portfolioSection.style.display = 'block';

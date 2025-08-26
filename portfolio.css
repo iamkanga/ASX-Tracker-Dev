@@ -564,14 +564,12 @@ function makeFilesAvailableToSourceControlCSS() {
 
 /* ===== Redesign: Portfolio Card Layout (new rules matching updated markup) ===== */
 .portfolio-card .pc-top-line {
-    /* Use a 4-column grid: code | live price | day value | pct
-       This gives the three numeric columns equal available space while
-       keeping the code cell compact on the left. */
-    display: grid;
-    grid-template-columns: auto 1fr 1fr 1fr;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
     gap: 12px;
     white-space: nowrap; /* keep items on single line */
+    flex-wrap: nowrap; /* explicitly prevent wrapping */
 }
 .portfolio-card .pc-top-left {
     display: flex;
@@ -601,37 +599,27 @@ function makeFilesAvailableToSourceControlCSS() {
     gap: 6px;
 }
 .portfolio-card .pc-top-center {
-    /* Live price column (one of three equal numeric columns) */
-    min-width: 0; /* allow to shrink inside grid cell */
+    flex: 1 1 auto;
+    min-width: 0; /* allow center to shrink inside flexbox */
     text-align: center;
     font-weight: 700;
-    font-size: 1.02rem;
+    font-size: 1.12rem;
     color: var(--text-color);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.portfolio-card .pc-top-day {
-    /* Day dollar value column (numeric) */
-    min-width: 0;
+.portfolio-card .pc-top-right {
+    flex: 0 0 auto;
+    min-width: 72px;
+    max-width: 120px;
     text-align: right;
     font-weight: 700;
     font-size: 1.02rem;
     color: var(--label-color);
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.portfolio-card .pc-top-pct {
-    /* Day percentage column (numeric) */
-    min-width: 0;
-    text-align: right;
-    font-weight: 600;
-    font-size: 0.98rem;
-    color: var(--label-color);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 /* Ensure the ASX code doesn't overflow and force wrapping */
@@ -679,34 +667,16 @@ function makeFilesAvailableToSourceControlCSS() {
 
 /* Stronger, high-specificity overrides to avoid global .chevron conflicts */
 .portfolio-cards-grid .portfolio-card .pc-top-line {
-    /* Keep the redesigned 4-column grid in high-specificity contexts so
-       the live price can be centered reliably. This override avoids
-       forcing a flexbox layout which was preventing the center column
-       from aligning to the middle. */
-    display: grid !important;
-    grid-template-columns: auto 1fr 1fr 1fr !important;
+    display: flex !important;
+    justify-content: space-between !important;
     align-items: center !important;
     gap: 12px !important;
     white-space: nowrap !important; /* keep items on single line */
+    flex-wrap: nowrap !important; /* explicitly prevent wrapping */
 }
 .portfolio-cards-grid .portfolio-card .pc-top-left { min-width: 56px !important; flex: 0 0 auto !important; }
-.portfolio-cards-grid .portfolio-card .pc-top-center {
-    /* Use grid alignment to center the live price cell */
-    justify-self: center !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-}
-.portfolio-cards-grid .portfolio-card .pc-top-right {
-    /* High-specificity override: permit shrinking and ensure overflow is clipped */
-    justify-self: end !important;
-    min-width: 0 !important;
-    max-width: 140px !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-}
+.portfolio-cards-grid .portfolio-card .pc-top-center { flex: 1 1 0% !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+.portfolio-cards-grid .portfolio-card .pc-top-right { flex: 0 0 auto !important; min-width: 64px !important; max-width: 140px !important; }
 
 /* Ensure the chevron button is visually centered and not affected by global chevron rules */
 .portfolio-cards-grid .portfolio-card .pc-chevron-btn {
@@ -754,14 +724,3 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-card .pc-detail-row span:last-child, .portfolio-card .pc-val { min-width: 60px; text-align: right; }
 
 /* End redesigned portfolio card CSS */
-
-/* Strong safety override: ensure right-hand numeric cell cannot push layout
-   This is intentionally narrow and specific to avoid broad side-effects. */
-#portfolioSection .portfolio-cards-grid .portfolio-card .pc-top-right {
-    flex: 0 1 auto !important;
-    min-width: 0 !important;
-    max-width: 140px !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-}
