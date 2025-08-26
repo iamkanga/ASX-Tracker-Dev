@@ -165,6 +165,59 @@
 }
 .pc-top-right { max-width: 140px; }
 .portfolio-summary-bar .summary-card { min-width: 0; }
+/* --- Overflow fixes for totals and numeric fields ---
+   Ensure totals containers and numeric values truncate instead of
+   leaking out of flex/grid containers on narrow screens or with long numbers. */
+.portfolio-summary-bar .summary-card,
+.portfolio-summary-bar .summary-value,
+.portfolio-summary-bar .summary-pct,
+.portfolio-summary-bar .summary-label,
+.portfolio-summary-bar .summary-card .summary-value,
+.portfolio-summary-bar .summary-card .summary-pct {
+    min-width: 0; /* allow flex/grid children to shrink */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Totals / portfolio summary card variants (ps-card used in alternate layout) */
+.portfolio-summary-bar .ps-card,
+.portfolio-summary-bar .ps-value,
+.portfolio-summary-bar .ps-percent {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Live price and daily change numeric fields */
+.pc-live-price, .pc-day-change, .pc-pct, .pc-val {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums; /* improves numeric layout */
+}
+
+/* Totals footer and total cash display should safely truncate long numbers */
+.portfolio-cards .totals-footer-wrapper,
+.portfolio-card.total.wide,
+.total-cash-display,
+.total-cash-display h3,
+.total-cash-display span {
+    box-sizing: border-box;
+    min-width: 0;
+    overflow: hidden;
+}
+
+@media (max-width: 480px) {
+    /* Slightly reduce font-size for very long numbers on tiny screens */
+    .portfolio-summary-bar .summary-value,
+    .portfolio-summary-bar .ps-value,
+    .pc-live-price {
+        font-size: 0.95rem;
+    }
+}
 /* On very small screens, hide the label and show just the chevron to save space */
 @media (max-width: 480px) {
     .sort-select-wrapper .asx-toggle-label { display: none; }
