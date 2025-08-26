@@ -1300,7 +1300,8 @@ function updateLivePriceTimestamp(ts) {
     }
     // Format: e.g. '12:34:56 pm' or '12:34 pm' (24h/12h based on locale)
     const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    el.textContent = `Updated: ${timeStr}`;
+    // Only set the time here; the label 'Updated' is rendered as a separate element in the container
+    el.textContent = timeStr;
 }
 
 // Patch live price fetch logic to update timestamp after fetch
@@ -1321,19 +1322,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const lpCont = document.getElementById('livePriceTimestampContainer');
         const header = document.getElementById('appHeader');
         if (lpCont && header) {
-            // Preferentially move the timestamp into the header left container so it sits under the hamburger
-            const headerLeft = header.querySelector('.header-left-container');
-            try {
-                if (headerLeft) {
-                    headerLeft.appendChild(lpCont);
-                    lpCont.classList.add('live-price-inside-header-left');
-                } else if (header.contains(lpCont)) {
-                    // Fallback: preserve original absolute-position helper
+                // Move the timestamp into the header top row so we can absolutely position it bottom-right
+                const headerTop = header.querySelector('.header-top-row') || header;
+                try {
+                    // Ensure the container has a stacked label + time structure
+                    if (!lpCont.querySelector('.live-price-label')) {
+                        // Preserve existing time span id by recreating inner content
+                        lpCont.innerHTML = '<div class="live-price-label">Updated</div><div id="livePriceTimestamp"></div>';
+                    }
+                    headerTop.appendChild(lpCont);
+                    lpCont.classList.remove('live-price-inside-header-left');
                     lpCont.classList.add('live-price-inside-header');
+                } catch (e) {
+                    if (header.contains(lpCont)) lpCont.classList.add('live-price-inside-header');
                 }
-            } catch(_) {
-                if (header.contains(lpCont)) lpCont.classList.add('live-price-inside-header');
-            }
         }
     } catch(_) {}
 });

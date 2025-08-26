@@ -171,10 +171,27 @@
 .live-price-inside-header {
     position: absolute;
     right: 12px;
-    bottom: 8px; /* sit just below the title baseline */
+    bottom: 8px; /* sit at the bottom-right corner of the header */
     width: auto;
     text-align: right;
     pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-end;
+}
+.live-price-inside-header .live-price-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ghosted-text, rgba(255,255,255,0.75));
+    opacity: 0.95;
+    pointer-events: none;
+}
+.live-price-inside-header #livePriceTimestamp {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-color, #fff);
+    opacity: 0.95;
 }
 
 /* New: left-aligned inside-header timestamp (under hamburger, centered in left column) */
