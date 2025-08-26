@@ -630,7 +630,7 @@ function makeFilesAvailableToSourceControlCSS() {
 /* Ensure the ASX code doesn't overflow and force wrapping */
 .portfolio-card .pc-code { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Style the combined day-change (dollar + pct) */
-.portfolio-card .pc-day-change { display:inline-flex; align-items:baseline; gap:8px; }
+.portfolio-card .pc-day-change { display:inline-flex; align-items:baseline; gap:8px; margin-left: auto; text-align: right; min-width: 0; }
 .portfolio-card .pc-day-change .pc-pct { font-size:0.95rem; font-weight:600; opacity:0.9; }
 .portfolio-card .pc-top-spacer { height: 8px; width: 100%; }
 

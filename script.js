@@ -500,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="pc-detail-row"><span class="pc-label">Units</span><span class="pc-val">${shares !== '' ? shares : ''}</span></div>
                     <div class="pc-detail-row"><span class="pc-label">Cost per Unit</span><span class="pc-val">${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
                     <div class="pc-detail-row"><span class="pc-label">Total Cost</span><span class="pc-val">${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
-                    <button class="pc-shortcut-btn" aria-label="View Details"><span class="fa fa-plus"></span></button>
+                    <button class="pc-shortcut-btn" aria-label="View Details"><span class="fa fa-eye"></span></button>
                 </div>
             </div>`;
     });
@@ -5797,8 +5797,11 @@ function renderWatchlist() {
             }
         }
         
-        // Re-render ASX Code Buttons separately
-        renderAsxCodeButtons();
+    // Re-render ASX Code Buttons separately
+    renderAsxCodeButtons();
+
+    // UX: Ensure main content is scrolled to top after rendering to keep focus on the updated content
+    try { scrollMainToTop(); } catch(_) {}
 
         // AFTER primary render: enforce target-hit highlight on any rows/cards that might have missed initial application
         try {
