@@ -1767,7 +1767,8 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
             const tri = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle'); if (tri) tri.classList.toggle('expanded', !!asxButtonsExpanded);
         } catch(_) {}
         // Try to keep page view stable (avoid abrupt jumps)
-        try { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); } catch(_) {}
+    try { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); } catch(_) {}
+    try { scrollMainToTop(); } catch(_) {}
     });
 
     // Allow clicking the surrounding sort-select-wrapper to toggle ASX Codes as well
@@ -6314,9 +6315,20 @@ async function displayStockDetailsInSearchModal(asxCode) {
             footer.innerHTML = '';
             footer.appendChild(actionButton);
         } else {
-            // As a last resort, log and attach to document body (shouldn't normally happen)
-            console.warn('Search Modal: Action footer not found; attaching add button to body as fallback.');
-            document.body.appendChild(actionButton);
+            // As a last resort, avoid attaching visible UI to <body> which caused
+            // duplicated buttons to appear at the bottom of the page in some
+            // malformed DOM states. Instead keep the action button in a hidden
+            // container so it does not escape the intended modal layout.
+            console.warn('Search Modal: Action footer not found; placing add button into a hidden fallback container to avoid visible duplicates.');
+            let hiddenContainer = document.getElementById('hiddenModalActionButtonsContainer');
+            if (!hiddenContainer) {
+                hiddenContainer = document.createElement('div');
+                hiddenContainer.id = 'hiddenModalActionButtonsContainer';
+                hiddenContainer.setAttribute('aria-hidden', 'true');
+                hiddenContainer.style.display = 'none';
+                document.body.appendChild(hiddenContainer);
+            }
+            hiddenContainer.appendChild(actionButton);
         }
 
         logDebug(`Search: Displayed details and action button for ${asxCode}.`);
