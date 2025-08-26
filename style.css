@@ -31,7 +31,7 @@
     flex: 0 0 auto !important;
     order: 0 !important;
     width: auto !important;
-    text-align: right !important;
+    /* text-align intentionally omitted so contained timestamp's own alignment rules win */
 }
 
 @media (max-width: 640px) {
@@ -129,7 +129,7 @@
     /* Force to its own row and stretch across the header width */
     flex: 0 0 100%;
     order: 2; /* place after primary controls within the container */
-    text-align: right; /* keep aligned to right edge; change to left if preferred */
+    /* text-align removed so .live-price-inside-sort-left can control alignment */
     padding: 6px 16px 0 16px;
 }
 
