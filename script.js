@@ -611,6 +611,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     showShareDetails();
                 });
             }
+
+            // Click-through: clicking a portfolio card (except interactive controls) opens the viewing modal
+            if (!card.__clickThroughAttached) {
+                card.addEventListener('click', function(e) {
+                    // Ignore clicks on buttons, links, inputs or elements that handle their own click
+                    const interactive = e.target.closest('button, a, input, .pc-eye-btn, .pc-chevron-btn, .pc-shortcut-btn');
+                    if (interactive) return;
+                    try {
+                        selectShare(share.id);
+                        showShareDetails();
+                    } catch (err) { console.warn('Card click-through handler failed', err); }
+                });
+                card.__clickThroughAttached = true;
+            }
         });
     };
 });
