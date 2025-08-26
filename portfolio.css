@@ -564,12 +564,14 @@ function makeFilesAvailableToSourceControlCSS() {
 
 /* ===== Redesign: Portfolio Card Layout (new rules matching updated markup) ===== */
 .portfolio-card .pc-top-line {
-    display: flex;
-    justify-content: space-between;
+    /* Use a 4-column grid: code | live price | day value | pct
+       This gives the three numeric columns equal available space while
+       keeping the code cell compact on the left. */
+    display: grid;
+    grid-template-columns: auto 1fr 1fr 1fr;
     align-items: center;
     gap: 12px;
     white-space: nowrap; /* keep items on single line */
-    flex-wrap: nowrap; /* explicitly prevent wrapping */
 }
 .portfolio-card .pc-top-left {
     display: flex;
@@ -599,29 +601,37 @@ function makeFilesAvailableToSourceControlCSS() {
     gap: 6px;
 }
 .portfolio-card .pc-top-center {
-    flex: 1 1 auto;
-    min-width: 0; /* allow center to shrink inside flexbox */
+    /* Live price column (one of three equal numeric columns) */
+    min-width: 0; /* allow to shrink inside grid cell */
     text-align: center;
     font-weight: 700;
-    font-size: 1.12rem;
+    font-size: 1.02rem;
     color: var(--text-color);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.portfolio-card .pc-top-right {
-    /* Allow right column to shrink when space is tight so long numbers truncate
-       (previously 0 0 auto prevented shrinking and could push layout) */
-    flex: 0 1 auto;
-    min-width: 0; /* allow the flex item to shrink below its content size */
-    max-width: 120px;
+.portfolio-card .pc-top-day {
+    /* Day dollar value column (numeric) */
+    min-width: 0;
     text-align: right;
     font-weight: 700;
     font-size: 1.02rem;
     color: var(--label-color);
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.portfolio-card .pc-top-pct {
+    /* Day percentage column (numeric) */
+    min-width: 0;
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.98rem;
+    color: var(--label-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Ensure the ASX code doesn't overflow and force wrapping */

@@ -466,7 +466,7 @@ function logPortfolioOverflowDiagnostics() {
             // For real neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
             return `<div class="portfolio-card ${testNeutral ? 'neutral' : todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
-                <!-- Top line: code left (eye under it), live price center, day dollar + pct right (single-line) -->
+                <!-- Top line: code | live price | day value | pct (three equal numeric columns) -->
                 <div class="pc-top-line" role="group" aria-label="Top line summary">
                     <div class="pc-top-left">
                         <div class="pc-code">${share.shareName || ''}</div>
@@ -475,8 +475,11 @@ function logPortfolioOverflowDiagnostics() {
                     <div class="pc-top-center">
                         <div class="pc-live-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
                     </div>
-                    <div class="pc-top-right">
-                        <div class="pc-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct">${todayChange !== null ? fmtPct(todayChangePct) : ''}</span></div>
+                    <div class="pc-top-day">
+                        <div class="pc-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''}</div>
+                    </div>
+                    <div class="pc-top-pct">
+                        <div class="pc-pct ${todayClass}">${todayChange !== null ? fmtPct(todayChangePct) : ''}</div>
                     </div>
                 </div>
 
@@ -811,7 +814,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.10.36';
+const APP_VERSION = '2.10.37';
 
 // Refactor shim: apply stable layout classes to header, sort area, and portfolio
 document.addEventListener('DOMContentLoaded', () => {
