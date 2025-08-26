@@ -1382,9 +1382,20 @@ if (typeof fetchLivePrices === 'function') {
     window.fetchLivePrices = fetchLivePrices = async function(...args) {
         const result = await origFetchLivePrices.apply(this, args);
         updateLivePriceTimestamp(Date.now());
+        try { scrollMainToTop(); } catch(_) {}
         return result;
     };
 }
+
+// Auto-scroll to top when the app becomes active (visibility/focus)
+try {
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            try { scrollMainToTop(); } catch(_) {}
+        }
+    });
+    window.addEventListener('focus', function() { try { scrollMainToTop(); } catch(_) {} });
+} catch(_) {}
 
 // Also update timestamp on DOMContentLoaded (in case prices are preloaded)
 document.addEventListener('DOMContentLoaded', function() {
