@@ -77,6 +77,34 @@
 /* Make header the positioning context for absolutely positioned children like the timestamp */
 #appHeader { position: relative; }
 
+/* Compact header: reduce vertical padding and make title shallower */
+.header-top-row {
+    padding: 6px 8px; /* shallower vertical padding */
+    gap: 8px;
+    align-items: center;
+}
+.header-top-row .watchlist-dynamic-title { font-size: 1.05rem; margin: 0; padding: 2px 6px; }
+
+/* Place live timestamp inline on the sort line, left of the sort menu */
+.sort-line-row { display:flex; align-items:center; gap:8px; padding: 6px 8px; }
+.sort-line-row .sort-controls-container { display:flex; align-items:center; gap:8px; }
+.live-price-inside-sort-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    order: 1;
+    margin-right: 6px;
+}
+.live-price-inside-sort-left .live-price-label { font-size: 0.82rem; color: var(--muted-text-color, #888); }
+.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+
+/* On narrow screens, keep timestamp compact */
+@media (max-width: 640px) {
+    .header-top-row { padding: 4px 6px; }
+    .sort-line-row { padding: 4px 6px; }
+    .live-price-inside-sort-left .live-price-label { display:none; }
+}
+
 /* Keep hamburger on top-left and above any positioned timestamp */
 #hamburgerBtn { position: relative; z-index: 80; }
 

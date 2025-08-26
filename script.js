@@ -801,7 +801,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.10.28';
+const APP_VERSION = '2.10.29';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
@@ -5649,7 +5649,7 @@ function renderWatchlist() {
             portfolioSection = document.createElement('div');
             portfolioSection.id = 'portfolioSection';
             portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
+            portfolioSection.innerHTML = '<div id="portfolioListContainer">Loading portfolio...</div>';
             if (mainContainer) mainContainer.appendChild(portfolioSection);
         }
         portfolioSection.style.display = 'block';
