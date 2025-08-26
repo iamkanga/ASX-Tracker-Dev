@@ -121,6 +121,22 @@
 .sort-select-wrapper .toggle-asx-btn:hover {
     background: rgba(0,0,0,0.03);
 }
+/* Fix: ensure flex/grid children can shrink and numeric fields truncate instead of overflowing */
+.pc-top-line, .portfolio-summary-bar, .summary-card, .portfolio-card {
+    min-width: 0; /* allow children to shrink within flex/grid */
+}
+.pc-top-center, .pc-top-right, .pc-mid-row {
+    min-width: 0;
+    overflow: hidden;
+}
+.pc-live-price, .pc-day-change, .pc-pct, .summary-value, .summary-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+}
+.pc-top-right { max-width: 140px; }
+.portfolio-summary-bar .summary-card { min-width: 0; }
 /* On very small screens, hide the label and show just the chevron to save space */
 @media (max-width: 480px) {
     .sort-select-wrapper .asx-toggle-label { display: none; }
