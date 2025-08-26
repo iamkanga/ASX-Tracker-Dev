@@ -780,7 +780,7 @@ let suppressShareFormReopen = false;
 // Release: 2025-08-24 - Fix autocomplete mobile scrolling
 // Release: 2025-08-24 - Refactor Add/Edit Share modal to single container for improved mobile scrolling
 // Release: 2025-08-24 - Refactor Global Alerts & Discover modals to single container scrolling
-const APP_VERSION = '2.10.19';
+const APP_VERSION = '2.10.20';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
@@ -1305,8 +1305,20 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
         const lpCont = document.getElementById('livePriceTimestampContainer');
         const header = document.getElementById('appHeader');
-        if (lpCont && header && header.contains(lpCont)) {
-            lpCont.classList.add('live-price-inside-header');
+        if (lpCont && header) {
+            // Preferentially move the timestamp into the header left container so it sits under the hamburger
+            const headerLeft = header.querySelector('.header-left-container');
+            try {
+                if (headerLeft) {
+                    headerLeft.appendChild(lpCont);
+                    lpCont.classList.add('live-price-inside-header-left');
+                } else if (header.contains(lpCont)) {
+                    // Fallback: preserve original absolute-position helper
+                    lpCont.classList.add('live-price-inside-header');
+                }
+            } catch(_) {
+                if (header.contains(lpCont)) lpCont.classList.add('live-price-inside-header');
+            }
         }
     } catch(_) {}
 });

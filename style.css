@@ -177,6 +177,22 @@
     pointer-events: none;
 }
 
+/* New: left-aligned inside-header timestamp (under hamburger, centered in left column) */
+.live-price-inside-header-left {
+    position: static; /* allow it to flow inside header-left-container */
+    width: 100%;
+    text-align: center; /* center horizontally under the hamburger */
+    padding-top: 4px;
+}
+
+/* Ensure the header-left-container doesn't collapse and centers its contents */
+.header-left-container { align-items: center; }
+
+/* Splash version contrast (both top-left and bottom-right variants) */
+.app-version-splash { color: rgba(255,255,255,0.9); font-weight:600; }
+.app-version-splash-top { left: 12px; top: 12px; }
+.app-version-splash-bottomright { right: 12px; bottom: 12px; }
+
 /* Ensure splash version is visible even on dark/light backgrounds */
 .app-version-splash { color: rgba(255,255,255,0.85); }
 .app-version-splash.app-version-splash-top { left: 12px; top: 12px; }
@@ -4304,6 +4320,18 @@ header .header-action-btn-right { margin-right:2px !important; }
     pointer-events: auto; /* Make interactive when open */
     touch-action: none; /* Prevent accidental scroll/tap passthrough on mobile */
     cursor: pointer; /* Indicate clickable backdrop */
+}
+
+/* Ensure live price timestamp moved into header-left is visible and centered.
+   High specificity rule to avoid accidental overrides from other header rules. */
+#appHeader .header-top-row .header-left-container #livePriceTimestampContainer.live-price-inside-header-left {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    text-align: center !important;
+    padding-top: 4px !important;
+    box-sizing: border-box !important;
+    z-index: 50 !important;
 }
 
 
