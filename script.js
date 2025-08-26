@@ -456,8 +456,8 @@ document.addEventListener('DOMContentLoaded', function () {
             // For real neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
             return `<div class="portfolio-card ${testNeutral ? 'neutral' : todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
-                <!-- Top line: code left (with eye under it), live price center, day pct right -->
-                <div class="pc-top-line">
+                <!-- Top line: code left (eye under it), live price center, day dollar + pct right (single-line) -->
+                <div class="pc-top-line" role="group" aria-label="Top line summary">
                     <div class="pc-top-left">
                         <div class="pc-code">${share.shareName || ''}</div>
                         <button class="pc-eye-btn" aria-label="Hide or show from totals"><span class="fa fa-eye"></span></button>
@@ -466,7 +466,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div class="pc-live-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
                     </div>
                     <div class="pc-top-right">
-                        <div class="pc-pct ${todayClass}">${todayChange !== null ? fmtPct(todayChangePct) : ''}</div>
+                        <div class="pc-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct">${todayChange !== null ? fmtPct(todayChangePct) : ''}</span></div>
                     </div>
                 </div>
 
@@ -486,9 +486,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 </div>
 
-                <!-- Controls: centered chevron for dropdown -->
-                <div class="pc-controls-row">
-                    <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand"><span class="chevron">▾</span></button>
+                <!-- Controls: centered carat chevron for dropdown -->
+                <div class="pc-controls-row pc-chevron-wrap">
+                    <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand/Collapse details"><span class="chevron">▾</span></button>
                 </div>
 
                 <!-- Dropdown details: conditional Alert Target then Units, Cost per Unit, Total Cost -->
@@ -794,8 +794,8 @@ let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
-// Release: 2025-08-26 - Portfolio card redesign
-const APP_VERSION = '2.10.21';
+// Release: 2025-08-26 - Portfolio card redesign (updated)
+const APP_VERSION = '2.10.22';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();

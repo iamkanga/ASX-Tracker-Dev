@@ -568,12 +568,13 @@ function makeFilesAvailableToSourceControlCSS() {
     justify-content: space-between;
     align-items: center;
     gap: 12px;
+    white-space: nowrap; /* keep items on single line */
 }
 .portfolio-card .pc-top-left {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    min-width: 120px;
+    min-width: 88px; /* reduced to avoid wrapping on narrow cards */
 }
 .portfolio-card .pc-top-left .pc-code {
     font-size: 1.55rem;
@@ -599,14 +600,19 @@ function makeFilesAvailableToSourceControlCSS() {
     font-weight: 700;
     font-size: 1.35rem;
     color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .portfolio-card .pc-top-right {
-    min-width: 90px;
+    min-width: 110px;
     text-align: right;
     font-weight: 700;
     font-size: 1.12rem;
     color: var(--label-color);
 }
+/* Style the combined day-change (dollar + pct) */
+.portfolio-card .pc-day-change { display:inline-flex; align-items:baseline; gap:8px; }
+.portfolio-card .pc-day-change .pc-pct { font-size:0.95rem; font-weight:600; opacity:0.9; }
 .portfolio-card .pc-top-spacer { height: 8px; width: 100%; }
 
 .portfolio-card .pc-mid-row {
@@ -636,8 +642,10 @@ function makeFilesAvailableToSourceControlCSS() {
     color: var(--text-color);
 }
 
-.portfolio-card .pc-chevron-wrap { display:flex; justify-content:center; width:100%; margin-top:4px; }
-.portfolio-card .pc-chevron-btn { justify-content:center; padding:6px 10px; border-radius:10px; }
+.portfolio-card .pc-chevron-wrap { display:flex; justify-content:center; width:100%; margin-top:6px; }
+.portfolio-card .pc-chevron-btn { justify-content:center; padding:6px 10px; border-radius:10px; background:transparent; border:1px solid transparent; }
+.portfolio-card .pc-chevron-btn .chevron { font-size:1.25rem; display:inline-block; transform-origin:center; }
+.portfolio-card.expanded .pc-chevron-btn .chevron { transform: rotate(180deg); }
 
 .portfolio-card .pc-details { padding-top: 12px; }
 .portfolio-card .pc-details .pc-detail-row { display:flex; justify-content:space-between; padding:6px 0; margin-bottom:8px; }
