@@ -572,9 +572,11 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 .portfolio-card .pc-top-left {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 88px; /* reduced to avoid wrapping on narrow cards */
+    flex-direction: row; /* ensure code + optional icon remain on the same line */
+    align-items: center;
+    gap: 8px;
+    min-width: 72px; /* compact to avoid forcing center to wrap */
+    flex: 0 0 auto; /* do not grow or shrink unpredictably */
 }
 .portfolio-card .pc-top-left .pc-code {
     font-size: 1.55rem;
@@ -586,29 +588,36 @@ function makeFilesAvailableToSourceControlCSS() {
     border: none;
     padding: 0;
     margin: 0;
-    margin-top: 6px;
+    margin-left: 6px;
     color: var(--icon-action-color);
     cursor: pointer;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 .portfolio-card .pc-top-center {
-    flex: 1 1 auto;
+    flex: 1 1 40%;
+    min-width: 0; /* allow center to shrink inside flexbox */
     text-align: center;
     font-weight: 700;
-    font-size: 1.35rem;
+    font-size: 1.28rem;
     color: var(--text-color);
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .portfolio-card .pc-top-right {
-    min-width: 110px;
+    flex: 0 0 auto;
+    min-width: 80px;
+    max-width: 140px;
     text-align: right;
     font-weight: 700;
-    font-size: 1.12rem;
+    font-size: 1.05rem;
     color: var(--label-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 /* Style the combined day-change (dollar + pct) */
 .portfolio-card .pc-day-change { display:inline-flex; align-items:baseline; gap:8px; }
@@ -654,10 +663,10 @@ function makeFilesAvailableToSourceControlCSS() {
 
 /* Slight visual tweaks for the top/center/right on smaller screens */
 @media (max-width: 600px) {
-    .portfolio-card .pc-top-line { align-items: flex-start; gap: 8px; }
-    .portfolio-card .pc-top-left { min-width: 72px; }
-    .portfolio-card .pc-top-center { font-size: 1.08rem; }
-    .portfolio-card .pc-top-right { font-size: 1rem; min-width: 60px; }
+    .portfolio-card .pc-top-line { align-items: center; gap: 8px; }
+    .portfolio-card .pc-top-left { min-width: 56px; }
+    .portfolio-card .pc-top-center { font-size: 1.02rem; }
+    .portfolio-card .pc-top-right { font-size: 0.95rem; min-width: 56px; }
     .portfolio-card .pc-mid-row { flex-direction: row; gap: 8px; font-size: 0.98rem; }
     .portfolio-card .pc-top-spacer { height: 4px; }
 }
