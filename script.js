@@ -5647,7 +5647,8 @@ function renderWatchlist() {
             portfolioSection = document.createElement('div');
             portfolioSection.id = 'portfolioSection';
             portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<h2>Portfolio</h2><div id="portfolioListContainer">Loading portfolio...</div>';
+            // Intentionally do not insert a static title here; main title is controlled globally elsewhere.
+            portfolioSection.innerHTML = '<div id="portfolioListContainer">Loading portfolio...</div>';
             if (mainContainer) mainContainer.appendChild(portfolioSection);
         }
         portfolioSection.style.display = 'block';
@@ -6242,16 +6243,17 @@ async function displayStockDetailsInSearchModal(asxCode) {
         // Two-step workflow: DO NOT auto-open add/edit form here.
         // User must click the action button rendered below.
 
-    // Render action button (explicit user intent only)
+        // Render action button (explicit user intent only)
         const actionButton = document.createElement('button');
+        actionButton.id = 'searchModalActionButton';
         actionButton.classList.add('button', 'primary-button'); // Apply base button styles
-        
+
         if (existingShare) {
             actionButton.textContent = 'Edit Share in Tracker';
             actionButton.addEventListener('click', () => {
                 hideModal(stockSearchModal); // Close search modal
-                // If the user clicks "Add Share to ASX Tracker" for an existing share,
-                // we should open the edit form for that existing share.
+                // If the user clicks "Edit Share in Tracker" for an existing share,
+                // open the edit form for that existing share.
                 showEditFormForSelectedShare(existingShare.id);
             });
         } else {
@@ -6295,7 +6297,33 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 checkFormDirtyState(); // Recompute dirty state
             });
         }
-        searchModalActionButtons.appendChild(actionButton);
+
+        // Ensure the action button is only appended once and into the intended modal footer.
+        try {
+            // Remove any stray duplicate buttons previously inserted elsewhere just in case
+            document.querySelectorAll('#searchModalActionButton').forEach((el) => { if (el && el.parentNode) el.parentNode.removeChild(el); });
+        } catch (_) {}
+
+        if (searchModalActionButtons && searchModalActionButtons.appendChild) {
+            // Clear prior children then append the new button
+            searchModalActionButtons.innerHTML = '';
+            searchModalActionButtons.appendChild(actionButton);
+        } else if (stockSearchModal) {
+            // Fallback: try to find/create a footer inside the modal to host the button
+            let footer = stockSearchModal.querySelector('.modal-action-buttons-footer');
+            if (!footer) {
+                footer = document.createElement('div');
+                footer.className = 'modal-action-buttons-footer';
+                stockSearchModal.querySelector('.modal-content')?.appendChild(footer);
+            }
+            footer.innerHTML = '';
+            footer.appendChild(actionButton);
+        } else {
+            // As a last resort, log and attach to document body (shouldn't normally happen)
+            console.warn('Search Modal: Action footer not found; attaching add button to body as fallback.');
+            document.body.appendChild(actionButton);
+        }
+
         logDebug(`Search: Displayed details and action button for ${asxCode}.`);
 
     } catch (error) {
