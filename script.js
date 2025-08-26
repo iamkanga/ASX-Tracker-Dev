@@ -801,7 +801,20 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.10.32';
+const APP_VERSION = '2.10.33';
+
+// Refactor shim: apply stable layout classes to header, sort area, and portfolio
+document.addEventListener('DOMContentLoaded', () => {
+    try {
+        document.documentElement.classList.add('refactor-active');
+        const header = document.getElementById('appHeader');
+        if (header) header.classList.add('ref-header');
+        const sortLine = document.getElementById('sortLine');
+        if (sortLine) sortLine.classList.add('ref-sort');
+        const portfolioSection = document.getElementById('portfolioSection') || document.querySelector('.portfolio-section');
+        if (portfolioSection) portfolioSection.classList.add('ref-portfolio');
+    } catch (e) { console.warn('Refactor shim failed:', e); }
+});
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
