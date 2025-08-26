@@ -734,3 +734,14 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-card .pc-detail-row span:last-child, .portfolio-card .pc-val { min-width: 60px; text-align: right; }
 
 /* End redesigned portfolio card CSS */
+
+/* Strong safety override: ensure right-hand numeric cell cannot push layout
+   This is intentionally narrow and specific to avoid broad side-effects. */
+#portfolioSection .portfolio-cards-grid .portfolio-card .pc-top-right {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    max-width: 140px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}

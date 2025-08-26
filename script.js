@@ -251,6 +251,32 @@ document.addEventListener('DOMContentLoaded', function () {
         try { window.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' }); } catch(_) { /* ignore */ }
     }
 
+// Diagnostic helper: log computed styles and inline styles for portfolio top-right cell
+function logPortfolioOverflowDiagnostics() {
+    try {
+        const cell = document.querySelector('.portfolio-card .pc-top-right');
+        if (!cell) { console.log('[Diag] No .pc-top-right element found'); return; }
+        const comp = window.getComputedStyle(cell);
+        console.log('[Diag] .pc-top-right computed styles:', {
+            display: comp.display,
+            flex: comp.flexBasis + ' ' + comp.flexGrow + ' ' + comp.flexShrink,
+            minWidth: comp.minWidth,
+            maxWidth: comp.maxWidth,
+            whiteSpace: comp.whiteSpace,
+            overflow: comp.overflow,
+            textAlign: comp.textAlign
+        });
+        console.log('[Diag] .pc-top-right inline style:', cell.getAttribute('style'));
+        // Log ancestors that can affect layout
+        const ancestors = [cell.parentElement, cell.closest('.portfolio-card'), document.querySelector('.portfolio-cards-grid'), document.querySelector('main.container')];
+        ancestors.forEach((a, i) => {
+            if (!a) return;
+            const cs = window.getComputedStyle(a);
+            console.log(`[Diag] ancestor[${i}] tag=${a.tagName}, classes=${a.className}`, { display: cs.display, flexWrap: cs.flexWrap, whiteSpace: cs.whiteSpace, minWidth: cs.minWidth });
+        });
+    } catch (e) { console.warn('[Diag] logPortfolioOverflowDiagnostics failed', e); }
+}
+
     // Portfolio view logic
     window.showPortfolioView = function() {
         // Hide normal stock watchlist section, show a dedicated portfolio section (create if needed)
