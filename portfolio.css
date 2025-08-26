@@ -610,8 +610,10 @@ function makeFilesAvailableToSourceControlCSS() {
     white-space: nowrap;
 }
 .portfolio-card .pc-top-right {
-    flex: 0 0 auto;
-    min-width: 72px;
+    /* Allow right column to shrink when space is tight so long numbers truncate
+       (previously 0 0 auto prevented shrinking and could push layout) */
+    flex: 0 1 auto;
+    min-width: 0; /* allow the flex item to shrink below its content size */
     max-width: 120px;
     text-align: right;
     font-weight: 700;
@@ -676,7 +678,15 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 .portfolio-cards-grid .portfolio-card .pc-top-left { min-width: 56px !important; flex: 0 0 auto !important; }
 .portfolio-cards-grid .portfolio-card .pc-top-center { flex: 1 1 0% !important; min-width: 0 !important; overflow: hidden !important; text-overflow: ellipsis !important; }
-.portfolio-cards-grid .portfolio-card .pc-top-right { flex: 0 0 auto !important; min-width: 64px !important; max-width: 140px !important; }
+.portfolio-cards-grid .portfolio-card .pc-top-right {
+    /* High-specificity override: permit shrinking and ensure overflow is clipped */
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    max-width: 140px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
 
 /* Ensure the chevron button is visually centered and not affected by global chevron rules */
 .portfolio-cards-grid .portfolio-card .pc-chevron-btn {

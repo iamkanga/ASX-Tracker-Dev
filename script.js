@@ -239,22 +239,6 @@ document.addEventListener('DOMContentLoaded', function () {
     updateMarketStatusUI();
     setInterval(updateMarketStatusUI, 60 * 1000);
 
-    // Ensure Edit Current Watchlist button updates when selection changes
-    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
-        watchlistSelect.addEventListener('change', function () {
-            // If Portfolio is selected, show portfolio view
-            if (watchlistSelect.value === 'portfolio') {
-                showPortfolioView();
-                try { setLastSelectedView('portfolio'); } catch(e){}
-            } else {
-                // Default: show normal watchlist view
-                showWatchlistView();
-                try { setLastSelectedView(watchlistSelect.value); } catch(e){}
-            }
-            updateMainButtonsState(true);
-        });
-    }
-
     // Helper: scroll main content to top in a resilient way
     function scrollMainToTop(instant = false) {
         try {
