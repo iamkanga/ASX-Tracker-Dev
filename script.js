@@ -801,7 +801,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.10.35';
+const APP_VERSION = '2.10.36';
 
 // Refactor shim: apply stable layout classes to header, sort area, and portfolio
 document.addEventListener('DOMContentLoaded', () => {
