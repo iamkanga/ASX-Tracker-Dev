@@ -630,6 +630,46 @@ function logPortfolioOverflowDiagnostics() {
                     showShareDetails();
                 });
             }
+            // Open viewing modal on mobile single-tap or desktop double-click
+            (function attachOpenHandlers(cardEl, shareObj) {
+                let touchStart = null;
+                cardEl.addEventListener('touchstart', function (ev) {
+                    try {
+                        if (ev.touches && ev.touches.length > 1) { touchStart = null; return; }
+                        const t = ev.touches && ev.touches[0];
+                        touchStart = t ? { x: t.clientX, y: t.clientY, time: Date.now() } : { x: 0, y: 0, time: Date.now() };
+                    } catch(_) { touchStart = null; }
+                }, { passive: true });
+
+                cardEl.addEventListener('touchend', function (ev) {
+                    try {
+                        if (!touchStart) return;
+                        const t = ev.changedTouches && ev.changedTouches[0];
+                        const endX = t ? t.clientX : 0;
+                        const endY = t ? t.clientY : 0;
+                        const dt = Date.now() - touchStart.time;
+                        const dx = Math.abs(endX - touchStart.x);
+                        const dy = Math.abs(endY - touchStart.y);
+                        // treat as tap when short duration and little movement
+                        if (dt < 350 && dx < 12 && dy < 12) {
+                            // If the tap landed on an interactive control, don't open modal
+                            if (ev.target && ev.target.closest && ev.target.closest('button, a, input, .pc-shortcut-btn, .pc-eye-btn, .pc-chevron-btn')) return;
+                            try { selectShare(shareObj.id); showShareDetails(); } catch(_) {}
+                        }
+                    } catch(_) {
+                        // ignore
+                    } finally { touchStart = null; }
+                }, { passive: true });
+
+                // Desktop double-click
+                cardEl.addEventListener('dblclick', function (ev) {
+                    try {
+                        if (ev.target && ev.target.closest && ev.target.closest('button, a, input, .pc-shortcut-btn, .pc-eye-btn, .pc-chevron-btn')) return;
+                        selectShare(shareObj.id);
+                        showShareDetails();
+                    } catch(_) {}
+                });
+            })(card, share);
         });
     };
 });
@@ -814,7 +854,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.10.37';
+const APP_VERSION = '2.10.38';
 
 // Refactor shim: apply stable layout classes to header, sort area, and portfolio
 document.addEventListener('DOMContentLoaded', () => {
