@@ -562,28 +562,31 @@ function makeFilesAvailableToSourceControlCSS() {
     display: inline-block !important;
 }
 
-/* ===== Redesign: Portfolio Card Layout (new rules matching updated markup) ===== */
+/* ===== Redesign: Portfolio Card Layout (single-line top row: left / center / right) ===== */
 .portfolio-card .pc-top-line {
-    display: flex;
-    justify-content: space-between;
+    /* Use grid to guarantee three columns: left / center (shrinkable) / right */
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    column-gap: 12px;
     align-items: center;
-    gap: 12px;
-    white-space: nowrap; /* keep items on single line */
-    flex-wrap: nowrap; /* explicitly prevent wrapping */
+    overflow: hidden; /* prevent accidental overflow from long numbers or codes */
+    min-width: 0; /* allow children to shrink inside this container */
 }
 .portfolio-card .pc-top-left {
-    display: flex;
-    flex-direction: row; /* ensure code + optional icon remain on the same line */
+    display: inline-flex;
+    flex-direction: row; /* keep code + eye on same line */
     align-items: center;
     gap: 8px;
-    min-width: 56px; /* compact to avoid forcing center to wrap */
-    flex: 0 0 auto; /* do not grow or shrink unpredictably */
-    margin-right: 6px;
+    min-width: 0; /* allow truncation if needed */
 }
 .portfolio-card .pc-top-left .pc-code {
-    font-size: 1.55rem;
+    font-size: 1.15rem;
     font-weight: 700;
     letter-spacing: 0.5px;
+    max-width: 140px; /* cap width to avoid forcing center/right to wrap */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .portfolio-card .pc-top-left .pc-eye-btn {
     background: none;
@@ -599,20 +602,22 @@ function makeFilesAvailableToSourceControlCSS() {
     gap: 6px;
 }
 .portfolio-card .pc-top-center {
-    flex: 1 1 auto;
-    min-width: 0; /* allow center to shrink inside flexbox */
-    text-align: center;
-    font-weight: 700;
-    font-size: 1.12rem;
-    color: var(--text-color);
+    /* Center column must be able to shrink but take remaining space */
+    min-width: 0; /* critical to allow flex/grid children to truncate correctly */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.06rem;
+    color: var(--text-color);
 }
 .portfolio-card .pc-top-right {
-    flex: 0 0 auto;
-    min-width: 72px;
-    max-width: 120px;
+    display: inline-flex;
+    align-items: baseline;
+    justify-self: end; /* pin to the right grid column */
+    min-width: 0;
+    max-width: 140px;
     text-align: right;
     font-weight: 700;
     font-size: 1.02rem;
@@ -623,7 +628,7 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 
 /* Ensure the ASX code doesn't overflow and force wrapping */
-.portfolio-card .pc-code { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.portfolio-card .pc-code { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Style the combined day-change (dollar + pct) */
 .portfolio-card .pc-day-change { display:inline-flex; align-items:baseline; gap:8px; }
 .portfolio-card .pc-day-change .pc-pct { font-size:0.95rem; font-weight:600; opacity:0.9; }
