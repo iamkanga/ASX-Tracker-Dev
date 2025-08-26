@@ -1611,7 +1611,15 @@ const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer
 if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
     asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll');
 }
-const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
+// Try to locate an explicit toggle button first; if not present, look for a
+// fallback element inside the sort-select-wrapper that acts as the toggle.
+let toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
+if (!toggleAsxButtonsBtn) {
+    try {
+        const wrapperBtn = document.querySelector('.sort-select-wrapper .toggle-asx-btn');
+        if (wrapperBtn) toggleAsxButtonsBtn = wrapperBtn;
+    } catch(_) {}
+}
 const shareFormSection = document.getElementById('shareFormSection');
 const formCloseButton = document.querySelector('.form-close-button');
 const formTitle = document.getElementById('formTitle');
@@ -1720,39 +1728,48 @@ let asxButtonsExpanded = false;
 try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 'true') asxButtonsExpanded = true; } catch(e) {}
 
 function applyAsxButtonsState() {
-    if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
-    const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
+    // Make the ASX toggle logic resilient: prefer a visible toggle button if present
+    // but fall back to updating the in-select "__asx_toggle" option and the
+    // asxCodeButtonsContainer directly when the external button was removed.
     const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
     const shouldShow = !!hasButtons && asxButtonsExpanded;
 
-    if (shouldShow) {
-        asxCodeButtonsContainer.classList.add('expanded');
-        asxCodeButtonsContainer.classList.remove('app-hidden');
-        asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
-    } else {
-        asxCodeButtonsContainer.classList.remove('expanded');
-        asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
+    if (asxCodeButtonsContainer) {
+        if (shouldShow) {
+            asxCodeButtonsContainer.classList.add('expanded');
+            asxCodeButtonsContainer.classList.remove('app-hidden');
+            asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
+            // Ensure display style is usable when expanded
+            try { asxCodeButtonsContainer.style.display = 'flex'; } catch(_) {}
+        } else {
+            asxCodeButtonsContainer.classList.remove('expanded');
+            asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
+        }
     }
-    // Chevron visibility and state
-    if (!hasButtons) {
-        toggleAsxButtonsBtn.style.display = 'none';
-        toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
-    } else {
-        toggleAsxButtonsBtn.style.display = 'inline-flex'; // Use inline-flex for proper alignment
-        toggleAsxButtonsBtn.removeAttribute('aria-disabled');
-    }
-    // Update accessible pressed/expanded state and label text
+
+    // If an external toggle button exists, update it. Otherwise update the
+    // interactive option inside the sort select so users still get feedback.
     try {
-        toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
-        toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
-        const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
-        if (labelSpan) labelSpan.textContent = 'ASX Codes';
+        if (toggleAsxButtonsBtn) {
+            if (!hasButtons) {
+                toggleAsxButtonsBtn.style.display = 'none';
+                toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
+            } else {
+                toggleAsxButtonsBtn.style.display = 'inline-flex';
+                toggleAsxButtonsBtn.removeAttribute('aria-disabled');
+            }
+            toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
+            toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
+            const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
+            if (labelSpan) labelSpan.textContent = 'ASX Codes';
+            const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
+            if (chevronIcon) chevronIcon.classList.toggle('expanded', shouldShow);
+        } else if (typeof sortSelect !== 'undefined' && sortSelect) {
+            const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
+            if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+        }
     } catch(_) {}
-    // Update chevron rotation
-    const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
-    if (chevronIcon) {
-        chevronIcon.classList.toggle('expanded', shouldShow);
-    }
+
     requestAnimationFrame(adjustMainContentPadding);
 }
 
@@ -5497,14 +5514,26 @@ function openWatchlistPicker() {
     console.log('[WatchlistPicker] Modal shown. Item count:', watchlistPickerList.children.length);
 }
 function toggleCodeButtonsArrow() {
-    if (!toggleAsxButtonsBtn) return;
-    const current=currentSelectedWatchlistIds[0];
-    if (current===CASH_BANK_WATCHLIST_ID) {
-    toggleAsxButtonsBtn.style.display='none';
-    if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.add('app-hidden'); asxCodeButtonsContainer.style.display='none'; }
+    // Gracefully handle missing external toggle button: update the container
+    // and the in-select option label instead.
+    const current = currentSelectedWatchlistIds[0];
+    if (current === CASH_BANK_WATCHLIST_ID) {
+        try {
+            if (toggleAsxButtonsBtn) toggleAsxButtonsBtn.style.display = 'none';
+        } catch(_) {}
+        if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.add('app-hidden'); try { asxCodeButtonsContainer.style.display = 'none'; } catch(_) {} }
+        // ensure select option is updated too
+        try {
+            if (typeof sortSelect !== 'undefined' && sortSelect) {
+                const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
+                if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+            }
+        } catch(_) {}
     } else {
-    toggleAsxButtonsBtn.style.display='';
-    if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.remove('app-hidden'); if (asxButtonsExpanded) asxCodeButtonsContainer.style.display='flex'; }
+        try {
+            if (toggleAsxButtonsBtn) toggleAsxButtonsBtn.style.display = '';
+        } catch(_) {}
+        if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.remove('app-hidden'); if (asxButtonsExpanded) try { asxCodeButtonsContainer.style.display = 'flex'; } catch(_) {} }
         applyAsxButtonsState();
     }
 }
