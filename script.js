@@ -1,5 +1,6 @@
 import { initializeFirebaseAndAuth } from './firebase.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
+import { showModal, hideModal, closeModals, showCustomAlert, showContextMenu, hideContextMenu } from './ui.js';
 
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
 // (Moved below DOM references to avoid ReferenceError)
@@ -25,10 +26,6 @@ window.showStockSearchModal = function(asxCode) {
 // Copilot update: 2025-07-29 - change for sync test
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
-// Push a new state when opening a modal or navigating to a new in-app view
-function pushAppState(stateObj = {}, title = '', url = '') {
-    history.pushState(stateObj, title, url);
-}
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
@@ -636,7 +633,7 @@ let DEBUG_MODE = false; // Quiet by default; enable via window.toggleDebug(true)
 window.toggleDebug = (on) => { DEBUG_MODE = !!on; console.log('Debug mode', DEBUG_MODE ? 'ENABLED' : 'DISABLED'); };
 
 // Custom logging function to control verbosity
-function logDebug(message, ...optionalParams) {
+export function logDebug(message, ...optionalParams) {
     if (DEBUG_MODE) {
         // This line MUST call the native console.log, NOT logDebug itself.
         console.log(message, ...optionalParams); 
@@ -650,7 +647,7 @@ let currentUserId = null;
 let currentAppId;
 let firestore;
 let authFunctions;
-let selectedShareDocId = null;
+export let selectedShareDocId = null;
 let allSharesData = []; // Kept in sync by the onSnapshot listener
 // Prevent duplicate sign-in attempts
 let authInProgress = false;
@@ -677,7 +674,7 @@ function dedupeSharesById(items) {
     }
 }
 let currentDialogCallback = null;
-let autoDismissTimeout = null;
+export let autoDismissTimeout = null;
 let lastTapTime = 0;
 let tapTimeout;
 let selectedElementForTap = null;
@@ -694,7 +691,7 @@ let resultDisplayed = false;
 const DEFAULT_WATCHLIST_NAME = 'My Watchlist (Default)';
 const DEFAULT_WATCHLIST_ID_SUFFIX = 'default';
 let userWatchlists = []; // Stores all watchlists for the user
-let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
+export let currentSelectedWatchlistIds = []; // Stores IDs of currently selected watchlists for display
 // Guard: track if an initial forced movers selection was applied so later routines do not override
 let __forcedInitialMovers = false;
 let __moversFallbackScheduled = false;
@@ -789,14 +786,14 @@ try {
         try { updateTargetHitBanner(); } catch(e) {}
     }
 } catch(e) { /* ignore */ }
-const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
+export const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
 const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
 let currentSortOrder = 'entryDate-desc'; // Default sort order
 try { const lsSort = localStorage.getItem('lastSortOrder'); if (lsSort) { currentSortOrder = lsSort; } } catch(e) {}
-let contextMenuOpen = false; // To track if the custom context menu is open
-let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
-let originalShareData = null; // Stores the original share data when editing for dirty state check
-let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
+export let contextMenuOpen = false; // To track if the custom context menu is open
+export let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
+export let originalShareData = null; // Stores the original share data when editing for dirty state check
+export let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
 let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 // Guard against unintended re-opening of the Share Edit modal shortly after save
 let suppressShareFormReopen = false;
@@ -1575,9 +1572,9 @@ let alertsEnabledMap = new Map();
 // Removed: manual EOD toggle state; behavior is automatic based on Sydney market hours
 
 // Tracks if share detail modal was opened from alerts
-let wasShareDetailOpenedFromTargetAlerts = false;
+export let wasShareDetailOpenedFromTargetAlerts = false;
 // Track if the edit form was opened from the share detail modal, so back can return to detail
-let wasEditOpenedFromShareDetail = false;
+export let wasEditOpenedFromShareDetail = false;
 
 // NEW: Global variable to store cash categories data
 let userCashCategories = [];
@@ -1592,27 +1589,27 @@ const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 
 // --- UI Element References ---
 // Copilot: No-op change to trigger source control detection
-const appHeader = document.getElementById('appHeader'); // Reference to the main header
-const mainContainer = document.querySelector('main.container'); // Reference to the main content container
+export const appHeader = document.getElementById('appHeader'); // Reference to the main header
+export const mainContainer = document.querySelector('main.container'); // Reference to the main content container
 // mainTitle removed in favour of dynamicWatchlistTitle only
-const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
-const newShareBtn = document.getElementById('newShareBtn');
-const standardCalcBtn = document.getElementById('standardCalcBtn');
-const dividendCalcBtn = document.getElementById('dividendCalcBtn');
-const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
+export const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
+export const newShareBtn = document.getElementById('newShareBtn');
+export const standardCalcBtn = document.getElementById('standardCalcBtn');
+export const dividendCalcBtn = document.getElementById('dividendCalcBtn');
+export const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
 // Ensure scroll class applied (id container present in DOM from HTML)
 if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
     asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll');
 }
-const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
-const shareFormSection = document.getElementById('shareFormSection');
-const formCloseButton = document.querySelector('.form-close-button');
-const formTitle = document.getElementById('formTitle');
-const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
-const saveShareBtn = document.getElementById('saveShareBtn');
-const deleteShareBtn = document.getElementById('deleteShareBtn');
-const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
-const currentPriceInput = document.getElementById('currentPrice'); // Reference (reinstated) to Reference Price input
+export const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
+export const shareFormSection = document.getElementById('shareFormSection');
+export const formCloseButton = document.querySelector('.form-close-button');
+export const formTitle = document.getElementById('formTitle');
+export const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
+export const saveShareBtn = document.getElementById('saveShareBtn');
+export const deleteShareBtn = document.getElementById('deleteShareBtn');
+export const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
+export const currentPriceInput = document.getElementById('currentPrice'); // Reference (reinstated) to Reference Price input
 // Centralized single-code snapshot handling
 let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
 async function updateAddFormLiveSnapshot(code) {
@@ -1677,14 +1674,14 @@ async function updateAddFormLiveSnapshot(code) {
         }
     }
 }
-const shareNameInput = document.getElementById('shareName');
+export const shareNameInput = document.getElementById('shareName');
 // Removed manual Reference Price input; currentPrice now auto-captured
-const targetPriceInput = document.getElementById('targetPrice');
-const dividendAmountInput = document.getElementById('dividendAmount');
-const frankingCreditsInput = document.getElementById('frankingCredits');
-const shareRatingSelect = document.getElementById('shareRating');
-const commentsFormContainer = document.getElementById('dynamicCommentsArea');
-const modalStarRating = document.getElementById('modalStarRating');
+export const targetPriceInput = document.getElementById('targetPrice');
+export const dividendAmountInput = document.getElementById('dividendAmount');
+export const frankingCreditsInput = document.getElementById('frankingCredits');
+export const shareRatingSelect = document.getElementById('shareRating');
+export const commentsFormContainer = document.getElementById('dynamicCommentsArea');
+export const modalStarRating = document.getElementById('modalStarRating');
 
 // UX improvement: clear default 0 / 0.0 values on focus for numeric inputs (behave like true placeholders)
 const zeroClearInputs = [currentPriceInput, targetPriceInput, dividendAmountInput, frankingCreditsInput].filter(Boolean);
@@ -1811,55 +1808,55 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
         }
     });
 }
-const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
-const shareTableBody = document.querySelector('#shareTable tbody');
-const mobileShareCardsContainer = document.getElementById('mobileShareCards');
-const tableContainer = document.querySelector('.table-container');
-const loadingIndicator = document.getElementById('loadingIndicator');
-const shareDetailModal = document.getElementById('shareDetailModal');
-const modalShareName = document.getElementById('modalShareName');
-const modalCompanyName = document.getElementById('modalCompanyName');
-const modalEnteredPrice = document.getElementById('modalEnteredPrice');
-const modalTargetPrice = document.getElementById('modalTargetPrice');
-const modalDividendAmount = document.getElementById('modalDividendAmount');
-const modalFrankingCredits = document.getElementById('modalFrankingCredits');
-const modalEntryDate = document.getElementById('modalEntryDate');
-const modalCommentsContainer = document.getElementById('modalCommentsContainer');
-const modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
-const modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
-const editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
-const deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
-const modalNewsLink = document.getElementById('modalNewsLink');
-const modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
-const modalFoolLink = document.getElementById('modalFoolLink');
-const modalListcorpLink = document.getElementById('modalListcorpLink'); // NEW: Reference for Listcorp link
-const modalCommSecLink = document.getElementById('modalCommSecLink');
-const commSecLoginMessage = document.getElementById('commSecLoginMessage');
+export const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
+export const shareTableBody = document.querySelector('#shareTable tbody');
+export const mobileShareCardsContainer = document.getElementById('mobileShareCards');
+export const tableContainer = document.querySelector('.table-container');
+export const loadingIndicator = document.getElementById('loadingIndicator');
+export const shareDetailModal = document.getElementById('shareDetailModal');
+export const modalShareName = document.getElementById('modalShareName');
+export const modalCompanyName = document.getElementById('modalCompanyName');
+export const modalEnteredPrice = document.getElementById('modalEnteredPrice');
+export const modalTargetPrice = document.getElementById('modalTargetPrice');
+export const modalDividendAmount = document.getElementById('modalDividendAmount');
+export const modalFrankingCredits = document.getElementById('modalFrankingCredits');
+export const modalEntryDate = document.getElementById('modalEntryDate');
+export const modalCommentsContainer = document.getElementById('modalCommentsContainer');
+export const modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
+export const modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
+export const editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
+export const deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
+export const modalNewsLink = document.getElementById('modalNewsLink');
+export const modalMarketIndexLink = document.getElementById('modalMarketIndexLink');
+export const modalFoolLink = document.getElementById('modalFoolLink');
+export const modalListcorpLink = document.getElementById('modalListcorpLink'); // NEW: Reference for Listcorp link
+export const modalCommSecLink = document.getElementById('modalCommSecLink');
+export const commSecLoginMessage = document.getElementById('commSecLoginMessage');
 // NEW: Auto (read-only) fields in Other Details section of Share Form
-const autoEntryDateDisplay = document.getElementById('autoEntryDateDisplay');
-const autoReferencePriceDisplay = document.getElementById('autoReferencePriceDisplay');
-const dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
-const calcCloseButton = document.querySelector('.calc-close-button');
-const calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
-const calcDividendAmountInput = document.getElementById('calcDividendAmount');
-const calcFrankingCreditsInput = document.getElementById('calcFrankingCredits');
-const calcUnfrankedYieldSpan = document.getElementById('calcUnfrankedYield');
-const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
-const investmentValueSelect = document.getElementById('investmentValueSelect');
-const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
-const sortSelect = document.getElementById('sortSelect');
+export const autoEntryDateDisplay = document.getElementById('autoEntryDateDisplay');
+export const autoReferencePriceDisplay = document.getElementById('autoReferencePriceDisplay');
+export const dividendCalculatorModal = document.getElementById('dividendCalculatorModal');
+export const calcCloseButton = document.querySelector('.calc-close-button');
+export const calcCurrentPriceInput = document.getElementById('calcCurrentPrice');
+export const calcDividendAmountInput = document.getElementById('calcDividendAmount');
+export const calcFrankingCreditsInput = document.getElementById('calcFrankingCredits');
+export const calcUnfrankedYieldSpan = document.getElementById('calcUnfrankedYield');
+export const calcFrankedYieldSpan = document.getElementById('calcFrankedYield');
+export const investmentValueSelect = document.getElementById('investmentValueSelect');
+export const calcEstimatedDividend = document.getElementById('calcEstimatedDividend');
+export const sortSelect = document.getElementById('sortSelect');
 // Legacy customDialogModal removed; toast system fully replaces it.
-const calculatorModal = document.getElementById('calculatorModal');
-const calculatorInput = document.getElementById('calculatorInput');
-const calculatorResult = document.getElementById('calculatorResult');
-const calculatorButtons = document.querySelector('.calculator-buttons');
-const watchlistSelect = document.getElementById('watchlistSelect');
+export const calculatorModal = document.getElementById('calculatorModal');
+export const calculatorInput = document.getElementById('calculatorInput');
+export const calculatorResult = document.getElementById('calculatorResult');
+export const calculatorButtons = document.querySelector('.calculator-buttons');
+export const watchlistSelect = document.getElementById('watchlistSelect');
 // Dynamic watchlist title + picker modal + sort display (new UI layer)
-const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
-const dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
+export const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
+export const dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
 // (Moved below watchlistPickerModal initialization to avoid ReferenceError)
-const watchlistPickerModal = document.getElementById('watchlistPickerModal');
+export const watchlistPickerModal = document.getElementById('watchlistPickerModal');
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
 if (dynamicWatchlistTitleText && watchlistPickerModal) {
     dynamicWatchlistTitleText.addEventListener('click', function(e) {
@@ -1881,8 +1878,8 @@ if (dynamicWatchlistTitleText && watchlistPickerModal) {
         }
     });
 }
-const watchlistPickerList = document.getElementById('watchlistPickerList');
-const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
+export const watchlistPickerList = document.getElementById('watchlistPickerList');
+export const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
 
 // --- Close Watchlist Picker Modal ---
 if (closeWatchlistPickerBtn && watchlistPickerModal) {
@@ -1897,30 +1894,30 @@ if (closeWatchlistPickerBtn && watchlistPickerModal) {
 // ...existing code...
 
 // Removed legacy currentSortDisplay element (text summary of sort) now that dropdown itself is visible
-const themeToggleBtn = document.getElementById('themeToggleBtn');
-const colorThemeSelect = document.getElementById('colorThemeSelect');
-const revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
-const scrollToTopBtn = document.getElementById('scrollToTopBtn');
-const hamburgerBtn = document.getElementById('hamburgerBtn');
-const appSidebar = document.getElementById('appSidebar');
-const closeMenuBtn = document.getElementById('closeMenuBtn');
-const addWatchlistBtn = document.getElementById('addWatchlistBtn');
-const editWatchlistBtn = document.getElementById('editWatchlistBtn');
-const addWatchlistModal = document.getElementById('addWatchlistModal');
-const newWatchlistNameInput = document.getElementById('newWatchlistName');
-const saveWatchlistBtn = document.getElementById('saveWatchlistBtn');
-const manageWatchlistModal = document.getElementById('manageWatchlistModal');
-const editWatchlistNameInput = document.getElementById('editWatchlistName');
-const saveWatchlistNameBtn = document.getElementById('saveWatchlistNameBtn');
-const deleteWatchlistInModalBtn = document.getElementById('deleteWatchlistInModalBtn');
-const shareContextMenu = document.getElementById('shareContextMenu');
-const contextEditShareBtn = document.getElementById('contextEditShareBtn');
-const contextDeleteShareBtn = document.getElementById('contextDeleteShareBtn');
-const logoutBtn = document.getElementById('logoutBtn');
-const deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
-const exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
-const refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
-let shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
+export const themeToggleBtn = document.getElementById('themeToggleBtn');
+export const colorThemeSelect = document.getElementById('colorThemeSelect');
+export const revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
+export const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+export const hamburgerBtn = document.getElementById('hamburgerBtn');
+export const appSidebar = document.getElementById('appSidebar');
+export const closeMenuBtn = document.getElementById('closeMenuBtn');
+export const addWatchlistBtn = document.getElementById('addWatchlistBtn');
+export const editWatchlistBtn = document.getElementById('editWatchlistBtn');
+export const addWatchlistModal = document.getElementById('addWatchlistModal');
+export const newWatchlistNameInput = document.getElementById('newWatchlistName');
+export const saveWatchlistBtn = document.getElementById('saveWatchlistBtn');
+export const manageWatchlistModal = document.getElementById('manageWatchlistModal');
+export const editWatchlistNameInput = document.getElementById('editWatchlistName');
+export const saveWatchlistNameBtn = document.getElementById('saveWatchlistNameBtn');
+export const deleteWatchlistInModalBtn = document.getElementById('deleteWatchlistInModalBtn');
+export const shareContextMenu = document.getElementById('shareContextMenu');
+export const contextEditShareBtn = document.getElementById('contextEditShareBtn');
+export const contextDeleteShareBtn = document.getElementById('contextDeleteShareBtn');
+export const logoutBtn = document.getElementById('logoutBtn');
+export const deleteAllUserDataBtn = document.getElementById('deleteAllUserDataBtn');
+export const exportWatchlistBtn = document.getElementById('exportWatchlistBtn');
+export const refreshLivePricesBtn = document.getElementById('refreshLivePricesBtn');
+export let shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
 // Defensive: if the DOM does not include the native select (we use enhanced toggles), create a hidden off-DOM select
 if (!shareWatchlistSelect) {
     try {
@@ -1934,17 +1931,17 @@ if (!shareWatchlistSelect) {
         shareWatchlistSelect = null;
     }
 }
-const shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
-const shareWatchlistDropdownBtn = document.getElementById('shareWatchlistDropdownBtn');
-const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection'); 
-const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
-const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
+export const shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
+export const shareWatchlistDropdownBtn = document.getElementById('shareWatchlistDropdownBtn');
+export const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection');
+export const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
+export const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
 // NEW: Target Hit Details Modal Elements
-const targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
-const targetHitModalTitle = document.getElementById('targetHitModalTitle');
+export const targetHitDetailsModal = document.getElementById('targetHitDetailsModal');
+export const targetHitModalTitle = document.getElementById('targetHitModalTitle');
 // Removed: minimizeTargetHitModalBtn, dismissAllTargetHitsBtn (now explicit buttons at bottom)
-const targetHitSharesList = document.getElementById('targetHitSharesList');
-const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
+export const targetHitSharesList = document.getElementById('targetHitSharesList');
+export const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
     // Initial load suppression flags (prevent auto reopening of Target Hit modal after hard reload)
     window.__initialLoadPhase = true; // cleared after first interaction or timeout
     let __userInitiatedTargetModal = false;
@@ -1958,18 +1955,18 @@ if (hamburgerBtn && !hamburgerBtn.hasAttribute('aria-expanded')) {
 }
 
 // NEW: References for the reconfigured buttons in the Target Hit Details Modal
-const targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTopBtn'); // New 'X' button at the top
-const alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn'); // New "Minimize" button at the bottom
-const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn'); // New "Dismiss All" button at the bottom
+export const targetHitModalCloseTopBtn = document.getElementById('targetHitModalCloseTopBtn'); // New 'X' button at the top
+export const alertModalMinimizeBtn = document.getElementById('alertModalMinimizeBtn'); // New "Minimize" button at the bottom
+export const alertModalDismissAllBtn = document.getElementById('alertModalDismissAllBtn'); // New "Dismiss All" button at the bottom
 
 // NEW: Target Direction Checkbox UI Elements
-const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
-const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
+export const targetAboveCheckbox = document.getElementById('targetAboveCheckbox');
+export const targetBelowCheckbox = document.getElementById('targetBelowCheckbox');
 // New Phase 1 segmented toggle buttons (UI-only)
-const targetIntentBuyBtn = document.getElementById('targetIntentBuyBtn');
-const targetIntentSellBtn = document.getElementById('targetIntentSellBtn');
-const targetDirAboveBtn = document.getElementById('targetDirAboveBtn');
-const targetDirBelowBtn = document.getElementById('targetDirBelowBtn');
+export const targetIntentBuyBtn = document.getElementById('targetIntentBuyBtn');
+export const targetIntentSellBtn = document.getElementById('targetIntentSellBtn');
+export const targetDirAboveBtn = document.getElementById('targetDirAboveBtn');
+export const targetDirBelowBtn = document.getElementById('targetDirBelowBtn');
 let userManuallyOverrodeDirection = false; // reset per form open
 // Debounced auto-save for target alert related inputs (intent, direction, target price)
 let _alertAutoSaveTimer = null;
@@ -1982,23 +1979,23 @@ function scheduleAlertAutoSave(trigger){
         try { if (typeof saveShareData === 'function') saveShareData(true); } catch(e){ console.warn('AlertAutoSave failed', e); }
     }, 400);
 }
-const splashScreen = document.getElementById('splashScreen');
-const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
-const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
-const stockSearchTitle = document.getElementById('stockSearchTitle'); // NEW: Title for search modal
-const asxSearchInput = document.getElementById('asxSearchInput'); // NEW: Search input field
-const asxSuggestions = document.getElementById('asxSuggestions'); // NEW: Autocomplete suggestions container
-const shareNameSuggestions = document.getElementById('shareNameSuggestions'); // NEW: Autocomplete for share form code input
-const searchResultDisplay = document.getElementById('searchResultDisplay'); // NEW: Display area for search results
-const searchModalActionButtons = document.querySelector('#stockSearchModal .modal-action-buttons-footer'); // NEW: Action buttons container
-const searchModalCloseButton = document.querySelector('.search-close-button'); // NEW: Close button for search modal
+export const splashScreen = document.getElementById('splashScreen');
+export const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
+export const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
+export const stockSearchTitle = document.getElementById('stockSearchTitle'); // NEW: Title for search modal
+export const asxSearchInput = document.getElementById('asxSearchInput'); // NEW: Search input field
+export const asxSuggestions = document.getElementById('asxSuggestions'); // NEW: Autocomplete suggestions container
+export const shareNameSuggestions = document.getElementById('shareNameSuggestions'); // NEW: Autocomplete for share form code input
+export const searchResultDisplay = document.getElementById('searchResultDisplay'); // NEW: Display area for search results
+export const searchModalActionButtons = document.querySelector('#stockSearchModal .modal-action-buttons-footer'); // NEW: Action buttons container
+export const searchModalCloseButton = document.querySelector('.search-close-button'); // NEW: Close button for search modal
 
 // NEW: Global variable for storing loaded ASX code data from CSV
 let allAsxCodes = []; // { code: 'BHP', name: 'BHP Group Ltd' }
 let currentSelectedSuggestionIndex = -1; // For keyboard navigation in autocomplete
 let shareNameAutocompleteBound = false; // Prevent duplicate binding
 
-function initializeShareNameAutocomplete(force=false){
+export function initializeShareNameAutocomplete(force=false){
     if (shareNameAutocompleteBound && !force) return;
     if (!shareNameInput || !shareNameSuggestions) return;
     // If already has an input listener tagged, skip unless force
@@ -2008,15 +2005,15 @@ function initializeShareNameAutocomplete(force=false){
     // Listeners are already defined further below (conditional block). This function can serve as a future hook.
 }
 let currentSearchShareData = null; // Stores data of the currently displayed stock in search modal
-const splashKangarooIcon = document.getElementById('splashKangarooIcon');
-const splashSignInBtn = document.getElementById('splashSignInBtn');
-const alertPanel = document.getElementById('alertPanel'); // NEW: Reference to the alert panel (not in current HTML, but kept for consistency)
-const alertList = document.getElementById('alertList'); // NEW: Reference to the alert list container (not in current HTML, but kept for consistency)
-const closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn'); // NEW: Reference to close alert panel button (not in current HTML, but kept for consistency)
-const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: Reference to clear all alerts button (not in current HTML, but kept for consistency)
+export const splashKangarooIcon = document.getElementById('splashKangarooIcon');
+export const splashSignInBtn = document.getElementById('splashSignInBtn');
+export const alertPanel = document.getElementById('alertPanel'); // NEW: Reference to the alert panel (not in current HTML, but kept for consistency)
+export const alertList = document.getElementById('alertList'); // NEW: Reference to the alert list container (not in current HTML, but kept for consistency)
+export const closeAlertPanelBtn = document.getElementById('closeAlertPanelBtn'); // NEW: Reference to close alert panel button (not in current HTML, but kept for consistency)
+export const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: Reference to clear all alerts button (not in current HTML, but kept for consistency)
 
 // NEW: Cash & Assets UI Elements (1)
-const stockWatchlistSection = document.getElementById('stockWatchlistSection');
+export const stockWatchlistSection = document.getElementById('stockWatchlistSection');
 
 // Global helpers for consistent numeric formatting across the UI
 
@@ -2497,161 +2494,7 @@ async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
     logDebug('Alerts: Upserted alert for ' + shareCode + ' with intent ' + intent + ' and direction ' + direction + '.');
 }
 
-// Centralized Modal Closing Function
-function closeModals() {
-    // Auto-save logic for share form
-    if (shareFormSection && shareFormSection.style.display !== 'none') {
-        logDebug('Auto-Save: Share form modal is closing. Checking for unsaved changes.');
-        const currentData = getCurrentFormData();
-        const isShareNameValid = currentData.shareName.trim() !== '';
-        
-        // The cancel button fix means clearForm() is called before closeModals()
-        // For auto-save on clicking outside or other non-cancel closes:
-        if (selectedShareDocId) { // Existing share
-            if (originalShareData && !areShareDataEqual(originalShareData, currentData)) { // Check if originalShareData exists and if form is dirty
-                logDebug('Auto-Save: Unsaved changes detected for existing share. Attempting silent save.');
-                saveShareData(true); // true indicates silent save
-            } else {
-                logDebug('Auto-Save: No changes detected for existing share.');
-            }
-        } else { // New share
-            // Only attempt to save if a share name was entered AND a watchlist was selected (if applicable)
-            const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
-            const needsWatchlistSelection = currentSelectedWatchlistIds.includes(ALL_SHARES_ID);
-            
-            if (isShareNameValid && isWatchlistSelected) { // Always require watchlist selection for new shares
-                logDebug('Auto-Save: New share detected with valid name and watchlist. Attempting silent save.');
-                saveShareData(true); // true indicates silent save
-            } else {
-                logDebug('Auto-Save: New share has no name or invalid watchlist. Discarding changes.');
-            }
-        }
-    }
-
-    // NEW: Auto-save logic for watchlist modals
-    if (addWatchlistModal && addWatchlistModal.style.display !== 'none') {
-        logDebug('Auto-Save: Add Watchlist modal is closing. Checking for unsaved changes.');
-        const currentWatchlistData = getCurrentWatchlistFormData(true); // true for add modal
-        if (currentWatchlistData.name.trim() !== '') {
-            logDebug('Auto-Save: New watchlist detected with name. Attempting silent save.');
-            saveWatchlistChanges(true, currentWatchlistData.name); // true indicates silent save, pass name
-        } else {
-            logDebug('Auto-Save: New watchlist has no name. Discarding changes.');
-        }
-    }
-
-    if (manageWatchlistModal && manageWatchlistModal.style.display !== 'none') {
-        logDebug('Auto-Save: Manage Watchlist modal is closing. Checking for unsaved changes.');
-        const currentWatchlistData = getCurrentWatchlistFormData(false); // false for edit modal
-        if (originalWatchlistData && !areWatchlistDataEqual(originalWatchlistData, currentWatchlistData)) {
-            logDebug('Auto-Save: Unsaved changes detected for existing watchlist. Attempting silent save.');
-            saveWatchlistChanges(true, currentWatchlistData.name, watchlistSelect.value); // true indicates silent save, pass name and ID
-        } else {
-            logDebug('Auto-Save: No changes detected for existing watchlist.');
-        }
-    }
-
-    // Close target hit details modal (no auto-save needed for this one)
-    if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
-        logDebug('Auto-Close: Target Hit Details modal is closing.');
-        // No auto-save or dirty check needed for this display modal
-    }
-    // Leave a blank line here for readability.
-
-    // NEW: Auto-save logic for cash asset form modal (2.1)
-    if (cashAssetFormModal && cashAssetFormModal.style.display !== 'none') {
-        logDebug('Auto-Save: Cash Asset form modal is closing. Checking for unsaved changes.');
-        const currentCashData = getCurrentCashAssetFormData();
-        const isCashAssetNameValid = currentCashData.name.trim() !== '';
-
-        if (selectedCashAssetDocId) { // Existing cash asset
-            if (originalCashAssetData && !areCashAssetDataEqual(originalCashAssetData, currentCashData)) {
-                logDebug('Auto-Save: Unsaved changes detected for existing cash asset. Attempting silent save.');
-                saveCashAsset(true); // true indicates silent save
-            } else {
-                logDebug('Auto-Save: No changes detected for existing cash asset.');
-            }
-        } else { // New cash asset
-            if (isCashAssetNameValid) {
-                logDebug('Auto-Save: New cash asset detected with valid name. Attempting silent save.');
-                saveCashAsset(true); // true indicates silent save
-            } else {
-                logDebug('Auto-Save: New cash asset has no name. Discarding changes.');
-            }
-        }
-    }
-
-
-    document.querySelectorAll('.modal').forEach(modal => {
-        if (modal) {
-            modal.style.setProperty('display', 'none', 'important');
-        }
-    });
-    resetCalculator();
-    deselectCurrentShare();
-
-    // NEW: Deselect current cash asset
-    deselectCurrentCashAsset();
-    if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
-    hideContextMenu();
-    // NEW: Close the alert panel if open (alertPanel is not in current HTML, but kept for consistency)
-    if (alertPanel) hideModal(alertPanel);
-    logDebug('Modal: All modals closed.');
-
-    // Clear any lingering active highlight on ASX code buttons when closing modals
-    if (asxCodeButtonsContainer) {
-        asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn.active').forEach(btn=>btn.classList.remove('active'));
-    }
-
-    // Restore Target Price Alerts modal if share detail was opened from it (only if a share remains selected)
-    if (wasShareDetailOpenedFromTargetAlerts) {
-        if (selectedShareDocId) {
-            logDebug('Restoring Target Price Alerts modal after closing share detail modal.');
-            if (targetHitDetailsModal) {
-                showModal(targetHitDetailsModal);
-            }
-        } else {
-            logDebug('Skipping restore of Target Price Alerts modal because no share is selected.');
-        }
-        wasShareDetailOpenedFromTargetAlerts = false;
-    }
-
-    // Restore Share Detail modal only if it was the source AND a share is still selected
-    if (wasEditOpenedFromShareDetail) {
-        if (selectedShareDocId) {
-            logDebug('Restoring Share Detail modal after closing edit modal.');
-            if (shareDetailModal) {
-                showModal(shareDetailModal);
-            }
-        } else {
-            logDebug('Skipping restore of Share Detail modal because no share is selected.');
-        }
-        wasEditOpenedFromShareDetail = false;
-    }
-}
-
 // Toast-based lightweight alert; keeps API but renders a toast instead of blocking modal
-function showCustomAlert(message, duration = 3000, type = 'info') {
-    // Enforce minimum on-screen time of 3000ms unless explicitly sticky (0)
-    const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
-    try {
-        const container = document.getElementById('toastContainer');
-        if (container) {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.setAttribute('role', 'status');
-            toast.innerHTML = `<span class="icon"></span><div class="message"></div>`;
-            toast.querySelector('.message').textContent = message;
-            const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
-            container.appendChild(toast);
-            requestAnimationFrame(()=> toast.classList.add('show'));
-            if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
-            return;
-        }
-    } catch (e) { console.warn('Toast render failed, using alert fallback.', e); }
-    // Minimal fallback
-    try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
-}
 
 // ToastManager: centralized API
 const ToastManager = (() => {
@@ -3553,24 +3396,6 @@ function updateCompactViewButtonState() {
     logDebug('UI State: Compact view button enabled (mode=' + currentMobileViewMode + ').');
 }
 
-function showModal(modalElement) {
-    if (modalElement) {
-        // Push a new history state for every modal open
-        pushAppState({ modalId: modalElement.id }, '', '');
-        modalElement.style.setProperty('display', 'flex', 'important');
-        modalElement.scrollTop = 0;
-        const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
-        if (scrollableContent) {
-            scrollableContent.scrollTop = 0;
-        }
-        // Defensive: ensure autocomplete listeners intact when opening Add Share form
-        if (modalElement.id === 'shareFormSection') {
-            try { if (typeof initializeShareNameAutocomplete === 'function') initializeShareNameAutocomplete(true); } catch(_) {}
-        }
-        logDebug('Modal: Showing modal: ' + modalElement.id);
-    }
-}
-
 // Helper: Show modal without pushing a new browser/history state (used for modal-to-modal back restore)
 function showModalNoHistory(modalElement) {
     if (!modalElement) return;
@@ -3579,13 +3404,6 @@ function showModalNoHistory(modalElement) {
     const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
     if (scrollableContent) scrollableContent.scrollTop = 0;
     logDebug('Modal (no-history): Showing modal: ' + modalElement.id);
-}
-
-function hideModal(modalElement) {
-    if (modalElement) {
-        modalElement.style.setProperty('display', 'none', 'important');
-        logDebug('Modal: Hiding modal: ' + modalElement.id);
-    }
 }
 
 // Extracted: auto-save logic for the share form so we can call it on back as well
@@ -3658,7 +3476,7 @@ function selectShare(shareId) {
     selectedShareDocId = shareId;
 }
 
-function deselectCurrentShare() {
+export function deselectCurrentShare() {
     const currentlySelected = document.querySelectorAll('.share-list-section tr.selected, .mobile-card.selected, #portfolioSection tr.selected');
     currentlySelected.forEach(el => {
         el.classList.remove('selected');
@@ -3680,7 +3498,7 @@ function selectCashAsset(assetId) {
     selectedCashAssetDocId = assetId;
 }
 
-function deselectCurrentCashAsset() {
+export function deselectCurrentCashAsset() {
     const currentlySelected = document.querySelectorAll('.cash-category-item.selected');
     logDebug('Selection: Attempting to deselect ' + currentlySelected.length + ' cash asset elements.');
     currentlySelected.forEach(el => {
@@ -4092,7 +3910,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
  * Gathers all current data from the share form inputs.
  * @returns {object} An object representing the current state of the form.
  */
-function getCurrentFormData() {
+export function getCurrentFormData() {
     const comments = [];
     if (commentsFormContainer) { // This now refers to #dynamicCommentsArea
         commentsFormContainer.querySelectorAll('.comment-section').forEach(section => {
@@ -4150,7 +3968,7 @@ function getCurrentFormData() {
  * @param {object} data2
  * @returns {boolean} True if data is identical, false otherwise.
  */
-function areShareDataEqual(data1, data2) {
+export function areShareDataEqual(data1, data2) {
     if (!data1 || !data2) return false;
 
     const fields = ['shareName', 'currentPrice', 'targetPrice', 'targetDirection', 'dividendAmount', 'frankingCredits', 'watchlistId', 'starRating', 'portfolioShares', 'portfolioAvgPrice']; // Include portfolio fields
@@ -4192,7 +4010,7 @@ function areShareDataEqual(data1, data2) {
  * Checks the current state of the form against the original data (if editing)
  * and the share name validity, then enables/disables the save button accordingly.
  */
-function checkFormDirtyState() {
+export function checkFormDirtyState() {
     const currentData = getCurrentFormData();
     const isShareNameValid = currentData.shareName.trim() !== '';
     const isWatchlistSelected = (() => {
@@ -4263,7 +4081,7 @@ try {
  * Saves share data to Firestore. Can be called silently for auto-save.
  * @param {boolean} isSilent If true, no alert messages are shown on success.
  */
-async function saveShareData(isSilent = false) {
+export async function saveShareData(isSilent = false) {
     logDebug('Share Form: saveShareData called.');
     // Check if the save button would normally be disabled (no valid name or no changes)
     // This prevents saving blank new shares or unchanged existing shares on auto-save.
@@ -6305,7 +6123,7 @@ function getOperatorSymbol(op) {
     }
 }
 
-function resetCalculator() {
+export function resetCalculator() {
     currentCalculatorInput = ''; operator = null; previousCalculatorInput = '';
     resultDisplayed = false; calculatorInput.textContent = ''; calculatorResult.textContent = '0';
     logDebug('Calculator: Calculator state reset.');
@@ -8387,49 +8205,6 @@ async function migrateOldSharesToWatchlist() {
     }
 }
 
-function showContextMenu(event, shareId) {
-    if (!shareContextMenu) return;
-    
-    currentContextMenuShareId = shareId;
-    
-    let x = event.clientX;
-    let y = event.clientY;
-
-    if (event.touches && event.touches.length > 0) {
-        x = event.touches[0].clientX;
-        y = event.touches[0].clientY;
-    }
-
-    const menuWidth = shareContextMenu.offsetWidth;
-    const menuHeight = shareContextMenu.offsetHeight;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    if (x + menuWidth > viewportWidth) {
-        x = viewportWidth - menuWidth - 10;
-    }
-    if (y + menuHeight > viewportHeight) {
-        y = viewportHeight - menuHeight - 10;
-    }
-    if (x < 10) x = 10;
-    if (y < 10) y = 10;
-
-    shareContextMenu.style.left = `${x}px`;
-    shareContextMenu.style.top = `${y}px`;
-    shareContextMenu.style.display = 'block';
-    contextMenuOpen = true;
-    logDebug('Context Menu: Opened for share ID: ' + shareId + ' at (' + x + ', ' + y + ')');
-}
-
-function hideContextMenu() {
-    if (shareContextMenu) {
-        shareContextMenu.style.display = 'none';
-        contextMenuOpen = false;
-        currentContextMenuShareId = null;
-        deselectCurrentShare();
-        logDebug('Context Menu: Hidden.');
-    }
-}
 
 function toggleAppSidebar(forceState = null) {
     logDebug('Sidebar: toggleAppSidebar called. Current open state: ' + appSidebar.classList.contains('open') + ', Force state: ' + forceState);
