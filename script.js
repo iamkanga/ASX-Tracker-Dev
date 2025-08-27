@@ -1579,7 +1579,7 @@ export let wasEditOpenedFromShareDetail = false;
 // NEW: Global variable to store cash categories data
 let userCashCategories = [];
 let selectedCashAssetDocId = null; // NEW: To track which cash asset is selected for editing/details
-let originalCashAssetData = null; // NEW: To store original cash asset data for dirty state check
+export let originalCashAssetData = null; // NEW: To store original cash asset data for dirty state check
 // NEW: Global variable to store visibility state of cash assets (temporary, not persisted)
 // This will now be managed directly by the 'isHidden' property on the cash asset object itself.
 let cashAssetVisibility = {}; // This object will still track the *current session's* visibility.
