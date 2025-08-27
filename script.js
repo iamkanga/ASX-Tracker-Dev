@@ -4894,6 +4894,9 @@ function renderWatchlistSelect() {
     // Store the currently selected value before clearing
     const currentSelectedValue = watchlistSelect.value;
     
+    watchlistSelect.innerHTML = '';
+    shareWatchlistSelect.innerHTML = '';
+    
     // Set the initial placeholder text to "Watch List"
     watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>';
 
