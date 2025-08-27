@@ -1,6 +1,6 @@
 import { initializeFirebaseAndAuth } from './firebase.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
-import { showModal, hideModal, closeModals, showCustomAlert, showContextMenu, hideContextMenu } from './ui.js';
+import { showModal as uiShowModal, hideModal, closeModals, showCustomAlert, showContextMenu, hideContextMenu } from './ui.js';
 
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
 // (Moved below DOM references to avoid ReferenceError)
@@ -2044,10 +2044,9 @@ function pushAppStateEntry(type, ref) {
 function popAppStateEntry() { return appBackStack.pop(); }
 
 // Removed legacy early hamburger push listener (consolidated later) – now handled in unified sidebar setup
-// Override showModal to push (wrap existing if not already wrapped)
-if (!window.__origShowModalForBack) {
-    window.__origShowModalForBack = showModal;
-    showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
+function showModal(modalElement) {
+    pushAppStateEntry('modal', modalElement);
+    uiShowModal(modalElement);
 }
 
 window.addEventListener('popstate', ()=>{
