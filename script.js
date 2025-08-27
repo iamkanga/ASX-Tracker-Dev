@@ -2108,7 +2108,7 @@ const totalCashDisplay = document.getElementById('totalCashDisplay');
 const addCashAssetSidebarBtn = document.getElementById('addCashAssetSidebarBtn'); // NEW: Sidebar button for cash asset
 
 // NEW: Cash Asset Modal Elements (2.1, 2.2)
-const cashAssetFormModal = document.getElementById('cashAssetFormModal');
+export const cashAssetFormModal = document.getElementById('cashAssetFormModal');
 const cashFormTitle = document.getElementById('cashFormTitle');
 const cashAssetNameInput = document.getElementById('cashAssetName');
 const cashAssetBalanceInput = document.getElementById('cashAssetBalance');
