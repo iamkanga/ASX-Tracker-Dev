@@ -747,6 +747,38 @@
     </div>
 
 
+    <template id="mobile-share-card-template">
+        <div class="mobile-card" data-doc-id="{{docId}}">
+            <div class="live-price-display-section">
+                <h3 class="neutral-code-text card-code">{{shareName}}</h3>
+                <span class="change-chevron card-chevron {{priceClass}}">{{arrowSymbol}}</span>
+                <div class="live-price-main-row">
+                    <span class="live-price-large neutral-code-text card-live-price">{{livePrice}}</span>
+                </div>
+                <span class="price-change-large card-price-change {{priceClass}}">{{priceChange}}</span>
+                <div class="fifty-two-week-row">
+                    <span class="fifty-two-week-value low">Low: {{low52Week}}</span>
+                    <span class="fifty-two-week-value high">High: {{high52Week}}</span>
+                </div>
+                <div class="pe-ratio-row">
+                    <span class="pe-ratio-value">P/E: {{peRatio}}</span>
+                </div>
+            </div>
+            <p class="data-row alert-target-row" data-template-conditional="alertTarget">
+                <span class="label-text">Alert Target:</span>
+                <span class="data-value">{{alertTarget}}</span>
+            </p>
+            <p class="data-row">
+                <span class="label-text">Star Rating:</span>
+                <span class="data-value">{{starRating}}</span>
+            </p>
+            <p class="data-row">
+                <span class="label-text">Dividend Yield:</span>
+                <span class="data-value">{{dividendYield}}</span>
+            </p>
+        </div>
+    </template>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence, browserPopupRedirectResolver } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
