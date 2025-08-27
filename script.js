@@ -11132,8 +11132,14 @@ if (targetHitIconBtn) {
 document.addEventListener('DOMContentLoaded', async function() {
     logDebug('script.js DOMContentLoaded fired.');
 
-    // Firebase services are now initialized at the top-level of the script.
-    // This listener just needs to set up the auth state change listener.
+    const firebaseServices = initializeFirebaseAndAuth();
+    db = firebaseServices.db;
+    auth = firebaseServices.auth;
+    currentAppId = firebaseServices.currentAppId;
+    firestore = firebaseServices.firestore;
+    authFunctions = firebaseServices.authFunctions;
+    window._firebaseInitialized = firebaseServices.firebaseInitialized;
+
     if (db && auth && currentAppId && firestore && authFunctions) {
         logDebug('Firebase Ready: DB, Auth, and AppId assigned from firebase.js. Setting up auth state listener.');
 
