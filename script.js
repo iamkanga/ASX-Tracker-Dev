@@ -8389,7 +8389,7 @@ function getCurrentWatchlistFormData(isAddModal) {
  * @param {object} data2
  * @returns {boolean} True if data is identical, false otherwise.
  */
-function areWatchlistDataEqual(data1, data2) {
+export function areWatchlistDataEqual(data1, data2) {
     if (!data1 || !data2) return false;
     return data1.name === data2.name;
 }
