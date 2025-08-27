@@ -32,10 +32,11 @@ import {
     wasEditOpenedFromShareDetail,
     shareDetailModal,
     shareContextMenu,
-    currentContextMenuShareId,
-    contextMenuOpen,
     initializeShareNameAutocomplete
 } from './script.js';
+
+export let contextMenuOpen = false;
+export let currentContextMenuShareId = null;
 
 function pushAppState(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
