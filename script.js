@@ -790,8 +790,8 @@ export const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show Al
 const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
 let currentSortOrder = 'entryDate-desc'; // Default sort order
 try { const lsSort = localStorage.getItem('lastSortOrder'); if (lsSort) { currentSortOrder = lsSort; } } catch(e) {}
-export let contextMenuOpen = false; // To track if the custom context menu is open
-export let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
+let contextMenuOpen = false; // To track if the custom context menu is open
+let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
 export let originalShareData = null; // Stores the original share data when editing for dirty state check
 export let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
 let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
@@ -4889,6 +4889,7 @@ function sortCashCategories() {
 }
 
 function renderWatchlistSelect() {
+    console.log('renderWatchlistSelect called by:', new Error().stack);
     if (!watchlistSelect) { console.error('renderWatchlistSelect: watchlistSelect element not found.'); return; }
     // Store the currently selected value before clearing
     const currentSelectedValue = watchlistSelect.value;
