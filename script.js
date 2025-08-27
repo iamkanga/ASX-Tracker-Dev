@@ -7698,7 +7698,7 @@ function clearCashAssetForm() {
     logDebug('Cash Form: Cash asset form cleared.');
 }
 
-function getCurrentCashAssetFormData() {
+export function getCurrentCashAssetFormData() {
     const comments = [];
     if (cashAssetCommentsContainer) {
         cashAssetCommentsContainer.querySelectorAll('.comment-section').forEach(section => {
@@ -7745,7 +7745,7 @@ export function areCashAssetDataEqual(data1, data2) {
     return true;
 }
 
-function checkCashAssetFormDirtyState() {
+export function checkCashAssetFormDirtyState() {
     const currentData = getCurrentCashAssetFormData();
     const isNameValid = currentData.name.trim() !== '';
     let canSave = isNameValid;
@@ -7766,7 +7766,7 @@ function checkCashAssetFormDirtyState() {
     logDebug('Dirty State: Cash asset save button enabled: ' + canSave);
 }
 
-async function saveCashAsset(isSilent = false) {
+export async function saveCashAsset(isSilent = false) {
     logDebug('Cash Form: saveCashAsset called.');
     if (saveCashAssetBtn.classList.contains('is-disabled-icon') && isSilent) {
         logDebug('Auto-Save: Save button is disabled (no changes or no valid name). Skipping silent save.');
@@ -8371,7 +8371,7 @@ function exportWatchlistToCSV() {
  * @param {boolean} isAddModal True if gathering data from the Add Watchlist modal, false for Manage Watchlist.
  * @returns {object} An object representing the current state of the watchlist form.
  */
-function getCurrentWatchlistFormData(isAddModal) {
+export function getCurrentWatchlistFormData(isAddModal) {
     if (isAddModal) {
         return {
             name: newWatchlistNameInput ? newWatchlistNameInput.value.trim() : ''
@@ -8399,7 +8399,7 @@ export function areWatchlistDataEqual(data1, data2) {
  * and enables/disables the save button accordingly.
  * @param {boolean} isAddModal True if checking the Add Watchlist modal, false for Manage Watchlist.
  */
-function checkWatchlistFormDirtyState(isAddModal) {
+export function checkWatchlistFormDirtyState(isAddModal) {
     const currentData = getCurrentWatchlistFormData(isAddModal);
     const isNameValid = currentData.name.trim() !== '';
     let canSave = isNameValid;
@@ -8425,7 +8425,7 @@ function checkWatchlistFormDirtyState(isAddModal) {
  * @param {string} newName The new name for the watchlist.
  * @param {string|null} watchlistId The ID of the watchlist to update, or null if adding new.
  */
-async function saveWatchlistChanges(isSilent = false, newName, watchlistId = null) {
+export async function saveWatchlistChanges(isSilent = false, newName, watchlistId = null) {
     logDebug('Watchlist Form: saveWatchlistChanges called.');
 
     if (!newName || newName.trim() === '') {
