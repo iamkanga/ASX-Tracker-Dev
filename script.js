@@ -2017,62 +2017,12 @@ const clearAllAlertsBtn = document.getElementById('clearAllAlertsBtn'); // NEW: 
 
 // NEW: Cash & Assets UI Elements (1)
 const stockWatchlistSection = document.getElementById('stockWatchlistSection');
-// Generic number formatting helper (adds commas to large numbers while preserving decimals)
-function formatWithCommas(value) {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'number') return value.toLocaleString(undefined, { maximumFractionDigits: 8 });
-    const str = value.toString();
-    if (!/^[-+]?\d*(\.\d+)?$/.test(str)) return value; // not a plain number string
-    const parts = str.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.join('.');
-}
 
 // Global helpers for consistent numeric formatting across the UI
-function formatMoney(val, opts = {}) {
-    const { hideZero = false, decimals } = opts; // if decimals supplied explicitly, override adaptive logic
-    if (val === null || val === undefined) return '';
-    const n = Number(val);
-    if (!isFinite(n)) return '';
-    if (hideZero && n === 0) return '';
-    // Adaptive decimals: < 1 cent show 3 decimals (e.g., $0.005), otherwise 2.
-    const useDecimals = (typeof decimals === 'number') ? decimals : (Math.abs(n) < 0.01 && n !== 0 ? 3 : 2);
-    const fixed = n.toFixed(useDecimals);
-    const parts = fixed.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return '$' + parts.join('.');
-}
 
-function formatPercent(val, opts = {}) {
-    const { maxDecimals = 2 } = opts; // allow specifying maximum decimals
-    if (val === null || val === undefined) return '';
-    const n = Number(val);
-    if (!isFinite(n)) return '';
-    // Show whole number when no fractional component (e.g., 100 instead of 100.00)
-    if (Math.abs(n % 1) < 1e-9) return n.toFixed(0) + '%';
-    return n.toFixed(maxDecimals) + '%';
-}
 
 // Lean wrappers for adaptive decimals outside of currency symbol contexts
 // Revised adaptive price: default 2 decimals; optionally preserve up to 3 if user entered (pass userRaw); force2 to clamp.
-function formatAdaptivePrice(value, opts = {}) {
-    if (value === null || value === undefined || isNaN(value)) return '0.00';
-    const n = Number(value);
-    if (opts.force2) return n.toFixed(2);
-    if (opts.userRaw) {
-        const m = String(opts.userRaw).trim().match(/^[-+]?\d+(?:\.(\d{1,3}))?$/);
-        if (m && m[1] && m[1].length > 2) return n.toFixed(Math.min(3, m[1].length));
-    }
-    return n.toFixed(2);
-}
-function formatAdaptivePercent(pct) {
-    if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
-    const n = Number(pct);
-    const abs = Math.abs(n);
-    // Use 3 decimals for very small magnitudes (under 0.1%), else 2
-    const decimals = (abs > 0 && abs < 0.1) ? 3 : 2;
-    return n.toFixed(decimals);
-}
 
 // Fallback for missing formatUserDecimalStrict (called in edit form population)
 if (typeof window.formatUserDecimalStrict !== 'function') {
@@ -2769,12 +2719,6 @@ function showCustomConfirm(message, callback) {
 }
 
 // Date Formatting Helper Functions (Australian Style)
-function formatDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
 
 /**
  * A centralized helper function to compute all display-related data for a share.
@@ -5924,12 +5868,6 @@ function scrollToShare(asxCode) {
 }
 
 const COMPANY_TAX_RATE = 0.30;
-function calculateUnfrankedYield(dividendAmount, currentPrice) {
-    // Ensure inputs are valid numbers and currentPrice is not zero
-    if (typeof dividendAmount !== 'number' || isNaN(dividendAmount) || dividendAmount < 0) { return 0; } // Yield can't be negative, default to 0
-    if (typeof currentPrice !== 'number' || isNaN(currentPrice) || currentPrice <= 0) { return 0; } // Price must be positive for yield calculation
-    return (dividendAmount / currentPrice) * 100;
-}
 
 /**
  * Displays detailed stock information in the search modal,
@@ -6323,32 +6261,6 @@ async function loadAsxCodesFromCSV() {
  * The market is considered "closed" only from Monday 12:01 AM to Thursday 12:01 AM (Sydney time).
  * @returns {boolean} True if the ASX is open, false otherwise.
  */
-function isAsxMarketOpen() {
-    // Manual override support: localStorage key 'marketStatusOverride' can be 'open' or 'closed'
-    try {
-        const override = localStorage.getItem('marketStatusOverride');
-        if (override === 'open') return true;
-        if (override === 'closed') return false;
-    } catch (e) { /* ignore */ }
-    // Simplified: treat market as open by default per user preference (always show live styling)
-    // Optionally, you can reintroduce custom windows here.
-    return true;
-}
-function calculateFrankedYield(dividendAmount, currentPrice, frankingCreditsPercentage) {
-    // Ensure inputs are valid numbers and currentPrice is not zero
-    if (typeof dividendAmount !== 'number' || isNaN(dividendAmount) || dividendAmount < 0) { return 0; }
-    if (typeof currentPrice !== 'number' || isNaN(currentPrice) || currentPrice <= 0) { return 0; }
-    if (typeof frankingCreditsPercentage !== 'number' || isNaN(frankingCreditsPercentage) || frankingCreditsPercentage < 0 || frankingCreditsPercentage > 100) { return 0; }
-
-    const unfrankedYield = calculateUnfrankedYield(dividendAmount, currentPrice);
-    if (unfrankedYield === 0) return 0; // If unfranked is 0, franked is also 0
-
-    const frankingRatio = frankingCreditsPercentage / 100;
-    const frankingCreditPerShare = dividendAmount * (COMPANY_TAX_RATE / (1 - COMPANY_TAX_RATE)) * frankingRatio;
-    const grossedUpDividend = dividendAmount + frankingCreditPerShare;
-
-    return (grossedUpDividend / currentPrice) * 100;
-}
 
 function estimateDividendIncome(investmentValue, dividendAmountPerShare, currentPricePerShare) {
     if (typeof investmentValue !== 'number' || isNaN(investmentValue) || investmentValue <= 0) { return null; }
@@ -8573,17 +8485,6 @@ function toggleAppSidebar(forceState = null) {
  * @param {any} value The value to escape.
  * @returns {string} The CSV-escaped string.
  */
-function escapeCsvValue(value) {
-    if (value === null || value === undefined) {
-        return '';
-    }
-    let stringValue = String(value);
-    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
-        stringValue = stringValue.replace(/"/g, '""');
-        return `"${stringValue}"`;
-    }
-    return stringValue;
-}
 
 /**
  * Exports the current watchlist data to a CSV file.
