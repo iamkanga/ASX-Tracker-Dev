@@ -11129,10 +11129,12 @@ if (targetHitIconBtn) {
     });
 }
 
+let firebaseServices;
+
 document.addEventListener('DOMContentLoaded', async function() {
     logDebug('script.js DOMContentLoaded fired.');
 
-    const firebaseServices = initializeFirebaseAndAuth();
+    firebaseServices = initializeFirebaseAndAuth();
     db = firebaseServices.db;
     auth = firebaseServices.auth;
     currentAppId = firebaseServices.currentAppId;
@@ -11140,6 +11142,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     authFunctions = firebaseServices.authFunctions;
     window._firebaseInitialized = firebaseServices.firebaseInitialized;
 
+    initializeApp();
+});
+
+function initializeApp() {
     if (db && auth && currentAppId && firestore && authFunctions) {
         logDebug('Firebase Ready: DB, Auth, and AppId assigned from firebase.js. Setting up auth state listener.');
 
@@ -11646,7 +11652,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // NEW: Hide splash screen if Firebase fails to initialize
         hideSplashScreen();
     }
-});
+}
 
 // Simple Diagnostics helper for non-coders (adds click on Diagnostics menu button to copy key info)
 try {
