@@ -7721,7 +7721,7 @@ function getCurrentCashAssetFormData() {
     };
 }
 
-function areCashAssetDataEqual(data1, data2) {
+export function areCashAssetDataEqual(data1, data2) {
     if (!data1 || !data2) return false;
     let balance1 = typeof data1.balance === 'number' && !isNaN(data1.balance) ? data1.balance : null;
     let balance2 = typeof data2.balance === 'number' && !isNaN(data2.balance) ? data2.balance : null;
