@@ -1,3 +1,7 @@
+.hidden {
+    display: none !important;
+}
+
 /* The .low52-title-chevron class has been removed and replaced by .low52-arrow-icon */
 /* Ghost out muted 52-week alert cards instead of hiding them */
 .low52-card-hidden {
