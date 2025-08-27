@@ -3131,173 +3131,89 @@ function addShareToTable(share) {
 }
 
 function addShareToMobileCards(share) {
-    if (share.shareName && share.shareName.toUpperCase() === 'S32') {
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        let priceNow = null;
-        let avgPrice = null;
-        let shares = null;
-        if (livePriceData && livePriceData.live !== null && !isNaN(livePriceData.live)) priceNow = Number(livePriceData.live);
-        if (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice))) avgPrice = Number(share.portfolioAvgPrice);
-        if (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares))) shares = Math.trunc(Number(share.portfolioShares));
-        const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
-        console.log('[DEBUG][Watchlist Card] S32', { priceNow, avgPrice, shares, rowPL, share });
-    }
     if (!mobileShareCardsContainer) {
         console.error('addShareToMobileCards: mobileShareCardsContainer element not found.');
         return;
     }
 
-    const card = document.createElement('div');
-    card.classList.add('mobile-card');
+    const template = document.getElementById('mobile-share-card-template');
+    if (!template) {
+        console.error('addShareToMobileCards: mobile-share-card-template not found.');
+        return;
+    }
+
+    const card = template.content.cloneNode(true).querySelector('.mobile-card');
     card.dataset.docId = share.id;
+
+    // Get display data
+    const displayData = getShareDisplayData(share);
+    const { displayLivePrice, displayPriceChange, priceClass, peRatio, high52Week, low52Week } = displayData;
 
     // Check if target price is hit for this share
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-    // Declare these variables once at the top of the function
-    const isMarketOpen = isAsxMarketOpen();
-    let displayLivePrice = 'N/A';
-    let displayPriceChange = '';
-    let priceClass = '';
-    let cardPriceChangeClass = ''; // NEW: For subtle background tints and vertical lines
-
-    // Logic to determine display values and card-specific classes
-    if (livePriceData) {
-        const currentLivePrice = livePriceData.live;
-        const previousClosePrice = livePriceData.prevClose;
-        const lastFetchedLive = livePriceData.lastLivePrice;
-        const lastFetchedPrevClose = livePriceData.lastPrevClose;
-
-    if (isMarketOpen) {
-            // Show live data if market is open, or if market is closed but toggle is ON
-            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
-            }
-            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
-                const change = currentLivePrice - previousClosePrice;
-                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
-                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card'); // Include neutral class
-            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
-                const change = lastFetchedLive - lastFetchedPrevClose;
-                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
-            }
-        } else {
-            // Market closed and toggle is OFF, show zero change
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
-            displayPriceChange = '0.00 (0.00%)';
-            priceClass = 'neutral';
-            cardPriceChangeClass = ''; // No tint/line for neutral or market closed
-        }
-    }
-
     // Apply card-specific price change class
-    if (cardPriceChangeClass) {
-        card.classList.add(cardPriceChangeClass);
+    if (displayData.cardPriceChangeClass) {
+        card.classList.add(displayData.cardPriceChangeClass);
     }
 
     // Apply target-hit-alert class if target is hit AND not dismissed
     if (isTargetHit && !targetHitIconDismissed) {
         card.classList.add('target-hit-alert');
-    } else {
-        card.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
     }
 
-    // Logic to determine display values
-    if (livePriceData) {
-        const currentLivePrice = livePriceData.live;
-        const previousClosePrice = livePriceData.prevClose;
-        const lastFetchedLive = livePriceData.lastLivePrice;
-        const lastFetchedPrevClose = livePriceData.lastPrevClose;
+    // Build directional arrow for displayPriceChange
+    let arrowSymbol = '';
+    if (priceClass === 'positive') {
+        arrowSymbol = '▲';
+    } else if (priceClass === 'negative') {
+        arrowSymbol = '▼';
+    }
 
-    if (isMarketOpen) {
-            // Show live data if market is open, or if market is closed but toggle is ON
-            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
-            }
-            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
-                const change = currentLivePrice - previousClosePrice;
-                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0); // Corrected: use previousClosePrice
-                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                // Fallback to last fetched values if current live/prevClose are null but lastFetched are present
-                const change = lastFetchedLive - lastFetchedPrevClose;
-                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
-                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-            }
-        } else {
-            // Market closed and toggle is OFF, show zero change
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
-            displayPriceChange = '0.00 (0.00%)';
-            priceClass = 'neutral';
+    // Populate the template
+    card.querySelector('.card-code').textContent = share.shareName || '';
+    card.querySelector('.card-chevron').textContent = arrowSymbol;
+    card.querySelector('.card-chevron').className = `change-chevron card-chevron ${priceClass}`;
+    card.querySelector('.card-live-price').textContent = displayLivePrice;
+    card.querySelector('.card-price-change').textContent = displayPriceChange;
+    card.querySelector('.card-price-change').className = `price-change-large card-price-change ${priceClass}`;
+    card.querySelector('.fifty-two-week-value.low').textContent = `Low: ${low52Week}`;
+    card.querySelector('.fifty-two-week-value.high').textContent = `High: ${high52Week}`;
+    card.querySelector('.pe-ratio-value').textContent = `P/E: ${peRatio}`;
+
+    // Handle conditional alert target
+    const alertTargetRow = card.querySelector('[data-template-conditional="alertTarget"]');
+    const alertTargetValue = renderAlertTargetInline(share);
+    if (alertTargetValue) {
+        alertTargetRow.querySelector('.data-value').innerHTML = alertTargetValue;
+        alertTargetRow.style.display = '';
+    } else {
+        alertTargetRow.style.display = 'none';
+    }
+
+    // Star rating
+    card.querySelector('.data-row:nth-of-type(2) .data-value').textContent = share.starRating > 0 ? '⭐ ' + share.starRating : '';
+
+    // Dividend Yield
+    const dividendAmount = Number(share.dividendAmount) || 0;
+    const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
+    const enteredPrice = Number(share.currentPrice) || 0;
+    const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
+                        ? parseFloat(displayLivePrice.substring(1))
+                        : (enteredPrice > 0 ? enteredPrice : 0);
+    let yieldDisplay = '';
+    if (priceForYield > 0 && (dividendAmount > 0 || frankingCredits > 0)) {
+        const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
+        const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
+        if (frankingCredits > 0 && frankedYield > 0) {
+            yieldDisplay = formatAdaptivePercent(frankedYield) + '% (Franked)';
+        } else if (unfrankedYield > 0) {
+            yieldDisplay = formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
         }
     }
+    card.querySelector('.data-row:nth-of-type(3) .data-value').textContent = yieldDisplay;
 
-    // AGGRESSIVE FIX: Get company name from ASX codes for display
-    const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
-    const companyName = companyInfo ? companyInfo.name : '';
-
-    // Build directional arrow for displayPriceChange (keep underlying displayPriceChange variable intact for accessibility if needed)
-    let arrowSymbol = '';
-    if (/^[-+]?\d/.test(displayPriceChange)) { /* heuristic; actual change variable exists above but reused */ }
-    try {
-        const matchChange = /([-+]?\d*[\d.,]*)(?:\s*\(|$)/.exec(displayPriceChange);
-        // We already computed priceClass; use that for arrow
-        arrowSymbol = priceClass === 'positive' ? '▲' : (priceClass === 'negative' ? '▼' : '');
-    } catch(_) {}
-    const enrichedPriceChange = arrowSymbol ? `${arrowSymbol} ${displayPriceChange}` : displayPriceChange;
-    card.innerHTML = `
-        <div class="live-price-display-section"> <!-- display:contents in compact grid -->
-            <h3 class="neutral-code-text card-code">${share.shareName || ''}</h3>
-            <span class="change-chevron card-chevron ${priceClass}">${arrowSymbol || ''}</span>
-            <div class="live-price-main-row"> <!-- retained for non-compact; neutralized in compact -->
-                <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
-            </div>
-            <span class="price-change-large card-price-change ${priceClass}">${displayPriceChange}</span>
-            <div class="fifty-two-week-row">
-                <span class="fifty-two-week-value low">Low: ${livePriceData && livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A'}</span>
-                <span class="fifty-two-week-value high">High: ${livePriceData && livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A'}</span>
-            </div>
-            <div class="pe-ratio-row">
-                <span class="pe-ratio-value">P/E: ${livePriceData && livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A'}</span>
-            </div>
-        </div>
-    <!-- Entry Price removed from mobile card main view -->
-    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value">${renderAlertTargetInline(share)}</span></p>` : '' })()}
-        <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
-        <p class="data-row">
-            <span class="label-text">Dividend Yield:</span>
-            <span class="data-value">
-            ${
-                (() => {
-                    const dividendAmount = Number(share.dividendAmount) || 0;
-                    const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
-                    const enteredPrice = Number(share.currentPrice) || 0;
-                    const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
-                                        ? parseFloat(displayLivePrice.substring(1))
-                                        : (enteredPrice > 0 ? enteredPrice : 0);
-                    if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
-                    const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
-                    const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
-                    if (frankingCredits > 0 && frankedYield > 0) {
-                        return formatAdaptivePercent(frankedYield) + '% (Franked)';
-                    } else if (unfrankedYield > 0) {
-                        return formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
-                    }
-                    return '';
-                })()
-            }
-            </span>
-        </p>
-    `;
 
     card.addEventListener('click', () => {
         logDebug('Mobile Card Click: Share ID: ' + share.id);
@@ -3327,14 +3243,13 @@ function addShareToMobileCards(share) {
         clearTimeout(longPressTimer);
         if (Date.now() - touchStartTime < LONG_PRESS_THRESHOLD && selectedElementForTap === card) {
             // This is a short tap, let the click event handler fire naturally if it hasn't been prevented.
-            // No explicit click() call needed here as a short tap naturally dispatches click.
         }
         touchStartTime = 0;
         selectedElementForTap = null;
     });
 
     mobileShareCardsContainer.appendChild(card);
-    logDebug('Mobile Cards: Added share ' + share.shareName + ' to mobile cards.');
+    logDebug('Mobile Cards: Added share ' + share.shareName + ' to mobile cards using template.');
 }
 /**
  * Updates an existing share row in the table or creates a new one if it doesn't exist.
