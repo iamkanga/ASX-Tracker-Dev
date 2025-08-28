@@ -1049,182 +1049,6 @@ window.__enforceSingleScrollModalsReport = function() {
 };
 
 
-// Runtime enforcement: ensure modals follow the single-scroll-container pattern
-(function enforceSingleScrollModals(){
-    function normalizeModalContent(mc) {
-        if (!mc) return { added:false, unwrapped:0 };
-        let added = false;
-        if (!mc.classList.contains('single-scroll-modal')) {
-            mc.classList.add('single-scroll-modal');
-            added = true;
-        }
-        // Move children out of any nested .modal-body-scrollable wrappers
-        const inners = Array.from(mc.querySelectorAll('.modal-body-scrollable'));
-        let unwrapped = 0;
-        inners.forEach(inner => {
-            try {
-                while (inner.firstChild) mc.appendChild(inner.firstChild);
-                inner.remove();
-                unwrapped++;
-            } catch(e) { console.warn('[SingleScroll] Failed to unwrap inner container', e); }
-        });
-        // Ensure touch-scrolling styles present (defensive)
-        try {
-            mc.style.webkitOverflowScrolling = mc.style['-webkit-overflow-scrolling'] = mc.style['-webkit-overflow-scrolling'] || 'touch';
-            mc.style.overflowY = mc.style.overflowY || 'auto';
-            if (!mc.style.maxHeight) mc.style.maxHeight = 'calc(100vh - 80px)';
-        } catch(e) {}
-        return { added, unwrapped };
-    }
-
-    function run() {
-        try {
-            const modalContents = document.querySelectorAll('.modal .modal-content');
-            const report = { total: modalContents.length, changed: 0, unwrapped: 0 };
-            modalContents.forEach(mc => {
-                const r = normalizeModalContent(mc);
-                if (r.added) report.changed++;
-                report.unwrapped += r.unwrapped || 0;
-            });
-            if (report.changed || report.unwrapped) {
-                console.info('[SingleScroll] Enforced single-scroll on', report.total, 'modals — added class to', report.changed, 'and unwrapped', report.unwrapped, 'inner containers.');
-            } else {
-                console.debug('[SingleScroll] No changes required — modals already normalized (count:', report.total, ')');
-            }
-        } catch(e) { console.warn('[SingleScroll] Enforcement failed', e); }
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', run, { once: true });
-    } else {
-        // Run ASAP if DOM already loaded
-// Runtime enforcement: ensure modals follow the single-scroll-container pattern
-(function enforceSingleScrollModals(){
-    function normalizeModalContent(mc) {
-        if (!mc) return { added:false, unwrapped:0 };
-        let added = false;
-        if (!mc.classList.contains('single-scroll-modal')) {
-            mc.classList.add('single-scroll-modal');
-            added = true;
-        }
-        // Move children out of any nested .modal-body-scrollable wrappers
-        const inners = Array.from(mc.querySelectorAll('.modal-body-scrollable'));
-        let unwrapped = 0;
-        inners.forEach(inner => {
-            try {
-                while (inner.firstChild) mc.appendChild(inner.firstChild);
-                inner.remove();
-                unwrapped++;
-            } catch(e) { console.warn('[SingleScroll] Failed to unwrap inner container', e); }
-        });
-        // Ensure touch-scrolling styles present (defensive)
-        try {
-            mc.style.overflowY = mc.style.overflowY || 'auto';
-            mc.style.webkitOverflowScrolling = 'touch';
-            if (!mc.style.maxHeight) mc.style.maxHeight = 'calc(100vh - 80px)';
-        } catch(e) {}
-        return { added, unwrapped };
-    }
-
-    function run() {
-        try {
-            const modalContents = document.querySelectorAll('.modal .modal-content');
-            const report = { total: modalContents.length, changed: 0, unwrapped: 0 };
-            modalContents.forEach(mc => {
-                const r = normalizeModalContent(mc);
-                if (r.added) report.changed++;
-                report.unwrapped += r.unwrapped || 0;
-            });
-            if (report.changed || report.unwrapped) {
-                console.info('[SingleScroll] Enforced single-scroll on', report.total, 'modals — added class to', report.changed, 'and unwrapped', report.unwrapped, 'inner containers.');
-            } else {
-                console.debug('[SingleScroll] No changes required — modals already normalized (count:', report.total, ')');
-            }
-        } catch(e) { console.warn('[SingleScroll] Enforcement failed', e); }
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', run, { once: true });
-    } else {
-        setTimeout(run, 0);
-    }
-
-    // Re-run automatically when DOM changes (e.g., modals injected dynamically)
-    (function installObserver(){
-        let timer = null;
-        const debouncedRun = () => {
-            if (timer) clearTimeout(timer);
-            timer = setTimeout(() => { run(); timer = null; }, 120);
-        };
-
-        try {
-            const observer = new MutationObserver((mutations) => {
-                for (const m of mutations) {
-                    if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
-                        for (const n of m.addedNodes) {
-                            if (n.nodeType === 1) {
-                                const el = n;
-                                if (el.classList && (el.classList.contains('modal') || el.classList.contains('modal-content') || el.querySelector && el.querySelector('.modal-content'))) {
-                                    debouncedRun();
-                                    return;
-                                }
-                            }
-                        }
-                    } else if (m.type === 'attributes' && m.attributeName === 'class') {
-                        debouncedRun();
-                        return;
-                    }
-                }
-            });
-            observer.observe(document.documentElement || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-        } catch(e) {
-            // noop
-        }
-    })();
-
-    // Expose for manual debugging from console
-    window.__enforceSingleScrollModals = run;
-})();
-        setTimeout(run, 0);
-    }
-
-    // Re-run automatically when DOM changes (e.g., modals injected dynamically)
-    (function installObserver(){
-        let timer = null;
-        const debouncedRun = () => {
-            if (timer) clearTimeout(timer);
-            timer = setTimeout(() => { run(); timer = null; }, 120);
-        };
-
-        try {
-            const observer = new MutationObserver((mutations) => {
-                for (const m of mutations) {
-                    if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
-                        // If any modal or modal-content nodes were added, trigger normalization
-                        for (const n of m.addedNodes) {
-                            if (n.nodeType === 1) {
-                                const el = /** @type {Element} */ (n);
-                                if (el.classList && (el.classList.contains('modal') || el.classList.contains('modal-content') || el.querySelector && el.querySelector('.modal-content'))) {
-                                    debouncedRun();
-                                    return;
-                                }
-                            }
-                        }
-                    } else if (m.type === 'attributes' && m.attributeName === 'class') {
-                        debouncedRun();
-                        return;
-                    }
-                }
-            });
-            observer.observe(document.documentElement || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-        } catch(e) {
-            // If observer installation fails, still expose manual trigger
-        }
-    })();
-
-    // Expose for manual debugging from console
-    window.__enforceSingleScrollModals = run;
-})();
 // === Typography Diagnostics ===
 function logTypographyRatios(contextLabel='') {
     try {
@@ -2048,8 +1872,80 @@ function popAppStateEntry() { return appBackStack.pop(); }
 // Removed legacy early hamburger push listener (consolidated later) – now handled in unified sidebar setup
 function showModal(modalElement) {
     pushAppStateEntry('modal', modalElement);
-    uiShowModal(modalElement);
+    uiShowModal(modalElement, { logDebug, initializeShareNameAutocomplete });
 }
+
+function handleCloseModals() {
+    // Auto-save logic for share form
+    if (shareFormSection && shareFormSection.style.display !== 'none') {
+        const currentData = getCurrentFormData();
+        const isShareNameValid = currentData.shareName.trim() !== '';
+        if (selectedShareDocId) {
+            if (originalShareData && !areShareDataEqual(originalShareData, currentData)) {
+                saveShareData(true);
+            }
+        } else {
+            const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
+            if (isShareNameValid && isWatchlistSelected) {
+                saveShareData(true);
+            }
+        }
+    }
+    if (addWatchlistModal && addWatchlistModal.style.display !== 'none') {
+        const currentWatchlistData = getCurrentWatchlistFormData(true);
+        if (currentWatchlistData.name.trim() !== '') {
+            saveWatchlistChanges(true, currentWatchlistData.name);
+        }
+    }
+    if (manageWatchlistModal && manageWatchlistModal.style.display !== 'none') {
+        const currentWatchlistData = getCurrentWatchlistFormData(false);
+        if (originalWatchlistData && !areWatchlistDataEqual(originalWatchlistData, currentWatchlistData)) {
+            saveWatchlistChanges(true, currentWatchlistData.name, watchlistSelect.value);
+        }
+    }
+    if (cashAssetFormModal && cashAssetFormModal.style.display !== 'none') {
+        const currentCashData = getCurrentCashAssetFormData();
+        const isCashAssetNameValid = currentCashData.name.trim() !== '';
+        if (selectedCashAssetDocId) {
+            if (originalCashAssetData && !areCashAssetDataEqual(originalCashAssetData, currentCashData)) {
+                saveCashAsset(true);
+            }
+        } else {
+            if (isCashAssetNameValid) {
+                saveCashAsset(true);
+            }
+        }
+    }
+
+    closeModals({ logDebug });
+
+    resetCalculator();
+    deselectCurrentShare();
+    deselectCurrentCashAsset();
+    if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
+    hideContextMenu({ shareContextMenu, deselectCurrentShare, logDebug });
+    if (alertPanel) hideModal(alertPanel, { logDebug });
+    if (asxCodeButtonsContainer) {
+        asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn.active').forEach(btn => btn.classList.remove('active'));
+    }
+    if (wasShareDetailOpenedFromTargetAlerts) {
+        if (selectedShareDocId) {
+            if (targetHitDetailsModal) {
+                showModal(targetHitDetailsModal);
+            }
+        }
+        wasShareDetailOpenedFromTargetAlerts = false;
+    }
+    if (wasEditOpenedFromShareDetail) {
+        if (selectedShareDocId) {
+            if (shareDetailModal) {
+                showModal(shareDetailModal);
+            }
+        }
+        wasEditOpenedFromShareDetail = false;
+    }
+}
+
 
 window.addEventListener('popstate', ()=>{
     // Not using deep browser history here; rely on our own stack
@@ -2063,7 +1959,7 @@ window.addEventListener('popstate', ()=>{
             try { autoSaveShareFormOnClose(); } catch(e) { console.warn('Auto-save on back (share form) failed', e); }
         }
         if (currentModal && typeof hideModal === 'function') {
-            hideModal(currentModal);
+            hideModal(currentModal, { logDebug });
         } else {
             // Fallback: hide all if we cannot resolve the modal element
             closeModals();
@@ -2912,7 +2808,7 @@ function addShareToTable(share) {
         if (window.innerWidth > 768) { // Only enable on desktop
             e.preventDefault();
             selectShare(share.id);
-            showContextMenu(e, share.id);
+            showContextMenu(e, share.id, { shareContextMenu, logDebug });
         }
     });
 
@@ -4307,7 +4203,7 @@ export async function saveShareData(isSilent = false) {
     try {
         if (shareDetailModal && shareDetailModal.dataset) delete shareDetailModal.dataset.shareId;
     } catch(_) {}
-    if (!isSilent) closeModals(); // Only close if not a silent save
+    if (!isSilent) handleCloseModals(); // Only close if not a silent save
 }
 
 
@@ -7824,7 +7720,7 @@ export async function saveCashAsset(isSilent = false) {
         }
         originalCashAssetData = getCurrentCashAssetFormData(); // Update original data after save
         setIconDisabled(saveCashAssetBtn, true); // Disable save button after saving
-        if (!isSilent) closeModals();
+        if (!isSilent) handleCloseModals();
     } catch (error) {
         console.error('Firestore: Error saving cash asset:', error);
         if (!isSilent) showCustomAlert('Error saving cash asset: ' + error.message);
@@ -8509,7 +8405,7 @@ export async function saveWatchlistChanges(isSilent = false, newName, watchlistI
         // The 'if (watchlistId)' condition around loadUserWatchlistsAndSettings is removed
         // because it needs to run for new watchlists too for consistent state management.
 
-        if (!isSilent) closeModals(); // Only close if not a silent save
+        if (!isSilent) handleCloseModals(); // Only close if not a silent save
         originalWatchlistData = getCurrentWatchlistFormData(watchlistId === null); // Update original data after successful save
         checkWatchlistFormDirtyState(watchlistId === null); // Disable save button after saving
     } catch (error) {
@@ -8579,7 +8475,7 @@ async function deleteAllUserData() {
             showCustomAlert('Error deleting all data: ' + error.message, 3000);
         } finally {
             if (loadingIndicator) loadingIndicator.style.display = 'none';
-            closeModals(); // Close any open modals
+            handleCloseModals(); // Close any open modals
         }
     });
 }
@@ -9179,17 +9075,17 @@ if (targetPriceInput) {
             button.addEventListener('click', () => {
                 logDebug('Form: Share form close button (X) clicked. Clearing form before closing to cancel edits.');
                 clearForm(); // This will reset originalShareData and selectedShareDocId, preventing auto-save
-                closeModals(); // Now closeModals won't trigger auto-save for this form
+                handleCloseModals(); // Now handleCloseModals won't trigger auto-save for this form
             });
         } else if (button.classList.contains('cash-form-close-button')) { // NEW: Specific for cash asset form's 'X' (Cancel button)
             button.addEventListener('click', () => {
                 logDebug('Cash Form: Cash asset form close button (X) clicked. Clearing form before closing to cancel edits.');
                 clearCashAssetForm(); // Reset originalCashAssetData and selectedCashAssetDocId
-                closeModals();
+                handleCloseModals();
             });
         }
         else {
-            button.addEventListener('click', closeModals); // Other modals still close normally
+            button.addEventListener('click', handleCloseModals); // Other modals still close normally
         }
     });
 
@@ -9229,7 +9125,7 @@ if (targetPriceInput) {
             event.target === manageWatchlistModal || event.target === alertPanel ||
             event.target === cashAssetFormModal || event.target === cashAssetDetailModal ||
             event.target === stockSearchModal) {
-            closeModals();
+            handleCloseModals();
         }
 
         // Context menu closing logic
@@ -9586,7 +9482,7 @@ if (sortSelect) {
             // Ensure the details modal is recorded just before we open the edit modal
             try { pushAppStateEntry('modal', shareDetailModal); } catch(_) {}
             // Close the detail modal first to avoid overlay conflicts, then open the edit form
-            hideModal(shareDetailModal);
+            hideModal(shareDetailModal, { logDebug });
             if (typeof showEditFormForSelectedShare === 'function') {
                 showEditFormForSelectedShare();
             }
