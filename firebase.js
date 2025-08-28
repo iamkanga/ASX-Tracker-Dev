@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence, browserPopupRedirectResolver } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, serverTimestamp, deleteField, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, onAuthStateChanged, getRedirectResult } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // YOUR FIREBASE CONFIGURATION - Replace with your actual Firebase project config
 const firebaseConfig = {
@@ -13,73 +13,58 @@ const firebaseConfig = {
     measurementId: "G-J24BTJ34D2"
 };
 
-export function initializeFirebaseAndAuth() {
-    const currentAppId = firebaseConfig.projectId || 'default-app-id';
+let firebaseApp;
+let auth;
+let db;
+let firebaseInitialized = false;
+const currentAppId = firebaseConfig.projectId || 'default-app-id';
 
-    let firebaseApp;
-    let auth;
-    let db;
-    let firebaseInitialized = false;
 
-    if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.projectId) {
-        try {
-            firebaseApp = initializeApp(firebaseConfig);
-            auth = getAuth(firebaseApp);
-            db = getFirestore(firebaseApp);
-            firebaseInitialized = true;
-            console.log("Firebase: Initialized successfully with config from firebase.js.");
-        } catch (error) {
-            console.error("Firebase: Failed to initialize app with provided config:", error);
-            firebaseInitialized = false;
-        }
-    } else {
-        console.error("Firebase: Configuration is missing or invalid (apiKey or projectId). Firebase will not initialize.");
-        const errorDiv = document.getElementById('firebaseInitError');
-        if (errorDiv) {
-            errorDiv.style.display = 'block';
-        }
-        firebaseInitialized = false;
+if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.projectId) {
+    try {
+        firebaseApp = initializeApp(firebaseConfig);
+        auth = getAuth(firebaseApp);
+        db = getFirestore(firebaseApp);
+        firebaseInitialized = true;
+        console.log("Firebase: Initialized successfully with config from firebase.js.");
+
+        // Check for redirect result as soon as auth is initialized
+        getRedirectResult(auth)
+            .then((result) => {
+                if (result) {
+                    // This is the sign-in result from the redirect.
+                    // onAuthStateChanged will also fire, so we don't need to do much here,
+                    // but we can log it for debugging.
+                    console.log('Firebase: Handled redirect result.', result.user.uid);
+                }
+            })
+            .catch((error) => {
+                console.error('Firebase: Error getting redirect result:', error);
+            });
+
+        // Listen for auth state changes and dispatch a custom event
+        onAuthStateChanged(auth, (user) => {
+            console.log('Firebase: Auth state changed, dispatching event.', user ? user.uid : 'No user');
+            const event = new CustomEvent('authStateChanged', { detail: { user } });
+            document.dispatchEvent(event);
+        });
+
+    } catch (error) {
+        console.error("Firebase: Failed to initialize app with provided config:", error);
     }
-
-    const firestore = firebaseInitialized ? {
-        collection,
-        doc,
-        getDoc,
-        addDoc,
-        setDoc,
-        updateDoc,
-        deleteDoc,
-        onSnapshot,
-        query,
-        where,
-        getDocs,
-        deleteField,
-        writeBatch,
-        serverTimestamp
-    } : null;
-
-    const authFunctions = firebaseInitialized ? {
-        GoogleAuthProviderInstance: new GoogleAuthProvider(),
-        createGoogleProvider: () => new GoogleAuthProvider(),
-        signInAnonymously,
-        signInWithCustomToken,
-        signInWithPopup,
-        signInWithRedirect,
-        getRedirectResult,
-        signOut,
-        onAuthStateChanged,
-        setPersistence,
-        browserLocalPersistence,
-        browserSessionPersistence,
-        browserPopupRedirectResolver
-    } : null;
-
-    return {
-        db: firebaseInitialized ? db : null,
-        auth: firebaseInitialized ? auth : null,
-        currentAppId,
-        firestore,
-        authFunctions,
-        firebaseInitialized
-    };
+} else {
+    console.error("Firebase: Configuration is missing or invalid (apiKey or projectId). Firebase will not initialize.");
 }
+
+// Export the initialized services and functions
+export {
+    auth,
+    db,
+    firebaseInitialized,
+    currentAppId,
+    GoogleAuthProvider
+};
+
+// Also re-export all the functions from the sub-modules for convenience
+export * from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+export * from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
