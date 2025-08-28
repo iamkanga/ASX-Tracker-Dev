@@ -8706,19 +8706,6 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             currentSelectedWatchlistIds = [newDocRef.id];
             await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
 
-            // --- IMPORTANT FIX: Update in-memory userWatchlists array immediately ---
-            // This ensures renderWatchlistSelect has the new watchlist available
-            // when loadUserWatchlistsAndSettings is called.
-            userWatchlists.push({ id: newDocRef.id, name: newName });
-            // Re-sort userWatchlists to ensure the new watchlist is in the correct order for the dropdown
-            userWatchlists.sort((a, b) => {
-                // Keep "Cash & Assets" at the bottom if it's there
-                if (a.id === CASH_BANK_WATCHLIST_ID) return 1;
-                if (b.id === CASH_BANK_WATCHLIST_ID) return -1;
-                return a.name.localeCompare(b.name);
-            });
-            logDebug('Firestore: userWatchlists array updated in memory with new watchlist and re-sorted.');
-            // --- END IMPORTANT FIX ---
 
             // Call loadUserWatchlistsAndSettings to fully refresh the watchlist data,
             // update the dropdown, and render the correct watchlist on the main screen.
@@ -11131,19 +11118,6 @@ if (targetHitIconBtn) {
 
 let firebaseServices;
 
-document.addEventListener('DOMContentLoaded', async function() {
-    logDebug('script.js DOMContentLoaded fired.');
-
-    firebaseServices = initializeFirebaseAndAuth();
-    db = firebaseServices.db;
-    auth = firebaseServices.auth;
-    currentAppId = firebaseServices.currentAppId;
-    firestore = firebaseServices.firestore;
-    authFunctions = firebaseServices.authFunctions;
-    window._firebaseInitialized = firebaseServices.firebaseInitialized;
-
-    initializeApp();
-});
 
 function initializeApp() {
     if (db && auth && currentAppId && firestore && authFunctions) {
