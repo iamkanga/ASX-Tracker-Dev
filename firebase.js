@@ -74,6 +74,19 @@ export function initializeFirebaseAndAuth() {
         browserPopupRedirectResolver
     } : null;
 
+    // --- TESTING HOOK ---
+    // Expose services to the window object ONLY when in a testing environment.
+    if (window.Cypress || window.playwright || new URLSearchParams(window.location.search).has('testing_mode')) {
+        window.testing_firebaseServices = {
+            db: firebaseInitialized ? db : null,
+            auth: firebaseInitialized ? auth : null,
+            currentAppId,
+            firestore,
+            authFunctions,
+            firebaseInitialized
+        };
+    }
+
     return {
         db: firebaseInitialized ? db : null,
         auth: firebaseInitialized ? auth : null,
