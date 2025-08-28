@@ -6294,7 +6294,6 @@ async function loadUserWatchlistsAndSettings() {
             const defaultWatchlistId = getDefaultWatchlistId(currentUserId);
             const defaultWatchlistRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists/' + defaultWatchlistId);
             await firestore.setDoc(defaultWatchlistRef, { name: DEFAULT_WATCHLIST_NAME, createdAt: new Date().toISOString() });
-            userWatchlists.push({ id: defaultWatchlistId, name: DEFAULT_WATCHLIST_NAME });
             // Ensure currentSelectedWatchlistIds points to the newly created default watchlist
             currentSelectedWatchlistIds = [defaultWatchlistId]; 
             logDebug('User Settings: Created default watchlist and set it as current selection.');
