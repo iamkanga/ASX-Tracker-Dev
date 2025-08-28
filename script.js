@@ -10206,5 +10206,54 @@ if (sortSelect) {
     // NEW: Set initial state for the compact view button
     updateCompactViewButtonState();
     applyCompactViewMode();
-} 
+}
+
+// --- Firebase Authentication State Listener ---
+document.addEventListener('DOMContentLoaded', async () => {
+    const { auth, authFunctions, firebaseInitialized } = initializeFirebaseAndAuth();
+    window._firebaseInitialized = firebaseInitialized;
+
+    if (firebaseInitialized) {
+        authFunctions.onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                console.log("Auth: User is signed in.", user.uid);
+                window._userAuthenticated = true;
+                currentUserId = user.uid;
+
+                // Set persistence for the session
+                try {
+                    await authFunctions.setPersistence(auth, authFunctions.browserLocalPersistence);
+                    console.log("Auth: Persistence set to local.");
+                } catch (error) {
+                    console.error("Auth: Error setting persistence:", error);
+                }
+
+                await initializeAppLogic(user.uid);
+
+            } else {
+                console.log("Auth: User is signed out.");
+                window._userAuthenticated = false;
+                currentUserId = null;
+
+                // Explicitly show splash screen and hide app content
+                if (splashScreen) splashScreen.classList.remove('hidden');
+                if (mainContainer) mainContainer.classList.add('app-hidden');
+                if (appHeader) appHeader.classList.add('app-hidden');
+
+                // Clear any user-specific data from the UI
+                clearShareListUI();
+                clearWatchlistUI();
+
+                // Disable buttons that require a logged-in user
+                updateMainButtonsState(false);
+            }
+            // This will now correctly show the app or the splash screen
+            hideSplashScreenIfReady();
+        });
+    } else {
+        console.error("Cannot set auth state listener because Firebase failed to initialize.");
+        // Hide splash screen to reveal the Firebase initialization error message
+        hideSplashScreen();
+    }
+});
 
