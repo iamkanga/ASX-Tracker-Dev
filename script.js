@@ -1,13 +1,26 @@
 import {
     auth,
     db,
-    firestore,
     currentAppId,
     GoogleAuthProvider,
     setPersistence,
     browserLocalPersistence,
     signInWithPopup,
-    signOut
+    signOut,
+    doc,
+    getDoc,
+    addDoc,
+    setDoc,
+    updateDoc,
+    deleteDoc,
+    onSnapshot,
+    collection,
+    query,
+    where,
+    getDocs,
+    serverTimestamp,
+    deleteField,
+    writeBatch
 } from './firebase.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
 import { showModal as uiShowModal, hideModal, closeModals, showCustomAlert, showContextMenu, hideContextMenu } from './ui.js';
@@ -1275,8 +1288,8 @@ let userPreferences = {};
 async function loadUserPreferences() {
     if (!db || !currentUserId || !firestore) return {};
     try {
-        const prefsRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/preferences/ui');
-        const snap = await firestore.getDoc(prefsRef);
+        const prefsRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/preferences/ui');
+        const snap = await getDoc(prefsRef);
         if (snap.exists()) {
             userPreferences = snap.data() || {};
             if (DEBUG_MODE) console.log('[Prefs] Loaded user preferences:', userPreferences);
@@ -1289,9 +1302,9 @@ async function loadUserPreferences() {
 async function persistUserPreference(key, value) {
     if (!db || !currentUserId || !firestore) return;
     try {
-        const prefsRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/preferences/ui');
-        const obj = {}; obj[key] = value; obj.updatedAt = firestore.serverTimestamp();
-        await firestore.setDoc(prefsRef, obj, { merge: true });
+        const prefsRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/preferences/ui');
+        const obj = {}; obj[key] = value; obj.updatedAt = serverTimestamp();
+        await setDoc(prefsRef, obj, { merge: true });
         userPreferences[key] = value;
         if (DEBUG_MODE) console.log('[Prefs] Persisted', key, '=', value);
     } catch(e) { if (DEBUG_MODE) console.warn('Prefs: persist failed', e); }
@@ -2333,10 +2346,10 @@ async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
         return;
     }
     // Collection path: artifacts/{appId}/users/{userId}/alerts
-    const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+    const alertsCol = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
     // We'll use a deterministic doc id per share to keep one alert document per share
     const alertDocId = shareId; // 1:1 mapping; adjust if multiple alerts per share later
-    const alertDocRef = firestore.doc(alertsCol, alertDocId);
+    const alertDocRef = doc(alertsCol, alertDocId);
 
     // Interpret UI intent and direction
     // Intent: buy when direction is below; sell when direction is above (can extend later to explicit intent buttons)
@@ -2359,12 +2372,12 @@ async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
         direction: direction, // 'above' | 'below'
         targetPrice: (typeof shareData?.targetPrice === 'number' && !isNaN(shareData.targetPrice)) ? shareData.targetPrice : null,
         // createdAt added below only when isNew to avoid undefined writes
-        updatedAt: firestore.serverTimestamp(),
+        updatedAt: serverTimestamp(),
         enabled: true
     };
 
     if (isNew) {
-        payload.createdAt = firestore.serverTimestamp();
+        payload.createdAt = serverTimestamp();
     }
 
     // Compute initial targetHit status immediately so the listener can pick it up
@@ -2382,15 +2395,15 @@ async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
             isHit = direction === 'above' ? (current >= tPrice) : (current <= tPrice);
         }
         payload.targetHit = !!isHit;
-        payload.lastEvaluatedAt = firestore.serverTimestamp();
+        payload.lastEvaluatedAt = serverTimestamp();
     } catch (e) {
         console.warn('Alerts: Failed to compute initial targetHit; defaulting to false.', e);
         payload.targetHit = false;
-        payload.lastEvaluatedAt = firestore.serverTimestamp();
+        payload.lastEvaluatedAt = serverTimestamp();
     }
 
     // Use setDoc with merge to avoid overwriting createdAt when updating
-    await firestore.setDoc(alertDocRef, payload, { merge: true });
+    await setDoc(alertDocRef, payload, { merge: true });
     logDebug('Alerts: Upserted alert for ' + shareCode + ' with intent ' + intent + ' and direction ' + direction + '.');
 }
 
@@ -4085,9 +4098,9 @@ export async function saveShareData(isSilent = false) {
     // Uniqueness check: if adding new share but a document with same code already exists, switch to update mode
     if (!selectedShareDocId) {
         try {
-            const sharesColUnique = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
-            const dupQuery = firestore.query(sharesColUnique, firestore.where('shareName', '==', shareName));
-            const dupSnap = await firestore.getDocs(dupQuery);
+            const sharesColUnique = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
+            const dupQuery = query(sharesColUnique, where('shareName', '==', shareName));
+            const dupSnap = await getDocs(dupQuery);
             if (!dupSnap.empty) {
                 const existing = dupSnap.docs[0];
                 selectedShareDocId = existing.id;
@@ -4110,8 +4123,8 @@ export async function saveShareData(isSilent = false) {
         }
 
         try {
-            const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
-            await firestore.updateDoc(shareDocRef, shareData);
+            const shareDocRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
+            await updateDoc(shareDocRef, shareData);
             // Phase 2: Upsert alert document for this share (intent + direction)
             try {
                 await upsertAlertForShare(selectedShareDocId, shareName, shareData, false);
@@ -4167,8 +4180,8 @@ export async function saveShareData(isSilent = false) {
         shareData.previousFetchedPrice = shareData.currentPrice;
 
         try {
-            const sharesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
-            const newDocRef = await firestore.addDoc(sharesColRef, shareData);
+            const sharesColRef = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
+            const newDocRef = await addDoc(sharesColRef, shareData);
             selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
             // Phase 2: Create alert document for this new share (intent + direction)
             try {
@@ -6121,7 +6134,8 @@ async function saveLastSelectedWatchlistIds(watchlistIds) {
         console.warn('Watchlist: Cannot save last selected watchlists: DB, User ID, or Firestore functions not available.');
         return;
     }
-    const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+    const userProfileDocRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+    const userProfileDocRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
     try {
         await firestore.setDoc(userProfileDocRef, { lastSelectedWatchlistIds: watchlistIds }, { merge: true });
         logDebug('Watchlist: Saved last selected watchlist IDs: ' + watchlistIds.join(', '));
@@ -6156,8 +6170,8 @@ async function saveSortOrderPreference(sortOrder) {
     const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
     try {
             // Ensure the sortOrder is not an empty string or null before saving
-            const dataToSave = sortOrder ? { lastSortOrder: sortOrder } : { lastSortOrder: firestore.deleteField() };
-            await firestore.setDoc(userProfileDocRef, dataToSave, { merge: true });
+            const dataToSave = sortOrder ? { lastSortOrder: sortOrder } : { lastSortOrder: deleteField() };
+            await setDoc(userProfileDocRef, dataToSave, { merge: true });
             logDebug('Sort: Saved sort order preference to Firestore: ' + sortOrder);
         } catch (error) {
             console.error('Sort: Error saving sort order preference to Firestore:', error);
@@ -6174,12 +6188,12 @@ async function loadUserWatchlistsAndSettings() {
         hideSplashScreenIfReady();
         return;
     }
-    const watchlistsColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists');
-    const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+    const watchlistsColRef = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists');
+    const userProfileDocRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
 
     try {
         logDebug('User Settings: Fetching user watchlists and profile settings...');
-        const querySnapshot = await firestore.getDocs(firestore.query(watchlistsColRef));
+        const querySnapshot = await getDocs(query(watchlistsColRef));
         querySnapshot.forEach(doc => { userWatchlists.push({ id: doc.id, name: doc.data().name }); });
         logDebug('User Settings: Found ' + userWatchlists.length + ' existing watchlists (before default check).');
 
@@ -6193,8 +6207,8 @@ async function loadUserWatchlistsAndSettings() {
         const userDefinedStockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== ALL_SHARES_ID);
         if (userDefinedStockWatchlists.length === 0) {
             const defaultWatchlistId = getDefaultWatchlistId(currentUserId);
-            const defaultWatchlistRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists/' + defaultWatchlistId);
-            await firestore.setDoc(defaultWatchlistRef, { name: DEFAULT_WATCHLIST_NAME, createdAt: new Date().toISOString() });
+            const defaultWatchlistRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists/' + defaultWatchlistId);
+            await setDoc(defaultWatchlistRef, { name: DEFAULT_WATCHLIST_NAME, createdAt: new Date().toISOString() });
             // Ensure currentSelectedWatchlistIds points to the newly created default watchlist
             currentSelectedWatchlistIds = [defaultWatchlistId];
             logDebug('User Settings: Created default watchlist and set it as current selection.');
@@ -6208,7 +6222,7 @@ async function loadUserWatchlistsAndSettings() {
         });
         logDebug('User Settings: Watchlists after sorting: ' + userWatchlists.map(wl => wl.name).join(', '));
 
-        const userProfileSnap = await firestore.getDoc(userProfileDocRef);
+        const userProfileSnap = await getDoc(userProfileDocRef);
     savedSortOrder = null;
     savedTheme = null;
 
@@ -6466,8 +6480,8 @@ async function loadTriggeredAlertsListener() {
     if (unsubscribeAlerts) { try { unsubscribeAlerts(); } catch(_){} unsubscribeAlerts=null; }
     if (!db || !currentUserId || !firestore) { console.warn('Alerts: Firestore unavailable for triggered alerts listener'); return; }
     try {
-        const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-        unsubscribeAlerts = firestore.onSnapshot(alertsCol, (qs) => {
+        const alertsCol = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        unsubscribeAlerts = onSnapshot(alertsCol, (qs) => {
             const newMap = new Map();
             const alertMetaById = new Map();
             qs.forEach(doc => { 
@@ -6502,8 +6516,8 @@ function startGlobalSummaryListener() {
     if (!db || !currentUserId || !firestore) return;
     try {
         const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-        const summaryRef = firestore.doc(alertsCol, 'GA_SUMMARY');
-        unsubscribeGlobalSummary = firestore.onSnapshot(summaryRef, (snap) => {
+        const summaryRef = doc(alertsCol, 'GA_SUMMARY');
+        unsubscribeGlobalSummary = onSnapshot(summaryRef, (snap) => {
             if (snap && snap.exists()) {
                 globalAlertSummary = snap.data() || null;
             } else {
@@ -6827,7 +6841,7 @@ function evaluateGlobalPriceAlerts() {
     const hasIncrease = (globalPercentIncrease && globalPercentIncrease > 0) || (globalDollarIncrease && globalDollarIncrease > 0);
     const hasDecrease = (globalPercentDecrease && globalPercentDecrease > 0) || (globalDollarDecrease && globalDollarDecrease > 0);
     if (!hasIncrease && !hasDecrease) return;
-    const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+    const alertsCol = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
     let increaseCount = 0; let decreaseCount = 0; let dominantThreshold = null; let dominantType = null;
     const nonPortfolioCodes = new Set();
     let portfolioCount = 0; // number of triggered shares in user's portfolio/watchlists
@@ -6870,7 +6884,7 @@ function evaluateGlobalPriceAlerts() {
     const total = increaseCount + decreaseCount;
     if (total > 0) {
         const docId = 'GA_SUMMARY';
-        const alertDocRef = firestore.doc(alertsCol, docId);
+        const alertDocRef = doc(alertsCol, docId);
         const payload = {
             shareId: docId,
             shareCode: 'GLOBAL',
@@ -6892,10 +6906,10 @@ function evaluateGlobalPriceAlerts() {
             threshold: dominantThreshold,
             targetHit: true,
             enabled: true,
-            updatedAt: firestore.serverTimestamp(),
-            createdAt: firestore.serverTimestamp()
+            updatedAt: serverTimestamp(),
+            createdAt: serverTimestamp()
         };
-        firestore.setDoc(alertDocRef, payload, { merge: true })
+        setDoc(alertDocRef, payload, { merge: true })
             .then(()=> { logDebug('Global Alerts: Summary upserted. Total='+ total + ' portfolio=' + portfolioCount + ' discover=' + nonPortfolioCodes.size + ' inc=' + increaseCount + ' dec=' + decreaseCount + ' threshold=' + dominantThreshold); })
             .catch(e=> console.error('Global Alerts: summary upsert failed', e));
     }
@@ -6903,9 +6917,9 @@ function evaluateGlobalPriceAlerts() {
 
 async function saveGlobalAlertSettingsDirectional(settings) {
     if (!db || !currentUserId || !firestore) return;
-    const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+    const userProfileDocRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
     // Use deleteField for any cleared (null) thresholds so old values cannot resurrect on reload
-    const del = firestore.deleteField();
+    const del = deleteField();
     const toSave = {
         globalPercentIncrease: (typeof settings.globalPercentIncrease === 'number' && settings.globalPercentIncrease > 0) ? settings.globalPercentIncrease : del,
         globalDollarIncrease: (typeof settings.globalDollarIncrease === 'number' && settings.globalDollarIncrease > 0) ? settings.globalDollarIncrease : del,
@@ -6917,7 +6931,7 @@ async function saveGlobalAlertSettingsDirectional(settings) {
         globalDollarAlert: del,
         globalDirectionalVersion: Date.now() // bump a version so clients can detect freshness
     };
-    try { await firestore.setDoc(userProfileDocRef, toSave, { merge: true });
+    try { await setDoc(userProfileDocRef, toSave, { merge: true });
         logDebug('Global Alerts: Saved directional settings (normalized/deleteField applied) ' + JSON.stringify(toSave));
         try { localStorage.setItem('globalDirectionalVersion', String(toSave.globalDirectionalVersion)); } catch(e){}
         // Persist cleared sentinel so a hard reload before Firestore cache invalidation still respects cleared state
@@ -7148,8 +7162,8 @@ async function loadAlertsSettingsListener() {
     if (unsubscribeAlerts) { try { unsubscribeAlerts(); } catch(_){} unsubscribeAlerts=null; }
     if (!db || !currentUserId || !firestore) { console.warn('Alerts: Firestore unavailable for settings listener'); return; }
     try {
-        const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-        unsubscribeAlerts = firestore.onSnapshot(alertsCol, (qs) => {
+        const alertsCol = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        unsubscribeAlerts = onSnapshot(alertsCol, (qs) => {
             alertsEnabledMap = new Map();
             qs.forEach(doc => { const d = doc.data()||{}; alertsEnabledMap.set(doc.id, (d.enabled !== false)); });
             try { console.log('[Diag][alertsSettingsListener] map size:', alertsEnabledMap.size); } catch(_){}
@@ -7297,10 +7311,10 @@ async function loadShares() {
     }
     
     try {
-        const sharesCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
-        let q = firestore.query(sharesCol); // Listener for all shares, filtering for display done in renderWatchlist
+        const sharesCol = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
+        let q = query(sharesCol); // Listener for all shares, filtering for display done in renderWatchlist
 
-        unsubscribeShares = firestore.onSnapshot(q, async (querySnapshot) => {
+        unsubscribeShares = onSnapshot(q, async (querySnapshot) => {
             logDebug('Firestore Listener: Shares snapshot received. Processing changes.');
             let fetchedShares = [];
             querySnapshot.forEach((doc) => {
@@ -7375,10 +7389,10 @@ async function loadCashCategories() {
     }
 
     try {
-        const cashCategoriesCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories');
-        const q = firestore.query(cashCategoriesCol);
+        const cashCategoriesCol = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories');
+        const q = query(cashCategoriesCol);
 
-        unsubscribeCashCategories = firestore.onSnapshot(q, (querySnapshot) => {
+        unsubscribeCashCategories = onSnapshot(q, (querySnapshot) => {
             logDebug('Firestore Listener: Cash categories snapshot received. Processing changes.');
             let fetchedCategories = [];
             querySnapshot.forEach((doc) => {
@@ -7502,8 +7516,8 @@ async function deleteCashCategory(categoryId) {
 
     // NEW: Direct deletion without confirmation modal
     try {
-        const categoryDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories', categoryId);
-        await firestore.deleteDoc(categoryDocRef);
+        const categoryDocRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories', categoryId);
+        await deleteDoc(categoryDocRef);
         showCustomAlert('Category deleted successfully!', 1500);
         logDebug('Firestore: Cash category (ID: ' + categoryId + ') deleted.');
     } catch (error) {
@@ -7710,13 +7724,13 @@ export async function saveCashAsset(isSilent = false) {
 
     try {
         if (selectedCashAssetDocId) {
-            const assetDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories', selectedCashAssetDocId);
-            await firestore.updateDoc(assetDocRef, cashAssetData);
+            const assetDocRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories', selectedCashAssetDocId);
+            await updateDoc(assetDocRef, cashAssetData);
             if (!isSilent) showCustomAlert('Cash asset \'' + assetName + '\' updated successfully!', 1500);
             logDebug('Firestore: Cash asset \'' + assetName + '\' (ID: ' + selectedCashAssetDocId + ') updated.');
         } else {
-            const cashCategoriesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories');
-            const newDocRef = await firestore.addDoc(cashCategoriesColRef, cashAssetData);
+            const cashCategoriesColRef = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories');
+            const newDocRef = await addDoc(cashCategoriesColRef, cashAssetData);
             selectedCashAssetDocId = newDocRef.id; // Set selected ID for newly added
             if (!isSilent) showCustomAlert('Cash asset \'' + assetName + '\' added successfully!', 1500);
             logDebug('Firestore: Cash asset \'' + assetName + '\' added with ID: ' + newDocRef.id);
@@ -8016,13 +8030,13 @@ async function migrateOldSharesToWatchlist() {
         console.warn('Migration: Firestore DB, User ID, or Firestore functions not available for migration.');
         return false;
     }
-    const sharesCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
-    const q = firestore.query(sharesCol);
+    const sharesCol = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
+    const q = query(sharesCol);
     let sharesToUpdate = [];
     let anyMigrationPerformed = false;
     try {
         logDebug('Migration: Checking for old shares to migrate/update schema and data types.');
-        const querySnapshot = await firestore.getDocs(q);
+        const querySnapshot = await getDocs(q);
         querySnapshot.forEach(doc => {
             const shareData = doc.data();
             let updatePayload = {};
@@ -8035,7 +8049,7 @@ async function migrateOldSharesToWatchlist() {
             if ((!shareData.shareName || String(shareData.shareName).trim() === '') && shareData.hasOwnProperty('name') && String(shareData.name).trim() !== '') {
                 needsUpdate = true;
                 updatePayload.shareName = String(shareData.name).trim();
-                updatePayload.name = firestore.deleteField();
+                updatePayload.name = deleteField();
                 logDebug('Migration: Share \'' + doc.id + '\' missing \'shareName\' but has \'name\' (\'' + shareData.name + '\'). Migrating \'name\' to \'shareName\'.');
             }
             const fieldsToConvert = ['currentPrice', 'targetPrice', 'dividendAmount', 'frankingCredits', 'entryPrice', 'lastFetchedPrice', 'previousFetchedPrice'];
@@ -8090,7 +8104,7 @@ async function migrateOldSharesToWatchlist() {
         });
         if (sharesToUpdate.length > 0) {
             logDebug('Migration: Performing consolidated update for ' + sharesToUpdate.length + ' shares.');
-            for (const item of sharesToUpdate) { await firestore.updateDoc(item.ref, item.data); }
+            for (const item of sharesToUpdate) { await updateDoc(item.ref, item.data); }
             showCustomAlert('Migrated/Updated ' + sharesToUpdate.length + ' old shares.', 2000);
             logDebug('Migration: Migration complete. Setting up shares listener.');
             // No need to call loadShares here, the onSnapshot listener will handle updates automatically
@@ -8356,8 +8370,8 @@ export async function saveWatchlistChanges(isSilent = false, newName, watchlistI
 
     try {
         if (watchlistId) { // Editing existing watchlist
-            const watchlistDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists', watchlistId);
-            await firestore.updateDoc(watchlistDocRef, { name: newName });
+            const watchlistDocRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists', watchlistId);
+            await updateDoc(watchlistDocRef, { name: newName });
             if (!isSilent) showCustomAlert('Watchlist renamed to \'' + newName + '\'!', 1500);
             // --- IMPORTANT FIX: Reload all settings to refresh UI after renaming ---
             await loadUserWatchlistsAndSettings();
@@ -8371,8 +8385,8 @@ export async function saveWatchlistChanges(isSilent = false, newName, watchlistI
             // --- END IMPORTANT FIX ---
             logDebug('Firestore: Watchlist (ID: ' + watchlistId + ') renamed to \'' + newName + '\'.');
         } else { // Adding new watchlist
-            const watchlistsColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists');
-            const newDocRef = await firestore.addDoc(watchlistsColRef, {
+            const watchlistsColRef = collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists');
+            const newDocRef = await addDoc(watchlistsColRef, {
                 name: newName,
                 createdAt: new Date().toISOString(),
                 userId: currentUserId
@@ -8439,12 +8453,12 @@ async function deleteAllUserData() {
 
         try {
             const collectionsToDelete = ['shares', 'watchlists', 'cashCategories'];
-            const batch = firestore.writeBatch(db);
+            const batch = writeBatch(db);
 
             // 1. Delete documents from collections
             for (const collectionName of collectionsToDelete) {
-                const collectionRef = firestore.collection(db, `artifacts/${currentAppId}/users/${currentUserId}/${collectionName}`);
-                const querySnapshot = await firestore.getDocs(firestore.query(collectionRef));
+                const collectionRef = collection(db, `artifacts/${currentAppId}/users/${currentUserId}/${collectionName}`);
+                const querySnapshot = await getDocs(query(collectionRef));
                 querySnapshot.forEach(doc => {
                     batch.delete(doc.ref);
                 });
@@ -8452,8 +8466,8 @@ async function deleteAllUserData() {
             }
 
             // 2. Delete the user's profile/settings document (if it exists)
-            const userProfileDocRef = firestore.doc(db, `artifacts/${currentAppId}/users/${currentUserId}/profile/settings`);
-            const profileDocSnap = await firestore.getDoc(userProfileDocRef);
+            const userProfileDocRef = doc(db, `artifacts/${currentAppId}/users/${currentUserId}/profile/settings`);
+            const profileDocSnap = await getDoc(userProfileDocRef);
             if (profileDocSnap.exists()) {
                 batch.delete(userProfileDocRef);
                 logDebug('Firestore: Added user profile settings to batch for deletion.');
