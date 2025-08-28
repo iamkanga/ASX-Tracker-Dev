@@ -6263,185 +6263,173 @@ async function saveSortOrderPreference(sortOrder) {
 }
 
 async function loadUserWatchlistsAndSettings() {
-    if (isLoadingUserWatchlists) {
-        logDebug('loadUserWatchlistsAndSettings is already running. Skipping.');
+    userWatchlists = [];
+    logDebug('loadUserWatchlistsAndSettings called.'); // Added log for function entry
+
+    if (!db || !currentUserId) {
+        console.warn('User Settings: Firestore DB or User ID not available for loading settings. Skipping.');
+        window._appDataLoaded = false;
+        hideSplashScreenIfReady();
         return;
     }
-    isLoadingUserWatchlists = true;
-    logDebug('loadUserWatchlistsAndSettings started.');
+    const watchlistsColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists');
+    const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
 
     try {
-        userWatchlists = [];
-        logDebug('loadUserWatchlistsAndSettings called.'); // Added log for function entry
+        logDebug('User Settings: Fetching user watchlists and profile settings...');
+        const querySnapshot = await firestore.getDocs(firestore.query(watchlistsColRef));
+        querySnapshot.forEach(doc => { userWatchlists.push({ id: doc.id, name: doc.data().name }); });
+        logDebug('User Settings: Found ' + userWatchlists.length + ' existing watchlists (before default check).');
 
-        if (!db || !currentUserId) {
-            console.warn('User Settings: Firestore DB or User ID not available for loading settings. Skipping.');
-            window._appDataLoaded = false;
-            hideSplashScreenIfReady();
-            return;
+        // Ensure "Cash & Assets" is always an option in `userWatchlists` for internal logic
+        if (!userWatchlists.some(wl => wl.id === CASH_BANK_WATCHLIST_ID)) {
+            userWatchlists.push({ id: CASH_BANK_WATCHLIST_ID, name: 'Cash & Assets' });
+            logDebug('User Settings: Added "Cash & Assets" to internal watchlists array.');
         }
-        const watchlistsColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists');
-        const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
 
+        // If no user-defined watchlists (excluding Cash & Assets), create a default one
+        const userDefinedStockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== ALL_SHARES_ID);
+        if (userDefinedStockWatchlists.length === 0) {
+            const defaultWatchlistId = getDefaultWatchlistId(currentUserId);
+            const defaultWatchlistRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists/' + defaultWatchlistId);
+            await firestore.setDoc(defaultWatchlistRef, { name: DEFAULT_WATCHLIST_NAME, createdAt: new Date().toISOString() });
+            userWatchlists.push({ id: defaultWatchlistId, name: DEFAULT_WATCHLIST_NAME });
+            // Ensure currentSelectedWatchlistIds points to the newly created default watchlist
+            currentSelectedWatchlistIds = [defaultWatchlistId];
+            logDebug('User Settings: Created default watchlist and set it as current selection.');
+        }
+
+        // Sort watchlists (excluding Cash & Assets for sorting, then re-add it if needed)
+        userWatchlists.sort((a, b) => {
+            if (a.id === CASH_BANK_WATCHLIST_ID) return 1;
+            if (b.id === CASH_BANK_WATCHLIST_ID) return -1;
+            return a.name.localeCompare(b.name);
+        });
+        logDebug('User Settings: Watchlists after sorting: ' + userWatchlists.map(wl => wl.name).join(', '));
+
+        const userProfileSnap = await firestore.getDoc(userProfileDocRef);
+    savedSortOrder = null;
+    savedTheme = null;
+
+        if (userProfileSnap.exists()) {
+            const settingsData = userProfileSnap.data();
+            savedSortOrder = settingsData.lastSortOrder;
+            savedTheme = settingsData.lastTheme;
+            applyLoadedGlobalAlertSettings(settingsData);
+            const loadedSelectedWatchlistIds = settingsData.lastSelectedWatchlistIds;
+            // Manual EOD preference removed; behavior is now automatic
+
+            if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
+                // Filter out invalid or non-existent watchlists from loaded preferences
+                // Treat 'portfolio' as a valid special view alongside All Shares and Cash & Assets
+                currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id =>
+                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
+                );
+                logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
+            } else {
+                logDebug('User Settings: No valid last selected watchlists in profile. Will determine default.');
+            }
+        } else {
+            logDebug('User Settings: User profile settings not found. Will determine default watchlist selection.');
+        }
+
+        // Prefer local device's last selected view if available and valid
         try {
-            logDebug('User Settings: Fetching user watchlists and profile settings...');
-            const querySnapshot = await firestore.getDocs(firestore.query(watchlistsColRef));
-            querySnapshot.forEach(doc => { userWatchlists.push({ id: doc.id, name: doc.data().name }); });
-            logDebug('User Settings: Found ' + userWatchlists.length + ' existing watchlists (before default check).');
-
-            // Ensure "Cash & Assets" is always an option in `userWatchlists` for internal logic
-            if (!userWatchlists.some(wl => wl.id === CASH_BANK_WATCHLIST_ID)) {
-                userWatchlists.push({ id: CASH_BANK_WATCHLIST_ID, name: 'Cash & Assets' });
-                logDebug('User Settings: Added "Cash & Assets" to internal watchlists array.');
-            }
-
-            // If no user-defined watchlists (excluding Cash & Assets), create a default one
-            const userDefinedStockWatchlists = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== ALL_SHARES_ID);
-            if (userDefinedStockWatchlists.length === 0) {
-                const defaultWatchlistId = getDefaultWatchlistId(currentUserId);
-                const defaultWatchlistRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists/' + defaultWatchlistId);
-                await firestore.setDoc(defaultWatchlistRef, { name: DEFAULT_WATCHLIST_NAME, createdAt: new Date().toISOString() });
-                userWatchlists.push({ id: defaultWatchlistId, name: DEFAULT_WATCHLIST_NAME });
-                // Ensure currentSelectedWatchlistIds points to the newly created default watchlist
-                currentSelectedWatchlistIds = [defaultWatchlistId];
-                logDebug('User Settings: Created default watchlist and set it as current selection.');
-            }
-
-            // Sort watchlists (excluding Cash & Assets for sorting, then re-add it if needed)
-            userWatchlists.sort((a, b) => {
-                if (a.id === CASH_BANK_WATCHLIST_ID) return 1;
-                if (b.id === CASH_BANK_WATCHLIST_ID) return -1;
-                return a.name.localeCompare(b.name);
-            });
-            logDebug('User Settings: Watchlists after sorting: ' + userWatchlists.map(wl => wl.name).join(', '));
-
-            const userProfileSnap = await firestore.getDoc(userProfileDocRef);
-        savedSortOrder = null;
-        savedTheme = null;
-
-            if (userProfileSnap.exists()) {
-                const settingsData = userProfileSnap.data();
-                savedSortOrder = settingsData.lastSortOrder;
-                savedTheme = settingsData.lastTheme;
-                applyLoadedGlobalAlertSettings(settingsData);
-                const loadedSelectedWatchlistIds = settingsData.lastSelectedWatchlistIds;
-                // Manual EOD preference removed; behavior is now automatic
-
-                if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
-                    // Filter out invalid or non-existent watchlists from loaded preferences
-                    // Treat 'portfolio' as a valid special view alongside All Shares and Cash & Assets
-                    currentSelectedWatchlistIds = loadedSelectedWatchlistIds.filter(id =>
-                        id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
-                    );
-                    logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
-                } else {
-                    logDebug('User Settings: No valid last selected watchlists in profile. Will determine default.');
+            const lsView = localStorage.getItem('lastSelectedView');
+            if (lsView) {
+                const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || userWatchlists.some(wl => wl.id === lsView);
+                if (isValid) {
+                    currentSelectedWatchlistIds = [lsView];
+                    logDebug('User Settings: Overriding selection with localStorage lastSelectedView: ' + lsView);
                 }
+            }
+        } catch(e) { /* ignore */ }
+
+        // Determine final currentSelectedWatchlistIds if not set or invalid after loading/filtering
+        if (!currentSelectedWatchlistIds || currentSelectedWatchlistIds.length === 0) {
+            const firstAvailableStockWatchlist = userWatchlists.find(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
+            if (firstAvailableStockWatchlist) {
+                currentSelectedWatchlistIds = [firstAvailableStockWatchlist.id];
+                logDebug('User Settings: Defaulting currentSelectedWatchlistIds to first available stock watchlist: ' + firstAvailableStockWatchlist.name);
             } else {
-                logDebug('User Settings: User profile settings not found. Will determine default watchlist selection.');
+                currentSelectedWatchlistIds = [CASH_BANK_WATCHLIST_ID];
+                logDebug('User Settings: No stock watchlists found, defaulting to Cash & Assets.');
             }
-
-            // Prefer local device's last selected view if available and valid
-            try {
-                const lsView = localStorage.getItem('lastSelectedView');
-                if (lsView) {
-                    const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || userWatchlists.some(wl => wl.id === lsView);
-                    if (isValid) {
-                        currentSelectedWatchlistIds = [lsView];
-                        logDebug('User Settings: Overriding selection with localStorage lastSelectedView: ' + lsView);
-                    }
-                }
-            } catch(e) { /* ignore */ }
-
-            // Determine final currentSelectedWatchlistIds if not set or invalid after loading/filtering
-            if (!currentSelectedWatchlistIds || currentSelectedWatchlistIds.length === 0) {
-                const firstAvailableStockWatchlist = userWatchlists.find(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
-                if (firstAvailableStockWatchlist) {
-                    currentSelectedWatchlistIds = [firstAvailableStockWatchlist.id];
-                    logDebug('User Settings: Defaulting currentSelectedWatchlistIds to first available stock watchlist: ' + firstAvailableStockWatchlist.name);
-                } else {
-                    currentSelectedWatchlistIds = [CASH_BANK_WATCHLIST_ID];
-                    logDebug('User Settings: No stock watchlists found, defaulting to Cash & Assets.');
-                }
-            }
-            logDebug('User Settings: Final currentSelectedWatchlistIds before renderWatchlistSelect: ' + currentSelectedWatchlistIds.join(', '));
-
-            renderWatchlistSelect(); // Populate and select in the header dropdown
-
-            // Also re-populate the share modal dropdown if present
-            if (typeof populateShareWatchlistSelect === 'function') {
-                populateShareWatchlistSelect();
-            }
-
-            // Apply saved sort preference to currentSortOrder; let renderSortSelect enforce it after options are built
-            let candidateSort = savedSortOrder;
-            if (!candidateSort) {
-                try { candidateSort = localStorage.getItem('lastSortOrder') || null; } catch (e) { candidateSort = null; }
-                if (candidateSort) logDebug('Sort: Loaded sort order from localStorage fallback: ' + candidateSort);
-            }
-            if (candidateSort) {
-                currentSortOrder = candidateSort;
-                logDebug('Sort: Using saved sort order: ' + currentSortOrder);
-            } else {
-                // Set to default sort for the current view type
-                currentSortOrder = currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'entryDate-desc';
-                logDebug('Sort: No saved sort order found, defaulting to: ' + currentSortOrder);
-            }
-            renderSortSelect(); // Build options, then apply currentSortOrder
-
-            // Apply saved theme or default
-            if (savedTheme) {
-                applyTheme(savedTheme);
-            } else {
-                const localStorageSelectedTheme = localStorage.getItem('selectedTheme');
-                const localStorageTheme = localStorage.getItem('theme');
-
-                if (localStorageSelectedTheme) {
-                    applyTheme(localStorageSelectedTheme);
-                } else if (localStorageTheme) {
-                    applyTheme(localStorageTheme);
-                } else {
-                    applyTheme('system-default');
-                }
-            }
-            updateThemeToggleAndSelector();
-
-        // Removed: manual EOD preference handling
-
-            const migratedSomething = await migrateOldSharesToWatchlist();
-            if (!migratedSomething) {
-                logDebug('Migration: No old shares to migrate/update, directly setting up shares listener for current watchlist.');
-            }
-
-            // Load shares listener and cash categories listener once here
-            await loadShares(); // Sets up the listener for shares
-            await loadCashCategories(); // Sets up the listener for cash categories
-
-            // Initial render based on selected watchlist (stock or cash)
-            renderWatchlist(); // This will now correctly display based on the initial currentSelectedWatchlistIds
-
-            // Strong enforcement: if the last view was Portfolio, ensure Portfolio is shown now
-            try {
-                const lsViewFinal = localStorage.getItem('lastSelectedView');
-                if (lsViewFinal === 'portfolio' && typeof showPortfolioView === 'function') {
-                    showPortfolioView();
-                    logDebug('User Settings: Enforced Portfolio view after initial render.');
-                }
-            } catch(e) { /* ignore */ }
-
-            window._appDataLoaded = true;
-            hideSplashScreenIfReady();
-
-        } catch (error) {
-            console.error('User Settings: Error loading user watchlists and settings:', error);
-            showCustomAlert('Error loading user settings: ' + error.message);
-            hideSplashScreen();
-        } finally {
-            if (loadingIndicator) loadingIndicator.style.display = 'none';
         }
+        logDebug('User Settings: Final currentSelectedWatchlistIds before renderWatchlistSelect: ' + currentSelectedWatchlistIds.join(', '));
+
+        renderWatchlistSelect(); // Populate and select in the header dropdown
+
+        // Also re-populate the share modal dropdown if present
+        if (typeof populateShareWatchlistSelect === 'function') {
+            populateShareWatchlistSelect();
+        }
+
+        // Apply saved sort preference to currentSortOrder; let renderSortSelect enforce it after options are built
+        let candidateSort = savedSortOrder;
+        if (!candidateSort) {
+            try { candidateSort = localStorage.getItem('lastSortOrder') || null; } catch (e) { candidateSort = null; }
+            if (candidateSort) logDebug('Sort: Loaded sort order from localStorage fallback: ' + candidateSort);
+        }
+        if (candidateSort) {
+            currentSortOrder = candidateSort;
+            logDebug('Sort: Using saved sort order: ' + currentSortOrder);
+        } else {
+            // Set to default sort for the current view type
+            currentSortOrder = currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'entryDate-desc';
+            logDebug('Sort: No saved sort order found, defaulting to: ' + currentSortOrder);
+        }
+        renderSortSelect(); // Build options, then apply currentSortOrder
+
+        // Apply saved theme or default
+        if (savedTheme) {
+            applyTheme(savedTheme);
+        } else {
+            const localStorageSelectedTheme = localStorage.getItem('selectedTheme');
+            const localStorageTheme = localStorage.getItem('theme');
+
+            if (localStorageSelectedTheme) {
+                applyTheme(localStorageSelectedTheme);
+            } else if (localStorageTheme) {
+                applyTheme(localStorageTheme);
+            } else {
+                applyTheme('system-default');
+            }
+        }
+        updateThemeToggleAndSelector();
+
+    // Removed: manual EOD preference handling
+
+        const migratedSomething = await migrateOldSharesToWatchlist();
+        if (!migratedSomething) {
+            logDebug('Migration: No old shares to migrate/update, directly setting up shares listener for current watchlist.');
+        }
+
+        // Load shares listener and cash categories listener once here
+        await loadShares(); // Sets up the listener for shares
+        await loadCashCategories(); // Sets up the listener for cash categories
+
+        // Initial render based on selected watchlist (stock or cash)
+        renderWatchlist(); // This will now correctly display based on the initial currentSelectedWatchlistIds
+
+        // Strong enforcement: if the last view was Portfolio, ensure Portfolio is shown now
+        try {
+            const lsViewFinal = localStorage.getItem('lastSelectedView');
+            if (lsViewFinal === 'portfolio' && typeof showPortfolioView === 'function') {
+                showPortfolioView();
+                logDebug('User Settings: Enforced Portfolio view after initial render.');
+            }
+        } catch(e) { /* ignore */ }
+
+        window._appDataLoaded = true;
+        hideSplashScreenIfReady();
+
+    } catch (error) {
+        console.error('User Settings: Error loading user watchlists and settings:', error);
+        showCustomAlert('Error loading user settings: ' + error.message);
+        hideSplashScreen();
     } finally {
-        isLoadingUserWatchlists = false;
-        logDebug('loadUserWatchlistsAndSettings finished.');
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
 }
 
