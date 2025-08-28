@@ -6135,7 +6135,6 @@ async function saveLastSelectedWatchlistIds(watchlistIds) {
         return;
     }
     const userProfileDocRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-    const userProfileDocRef = doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
     try {
         await firestore.setDoc(userProfileDocRef, { lastSelectedWatchlistIds: watchlistIds }, { merge: true });
         logDebug('Watchlist: Saved last selected watchlist IDs: ' + watchlistIds.join(', '));
