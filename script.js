@@ -9164,76 +9164,6 @@ if (targetPriceInput) {
     // Google Auth Button (Sign In/Out) - This button is removed from index.html.
     // Its functionality is now handled by splashSignInBtn.
 
-    // NEW: Simplified Splash Sign-In: popup-only with in-progress guard
-
-    // Early environment safety check: mobile + file:// cannot perform Google auth
-    try {
-        const precheckUA = navigator.userAgent || navigator.vendor || '';
-        const precheckIsMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(precheckUA);
-        const precheckIsFile = (window.location && window.location.protocol === 'file:');
-        if (splashSignInBtn && precheckIsMobile && precheckIsFile) {
-            updateSplashSignInButtonState('error', 'Open via web URL');
-            splashSignInBtn.disabled = true;
-            showCustomAlert('Mobile sign-in can’t run from a file:// URL. Please serve this app over http(s) (e.g., VS Code Live Server) and retry.');
-            console.warn('Auth Precheck: Blocking sign-in on mobile file:// context.');
-        }
-    } catch(_) {}
-
-    if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
-        let splashSignInRetryTimer = null;
-        let splashSignInInProgress = false;
-        splashSignInBtn.setAttribute('data-bound','true');
-        splashSignInBtn.addEventListener('click', async () => {
-            logDebug('Auth: Splash Screen Sign-In Button Clicked.');
-            const currentAuth = auth;
-            if (!currentAuth || !authFunctions) {
-                console.warn('Auth: Auth service not ready or functions not loaded. Cannot process splash sign-in.');
-                showCustomAlert('Authentication service not ready. Please try again in a moment.');
-                return;
-            }
-            try {
-                if (splashSignInInProgress) {
-                    console.warn('Auth: Sign-in already in progress; ignoring duplicate click.');
-                    return;
-                }
-                splashSignInInProgress = true;
-                // Visual feedback
-                if (splashKangarooIcon) splashKangarooIcon.classList.add('pulsing');
-                splashSignInBtn.disabled = true;
-                const btnSpan = splashSignInBtn.querySelector('span');
-                if (btnSpan) { btnSpan.textContent = 'Signing in…'; }
-                // Always create a fresh provider per attempt to avoid stale customParameters
-                const provider = (authFunctions.createGoogleProvider ? authFunctions.createGoogleProvider() : authFunctions.GoogleAuthProviderInstance);
-                if (!provider) {
-                    console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
-                    showCustomAlert('Authentication service not ready. Firebase script missing.');
-                    splashSignInInProgress = false;
-                    return;
-                }
-                try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
-                // Popup only
-                const resolver = authFunctions.browserPopupRedirectResolver;
-                if (resolver) {
-                    await authFunctions.signInWithPopup(currentAuth, provider, resolver);
-                } else {
-                    await authFunctions.signInWithPopup(currentAuth, provider);
-                }
-                logDebug('Auth: Google Sign-In successful from splash screen.');
-                // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
-            }
-            catch (error) {
-                console.error('Auth: Google Sign-In failed from splash screen:', { code: error.code, message: error.message });
-                showCustomAlert('Google Sign-In failed: ' + error.message);
-                splashSignInInProgress = false;
-                splashSignInInProgress = false;
-                splashSignInBtn.disabled = false;
-                const btnSpanReset = splashSignInBtn.querySelector('span');
-                if (btnSpanReset) { btnSpanReset.textContent = 'Sign in with Google'; }
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-            }
-        });
-    }
-
     // Removed redirect handling entirely: popup-only auth
 
     // NEW: Event listener for the top 'X' close button in the Target Hit Details Modal
@@ -10209,36 +10139,120 @@ if (sortSelect) {
 }
 
 // --- Firebase Authentication State Listener ---
-document.addEventListener('DOMContentLoaded', async () => {
-    const { auth, authFunctions, firebaseInitialized } = initializeFirebaseAndAuth();
-    window._firebaseInitialized = firebaseInitialized;
+document.addEventListener('DOMContentLoaded', function() {
+    // NEW: Simplified Splash Sign-In: popup-only with in-progress guard
+    const splashSignInBtn = document.getElementById('splashSignInBtn');
+    const splashKangarooIcon = document.getElementById('splashKangarooIcon');
 
-    if (firebaseInitialized) {
-        authFunctions.onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                console.log("Auth: User is signed in.", user.uid);
-                window._userAuthenticated = true;
-                currentUserId = user.uid;
+    // Early environment safety check: mobile + file:// cannot perform Google auth
+    try {
+        const precheckUA = navigator.userAgent || navigator.vendor || '';
+        const precheckIsMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(precheckUA);
+        const precheckIsFile = (window.location && window.location.protocol === 'file:');
+        if (splashSignInBtn && precheckIsMobile && precheckIsFile) {
+            updateSplashSignInButtonState('error', 'Open via web URL');
+            splashSignInBtn.disabled = true;
+            showCustomAlert('Mobile sign-in can’t run from a file:// URL. Please serve this app over http(s) (e.g., VS Code Live Server) and retry.');
+            console.warn('Auth Precheck: Blocking sign-in on mobile file:// context.');
+        }
+    } catch(_) {}
 
-                // Set persistence for the session
-                try {
-                    await authFunctions.setPersistence(auth, authFunctions.browserLocalPersistence);
-                    console.log("Auth: Persistence set to local.");
-                } catch (error) {
-                    console.error("Auth: Error setting persistence:", error);
+    if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
+        let splashSignInRetryTimer = null;
+        let splashSignInInProgress = false;
+        splashSignInBtn.setAttribute('data-bound','true');
+        splashSignInBtn.addEventListener('click', async () => {
+            logDebug('Auth: Splash Screen Sign-In Button Clicked.');
+            const currentAuth = auth;
+            if (!currentAuth || !authFunctions) {
+                console.warn('Auth: Auth service not ready or functions not loaded. Cannot process splash sign-in.');
+                showCustomAlert('Authentication service not ready. Please try again in a moment.');
+                return;
+            }
+            try {
+                if (splashSignInInProgress) {
+                    console.warn('Auth: Sign-in already in progress; ignoring duplicate click.');
+                    return;
                 }
+                splashSignInInProgress = true;
+                // Visual feedback
+                if (splashKangarooIcon) splashKangarooIcon.classList.add('pulsing');
+                splashSignInBtn.disabled = true;
+                const btnSpan = splashSignInBtn.querySelector('span');
+                if (btnSpan) { btnSpan.textContent = 'Signing in…'; }
+                // Always create a fresh provider per attempt to avoid stale customParameters
+                const provider = (authFunctions.createGoogleProvider ? authFunctions.createGoogleProvider() : authFunctions.GoogleAuthProviderInstance);
+                if (!provider) {
+                    console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
+                    showCustomAlert('Authentication service not ready. Firebase script missing.');
+                    splashSignInInProgress = false;
+                    return;
+                }
+                try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
+                // Popup only
+                const resolver = authFunctions.browserPopupRedirectResolver;
+                if (resolver) {
+                    await authFunctions.signInWithPopup(currentAuth, provider, resolver);
+                } else {
+                    await authFunctions.signInWithPopup(currentAuth, provider);
+                }
+                logDebug('Auth: Google Sign-In successful from splash screen.');
+                // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
+            }
+            catch (error) {
+                console.error('Auth: Google Sign-In failed from splash screen:', { code: error.code, message: error.message });
+                showCustomAlert('Google Sign-In failed: ' + error.message);
+                splashSignInInProgress = false;
+                splashSignInInProgress = false;
+                splashSignInBtn.disabled = false;
+                const btnSpanReset = splashSignInBtn.querySelector('span');
+                if (btnSpanReset) { btnSpanReset.textContent = 'Sign in with Google'; }
+                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
+            }
+        });
+    }
+});
+const { auth, authFunctions, firebaseInitialized } = initializeFirebaseAndAuth();
+window._firebaseInitialized = firebaseInitialized;
 
+if (firebaseInitialized) {
+    authFunctions.onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            // User is signed in.
+            console.log("Auth: User is signed in.", user.uid);
+            window._userAuthenticated = true;
+            currentUserId = user.uid;
+
+            // Set persistence for the session
+            try {
+                await authFunctions.setPersistence(auth, authFunctions.browserLocalPersistence);
+                console.log("Auth: Persistence set to local.");
+            } catch (error) {
+                console.error("Auth: Error setting persistence:", error);
+            }
+
+            // Wait for the DOM to be ready before initializing the app logic
+            document.addEventListener('DOMContentLoaded', async () => {
                 await initializeAppLogic(user.uid);
+            });
 
-            } else {
-                console.log("Auth: User is signed out.");
-                window._userAuthenticated = false;
-                currentUserId = null;
+        } else {
+            // User is signed out.
+            console.log("Auth: User is signed out.");
+            window._userAuthenticated = false;
+            currentUserId = null;
 
-                // Explicitly show splash screen and hide app content
-                if (splashScreen) splashScreen.classList.remove('hidden');
+            // On DOM ready, ensure splash screen is visible
+            document.addEventListener('DOMContentLoaded', () => {
+                if (splashScreen) {
+                    splashScreen.classList.remove('app-hidden');
+                    splashScreen.style.display = 'flex';
+                }
                 if (mainContainer) mainContainer.classList.add('app-hidden');
                 if (appHeader) appHeader.classList.add('app-hidden');
+
+                // Make sure the sign-in button is enabled
+                if (splashSignInBtn) splashSignInBtn.disabled = false;
 
                 // Clear any user-specific data from the UI
                 clearShareListUI();
@@ -10246,14 +10260,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Disable buttons that require a logged-in user
                 updateMainButtonsState(false);
-            }
-            // This will now correctly show the app or the splash screen
-            hideSplashScreenIfReady();
-        });
-    } else {
+            });
+        }
+    });
+} else {
+    // Handle Firebase initialization failure
+    document.addEventListener('DOMContentLoaded', () => {
         console.error("Cannot set auth state listener because Firebase failed to initialize.");
-        // Hide splash screen to reveal the Firebase initialization error message
-        hideSplashScreen();
-    }
-});
+        if (splashScreen) splashScreen.style.display = 'none';
+        const errorDiv = document.getElementById('firebaseInitError');
+        if (errorDiv) {
+            errorDiv.style.display = 'block';
+        }
+    });
+}
 
