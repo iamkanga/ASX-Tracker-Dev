@@ -6,6 +6,7 @@ import {
     setPersistence,
     browserLocalPersistence,
     signInWithPopup,
+    signInWithRedirect,
     signOut,
     doc,
     getDoc,
@@ -10206,7 +10207,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const provider = new GoogleAuthProvider();
             try {
-                await signInWithPopup(auth, provider);
+                await signInWithRedirect(auth, provider);
             } catch (error) {
                 console.error('Google Sign-In failed:', error);
                 showCustomAlert('Google Sign-In failed: ' + error.message);

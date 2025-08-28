@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, onAuthStateChanged, getRedirectResult } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // YOUR FIREBASE CONFIGURATION - Replace with your actual Firebase project config
@@ -27,6 +27,20 @@ if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.projectId) {
         db = getFirestore(firebaseApp);
         firebaseInitialized = true;
         console.log("Firebase: Initialized successfully with config from firebase.js.");
+
+        // Check for redirect result as soon as auth is initialized
+        getRedirectResult(auth)
+            .then((result) => {
+                if (result) {
+                    // This is the sign-in result from the redirect.
+                    // onAuthStateChanged will also fire, so we don't need to do much here,
+                    // but we can log it for debugging.
+                    console.log('Firebase: Handled redirect result.', result.user.uid);
+                }
+            })
+            .catch((error) => {
+                console.error('Firebase: Error getting redirect result:', error);
+            });
 
         // Listen for auth state changes and dispatch a custom event
         onAuthStateChanged(auth, (user) => {
