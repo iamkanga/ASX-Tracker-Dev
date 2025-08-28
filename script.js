@@ -11118,6 +11118,19 @@ if (targetHitIconBtn) {
 
 let firebaseServices;
 
+document.addEventListener('DOMContentLoaded', async function() {
+    logDebug('script.js DOMContentLoaded fired.');
+
+    firebaseServices = initializeFirebaseAndAuth();
+    db = firebaseServices.db;
+    auth = firebaseServices.auth;
+    currentAppId = firebaseServices.currentAppId;
+    firestore = firebaseServices.firestore;
+    authFunctions = firebaseServices.authFunctions;
+    window._firebaseInitialized = firebaseServices.firebaseInitialized;
+
+    initializeApp();
+});
 
 function initializeApp() {
     if (db && auth && currentAppId && firestore && authFunctions) {
