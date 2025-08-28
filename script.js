@@ -2,6 +2,8 @@ import { initializeFirebaseAndAuth } from './firebase.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
 import { showModal as uiShowModal, hideModal, closeModals, showCustomAlert, showContextMenu, hideContextMenu } from './ui.js';
 
+let isLoadingUserWatchlists = false;
+
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
 // (Moved below DOM references to avoid ReferenceError)
 
@@ -6264,6 +6266,7 @@ async function saveSortOrderPreference(sortOrder) {
 }
 
 async function loadUserWatchlistsAndSettings() {
+    userWatchlists = [];
     logDebug('loadUserWatchlistsAndSettings called.'); // Added log for function entry
 
     if (!db || !currentUserId) {
@@ -6272,7 +6275,6 @@ async function loadUserWatchlistsAndSettings() {
         hideSplashScreenIfReady();
         return;
     }
-    userWatchlists = [];
     const watchlistsColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists');
     const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
 
@@ -6295,7 +6297,7 @@ async function loadUserWatchlistsAndSettings() {
             const defaultWatchlistRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists/' + defaultWatchlistId);
             await firestore.setDoc(defaultWatchlistRef, { name: DEFAULT_WATCHLIST_NAME, createdAt: new Date().toISOString() });
             // Ensure currentSelectedWatchlistIds points to the newly created default watchlist
-            currentSelectedWatchlistIds = [defaultWatchlistId]; 
+            currentSelectedWatchlistIds = [defaultWatchlistId];
             logDebug('User Settings: Created default watchlist and set it as current selection.');
         }
 
