@@ -8706,6 +8706,20 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             currentSelectedWatchlistIds = [newDocRef.id];
             await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
 
+            // --- IMPORTANT FIX: Update in-memory userWatchlists array immediately ---
+            // This ensures renderWatchlistSelect has the new watchlist available
+            // when loadUserWatchlistsAndSettings is called.
+            userWatchlists.push({ id: newDocRef.id, name: newName });
+            // Re-sort userWatchlists to ensure the new watchlist is in the correct order for the dropdown
+            userWatchlists.sort((a, b) => {
+                // Keep "Cash & Assets" at the bottom if it's there
+                if (a.id === CASH_BANK_WATCHLIST_ID) return 1;
+                if (b.id === CASH_BANK_WATCHLIST_ID) return -1;
+                return a.name.localeCompare(b.name);
+            });
+            logDebug('Firestore: userWatchlists array updated in memory with new watchlist and re-sorted.');
+            // --- END IMPORTANT FIX ---
+
             // Call loadUserWatchlistsAndSettings to fully refresh the watchlist data,
             // update the dropdown, and render the correct watchlist on the main screen.
             await loadUserWatchlistsAndSettings();
@@ -10518,6 +10532,618 @@ if (sortSelect) {
     updateCompactViewButtonState();
     applyCompactViewMode();
 } 
+// This closing brace correctly ends the `initializeAppLogic` function here.
+// Build Marker: v0.1.13 (Network-first CSS/JS, cache bust deploy)
+// Also expose as a runtime variable for lightweight diagnostics
+window.BUILD_MARKER = 'v0.1.13';
+
+// Function to show the target hit details modal (moved to global scope)
+function showTargetHitDetailsModal(options={}) {
+    const explicit = !!options.explicit;
+    if (window.__initialLoadPhase && !explicit && !__userInitiatedTargetModal) {
+        if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[TargetHitModal] Suppressed auto-open during initial load phase');
+        return;
+    }
+    if (!targetHitDetailsModal || !targetHitSharesList || !sharesAtTargetPrice) {
+        console.error('Target Hit Modal: Required elements or data not found.');
+        showCustomAlert('Error displaying target hit details. Please try again.', 2000);
+        return;
+    }
+    // Guard: if no enabled/muted alerts AND no active global summary, suppress unless explicit
+    try {
+        const noLocalEnabled = !sharesAtTargetPrice || sharesAtTargetPrice.length === 0;
+        const noLocalMuted = !sharesAtTargetPriceMuted || sharesAtTargetPriceMuted.length === 0;
+        const hasGlobalActive = (typeof isDirectionalThresholdsActive === 'function') ? isDirectionalThresholdsActive() : false;
+        const hasDisplayableGlobal = hasGlobalActive && globalAlertSummary && globalAlertSummary.totalCount > 0;
+        if (!explicit && noLocalEnabled && noLocalMuted && !hasDisplayableGlobal) {
+            if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[TargetHitModal] Auto-open suppressed: no alerts or global summary to display.');
+            return;
+        }
+    } catch(_err) { /* ignore */ }
+    targetHitSharesList.innerHTML = ''; // Clear previous content
+
+    // --- 52 week high/low Section (horizontal, smart UI) ---
+    if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
+    // Section title styled like global movers, with dynamic arrow icon
+    const sectionHeader = document.createElement('div');
+    sectionHeader.className = 'low52-section-header';
+    const low52Title = document.createElement('h3');
+    low52Title.className = 'target-hit-section-title low52-heading';
+    // Determine if there is a high or low in the unmuted list for icon
+    let firstType = null;
+    if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
+        for (const item of sharesAt52WeekLow) {
+            if (item && item.type) { firstType = item.type; break; }
+        }
+    }
+    let arrowIcon = '';
+    if (firstType === 'high') {
+        sectionHeader.classList.add('low52-high');
+    } else if (firstType === 'low') {
+        sectionHeader.classList.add('low52-low');
+    }
+    // Refactored to use a themeable SVG arrow icon
+    const arrowSVG = `<svg class="low52-arrow-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5H7z"/></svg>`;
+    low52Title.innerHTML = `<span class="low52-title-text">52 Week Low</span>${arrowSVG}`;
+    sectionHeader.appendChild(low52Title);
+    targetHitSharesList.appendChild(sectionHeader);
+        const alertsContainer = document.createElement('div');
+        alertsContainer.className = 'low52-alerts-container';
+
+        sharesAt52WeekLow.forEach((item, idx) => {
+            const card = document.createElement('div');
+            const isMuted = !!item.muted;
+            // Apply theme using the helper function for consistency
+            applyLow52AlertTheme(card, item.type);
+            if (isMuted) {
+                card.classList.add('low52-card-muted');
+            }
+
+            let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
+            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : '<span class="low52-price-na">N/A</span>';
+
+            card.innerHTML = `
+                <div class="low52-card-row low52-header-row">
+                    <span class="low52-code">${item.code}</span>
+                    <span class="low52-name">${item.name}</span>
+                    <span class="low52-price">${liveDisplay}</span>
+                </div>
+                <div class="low52-card-row low52-action-row">
+                    <button class="low52-mute-btn" data-idx="${idx}">${isMuted ? 'Unmute' : 'Mute'}</button>
+                </div>
+                <div class="low52-thresh-row">
+                    <span class="low52-thresh">${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)}</span>
+                </div>
+            `;
+
+            const muteBtn = card.querySelector('.low52-mute-btn');
+            muteBtn.onclick = function(e) {
+                e.stopPropagation();
+                const shareToUpdate = sharesAt52WeekLow.find(s => s.code === item.code && s.type === item.type);
+                if (shareToUpdate) {
+                    shareToUpdate.muted = !isMuted; // Toggle muted state
+                    const toastMessage = `${shareToUpdate.code} alerts ${shareToUpdate.muted ? 'muted' : 'enabled'}.`;
+                    showCustomAlert(toastMessage, 2000, 'info');
+                    window.__low52MutedMap[item.code + '_' + item.type] = shareToUpdate.muted;
+                    try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
+                    updateTargetHitBanner();
+                    showTargetHitDetailsModal(); // Re-render the modal
+                }
+            };
+
+            card.style.cursor = 'pointer';
+            card.onclick = function(e) {
+                if (e.target.closest('.low52-mute-btn')) return;
+                if (typeof showStockSearchModal === 'function') {
+                    showStockSearchModal(item.code);
+                }
+            };
+
+            alertsContainer.appendChild(card);
+        });
+
+        targetHitSharesList.appendChild(alertsContainer);
+    }
+
+    // Inject headings + global summary card (Global movers heading ABOVE card)
+    // Only show global summary if thresholds still active to avoid displaying stale counts after clear
+    const hasGlobalSummary = !!(isDirectionalThresholdsActive() && globalAlertSummary && globalAlertSummary.totalCount > 0);
+    if (hasGlobalSummary) {
+        const data = globalAlertSummary;
+        const total = data.totalCount || 0;
+        const inc = data.increaseCount || 0;
+        const dec = data.decreaseCount || 0;
+        const threshold = data.threshold || '';
+        const portfolioCount = data.portfolioCount || 0;
+        const discoverCount = Array.isArray(data.nonPortfolioCodes) ? data.nonPortfolioCodes.length : 0;
+        const enabled = (data.enabled !== false);
+        const heading = document.createElement('h3');
+        heading.className = 'target-hit-section-title global-movers-heading';
+        heading.id = 'globalMoversTitle';
+        heading.textContent = 'Global movers';
+        targetHitSharesList.appendChild(heading);
+        const container = document.createElement('div');
+        container.classList.add('target-hit-item','global-summary-alert');
+        const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
+    const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> <span class=\"arrow-count\">${inc}</span></span><span class=\"down\"><span class=\"arrow\">&#9660;</span> <span class=\"arrow-count\">${dec}</span></span></div>`;
+        container.innerHTML = `
+            <div class="global-summary-inner">
+                ${arrowsRow}
+                <div class="global-summary-detail total-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
+                <div class="global-summary-detail portfolio-line">${portfolioCount} from your portfolio</div>
+                ${minText?`<div class=\"global-summary-detail ignoring-line\">${minText}</div>`:''}
+            </div>
+            <div class=\"global-summary-actions\">
+                <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverCount?`Global (${discoverCount})`:'Global'}</button>
+                <button data-action=\"view-portfolio\" ${portfolioCount?'':'disabled'}>${portfolioCount?`Local (${portfolioCount})`:'Local'}</button>
+                <button data-action=\"mute-global\" title=\"${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}\">${enabled ? 'Mute' : 'Unmute'}</button>
+            </div>`;
+        const actions = container.querySelector('.global-summary-actions');
+        if (actions) {
+            actions.addEventListener('click', (e)=>{
+                const btn = e.target.closest('button'); if (!btn) return;
+                const act = btn.getAttribute('data-action');
+                if (act === 'view-portfolio') {
+                    try { applyGlobalSummaryFilter({ silent:true, computeOnly:true }); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal);
+                    currentSelectedWatchlistIds = ['__movers'];
+                    try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+                    // Sync hidden/native select so subsequent title updates reflect Movers
+                    if (watchlistSelect) {
+                        try { watchlistSelect.value = '__movers'; } catch(_) {}
+                    }
+                    try { setLastSelectedView('__movers'); } catch(_) {}
+                    // Persist to Firestore if helper available (cross-device restore consistency)
+                    try { if (typeof saveLastSelectedWatchlistIds === 'function') saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } catch(_) {}
+                    updateMainTitle('Movers');
+                    // Re-render and enforce virtual view now
+                    try { renderWatchlist(); enforceMoversVirtualView(); } catch(_) {}
+                    // Safety: re-assert title after potential render-driven updates
+                    setTimeout(()=>{ try { updateMainTitle('Movers'); } catch(_) {} }, 30);
+                } else if (act === 'discover') {
+                    try { openDiscoverModal(data); } catch(e){ console.warn('Discover modal open failed', e); }
+                } else if (act === 'mute-global') {
+                    e.preventDefault();
+                    toggleGlobalSummaryEnabled();
+                }
+            });
+        }
+        targetHitSharesList.appendChild(container);
+    }
+
+    function openDiscoverModal(summaryData) {
+        let modal = document.getElementById('discoverGlobalModal');
+        if (!modal) { console.warn('Discover modal element missing.'); return; }
+        const listEl = modal.querySelector('#discoverGlobalList');
+        if (listEl) {
+            const summary = summaryData || globalAlertSummary || {};
+            // Persist last summary for re-sorts
+            try { window.__lastDiscoverSummaryData = summary; } catch(_) {}
+            const nonPortfolioCodes = Array.isArray(summary.nonPortfolioCodes) ? summary.nonPortfolioCodes : [];
+            const threshold = (typeof summary.threshold === 'number') ? summary.threshold : null;
+            const appliedMinimumPrice = summary.appliedMinimumPrice;
+            const codeSet = new Set(nonPortfolioCodes.map(c => (c || '').toUpperCase()));
+            const snapshot = (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) ? window.__lastMoversSnapshot : null;
+            const externalRows = Array.isArray(globalExternalPriceRows) ? globalExternalPriceRows : [];
+
+            // Build global criteria badges (percent / dollar up+down thresholds + min price)
+            function buildCriteriaBadges() {
+                const badges = [];
+                const upPct = (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ? globalPercentIncrease : null;
+                const upDol = (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ? globalDollarIncrease : null;
+                const dnPct = (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ? globalPercentDecrease : null;
+                const dnDol = (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0) ? globalDollarDecrease : null;
+                if (upPct) badges.push({ cls:'up', text:'▲ ≥ '+upPct+'%' });
+                if (upDol) badges.push({ cls:'up', text:'▲ ≥ $'+upDol });
+                if (dnPct) badges.push({ cls:'down', text:'▼ ≥ '+dnPct+'%' });
+                if (dnDol) badges.push({ cls:'down', text:'▼ ≥ $'+dnDol });
+                if (appliedMinimumPrice) badges.push({ cls:'min', text:'Min $'+Number(appliedMinimumPrice).toFixed(2) });
+                return badges;
+            }
+            const criteriaBadges = buildCriteriaBadges();
+            const lastUpdatedTs = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+            let entries = [];
+            if (snapshot) {
+                entries = snapshot.entries.filter(e => codeSet.has(String(e.code || '').toUpperCase()));
+            }
+            if (!entries.length && codeSet.size) {
+                entries = Array.from(codeSet).map(c => ({ code: c }));
+            }
+            entries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
+
+            listEl.innerHTML='';
+            // Header / criteria bar
+            const criteriaBar = document.createElement('div');
+            criteriaBar.className = 'discover-criteria-bar';
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'criteria-title';
+            titleSpan.textContent = 'Global Movers';
+            const badgeContainer = document.createElement('div');
+            badgeContainer.className = 'criteria-badges';
+            if (criteriaBadges.length) {
+                criteriaBadges.forEach(b => { const s=document.createElement('span'); s.className='criteria-badge '+b.cls; s.textContent=b.text; badgeContainer.appendChild(s); });
+            } else {
+                const none=document.createElement('span'); none.className='criteria-badge none'; none.textContent='No active thresholds'; badgeContainer.appendChild(none);
+            }
+            // Summary line (mirror sidebar Global Alerts summary)
+            function buildGlobalAlertsSummaryInline(){
+                try {
+                    // Reuse formatting helper if present
+                    const incPart = (typeof formatGlobalAlertPart === 'function') ? formatGlobalAlertPart(globalPercentIncrease, globalDollarIncrease) : '';
+                    const decPart = (typeof formatGlobalAlertPart === 'function') ? formatGlobalAlertPart(globalPercentDecrease, globalDollarDecrease) : '';
+                    const anyActive = (incPart && incPart !== 'Off') || (decPart && decPart !== 'Off') || (typeof globalMinimumPrice === 'number' && globalMinimumPrice>0);
+                    if (!anyActive) return '';
+                    const minPart = (typeof globalMinimumPrice === 'number' && globalMinimumPrice>0) ? ('Min: $' + Number(globalMinimumPrice).toFixed(2) + ' | ') : '';
+                    return minPart + 'Increase: ' + incPart + ' | Decrease: ' + decPart;
+                } catch(err){ console.warn('Global alerts inline summary build failed', err); return ''; }
+            }
+            const inlineSummary = buildGlobalAlertsSummaryInline();
+            const tsSpan = document.createElement('span'); tsSpan.className='criteria-timestamp'; tsSpan.textContent = lastUpdatedTs;
+            criteriaBar.appendChild(titleSpan);
+            criteriaBar.appendChild(badgeContainer);
+            if (inlineSummary) {
+                const summarySpan = document.createElement('span');
+                summarySpan.className = 'criteria-summary';
+                summarySpan.textContent = inlineSummary;
+                criteriaBar.appendChild(summarySpan);
+            }
+            criteriaBar.appendChild(tsSpan);
+            listEl.appendChild(criteriaBar);
+            // Sorting controls (create once per render)
+            const sortWrapper = document.createElement('div');
+            sortWrapper.className = 'discover-sort-bar discover-sort-bar-centered';
+            const sortSelect = document.createElement('select');
+            sortSelect.id = 'discoverSortSelect';
+            const SORT_OPTIONS = [
+                { value:'code_asc', label:'A → Z' },
+                { value:'price_desc', label:'Price ↓' },
+                { value:'pct_asc', label:'Biggest Losers (% ↓)' },
+                { value:'chg_asc', label:'Biggest Losers ($ ↓)' }
+            ];
+            const storedSort = (localStorage.getItem('discoverSort') || 'pct_desc');
+            // Migrate old sort keys if present
+            let initialSort = storedSort;
+            if (initialSort === 'pct_desc') initialSort = 'pct_asc';
+            if (initialSort === 'chg_desc') initialSort = 'chg_asc';
+            SORT_OPTIONS.forEach(opt=>{
+                const o = document.createElement('option'); o.value = opt.value; o.textContent = opt.label; if (opt.value===initialSort) o.selected = true; sortSelect.appendChild(o);
+            });
+            sortWrapper.appendChild(sortSelect);
+            const sortDesc = document.createElement('div');
+            sortDesc.className = 'discover-sort-desc';
+            function sortModeDescription(v){
+                switch(v){
+                    case 'code_asc': return 'Alphabetical (A → Z)';
+                    case 'price_desc': return 'Highest live price first';
+                    case 'pct_asc': return 'Biggest losers by % (lowest to highest)';
+                    case 'chg_asc': return 'Biggest losers by $ (lowest to highest)';
+                    default: return '';
+                }
+            }
+            sortDesc.textContent = sortModeDescription(storedSort);
+            sortWrapper.appendChild(sortDesc);
+            listEl.appendChild(sortWrapper);
+
+            function applySort(list) {
+                const mode = sortSelect.value;
+                if (mode === 'code_asc') {
+                    list.sort((a,b)=> (a.code||'').localeCompare(b.code||''));
+                } else if (mode === 'price_desc') {
+                    list.sort((a,b)=> ( (b._priceForSort ?? -Infinity) - (a._priceForSort ?? -Infinity) ) );
+                } else if (mode === 'pct_asc') {
+                    list.sort((a,b)=> ((a._pctForSort ?? 0) - (b._pctForSort ?? 0)) );
+                } else if (mode === 'chg_asc') {
+                    list.sort((a,b)=> ((a._chForSort ?? 0) - (b._chForSort ?? 0)) );
+                }
+            }
+            const ul = document.createElement('ul');
+            ul.className='discover-code-list enriched global-only card-layout';
+
+            const contextLine = document.createElement('div');
+            contextLine.className = 'discover-context-line discover-context-line-spaced';
+            contextLine.innerHTML = `<strong>${nonPortfolioCodes.length}</strong> global ${nonPortfolioCodes.length===1?'share':'shares'} matched thresholds`;
+            listEl.appendChild(contextLine);
+
+            if (!entries.length) {
+                const li=document.createElement('li'); li.className='ghosted-text'; li.textContent='No current global movers meeting threshold.'; ul.appendChild(li);
+            } else {
+                const missingCodes = [];
+                entries.forEach(en => {
+                    const code = (en.code || '').toUpperCase();
+                    const lpData = (livePrices && livePrices[code]) ? livePrices[code] : {};
+                    // Fallback: if no livePrices data, attempt to source from externalRows captured during last fetch
+                    let ext = null;
+                    if ((!lpData || lpData.live == null) && externalRows.length) {
+                        ext = externalRows.find(r => r.code === code);
+                    }
+                    // Map snapshot & external fields: live -> price fallback, change->ch
+                    function num(v){ if (v===null||v===undefined||v==='') return null; const n=Number(v); return isNaN(n)?null:n; }
+                    const price = num(en.price) ?? num(en.live) ?? num(lpData.live) ?? (ext?num(ext.live):null);
+                    const prevClose = num(en.prevClose) ?? num(lpData.prevClose) ?? (ext?num(ext.prevClose):null);
+                    let ch = num(en.ch) ?? num(en.change) ?? num(lpData.change);
+                    // If change missing, derive from price/prev
+                    if ((ch === null || ch === undefined) && price !== null && prevClose !== null) ch = price - prevClose;
+                    let pct = num(en.pct) ?? num(lpData.pct);
+                    if ((pct === null || pct === undefined) && ch !== null && prevClose !== null && prevClose !== 0) pct = (ch / prevClose) * 100;
+                    const dir = (ch === null || ch === 0) ? 'flat' : (ch > 0 ? 'up' : 'down');
+                    const colorClass = (ch === null || ch === 0) ? 'neutral' : (ch > 0 ? 'positive' : 'negative');
+                    const li = document.createElement('li');
+                    li.className = 'discover-mover dir-' + dir;
+                    li.dataset.code = code;
+                    let comboLine = 'No movement data yet';
+                    if (ch != null && pct != null) {
+                        comboLine = `${ch>0?'+':''}${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%`;
+                    } else if (ch != null) {
+                        comboLine = `${ch>0?'+':''}${ch.toFixed(2)}`;
+                    } else if (pct != null) {
+                        comboLine = `${pct>0?'+':''}${pct.toFixed(2)}%`;
+                    } else {
+                        missingCodes.push(code);
+                    }
+                    if (DEBUG_MODE) console.log('[DiscoverItem]', code, { price, prevClose, ch, pct, raw: en, lpData, ext });
+                    // Attach sort helper values directly for later resort without recompute
+                    li._priceForSort = price;
+                    li._pctForSort = pct;
+                    li._chForSort = ch;
+                    // Mirror onto original entry for initial sort function
+                    en._priceForSort = price; en._pctForSort = pct; en._chForSort = ch;
+                    // Company name (from allAsxCodes cache) & 52w range
+                    let companyName = '';
+                    try { if (Array.isArray(allAsxCodes)) { const m = allAsxCodes.find(c=>c.code===code); if (m && m.name) companyName = m.name; } } catch(_) {}
+                    const hi52 = (lpData && lpData.High52!=null && !isNaN(lpData.High52)) ? '$'+formatAdaptivePrice(lpData.High52) : '';
+                    const lo52 = (lpData && lpData.Low52!=null && !isNaN(lpData.Low52)) ? '$'+formatAdaptivePrice(lpData.Low52) : '';
+                    const rangeLine = (hi52||lo52) ? `<div class=\"range-line\">${lo52||'?'}<span class=\"sep\">→</span>${hi52||'?'} 52w</div>` : '';
+                    const priceLine = `<div class=\"price-line\">${price!=null?('$'+Number(price).toFixed(2)):'-'} ${comboLine?`<span class=\"movement-combo ${colorClass}\">${comboLine}</span>`:''}</div>`;
+                    li.innerHTML = `<div class=\"row-top\"><span class=\"code\">${code}</span></div>`+
+                        (companyName?`<div class=\"company\" title=\"${companyName}\">${companyName}</div>`:'')+
+                        priceLine + rangeLine;
+                    li.addEventListener('click',()=>{
+                        try { hideModal(modal); } catch(_) {}
+                        // Open Stock Search & Research modal instead of Add Share form
+                        try {
+                            if (typeof stockSearchModal !== 'undefined' && stockSearchModal) {
+                                showModal(stockSearchModal);
+                            } else if (typeof searchStockBtn !== 'undefined' && searchStockBtn && searchStockBtn.click) {
+                                searchStockBtn.click();
+                            }
+                        } catch(err) { if (DEBUG_MODE) console.warn('Open stock search modal failed', err); }
+                        // Populate search input and fetch details for research URLs
+                        try {
+                            if (typeof asxSearchInput !== 'undefined' && asxSearchInput) {
+                                asxSearchInput.value = code;
+                                if (typeof displayStockDetailsInSearchModal === 'function') {
+                                    displayStockDetailsInSearchModal(code);
+                                }
+                                try { asxSearchInput.focus(); asxSearchInput.setSelectionRange(code.length, code.length); } catch(_) {}
+                            }
+                        } catch(err2) { if (DEBUG_MODE) console.warn('Populate search modal failed', err2); }
+                    });
+                    ul.appendChild(li);
+                });
+                // Async enrichment retry: if some codes missing data, schedule a one-off background refresh
+                if (missingCodes.length) {
+                    if (DEBUG_MODE) console.log('[Discover] Missing movement for', missingCodes.length, 'codes. Scheduling enrichment fetch.');
+                    const now = Date.now();
+                    if (!window.__discoverEnrichTs || (now - window.__discoverEnrichTs) > 4000) {
+                        window.__discoverEnrichTs = now;
+                        setTimeout(async ()=>{
+                            try {
+                                await fetchLivePrices({ cacheBust: true });
+                                if (modal && modal.style.display !== 'none') {
+                                    try { openDiscoverModal(summaryData); } catch(e){ console.warn('Discover enrichment refresh failed', e); }
+                                }
+                            } catch(e) { console.warn('Discover enrichment fetch error', e); }
+                        }, 350);
+                    }
+                }
+            }
+            // Apply chosen sort to entries & reorder DOM if necessary
+            try {
+                applySort(entries);
+                // Re-append in new order
+                const ordered = entries.map(en => ul.querySelector('li.discover-mover[data-code="'+en.code+'"]')).filter(Boolean);
+                ordered.forEach(li => ul.appendChild(li));
+            } catch(e){ if (DEBUG_MODE) console.warn('Discover sort apply failed', e); }
+            // Listen for sort changes
+            sortSelect.addEventListener('change', () => {
+                try { localStorage.setItem('discoverSort', sortSelect.value); } catch(_) {}
+                // Re-sort using existing in-memory entries (with helper values)
+                applySort(entries);
+                const ordered = entries.map(en => ul.querySelector('li.discover-mover[data-code="'+en.code+'"]')).filter(Boolean);
+                ordered.forEach(li => ul.appendChild(li));
+                sortDesc.textContent = sortModeDescription(sortSelect.value);
+            });
+            listEl.appendChild(ul);
+        }
+        showModal(modal);
+    }
+
+    const makeItem = (share, isMuted) => {
+        const livePriceData = livePrices[share.shareName.toUpperCase()] || {};
+        const currentLivePrice = (livePriceData.live !== undefined && livePriceData.live !== null && !isNaN(livePriceData.live)) ? Number(livePriceData.live) : null;
+        const prevClose = (livePriceData.prevClose !== undefined && livePriceData.prevClose !== null && !isNaN(livePriceData.prevClose)) ? Number(livePriceData.prevClose) : null;
+        const targetPrice = share.targetPrice;
+        const priceClass = (currentLivePrice !== null && targetPrice != null && !isNaN(targetPrice) && currentLivePrice >= targetPrice) ? 'positive' : 'negative';
+        // Movement calculations (dollar + percent) for discover/target list items
+        let movementDeltaHtml = '';
+        if (currentLivePrice !== null && prevClose !== null && prevClose !== 0) {
+            const ch = currentLivePrice - prevClose;
+            const pct = (ch / prevClose) * 100;
+            const dirClass = ch === 0 ? 'neutral' : (ch > 0 ? 'positive' : 'negative');
+            const combo = `${ch>0?'+':''}${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%`;
+            movementDeltaHtml = `<span class="movement-combo ${dirClass}">${combo}</span>`;
+        }
+        const item = document.createElement('div');
+        item.classList.add('target-hit-item');
+        if (isMuted) item.classList.add('muted');
+        item.dataset.shareId = share.id;
+        if (share.shareName) item.dataset.asxCode = share.shareName.toUpperCase();
+        item.innerHTML = `
+            <div class="target-hit-item-grid">
+                <div class="col-left">
+                    <span class="share-name-code ${priceClass}">${share.shareName}</span>
+                    <span class="target-price-line alert-target-line">${renderAlertTargetInline(share,{showLabel:true})}</span>
+                    ${movementDeltaHtml?`<div class=\"movement-line\">${movementDeltaHtml}</div>`:''}
+                </div>
+                <div class="col-right">
+                    <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
+                    <button class="toggle-alert-btn tiny-toggle" data-share-id="${share.id}" title="${isMuted ? 'Unmute Alert' : 'Mute Alert'}">${isMuted ? 'Unmute' : 'Mute'}</button>
+                </div>
+            </div>
+        `;
+        // Click to open share details
+        item.addEventListener('click', (e) => {
+            // If the click is on the toggle button, don't navigate
+            if (e.target && e.target.classList && e.target.classList.contains('toggle-alert-btn')) return;
+            const sid = item.dataset.shareId;
+            if (sid) {
+                wasShareDetailOpenedFromTargetAlerts = true;
+                hideModal(targetHitDetailsModal);
+                selectShare(sid);
+                showShareDetails();
+            }
+            // Click-to-populate: trigger snapshot fetch/populate if shareNameInput present
+            const code = item.dataset.asxCode;
+            if (code && typeof updateAddFormLiveSnapshot === 'function') {
+                try {
+                    if (typeof shareNameInput !== 'undefined' && shareNameInput) {
+                        // Populate input BEFORE snapshot so stale check passes
+                        shareNameInput.value = code;
+                    }
+                    if (DEBUG_MODE) console.log('[ClickPopulate] Triggering snapshot fetch for', code);
+                    updateAddFormLiveSnapshot(code);
+                } catch(err) { if (DEBUG_MODE) console.warn('Click-to-populate snapshot failed', err); }
+            }
+        });
+        // Mute/unmute button
+        const toggleBtn = item.querySelector('.toggle-alert-btn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    await toggleAlertEnabled(share.id); // internal handles optimistic update + banner refresh
+                    showTargetHitDetailsModal(); // rebuild list to reflect new grouping/button text
+                } catch(err) {
+                    console.warn('Toggle alert failed', err);
+                }
+            });
+        }
+        return item;
+    };
+
+    const hasEnabled = sharesAtTargetPrice.length > 0;
+    const hasMuted = Array.isArray(sharesAtTargetPriceMuted) && sharesAtTargetPriceMuted.length > 0;
+    if (!hasEnabled && !hasMuted) {
+        const p = document.createElement('p');
+        p.className = 'no-alerts-message';
+    p.textContent = 'No shares currently at alert target.';
+        targetHitSharesList.appendChild(p);
+    } else {
+        if (hasEnabled) {
+            const enabledHeader = document.createElement('h3');
+            enabledHeader.textContent = 'Target hit';
+            enabledHeader.className = 'target-hit-section-title target-hit-enabled-header';
+            enabledHeader.id = 'targetHitHeader';
+            // Append after global movers block (which was added first if present)
+            targetHitSharesList.appendChild(enabledHeader);
+            sharesAtTargetPrice.forEach(share => targetHitSharesList.appendChild(makeItem(share, false)));
+        }
+        if (hasMuted) {
+            const mutedHeader = document.createElement('h3');
+            mutedHeader.textContent = 'Muted Alerts';
+            targetHitSharesList.appendChild(mutedHeader);
+            sharesAtTargetPriceMuted.forEach(share => targetHitSharesList.appendChild(makeItem(share, true)));
+        }
+    }
+
+    showModal(targetHitDetailsModal);
+    __userInitiatedTargetModal = true; // mark that user has seen modal this session
+    logDebug('Target Hit Modal: Displayed details. Enabled=' + sharesAtTargetPrice.length + ' Muted=' + (sharesAtTargetPriceMuted?sharesAtTargetPriceMuted.length:0));
+}
+
+// Toggle GA_SUMMARY enabled flag (mute/unmute for session)
+async function toggleGlobalSummaryEnabled() {
+    try {
+        if (!db || !currentUserId || !firestore) return;
+        const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+        const summaryRef = firestore.doc(alertsCol, 'GA_SUMMARY');
+        const snap = await firestore.getDoc(summaryRef);
+        let currentEnabled = true;
+        if (snap.exists()) {
+            const d = snap.data();
+            currentEnabled = (d.enabled !== false);
+        }
+        await firestore.setDoc(summaryRef, { enabled: !currentEnabled, updatedAt: firestore.serverTimestamp() }, { merge: true });
+        // Optimistic update of local cache
+        if (globalAlertSummary) globalAlertSummary.enabled = !currentEnabled;
+        updateTargetHitBanner();
+        if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') showTargetHitDetailsModal();
+        showCustomAlert((!currentEnabled ? 'Global Alert unmuted' : 'Global Alert muted'), 1200);
+    } catch(e) { console.warn('Global Alert mute toggle failed', e); }
+}
+
+// NEW: Target hit icon button listener (opens the modal) - moved to global scope
+
+// Force Update: fully clears caches, unregisters service workers, clears storage, reloads fresh
+async function forceHardUpdate() {
+    try {
+        showCustomAlert('Forcing update...', 1200);
+        // Unregister all service workers
+        if (navigator.serviceWorker) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r=>r.unregister().catch(()=>{})));
+            if (DEBUG_MODE) console.log('[ForceUpdate] Service workers unregistered:', regs.length);
+        }
+        // Clear caches
+        if (window.caches && caches.keys) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k=>caches.delete(k).catch(()=>{})));
+            if (DEBUG_MODE) console.log('[ForceUpdate] Caches cleared:', keys);
+        }
+        // Clear IndexedDB databases (best-effort; some browsers may not support indexedDB.databases)
+        try {
+            if (window.indexedDB && indexedDB.databases) {
+                const dbs = await indexedDB.databases();
+                if (Array.isArray(dbs)) {
+                    await Promise.all(dbs.map(db => db && db.name ? new Promise(res=>{ const req = indexedDB.deleteDatabase(db.name); req.onsuccess=req.onerror=req.onblocked=()=>res(); }) : Promise.resolve()));
+                    if (DEBUG_MODE) console.log('[ForceUpdate] IndexedDB databases cleared:', dbs.map(d=>d && d.name));
+                }
+            }
+        } catch(idbErr) { if (DEBUG_MODE) console.warn('[ForceUpdate] IndexedDB clear not fully supported', idbErr); }
+        // Clear local/session storage (preserve maybe user theme? currently wiping everything for guaranteed fresh load)
+        try { localStorage.clear(); } catch(_) {}
+        try { sessionStorage.clear(); } catch(_) {}
+        // Small delay to allow SW unregister & cache deletion to settle
+        setTimeout(()=>{ window.location.reload(true); }, 300);
+    } catch(err) {
+        console.warn('[ForceUpdate] Failed, manual hard reload may be required.', err);
+        showCustomAlert('Force update failed. Please hard reload manually.', 2500);
+    }
+}
+if (targetHitIconBtn) {
+    targetHitIconBtn.addEventListener('click', (event) => {
+        logDebug('Target Alert: Icon button clicked. Opening details modal.');
+        __userInitiatedTargetModal = true;
+        ALLOW_ALERT_MODAL_AUTO_OPEN = true; // enable future passive opens this session
+        showTargetHitDetailsModal({ explicit:true });
+    });
+}
+
+let firebaseServices;
+
+document.addEventListener('DOMContentLoaded', async function() {
+    logDebug('script.js DOMContentLoaded fired.');
+
+    firebaseServices = initializeFirebaseAndAuth();
+    db = firebaseServices.db;
+    auth = firebaseServices.auth;
+    currentAppId = firebaseServices.currentAppId;
+    firestore = firebaseServices.firestore;
+    authFunctions = firebaseServices.authFunctions;
+    window._firebaseInitialized = firebaseServices.firebaseInitialized;
+
+    initializeApp();
+});
 
 function initializeApp() {
     if (db && auth && currentAppId && firestore && authFunctions) {
@@ -10819,6 +11445,213 @@ function initializeApp() {
             }
         } catch(e){ console.warn('[Movers restore][fallback DOMContentLoaded] failed', e); }
     }, 1300);
+
+    const firebaseServices = initializeFirebaseAndAuth();
+    db = firebaseServices.db;
+    auth = firebaseServices.auth;
+    currentAppId = firebaseServices.currentAppId;
+    firestore = firebaseServices.firestore;
+    authFunctions = firebaseServices.authFunctions;
+    window._firebaseInitialized = firebaseServices.firebaseInitialized;
+
+    if (db && auth && currentAppId && firestore && authFunctions) {
+        logDebug('Firebase Ready: DB, Auth, and AppId assigned from firebase.js. Setting up auth state listener.');
+
+        // Ensure persistence is set once
+        try {
+            if (authFunctions.setPersistence) {
+                const ua = navigator.userAgent || navigator.vendor || '';
+                const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+                const targetPersistence = isMobile && authFunctions.browserSessionPersistence
+                    ? authFunctions.browserSessionPersistence
+                    : authFunctions.browserLocalPersistence;
+                if (targetPersistence) {
+                    authFunctions
+                        .setPersistence(auth, targetPersistence)
+                        .then(() => logDebug('Auth: Persistence set to ' + (targetPersistence === authFunctions.browserSessionPersistence ? 'browserSessionPersistence' : 'browserLocalPersistence') + '.'))
+                        .catch((e) => console.warn('Auth: Failed to set persistence, continuing with default.', e));
+                }
+            }
+        } catch (e) {
+            console.warn('Auth: Failed to set persistence (outer), continuing with default.', e);
+        }
+
+    authFunctions.onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Restore movers view if it was active prior to a storage reset during auth
+                try {
+                    const pre = sessionStorage.getItem('preResetLastSelectedView');
+                    if (pre === '__movers' && !localStorage.getItem('lastSelectedView')) {
+                        setLastSelectedView('__movers');
+                        sessionStorage.removeItem('preResetLastSelectedView');
+                    }
+                } catch(_) {}
+                currentUserId = user.uid;
+                logDebug('AuthState: User signed in: ' + user.uid);
+
+                // Restore user's last state from localStorage
+                restorePersistedState();
+                logDebug('AuthState: User email: ' + user.email);
+                try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
+                // Use dynamic update instead of hard-coded label so it reflects current selection
+                updateMainTitle();
+                logDebug('AuthState: Dynamic title initialized via updateMainTitle().');
+                updateMainButtonsState(true);
+                window._userAuthenticated = true; // Mark user as authenticated
+
+                if (mainContainer) {
+                    mainContainer.classList.remove('app-hidden');
+                }
+                if (appHeader) {
+                    appHeader.classList.remove('app-hidden');
+                }
+                adjustMainContentPadding();
+
+                        // Ensure header click bindings are attached after header becomes visible
+                        try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind after auth show', e); }
+
+                if (splashKangarooIcon) {
+                    splashKangarooIcon.classList.add('pulsing');
+                    logDebug('Splash Screen: Started pulsing animation after sign-in.');
+                }
+
+                targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
+                // Immediately reflect any persisted target count before live data loads
+                try { updateTargetHitBanner(); } catch(e) { console.warn('Auth early Target Alert restore failed', e); }
+
+                // Load user data, then do an initial fetch of live prices before setting the update interval.
+                // This ensures the initial view is correctly sorted by percentage change if selected.
+                await loadUserWatchlistsAndSettings();
+                // Load Firestore UI prefs early then restore view/mode (A & B)
+                try { await loadUserPreferences(); restoreViewAndModeFromPreferences(); } catch(e){ console.warn('Preference restore failed', e); }
+                try { ensureTitleStructure(); } catch(e) {}
+                // Load persisted compact view preference AFTER user data is ready
+                try {
+                    const storedMode = localStorage.getItem('currentMobileViewMode');
+                    let mode = (storedMode === 'compact' || storedMode === 'default') ? storedMode : null;
+                    if (!mode && userPreferences && userPreferences.compactViewMode) {
+                        mode = (userPreferences.compactViewMode === 'compact') ? 'compact' : 'default';
+                    }
+                    currentMobileViewMode = mode || 'default';
+                } catch(e) { console.warn('View Mode: Failed to load persisted mode post-auth', e); currentMobileViewMode = 'default'; }
+                // Apply class now so first rendered watchlist/cards adopt correct layout
+                if (mobileShareCardsContainer) {
+                    if (currentMobileViewMode === 'compact') mobileShareCardsContainer.classList.add('compact-view');
+                    else mobileShareCardsContainer.classList.remove('compact-view');
+                }
+                logDebug('View Mode: Applied persisted mode post-auth (pre-initial render): ' + currentMobileViewMode);
+                // Start alerts listener (enabled alerts only; muted excluded from notifications)
+                await loadTriggeredAlertsListener();
+                startGlobalSummaryListener();
+                // On first auth load, force one live fetch even if starting in Cash view to restore alerts
+                const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
+                await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
+                try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true'); } catch(e) {}
+                startLivePriceUpdates();
+                // Extra safety: ensure target modal not left open from cached state on fresh auth
+                try { if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none' && window.__initialLoadPhase) hideModal(targetHitDetailsModal); } catch(_){ }
+
+                allAsxCodes = await loadAsxCodesFromCSV();
+                logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
+
+                // Legacy block replaced by restoreViewAndModeFromPreferences()
+            }
+
+            else {
+                currentUserId = null;
+                // Reset title safely using the inner span, do not expand click target
+                try { ensureTitleStructure(); const t = document.getElementById('dynamicWatchlistTitleText'); if (t) t.textContent = 'Share Watchlist'; } catch(e) {}
+                logDebug('AuthState: User signed out.');
+                updateMainButtonsState(false);
+                clearShareList();
+                clearWatchlistUI();
+                userCashCategories = []; // Clear cash data on logout
+                if (cashCategoriesContainer) cashCategoriesContainer.innerHTML = ''; // Clear cash UI
+                if (totalCashDisplay) totalCashDisplay.textContent = '$0.00'; // Reset total cash
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
+                applyTheme('system-default');
+                if (unsubscribeShares) {
+                    unsubscribeShares();
+                    unsubscribeShares = null;
+                    logDebug('Firestore Listener: Unsubscribed from shares listener on logout.');
+                }
+                if (unsubscribeCashCategories) { // NEW: Unsubscribe from cash categories
+                    unsubscribeCashCategories();
+                    unsubscribeCashCategories = null;
+                    logDebug('Firestore Listener: Unsubscribed from cash categories listener on logout.');
+                }
+                if (unsubscribeAlerts) { // NEW: Unsubscribe from alerts
+                    try { unsubscribeAlerts(); } catch(_) {}
+                    unsubscribeAlerts = null;
+                    logDebug('Firestore Listener: Unsubscribed from alerts listener on logout.');
+                }
+                stopGlobalSummaryListener();
+                stopLivePriceUpdates();
+
+                window._userAuthenticated = false; // Mark user as not authenticated
+                // If signed out, ensure splash screen is visible for sign-in
+                if (splashScreen) {
+                    splashScreen.style.display = 'flex'; // Ensure splash screen is visible
+                    splashScreen.classList.remove('hidden'); // Ensure it's not hidden
+                    document.body.style.overflow = 'hidden'; // Re-apply overflow hidden
+                    if (splashKangarooIcon) {
+                        splashKangarooIcon.classList.remove('pulsing'); // Stop animation if signed out
+                    }
+                    if (splashSignInBtn) {
+                        splashSignInBtn.disabled = false; // Enable sign-in button
+                        const buttonTextSpan = splashSignInBtn.querySelector('span');
+                        if (buttonTextSpan) {
+                            buttonTextSpan.textContent = 'Sign in with Google'; // Reset only the text, not the icon
+                        }
+                    }
+                    // Hide main app content
+                    if (mainContainer) {
+                        mainContainer.classList.add('app-hidden');
+                    }
+                    if (appHeader) {
+                        appHeader.classList.add('app-hidden');
+                    }
+                    logDebug('Splash Screen: User signed out, splash screen remains visible for sign-in.');
+                } else {
+                    console.warn('Splash Screen: User signed out, but splash screen element not found. App content might be visible.');
+                }
+                // NEW: Reset targetHitIconDismissed and clear localStorage entry on logout for a fresh start on next login
+                targetHitIconDismissed = false;
+                localStorage.removeItem('targetHitIconDismissed');
+
+            }
+            if (!window._appLogicInitialized) {
+                initializeAppLogic();
+                window._appLogicInitialized = true;
+            } else {
+                // If app logic already initialized, ensure view mode is applied after auth.
+                // This handles cases where user signs out and then signs back in,
+                // and we need to re-apply the correct mobile view class.
+                if (currentMobileViewMode === 'compact' && mobileShareCardsContainer) {
+                    mobileShareCardsContainer.classList.add('compact-view');
+                } else if (mobileShareCardsContainer) {
+                    mobileShareCardsContainer.classList.remove('compact-view');
+                }
+            }
+            // Call renderWatchlist here to ensure correct mobile card rendering after auth state is set
+            renderWatchlist();
+            try { ensureTitleStructure(); } catch(e) {}
+            // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
+        });
+    } else {
+    console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
+        const errorDiv = document.getElementById('firebaseInitError');
+        if (errorDiv) {
+                errorDiv.style.display = 'block';
+        }
+        updateMainButtonsState(false);
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        applyTheme('system-default');
+        // NEW: Call adjustMainContentPadding even if Firebase fails, to ensure some basic layout
+        adjustMainContentPadding();
+        // NEW: Hide splash screen if Firebase fails to initialize
+        hideSplashScreen();
+    }
 }
 
 // Simple Diagnostics helper for non-coders (adds click on Diagnostics menu button to copy key info)
