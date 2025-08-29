@@ -11131,6 +11131,7 @@ if (targetHitIconBtn) {
 
 let firebaseServices;
 
+
 function initializeApp() {
     if (db && auth && currentAppId && firestore && authFunctions) {
         logDebug('Firebase Ready: DB, Auth, and AppId assigned from firebase.js. Setting up auth state listener.');
