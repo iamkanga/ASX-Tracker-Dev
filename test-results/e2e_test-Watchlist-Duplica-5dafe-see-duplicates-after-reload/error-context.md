@@ -1,0 +1,157 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic:
+    - paragraph: 2.10.30
+    - img "Kangaroo App Icon"
+    - button "Sign in with Google":
+      - img
+      - generic: Sign in with Google
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - button "Menu" [expanded] [active] [ref=e5] [cursor=pointer]:
+        - generic [ref=e6] [cursor=pointer]: 
+      - heading "Watch List" [level=1]:
+        - button "Watch List" [ref=e7]
+      - button "Add Share" [ref=e8] [cursor=pointer]:
+        - generic [ref=e9] [cursor=pointer]: +
+    - combobox "Sort" [ref=e13] [cursor=pointer]:
+      - option "Sort List" [disabled]
+      - option "ASX Codes — Show"
+      - option "Change % (H-L)"
+      - option "Change % (L-H)"
+      - option "Code (A-Z)"
+      - option "Code (Z-A)"
+      - option "Date (N-O)" [selected]
+      - option "Date (O-N)"
+      - option "⭐ (H-L)"
+      - option "⭐ (L-H)"
+      - option "Yield % (H-L)"
+      - option "Yield % (L-H)"
+    - generic:
+      - generic: Updated
+      - generic: 01:18:18 PM
+  - text:   
+  - navigation [ref=e14]:
+    - button "X" [ref=e15] [cursor=pointer]
+    - generic [ref=e16]:
+      - heading "Share Actions" [level=3] [ref=e17]
+      - generic [ref=e18]:
+        - button " Compact View" [ref=e19] [cursor=pointer]:
+          - generic [ref=e20] [cursor=pointer]: 
+          - generic [ref=e21] [cursor=pointer]: Compact View
+        - button " Refresh Live Prices" [disabled]:
+          - generic: 
+          - generic: Refresh Live Prices
+        - button " Add New Share" [disabled]:
+          - generic: 
+          - generic: Add New Share
+        - button " Search & Add Stock" [ref=e22] [cursor=pointer]:
+          - generic [ref=e23] [cursor=pointer]: 
+          - generic [ref=e24] [cursor=pointer]: Search & Add Stock
+    - generic [ref=e25]:
+      - heading "Watchlists" [level=3] [ref=e26]
+      - generic [ref=e27]:
+        - button " Add Watchlist" [disabled]:
+          - generic: 
+          - generic: Add Watchlist
+        - button " Edit Current Watchlist" [disabled]:
+          - generic: 
+          - generic: Edit Current Watchlist
+        - button " Global Alerts" [ref=e28] [cursor=pointer]:
+          - generic [ref=e29] [cursor=pointer]: 
+          - generic [ref=e30] [cursor=pointer]: Global Alerts
+    - generic [ref=e31]:
+      - heading "Calculators" [level=3] [ref=e32]
+      - generic [ref=e33]:
+        - button " Standard" [disabled]:
+          - generic: 
+          - generic: Standard
+        - button " Dividend" [disabled]:
+          - generic: 
+          - generic: Dividend
+    - generic [ref=e34]:
+      - heading "Theme" [level=3] [ref=e35]
+      - generic [ref=e36]:
+        - generic [ref=e37]: "Choose Color Theme:"
+        - combobox "Choose Color Theme:" [disabled]:
+          - option "No Custom Theme" [selected]
+          - option "Bold Ocean"
+          - option "Bold Forest"
+          - option "Bold Sunset"
+          - option "Bold Royal"
+          - option "Bold Grape"
+          - option "Bold Fire"
+          - option "Bold Emerald"
+          - option "Bold Plum"
+          - option "Bold Aqua"
+          - option "Bold Ruby"
+          - option "Subtle Sky"
+          - option "Subtle Earth"
+          - option "Subtle Rose"
+          - option "Subtle Lavender"
+          - option "Subtle Mint"
+          - option "Subtle Sand"
+          - option "Subtle Graphite"
+          - option "Subtle Peach"
+          - option "Subtle Teal"
+          - option "Subtle Stone"
+          - option "Muted Blue"
+          - option "Muted Brown"
+          - option "Muted Pink"
+          - option "Muted Green"
+          - option "Muted Purple"
+          - option "Muted Orange"
+          - option "Muted Cyan"
+          - option "Muted Magenta"
+          - option "Muted Gold"
+          - option "Muted Grey"
+        - button " Theme Toggle" [disabled]:
+          - generic: 
+          - generic: Theme Toggle
+        - button "  Default Theme" [disabled]:
+          - generic: 
+          - generic: 
+          - generic: Default Theme
+    - generic [ref=e38]:
+      - heading "Data Actions" [level=3] [ref=e39]
+      - generic [ref=e40]:
+        - button " Export Watchlist (CSV)" [disabled]:
+          - generic: 
+          - generic: Export Watchlist (CSV)
+        - button " Diagnostics" [ref=e41] [cursor=pointer]:
+          - generic [ref=e42] [cursor=pointer]: 
+          - generic [ref=e43] [cursor=pointer]: Diagnostics
+        - button " Force Update" [ref=e44] [cursor=pointer]:
+          - generic [ref=e45] [cursor=pointer]: 
+          - generic [ref=e46] [cursor=pointer]: Force Update
+    - generic [ref=e47]:
+      - heading "Data Management" [level=3] [ref=e48]
+      - button " Delete All My Data" [ref=e50] [cursor=pointer]:
+        - generic [ref=e51] [cursor=pointer]: 
+        - generic [ref=e52] [cursor=pointer]: Delete All My Data
+    - generic [ref=e53]:
+      - heading "Account" [level=3] [ref=e54]
+      - generic [ref=e55]:
+        - generic:
+          - generic: 
+          - generic: Log Out
+  - main [ref=e56]:
+    - table [ref=e59]:
+      - rowgroup [ref=e60]:
+        - row "Code Live Price Alert Target Rating Dividends" [ref=e61]:
+          - cell "Code" [ref=e62]
+          - cell "Live Price" [ref=e63]
+          - cell "Alert Target" [ref=e64]
+          - cell "Rating" [ref=e65]
+          - cell "Dividends" [ref=e66]
+      - rowgroup [ref=e67]:
+        - row "No shares found for the selected watchlists. Add a new share to get started!" [ref=e68] [cursor=pointer]:
+          - cell "No shares found for the selected watchlists. Add a new share to get started!" [ref=e69] [cursor=pointer]:
+            - paragraph [ref=e70] [cursor=pointer]: No shares found for the selected watchlists. Add a new share to get started!
+  - button "Notifications 1" [ref=e71] [cursor=pointer]:
+    - img "Notifications" [ref=e72] [cursor=pointer]
+    - generic [ref=e73] [cursor=pointer]: "1"
+  - text:    ✓ +                +  
+```
