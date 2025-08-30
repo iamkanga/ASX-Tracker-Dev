@@ -5120,7 +5120,23 @@ function renderWatchlistSelect() {
     // Add all other user watchlists alphabetically after Movers (exclude Movers and other special IDs from this list)
     const filtered = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== 'portfolio' && wl.id !== '__movers' && wl.id !== ALL_SHARES_ID);
     filtered.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+    // Instrumentation: count how many times this renderer runs during a session (helps diagnose duplicate-render callers)
+    try {
+        if (typeof window.__renderWatchlistSelectCount === 'undefined') window.__renderWatchlistSelectCount = 0;
+        window.__renderWatchlistSelectCount++;
+        logDebug('renderWatchlistSelect invoked. Count: ' + window.__renderWatchlistSelectCount);
+    } catch (_) { /* ignore */ }
+
+    // Append user watchlists, but avoid creating duplicate <option> elements if they already exist
     filtered.forEach(watchlist => {
+        try {
+            if (watchlistSelect.querySelector(`option[value="${watchlist.id}"]`)) {
+                logDebug('[UI Dedupe] Skipping duplicate watchlist option: ' + watchlist.id + ' (already in DOM)');
+                return;
+            }
+        } catch (_) { /* ignore selector errors */ }
+
         const option = document.createElement('option');
         option.value = watchlist.id;
         option.textContent = watchlist.name;
@@ -6458,8 +6474,16 @@ async function loadUserWatchlistsAndSettings() {
     try {
         logDebug('User Settings: Fetching user watchlists and profile settings...');
         const querySnapshot = await firestore.getDocs(firestore.query(watchlistsColRef));
-        querySnapshot.forEach(doc => { userWatchlists.push({ id: doc.id, name: doc.data().name }); });
-        logDebug('User Settings: Found ' + userWatchlists.length + ' existing watchlists (before default check).');
+        // Build into a map to guard against duplicate reads producing repeated entries
+        const tmpMap = new Map();
+        querySnapshot.forEach(doc => {
+            const id = doc.id;
+            const name = (doc.data() && doc.data().name) ? String(doc.data().name) : '';
+            if (tmpMap.has(id) && DEBUG_MODE) console.warn('[Dedupe] Duplicate watchlist doc id read from querySnapshot:', id);
+            tmpMap.set(id, { id, name });
+        });
+        userWatchlists = Array.from(tmpMap.values());
+        logDebug('User Settings: Found ' + userWatchlists.length + ' unique watchlists (after dedupe).');
 
         // Ensure "Cash & Assets" is always an option in `userWatchlists` for internal logic
         if (!userWatchlists.some(wl => wl.id === CASH_BANK_WATCHLIST_ID)) {
