@@ -7560,10 +7560,11 @@ function hideSplashScreenIfReady() {
  * Updates `allSharesData` and triggers UI re-render via `renderWatchlist` (indirectly through `fetchLivePrices` or `sortShares`).
  */
 async function loadShares() {
+    console.log('loadShares called. unsubscribeShares is', unsubscribeShares ? 'defined' : 'null');
     if (unsubscribeShares) {
         unsubscribeShares();
         unsubscribeShares = null;
-        logDebug('Firestore Listener: Unsubscribed from previous shares listener.');
+        console.log('Firestore Listener: Unsubscribed from previous shares listener.');
     }
 
     if (!db || !currentUserId || !firestore) {
@@ -11131,6 +11132,19 @@ if (targetHitIconBtn) {
 
 let firebaseServices;
 
+document.addEventListener('DOMContentLoaded', async function() {
+    logDebug('script.js DOMContentLoaded fired.');
+
+    firebaseServices = initializeFirebaseAndAuth();
+    db = firebaseServices.db;
+    auth = firebaseServices.auth;
+    currentAppId = firebaseServices.currentAppId;
+    firestore = firebaseServices.firestore;
+    authFunctions = firebaseServices.authFunctions;
+    window._firebaseInitialized = firebaseServices.firebaseInitialized;
+
+    initializeApp();
+});
 
 function initializeApp() {
     if (db && auth && currentAppId && firestore && authFunctions) {
@@ -11156,6 +11170,7 @@ function initializeApp() {
         }
 
     authFunctions.onAuthStateChanged(auth, async (user) => {
+            console.log('Auth state changed. User:', user ? user.uid : 'null');
             if (user) {
                 // Restore movers view if it was active prior to a storage reset during auth
                 try {
