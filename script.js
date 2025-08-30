@@ -1500,7 +1500,6 @@ try {
     }
 } catch(e) { /* ignore */ }
 
-let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
 let unsubscribeAlerts = null; // NEW: Holds the unsubscribe function for Firestore alerts listener
 
