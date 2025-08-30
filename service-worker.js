@@ -15,7 +15,8 @@ const PRECACHE_URLS = [
     '/Kangaicon.jpg'
 ];
 
-addEventListener('install', event => {
+// Install: pre-cache core assets
+self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => cache.addAll(PRECACHE_URLS))
@@ -23,32 +24,39 @@ addEventListener('install', event => {
     );
 });
 
-addEventListener('activate', event => {
+// Activate: clean up old caches
+self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(keys => Promise.all(
             keys.map(key => {
-                if (key !== CACHE_NAME && key !== RUNTIME_CACHE) return caches.delete(key);
+                if (key !== CACHE_NAME && key !== RUNTIME_CACHE) {
+                    return caches.delete(key);
+                }
                 return undefined;
             })
-        ))
-        .then(() => self.clients.claim())
+        )).then(() => self.clients.claim())
     );
 });
 
-addEventListener('fetch', event => {
-    const request = event.request;
-    if (request.method !== 'GET') return;
-
-    const url = new URL(request.url);
+// Fetch: cache-first for precached/static assets, network-first for others with runtime caching
+self.addEventListener('fetch', event => {
+    const req = event.request;
+    if (req.method !== 'GET') return;
+    let url;
+    try { url = new URL(req.url); } catch (e) { return; }
     const sameOrigin = url.origin === self.location.origin;
     const pathname = url.pathname;
 
-    if (PRECACHE_URLS.includes(pathname) || (sameOrigin && ['script', 'style', 'image', 'document'].includes(request.destination))) {
+    // Serve precached/static resources from cache first
+    if (
+        PRECACHE_URLS.includes(pathname) ||
+        (sameOrigin && ['script', 'style', 'image', 'document'].includes(req.destination))
+    ) {
         event.respondWith(
-            caches.match(request).then(cached => {
+            caches.match(req).then(cached => {
                 if (cached) return cached;
-                return fetch(request).then(networkResp => {
-                    try { const copy = networkResp.clone(); caches.open(RUNTIME_CACHE).then(c => c.put(request, copy)); } catch (e) {}
+                return fetch(req).then(networkResp => {
+                    try { const copy = networkResp.clone(); caches.open(RUNTIME_CACHE).then(c => c.put(req, copy)); } catch (e) {}
                     return networkResp;
                 }).catch(() => caches.match('/index.html'));
             })
@@ -56,15 +64,17 @@ addEventListener('fetch', event => {
         return;
     }
 
+    // For other GET requests: try network, fallback to cache
     event.respondWith(
-        fetch(request).then(networkResp => {
-            try { if (sameOrigin) { const copy = networkResp.clone(); caches.open(RUNTIME_CACHE).then(c => c.put(request, copy)); } } catch (e) {}
+        fetch(req).then(networkResp => {
+            try { if (sameOrigin) { const copy = networkResp.clone(); caches.open(RUNTIME_CACHE).then(c => c.put(req, copy)); } } catch (e) {}
             return networkResp;
-        }).catch(() => caches.match(request))
+        }).catch(() => caches.match(req))
     );
 });
 
-addEventListener('message', event => {
+// Message handler: support immediate activation
+self.addEventListener('message', event => {
     try {
         const data = event.data || {};
         if (data && data.type === 'SKIP_WAITING') {
@@ -73,256 +83,89 @@ addEventListener('message', event => {
     } catch (e) { /* ignore malformed messages */ }
 });
 
-// End of file
+// End of service-worker.js
 function logTypographyRatios(contextLabel='') {
     try {
         const root = document;
         const priceEl = root.querySelector('#shareDetailModal .live-price-display-section .live-price-large, #shareDetailModal .modal-share-name');
-        const changeEl = root.querySelector('#shareDetailModal .live-price-display-section .price-change-large');
-        const weekLowEl = root.querySelector('#shareDetailModal .live-price-display-section .fifty-two-week-value.low');
-        const weekHighEl = root.querySelector('#shareDetailModal .live-price-display-section .fifty-two-week-value.high');
-        const peEl = root.querySelector('#shareDetailModal .live-price-display-section .pe-ratio-value');
-        const getSize = el => el ? parseFloat(getComputedStyle(el).fontSize) : NaN;
-        const primarySize = getSize(priceEl);
-        const report = {
-            context: contextLabel || 'detail-modal',
-            primaryPx: primarySize,
-            changePx: getSize(changeEl),
-            weekLowPx: getSize(weekLowEl),
-            weekHighPx: getSize(weekHighEl),
-            pePx: getSize(peEl)
-        };
-        ['changePx','weekLowPx','weekHighPx','pePx'].forEach(k => {
-            if (!isNaN(report[k]) && !isNaN(primarySize) && primarySize>0) {
-                report[k.replace('Px','Ratio')] = +(report[k] / primarySize).toFixed(3);
-            }
+        // ASX Tracker - Service Worker (standalone, non-module)
+        // Minimal, standalone service worker. No imports, no DOM/window usage.
+
+        const CACHE_NAME = 'asx-tracker-v1';
+        const RUNTIME_CACHE = 'asx-runtime-v1';
+
+        const PRECACHE_URLS = [
+            '/',
+            '/index.html',
+            '/script.js',
+            '/style.css',
+            '/portfolio.css',
+            '/manifest.json',
+            '/favicon.png',
+            '/Kangaicon.jpg'
+        ];
+
+        self.addEventListener('install', event => {
+            event.waitUntil(
+                caches.open(CACHE_NAME)
+                    .then(cache => cache.addAll(PRECACHE_URLS))
+                    .then(() => self.skipWaiting())
+            );
         });
-        console.log('[TypographyDiagnostics]', report);
-    } catch(e) { console.warn('Typography diagnostics failed', e); }
-}
 
-function logSearchModalTypographyRatios() {
-    try {
-        const root = document;
-        const priceEl = root.querySelector('#stockSearchModal .live-price-display-section .modal-share-name');
-        const changeEl = root.querySelector('#stockSearchModal .live-price-display-section .price-change-large');
-        const weekLowEl = root.querySelector('#stockSearchModal .live-price-display-section .fifty-two-week-value.low');
-        const weekHighEl = root.querySelector('#stockSearchModal .live-price-display-section .fifty-two-week-value.high');
-        const peEl = root.querySelector('#stockSearchModal .live-price-display-section .pe-ratio-value');
-        const getSize = el => el ? parseFloat(getComputedStyle(el).fontSize) : NaN;
-        const primarySize = getSize(priceEl);
-        const report = {
-            context:'search-modal',
-            primaryPx: primarySize,
-            changePx: getSize(changeEl),
-            weekLowPx: getSize(weekLowEl),
-            weekHighPx: getSize(weekHighEl),
-            pePx: getSize(peEl)
-        };
-        ['changePx','weekLowPx','weekHighPx','pePx'].forEach(k => {
-            if (!isNaN(report[k]) && !isNaN(primarySize) && primarySize>0) {
-                report[k.replace('Px','Ratio')] = +(report[k] / primarySize).toFixed(3);
-            }
+        self.addEventListener('activate', event => {
+            event.waitUntil(
+                caches.keys().then(keys => Promise.all(
+                    keys.map(key => {
+                        if (key !== CACHE_NAME && key !== RUNTIME_CACHE) return caches.delete(key);
+                        return undefined;
+                    })
+                )).then(() => self.clients.claim())
+            );
         });
-        console.log('[TypographyDiagnostics]', report);
-    } catch(e) { console.warn('Search typography diagnostics failed', e); }
-}
-try {
-    if (localStorage.getItem('lastSelectedView') === '__movers') {
-        sessionStorage.setItem('preResetLastSelectedView','__movers');
-    }
-} catch(_) {}
 
+        // Cache-first for precached/static assets, network-first for others with runtime caching.
+        self.addEventListener('fetch', event => {
+            const req = event.request;
+            if (req.method !== 'GET') return;
+            const url = new URL(req.url);
+            const sameOrigin = url.origin === self.location.origin;
+            const pathname = url.pathname;
 
-// Live Price Data
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
-let livePrices = {}; // Stores live price data: {ASX_CODE: {live: price, prevClose: price, PE: value, High52: value, Low52: value, targetHit: boolean, lastLivePrice: value, lastPrevClose: value}} 
-let livePriceFetchInterval = null; // To hold the interval ID for live price updates
-const LIVE_PRICE_FETCH_INTERVAL_MS = 5 * 60 * 1000; // Fetch every 5 minutes
-// Global discovery: store external (non-portfolio) price rows each fetch for global alert discovery logic
-let globalExternalPriceRows = []; // [{ code, live, prevClose }]
+            // If request is for a precached entry or a likely static asset, try cache-first.
+            if (PRECACHE_URLS.includes(pathname) || (sameOrigin && ['script', 'style', 'image', 'document'].includes(req.destination))) {
+                event.respondWith(
+                    caches.match(req).then(cached => {
+                        if (cached) return cached;
+                        return fetch(req).then(networkResp => {
+                            try { const copy = networkResp.clone(); caches.open(RUNTIME_CACHE).then(c => c.put(req, copy)); } catch (e) {}
+                            return networkResp;
+                        }).catch(() => caches.match('/index.html'));
+                    })
+                );
+                return;
+            }
 
-// --- Live Price Timestamp Update ---
-function updateLivePriceTimestamp(ts) {
-    const el = document.getElementById('livePriceTimestamp');
-    if (!el) return;
-    let dateObj;
-    if (ts instanceof Date) {
-        dateObj = ts;
-    } else if (typeof ts === 'number') {
-        dateObj = new Date(ts);
-    } else {
-        dateObj = new Date();
-    }
-    // Format: e.g. '12:34:56 pm' or '12:34 pm' (24h/12h based on locale)
-    const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    // Only set the time here; the label 'Updated' is rendered as a separate element in the container
-    el.textContent = timeStr;
-}
+            // Network-first fallback to cache.
+            event.respondWith(
+                fetch(req).then(networkResp => {
+                    try { if (sameOrigin) { const copy = networkResp.clone(); caches.open(RUNTIME_CACHE).then(c => c.put(req, copy)); } } catch (e) {}
+                    return networkResp;
+                }).catch(() => caches.match(req))
+            );
+        });
 
-// Patch live price fetch logic to update timestamp after fetch
-if (typeof fetchLivePrices === 'function') {
-    const origFetchLivePrices = fetchLivePrices;
-    window.fetchLivePrices = fetchLivePrices = async function(...args) {
-        const result = await origFetchLivePrices.apply(this, args);
-        updateLivePriceTimestamp(Date.now());
-        return result;
-    };
-}
-
-// Also update timestamp on DOMContentLoaded (in case prices are preloaded)
-document.addEventListener('DOMContentLoaded', function() {
-    updateLivePriceTimestamp(Date.now());
-    // If the live timestamp container exists inside the header, apply right-bottom positioning helper
-    try {
-        const lpCont = document.getElementById('livePriceTimestampContainer');
-        const header = document.getElementById('appHeader');
-        if (lpCont && header) {
-                // Move the timestamp into the header element so we can absolutely position it bottom-right
-                const headerTop = header.querySelector('.header-top-row') || header;
-                try {
-                    // Ensure the container has a stacked label + time structure
-                    if (!lpCont.querySelector('.live-price-label')) {
-                        // Preserve existing time span id by recreating inner content
-                        lpCont.innerHTML = '<div class="live-price-label">Updated</div><div id="livePriceTimestamp"></div>';
-                    }
-                    // Append to the root header so absolute positioning is relative to the header area
-                    header.appendChild(lpCont);
-                    lpCont.classList.remove('live-price-inside-header-left');
-                    lpCont.classList.add('live-price-inside-header');
-                } catch (e) {
-                    if (header.contains(lpCont)) lpCont.classList.add('live-price-inside-header');
+        // Support skipWaiting from the client to activate new SW immediately.
+        self.addEventListener('message', event => {
+            try {
+                const data = event.data || {};
+                if (data && data.type === 'SKIP_WAITING') {
+                    self.skipWaiting();
                 }
-        }
-    } catch(_) {}
-});
+            } catch (e) { /* ignore malformed messages */ }
+        });
 
-// Theme related variables
-const CUSTOM_THEMES = [
-    'bold-1', 'bold-2', 'bold-3', 'bold-4', 'bold-5', 'bold-6', 'bold-7', 'bold-8', 'bold-9', 'bold-10',
-    'subtle-1', 'subtle-2', 'subtle-3', 'subtle-4', 'subtle-5', 'subtle-6', 'subtle-7', 'subtle-8', 'subtle-9', 'subtle-10',
-    'Muted Blue', 'Muted Brown', 'Muted Pink', 'Muted Green', 'Muted Purple', 'Muted Orange', 'Muted Cyan', 'Muted Magenta', 'Muted Gold', 'Muted Grey'
-];
-let currentCustomThemeIndex = -1; // To track the current theme in the cycle
-let currentActiveTheme = 'system-default'; // Tracks the currently applied theme string
-let savedSortOrder = null; // GLOBAL: Stores the sort order loaded from user settings
-let savedTheme = null; // GLOBAL: Stores the theme loaded from user settings
-// GLOBAL: Directional global alert thresholds (null or number)
-// (Legacy globalPercentAlert/globalDollarAlert replaced by the four below; migration handled in applyLoadedGlobalAlertSettings)
-let globalPercentIncrease = null;
-let globalDollarIncrease = null;
-let globalPercentDecrease = null;
-let globalDollarDecrease = null;
-let globalMinimumPrice = null; // New minimum live price filter
-let lastGlobalAlertsSessionId = null; // to avoid duplicating alerts within same fetch cycle if needed
-// GLOBAL: References to Global Alerts modal elements (initialized on DOMContentLoaded)
-let globalAlertsBtn = null;
-let globalAlertsModal = null;
-let saveGlobalAlertsBtn = null;
-let closeGlobalAlertsBtn = null;
-let globalPercentIncreaseInput = null;
-let globalDollarIncreaseInput = null;
-let globalPercentDecreaseInput = null;
-let globalDollarDecreaseInput = null;
-let globalMinimumPriceInput = null;
-let globalAlertsSettingsSummaryEl = null; // displays current settings under sidebar button
-
-// Early preload: if user recently cleared thresholds and we saved a local snapshot, apply it immediately
-// to avoid a flash of stale remote values before Firestore listener returns.
-try {
-    const lsSnap = localStorage.getItem('globalDirectionalSnapshot');
-    if (lsSnap) {
-        const parsed = JSON.parse(lsSnap);
-        if (parsed && parsed.at && Date.now() - parsed.at < 1000 * 60 * 60 * 12) { // valid for 12h
-            globalPercentIncrease = (typeof parsed.pInc === 'number' && parsed.pInc > 0) ? parsed.pInc : null;
-            globalDollarIncrease = (typeof parsed.dInc === 'number' && parsed.dInc > 0) ? parsed.dInc : null;
-            globalPercentDecrease = (typeof parsed.pDec === 'number' && parsed.pDec > 0) ? parsed.pDec : null;
-            globalDollarDecrease = (typeof parsed.dDec === 'number' && parsed.dDec > 0) ? parsed.dDec : null;
-            globalMinimumPrice = (typeof parsed.minP === 'number' && parsed.minP > 0) ? parsed.minP : null;
-            console.log('[GlobalAlerts][preload] Applied local snapshot of directional thresholds before remote load', parsed);
-        }
-    }
-} catch(e) { /* ignore */ }
-
-let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
-let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
-let unsubscribeAlerts = null; // NEW: Holds the unsubscribe function for Firestore alerts listener
-
-// NEW: Global variable to store shares that have hit their target price
-let sharesAtTargetPrice = [];
-// NEW: Also track triggered but muted alerts so users can unmute from the hub
-let sharesAtTargetPriceMuted = [];
-// Global alert summary cache
-let globalAlertSummary = null; // { increaseCount, decreaseCount, totalCount, threshold }
-// NEW: Remember last shown alert count to avoid icon flicker on reload while prices are loading (persisted)
-let lastKnownTargetCount = 0;
-try {
-    const persisted = parseInt(localStorage.getItem('lastKnownTargetCount') || '0', 10);
-    if (!isNaN(persisted) && persisted > 0) lastKnownTargetCount = persisted;
-} catch(e) {}
-
-// NEW: Global variable to track the current mobile view mode ('default' or 'compact')
-let currentMobileViewMode = 'default'; // Will be loaded post-auth, but try early restore now
-// Early restore of persisted mobile view mode so pre-auth UI (and first render) matches last preference
-try {
-    const __storedModeEarly = localStorage.getItem('currentMobileViewMode');
-    if (__storedModeEarly === 'compact' || __storedModeEarly === 'default') {
-        currentMobileViewMode = __storedModeEarly;
-        if (DEBUG_MODE) console.log('View Mode: Early restored mode =', currentMobileViewMode);
-    }
-} catch(_) {}
-
-// Helper to ensure compact mode class is always applied
-function applyCompactViewMode() {
-    if (mobileShareCardsContainer) {
-        if (currentMobileViewMode === 'compact') {
-            mobileShareCardsContainer.classList.add('compact-view');
-        } else {
-            mobileShareCardsContainer.classList.remove('compact-view');
-        }
-    }
-    // Re-apply ASX buttons visibility since compact view hides them
-    if (typeof applyAsxButtonsState === 'function') {
-        applyAsxButtonsState();
-    }
-    // Adjust layout after view mode change
-    requestAnimationFrame(adjustMainContentPadding);
-    // Update toggle button label/icon if present
-    try { if (typeof updateCompactViewButtonState === 'function') updateCompactViewButtonState(); } catch(_) {}
-}
-
-// === User Preferences Persistence (Firestore-backed) ===
-let userPreferences = {};
-async function loadUserPreferences() {
-    if (!db || !currentUserId || !firestore) return {};
-    try {
-        const prefsRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/preferences/ui');
-        const snap = await firestore.getDoc(prefsRef);
-        if (snap.exists()) {
-            userPreferences = snap.data() || {};
-            if (DEBUG_MODE) console.log('[Prefs] Loaded user preferences:', userPreferences);
-            return userPreferences;
-        }
-        if (DEBUG_MODE) console.log('[Prefs] No existing preferences doc');
-    } catch(e) { if (DEBUG_MODE) console.warn('Prefs: load failed', e); }
-    return {};
-}
-async function persistUserPreference(key, value) {
-    if (!db || !currentUserId || !firestore) return;
-    try {
-        const prefsRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/preferences/ui');
-        const obj = {}; obj[key] = value; obj.updatedAt = firestore.serverTimestamp();
-        await firestore.setDoc(prefsRef, obj, { merge: true });
-        userPreferences[key] = value;
-        if (DEBUG_MODE) console.log('[Prefs] Persisted', key, '=', value);
-    } catch(e) { if (DEBUG_MODE) console.warn('Prefs: persist failed', e); }
-}
-
-// Helper: persist lastSelectedView to both localStorage & Firestore (if authenticated)
-function setLastSelectedView(val) {
-    if (!val) return;
-    // Skip if unchanged (avoid noisy duplicate writes)
-    const currentLocal = (()=>{ try { return localStorage.getItem('lastSelectedView'); } catch(_) { return null; } })();
+        // End of service-worker.js
     if (currentLocal === val && userPreferences.lastSelectedView === val) {
         if (DEBUG_MODE) console.log('[Prefs] setLastSelectedView unchanged ->', val);
         return;
