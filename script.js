@@ -5121,6 +5121,10 @@ function renderWatchlistSelect() {
     const filtered = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== 'portfolio' && wl.id !== '__movers' && wl.id !== ALL_SHARES_ID);
     filtered.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     filtered.forEach(watchlist => {
+        // Defensive: avoid appending duplicate <option> elements with the same value
+        try {
+            if (watchlistSelect.querySelector(`option[value="${watchlist.id}"]`)) return;
+        } catch (_) {}
         const option = document.createElement('option');
         option.value = watchlist.id;
         option.textContent = watchlist.name;
@@ -6459,6 +6463,17 @@ async function loadUserWatchlistsAndSettings() {
         logDebug('User Settings: Fetching user watchlists and profile settings...');
         const querySnapshot = await firestore.getDocs(firestore.query(watchlistsColRef));
         querySnapshot.forEach(doc => { userWatchlists.push({ id: doc.id, name: doc.data().name }); });
+        // Defensive dedupe: ensure unique watchlist ids in memory after fetch
+        try {
+            const _m = new Map();
+            for (const w of userWatchlists) {
+                if (w && w.id && !_m.has(w.id)) _m.set(w.id, w);
+            }
+            userWatchlists = Array.from(_m.values());
+            logDebug('User Settings: Deduped userWatchlists post-fetch. Count=' + userWatchlists.length);
+        } catch (e) {
+            console.warn('User Settings: Dedupe after fetch failed', e);
+        }
         logDebug('User Settings: Found ' + userWatchlists.length + ' existing watchlists (before default check).');
 
         // Ensure "Cash & Assets" is always an option in `userWatchlists` for internal logic
@@ -8706,10 +8721,15 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             currentSelectedWatchlistIds = [newDocRef.id];
             await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
 
-            // --- IMPORTANT FIX: Update in-memory userWatchlists array immediately ---
-            // This ensures renderWatchlistSelect has the new watchlist available
-            // when loadUserWatchlistsAndSettings is called.
-            userWatchlists.push({ id: newDocRef.id, name: newName });
+            // --- IMPORTANT FIX: Update in-memory userWatchlists array immediately if missing ---
+            // Only add if not already present to avoid duplicates when loadUserWatchlistsAndSettings reloads from Firestore.
+            try {
+                if (!userWatchlists.some(w => w.id === newDocRef.id)) {
+                    userWatchlists.push({ id: newDocRef.id, name: newName });
+                } else {
+                    logDebug('Save Watchlist: new watchlist already present in memory, skipping push to userWatchlists.');
+                }
+            } catch (e) { console.warn('Save Watchlist: Failed to update in-memory userWatchlists safely', e); }
             // Re-sort userWatchlists to ensure the new watchlist is in the correct order for the dropdown
             userWatchlists.sort((a, b) => {
                 // Keep "Cash & Assets" at the bottom if it's there
