@@ -1,111 +1,8 @@
 import { initializeFirebaseAndAuth } from './firebase.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
 
-// --- Firestore Listener Management ---
-let unsubscribeShares = null;
-let unsubscribeWatchlists = null;
-let listenersAttached = false;
-
-function detachFirestoreListeners() {
-    if (unsubscribeShares) {
-        unsubscribeShares();
-        unsubscribeShares = null;
-        logDebug("Detached shares listener.");
-    }
-    if (unsubscribeWatchlists) {
-        unsubscribeWatchlists();
-        unsubscribeWatchlists = null;
-        logDebug("Detached watchlists listener.");
-    }
-    listenersAttached = false;
-}
-
-// --- CORE APP LOGIC & INITIALIZATION ---
-
-function initializeAppLogic() {
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            // User is signed in.
-            currentUserId = user.uid;
-
-            const splashScreen = document.getElementById('splashScreen');
-            const appHeader = document.getElementById('appHeader');
-            const mainContainer = document.querySelector('main.container');
-
-            if(splashScreen) splashScreen.style.display = 'none';
-            if(appHeader) appHeader.classList.remove('app-hidden');
-            if(mainContainer) mainContainer.classList.remove('app-hidden');
-
-            // Attach listeners only once per session
-            if (!listenersAttached) {
-                loadWatchlists(user.uid);
-                loadShares(user.uid);
-                listenersAttached = true;
-            }
-
-        } else {
-            // User is signed out.
-            currentUserId = null;
-
-            const splashScreen = document.getElementById('splashScreen');
-            const appHeader = document.getElementById('appHeader');
-            const mainContainer = document.querySelector('main.container');
-
-            if(splashScreen) splashScreen.style.display = 'flex';
-            if(appHeader) appHeader.classList.add('app-hidden');
-            if(mainContainer) mainContainer.classList.add('app-hidden');
-
-            // Clear UI and data
-            allSharesData = [];
-            userWatchlists = [];
-            if (typeof renderWatchlist === 'function') renderWatchlist();
-            if (typeof updateWatchlistDropdown === 'function') updateWatchlistDropdown();
-
-            // Detach listeners and reset guard for next login.
-            detachFirestoreListeners();
-        }
-    });
-}
-
-function loadShares(userId) {
-    if (!userId || !firestore) return;
-
-    const sharesRef = firestore.collection('users').doc(userId).collection('shares');
-    unsubscribeShares = sharesRef.onSnapshot(snapshot => {
-        const shares = [];
-        snapshot.forEach(doc => {
-            shares.push({ id: doc.id, ...doc.data() });
-        });
-        allSharesData = dedupeSharesById(shares);
-
-        if (typeof renderWatchlist === 'function') renderWatchlist();
-        if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner();
-        if (typeof renderPortfolioList === 'function') renderPortfolioList();
-
-    }, error => {
-        console.error("Error loading shares:", error);
-    });
-}
-
-function loadWatchlists(userId) {
-    if (!userId || !firestore) return;
-
-    const watchlistsRef = firestore.collection('users').doc(userId).collection('watchlists');
-    unsubscribeWatchlists = watchlistsRef.onSnapshot(snapshot => {
-        const watchlists = [];
-        snapshot.forEach(doc => {
-            watchlists.push({ id: doc.id, ...doc.data() });
-        });
-        userWatchlists = watchlists;
-
-        if (typeof updateWatchlistDropdown === 'function') updateWatchlistDropdown();
-
-        if (typeof renderWatchlist === 'function') renderWatchlist();
-
-    }, error => {
-        console.error("Error loading watchlists:", error);
-    });
-}
+// --- Watchlist Title Click: Open Watchlist Picker Modal ---
+// (Moved below DOM references to avoid ReferenceError)
 
 // --- Close Watchlist Picker Modal ---
 // (Moved below DOM references to avoid ReferenceError)
@@ -1392,7 +1289,7 @@ try {
 
 // Live Price Data
 const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
-let livePrices = {}; // Stores live price data: {ASX_CODE: {live: price, prevClose: price, PE: value, High52: value, Low52: value, targetHit: boolean, lastLivePrice: value, lastPrevClose: value}}
+let livePrices = {}; // Stores live price data: {ASX_CODE: {live: price, prevClose: price, PE: value, High52: value, Low52: value, targetHit: boolean, lastLivePrice: value, lastPrevClose: value}} 
 let livePriceFetchInterval = null; // To hold the interval ID for live price updates
 const LIVE_PRICE_FETCH_INTERVAL_MS = 5 * 60 * 1000; // Fetch every 5 minutes
 // Global discovery: store external (non-portfolio) price rows each fetch for global alert discovery logic
@@ -1500,6 +1397,7 @@ try {
     }
 } catch(e) { /* ignore */ }
 
+let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
 let unsubscribeAlerts = null; // NEW: Holds the unsubscribe function for Firestore alerts listener
 
@@ -2038,7 +1936,7 @@ if (!shareWatchlistSelect) {
 }
 const shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
 const shareWatchlistDropdownBtn = document.getElementById('shareWatchlistDropdownBtn');
-const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection');
+const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection'); 
 const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
 const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
 // NEW: Target Hit Details Modal Elements
@@ -2302,7 +2200,7 @@ async function fetchLivePricesAndUpdateUI() {
     logDebug('UI: Refresh Live Prices button clicked.');
     // Show a loading state if needed
     // You may have a function like showLoadingIndicator();
-
+    
     // Call the newly updated live price fetch function
     await fetchLivePrices({ cacheBust: true });
 
@@ -2499,8 +2397,8 @@ function adjustMainContentPadding() {
         // Get the current rendered height of the fixed header, including any wrapped content.
         // offsetHeight is usually sufficient, but scrollHeight can be more robust if content overflows.
         // For a fixed header, offsetHeight should reflect its full rendered height.
-        const headerHeight = appHeader.offsetHeight;
-
+        const headerHeight = appHeader.offsetHeight; 
+        
         // Apply this height as padding to the top of the main content container.
         mainContainer.style.paddingTop = `${headerHeight}px`;
         logDebug('Layout: Adjusted main content padding-top to: ' + headerHeight + 'px (Full Header Height).');
@@ -2606,7 +2504,7 @@ function closeModals() {
         logDebug('Auto-Save: Share form modal is closing. Checking for unsaved changes.');
         const currentData = getCurrentFormData();
         const isShareNameValid = currentData.shareName.trim() !== '';
-
+        
         // The cancel button fix means clearForm() is called before closeModals()
         // For auto-save on clicking outside or other non-cancel closes:
         if (selectedShareDocId) { // Existing share
@@ -2620,7 +2518,7 @@ function closeModals() {
             // Only attempt to save if a share name was entered AND a watchlist was selected (if applicable)
             const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
             const needsWatchlistSelection = currentSelectedWatchlistIds.includes(ALL_SHARES_ID);
-
+            
             if (isShareNameValid && isWatchlistSelected) { // Always require watchlist selection for new shares
                 logDebug('Auto-Save: New share detected with valid name and watchlist. Attempting silent save.');
                 saveShareData(true); // true indicates silent save
@@ -3615,17 +3513,17 @@ function updateMainButtonsState(enable) {
         const isAnEditableWatchlistSelected = selectedValue && selectedValue !== ALL_SHARES_ID && selectedValue !== CASH_BANK_WATCHLIST_ID;
         // Remove extra conditions and only check if an editable watchlist is selected
         editWatchlistBtn.disabled = !isAnEditableWatchlistSelected;
-        logDebug('Edit Watchlist Button State: ' + (editWatchlistBtn.disabled ? 'disabled' : 'enabled') +
+        logDebug('Edit Watchlist Button State: ' + (editWatchlistBtn.disabled ? 'disabled' : 'enabled') + 
                 ' (selectedValue=' + selectedValue + ', isEditable=' + isAnEditableWatchlistSelected + ')');
     }
     // addShareHeaderBtn is now contextual, its disabled state is managed by updateAddHeaderButton
-    if (logoutBtn) setIconDisabled(logoutBtn, !enable);
+    if (logoutBtn) setIconDisabled(logoutBtn, !enable); 
     if (themeToggleBtn) themeToggleBtn.disabled = !enable;
     if (colorThemeSelect) colorThemeSelect.disabled = !enable;
     if (revertToDefaultThemeBtn) revertToDefaultThemeBtn.disabled = !enable;
     // sortSelect and watchlistSelect disabled state is managed by render functions
     if (refreshLivePricesBtn) refreshLivePricesBtn.disabled = !enable;
-
+    
     // NEW: Disable/enable buttons specific to cash section
     // addCashCategoryBtn and saveCashBalancesBtn are removed from HTML/functionality is moved
     if (addCashAssetSidebarBtn) addCashAssetSidebarBtn.disabled = !enable;
@@ -3805,10 +3703,10 @@ function addCommentSection(container, title = '', text = '', isCashAssetComment 
         <textarea class="comment-text-input" placeholder="Your comments here...">${text}</textarea>
     `;
     container.appendChild(commentSectionDiv);
-
+    
     const commentTitleInput = commentSectionDiv.querySelector('.comment-title-input');
     const commentTextInput = commentSectionDiv.querySelector('.comment-text-input');
-
+    
     if (commentTitleInput) {
         commentTitleInput.addEventListener('input', isCashAssetComment ? checkCashAssetFormDirtyState : checkFormDirtyState);
     }
@@ -4078,7 +3976,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
         showCustomAlert('Selected share not found.');
         return;
     }
-    selectedShareDocId = targetShareId;
+    selectedShareDocId = targetShareId; 
 
     // Set the modal title to the share code and the subtitle to the company name
     formTitle.textContent = shareToEdit.shareName || 'N/A';
@@ -4090,7 +3988,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     if (shareNameInput) shareNameInput.value = shareToEdit.shareName || '';
     // Removed setting manual currentPrice input (field no longer present)
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimalStrict(shareToEdit.targetPrice) : '';
-
+    
     // Reset toggle state helpers
     userManuallyOverrodeDirection = false;
     // Set the correct state for the new target direction checkboxes
@@ -4140,7 +4038,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
             shareToEdit.comments.forEach(comment => addCommentSection(commentsFormContainer, comment.title, comment.text));
         } else {
             // Add one empty comment section if no existing comments
-            addCommentSection(commentsFormContainer);
+            addCommentSection(commentsFormContainer); 
         }
     }
     if (deleteShareBtn) {
@@ -4375,10 +4273,10 @@ async function saveShareData(isSilent = false) {
     }
 
     const shareName = shareNameInput.value.trim().toUpperCase();
-    if (!shareName) {
-        if (!isSilent) showCustomAlert('Code is required!');
+    if (!shareName) { 
+        if (!isSilent) showCustomAlert('Code is required!'); 
         console.warn('Save Share: Code is required. Skipping save.');
-        return;
+        return; 
     }
 
     // Source of truth: checkbox UI; keep hidden select for legacy fallback
@@ -4670,7 +4568,7 @@ function showShareDetails() {
 
         // Determine price change class for modal live price section
         let priceChangeClass = 'neutral'; // Default to neutral
-        if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice) &&
+        if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice) && 
             prevClosePrice !== undefined && prevClosePrice !== null && !isNaN(prevClosePrice)) {
             const change = livePrice - prevClosePrice;
             if (change > 0) {
@@ -4789,7 +4687,7 @@ function showShareDetails() {
     modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? Math.trunc(val) + '%' : '')(displayFrankingCredits);
 
     const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
-    const unfrankedYield = calculateUnfrankedYield(displayDividendAmount, priceForYield);
+    const unfrankedYield = calculateUnfrankedYield(displayDividendAmount, priceForYield); 
     // Display unfranked yield only if it's not null/NaN AND not 0
     modalUnfrankedYieldSpan.textContent = unfrankedYield !== null && !isNaN(unfrankedYield) && unfrankedYield !== 0 ? formatAdaptivePercent(unfrankedYield) + '%' : '';
 
@@ -4953,7 +4851,7 @@ function sortShares() {
     logDebug('AGGRESSIVE DEBUG: sortShares called with currentSortOrder: ' + sortValue);
     if (!sortValue || sortValue === '') {
         logDebug('Sort: Sort placeholder selected, no explicit sorting applied.');
-        renderWatchlist();
+        renderWatchlist(); 
         return;
     }
     const [field, order] = sortValue.split('-');
@@ -4992,9 +4890,9 @@ function sortShares() {
             // If both are null, their relative order doesn't matter (return 0)
             if (percentageChangeA === null && percentageChangeB === null) return 0;
             // If A is null but B is a number, A goes to the bottom
-            if (percentageChangeA === null) return 1;
+            if (percentageChangeA === null) return 1; 
             // If B is null but A is a number, B goes to the bottom
-            if (percentageChangeB === null) return -1;
+            if (percentageChangeB === null) return -1; 
 
             // Now perform numerical comparison for non-null values
             return order === 'asc' ? percentageChangeA - percentageChangeB : percentageChangeB - percentageChangeA;
@@ -5099,9 +4997,9 @@ function sortShares() {
             const nameB = (b.shareName || '').toUpperCase().trim();
             if (nameA === '' && nameB === '') return 0;
             // If A is empty, it comes after B (push to bottom)
-            if (nameA === '') return 1;
+            if (nameA === '') return 1; 
             // If B is empty, it comes after A (push to bottom)
-            if (nameB === '') return -1;
+            if (nameB === '') return -1; 
 
             return order === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
         } else if (field === 'starRating') {
@@ -5112,7 +5010,7 @@ function sortShares() {
             // UPDATED: Robust date parsing for sorting
             const dateA = new Date(valA);
             const dateB = new Date(valB);
-
+            
             // Handle invalid dates by pushing them to the end of the list (Infinity for asc, -Infinity for desc)
             const timeA = isNaN(dateA.getTime()) ? (order === 'asc' ? Infinity : -Infinity) : dateA.getTime();
             const timeB = isNaN(dateB.getTime()) ? (order === 'asc' ? Infinity : -Infinity) : dateB.getTime();
@@ -5131,7 +5029,7 @@ function sortShares() {
         }
     });
     logDebug('Sort: Shares sorted. Rendering watchlist.');
-    renderWatchlist();
+    renderWatchlist(); 
 }
 
 /**
@@ -5177,7 +5075,7 @@ function renderWatchlistSelect() {
     if (!watchlistSelect) { console.error('renderWatchlistSelect: watchlistSelect element not found.'); return; }
     // Store the currently selected value before clearing
     const currentSelectedValue = watchlistSelect.value;
-
+    
     // Set the initial placeholder text to "Watch List"
     watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>';
 
@@ -5242,7 +5140,7 @@ function renderWatchlistSelect() {
             if (persisted === '__movers') desiredWatchlistId='__movers';
         }
     } catch(_) {}
-
+    
     if (desiredWatchlistId && Array.from(watchlistSelect.options).some(opt => opt.value === desiredWatchlistId)) {
         watchlistSelect.value = desiredWatchlistId;
     } else {
@@ -5741,7 +5639,7 @@ function renderWatchlist() {
             emptyWatchlistMessage.style.textAlign = 'center';
             emptyWatchlistMessage.style.padding = '20px';
             emptyWatchlistMessage.style.color = 'var(--ghosted-text)';
-
+            
             if (tableContainer && tableContainer.style.display !== 'none') {
                 const td = document.createElement('td');
                 td.colSpan = 5; // Adjusted after removing Entry Price column
@@ -5755,7 +5653,7 @@ function renderWatchlist() {
                 mobileShareCardsContainer.appendChild(emptyWatchlistMessage.cloneNode(true));
             }
         }
-
+        
     // Re-render ASX Code Buttons separately
     renderAsxCodeButtons();
 
@@ -5834,9 +5732,9 @@ function renderAsxCodeButtons() {
     if (!asxCodeButtonsContainer) { console.error('renderAsxCodeButtons: asxCodeButtonsContainer element not found.'); return; }
     asxCodeButtonsContainer.innerHTML = '';
     const uniqueAsxCodes = new Set();
-
+    
     let sharesForButtons = [];
-    if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
+    if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) { 
         sharesForButtons = dedupeSharesById(allSharesData);
     } else {
         sharesForButtons = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
@@ -5962,7 +5860,7 @@ function scrollToShare(asxCode) {
         } else {
             console.warn('UI: Element for share ID: ' + targetShare.id + ' not found for scrolling.');
         }
-        showShareDetails();
+        showShareDetails(); 
     } else {
         showCustomAlert('Share \'' + asxCode + '\' not found.');
         console.warn('UI: Share \'' + asxCode + '\' not found in allSharesData.');
@@ -6431,7 +6329,7 @@ async function applyTheme(themeName) {
         }
         logDebug('Theme Debug: Reverted to system default theme.');
         // When reverting to system-default, ensure currentCustomThemeIndex is reset to -1
-        currentCustomThemeIndex = -1;
+        currentCustomThemeIndex = -1; 
     } else if (themeName === 'light' || themeName === 'dark') {
         body.removeAttribute('data-theme');
         localStorage.removeItem('selectedTheme');
@@ -6441,7 +6339,7 @@ async function applyTheme(themeName) {
         }
         logDebug('Theme Debug: Applied explicit default theme: ' + themeName);
         // When applying explicit light/dark, ensure currentCustomThemeIndex is reset to -1
-        currentCustomThemeIndex = -1;
+        currentCustomThemeIndex = -1; 
     } else {
         // For custom themes, apply the class and set data-theme attribute
         // The class name is 'theme-' followed by the themeName (e.g., 'theme-bold-1', 'theme-muted-blue')
@@ -6451,9 +6349,9 @@ async function applyTheme(themeName) {
         localStorage.removeItem('theme');
         logDebug('Theme Debug: Applied custom theme: ' + themeName);
         // When applying a custom theme, set currentCustomThemeIndex to its position
-        currentCustomThemeIndex = CUSTOM_THEMES.indexOf(themeName);
+        currentCustomThemeIndex = CUSTOM_THEMES.indexOf(themeName); 
     }
-
+    
     logDebug('Theme Debug: Body classes after applying: ' + body.className);
     logDebug('Theme Debug: currentCustomThemeIndex after applying: ' + currentCustomThemeIndex);
 
@@ -6577,7 +6475,7 @@ async function loadUserWatchlistsAndSettings() {
             await firestore.setDoc(defaultWatchlistRef, { name: DEFAULT_WATCHLIST_NAME, createdAt: new Date().toISOString() });
             userWatchlists.push({ id: defaultWatchlistId, name: DEFAULT_WATCHLIST_NAME });
             // Ensure currentSelectedWatchlistIds points to the newly created default watchlist
-            currentSelectedWatchlistIds = [defaultWatchlistId];
+            currentSelectedWatchlistIds = [defaultWatchlistId]; 
             logDebug('User Settings: Created default watchlist and set it as current selection.');
         }
 
@@ -6851,9 +6749,9 @@ async function loadTriggeredAlertsListener() {
         unsubscribeAlerts = firestore.onSnapshot(alertsCol, (qs) => {
             const newMap = new Map();
             const alertMetaById = new Map();
-            qs.forEach(doc => {
-                const d = doc.data() || {};
-                newMap.set(doc.id, (d.enabled !== false));
+            qs.forEach(doc => { 
+                const d = doc.data() || {}; 
+                newMap.set(doc.id, (d.enabled !== false)); 
                 alertMetaById.set(doc.id, { intent: d.intent, direction: d.direction });
             });
             alertsEnabledMap = newMap;
@@ -7578,7 +7476,7 @@ function toggleMobileViewMode() {
         logDebug('View Mode: Switched to Default View.');
     }
     try { persistUserPreference('compactViewMode', currentMobileViewMode); } catch(_) {}
-
+    
     renderWatchlist(); // Re-render to apply new card styling and layout
     // Update button label/state
     try { updateCompactViewButtonState(); } catch(_) {}
@@ -7614,7 +7512,7 @@ function hideSplashScreen() {
             appHeader.classList.remove('app-hidden');
         }
         // Temporarily remove overflow hidden from body
-        document.body.style.overflow = '';
+        document.body.style.overflow = ''; 
 
         // REMOVED: splashScreen.addEventListener('transitionend', () => { if (splashScreen.parentNode) { splashScreen.parentNode.removeChild(splashScreen); } }, { once: true });
         logDebug('Splash Screen: Hiding.');
@@ -7673,10 +7571,10 @@ async function loadShares() {
         allSharesData = []; // Clear data if services aren't available
         // renderWatchlist(); // No need to call here, onAuthStateChanged will handle initial render
         window._appDataLoaded = false;
-        hideSplashScreen();
+        hideSplashScreen(); 
         return;
     }
-
+    
     try {
         const sharesCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
         let q = firestore.query(sharesCol); // Listener for all shares, filtering for display done in renderWatchlist
@@ -7704,16 +7602,16 @@ async function loadShares() {
                     });
                 }
             } catch(e){ console.warn('Intent backfill failed', e); }
-
+            
             // AGGRESSIVE FIX: Force apply current sort order after data loads
             forceApplyCurrentSort();
-
+            
             sortShares(); // Sorts allSharesData and calls renderWatchlist
             renderAsxCodeButtons(); // Re-renders ASX buttons based on allSharesData
-
+            
             // REMOVED this line as it's now handled by the fetchLivePrices() call in onAuthStateChanged
-            // await fetchLivePrices();
-
+            // await fetchLivePrices(); 
+            
             if (loadingIndicator) loadingIndicator.style.display = 'none';
             window._appDataLoaded = true;
             hideSplashScreenIfReady();
@@ -7723,7 +7621,7 @@ async function loadShares() {
             showCustomAlert('Error loading shares in real-time: ' + error.message);
             if (loadingIndicator) loadingIndicator.style.display = 'none';
             window._appDataLoaded = false;
-            hideSplashScreen();
+            hideSplashScreen(); 
         });
 
     } catch (error) {
@@ -7731,7 +7629,7 @@ async function loadShares() {
         showCustomAlert('Error setting up real-time share updates: ' + error.message);
         if (loadingIndicator) loadingIndicator.style.display = 'none';
         window._appDataLoaded = false;
-        hideSplashScreen();
+        hideSplashScreen(); 
     }
 }
 
@@ -7769,9 +7667,9 @@ async function loadCashCategories() {
 
             userCashCategories = fetchedCategories; // Sort will be applied in renderCashCategories
             logDebug('Cash Categories: Data updated from snapshot. Total categories: ' + userCashCategories.length);
-
+            
             // Trigger a re-render of the overall watchlist, which will then call renderCashCategories if needed
-            renderWatchlist();
+            renderWatchlist(); 
             calculateTotalCash(); // Ensure total is updated whenever categories change
 
         }, (error) => {
@@ -7927,7 +7825,7 @@ function showAddEditCashCategoryModal(assetIdToEdit = null) {
         cashAssetNameInput.value = assetToEdit.name || '';
     cashAssetBalanceInput.value = Number(assetToEdit.balance) !== null && !isNaN(Number(assetToEdit.balance)) ? formatAdaptivePrice(Number(assetToEdit.balance)) : '';
         setIconDisabled(deleteCashAssetBtn, false); // Enable delete button for existing asset
-
+        
         // Populate comments for editing
         if (cashAssetCommentsContainer) {
             cashAssetCommentsContainer.innerHTML = ''; // Clear existing dynamic comment sections
@@ -8009,7 +7907,7 @@ function areCashAssetDataEqual(data1, data2) {
     if (!data1 || !data2) return false;
     let balance1 = typeof data1.balance === 'number' && !isNaN(data1.balance) ? data1.balance : null;
     let balance2 = typeof data2.balance === 'number' && !isNaN(data2.balance) ? data2.balance : null;
-
+    
     // NEW: Compare isHidden state
     if (data1.name !== data2.name || balance1 !== balance2 || data1.isHidden !== data2.isHidden) {
         return false;
@@ -8137,14 +8035,14 @@ function showCashCategoryDetailsModal(assetId) {
                 if (comment.title || comment.text) {
                     const commentDiv = document.createElement('div');
                     commentDiv.className = 'modal-comment-item';
-
+                    
                     if (comment.title && comment.title.trim() !== '') {
                         const titleBar = document.createElement('div');
                         titleBar.classList.add('comment-title-bar');
                         titleBar.textContent = comment.title;
                         commentDiv.appendChild(titleBar);
                     }
-
+                    
                     const commentTextP = document.createElement('p');
                     commentTextP.textContent = comment.text || '';
                     commentDiv.appendChild(commentTextP);
@@ -8299,7 +8197,7 @@ function updateAddHeaderButton() {
         logDebug('DEBUG: Header Plus Button (addShareHeaderBtn) now opens Add Share modal.');
     }
     // Ensure the button is enabled as its functionality is now contextual
-    addShareHeaderBtn.disabled = false;
+    addShareHeaderBtn.disabled = false; 
 
     // Also update the sidebar's "Add New Share" button context
     updateSidebarAddButtonContext();
@@ -8491,9 +8389,9 @@ async function migrateOldSharesToWatchlist() {
 
 function showContextMenu(event, shareId) {
     if (!shareContextMenu) return;
-
+    
     currentContextMenuShareId = shareId;
-
+    
     let x = event.clientX;
     let y = event.clientY;
 
@@ -8596,7 +8494,7 @@ function exportWatchlistToCSV() {
         showCustomAlert('Please sign in and select watchlists to export.');
         return;
     }
-
+    
     // Do not export cash data via this function
     if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
         showCustomAlert('Cash & Assets data cannot be exported via this function. Please switch to a stock watchlist.', 3000); // UPDATED TEXT
@@ -8647,7 +8545,7 @@ function exportWatchlistToCSV() {
         const prevClosePrice = livePriceData ? livePriceData.prevClose : undefined;
 
         let priceChange = '';
-        if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice) &&
+        if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice) && 
             prevClosePrice !== undefined && prevClosePrice !== null && !isNaN(prevClosePrice)) {
             const change = livePrice - prevClosePrice;
             const percentageChange = (prevClosePrice !== 0 && !isNaN(prevClosePrice)) ? (change / prevClosePrice) * 100 : 0;
@@ -8677,18 +8575,18 @@ function exportWatchlistToCSV() {
     const csvString = csvRows.join('\n');
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-
+    
     const formattedDate = new Date().toISOString().slice(0, 10);
     const safeFileNamePrefix = exportFileNamePrefix.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     link.download = safeFileNamePrefix + '_watchlist_' + formattedDate + '.csv';
-
+    
     link.href = URL.createObjectURL(blob);
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
-
+    
     showCustomAlert('Exported shares to CSV!', 2000);
     logDebug('Export: Shares exported to CSV with prefix: \'' + exportFileNamePrefix + '\'.');
 }
@@ -8826,7 +8724,7 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             // update the dropdown, and render the correct watchlist on the main screen.
             await loadUserWatchlistsAndSettings();
         }
-
+        
         // This block now handles both new and edited watchlists.
         // loadUserWatchlistsAndSettings() is responsible for all subsequent UI updates.
         // The 'if (watchlistId)' condition around loadUserWatchlistsAndSettings is removed
@@ -8932,11 +8830,10 @@ function restorePersistedState() {
     }
 }
 
-// This function is now defined above, this is just a placeholder to be removed.
-function initializeApp() {
-    // This function's content has been moved into the new initializeAppLogic
-    // and the DOMContentLoaded handler.
-}
+async function initializeAppLogic() {
+    applyCompactViewMode();
+    // DEBUG: Log when initializeAppLogic starts
+    logDebug('initializeAppLogic: Firebase is ready. Starting app logic.');
 
     // Initial modal hiding
     if (shareFormSection) shareFormSection.style.setProperty('display', 'none', 'important');
@@ -9150,7 +9047,7 @@ function initializeApp() {
         }
     });
 
-
+    
     // NEW: Autocomplete Search Input Listeners for Stock Search Modal (Consolidated & Corrected)
     if (asxSearchInput) {
         let currentSuggestions = []; // Stores the current filtered suggestions
@@ -9177,7 +9074,7 @@ function initializeApp() {
             }
 
             // Filter suggestions by code or company name
-            currentSuggestions = allAsxCodes.filter(stock =>
+            currentSuggestions = allAsxCodes.filter(stock => 
                 stock.code.includes(query) || stock.name.toUpperCase().includes(query)
             ).slice(0, 10); // Limit to top 10 suggestions
 
@@ -9418,7 +9315,7 @@ if (targetPriceInput) {
         }
     });
 }
-
+    
     // NEW: Add event listeners for cash asset form inputs for dirty state checking (2.1)
     if (cashAssetNameInput) cashAssetNameInput.addEventListener('input', checkCashAssetFormDirtyState);
     if (cashAssetBalanceInput) cashAssetBalanceInput.addEventListener('input', checkCashAssetFormDirtyState);
@@ -9538,7 +9435,7 @@ if (targetPriceInput) {
         if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
             const clickedInsideModalContent = targetHitDetailsModal.querySelector('.modal-content').contains(event.target);
             const clickedOnTargetIconButton = (event.target === targetHitIconBtn || targetHitIconBtn.contains(event.target));
-
+            
             if (!clickedInsideModalContent && !clickedOnTargetIconButton) {
                 logDebug('Global Click: Clicked outside targetHitDetailsModal (and not on icon). Minimizing it.');
                 hideModal(targetHitDetailsModal); // Directly hide the modal
@@ -9753,7 +9650,7 @@ if (targetPriceInput) {
                     console.warn('Splash Screen: User signed out, but splash screen element not found. App content might be visible.');
                 }
                 // NEW: Reset targetHitIconDismissed and clear localStorage entry on logout for a fresh start on next login
-                targetHitIconDismissed = false;
+                targetHitIconDismissed = false; 
                 localStorage.removeItem('targetHitIconDismissed');
                 try { localStorage.removeItem('forcedLiveFetchOnce'); } catch(e) {}
                 try { localStorage.setItem('lastKnownTargetCount', '0'); } catch(e) {}
@@ -9813,13 +9710,13 @@ if (sortSelect) {
 
         currentSortOrder = sortSelect.value;
         updateSortIcon();
-
+        
         // AGGRESSIVE FIX: Force apply sort immediately for percentage change sorts
         if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
             logDebug('AGGRESSIVE SORT: Percentage change sort selected, forcing immediate application');
             forceApplyCurrentSort();
         }
-
+        
         // Determine whether to sort shares or cash assets
         if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
             renderCashCategories(); // Re-render cash categories with new sort order
@@ -9854,7 +9751,7 @@ if (sortSelect) {
     // Event listener for shareNameInput to toggle saveShareBtn
     if (shareNameInput && saveShareBtn) {
         shareNameInput.addEventListener('input', () => {
-            checkFormDirtyState();
+            checkFormDirtyState(); 
         });
     }
 
@@ -10043,8 +9940,8 @@ if (sortSelect) {
             editWatchlistNameInput.value = watchlistToEditName;
             // Keep at least one real watchlist + Cash & Assets
             const actualWatchlists = userWatchlists.filter(wl => wl.id !== ALL_SHARES_ID && wl.id !== CASH_BANK_WATCHLIST_ID);
-            const isDisabledDelete = actualWatchlists.length <= 1;
-            setIconDisabled(deleteWatchlistInModalBtn, isDisabledDelete);
+            const isDisabledDelete = actualWatchlists.length <= 1; 
+            setIconDisabled(deleteWatchlistInModalBtn, isDisabledDelete); 
             logDebug('Edit Watchlist: deleteWatchlistInModalBtn disabled: ' + isDisabledDelete);
             setIconDisabled(saveWatchlistNameBtn, true); // Disable save button initially
             logDebug('Edit Watchlist: saveWatchlistNameBtn disabled initially.');
@@ -10111,7 +10008,7 @@ if (sortSelect) {
             }
 
             const watchlistToDeleteName = userWatchlists.find(w => w.id === watchlistToDeleteId)?.name || 'Unknown Watchlist';
-
+            
             try {
                 const sharesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
                 const q = firestore.query(sharesColRef, firestore.where('watchlistId', '==', watchlistToDeleteId));
@@ -10149,16 +10046,16 @@ if (sortSelect) {
         dividendCalcBtn.addEventListener('click', () => {
             logDebug('UI: Dividend button clicked. Attempting to open modal.');
             // Corrected references to use unique IDs for dividend calculator inputs
-            if (calcDividendAmountInput) calcDividendAmountInput.value = '';
-            if (calcCurrentPriceInput) calcCurrentPriceInput.value = '';
-            if (calcFrankingCreditsInput) calcFrankingCreditsInput.value = '';
-            if (calcUnfrankedYieldSpan) calcUnfrankedYieldSpan.textContent = '-';
-            if (calcFrankedYieldSpan) calcFrankedYieldSpan.textContent = '-';
-            if (calcEstimatedDividend) calcEstimatedDividend.textContent = '-';
+            if (calcDividendAmountInput) calcDividendAmountInput.value = ''; 
+            if (calcCurrentPriceInput) calcCurrentPriceInput.value = ''; 
+            if (calcFrankingCreditsInput) calcFrankingCreditsInput.value = ''; 
+            if (calcUnfrankedYieldSpan) calcUnfrankedYieldSpan.textContent = '-'; 
+            if (calcFrankedYieldSpan) calcFrankedYieldSpan.textContent = '-'; 
+            if (calcEstimatedDividend) calcEstimatedDividend.textContent = '-'; 
             if (investmentValueSelect) investmentValueSelect.value = '10000'; // Reset dropdown
             showModal(dividendCalculatorModal);
             try { scrollMainToTop(); } catch(_) {}
-            if (calcCurrentPriceInput) calcCurrentPriceInput.focus();
+            if (calcCurrentPriceInput) calcCurrentPriceInput.focus(); 
             logDebug('UI: Dividend Calculator modal opened.');
             toggleAppSidebar(false);
         });
@@ -10177,11 +10074,11 @@ if (sortSelect) {
         const dividendAmount = parseFloat(calcDividendAmountInput.value);
         const frankingCredits = parseFloat(calcFrankingCreditsInput.value);
         const investmentValue = parseFloat(investmentValueSelect.value);
-
+        
         const unfrankedYield = calculateUnfrankedYield(dividendAmount, currentPrice);
         const frankedYield = calculateFrankedYield(dividendAmount, currentPrice, frankingCredits);
         const estimatedDividend = estimateDividendIncome(investmentValue, dividendAmount, currentPrice);
-
+        
     calcUnfrankedYieldSpan.textContent = unfrankedYield !== null ? formatAdaptivePercent(unfrankedYield) + '%' : '-';
     calcFrankedYieldSpan.textContent = frankedYield !== null ? formatAdaptivePercent(frankedYield) + '%' : '-';
     calcEstimatedDividend.textContent = estimatedDividend !== null ? '$' + formatAdaptivePrice(estimatedDividend) : '-';
@@ -10219,7 +10116,7 @@ if (sortSelect) {
 
     function handleAction(action) {
         if (action === 'clear') { resetCalculator(); return; }
-        if (action === 'percentage') {
+        if (action === 'percentage') { 
             if (currentCalculatorInput === '' && previousCalculatorInput === '') return;
             let val;
             if (currentCalculatorInput !== '') {
@@ -10241,7 +10138,7 @@ if (sortSelect) {
             }
             resultDisplayed = false;
             updateCalculatorDisplay();
-            return;
+            return; 
         }
         if (['add', 'subtract', 'multiply', 'divide'].includes(action)) {
             if (currentCalculatorInput === '' && previousCalculatorInput === '') return;
@@ -10327,10 +10224,10 @@ if (sortSelect) {
                     logDebug('Theme: First click from system-default/custom: Toggled from System Light to Dark.');
                 }
             }
-
+            
             currentActiveTheme = targetTheme; // Update global tracking variable
             localStorage.setItem('theme', targetTheme); // Save preference for light/dark
-
+            
             // Save preference to Firestore
             if (currentUserId && db && firestore) {
                 const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
@@ -10391,7 +10288,7 @@ if (sortSelect) {
             closeMenuBtn: !!closeMenuBtn,
             sidebarOverlay: !!sidebarOverlay
         });
-
+        
         // Ensure initial state is correct: always start CLOSED after reload
         if (window.innerWidth > 768) {
             document.body.classList.remove('sidebar-active'); // Do not shift body on load
@@ -10421,7 +10318,7 @@ if (sortSelect) {
             logDebug('UI: Close Menu button CLICKED.');
             toggleAppSidebar(false);
         });
-
+        
         // Unified overlay handler (single authoritative listener) - prevents race/double fire
         if (sidebarOverlay._unifiedHandler) {
             sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);
@@ -10570,7 +10467,7 @@ if (sortSelect) {
             toggleAppSidebar(false); // Close sidebar
         });
     }
-
+    
     // Removed: Show Last Live Price toggle listener (automatic behavior now)
 
     // NEW: Cash Asset Form Modal Save/Delete/Edit Buttons (2.1, 2.2)
@@ -10634,7 +10531,7 @@ if (sortSelect) {
     // NEW: Set initial state for the compact view button
     updateCompactViewButtonState();
     applyCompactViewMode();
-}
+} 
 // This closing brace correctly ends the `initializeAppLogic` function here.
 // Build Marker: v0.1.13 (Network-first CSS/JS, cache bust deploy)
 // Also expose as a runtime variable for lightweight diagnostics
@@ -11579,6 +11476,168 @@ function initializeApp() {
             console.warn('Auth: Failed to set persistence (outer), continuing with default.', e);
         }
 
+    authFunctions.onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Restore movers view if it was active prior to a storage reset during auth
+                try {
+                    const pre = sessionStorage.getItem('preResetLastSelectedView');
+                    if (pre === '__movers' && !localStorage.getItem('lastSelectedView')) {
+                        setLastSelectedView('__movers');
+                        sessionStorage.removeItem('preResetLastSelectedView');
+                    }
+                } catch(_) {}
+                currentUserId = user.uid;
+                logDebug('AuthState: User signed in: ' + user.uid);
+
+                // Restore user's last state from localStorage
+                restorePersistedState();
+                logDebug('AuthState: User email: ' + user.email);
+                try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
+                // Use dynamic update instead of hard-coded label so it reflects current selection
+                updateMainTitle();
+                logDebug('AuthState: Dynamic title initialized via updateMainTitle().');
+                updateMainButtonsState(true);
+                window._userAuthenticated = true; // Mark user as authenticated
+
+                if (mainContainer) {
+                    mainContainer.classList.remove('app-hidden');
+                }
+                if (appHeader) {
+                    appHeader.classList.remove('app-hidden');
+                }
+                adjustMainContentPadding();
+
+                        // Ensure header click bindings are attached after header becomes visible
+                        try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind after auth show', e); }
+
+                if (splashKangarooIcon) {
+                    splashKangarooIcon.classList.add('pulsing');
+                    logDebug('Splash Screen: Started pulsing animation after sign-in.');
+                }
+
+                targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
+                // Immediately reflect any persisted target count before live data loads
+                try { updateTargetHitBanner(); } catch(e) { console.warn('Auth early Target Alert restore failed', e); }
+
+                // Load user data, then do an initial fetch of live prices before setting the update interval.
+                // This ensures the initial view is correctly sorted by percentage change if selected.
+                await loadUserWatchlistsAndSettings();
+                // Load Firestore UI prefs early then restore view/mode (A & B)
+                try { await loadUserPreferences(); restoreViewAndModeFromPreferences(); } catch(e){ console.warn('Preference restore failed', e); }
+                try { ensureTitleStructure(); } catch(e) {}
+                // Load persisted compact view preference AFTER user data is ready
+                try {
+                    const storedMode = localStorage.getItem('currentMobileViewMode');
+                    let mode = (storedMode === 'compact' || storedMode === 'default') ? storedMode : null;
+                    if (!mode && userPreferences && userPreferences.compactViewMode) {
+                        mode = (userPreferences.compactViewMode === 'compact') ? 'compact' : 'default';
+                    }
+                    currentMobileViewMode = mode || 'default';
+                } catch(e) { console.warn('View Mode: Failed to load persisted mode post-auth', e); currentMobileViewMode = 'default'; }
+                // Apply class now so first rendered watchlist/cards adopt correct layout
+                if (mobileShareCardsContainer) {
+                    if (currentMobileViewMode === 'compact') mobileShareCardsContainer.classList.add('compact-view');
+                    else mobileShareCardsContainer.classList.remove('compact-view');
+                }
+                logDebug('View Mode: Applied persisted mode post-auth (pre-initial render): ' + currentMobileViewMode);
+                // Start alerts listener (enabled alerts only; muted excluded from notifications)
+                await loadTriggeredAlertsListener();
+                startGlobalSummaryListener();
+                // On first auth load, force one live fetch even if starting in Cash view to restore alerts
+                const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
+                await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
+                try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true'); } catch(e) {}
+                startLivePriceUpdates();
+                // Extra safety: ensure target modal not left open from cached state on fresh auth
+                try { if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none' && window.__initialLoadPhase) hideModal(targetHitDetailsModal); } catch(_){ }
+
+                allAsxCodes = await loadAsxCodesFromCSV();
+                logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
+
+                // Legacy block replaced by restoreViewAndModeFromPreferences()
+            }
+
+            else {
+                currentUserId = null;
+                // Reset title safely using the inner span, do not expand click target
+                try { ensureTitleStructure(); const t = document.getElementById('dynamicWatchlistTitleText'); if (t) t.textContent = 'Share Watchlist'; } catch(e) {}
+                logDebug('AuthState: User signed out.');
+                updateMainButtonsState(false);
+                clearShareList();
+                clearWatchlistUI();
+                userCashCategories = []; // Clear cash data on logout
+                if (cashCategoriesContainer) cashCategoriesContainer.innerHTML = ''; // Clear cash UI
+                if (totalCashDisplay) totalCashDisplay.textContent = '$0.00'; // Reset total cash
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
+                applyTheme('system-default');
+                if (unsubscribeShares) {
+                    unsubscribeShares();
+                    unsubscribeShares = null;
+                    logDebug('Firestore Listener: Unsubscribed from shares listener on logout.');
+                }
+                if (unsubscribeCashCategories) { // NEW: Unsubscribe from cash categories
+                    unsubscribeCashCategories();
+                    unsubscribeCashCategories = null;
+                    logDebug('Firestore Listener: Unsubscribed from cash categories listener on logout.');
+                }
+                if (unsubscribeAlerts) { // NEW: Unsubscribe from alerts
+                    try { unsubscribeAlerts(); } catch(_) {}
+                    unsubscribeAlerts = null;
+                    logDebug('Firestore Listener: Unsubscribed from alerts listener on logout.');
+                }
+                stopGlobalSummaryListener();
+                stopLivePriceUpdates();
+                
+                window._userAuthenticated = false; // Mark user as not authenticated
+                // If signed out, ensure splash screen is visible for sign-in
+                if (splashScreen) {
+                    splashScreen.style.display = 'flex'; // Ensure splash screen is visible
+                    splashScreen.classList.remove('hidden'); // Ensure it's not hidden
+                    document.body.style.overflow = 'hidden'; // Re-apply overflow hidden
+                    if (splashKangarooIcon) {
+                        splashKangarooIcon.classList.remove('pulsing'); // Stop animation if signed out
+                    }
+                    if (splashSignInBtn) {
+                        splashSignInBtn.disabled = false; // Enable sign-in button
+                        const buttonTextSpan = splashSignInBtn.querySelector('span');
+                        if (buttonTextSpan) {
+                            buttonTextSpan.textContent = 'Sign in with Google'; // Reset only the text, not the icon
+                        }
+                    }
+                    // Hide main app content
+                    if (mainContainer) {
+                        mainContainer.classList.add('app-hidden');
+                    }
+                    if (appHeader) {
+                        appHeader.classList.add('app-hidden');
+                    }
+                    logDebug('Splash Screen: User signed out, splash screen remains visible for sign-in.');
+                } else {
+                    console.warn('Splash Screen: User signed out, but splash screen element not found. App content might be visible.');
+                }
+                // NEW: Reset targetHitIconDismissed and clear localStorage entry on logout for a fresh start on next login
+                targetHitIconDismissed = false; 
+                localStorage.removeItem('targetHitIconDismissed');
+
+            }
+            if (!window._appLogicInitialized) {
+                initializeAppLogic();
+                window._appLogicInitialized = true;
+            } else {
+                // If app logic already initialized, ensure view mode is applied after auth.
+                // This handles cases where user signs out and then signs back in,
+                // and we need to re-apply the correct mobile view class.
+                if (currentMobileViewMode === 'compact' && mobileShareCardsContainer) {
+                    mobileShareCardsContainer.classList.add('compact-view');
+                } else if (mobileShareCardsContainer) {
+                    mobileShareCardsContainer.classList.remove('compact-view');
+                }
+            }
+            // Call renderWatchlist here to ensure correct mobile card rendering after auth state is set
+            renderWatchlist();
+            try { ensureTitleStructure(); } catch(e) {}
+            // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
+        });
     } else {
     console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
         const errorDiv = document.getElementById('firebaseInitError');
