@@ -26,14 +26,14 @@ window.showStockSearchModal = function(asxCode) {
 // Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
 // --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
 // Push a new state when opening a modal or navigating to a new in-app view
-function pushAppState(stateObj = {}, title = '', url = '') {
+window.pushAppState = function(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
 }
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
     // Let the unified stack-based handler manage modals. Only handle sidebar here.
-    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
+    if (document.getElementById('appSidebar') && document.getElementById('appSidebar').classList.contains('open')) {
         if (window.toggleAppSidebar) {
             window.toggleAppSidebar(false); // Explicitly close the sidebar
         }
@@ -2055,6 +2055,7 @@ function pushAppStateEntry(type, ref) {
     appBackStack.push({type, ref});
     if (appBackStack.length > 2) appBackStack.shift();
 }
+window.pushAppStateEntry = pushAppStateEntry;
 function popAppStateEntry() { return appBackStack.pop(); }
 
 // Removed legacy early hamburger push listener (consolidated later) – now handled in unified sidebar setup
@@ -8347,54 +8348,6 @@ function hideContextMenu() {
     }
 }
 
-function toggleAppSidebar(forceState = null) {
-    logDebug('Sidebar: toggleAppSidebar called. Current open state: ' + appSidebar.classList.contains('open') + ', Force state: ' + forceState);
-    const isDesktop = window.innerWidth > 768;
-    const isOpen = appSidebar.classList.contains('open');
-
-    if (forceState === true || (forceState === null && !isOpen)) {
-        // On mobile, opening the sidebar is a navigation event that should be caught by the back button.
-        if (!isDesktop) {
-            // Push a new history state for the sidebar opening
-            pushAppState({ sidebarOpen: true }, '', '#sidebar');
-        }
-
-        appSidebar.classList.add('open');
-        sidebarOverlay.classList.add('open');
-        // Reset sidebar scroll position to top when opening
-        if (appSidebar) {
-            appSidebar.scrollTop = 0;
-        }
-        // Prevent scrolling of main content when sidebar is open on mobile
-        if (!isDesktop) {
-            document.body.style.overflow = 'hidden';
-            logDebug('Sidebar: Mobile: Body overflow hidden.');
-        }
-        if (isDesktop) {
-            document.body.classList.add('sidebar-active');
-            sidebarOverlay.style.pointerEvents = 'none';
-            logDebug('Sidebar: Desktop: Sidebar opened, body shifted, overlay pointer-events: none.');
-        } else {
-            document.body.classList.remove('sidebar-active');
-            sidebarOverlay.style.pointerEvents = 'auto'; // Ensure overlay is clickable on mobile
-            logDebug('Sidebar: Mobile: Sidebar opened, body NOT shifted, overlay pointer-events: auto.');
-        }
-    if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','true');
-    logDebug('Sidebar: Sidebar opened.');
-    } else if (forceState === false || (forceState === null && isOpen)) {
-        appSidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('open');
-        document.body.classList.remove('sidebar-active');
-        document.body.style.overflow = ''; // Restore scrolling
-        sidebarOverlay.style.pointerEvents = 'none'; // Reset pointer-events when closed
-        // Reset sidebar scroll position to top when closing
-        if (appSidebar) {
-            appSidebar.scrollTop = 0;
-        }
-    if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','false');
-    logDebug('Sidebar: Sidebar closed.');
-    }
-}
 
 /**
  * Escapes a string for CSV by enclosing it in double quotes and doubling any existing double quotes.
@@ -10131,156 +10084,6 @@ if (sortSelect) {
         scrollToTopBtn.addEventListener('click', () => { window.scrollTo({ top: 0, behavior: 'smooth' }); logDebug('UI: Scrolled to top.'); });
     }
 
-    // Hamburger Menu and Sidebar Interactions
-    if (hamburgerBtn && appSidebar && closeMenuBtn && sidebarOverlay) {
-        logDebug('Sidebar Setup: Initializing sidebar event listeners. Elements found:', {
-            hamburgerBtn: !!hamburgerBtn,
-            appSidebar: !!appSidebar,
-            closeMenuBtn: !!closeMenuBtn,
-            sidebarOverlay: !!sidebarOverlay
-        });
-        
-        // Ensure initial state is correct: always start CLOSED after reload
-        if (window.innerWidth > 768) {
-            document.body.classList.remove('sidebar-active'); // Do not shift body on load
-            sidebarOverlay.style.pointerEvents = 'none'; // Overlay non-interactive on desktop when closed
-            appSidebar.classList.remove('open'); // Start closed on desktop too
-            logDebug('Sidebar: Desktop: Sidebar initialized as closed.');
-        } else {
-            document.body.classList.remove('sidebar-active'); // No shift on mobile
-            sidebarOverlay.style.pointerEvents = 'auto'; // Overlay interactive on mobile
-            appSidebar.classList.remove('open'); // Sidebar closed by default on mobile
-            logDebug('Sidebar: Mobile: Sidebar initialized as closed.');
-        }
-
-
-        // Unified hamburger listener with idempotent guard
-        if (!hamburgerBtn.dataset.sidebarBound) {
-            hamburgerBtn.addEventListener('click', (event) => {
-                logDebug('UI: Hamburger button CLICKED. Event:', event);
-                event.stopPropagation();
-                const willOpen = !appSidebar.classList.contains('open');
-                toggleAppSidebar();
-                if (willOpen) pushAppStateEntry('sidebar','sidebar');
-            });
-            hamburgerBtn.dataset.sidebarBound = '1';
-        }
-        closeMenuBtn.addEventListener('click', () => {
-            logDebug('UI: Close Menu button CLICKED.');
-            toggleAppSidebar(false);
-        });
-        
-        // Unified overlay handler (single authoritative listener) - prevents race/double fire
-        if (sidebarOverlay._unifiedHandler) {
-            sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);
-            sidebarOverlay.removeEventListener('click', sidebarOverlay._unifiedHandler, true);
-            sidebarOverlay.removeEventListener('touchstart', sidebarOverlay._unifiedHandler, true);
-        }
-        const unifiedHandler = (e) => {
-            if (e.target !== sidebarOverlay) return; // Only backdrop clicks
-            if (!appSidebar.classList.contains('open')) return;
-            try { toggleAppSidebar(false); } catch(err){ console.warn('Sidebar close failed', err); }
-            // Suppress any further processing or bubbling to avoid click-throughs
-            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-            e.stopPropagation();
-            if (e.preventDefault) e.preventDefault();
-        };
-        sidebarOverlay.addEventListener('mousedown', unifiedHandler, true);
-        sidebarOverlay._unifiedHandler = unifiedHandler;
-
-        // Accessibility & focus trap for sidebar when open
-        const mainContent = document.getElementById('mainContent') || document.querySelector('main');
-        const firstFocusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-        function trapFocus(e){
-            if (!appSidebar.classList.contains('open')) return;
-            const focusables = Array.from(appSidebar.querySelectorAll(firstFocusableSelector)).filter(el=>!el.disabled && el.offsetParent!==null);
-            if (!focusables.length) return;
-            const first = focusables[0];
-            const last = focusables[focusables.length-1];
-            if (e.key === 'Tab') {
-                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-            }
-        }
-        document.addEventListener('keydown', trapFocus, true);
-
-        // Hook into toggleAppSidebar to set aria-hidden
-        const __origToggle = toggleAppSidebar;
-        window.toggleAppSidebar = function(force){
-            __origToggle(force);
-            const isOpen = appSidebar.classList.contains('open');
-            if (mainContent) mainContent.setAttribute('aria-hidden', isOpen ? 'true':'false');
-            if (isOpen) {
-                // Move initial focus
-                setTimeout(()=>{
-                    const first = appSidebar.querySelector(firstFocusableSelector);
-                    if (first) first.focus();
-                },30);
-            } else {
-                if (mainContent) mainContent.removeAttribute('inert');
-            }
-        };
-
-        // Desktop outside-click closer (capture + swallow to prevent click-through)
-        document.addEventListener('click', (event) => {
-            const isDesktop = window.innerWidth > 768;
-            if (!isDesktop) return; // Mobile uses overlay
-            if (!appSidebar.classList.contains('open')) return;
-            // If click target is outside sidebar & hamburger button
-            if (!appSidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
-                logDebug('Global Click (capture): outside desktop click -> closing sidebar (swallowing event)');
-                // Close sidebar first
-                toggleAppSidebar(false);
-                // Swallow so underlying element does NOT also activate on this same click
-                event.stopPropagation();
-                event.preventDefault();
-            }
-        }, true); // capture phase so we intercept before underlying handlers
-
-        window.addEventListener('resize', () => {
-            logDebug('Window Resize: Resizing window. Closing sidebar if open.');
-            const isDesktop = window.innerWidth > 768;
-            if (appSidebar.classList.contains('open')) {
-                toggleAppSidebar(false);
-            }
-            if (scrollToTopBtn) {
-                if (window.innerWidth > 768) {
-                    scrollToTopBtn.style.display = 'none';
-                } else {
-                    window.dispatchEvent(new Event('scroll'));
-                }
-            }
-            // NEW: Recalculate header height on resize
-            adjustMainContentPadding();
-
-            // NEW: Update the compact view button state on resize
-            updateCompactViewButtonState();
-        });
-
-        const menuButtons = appSidebar.querySelectorAll('.menu-button-item');
-        menuButtons.forEach(button => {
-            button.addEventListener('click', (event) => {
-                const clickedButton = event.currentTarget;
-                logDebug('Sidebar Menu Item Click: Button \'' + clickedButton.textContent.trim() + '\' clicked.');
-
-                // Handle specific action for the toggle compact view button
-                if (clickedButton.id === 'toggleCompactViewBtn') {
-                    toggleMobileViewMode();
-                }
-
-                const closesMenu = clickedButton.dataset.actionClosesMenu !== 'false';
-                if (clickedButton.id === 'forceUpdateBtn') {
-                    // Force update always closes first to avoid stale UI during reload
-                    toggleAppSidebar(false);
-                    forceHardUpdate();
-                    return; // further processing not needed
-                }
-                if (closesMenu) toggleAppSidebar(false);
-            });
-        });
-    } else {
-        console.warn('Sidebar Setup: Missing one or more sidebar elements (hamburgerBtn, appSidebar, closeMenuBtn, sidebarOverlay). Sidebar functionality might be impaired.');
-    }
 
     // Export Watchlist Button Event Listener
     if (exportWatchlistBtn) {
