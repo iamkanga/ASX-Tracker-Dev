@@ -1,6 +1,6 @@
 const COMPANY_TAX_RATE = 0.30;
 
-export function formatWithCommas(value) {
+window.formatWithCommas = function(value) {
     if (value === null || value === undefined) return '';
     if (typeof value === 'number') return value.toLocaleString(undefined, { maximumFractionDigits: 8 });
     const str = value.toString();
@@ -10,7 +10,7 @@ export function formatWithCommas(value) {
     return parts.join('.');
 }
 
-export function formatMoney(val, opts = {}) {
+window.formatMoney = function(val, opts = {}) {
     const { hideZero = false, decimals } = opts; // if decimals supplied explicitly, override adaptive logic
     if (val === null || val === undefined) return '';
     const n = Number(val);
@@ -24,7 +24,7 @@ export function formatMoney(val, opts = {}) {
     return '$' + parts.join('.');
 }
 
-export function formatPercent(val, opts = {}) {
+window.formatPercent = function(val, opts = {}) {
     const { maxDecimals = 2 } = opts; // allow specifying maximum decimals
     if (val === null || val === undefined) return '';
     const n = Number(val);
@@ -34,7 +34,7 @@ export function formatPercent(val, opts = {}) {
     return n.toFixed(maxDecimals) + '%';
 }
 
-export function formatAdaptivePrice(value, opts = {}) {
+window.formatAdaptivePrice = function(value, opts = {}) {
     if (value === null || value === undefined || isNaN(value)) return '0.00';
     const n = Number(value);
     if (opts.force2) return n.toFixed(2);
@@ -45,7 +45,7 @@ export function formatAdaptivePrice(value, opts = {}) {
     return n.toFixed(2);
 }
 
-export function formatAdaptivePercent(pct) {
+window.formatAdaptivePercent = function(pct) {
     if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
     const n = Number(pct);
     const abs = Math.abs(n);
@@ -54,20 +54,20 @@ export function formatAdaptivePercent(pct) {
     return n.toFixed(decimals);
 }
 
-export function formatDate(dateString) {
+window.formatDate = function(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return '';
     return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-export function calculateUnfrankedYield(dividendAmount, currentPrice) {
+window.calculateUnfrankedYield = function(dividendAmount, currentPrice) {
     if (typeof dividendAmount !== 'number' || isNaN(dividendAmount) || dividendAmount < 0) { return 0; }
     if (typeof currentPrice !== 'number' || isNaN(currentPrice) || currentPrice <= 0) { return 0; }
     return (dividendAmount / currentPrice) * 100;
 }
 
-export function calculateFrankedYield(dividendAmount, currentPrice, frankingCreditsPercentage) {
+window.calculateFrankedYield = function(dividendAmount, currentPrice, frankingCreditsPercentage) {
     if (typeof dividendAmount !== 'number' || isNaN(dividendAmount) || dividendAmount < 0) { return 0; }
     if (typeof currentPrice !== 'number' || isNaN(currentPrice) || currentPrice <= 0) { return 0; }
     if (typeof frankingCreditsPercentage !== 'number' || isNaN(frankingCreditsPercentage) || frankingCreditsPercentage < 0 || frankingCreditsPercentage > 100) { return 0; }
@@ -79,7 +79,7 @@ export function calculateFrankedYield(dividendAmount, currentPrice, frankingCred
     return (grossedUpDividend / currentPrice) * 100;
 }
 
-export function isAsxMarketOpen() {
+window.isAsxMarketOpen = function() {
     try {
         const override = localStorage.getItem('marketStatusOverride');
         if (override === 'open') return true;
@@ -88,7 +88,7 @@ export function isAsxMarketOpen() {
     return true;
 }
 
-export function escapeCsvValue(value) {
+window.escapeCsvValue = function(value) {
     if (value === null || value === undefined) {
         return '';
     }

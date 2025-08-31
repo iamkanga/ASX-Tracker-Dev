@@ -1,3 +1,4 @@
+document.addEventListener('DOMContentLoaded', function () {
 // ui.js - lightweight UI helpers exposed as window.UI for backwards compatibility
 (function(){
     // Internal helpers: safe DOM queries
@@ -130,51 +131,6 @@
         }
     }
 
-    function toggleAppSidebar(forceState = null) {
-        const appSidebar = $id('appSidebar');
-        const sidebarOverlay = $('.sidebar-overlay');
-        const hamburgerBtn = $id('hamburgerBtn');
-        if (!appSidebar || !sidebarOverlay || !hamburgerBtn) return;
-
-        console.log('Sidebar: toggleAppSidebar called. Current open state: ' + appSidebar.classList.contains('open') + ', Force state: ' + forceState);
-        const isDesktop = window.innerWidth > 768;
-        const isOpen = appSidebar.classList.contains('open');
-
-        if (forceState === true || (forceState === null && !isOpen)) {
-            if (!isDesktop) {
-                if (typeof window.pushAppState === 'function') {
-                    window.pushAppState({ sidebarOpen: true }, '', '#sidebar');
-                }
-            }
-            appSidebar.classList.add('open');
-            sidebarOverlay.classList.add('open');
-            if (appSidebar) {
-                appSidebar.scrollTop = 0;
-            }
-            if (!isDesktop) {
-                document.body.style.overflow = 'hidden';
-            }
-            if (isDesktop) {
-                document.body.classList.add('sidebar-active');
-                sidebarOverlay.style.pointerEvents = 'none';
-            } else {
-                document.body.classList.remove('sidebar-active');
-                sidebarOverlay.style.pointerEvents = 'auto';
-            }
-            hamburgerBtn.setAttribute('aria-expanded','true');
-        } else if (forceState === false || (forceState === null && isOpen)) {
-            appSidebar.classList.remove('open');
-            sidebarOverlay.classList.remove('open');
-            document.body.classList.remove('sidebar-active');
-            document.body.style.overflow = '';
-            sidebarOverlay.style.pointerEvents = 'none';
-            if (appSidebar) {
-                appSidebar.scrollTop = 0;
-            }
-            hamburgerBtn.setAttribute('aria-expanded','false');
-        }
-    }
-
     // Expose lightweight API on window.UI for backwards-compatible calls from script.js
     window.UI = window.UI || {};
     Object.assign(window.UI, {
@@ -185,102 +141,153 @@
         showCustomAlert,
         showCustomConfirm,
         adjustMainContentPadding,
-        ToastManager,
-        toggleAppSidebar
+        ToastManager
     });
-    window.toggleAppSidebar = toggleAppSidebar;
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const hamburgerBtn = $id('hamburgerBtn');
-        const appSidebar = $id('appSidebar');
-        const closeMenuBtn = $id('closeMenuBtn');
-        const sidebarOverlay = $('.sidebar-overlay');
+    // --- Standard Calculator ---
+    let currentCalculatorInput = '';
+    let operator = null;
+    let previousCalculatorInput = '';
+    let resultDisplayed = false;
 
-        if (hamburgerBtn && appSidebar && closeMenuBtn && sidebarOverlay) {
-            if (!hamburgerBtn.dataset.sidebarBound) {
-                hamburgerBtn.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    const willOpen = !appSidebar.classList.contains('open');
-                    toggleAppSidebar();
-                    if (willOpen && typeof window.pushAppStateEntry === 'function') {
-                        window.pushAppStateEntry('sidebar','sidebar');
-                    }
-                });
-                hamburgerBtn.dataset.sidebarBound = '1';
-            }
-            closeMenuBtn.addEventListener('click', () => {
-                toggleAppSidebar(false);
-            });
+    const calculatorInput = $id('calculatorInput');
+    const calculatorResult = $id('calculatorResult');
+    const calculatorButtons = $('.calculator-buttons');
 
-            if (sidebarOverlay._unifiedHandler) {
-                sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);
-            }
-            const unifiedHandler = (e) => {
-                if (e.target !== sidebarOverlay) return;
-                if (!appSidebar.classList.contains('open')) return;
-                try { toggleAppSidebar(false); } catch(err){ console.warn('Sidebar close failed', err); }
-                if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-                e.stopPropagation();
-                if (e.preventDefault) e.preventDefault();
-            };
-            sidebarOverlay.addEventListener('mousedown', unifiedHandler, true);
-            sidebarOverlay._unifiedHandler = unifiedHandler;
+    function updateCalculatorDisplay() {
+        if (!calculatorInput || !calculatorResult) return;
+        calculatorInput.textContent = previousCalculatorInput + (operator ? ' ' + getOperatorSymbol(operator) + ' ' : '') + currentCalculatorInput;
+        if (resultDisplayed) { /* nothing */ }
+        else { calculatorResult.textContent = currentCalculatorInput === '' ? '0' : currentCalculatorInput; }
+    }
 
-            const mainContent = $id('mainContent') || $('main');
-            const firstFocusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-            function trapFocus(e){
-                if (!appSidebar.classList.contains('open')) return;
-                const focusables = Array.from(appSidebar.querySelectorAll(firstFocusableSelector)).filter(el=>!el.disabled && el.offsetParent!==null);
-                if (!focusables.length) return;
-                const first = focusables[0];
-                const last = focusables[focusables.length-1];
-                if (e.key === 'Tab') {
-                    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-                    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-                }
-            }
-            document.addEventListener('keydown', trapFocus, true);
-
-            const __origToggle = toggleAppSidebar;
-            window.toggleAppSidebar = function(force){
-                __origToggle(force);
-                const isOpen = appSidebar.classList.contains('open');
-                if (mainContent) mainContent.setAttribute('aria-hidden', isOpen ? 'true':'false');
-                if (isOpen) {
-                    setTimeout(()=>{
-                        const first = appSidebar.querySelector(firstFocusableSelector);
-                        if (first) first.focus();
-                    },30);
-                } else {
-                    if (mainContent) mainContent.removeAttribute('inert');
-                }
-            };
-
-            document.addEventListener('click', (event) => {
-                const isDesktop = window.innerWidth > 768;
-                if (!isDesktop) return;
-                if (!appSidebar.classList.contains('open')) return;
-                if (!appSidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
-                    toggleAppSidebar(false);
-                    event.stopPropagation();
-                    event.preventDefault();
-                }
-            }, true);
-
-            window.addEventListener('resize', () => {
-                if (appSidebar.classList.contains('open')) {
-                    toggleAppSidebar(false);
-                }
-            });
-
-            const menuButtons = appSidebar.querySelectorAll('.menu-button-item');
-            menuButtons.forEach(button => {
-                button.addEventListener('click', (event) => {
-                    const clickedButton = event.currentTarget;
-                    const closesMenu = clickedButton.dataset.actionClosesMenu !== 'false';
-                    if (closesMenu) toggleAppSidebar(false);
-                });
-            });
+    function calculateResult() {
+        if (!calculatorResult) return;
+        let prev = parseFloat(previousCalculatorInput);
+        let current = parseFloat(currentCalculatorInput);
+        if (isNaN(prev) || isNaN(current)) return;
+        let res;
+        switch (operator) {
+            case 'add': res = prev + current; break;
+            case 'subtract': res = prev - current; break;
+            case 'multiply': res = prev * current; break;
+            case 'divide':
+                if (current === 0) { showCustomAlert('Cannot divide by zero!'); res = 'Error'; }
+                else { res = prev / current; }
+                break;
+            default: return;
         }
-    });
+        if (typeof res === 'number' && !isNaN(res)) { res = parseFloat(res.toFixed(10)); }
+        calculatorResult.textContent = res;
+        previousCalculatorInput = res.toString();
+        currentCalculatorInput = '';
+    }
+
+    function getOperatorSymbol(op) {
+        switch (op) {
+            case 'add': return '+'; case 'subtract': return '-';
+            case 'multiply': return '×'; case 'divide': return '÷';
+            default: return '';
+        }
+    }
+
+    function resetCalculator() {
+        currentCalculatorInput = ''; operator = null; previousCalculatorInput = '';
+        resultDisplayed = false;
+        if(calculatorInput) calculatorInput.textContent = '';
+        if(calculatorResult) calculatorResult.textContent = '0';
+    }
+
+    if (calculatorButtons) {
+        calculatorButtons.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!target.classList.contains('calc-btn') || target.classList.contains('is-disabled-icon')) { return; }
+            const value = target.dataset.value;
+            const action = target.dataset.action;
+            if (value) { appendNumber(value); }
+            else if (action) { handleAction(action); }
+        });
+    }
+
+    function appendNumber(num) {
+        if (resultDisplayed) { currentCalculatorInput = num; resultDisplayed = false; }
+        else { if (num === '.' && currentCalculatorInput.includes('.')) return; currentCalculatorInput += num; }
+        updateCalculatorDisplay();
+    }
+
+    function handleAction(action) {
+        if (action === 'clear') { resetCalculator(); return; }
+        if (action === 'percentage') {
+            if (currentCalculatorInput === '' && previousCalculatorInput === '') return;
+            let val;
+            if (currentCalculatorInput !== '') {
+                val = parseFloat(currentCalculatorInput);
+            } else if (previousCalculatorInput !== '') {
+                val = parseFloat(previousCalculatorInput);
+            } else {
+                return;
+            }
+
+            if (isNaN(val)) return;
+
+            if (operator && previousCalculatorInput !== '') {
+                const prevNum = parseFloat(previousCalculatorInput);
+                if (isNaN(prevNum)) return;
+                currentCalculatorInput = (prevNum * (val / 100)).toString();
+            } else {
+                currentCalculatorInput = (val / 100).toString();
+            }
+            resultDisplayed = false;
+            updateCalculatorDisplay();
+            return;
+        }
+        if (['add', 'subtract', 'multiply', 'divide'].includes(action)) {
+            if (currentCalculatorInput === '' && previousCalculatorInput === '') return;
+            if (currentCalculatorInput !== '') {
+                if (previousCalculatorInput !== '') { calculateResult(); previousCalculatorInput = calculatorResult.textContent; }
+                else { previousCalculatorInput = currentCalculatorInput; }
+            }
+            operator = action; currentCalculatorInput = ''; resultDisplayed = false; updateCalculatorDisplay(); return;
+        }
+        if (action === 'calculate') {
+            if (previousCalculatorInput === '' || currentCalculatorInput === '' || operator === null) { return; }
+            calculateResult(); operator = null; resultDisplayed = true;
+        }
+    }
+    // Expose resetCalculator on the UI object for external calls
+    window.UI.resetCalculator = resetCalculator;
+
+    // --- Dividend Calculator ---
+    const calcDividendAmountInput = $id('calcDividendAmount');
+    const calcCurrentPriceInput = $id('calcCurrentPrice');
+    const calcFrankingCreditsInput = $id('calcFrankingCredits');
+    const investmentValueSelect = $id('investmentValueSelect');
+    const calcUnfrankedYieldSpan = $id('calcUnfrankedYield');
+    const calcFrankedYieldSpan = $id('calcFrankedYield');
+    const calcEstimatedDividend = $id('calcEstimatedDividend');
+
+    function updateDividendCalculations() {
+        if (!calcCurrentPriceInput || !calcDividendAmountInput || !calcFrankingCreditsInput || !investmentValueSelect || !calcUnfrankedYieldSpan || !calcFrankedYieldSpan || !calcEstimatedDividend) return;
+
+        const currentPrice = parseFloat(calcCurrentPriceInput.value);
+        const dividendAmount = parseFloat(calcDividendAmountInput.value);
+        const frankingCredits = parseFloat(calcFrankingCreditsInput.value);
+        const investmentValue = parseFloat(investmentValueSelect.value);
+
+        const unfrankedYield = typeof calculateUnfrankedYield === 'function' ? calculateUnfrankedYield(dividendAmount, currentPrice) : null;
+        const frankedYield = typeof calculateFrankedYield === 'function' ? calculateFrankedYield(dividendAmount, currentPrice, frankingCredits) : null;
+        const estimatedDividend = typeof estimateDividendIncome === 'function' ? estimateDividendIncome(investmentValue, dividendAmount, currentPrice) : null;
+
+        calcUnfrankedYieldSpan.textContent = unfrankedYield !== null ? (formatAdaptivePercent(unfrankedYield) + '%') : '-';
+        calcFrankedYieldSpan.textContent = frankedYield !== null ? (formatAdaptivePercent(frankedYield) + '%') : '-';
+        calcEstimatedDividend.textContent = estimatedDividend !== null ? ('$' + formatAdaptivePrice(estimatedDividend)) : '-';
+    }
+
+    if (calcDividendAmountInput && calcCurrentPriceInput && calcFrankingCreditsInput && investmentValueSelect) {
+        [calcDividendAmountInput, calcCurrentPriceInput, calcFrankingCreditsInput, investmentValueSelect].forEach(input => {
+            input.addEventListener('input', updateDividendCalculations);
+            input.addEventListener('change', updateDividendCalculations);
+        });
+    }
 })();
+});
