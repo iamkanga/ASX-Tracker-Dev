@@ -9410,76 +9410,6 @@ if (targetPriceInput) {
     // Google Auth Button (Sign In/Out) - This button is removed from index.html.
     // Its functionality is now handled by splashSignInBtn.
 
-    // NEW: Simplified Splash Sign-In: popup-only with in-progress guard
-
-    // Early environment safety check: mobile + file:// cannot perform Google auth
-    try {
-        const precheckUA = navigator.userAgent || navigator.vendor || '';
-        const precheckIsMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(precheckUA);
-        const precheckIsFile = (window.location && window.location.protocol === 'file:');
-        if (splashSignInBtn && precheckIsMobile && precheckIsFile) {
-            updateSplashSignInButtonState('error', 'Open via web URL');
-            splashSignInBtn.disabled = true;
-            showCustomAlert('Mobile sign-in can’t run from a file:// URL. Please serve this app over http(s) (e.g., VS Code Live Server) and retry.');
-            console.warn('Auth Precheck: Blocking sign-in on mobile file:// context.');
-        }
-    } catch(_) {}
-
-    if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
-        let splashSignInRetryTimer = null;
-        let splashSignInInProgress = false;
-        splashSignInBtn.setAttribute('data-bound','true');
-        splashSignInBtn.addEventListener('click', async () => {
-            logDebug('Auth: Splash Screen Sign-In Button Clicked.');
-            const currentAuth = auth;
-            if (!currentAuth || !authFunctions) {
-                console.warn('Auth: Auth service not ready or functions not loaded. Cannot process splash sign-in.');
-                showCustomAlert('Authentication service not ready. Please try again in a moment.');
-                return;
-            }
-            try {
-                if (splashSignInInProgress) {
-                    console.warn('Auth: Sign-in already in progress; ignoring duplicate click.');
-                    return;
-                }
-                splashSignInInProgress = true;
-                // Visual feedback
-                if (splashKangarooIcon) splashKangarooIcon.classList.add('pulsing');
-                splashSignInBtn.disabled = true;
-                const btnSpan = splashSignInBtn.querySelector('span');
-                if (btnSpan) { btnSpan.textContent = 'Signing in…'; }
-                // Always create a fresh provider per attempt to avoid stale customParameters
-                const provider = (authFunctions.createGoogleProvider ? authFunctions.createGoogleProvider() : authFunctions.GoogleAuthProviderInstance);
-                if (!provider) {
-                    console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
-                    showCustomAlert('Authentication service not ready. Firebase script missing.');
-                    splashSignInInProgress = false;
-                    return;
-                }
-                try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
-                // Popup only
-                const resolver = authFunctions.browserPopupRedirectResolver;
-                if (resolver) {
-                    await authFunctions.signInWithPopup(currentAuth, provider, resolver);
-                } else {
-                    await authFunctions.signInWithPopup(currentAuth, provider);
-                }
-                logDebug('Auth: Google Sign-In successful from splash screen.');
-                // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
-            }
-            catch (error) {
-                console.error('Auth: Google Sign-In failed from splash screen:', { code: error.code, message: error.message });
-                showCustomAlert('Google Sign-In failed: ' + error.message);
-                splashSignInInProgress = false;
-                splashSignInInProgress = false;
-                splashSignInBtn.disabled = false;
-                const btnSpanReset = splashSignInBtn.querySelector('span');
-                if (btnSpanReset) { btnSpanReset.textContent = 'Sign in with Google'; }
-                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
-            }
-        });
-    }
-
     // Removed redirect handling entirely: popup-only auth
 
     // NEW: Event listener for the top 'X' close button in the Target Hit Details Modal
@@ -11062,6 +10992,76 @@ document.addEventListener('DOMContentLoaded', async function() {
     firestore = firebaseServices.firestore;
     authFunctions = firebaseServices.authFunctions;
     window._firebaseInitialized = firebaseServices.firebaseInitialized;
+
+    // NEW: Simplified Splash Sign-In: popup-only with in-progress guard
+
+    // Early environment safety check: mobile + file:// cannot perform Google auth
+    try {
+        const precheckUA = navigator.userAgent || navigator.vendor || '';
+        const precheckIsMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(precheckUA);
+        const precheckIsFile = (window.location && window.location.protocol === 'file:');
+        if (splashSignInBtn && precheckIsMobile && precheckIsFile) {
+            updateSplashSignInButtonState('error', 'Open via web URL');
+            splashSignInBtn.disabled = true;
+            showCustomAlert('Mobile sign-in can’t run from a file:// URL. Please serve this app over http(s) (e.g., VS Code Live Server) and retry.');
+            console.warn('Auth Precheck: Blocking sign-in on mobile file:// context.');
+        }
+    } catch(_) {}
+
+    if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
+        let splashSignInRetryTimer = null;
+        let splashSignInInProgress = false;
+        splashSignInBtn.setAttribute('data-bound','true');
+        splashSignInBtn.addEventListener('click', async () => {
+            logDebug('Auth: Splash Screen Sign-In Button Clicked.');
+            const currentAuth = auth;
+            if (!currentAuth || !authFunctions) {
+                console.warn('Auth: Auth service not ready or functions not loaded. Cannot process splash sign-in.');
+                showCustomAlert('Authentication service not ready. Please try again in a moment.');
+                return;
+            }
+            try {
+                if (splashSignInInProgress) {
+                    console.warn('Auth: Sign-in already in progress; ignoring duplicate click.');
+                    return;
+                }
+                splashSignInInProgress = true;
+                // Visual feedback
+                if (splashKangarooIcon) splashKangarooIcon.classList.add('pulsing');
+                splashSignInBtn.disabled = true;
+                const btnSpan = splashSignInBtn.querySelector('span');
+                if (btnSpan) { btnSpan.textContent = 'Signing in…'; }
+                // Always create a fresh provider per attempt to avoid stale customParameters
+                const provider = (authFunctions.createGoogleProvider ? authFunctions.createGoogleProvider() : authFunctions.GoogleAuthProviderInstance);
+                if (!provider) {
+                    console.error('Auth: GoogleAuthProvider instance not found. Is Firebase module script loaded?');
+                    showCustomAlert('Authentication service not ready. Firebase script missing.');
+                    splashSignInInProgress = false;
+                    return;
+                }
+                try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
+                // Popup only
+                const resolver = authFunctions.browserPopupRedirectResolver;
+                if (resolver) {
+                    await authFunctions.signInWithPopup(currentAuth, provider, resolver);
+                } else {
+                    await authFunctions.signInWithPopup(currentAuth, provider);
+                }
+                logDebug('Auth: Google Sign-In successful from splash screen.');
+                // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
+            }
+            catch (error) {
+                console.error('Auth: Google Sign-In failed from splash screen:', { code: error.code, message: error.message });
+                showCustomAlert('Google Sign-In failed: ' + error.message);
+                splashSignInInProgress = false;
+                splashSignInInProgress = false;
+                splashSignInBtn.disabled = false;
+                const btnSpanReset = splashSignInBtn.querySelector('span');
+                if (btnSpanReset) { btnSpanReset.textContent = 'Sign in with Google'; }
+                if (splashKangarooIcon) splashKangarooIcon.classList.remove('pulsing');
+            }
+        });
+    }
 
     initializeApp();
 });
