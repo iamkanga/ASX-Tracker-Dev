@@ -30,35 +30,31 @@ export function formatAdaptivePrice(value, options = {}) {
     return value.toFixed(2);
 }
 
-export function formatAdaptivePercent(value) {
-    if (typeof value !== 'number' || isNaN(value)) return '0.00';
-    const absValue = Math.abs(value);
-    if (absValue < 0.01 && absValue > 0) return value.toFixed(4);
-    if (absValue > 1000) return value.toFixed(0);
-    return value.toFixed(2);
+export function formatAdaptivePercent(pct) {
+    if (pct === null || pct === undefined || isNaN(pct)) return '0.00';
+    const n = Number(pct);
+    const abs = Math.abs(n);
+    // Use 3 decimals for very small magnitudes (under 0.1%), else 2
+    const decimals = (abs > 0 && abs < 0.1) ? 3 : 2;
+    return n.toFixed(decimals);
 }
 
 export function formatDate(dateString) {
     if (!dateString) return '';
-    try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return '';
-        return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    } catch (e) {
-        return '';
-    }
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 export function calculateUnfrankedYield(dividendAmount, currentPrice) {
-    if (!dividendAmount || !currentPrice) return null;
+    if (typeof dividendAmount !== 'number' || isNaN(dividendAmount) || dividendAmount < 0) { return 0; }
+    if (typeof currentPrice !== 'number' || isNaN(currentPrice) || currentPrice <= 0) { return 0; }
     return (dividendAmount / currentPrice) * 100;
 }
 
 export function calculateFrankedYield(dividendAmount, currentPrice, frankingCredits) {
-    console.log('[Calc] Franked Yield Input:', { dividendAmount, currentPrice, frankingCredits });
     if (typeof dividendAmount !== 'number' || typeof currentPrice !== 'number' || typeof frankingCredits !== 'number' ||
         isNaN(dividendAmount) || isNaN(currentPrice) || isNaN(frankingCredits) || currentPrice === 0) {
-        console.log('[Calc] Franked Yield: Invalid or missing input, returning null.');
         return null;
     }
 
@@ -73,20 +69,16 @@ export function calculateFrankedYield(dividendAmount, currentPrice, frankingCred
 
     const frankedYield = (grossedUpDividend / currentPrice) * 100;
 
-    console.log('[Calc] Franked Yield Result:', { grossedUpDividend, frankedYield });
     return frankedYield;
 }
 
 export function isAsxMarketOpen() {
-    const now = new Date();
-    const day = now.getDay();
-    const hour = now.getHours();
-    if (day >= 1 && day <= 5) {
-        if (hour >= 10 && hour < 16) {
-            return true;
-        }
-    }
-    return false;
+    try {
+        const override = localStorage.getItem('marketStatusOverride');
+        if (override === 'open') return true;
+        if (override === 'closed') return false;
+    } catch (e) { /* ignore */ }
+    return true;
 }
 
 export function escapeCsvValue(value) {
@@ -94,15 +86,21 @@ export function escapeCsvValue(value) {
         return '';
     }
     let stringValue = String(value);
-    if (stringValue.includes('"') || stringValue.includes(',') || stringValue.includes('\n')) {
-        stringValue = '"' + stringValue.replace(/"/g, '""') + '"';
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
+        stringValue = stringValue.replace(/"/g, '""');
+        return `"${stringValue}"`;
     }
     return stringValue;
 }
 
 export function formatWithCommas(value) {
-    if (typeof value !== 'number' || isNaN(value)) return '';
-    return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'number') return value.toLocaleString(undefined, { maximumFractionDigits: 8 });
+    const str = value.toString();
+    if (!/^[-+]?\d*(\.\d+)?$/.test(str)) return value; // not a plain number string
+    const parts = str.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
 }
 
 export function estimateDividendIncome(investmentValue, dividendAmountPerShare, currentPricePerShare) {
