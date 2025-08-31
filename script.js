@@ -1,5 +1,6 @@
+console.log('script.js loaded');
 import { initializeFirebaseAndAuth } from './firebase.js';
-import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
+import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas, estimateDividendIncome } from './utils.js';
 
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
 // (Moved below DOM references to avoid ReferenceError)
@@ -430,24 +431,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
         if (plClass === 'neutral') {
-            console.log('[DEBUG] Neutral card assigned:', {
-                shareId: share.id,
-                shareName: share.shareName,
-                rowPL,
-                avgPrice,
-                priceNow,
-                shares
-            });
         }
             const todayClass = (todayChange > 0) ? 'positive' : (todayChange < 0 ? 'negative' : 'neutral');
-
-            // DEBUG: Log rowPL and plClass for each card
-            console.log('Portfolio Card Debug:', {
-                shareId: share.id,
-                shareName: share.shareName,
-                rowPL,
-                plClass
-            });
 
             // Card HTML (collapsed/expandable)
             // Border color logic: use today's change (todayClass) to reflect recent movement
@@ -6176,12 +6161,14 @@ function estimateDividendIncome(investmentValue, dividendAmountPerShare, current
 }
 
 function updateCalculatorDisplay() {
+    console.log(`[Calc] Updating display: prev=${previousCalculatorInput}, op=${operator}, curr=${currentCalculatorInput}, resDisp=${resultDisplayed}`);
     calculatorInput.textContent = previousCalculatorInput + (operator ? ' ' + getOperatorSymbol(operator) + ' ' : '') + currentCalculatorInput;
     if (resultDisplayed) { /* nothing */ }
     else { calculatorResult.textContent = currentCalculatorInput === '' ? '0' : currentCalculatorInput; }
 }
 
 function calculateResult() {
+    console.log(`[Calc] Calculating: prev=${previousCalculatorInput}, op=${operator}, curr=${currentCalculatorInput}`);
     let prev = parseFloat(previousCalculatorInput);
     let current = parseFloat(currentCalculatorInput);
     if (isNaN(prev) || isNaN(current)) return;
@@ -6197,6 +6184,7 @@ function calculateResult() {
         default: return;
     }
     if (typeof res === 'number' && !isNaN(res)) { res = parseFloat(res.toFixed(10)); }
+    console.log(`[Calc] Result: ${res}`);
     calculatorResult.textContent = res;
     previousCalculatorInput = res.toString();
     currentCalculatorInput = '';
@@ -10030,12 +10018,14 @@ if (sortSelect) {
     }
 
     function appendNumber(num) {
+    console.log(`[Calc] Appending number: ${num}`);
         if (resultDisplayed) { currentCalculatorInput = num; resultDisplayed = false; }
         else { if (num === '.' && currentCalculatorInput.includes('.')) return; currentCalculatorInput += num; }
         updateCalculatorDisplay();
     }
 
     function handleAction(action) {
+    console.log(`[Calc] Handling action: ${action}`);
         if (action === 'clear') { resetCalculator(); return; }
         if (action === 'percentage') { 
             if (currentCalculatorInput === '' && previousCalculatorInput === '') return;
@@ -11067,6 +11057,39 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 function initializeApp() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isTestMode = urlParams.get('test') === 'true';
+
+    if (isTestMode) {
+        console.log('Test mode detected, bypassing auth.');
+        const header = document.getElementById('appHeader');
+        if (header) {
+            console.log('Header found, removing app-hidden class.');
+            header.classList.remove('app-hidden');
+        } else {
+            console.log('Header not found!');
+        }
+        const container = document.querySelector('main.container');
+        if (container) {
+            container.classList.remove('app-hidden');
+        }
+        // Since we are bypassing auth, we need to manually set some things up
+        // that would normally be done in onAuthStateChanged.
+        // We can't fully initialize without a user, but we can get the UI ready.
+        window._userAuthenticated = true; // Pretend we are authenticated
+        currentUserId = 'test-user'; // Use a dummy user ID
+
+        // We can't load user-specific data, but we can initialize the UI logic
+        // that doesn't depend on user data.
+        if (!window._appLogicInitialized) {
+            initializeAppLogic();
+            window._appLogicInitialized = true;
+        }
+        // We also need to manually hide the splash screen
+        hideSplashScreen();
+        return; // Skip the rest of the auth-based initialization
+    }
+
     if (db && auth && currentAppId && firestore && authFunctions) {
         logDebug('Firebase Ready: DB, Auth, and AppId assigned from firebase.js. Setting up auth state listener.');
 
