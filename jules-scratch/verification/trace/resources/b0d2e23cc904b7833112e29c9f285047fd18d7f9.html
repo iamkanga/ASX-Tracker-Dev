@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share Watchlist (Updated)</title>
+    <link rel="icon" href="favicon.png" type="image/png">
+
+    <link rel="stylesheet" href="style.css?v=2.10.30">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="manifest" href="./manifest.json">
+</head>
+<body>
+    <!-- Toast notifications container (single instance) -->
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+    <div id="splashScreen" class="splash-screen">
+    <p id="splashAppVersion" class="app-version-splash app-version-splash-top"></p>
+        <img id="splashKangarooIcon" src="Kangaicon.jpg" alt="Kangaroo App Icon" class="splash-icon">
+        <button id="splashSignInBtn" class="google-auth-btn">
+            <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
+                <g fill="none" fill-rule="evenodd">
+                  <path d="M17.64 9.2045c0-.6381-.0573-1.2518-.1682-1.8409H9v3.4818h4.8441c-.2086 1.125-.8441 2.0782-1.7777 2.7218v2.2591h2.9082c1.7018-1.5668 2.6841-3.8736 2.6841-6.6218z" fill="#4285F4"></path>
+                  <path d="M9 18c2.43 0 4.47-.8064 5.96-2.1818l-2.9082-2.2591c-.8064.5409-1.8409.8618-3.0518.8618-2.3455 0-4.3291-1.5818-5.0359-3.7164H.9545v2.3318C2.4545 16.1373 5.4818 18 9 18z" fill="#34A853"></path>
+                  <path d="M3.9641 10.71c-.1818-.5409-.2864-1.1164-.2864-1.71s.1045-1.1691.2864-1.71V4.9582H.9545C.3477 6.1718 0 7.5477 0 9s.3477 2.8282.9545 4.0418L3.9641 10.71z" fill="#FBBC05"></path>
+                  <path d="M9 3.5782c1.3227 0 2.5091.4555 3.44 1.3455l2.5818-2.5818C13.4636.8918 11.4273 0 9 0 5.4818 0 2.4545 1.8627.9545 4.9582L3.9641 7.29C4.6709 5.1545 6.6545 3.5782 9 3.5782z" fill="#EA4335"></path>
+                </g>
+            </svg>
+            <span>Sign in with Google</span>
+        </button>
+                <button id="splashUsePopupBtn" class="google-auth-btn" style="display:none; margin-top: 12px; background:#ffffff10; border:1px solid #ffffff40;">
+                        <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0; opacity: 0.85;">
+                                <g fill="none" fill-rule="evenodd">
+                                    <path d="M17.64 9.2045c0-.6381-.0573-1.2518-.1682-1.8409H9v3.4818h4.8441c-.2086 1.125-.8441 2.0782-1.7777 2.7218v2.2591h2.9082c1.7018-1.5668 2.6841-3.8736 2.6841-6.6218z" fill="#4285F4"></path>
+                                    <path d="M9 18c2.43 0 4.47-.8064 5.96-2.1818l-2.9082-2.2591c-.8064.5409-1.8409.8618-3.0518.8618-2.3455 0-4.3291-1.5818-5.0359-3.7164H.9545v2.3318C2.4545 16.1373 5.4818 18 9 18z" fill="#34A853"></path>
+                                    <path d="M3.9641 10.71c-.1818-.5409-.2864-1.1164-.2864-1.71s.1045-1.1691.2864-1.71V4.9582H.9545C.3477 6.1718 0 7.5477 0 9s.3477 2.8282.9545 4.0418L3.9641 10.71z" fill="#FBBC05"></path>
+                                    <path d="M9 3.5782c1.3227 0 2.5091.4555 3.44 1.3455l2.5818-2.5818C13.4636.8918 11.4273 0 9 0 5.4818 0 2.4545 1.8627.9545 4.9582L3.9641 7.29C4.6709 5.1545 6.6545 3.5782 9 3.5782z" fill="#EA4335"></path>
+                                </g>
+                        </svg>
+                        <span>Use popup instead</span>
+                </button>
+    </div>
+
+    <header id="appHeader" class="app-hidden">
+    <div class="header-top-row single-dynamic-title">
+            <div class="header-left-container">
+                <button id="hamburgerBtn" class="hamburger-btn header-action-btn-left" aria-label="Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <!-- Single dynamic clickable title acts as the only title bar -->
+            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false"><span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
+            <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right icon-button" aria-label="Add Share">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+        <!-- Sort row with subtle arrow toggle -->
+        <div id="sortLine" class="sort-line-row">
+            <div class="sort-controls-container">
+                <div class="sort-select-wrapper">
+                    <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
+                    <span id="sortIcon" class="sort-icon"></span>
+                </div>
+                <button id="toggleAsxButtonsBtn" aria-label="Toggle ASX Codes" aria-pressed="false" aria-expanded="false" aria-controls="asxCodeButtonsContainer" class="toggle-asx-btn">
+                    <span class="asx-toggle-label">ASX Codes</span>
+                    <span class="asx-toggle-triangle" aria-hidden="true">
+                        <svg width="18" height="18" viewBox="0 0 18 18" class="chevron-svg" style="display:inline;vertical-align:middle;">
+                            <polyline points="4,7 9,12 14,7" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </button>
+            </div>
+        </div>
+        <select id="watchlistSelect" style="display:none"></select>
+            <!-- Live price timestamp (moved into header-top-row so it can be positioned bottom-right of the title bar) -->
+            <div id="livePriceTimestampContainer" class="live-price-inside-sort-left">
+                <div class="live-price-label">Updated</div>
+                <div id="livePriceTimestamp"></div>
+            </div>
+    <!-- Market status banner (shown automatically when market is closed) -->
+    <div id="marketStatusBanner" class="market-status-banner app-hidden" aria-live="polite"></div>
+
+
+        <div id="asxCodeButtonsContainer" class="asx-code-buttons-container">
+            </div>
+    </header>
+        <!-- Watchlist selection modal -->
+        <div id="watchlistPickerModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="watchlistPickerTitle">
+            <div class="modal-content watchlist-picker">
+                <div class="modal-header-with-icon">
+                    <h3 id="watchlistPickerTitle">Select Watchlist</h3>
+                    <div class="modal-header-action-group">
+                        <button id="closeWatchlistPickerBtn" class="icon-button close-button" title="Close" aria-label="Close"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div id="watchlistPickerList" class="watchlist-picker-list"></div>
+            </div>
+        </div>
+
+        <!-- Global Alerts Modal (Advanced) -->
+        <div id="globalAlertsModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="globalAlertsTitle">
+            <div class="modal-content global-alerts-modal single-scroll-modal">
+                <div class="modal-header-with-icon">
+                    <h2 id="globalAlertsTitle">Global Price Alerts</h2>
+                    <div class="modal-header-action-group">
+                        <button id="saveGlobalAlertsBtn" class="icon-button save-icon" title="Save Settings" aria-label="Save Settings"><i class="fas fa-save"></i></button>
+                        <button id="closeGlobalAlertsBtn" class="icon-button close-button" title="Close" aria-label="Close"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <form id="globalAlertsForm" class="global-alerts-form" novalidate>
+                    <fieldset class="ga-section">
+                        <legend>Minimum Price Filter</legend>
+                        <div class="form-row">
+                            <label for="globalMinimumPrice">Ignore Shares Priced Below ($):</label>
+                            <input type="number" step="0.01" min="0" id="globalMinimumPrice" placeholder="e.g. 0.20" />
+                        </div>
+                    </fieldset>
+                    <fieldset class="ga-section">
+                        <legend>Notify on Price Increase</legend>
+                        <div class="form-row">
+                            <label for="globalPercentIncrease">Percentage Increase (%):</label>
+                            <input type="number" step="0.01" min="0" id="globalPercentIncrease" placeholder="e.g. 8" />
+                        </div>
+                        <div class="form-row">
+                            <label for="globalDollarIncrease">Dollar Increase ($):</label>
+                            <input type="number" step="0.01" min="0" id="globalDollarIncrease" placeholder="e.g. 0.40" />
+                        </div>
+                    </fieldset>
+                    <fieldset class="ga-section">
+                        <legend>Notify on Price Decrease</legend>
+                        <div class="form-row">
+                            <label for="globalPercentDecrease">Percentage Decrease (%):</label>
+                            <input type="number" step="0.01" min="0" id="globalPercentDecrease" placeholder="e.g. 6" />
+                        </div>
+                        <div class="form-row">
+                            <label for="globalDollarDecrease">Dollar Decrease ($):</label>
+                            <input type="number" step="0.01" min="0" id="globalDollarDecrease" placeholder="e.g. 0.30" />
+                        </div>
+                    </fieldset>
+                    <!-- Action buttons removed; using header icons for consistency -->
+                </form>
+                    <p class="modal-helper-text" style="margin-top:18px;">Create automatic alerts when ANY ASX share moves beyond these thresholds since previous close. Configure increases and decreases separately. Leave a field blank (or 0) to disable that trigger.</p>
+            </div>
+        </div>
+
+    <nav id="appSidebar" class="app-sidebar">
+        <button id="closeMenuBtn" class="close-menu-btn">X</button>
+
+        <div class="menu-section">
+            <h3>Share Actions</h3>
+            <div class="menu-buttons-group">
+                <button id="toggleCompactViewBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-th-large"></i> <span>Toggle Compact View</span>
+                </button>
+                <button id="refreshLivePricesBtn" class="menu-button-item" data-action-closes-menu="false">
+                    <i class="fas fa-sync-alt"></i> <span>Refresh Live Prices</span>
+                </button>
+                <button id="newShareBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-plus-circle"></i> <span>Add New Share</span>
+                </button>
+                <button id="searchStockBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-search-plus"></i> <span>Search & Add Stock</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <h3>Watchlists</h3>
+            <div class="menu-buttons-group">
+                <button id="addWatchlistBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-list-ul"></i> <span>Add Watchlist</span>
+                </button>
+                <button id="editWatchlistBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-edit"></i> <span>Edit Current Watchlist</span>
+                </button>
+                <button id="globalAlertsBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-bell"></i> <span>Global Alerts</span>
+                </button>
+                <div id="globalAlertsSettingsSummary" class="global-alerts-summary-text" aria-live="polite"></div>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <h3>Calculators</h3>
+            <div class="menu-buttons-group">
+                <button id="standardCalcBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-calculator"></i> <span>Standard</span>
+                </button>
+                <button id="dividendCalcBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-money-bill-wave"></i> <span>Dividend</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <h3>Theme</h3>
+            <div class="menu-buttons-group">
+                <label for="colorThemeSelect" class="theme-select-label">Choose Color Theme:</label>
+                <select id="colorThemeSelect" class="dropdown-large menu-dropdown" data-action-closes-menu="false">
+                    <option value="none" selected>No Custom Theme</option>
+                    <optgroup label="Bold Themes">
+                        <option value="bold-1">Bold Ocean</option>
+                        <option value="bold-2">Bold Forest</option>
+                        <option value="bold-3">Bold Sunset</option>
+                        <option value="bold-4">Bold Royal</option>
+                        <option value="bold-5">Bold Grape</option>
+                        <option value="bold-6">Bold Fire</option>
+                        <option value="bold-7">Bold Emerald</option>
+                        <option value="bold-8">Bold Plum</option>
+                        <option value="bold-9">Bold Aqua</option>
+                        <option value="bold-10">Bold Ruby</option>
+                    </optgroup>
+                    <optgroup label="Subtle Themes">
+                        <option value="subtle-1">Subtle Sky</option>
+                        <option value="subtle-2">Subtle Earth</option>
+                        <option value="subtle-3">Subtle Rose</option>
+                        <option value="subtle-4">Subtle Lavender</option>
+                        <option value="subtle-5">Subtle Mint</option>
+                        <option value="subtle-6">Subtle Sand</option>
+                        <option value="subtle-7">Subtle Graphite</option>
+                        <option value="subtle-8">Subtle Peach</option>
+                        <option value="subtle-9">Subtle Teal</option>
+                        <option value="subtle-10">Subtle Stone</option>
+                    </optgroup>
+                    <optgroup label="Muted Themes">
+                        <option value="Muted Blue">Muted Blue</option>
+                        <option value="Muted Brown">Muted Brown</option>
+                        <option value="Muted Pink">Muted Pink</option>
+                        <option value="Muted Green">Muted Green</option>
+                        <option value="Muted Purple">Muted Purple</option>
+                        <option value="Muted Orange">Muted Orange</option>
+                        <option value="Muted Cyan">Muted Cyan</option>
+                        <option value="Muted Magenta">Muted Magenta</option>
+                        <option value="Muted Gold">Muted Gold</option>
+                        <option value="Muted Grey">Muted Grey</option>
+                    </optgroup>
+                </select>
+
+                <button id="themeToggleBtn" class="menu-button-item" data-action-closes-menu="false">
+                    <i class="fas fa-palette"></i> <span>Theme Toggle</span>
+                </button>
+
+                <button id="revertToDefaultThemeBtn" class="menu-button-item secondary-buttons" data-action-closes-menu="false">
+                    <i class="fas fa-sun"></i><i class="fas fa-moon"></i> <span>Default Theme</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <h3>Data Actions</h3>
+            <div class="menu-buttons-group">
+                <button id="exportWatchlistBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-file-export"></i> <span>Export Watchlist (CSV)</span>
+                </button>
+                <button id="diagnosticsBtn" class="menu-button-item" data-action-closes-menu="false">
+                    <i class="fas fa-bug"></i> <span>Diagnostics</span>
+                </button>
+                <button id="forceUpdateBtn" class="menu-button-item" data-action-closes-menu="true">
+                    <i class="fas fa-sync-alt"></i> <span>Force Update</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="menu-section data-management-section">
+            <h3>Data Management</h3>
+            <div class="menu-buttons-group">
+                <button id="deleteAllUserDataBtn" class="menu-button-item danger-button" data-action-closes-menu="true">
+                    <i class="fas fa-exclamation-triangle"></i> <span>Delete All My Data</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="menu-section logout-section">
+            <h3>Account</h3>
+            <div class="menu-buttons-group">
+                <span id="logoutBtn" class="menu-button-item danger-button" data-action-closes-menu="true">
+                    <i class="fas fa-sign-out-alt"></i> <span>Log Out</span>
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <main class="container app-hidden">
+        <div id="firebaseInitError" class="error-message" style="display: none;">
+            <p><strong>Error:</strong> Firebase failed to initialize.</p>
+            <p>This is usually due to missing or incorrect Firebase configuration. Please ensure your <code>firebaseConfig</code> in <code>index.html</code> is correctly set up from your Firebase project settings.</p>
+            <p>Core application features will not work without a valid Firebase connection.</p>
+        </div>
+
+        <div id="loadingIndicator" class="loading" style="display: none;">
+            <div class="loader"></div>
+            <p>Loading data...</p>
+        </div>
+
+        <div id="stockWatchlistSection" class="share-list-section">
+            <div class="table-container">
+                <table id="shareTable">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Live Price</th>
+                            <th>Alert Target</th>
+                            <th>Rating</th>
+                            <th>Dividends</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+            <div id="mobileShareCards" class="mobile-share-cards">
+                </div>
+        </div>
+
+        <div id="cashAssetsSection" class="cash-assets-section app-hidden">
+            <h2>Cash & Assets Balances</h2>
+            <div id="cashCategoriesContainer" class="cash-categories-container">
+                <p class="empty-message">No cash categories added yet. Click "Add Category" to get started!</p>
+            </div>
+            <div class="cash-actions">
+                </div>
+            <div class="total-cash-display">
+                <h3>Total Cash: <span id="totalCashDisplay">$0.00</span></h3>
+            </div>
+        </div>
+    </main>
+
+    <button id="targetHitIconBtn" class="icon-button target-hit-fixed-btn" title="View Alert Targets">
+        <img src="notification_icon.png" alt="Notifications">
+        <span id="targetHitIconCount" class="badge">0</span>
+    </button>
+
+    <button id="scrollToTopBtn" title="Go to top"><i class="fas fa-arrow-up"></i></button>
+
+    <div id="shareFormSection" class="modal">
+        <div class="modal-content add-share-modal-content single-scroll-modal">
+            <div class="modal-header-with-icon">
+                <div class="modal-title-container">
+                    <h2 id="formTitle">Add New Share</h2>
+                    <p id="formCompanyName" class="modal-company-name-display"></p>
+                </div>
+                <div class="modal-header-action-group">
+                    <span id="deleteShareBtn" class="modal-action-icon danger hidden" title="Delete"><i class="fas fa-trash-alt"></i></span>
+                    <span id="saveShareBtn" class="modal-action-icon" title="Save Share"><i class="fas fa-save"></i></span>
+                    <span class="close-button form-close-button">&times;</span>
+                </div>
+            </div>
+
+                <div id="shareFormAccordion" class="accordion">
+                    <!-- Core Info -->
+                    <div class="accordion-section open" data-section="core">
+                        <button type="button" class="accordion-toggle" aria-expanded="true" aria-controls="accordion-panel-core" id="accordion-header-core">
+                            <span class="accordion-title">Core Info</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-core" class="accordion-panel" role="region" aria-labelledby="accordion-header-core">
+                                <label for="shareName">ASX Code:</label>
+                            <div class="search-input-container">
+                                <input type="text" id="shareName" placeholder="e.g. BHP" autocomplete="off" required>
+                                <div id="shareNameSuggestions" class="autocomplete-suggestions"></div>
+                            </div>
+                            <div id="addShareLivePriceDisplay" class="live-price-display-section" style="display:none;"></div>
+
+                                <label for="shareWatchlistSelect" style="margin-top:14px;">Assign to Watchlist:</label>
+                                <!-- Enhanced toggle-based control is the visible UI. Keep a hidden native <select> for data-binding/backwards compatibility. -->
+                                <!-- Native select removed to avoid duplicate UI; enhanced toggle-based control is the visible selector. -->
+                                <button id="shareWatchlistDropdownBtn" type="button" class="dropdown-large" aria-haspopup="listbox" aria-expanded="false">Select Watchlists</button>
+                                <div id="shareWatchlistEnhanced" class="watchlist-enhanced-list" role="listbox"></div>
+                        </div>
+                    </div>
+                    <!-- Portfolio Holdings -->
+                    <div class="accordion-section" data-section="portfolio">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-portfolio" id="accordion-header-portfolio">
+                            <span class="accordion-title">Holdings</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-portfolio" class="accordion-panel" role="region" aria-labelledby="accordion-header-portfolio">
+                            <label for="portfolioShares">Number of Shares:</label>
+                            <input type="number" id="portfolioShares" min="0" step="1" placeholder="1000" class="smart-ph">
+
+                            <label for="portfolioAvgPrice">Average Purchase Price ($):</label>
+                            <input type="number" id="portfolioAvgPrice" min="0" step="0.01" placeholder="23.45" class="smart-ph">
+                        </div>
+                    </div>
+                    <!-- Target & Rating -->
+                    <div class="accordion-section" data-section="target">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-target" id="accordion-header-target">
+                            <span class="accordion-title">Target & Rating</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-target" class="accordion-panel" role="region" aria-labelledby="accordion-header-target">
+                            <label for="shareRating">Star Rating:</label>
+                            <select id="shareRating" class="dropdown-large">
+                                <option value="0" selected>No Rating</option>
+                                <option value="1">⭐ 1 Star</option>
+                                <option value="2">⭐⭐ 2 Stars</option>
+                                <option value="3">⭐⭐⭐ 3 Stars</option>
+                                <option value="4">⭐⭐⭐⭐ 4 Stars</option>
+                                <option value="5">⭐⭐⭐⭐⭐ 5 Stars</option>
+                            </select>
+                            <div class="form-group-with-toggle">
+                                <label for="targetPrice" class="target-price-label">Alert Target ($):</label>
+                                <div class="toggle-row" aria-label="Alert configuration">
+                                    <div class="segmented-toggle intent-toggle" role="group" aria-label="Intent">
+                                        <button type="button" id="targetIntentBuyBtn" class="toggle-segment intent buy is-active" aria-pressed="true">Buy</button>
+                                        <button type="button" id="targetIntentSellBtn" class="toggle-segment intent sell" aria-pressed="false">Sell</button>
+                                    </div>
+                                    <div class="segmented-toggle direction-toggle" role="group" aria-label="Direction">
+                                        <button type="button" id="targetDirAboveBtn" class="toggle-segment dir above" aria-pressed="false">Above</button>
+                                        <button type="button" id="targetDirBelowBtn" class="toggle-segment dir below is-active" aria-pressed="true">Below</button>
+                                    </div>
+                                </div>
+                                <div class="visually-hidden">
+                                    <div class="target-checkbox-grid">
+                                        <div class="target-checkbox-row">
+                                            <label class="checkbox-label" for="targetBuyCheckbox">
+                                                <input type="checkbox" id="targetBuyCheckbox" class="modern-checkbox" disabled>
+                                                Buy
+                                            </label>
+                                            <label class="checkbox-label" for="targetAboveCheckbox">
+                                                <input type="checkbox" id="targetAboveCheckbox" class="modern-checkbox">
+                                                Above
+                                            </label>
+                                        </div>
+                                        <div class="target-checkbox-row">
+                                            <label class="checkbox-label" for="targetSellCheckbox">
+                                                <input type="checkbox" id="targetSellCheckbox" class="modern-checkbox" disabled>
+                                                Sell
+                                            </label>
+                                            <label class="checkbox-label" for="targetBelowCheckbox">
+                                                <input type="checkbox" id="targetBelowCheckbox" class="modern-checkbox" checked>
+                                                Below
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="number" id="targetPrice" step="0.01" placeholder="25.50" class="smart-ph">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Dividends -->
+                    <div class="accordion-section" data-section="dividends">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-dividends" id="accordion-header-dividends">
+                            <span class="accordion-title">Dividends</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-dividends" class="accordion-panel" role="region" aria-labelledby="accordion-header-dividends">
+                            <label for="dividendAmount">Dividend Amount (per share, annual $):</label>
+                            <input type="number" id="dividendAmount" step="0.001" placeholder="1.250" class="smart-ph">
+                            <label for="frankingCredits">Franking Credits (%):</label>
+                            <input type="number" id="frankingCredits" step="0.1" min="0" max="100" placeholder="70 (for 70%)" class="smart-ph">
+                        </div>
+                    </div>
+                    <!-- Other Details (auto populated, read-only display) -->
+                    <div class="accordion-section" data-section="other">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-other" id="accordion-header-other">
+                            <span class="accordion-title">Other Details</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-other" class="accordion-panel" role="region" aria-labelledby="accordion-header-other">
+                            <p class="static-field"><strong>Entry Date:</strong> <span id="autoEntryDateDisplay" class="ghosted-text">Auto when saved</span></p>
+                            <p class="static-field"><strong>Entry Price:</strong> <span id="autoReferencePriceDisplay" class="ghosted-text">Auto when saved</span></p>
+                        </div>
+                    </div>
+                    <!-- Comments -->
+                    <div class="accordion-section" data-section="comments">
+                        <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="accordion-panel-comments" id="accordion-header-comments">
+                            <span class="accordion-title">Comments</span>
+                            <span class="accordion-caret" aria-hidden="true"></span>
+                        </button>
+                        <div id="accordion-panel-comments" class="accordion-panel" role="region" aria-labelledby="accordion-header-comments">
+                            <div class="comments-form-container">
+                                <div class="comments-header-row">
+                                    <h3>Comments</h3>
+                                    <span id="addCommentSectionBtn" class="add-section-icon" title="Add Comment"><i class="fas fa-plus"></i></span>
+                                </div>
+                                <div id="dynamicCommentsArea"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        </div>
+    </div>
+
+    <div id="shareDetailModal" class="modal">
+        <div class="modal-content single-scroll-modal">
+            <div class="modal-header-with-icon">
+                <div class="modal-title-container">
+                    <h2 id="modalShareName">Share Details</h2>
+                    <p id="modalCompanyName" class="modal-company-name-display"></p>
+                </div>
+                <div class="modal-header-action-group">
+                    <span id="deleteShareFromDetailBtn" class="modal-action-icon danger" title="Delete Share"><i class="fas fa-trash-alt"></i></span>
+                    <span id="editShareFromDetailBtn" class="modal-action-icon" title="Edit Share"><i class="fas fa-edit"></i></span>
+                    <span class="close-button">&times;</span>
+                </div>
+            </div>
+
+                <div class="share-detail-sections">
+                    <section class="detail-card" data-section="investment">
+                        <h3 class="detail-card-title">Investment</h3>
+                        <div id="modalLivePriceDisplaySection" class="live-price-display-section"></div>
+                        <!-- Moved entry details to dedicated section below comments -->
+                    </section>
+                    <section class="detail-card" data-section="alerts">
+                        <h3 class="detail-card-title">Alerts</h3>
+                        <div class="detail-row"><span class="detail-label">Alert Target</span><span id="modalTargetPrice" class="detail-value"></span></div>
+                    </section>
+                    <section class="detail-card" data-section="dividends">
+                        <h3 class="detail-card-title">Dividends & Yield</h3>
+                        <div class="detail-row"><span class="detail-label">Dividend Amount</span><span id="modalDividendAmount" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Franking Credits</span><span id="modalFrankingCredits" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Unfranked Yield</span><span id="modalUnfrankedYield" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Franked Yield</span><span id="modalFrankedYield" class="detail-value"></span></div>
+                    </section>
+                    <section class="detail-card full-span" data-section="comments">
+                        <h3 class="detail-card-title">Comments</h3>
+                        <div id="modalCommentsContainer" class="modal-comments-sections"></div>
+                    </section>
+                    <section class="detail-card full-span" data-section="links">
+                        <h3 class="detail-card-title">Research Links</h3>
+                        <div class="external-links-grid">
+                            <a id="modalNewsLink" href="#" target="_blank" class="external-link primary-news-link">View News <i class="fas fa-external-link-alt"></i></a>
+                            <a id="modalGoogleFinanceLink" href="#" target="_blank" class="external-link">View on Google Finance <i class="fas fa-external-link-alt"></i></a>
+                            <a id="modalMarketIndexLink" href="#" target="_blank" class="external-link">View on Market Index <i class="fas fa-external-link-alt"></i></a>
+                            <a id="modalFoolLink" href="#" target="_blank" class="external-link">View on Motley Fool <i class="fas fa-external-link-alt"></i></a>
+                            <a id="modalListcorpLink" href="#" target="_blank" class="external-link">View on Listcorp <i class="fas fa-external-link-alt"></i></a>
+                            <span class="commsec-link-wrapper">
+                                <a id="modalCommSecLink" href="#" target="_blank" class="external-link">View on CommSec.com.au <i class="fas fa-external-link-alt"></i></a>
+                                <p id="commSecLoginMessage" class="ghosted-text external-links-note">Login may be required for some data sources.</p>
+                            </span>
+                        </div>
+                    </section>
+                    <section class="detail-card full-span" data-section="entry-meta">
+                        <h3 class="detail-card-title">Entry Details</h3>
+                        <div class="detail-row"><span class="detail-label">Entry Price</span><span id="modalEnteredPrice" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Entry Date</span><span id="modalEntryDate" class="detail-value"></span></div>
+                        <div class="detail-row"><span class="detail-label">Star Rating</span><span id="modalStarRating" class="detail-value"></span></div>
+                    </section>
+                </div>
+        </div>
+    </div>
+
+    <div id="addWatchlistModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header-with-icon">
+                <h2>Add New Watchlist</h2>
+                <div class="modal-header-action-group">
+                    <span id="saveWatchlistBtn" class="modal-action-icon" title="Save Watchlist"><i class="fas fa-save"></i></span>
+                    <span class="close-button">&times;</span>
+                </div>
+            </div>
+            <label for="newWatchlistName">Watchlist Name:</label>
+            <input type="text" id="newWatchlistName" placeholder="e.g., Tech Stocks" required>
+        </div>
+    </div>
+
+    <div id="manageWatchlistModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header-with-icon">
+                <h2>Manage Watchlist</h2>
+                <div class="modal-header-action-group">
+                    <span id="deleteWatchlistInModalBtn" class="modal-action-icon danger" title="Delete Watchlist"><i class="fas fa-trash-alt"></i></span>
+                    <span id="saveWatchlistNameBtn" class="modal-action-icon" title="Save Name"><i class="fas fa-save"></i></span>
+                    <span class="close-button">&times;</span>
+                </div>
+            </div>
+            <label for="editWatchlistName">Watchlist Name:</label>
+            <input type="text" id="editWatchlistName" required>
+        </div>
+    </div>
+
+    <div id="dividendCalculatorModal" class="modal">
+        <div class="modal-content calculator-modal-content">
+            <span class="close-button calc-close-button">&times;</span>
+            <h2>Dividend Calculator</h2>
+            <div class="calc-input-group">
+                <label for="calcCurrentPrice">Share Price ($):</label>
+                <input type="number" id="calcCurrentPrice" step="0.01" placeholder="e.g., 25.50">
+            </div>
+            <div class="calc-input-group">
+                <label for="calcDividendAmount">Dividend Amount (per share, annual $):</label>
+                <input type="number" id="calcDividendAmount" step="0.001" placeholder="e.g., 1.250">
+            </div>
+            <div class="calc-input-group">
+                <label for="calcFrankingCredits">Franking Credits (%):</label>
+                <input type="number" id="calcFrankingCredits" step="0.1" min="0" max="100" placeholder="e.g., 70 for 70%">
+            </div>
+            <p><strong>Unfranked Yield:</strong> <span id="calcUnfrankedYield"></span></p>
+            <p><strong>Franked Yield:</strong> <span id="calcFrankedYield"></span></p>
+            <hr>
+            <div class="calc-input-group">
+                <label for="investmentValueSelect">Investment Value:</label>
+                <select id="investmentValueSelect">
+                    <option value="1000">$1,000</option>
+                    <option value="5000">$5,000</option>
+                    <option value="10000" selected>$10,000</option>
+                    <option value="25000">$25,000</option>
+                    <option value="50000">$50,000</option>
+                    <option value="100000">$100,000</option>
+                </select>
+            </div>
+            <p><strong>Estimated Annual Dividend:</strong> <span id="calcEstimatedDividend"></span></p>
+        </div>
+    </div>
+
+    <div id="calculatorModal" class="modal">
+        <div class="modal-content calculator-modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Standard Calculator</h2>
+            <div class="calculator-display">
+                <div id="calculatorInput" class="calculator-input"></div>
+                <div id="calculatorResult" class="calculator-result">0</div>
+            </div>
+            <div class="calculator-buttons">
+                <button class="calc-btn clear" data-action="clear">C</button>
+                <button class="calc-btn operator" data-action="percentage">%</button>
+                <button class="calc-btn operator" data-action="divide">÷</button>
+
+                <button class="calc-btn" data-value="7">7</button>
+                <button class="calc-btn" data-value="8">8</button>
+                <button class="calc-btn" data-value="9">9</button>
+                <button class="calc-btn operator" data-action="multiply">×</button>
+
+                <button class="calc-btn" data-value="4">4</button>
+                <button class="calc-btn" data-value="5">5</button>
+                <button class="calc-btn" data-value="6">6</button>
+                <button class="calc-btn operator" data-action="subtract">-</button>
+
+                <button class="calc-btn" data-value="1">1</button>
+                <button class="calc-btn" data-value="2">2</button>
+                <button class="calc-btn" data-value="3">3</button>
+                <button class="calc-btn operator" data-action="add">+</button>
+
+                <button class="calc-btn zero" data-value="0">0</button>
+                <button class="calc-btn" data-value=".">.</button>
+                <button class="calc-btn equals" data-action="calculate">=</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="targetHitDetailsModal" class="modal target-hit-details-modal">
+        <div class="modal-content single-scroll-modal">
+            <div class="modal-header-with-icon">
+                <h2 id="targetHitModalTitle">Notifications</h2>
+            </div>
+
+            <div id="targetHitSharesList" class="target-hit-shares-list">
+                <p class="no-alerts-message">No shares currently at alert target.</p>
+            </div>
+
+            <div class="modal-action-buttons-footer">
+                <button id="alertModalMinimizeBtn" class="button secondary-buttons">Minimize</button>
+                <button id="alertModalDismissAllBtn" class="button secondary-buttons">Dismiss All</button>
+            </div>
+        </div>
+    </div>
+    <div id="shareContextMenu" class="context-menu">
+        <button id="contextEditShareBtn" class="context-menu-item"><i class="fas fa-edit"></i> Edit Share</button>
+        <button id="contextDeleteShareBtn" class="context-menu-item danger-button"><i class="fas fa-trash-alt"></i> Delete Share</button>
+    </div>
+
+    <div id="cashAssetFormModal" class="modal">
+        <div class="modal-content single-scroll-modal">
+            <div class="modal-header-with-icon">
+                <h2 id="cashFormTitle">Add New Cash Asset</h2>
+                <div class="modal-header-action-group">
+                    <span id="deleteCashAssetBtn" class="modal-action-icon danger hidden" title="Delete"><i class="fas fa-trash-alt"></i></span>
+                    <span id="saveCashAssetBtn" class="modal-action-icon" title="Save Cash Asset"><i class="fas fa-save"></i></span>
+                    <span class="close-button cash-form-close-button">&times;</span>
+                </div>
+            </div>
+                <label for="cashAssetName">Asset Name:</label>
+                <input type="text" id="cashAssetName" placeholder="e.g., Savings Account" required>
+
+                <label for="cashAssetBalance">Balance ($):</label>
+                <input type="number" id="cashAssetBalance" step="0.01" placeholder="e.g., 10000.00" required>
+
+                <div class="comments-form-container">
+                    <h3>Comments <span id="addCashAssetCommentBtn" class="add-section-icon"><i class="fas fa-plus"></i></span></h3>
+
+                    <div id="cashAssetCommentsArea">
+                        </div>
+                </div>
+
+                <div class="form-check-group">
+                    <input type="checkbox" id="hideCashAssetCheckbox">
+                    <label for="hideCashAssetCheckbox">Temporarily hide this asset and exclude from total</label>
+                </div>
+        </div>
+    </div>
+
+<div id="stockSearchModal" class="modal">
+        <div class="modal-content stock-search-modal-content single-scroll-modal">
+            <div class="modal-header-with-icon">
+                <h2 id="stockSearchTitle">Search ASX Stocks</h2>
+                <div class="modal-header-action-group">
+                    <span class="close-button search-close-button">&times;</span>
+                </div>
+            </div>
+                <div class="search-input-container">
+                    <input type="text" id="asxSearchInput" placeholder="Search by Code (e.g., BHP)" autocomplete="off">
+                    <div id="asxSuggestions" class="autocomplete-suggestions">
+                        </div>
+                </div>
+
+                <div id="searchResultDisplay" class="search-result-display">
+                    <p class="initial-message">Start typing an ASX code to search.</p>
+                </div>
+
+            <div class="modal-action-buttons-footer">
+                </div>
+        </div>
+    </div>
+    <div id="cashAssetDetailModal" class="modal">
+        <div class="modal-content single-scroll-modal">
+            <div class="modal-header-with-icon">
+                <h2 id="modalCashAssetName">Asset Details</h2>
+                <div class="modal-header-action-group">
+                    <span id="deleteCashAssetFromDetailBtn" class="modal-action-icon danger" title="Delete Cash Asset"><i class="fas fa-trash-alt"></i></span>
+                    <span id="editCashAssetFromDetailBtn" class="modal-action-icon" title="Edit Cash Asset"><i class="fas fa-edit"></i></span>
+                    <span class="close-button">&times;</span>
+                </div>
+            </div>
+                <p><strong>Asset Name:</strong> <span id="detailCashAssetName"></span></p>
+                <p><strong>Balance:</strong> <span id="detailCashAssetBalance"></span></p>
+                <p><strong>Last Updated:</strong> <span id="detailCashAssetLastUpdated"></span></p>
+                <div id="modalCashAssetCommentsContainer" class="modal-comments-sections">
+                    <h3>Comments</h3>
+                    </div>
+        </div>
+    </div>
+
+    <!-- Global Alert Discovery Modal -->
+    <div id="discoverGlobalModal" class="modal">
+        <div class="modal-content single-scroll-modal">
+            <div class="modal-header-with-icon">
+                <h2>Discover Moving Shares</h2>
+                <div class="modal-header-action-group">
+                    <span class="close-button" title="Close">&times;</span>
+                </div>
+            </div>
+            <div id="discoverGlobalList" class="discover-global-list"><p class="ghosted-text">Loading...</p></div>
+        </div>
+    </div>
+
+
+    <template id="mobile-share-card-template">
+        <div class="mobile-card" data-doc-id="{{docId}}">
+            <div class="live-price-display-section">
+                <h3 class="neutral-code-text card-code">{{shareName}}</h3>
+                <span class="change-chevron card-chevron {{priceClass}}">{{arrowSymbol}}</span>
+                <div class="live-price-main-row">
+                    <span class="live-price-large neutral-code-text card-live-price">{{livePrice}}</span>
+                </div>
+                <span class="price-change-large card-price-change {{priceClass}}">{{priceChange}}</span>
+                <div class="fifty-two-week-row">
+                    <span class="fifty-two-week-value low">Low: {{low52Week}}</span>
+                    <span class="fifty-two-week-value high">High: {{high52Week}}</span>
+                </div>
+                <div class="pe-ratio-row">
+                    <span class="pe-ratio-value">P/E: {{peRatio}}</span>
+                </div>
+            </div>
+            <p class="data-row alert-target-row" data-template-conditional="alertTarget">
+                <span class="label-text">Alert Target:</span>
+                <span class="data-value">{{alertTarget}}</span>
+            </p>
+            <p class="data-row">
+                <span class="label-text">Star Rating:</span>
+                <span class="data-value">{{starRating}}</span>
+            </p>
+            <p class="data-row">
+                <span class="label-text">Dividend Yield:</span>
+                <span class="data-value">{{dividendYield}}</span>
+            </p>
+        </div>
+    </template>
+
+    <script src="ui.js?v=2.10.30"></script>
+    <script src="script.js?v=2.10.30" type="module"></script>
+    <!-- Service worker registration and immediate update helper -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js').then(reg => {
+                try { reg.update(); } catch(e){}
+                // If a new worker is already waiting, ask it to skipWaiting
+                if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+                reg.addEventListener('updatefound', () => {
+                    const newSW = reg.installing;
+                    if (!newSW) return;
+                    newSW.addEventListener('statechange', () => {
+                        if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New worker installed; ask it to activate immediately
+                            newSW.postMessage({ type: 'SKIP_WAITING' });
+                        }
+                    });
+                });
+            }).catch(() => {});
+
+            // Reload page when the new service worker takes control
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+            });
+        }
+    </script>
+    <!-- Copilot update: 2025-07-29 - change for sync test -->
+</body>
+</html>
