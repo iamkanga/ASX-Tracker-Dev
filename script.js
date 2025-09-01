@@ -2632,23 +2632,7 @@ function closeModals() {
 
 // Toast-based lightweight alert; keeps API but renders a toast instead of blocking modal
 function showCustomAlert(message, duration = 3000, type = 'info') {
-    // Enforce minimum on-screen time of 3000ms unless explicitly sticky (0)
-    const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
-    try {
-        const container = document.getElementById('toastContainer');
-        if (container) {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.setAttribute('role', 'status');
-            toast.innerHTML = `<span class="icon"></span><div class="message"></div>`;
-            toast.querySelector('.message').textContent = message;
-            const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
-            container.appendChild(toast);
-            requestAnimationFrame(()=> toast.classList.add('show'));
-            if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
-            return;
-        }
-    } catch (e) { console.warn('Toast render failed, using alert fallback.', e); }
+    if (window.UI && typeof window.UI.showCustomAlert === 'function') return window.UI.showCustomAlert(message, duration, type);
     // Minimal fallback
     try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
 }
@@ -3554,38 +3538,43 @@ function updateCompactViewButtonState() {
 }
 
 function showModal(modalElement) {
-    if (modalElement) {
-        // Push a new history state for every modal open
-        pushAppState({ modalId: modalElement.id }, '', '');
+    // Prefer UI module if available
+    if (window.UI && typeof window.UI.showModal === 'function') return window.UI.showModal(modalElement);
+    // Fallback minimal implementation
+    try {
+        if (!modalElement) return;
+        if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id }, '', '');
         modalElement.style.setProperty('display', 'flex', 'important');
         modalElement.scrollTop = 0;
-        const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
-        if (scrollableContent) {
-            scrollableContent.scrollTop = 0;
+        var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+        if (scrollableContent) scrollableContent.scrollTop = 0;
+        if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') {
+            try { initializeShareNameAutocomplete(true); } catch(_) {}
         }
-        // Defensive: ensure autocomplete listeners intact when opening Add Share form
-        if (modalElement.id === 'shareFormSection') {
-            try { if (typeof initializeShareNameAutocomplete === 'function') initializeShareNameAutocomplete(true); } catch(_) {}
-        }
-        logDebug('Modal: Showing modal: ' + modalElement.id);
-    }
+        if (typeof logDebug === 'function') logDebug('Modal: Showing modal: ' + modalElement.id);
+    } catch (e) { console.warn('showModal fallback failed', e); }
 }
 
 // Helper: Show modal without pushing a new browser/history state (used for modal-to-modal back restore)
 function showModalNoHistory(modalElement) {
-    if (!modalElement) return;
-    modalElement.style.setProperty('display', 'flex', 'important');
-    modalElement.scrollTop = 0;
-    const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
-    if (scrollableContent) scrollableContent.scrollTop = 0;
-    logDebug('Modal (no-history): Showing modal: ' + modalElement.id);
+    if (window.UI && typeof window.UI.showModalNoHistory === 'function') return window.UI.showModalNoHistory(modalElement);
+    try {
+        if (!modalElement) return;
+        modalElement.style.setProperty('display', 'flex', 'important');
+        modalElement.scrollTop = 0;
+        var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+        if (scrollableContent) scrollableContent.scrollTop = 0;
+        if (typeof logDebug === 'function') logDebug('Modal (no-history): Showing modal: ' + modalElement.id);
+    } catch (e) { console.warn('showModalNoHistory fallback failed', e); }
 }
 
 function hideModal(modalElement) {
-    if (modalElement) {
+    if (window.UI && typeof window.UI.hideModal === 'function') return window.UI.hideModal(modalElement);
+    try {
+        if (!modalElement) return;
         modalElement.style.setProperty('display', 'none', 'important');
-        logDebug('Modal: Hiding modal: ' + modalElement.id);
-    }
+        if (typeof logDebug === 'function') logDebug('Modal: Hiding modal: ' + modalElement.id);
+    } catch (e) { console.warn('hideModal fallback failed', e); }
 }
 
 // Extracted: auto-save logic for the share form so we can call it on back as well
