@@ -430,9 +430,24 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
         if (plClass === 'neutral') {
-
+            console.log('[DEBUG] Neutral card assigned:', {
+                shareId: share.id,
+                shareName: share.shareName,
+                rowPL,
+                avgPrice,
+                priceNow,
+                shares
+            });
         }
             const todayClass = (todayChange > 0) ? 'positive' : (todayChange < 0 ? 'negative' : 'neutral');
+
+            // DEBUG: Log rowPL and plClass for each card
+            console.log('Portfolio Card Debug:', {
+                shareId: share.id,
+                shareName: share.shareName,
+                rowPL,
+                plClass
+            });
 
             // Card HTML (collapsed/expandable)
             // Border color logic: use today's change (todayClass) to reflect recent movement
@@ -647,7 +662,6 @@ function shareBelongsTo(share, watchlistId) {
     }
     return share.watchlistId === watchlistId;
 }
-
 // Helper: ensure we don't render duplicates when transient optimistic updates or race conditions occur
 function dedupeSharesById(items) {
     try {
@@ -1147,9 +1161,10 @@ window.__enforceSingleScrollModalsReport = function() {
             const observer = new MutationObserver((mutations) => {
                 for (const m of mutations) {
                     if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
+                        // If any modal or modal-content nodes were added, trigger normalization
                         for (const n of m.addedNodes) {
                             if (n.nodeType === 1) {
-                                const el = n;
+                                const el = /** @type {Element} */ (n);
                                 if (el.classList && (el.classList.contains('modal') || el.classList.contains('modal-content') || el.querySelector && el.querySelector('.modal-content'))) {
                                     debouncedRun();
                                     return;
@@ -1164,7 +1179,7 @@ window.__enforceSingleScrollModalsReport = function() {
             });
             observer.observe(document.documentElement || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
         } catch(e) {
-            // noop
+            // If observer installation fails, still expose manual trigger
         }
     })();
 
@@ -1602,33 +1617,24 @@ const currentPriceInput = document.getElementById('currentPrice'); // Reference 
 let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
 async function updateAddFormLiveSnapshot(code) {
     try {
-        if (!code) return;
-        // Resolve potentially-stale DOM references at call time to avoid timing/order issues after modularization
-        const liveDisplayEl = addShareLivePriceDisplay || document.getElementById('addShareLivePriceDisplay');
-        const priceInputEl = currentPriceInput || document.getElementById('currentPrice');
-        const nameInputEl = shareNameInput || document.getElementById('shareName');
-        const appsUrl = (typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined') ? GOOGLE_APPS_SCRIPT_URL : (window.GOOGLE_APPS_SCRIPT_URL || null);
-        if (!appsUrl || !liveDisplayEl) {
-            if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.warn('Snapshot: missing deps', { appsUrl, liveDisplayEl });
-            return;
-        }
+        if (!code || !GOOGLE_APPS_SCRIPT_URL || !addShareLivePriceDisplay) return;
         const reqId = ++_latestAddFormSnapshotReq;
         const upper = String(code).toUpperCase();
-        try { liveDisplayEl.dataset.loading = 'true'; } catch(_){}
+        addShareLivePriceDisplay.dataset.loading = 'true';
         // Lightweight loading indicator (optional)
-        try { liveDisplayEl.style.display = 'block'; } catch(_){}
-        try { liveDisplayEl.innerHTML = '<div class="mini-loading">Loading...</div>'; } catch(_){ }
-        const resp = await fetch(`${appsUrl}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`);
+        addShareLivePriceDisplay.style.display = 'block';
+        addShareLivePriceDisplay.innerHTML = '<div class="mini-loading">Loading...</div>';
+        const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`);
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
         if (reqId !== _latestAddFormSnapshotReq) return; // stale
-        if (!Array.isArray(data) || data.length === 0) { try { liveDisplayEl.innerHTML = '<p class="ghosted-text">No price data.</p>'; } catch(_){} return; }
+        if (!Array.isArray(data) || data.length === 0) { addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">No price data.</p>'; return; }
         let row = data.find(r => {
             const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
             return c && String(c).toUpperCase().trim() === upper;
         }) || data[0];
-        if (row && row !== data[0] && typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) logDebug('Snapshot: matched exact row for', upper);
-        if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode||row.Code).toUpperCase().trim() !== upper && typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
+        if (row && row !== data[0] && DEBUG_MODE) logDebug('Snapshot: matched exact row for', upper);
+        if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode||row.Code).toUpperCase().trim() !== upper && DEBUG_MODE) {
             logDebug('Snapshot: exact match not found, using first row', { requested: upper, first: row.ASXCode||row.Code });
         }
         const live = parseFloat(row.LivePrice ?? row['Live Price'] ?? row.live ?? row.price ?? row.Last ?? row.LastPrice ?? row['Last Price'] ?? row.LastTrade ?? row['Last Trade']);
@@ -1640,16 +1646,15 @@ async function updateAddFormLiveSnapshot(code) {
         const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
         const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
         // Guard against user switching code mid-flight
-        if (nameInputEl && nameInputEl.value && nameInputEl.value.toUpperCase().trim() !== upper) {
-            if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: nameInputEl.value });
+        if (shareNameInput && shareNameInput.value.toUpperCase().trim() !== upper) {
+            if (DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: shareNameInput.value });
             return;
         }
         // Prefill reference price field with latest live price (always override for accuracy)
-        if (!isNaN(live) && priceInputEl) {
-            try { priceInputEl.value = Number(live).toFixed(2); } catch(_){}
+        if (!isNaN(live) && currentPriceInput) {
+            currentPriceInput.value = Number(live).toFixed(2);
         }
-        try {
-            liveDisplayEl.innerHTML = `
+        addShareLivePriceDisplay.innerHTML = `
             <div class="fifty-two-week-row">
                 <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
                 <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
@@ -1661,9 +1666,8 @@ async function updateAddFormLiveSnapshot(code) {
             <div class="pe-ratio-row">
                 <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? formatAdaptivePrice(pe) : 'N/A'}</span>
             </div>`;
-        } catch(_){}
-        try { liveDisplayEl.style.display = 'block'; } catch(_){}
-        try { liveDisplayEl.removeAttribute('data-loading'); } catch(_){}
+        addShareLivePriceDisplay.style.display = 'block';
+        addShareLivePriceDisplay.removeAttribute('data-loading');
     } catch (e) {
         if (DEBUG_MODE) console.warn('Snapshot: failed for', code, e);
         if (addShareLivePriceDisplay) {
@@ -1702,7 +1706,6 @@ zeroClearInputs.forEach(inp => {
         }
     });
 });
-
 // --- ASX Code Toggle Button Functionality ---
 // Persisted ASX code buttons expanded state
 let asxButtonsExpanded = false;
@@ -1890,7 +1893,7 @@ if (closeWatchlistPickerBtn && watchlistPickerModal) {
         }
     });
 }
-// ...existing code...
+// ...rest of the code...
 
 // Removed legacy currentSortDisplay element (text summary of sort) now that dropdown itself is visible
 const themeToggleBtn = document.getElementById('themeToggleBtn');
@@ -2048,7 +2051,6 @@ if (!window.__origShowModalForBack) {
     window.__origShowModalForBack = showModal;
     showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
 }
-
 window.addEventListener('popstate', ()=>{
     // Not using deep browser history here; rely on our own stack
     const last = popAppStateEntry();
@@ -2381,13 +2383,26 @@ async function fetchLivePrices(opts = {}) {
         hideSplashScreenIfReady();
     }
 }
-
 /**
  * Dynamically adjusts the top padding of the main content area
  * to prevent it from being hidden by the fixed header.
  * Uses scrollHeight to get the full rendered height, including wrapped content.
  */
-function adjustMainContentPadding() { if (window.UI && typeof window.UI.adjustMainContentPadding === 'function') return window.UI.adjustMainContentPadding(); }
+function adjustMainContentPadding() {
+    // Ensure both the header and main content container elements exist.
+    if (appHeader && mainContainer) {
+        // Get the current rendered height of the fixed header, including any wrapped content.
+        // offsetHeight is usually sufficient, but scrollHeight can be more robust if content overflows.
+        // For a fixed header, offsetHeight should reflect its full rendered height.
+        const headerHeight = appHeader.offsetHeight; 
+        
+        // Apply this height as padding to the top of the main content container.
+        mainContainer.style.paddingTop = `${headerHeight}px`;
+        logDebug('Layout: Adjusted main content padding-top to: ' + headerHeight + 'px (Full Header Height).');
+    } else {
+        console.warn('Layout: Could not adjust main content padding-top: appHeader or mainContainer not found.');
+    }
+}
 
 /**
  * Helper function to apply/remove a disabled visual state to non-button elements (like spans/icons).
@@ -2564,23 +2579,21 @@ function closeModals() {
     }
 
 
-    // Delegate actual DOM closing/cleanup to UI module if available
-    if (window.UI && typeof window.UI.closeModals === 'function') {
-        try { window.UI.closeModals(); } catch(e) { console.warn('UI.closeModals failed', e); }
-    } else {
-        document.querySelectorAll('.modal').forEach(modal => {
-            if (modal) {
-                modal.style.setProperty('display', 'none', 'important');
-            }
-        });
-        try { resetCalculator(); } catch(_) {}
-        try { deselectCurrentShare(); } catch(_) {}
-        try { deselectCurrentCashAsset(); } catch(_) {}
-        if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
-        try { hideContextMenu(); } catch(_) {}
-        if (alertPanel) try { hideModal(alertPanel); } catch(_) {}
-        logDebug('Modal: All modals closed.');
-    }
+    document.querySelectorAll('.modal').forEach(modal => {
+        if (modal) {
+            modal.style.setProperty('display', 'none', 'important');
+        }
+    });
+    resetCalculator();
+    deselectCurrentShare();
+
+    // NEW: Deselect current cash asset
+    deselectCurrentCashAsset();
+    if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
+    hideContextMenu();
+    // NEW: Close the alert panel if open (alertPanel is not in current HTML, but kept for consistency)
+    if (alertPanel) hideModal(alertPanel);
+    logDebug('Modal: All modals closed.');
 
     // Clear any lingering active highlight on ASX code buttons when closing modals
     if (asxCodeButtonsContainer) {
@@ -2614,24 +2627,77 @@ function closeModals() {
     }
 }
 
-// Delegate toast/confirm API to UI module when present
-function showCustomAlert(message, duration = 3000, type = 'info') { if (window.UI && typeof window.UI.showCustomAlert === 'function') return window.UI.showCustomAlert(message, duration, type); try { window.alert(message); } catch(_) { console.log('ALERT:', message); } }
-const ToastManager = (window.UI && window.UI.ToastManager) ? window.UI.ToastManager : {
-    info: (m,d) => showCustomAlert(m,d,'info'),
-    success: (m,d) => showCustomAlert(m,d,'success'),
-    error: (m,d) => showCustomAlert(m,d,'error'),
-    confirm: (message, opts) => {
-        if (window.UI && typeof window.UI.ToastManager === 'object' && typeof window.UI.ToastManager.confirm === 'function') return window.UI.ToastManager.confirm(message, opts);
-        // simple fallback: synchronous confirm wrapped as an object-like response
-        const ok = window.confirm(message);
-        if (opts && typeof opts.onConfirm === 'function' && ok) opts.onConfirm(true);
-        if (opts && typeof opts.onCancel === 'function' && !ok) opts.onCancel(false);
-        return ok ? { close: ()=>{} } : null;
+// Toast-based lightweight alert; keeps API but renders a toast instead of blocking modal
+function showCustomAlert(message, duration = 3000, type = 'info') {
+    if (window.UI && typeof window.UI.showCustomAlert === 'function') return window.UI.showCustomAlert(message, duration, type);
+    // Minimal fallback
+    try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
+}
+
+// ToastManager: centralized API
+const ToastManager = (() => {
+    const container = () => document.getElementById('toastContainer');
+    const makeToast = (opts) => {
+        const root = container();
+        if (!root) return null;
+        const { message, type = 'info', duration = 2000, actions = [] } = opts || {};
+        // Enforce minimum 3000ms for auto-dismiss unless explicitly sticky (0)
+        const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        const iconHTML = `<span class="icon"></span>`;
+        const msgHTML = `<div class="message"></div>`;
+        const actionsHTML = actions.length ? `<div class="actions">${actions.map(a=>`<button class=\"btn ${a.variant||''}\">${a.label}</button>`).join('')}</div>` : '';
+        const closeHTML = ``; // REMOVED
+        toast.innerHTML = `${iconHTML}${msgHTML}${actionsHTML}${closeHTML}`;
+        toast.querySelector('.message').textContent = message || '';
+        const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
+        // Wire actions
+        const actionBtns = toast.querySelectorAll('.actions .btn');
+        actionBtns.forEach((btn, idx) => {
+            const cfg = actions[idx];
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                try { cfg && typeof cfg.onClick === 'function' && cfg.onClick(); } finally { remove(); }
+            });
+        });
+        root.appendChild(toast);
+        requestAnimationFrame(()=> toast.classList.add('show'));
+        if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
+        return { el: toast, close: remove };
+    };
+    return {
+    info: (message, duration=3000) => makeToast({ message, type:'info', duration }),
+    success: (message, duration=3000) => makeToast({ message, type:'success', duration }),
+    error: (message, duration=3000) => makeToast({ message, type:'error', duration }),
+        confirm: (message, { confirmText='Yes', cancelText='No', onConfirm, onCancel } = {}) => {
+            return makeToast({
+                message,
+                type: 'info',
+                duration: 0, // sticky until action
+                actions: [
+                    { label: confirmText, variant: 'primary', onClick: () => { onConfirm && onConfirm(true); } },
+                    { label: cancelText, variant: 'danger', onClick: () => { onCancel && onCancel(false); } }
+                ]
+            });
+        }
+    };
+})();
+
+// Migrate confirm dialog to toast confirm (non-blocking UX)
+function showCustomConfirm(message, callback) {
+    const res = ToastManager.confirm(message, {
+        confirmText: 'Yes',
+        cancelText: 'No',
+        onConfirm: () => callback(true),
+        onCancel: () => callback(false)
+    });
+    if (!res) {
+        // Fallback to native confirm if container missing
+        callback(window.confirm(message));
     }
-};
-
-function showCustomConfirm(message, callback) { if (window.UI && typeof window.UI.showCustomConfirm === 'function') return window.UI.showCustomConfirm(message, callback); callback(window.confirm(message)); }
-
+}
 // Date Formatting Helper Functions (Australian Style)
 
 /**
@@ -2844,6 +2910,24 @@ function renderAlertTargetInline(share, opts = {}) {
  * @param {object} share The share object to add.
  */
 function addShareToTable(share) {
+    if (share.shareName && share.shareName.toUpperCase() === 'S32') {
+        const avgPrice = share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)) ? Number(share.portfolioAvgPrice) : null;
+        let priceNow = null;
+        const lpObj = livePrices ? livePrices[share.shareName.toUpperCase()] : undefined;
+        const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+        if (lpObj) {
+            if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceNow = Number(lpObj.live);
+            else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceNow = Number(lpObj.lastLivePrice);
+        }
+        if (priceNow === null || isNaN(priceNow)) {
+            if (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice))) {
+                priceNow = Number(share.currentPrice);
+            }
+        }
+        const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares))) ? Math.trunc(Number(share.portfolioShares)) : '';
+        const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
+        console.log('[DEBUG][Portfolio Table] S32', { priceNow, avgPrice, shares, rowPL, share });
+    }
     if (!shareTableBody) {
         console.error('addShareToTable: shareTableBody element not found.');
         return;
@@ -2957,8 +3041,6 @@ function addShareToTable(share) {
         touchStartTime = 0;
         selectedElementForTap = null;
     });
-
-
     // Right-click / Context menu for desktop
     row.addEventListener('contextmenu', (e) => {
         if (window.innerWidth > 768) { // Only enable on desktop
@@ -3292,7 +3374,6 @@ function updateOrCreateShareMobileCard(share) {
     } else {
         card.classList.remove('target-hit-alert');
     }
-
     const isMarketOpen = isAsxMarketOpen();
     let displayLivePrice = 'N/A';
     let displayPriceChange = '';
@@ -3449,12 +3530,45 @@ function updateCompactViewButtonState() {
     logDebug('UI State: Compact view button enabled (mode=' + currentMobileViewMode + ').');
 }
 
-function showModal(modalElement) { if (window.UI && typeof window.UI.showModal === 'function') return window.UI.showModal(modalElement); }
+function showModal(modalElement) {
+    // Prefer UI module if available
+    if (window.UI && typeof window.UI.showModal === 'function') return window.UI.showModal(modalElement);
+    // Fallback minimal implementation
+    try {
+        if (!modalElement) return;
+        if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id }, '', '');
+        modalElement.style.setProperty('display', 'flex', 'important');
+        modalElement.scrollTop = 0;
+        var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+        if (scrollableContent) scrollableContent.scrollTop = 0;
+        if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') {
+            try { initializeShareNameAutocomplete(true); } catch(_) {}
+        }
+        if (typeof logDebug === 'function') logDebug('Modal: Showing modal: ' + modalElement.id);
+    } catch (e) { console.warn('showModal fallback failed', e); }
+}
 
 // Helper: Show modal without pushing a new browser/history state (used for modal-to-modal back restore)
-function showModalNoHistory(modalElement) { if (window.UI && typeof window.UI.showModalNoHistory === 'function') return window.UI.showModalNoHistory(modalElement); }
+function showModalNoHistory(modalElement) {
+    if (window.UI && typeof window.UI.showModalNoHistory === 'function') return window.UI.showModalNoHistory(modalElement);
+    try {
+        if (!modalElement) return;
+        modalElement.style.setProperty('display', 'flex', 'important');
+        modalElement.scrollTop = 0;
+        var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+        if (scrollableContent) scrollableContent.scrollTop = 0;
+        if (typeof logDebug === 'function') logDebug('Modal (no-history): Showing modal: ' + modalElement.id);
+    } catch (e) { console.warn('showModalNoHistory fallback failed', e); }
+}
 
-function hideModal(modalElement) { if (window.UI && typeof window.UI.hideModal === 'function') return window.UI.hideModal(modalElement); }
+function hideModal(modalElement) {
+    if (window.UI && typeof window.UI.hideModal === 'function') return window.UI.hideModal(modalElement);
+    try {
+        if (!modalElement) return;
+        modalElement.style.setProperty('display', 'none', 'important');
+        if (typeof logDebug === 'function') logDebug('Modal: Hiding modal: ' + modalElement.id);
+    } catch (e) { console.warn('hideModal fallback failed', e); }
+}
 
 // Extracted: auto-save logic for the share form so we can call it on back as well
 function autoSaveShareFormOnClose() {
@@ -3589,7 +3703,6 @@ function addCommentSection(container, title = '', text = '', isCashAssetComment 
     });
     logDebug('Comments: Added new comment section.');
 }
-
 function clearForm() {
     formInputs.forEach(input => {
         if (input) { input.value = ''; }
@@ -3918,7 +4031,6 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     originalShareData = getCurrentFormData();
     setIconDisabled(saveShareBtn, true); // Save button disabled initially for editing
     logDebug('showEditFormForSelectedShare: saveShareBtn initially disabled for dirty check.');
-
     // Populate read-only auto fields (Entry Date & Reference Price)
     try {
         if (autoEntryDateDisplay) {
@@ -4245,7 +4357,6 @@ async function saveShareData(isSilent = false) {
             }
         } catch(e) { console.warn('Uniqueness: lookup failed', e); }
     }
-
     if (selectedShareDocId) {
         const existingShare = allSharesData.find(s => s.id === selectedShareDocId);
         if (shareData.currentPrice !== null && existingShare && existingShare.currentPrice !== shareData.currentPrice) {
@@ -4594,7 +4705,6 @@ function showShareDetails() {
             modalCommentsContainer.innerHTML = '<p style="text-align: center; color: var(--label-color);">No comments for this share.</p>';
         }
     }
-
     // External Links
     if (modalNewsLink && share.shareName) {
         const newsUrl = 'https://news.google.com/search?q=' + encodeURIComponent(share.shareName) + '%20ASX&hl=en-AU&gl=AU&ceid=AU%3Aen';
@@ -4938,7 +5048,6 @@ function sortCashCategories() {
     logDebug('Sort: Cash categories sorted by ' + field + ' ' + order + '.');
     return sortedCategories;
 }
-
 function renderWatchlistSelect() {
     if (!watchlistSelect) { console.error('renderWatchlistSelect: watchlistSelect element not found.'); return; }
     // Store the currently selected value before clearing
@@ -5285,7 +5394,6 @@ loadUserWatchlistsAndSettings = async function() {
         }
     } catch(e) { console.warn('[Movers restore][post-user-data] failed', e); }
 };
-
 // Late-binding helper to ensure header interactions are wired when DOM is ready
 function bindHeaderInteractiveElements() {
     const titleEl = document.getElementById('dynamicWatchlistTitle');
@@ -5599,7 +5707,6 @@ function enforceTargetHitStyling() {
     });
     try { console.log('[Diag][enforceTargetHitStyling] applied:', applied, 'removed:', removed, 'enabledIdsCount:', enabledIds.size); } catch(_){ }
 }
-
 function renderAsxCodeButtons() {
     if (!asxCodeButtonsContainer) { console.error('renderAsxCodeButtons: asxCodeButtonsContainer element not found.'); return; }
     asxCodeButtonsContainer.innerHTML = '';
@@ -5947,7 +6054,6 @@ async function displayStockDetailsInSearchModal(asxCode) {
         if (searchModalListcorpLink) searchModalListcorpLink.href = `https://www.listcorp.com/asx/${asxCode.toLowerCase()}`;
         if (searchModalCommSecLink) searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
     if (searchModalGoogleFinanceLink) searchModalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${asxCode.toUpperCase()}:ASX`;
-
     // Typography diagnostics for search modal
     setTimeout(() => { try { logSearchModalTypographyRatios(); } catch(_) {} }, 0);
 
@@ -6280,7 +6386,6 @@ async function saveLastSelectedWatchlistIds(watchlistIds) {
         console.error('Watchlist: Error saving last selected watchlist IDs:', error);
     }
 }
-
 async function saveSortOrderPreference(sortOrder) {
     logDebug('Sort Debug: Attempting to save sort order: ' + sortOrder);
     logDebug('Sort Debug: db: ' + (db ? 'Available' : 'Not Available'));
@@ -6621,7 +6726,6 @@ try {
         }
     }, true);
 } catch(_){ }
-
 // NEW (Revised): Real-time alerts listener (enabled-only notifications)
 // Muted alerts (enabled === false) must not appear as active notifications or receive styling.
 async function loadTriggeredAlertsListener() {
@@ -6629,7 +6733,7 @@ async function loadTriggeredAlertsListener() {
     if (!db || !currentUserId || !firestore) { console.warn('Alerts: Firestore unavailable for triggered alerts listener'); return; }
     try {
         const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-        unsubscribeAlerts = firestore.onSnapshot(alertsCol, (qs) => {
+        unsubscribeAlerts = firestore.onSnapshot(alertsCol, (qs) => { 
             const newMap = new Map();
             const alertMetaById = new Map();
             qs.forEach(doc => { 
@@ -6936,7 +7040,6 @@ async function toggleAlertEnabled(shareId) {
     throw e;
     }
 }
-
 // NEW: Recompute triggered alerts from livePrices + alertsEnabledMap (global portfolio scope)
 function recomputeTriggeredAlerts() {
     // Guard: during initial load phase never auto-open the target modal (even if shares already at target)
@@ -7630,7 +7733,6 @@ function renderCashCategories() {
     logDebug('Cash Categories: UI rendered.');
     calculateTotalCash(); // Calculate total after rendering
 }
-
 /**
  * Adds a new empty cash category to the UI and `userCashCategories` array.
  * This function is now primarily for triggering the modal for a new entry.
@@ -7942,7 +8044,6 @@ function showCashCategoryDetailsModal(assetId) {
     try { scrollMainToTop(); } catch(_) {}
     logDebug('Details: Displayed details for cash asset: ' + asset.name + ' (ID: ' + assetId + ')');
 }
-
 // (Removed legacy modal-based showCustomConfirm; migrated to toast confirm above)
 
 /**
@@ -8269,7 +8370,6 @@ async function migrateOldSharesToWatchlist() {
         return false;
     }
 }
-
 function showContextMenu(event, shareId) {
     if (!shareContextMenu) return;
     
@@ -8315,52 +8415,30 @@ function hideContextMenu() {
 }
 
 function toggleAppSidebar(forceState = null) {
-    logDebug('Sidebar: toggleAppSidebar called. Current open state: ' + appSidebar.classList.contains('open') + ', Force state: ' + forceState);
-    const isDesktop = window.innerWidth > 768;
-    const isOpen = appSidebar.classList.contains('open');
+    // Delegate to UI module if present
+    if (window.UI && typeof window.UI.toggleAppSidebar === 'function') return window.UI.toggleAppSidebar(forceState);
 
-    if (forceState === true || (forceState === null && !isOpen)) {
-        // On mobile, opening the sidebar is a navigation event that should be caught by the back button.
-        if (!isDesktop) {
-            // Push a new history state for the sidebar opening
-            pushAppState({ sidebarOpen: true }, '', '#sidebar');
-        }
-
-        appSidebar.classList.add('open');
-        sidebarOverlay.classList.add('open');
-        // Reset sidebar scroll position to top when opening
-        if (appSidebar) {
-            appSidebar.scrollTop = 0;
-        }
-        // Prevent scrolling of main content when sidebar is open on mobile
-        if (!isDesktop) {
-            document.body.style.overflow = 'hidden';
-            logDebug('Sidebar: Mobile: Body overflow hidden.');
-        }
-        if (isDesktop) {
-            document.body.classList.add('sidebar-active');
-            sidebarOverlay.style.pointerEvents = 'none';
-            logDebug('Sidebar: Desktop: Sidebar opened, body shifted, overlay pointer-events: none.');
+    // Minimal fallback behavior if UI module absent
+    try {
+        const isDesktop = window.innerWidth > 768;
+        const isOpen = appSidebar && appSidebar.classList.contains('open');
+        if (forceState === true || (forceState === null && !isOpen)) {
+            if (!isDesktop) {
+                try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch(_){}
+                document.body.style.overflow = 'hidden';
+            }
+            if (appSidebar) appSidebar.classList.add('open');
+            if (sidebarOverlay) sidebarOverlay.classList.add('open');
+            if (isDesktop) document.body.classList.add('sidebar-active');
+            if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'true');
         } else {
+            if (appSidebar) appSidebar.classList.remove('open');
+            if (sidebarOverlay) sidebarOverlay.classList.remove('open');
             document.body.classList.remove('sidebar-active');
-            sidebarOverlay.style.pointerEvents = 'auto'; // Ensure overlay is clickable on mobile
-            logDebug('Sidebar: Mobile: Sidebar opened, body NOT shifted, overlay pointer-events: auto.');
+            document.body.style.overflow = '';
+            if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'false');
         }
-    if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','true');
-    logDebug('Sidebar: Sidebar opened.');
-    } else if (forceState === false || (forceState === null && isOpen)) {
-        appSidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('open');
-        document.body.classList.remove('sidebar-active');
-        document.body.style.overflow = ''; // Restore scrolling
-        sidebarOverlay.style.pointerEvents = 'none'; // Reset pointer-events when closed
-        // Reset sidebar scroll position to top when closing
-        if (appSidebar) {
-            appSidebar.scrollTop = 0;
-        }
-    if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','false');
-    logDebug('Sidebar: Sidebar closed.');
-    }
+    } catch (e) { console.warn('toggleAppSidebar fallback failed', e); }
 }
 
 /**
@@ -8626,8 +8704,6 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
         if (!isSilent) showCustomAlert('Error saving watchlist: ' + error.message);
     }
 }
-
-
 /**
  * Deletes all user-specific data from Firestore for the current user.
  * This is a destructive and irreversible action.
@@ -8934,8 +9010,6 @@ async function initializeAppLogic() {
             shareNameSuggestions.classList.remove('active');
         }
     });
-
-    
     // NEW: Autocomplete Search Input Listeners for Stock Search Modal (Consolidated & Corrected)
     if (asxSearchInput) {
         let currentSuggestions = []; // Stores the current filtered suggestions
@@ -9151,7 +9225,7 @@ async function initializeAppLogic() {
         syncDirButtonsFromCheckboxes();
     }
 
-    // Wire Intent buttons: set defaults when user hasn’t manually overridden
+    // Wire Intent buttons: set defaults when user hasn't manually overridden
     if (targetIntentBuyBtn && targetIntentSellBtn) {
         const setIntentUI = (intent) => {
             const isBuy = intent === 'buy';
@@ -9281,7 +9355,6 @@ if (targetPriceInput) {
             checkCashAssetFormDirtyState();
         });
     }
-
     // Close buttons for modals
     document.querySelectorAll('.close-button').forEach(button => {
         if (button.classList.contains('form-close-button')) { // Specific for the share form's 'X' (Cancel button)
@@ -9387,7 +9460,7 @@ if (targetPriceInput) {
         if (splashSignInBtn && precheckIsMobile && precheckIsFile) {
             updateSplashSignInButtonState('error', 'Open via web URL');
             splashSignInBtn.disabled = true;
-            showCustomAlert('Mobile sign-in can’t run from a file:// URL. Please serve this app over http(s) (e.g., VS Code Live Server) and retry.');
+            showCustomAlert("Mobile sign-in can't run from a file:// URL. Please serve this app over http(s) (e.g., VS Code Live Server) and retry.");
             console.warn('Auth Precheck: Blocking sign-in on mobile file:// context.');
         }
     } catch(_) {}
@@ -9619,7 +9692,6 @@ if (sortSelect) {
     });
     updateSortIcon();
 }
-
     // New Share Button (from sidebar) - Now contextual, handled by updateSidebarAddButtonContext
     // The event listener will be set dynamically by updateSidebarAddButtonContext()
     // No direct event listener here anymore.
@@ -9966,7 +10038,6 @@ if (sortSelect) {
         const unfrankedYield = calculateUnfrankedYield(dividendAmount, currentPrice);
         const frankedYield = calculateFrankedYield(dividendAmount, currentPrice, frankingCredits);
         const estimatedDividend = estimateDividendIncome(investmentValue, dividendAmount, currentPrice);
-        
     calcUnfrankedYieldSpan.textContent = unfrankedYield !== null ? formatAdaptivePercent(unfrankedYield) + '%' : '-';
     calcFrankedYieldSpan.textContent = frankedYield !== null ? formatAdaptivePercent(frankedYield) + '%' : '-';
     calcEstimatedDividend.textContent = estimatedDividend !== null ? '$' + formatAdaptivePrice(estimatedDividend) : '-';
@@ -10169,156 +10240,160 @@ if (sortSelect) {
     }
 
     // Hamburger Menu and Sidebar Interactions
-    if (hamburgerBtn && appSidebar && closeMenuBtn && sidebarOverlay) {
-        logDebug('Sidebar Setup: Initializing sidebar event listeners. Elements found:', {
-            hamburgerBtn: !!hamburgerBtn,
-            appSidebar: !!appSidebar,
-            closeMenuBtn: !!closeMenuBtn,
-            sidebarOverlay: !!sidebarOverlay
-        });
-
-        // Ensure initial state is correct: always start CLOSED after reload
-        if (window.innerWidth > 768) {
-            document.body.classList.remove('sidebar-active'); // Do not shift body on load
-            sidebarOverlay.style.pointerEvents = 'none'; // Overlay non-interactive on desktop when closed
-            appSidebar.classList.remove('open'); // Start closed on desktop too
-            logDebug('Sidebar: Desktop: Sidebar initialized as closed.');
-        } else {
-            document.body.classList.remove('sidebar-active'); // No shift on mobile
-            sidebarOverlay.style.pointerEvents = 'auto'; // Overlay interactive on mobile
-            appSidebar.classList.remove('open'); // Sidebar closed by default on mobile
-            logDebug('Sidebar: Mobile: Sidebar initialized as closed.');
-        }
-
-
-        // Unified hamburger listener with idempotent guard
-        if (!hamburgerBtn.dataset.sidebarBound) {
-            hamburgerBtn.addEventListener('click', (event) => {
-                logDebug('UI: Hamburger button CLICKED. Event:', event);
-                event.stopPropagation();
-                const willOpen = !appSidebar.classList.contains('open');
-                toggleAppSidebar();
-                if (willOpen) pushAppStateEntry('sidebar','sidebar');
-            });
-            hamburgerBtn.dataset.sidebarBound = '1';
-        }
-        closeMenuBtn.addEventListener('click', () => {
-            logDebug('UI: Close Menu button CLICKED.');
-            toggleAppSidebar(false);
-        });
-
-        // Unified overlay handler (single authoritative listener) - prevents race/double fire
-        if (sidebarOverlay._unifiedHandler) {
-            sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);
-            sidebarOverlay.removeEventListener('click', sidebarOverlay._unifiedHandler, true);
-            sidebarOverlay.removeEventListener('touchstart', sidebarOverlay._unifiedHandler, true);
-        }
-        const unifiedHandler = (e) => {
-            if (e.target !== sidebarOverlay) return; // Only backdrop clicks
-            if (!appSidebar.classList.contains('open')) return;
-            try { toggleAppSidebar(false); } catch(err){ console.warn('Sidebar close failed', err); }
-            // Suppress any further processing or bubbling to avoid click-throughs
-            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-            e.stopPropagation();
-            if (e.preventDefault) e.preventDefault();
-        };
-        sidebarOverlay.addEventListener('mousedown', unifiedHandler, true);
-        sidebarOverlay._unifiedHandler = unifiedHandler;
-
-        // Accessibility & focus trap for sidebar when open
-        const mainContent = document.getElementById('mainContent') || document.querySelector('main');
-        const firstFocusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-        function trapFocus(e){
-            if (!appSidebar.classList.contains('open')) return;
-            const focusables = Array.from(appSidebar.querySelectorAll(firstFocusableSelector)).filter(el=>!el.disabled && el.offsetParent!==null);
-            if (!focusables.length) return;
-            const first = focusables[0];
-            const last = focusables[focusables.length-1];
-            if (e.key === 'Tab') {
-                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-            }
-        }
-        document.addEventListener('keydown', trapFocus, true);
-
-        // Hook into toggleAppSidebar to set aria-hidden
-        const __origToggle = toggleAppSidebar;
-        window.toggleAppSidebar = function(force){
-            __origToggle(force);
-            const isOpen = appSidebar.classList.contains('open');
-            if (mainContent) mainContent.setAttribute('aria-hidden', isOpen ? 'true':'false');
-            if (isOpen) {
-                // Move initial focus
-                setTimeout(()=>{
-                    const first = appSidebar.querySelector(firstFocusableSelector);
-                    if (first) first.focus();
-                },30);
-            } else {
-                if (mainContent) mainContent.removeAttribute('inert');
-            }
-        };
-
-        // Desktop outside-click closer (capture + swallow to prevent click-through)
-        document.addEventListener('click', (event) => {
-            const isDesktop = window.innerWidth > 768;
-            if (!isDesktop) return; // Mobile uses overlay
-            if (!appSidebar.classList.contains('open')) return;
-            // If click target is outside sidebar & hamburger button
-            if (!appSidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
-                logDebug('Global Click (capture): outside desktop click -> closing sidebar (swallowing event)');
-                // Close sidebar first
-                toggleAppSidebar(false);
-                // Swallow so underlying element does NOT also activate on this same click
-                event.stopPropagation();
-                event.preventDefault();
-            }
-        }, true); // capture phase so we intercept before underlying handlers
-
-        window.addEventListener('resize', () => {
-            logDebug('Window Resize: Resizing window. Closing sidebar if open.');
-            const isDesktop = window.innerWidth > 768;
-            if (appSidebar.classList.contains('open')) {
-                toggleAppSidebar(false);
-            }
-            if (scrollToTopBtn) {
-                if (window.innerWidth > 768) {
-                    scrollToTopBtn.style.display = 'none';
-                } else {
-                    window.dispatchEvent(new Event('scroll'));
-                }
-            }
-            // NEW: Recalculate header height on resize
-            adjustMainContentPadding();
-
-            // NEW: Update the compact view button state on resize
-            updateCompactViewButtonState();
-        });
-
-        const menuButtons = appSidebar.querySelectorAll('.menu-button-item');
-        menuButtons.forEach(button => {
-            button.addEventListener('click', (event) => {
-                const clickedButton = event.currentTarget;
-                logDebug('Sidebar Menu Item Click: Button \'' + clickedButton.textContent.trim() + '\' clicked.');
-
-                // Handle specific action for the toggle compact view button
-                if (clickedButton.id === 'toggleCompactViewBtn') {
-                    toggleMobileViewMode();
-                }
-
-                const closesMenu = clickedButton.dataset.actionClosesMenu !== 'false';
-                if (clickedButton.id === 'forceUpdateBtn') {
-                    // Force update always closes first to avoid stale UI during reload
-                    toggleAppSidebar(false);
-                    forceHardUpdate();
-                    return; // further processing not needed
-                }
-                if (closesMenu) toggleAppSidebar(false);
-            });
-        });
+    if (window.UI && window.UI.initSidebar) {
+        window.UI.initSidebar();
     } else {
-        console.warn('Sidebar Setup: Missing one or more sidebar elements (hamburgerBtn, appSidebar, closeMenuBtn, sidebarOverlay). Sidebar functionality might be impaired.');
-    }
+        console.warn('Sidebar Setup: Fallback: window.UI.initSidebar() not found. Using minimal fallback.');
+        if (hamburgerBtn && appSidebar && closeMenuBtn && sidebarOverlay) {
+            logDebug('Sidebar Setup: Initializing sidebar event listeners. Elements found:', {
+                hamburgerBtn: !!hamburgerBtn,
+                appSidebar: !!appSidebar,
+                closeMenuBtn: !!closeMenuBtn,
+                sidebarOverlay: !!sidebarOverlay
+            });
+            
+            // Ensure initial state is correct: always start CLOSED after reload
+            if (window.innerWidth > 768) {
+                document.body.classList.remove('sidebar-active'); // Do not shift body on load
+                sidebarOverlay.style.pointerEvents = 'none'; // Overlay non-interactive on desktop when closed
+                appSidebar.classList.remove('open'); // Start closed on desktop too
+                logDebug('Sidebar: Desktop: Sidebar initialized as closed.');
+            } else {
+                document.body.classList.remove('sidebar-active'); // No shift on mobile
+                sidebarOverlay.style.pointerEvents = 'auto'; // Overlay interactive on mobile
+                appSidebar.classList.remove('open'); // Sidebar closed by default on mobile
+                logDebug('Sidebar: Mobile: Sidebar initialized as closed.');
+            }
 
+
+            // Unified hamburger listener with idempotent guard
+            if (!hamburgerBtn.dataset.sidebarBound) {
+                hamburgerBtn.addEventListener('click', (event) => {
+                    logDebug('UI: Hamburger button CLICKED. Event:', event);
+                    event.stopPropagation();
+                    const willOpen = !appSidebar.classList.contains('open');
+                    toggleAppSidebar();
+                    if (willOpen) pushAppStateEntry('sidebar','sidebar');
+                });
+                hamburgerBtn.dataset.sidebarBound = '1';
+            }
+            closeMenuBtn.addEventListener('click', () => {
+                logDebug('UI: Close Menu button CLICKED.');
+                toggleAppSidebar(false);
+            });
+            
+            // Unified overlay handler (single authoritative listener) - prevents race/double fire
+            if (sidebarOverlay._unifiedHandler) {
+                sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);
+                sidebarOverlay.removeEventListener('click', sidebarOverlay._unifiedHandler, true);
+                sidebarOverlay.removeEventListener('touchstart', sidebarOverlay._unifiedHandler, true);
+            }
+            const unifiedHandler = (e) => {
+                if (e.target !== sidebarOverlay) return; // Only backdrop clicks
+                if (!appSidebar.classList.contains('open')) return;
+                try { toggleAppSidebar(false); } catch(err){ console.warn('Sidebar close failed', err); }
+                // Suppress any further processing or bubbling to avoid click-throughs
+                if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+                e.stopPropagation();
+                if (e.preventDefault) e.preventDefault();
+            };
+            sidebarOverlay.addEventListener('mousedown', unifiedHandler, true);
+            sidebarOverlay._unifiedHandler = unifiedHandler;
+
+            // Accessibility & focus trap for sidebar when open
+            const mainContent = document.getElementById('mainContent') || document.querySelector('main');
+            const firstFocusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+            function trapFocus(e){
+                if (!appSidebar.classList.contains('open')) return;
+                const focusables = Array.from(appSidebar.querySelectorAll(firstFocusableSelector)).filter(el=>!el.disabled && el.offsetParent!==null);
+                if (!focusables.length) return;
+                const first = focusables[0];
+                const last = focusables[focusables.length-1];
+                if (e.key === 'Tab') {
+                    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+                }
+            }
+            document.addEventListener('keydown', trapFocus, true);
+
+            // Hook into toggleAppSidebar to set aria-hidden
+            const __origToggle = toggleAppSidebar;
+            window.toggleAppSidebar = function(force){
+                __origToggle(force);
+                const isOpen = appSidebar.classList.contains('open');
+                if (mainContent) mainContent.setAttribute('aria-hidden', isOpen ? 'true':'false');
+                if (isOpen) {
+                    // Move initial focus
+                    setTimeout(()=>{
+                        const first = appSidebar.querySelector(firstFocusableSelector);
+                        if (first) first.focus();
+                    },30);
+                } else {
+                    if (mainContent) mainContent.removeAttribute('inert');
+                }
+            };
+
+            // Desktop outside-click closer (capture + swallow to prevent click-through)
+            document.addEventListener('click', (event) => {
+                const isDesktop = window.innerWidth > 768;
+                if (!isDesktop) return; // Mobile uses overlay
+                if (!appSidebar.classList.contains('open')) return;
+                // If click target is outside sidebar & hamburger button
+                if (!appSidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
+                    logDebug('Global Click (capture): outside desktop click -> closing sidebar (swallowing event)');
+                    // Close sidebar first
+                    toggleAppSidebar(false);
+                    // Swallow so underlying element does NOT also activate on this same click
+                    event.stopPropagation();
+                    event.preventDefault();
+                }
+            }, true); // capture phase so we intercept before underlying handlers
+
+            window.addEventListener('resize', () => {
+                logDebug('Window Resize: Resizing window. Closing sidebar if open.');
+                const isDesktop = window.innerWidth > 768;
+                if (appSidebar.classList.contains('open')) {
+                    toggleAppSidebar(false);
+                }
+                if (scrollToTopBtn) {
+                    if (window.innerWidth > 768) {
+                        scrollToTopBtn.style.display = 'none';
+                    } else {
+                        window.dispatchEvent(new Event('scroll'));
+                    }
+                }
+                // NEW: Recalculate header height on resize
+                adjustMainContentPadding();
+
+                // NEW: Update the compact view button state on resize
+                updateCompactViewButtonState();
+            });
+
+            const menuButtons = appSidebar.querySelectorAll('.menu-button-item');
+            menuButtons.forEach(button => {
+                button.addEventListener('click', (event) => {
+                    const clickedButton = event.currentTarget;
+                    logDebug('Sidebar Menu Item Click: Button \'' + clickedButton.textContent.trim() + '\' clicked.');
+
+                    // Handle specific action for the toggle compact view button
+                    if (clickedButton.id === 'toggleCompactViewBtn') {
+                        toggleMobileViewMode();
+                    }
+
+                    const closesMenu = clickedButton.dataset.actionClosesMenu !== 'false';
+                    if (clickedButton.id === 'forceUpdateBtn') {
+                        // Force update always closes first to avoid stale UI during reload
+                        toggleAppSidebar(false);
+                        forceHardUpdate();
+                        return; // further processing not needed
+                    }
+                    if (closesMenu) toggleAppSidebar(false);
+                });
+            });
+        } else {
+            console.warn('Sidebar Setup: Missing one or more sidebar elements (hamburgerBtn, appSidebar, closeMenuBtn, sidebarOverlay). Sidebar functionality might be impaired.');
+        }
+    }
     // Export Watchlist Button Event Listener
     if (exportWatchlistBtn) {
         exportWatchlistBtn.addEventListener('click', () => {
@@ -10970,8 +11045,6 @@ async function toggleGlobalSummaryEnabled() {
     } catch(e) { console.warn('Global Alert mute toggle failed', e); }
 }
 
-// NEW: Target hit icon button listener (opens the modal) - moved to global scope
-
 // Force Update: fully clears caches, unregisters service workers, clears storage, reloads fresh
 async function forceHardUpdate() {
     try {
@@ -11016,7 +11089,6 @@ if (targetHitIconBtn) {
         showTargetHitDetailsModal({ explicit:true });
     });
 }
-
 let firebaseServices;
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -11333,7 +11405,6 @@ function initializeApp() {
             }
         } catch(e){ console.warn('[Movers restore][fallback DOMContentLoaded] failed', e); }
     }, 1300);
-
     const firebaseServices = initializeFirebaseAndAuth();
     db = firebaseServices.db;
     auth = firebaseServices.auth;
