@@ -176,4 +176,156 @@
 	try { window.showCustomConfirm = showCustomConfirm; } catch(_) {}
 })();
 
+// Sidebar UI: toggle logic and initialization
+(function() {
+    // Provide UI-level toggle implementation (actual DOM class changes)
+    function _toggleAppSidebarImpl(forceState = null) {
+        try {
+            var isDesktop = window.innerWidth > 768;
+            var isOpen = appSidebar && appSidebar.classList.contains('open');
+
+            if (forceState === true || (forceState === null && !isOpen)) {
+                if (!isDesktop) {
+                    try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch(_){}
+                }
+                if (appSidebar) appSidebar.classList.add('open');
+                if (sidebarOverlay) sidebarOverlay.classList.add('open');
+                if (appSidebar) { appSidebar.scrollTop = 0; }
+                if (!isDesktop) {
+                    document.body.style.overflow = 'hidden';
+                }
+                if (isDesktop) {
+                    document.body.classList.add('sidebar-active');
+                    if (sidebarOverlay) sidebarOverlay.style.pointerEvents = 'none';
+                } else {
+                    document.body.classList.remove('sidebar-active');
+                    if (sidebarOverlay) sidebarOverlay.style.pointerEvents = 'auto';
+                }
+                if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','true');
+            } else {
+                if (appSidebar) appSidebar.classList.remove('open');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('open');
+                document.body.classList.remove('sidebar-active');
+                document.body.style.overflow = '';
+                if (appSidebar) appSidebar.scrollTop = 0;
+                if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','false');
+            }
+        } catch (e) { console.warn('UI._toggleAppSidebarImpl failed', e); }
+    }
+
+    // Expose as UI.toggleAppSidebar
+    window.UI = window.UI || {};
+    window.UI.toggleAppSidebar = function(forceState) { return _toggleAppSidebarImpl(forceState); };
+
+    // Initialization: bind hamburger, overlay, menu buttons, focus trap, resize handlers
+    window.UI.initSidebar = function() {
+        try {
+            if (!(hamburgerBtn && appSidebar && closeMenuBtn && sidebarOverlay)) {
+                console.warn('Sidebar Setup: Missing one or more sidebar elements (hamburgerBtn, appSidebar, closeMenuBtn, sidebarOverlay). Sidebar functionality might be impaired.');
+                return;
+            }
+
+            // Ensure initial state is closed
+            if (window.innerWidth > 768) {
+                document.body.classList.remove('sidebar-active');
+                sidebarOverlay.style.pointerEvents = 'none';
+                appSidebar.classList.remove('open');
+            } else {
+                document.body.classList.remove('sidebar-active');
+                sidebarOverlay.style.pointerEvents = 'auto';
+                appSidebar.classList.remove('open');
+            }
+
+            // Hamburger listener
+            if (!hamburgerBtn.dataset.sidebarBound) {
+                hamburgerBtn.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    var willOpen = !appSidebar.classList.contains('open');
+                    // Call the global toggle which will delegate to UI.toggleAppSidebar
+                    try { window.toggleAppSidebar(); } catch(_) { window.UI.toggleAppSidebar(); }
+                    if (willOpen && typeof pushAppStateEntry === 'function') pushAppStateEntry('sidebar','sidebar');
+                });
+                hamburgerBtn.dataset.sidebarBound = '1';
+            }
+
+            closeMenuBtn.addEventListener('click', function() { window.toggleAppSidebar(false); });
+
+            // Unified overlay handler
+            if (sidebarOverlay._unifiedHandler) {
+                sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);
+                sidebarOverlay.removeEventListener('click', sidebarOverlay._unifiedHandler, true);
+                sidebarOverlay.removeEventListener('touchstart', sidebarOverlay._unifiedHandler, true);
+            }
+            var unifiedHandler = function(e) {
+                if (e.target !== sidebarOverlay) return;
+                if (!appSidebar.classList.contains('open')) return;
+                try { window.toggleAppSidebar(false); } catch(err){ console.warn('Sidebar close failed', err); }
+                if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+                e.stopPropagation();
+                if (e.preventDefault) e.preventDefault();
+            };
+            sidebarOverlay.addEventListener('mousedown', unifiedHandler, true);
+            sidebarOverlay._unifiedHandler = unifiedHandler;
+
+            // Focus trap
+            var mainContent = document.getElementById('mainContent') || document.querySelector('main');
+            var firstFocusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+            function trapFocus(e) {
+                if (!appSidebar.classList.contains('open')) return;
+                var focusables = Array.from(appSidebar.querySelectorAll(firstFocusableSelector)).filter(function(el){ return !el.disabled && el.offsetParent!==null; });
+                if (!focusables.length) return;
+                var first = focusables[0];
+                var last = focusables[focusables.length-1];
+                if (e.key === 'Tab') {
+                    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+                }
+            }
+            document.addEventListener('keydown', trapFocus, true);
+
+            // Desktop outside-click closer (capture)
+            document.addEventListener('click', function(event) {
+                var isDesktop = window.innerWidth > 768;
+                if (!isDesktop) return;
+                if (!appSidebar.classList.contains('open')) return;
+                if (!appSidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
+                    window.toggleAppSidebar(false);
+                    event.stopPropagation();
+                    event.preventDefault();
+                }
+            }, true);
+
+            window.addEventListener('resize', function() {
+                var isDesktop = window.innerWidth > 768;
+                if (appSidebar.classList.contains('open')) {
+                    window.toggleAppSidebar(false);
+                }
+                // Callbacks that the app expects to exist
+                try { if (typeof adjustMainContentPadding === 'function') adjustMainContentPadding(); } catch(_){}
+                try { if (typeof updateCompactViewButtonState === 'function') updateCompactViewButtonState(); } catch(_){}
+            });
+
+            // Menu button handlers
+            var menuButtons = appSidebar.querySelectorAll('.menu-button-item');
+            menuButtons.forEach(function(button){
+                button.addEventListener('click', function(event){
+                    var clickedButton = event.currentTarget;
+                    if (clickedButton.id === 'toggleCompactViewBtn') {
+                        try { toggleMobileViewMode(); } catch(_){}
+                    }
+                    var closesMenu = clickedButton.dataset.actionClosesMenu !== 'false';
+                    if (clickedButton.id === 'forceUpdateBtn') {
+                        window.toggleAppSidebar(false);
+                        try { if (typeof forceHardUpdate === 'function') forceHardUpdate(); } catch(_){}
+                        return;
+                    }
+                    if (closesMenu) window.toggleAppSidebar(false);
+                });
+            });
+
+        } catch (e) { console.warn('UI.initSidebar failed', e); }
+    };
+
+})();
+
 
