@@ -430,9 +430,24 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
         if (plClass === 'neutral') {
-
+            console.log('[DEBUG] Neutral card assigned:', {
+                shareId: share.id,
+                shareName: share.shareName,
+                rowPL,
+                avgPrice,
+                priceNow,
+                shares
+            });
         }
             const todayClass = (todayChange > 0) ? 'positive' : (todayChange < 0 ? 'negative' : 'neutral');
+
+            // DEBUG: Log rowPL and plClass for each card
+            console.log('Portfolio Card Debug:', {
+                shareId: share.id,
+                shareName: share.shareName,
+                rowPL,
+                plClass
+            });
 
             // Card HTML (collapsed/expandable)
             // Border color logic: use today's change (todayClass) to reflect recent movement
@@ -1602,33 +1617,24 @@ const currentPriceInput = document.getElementById('currentPrice'); // Reference 
 let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
 async function updateAddFormLiveSnapshot(code) {
     try {
-        if (!code) return;
-        // Resolve potentially-stale DOM references at call time to avoid timing/order issues after modularization
-        const liveDisplayEl = addShareLivePriceDisplay || document.getElementById('addShareLivePriceDisplay');
-        const priceInputEl = currentPriceInput || document.getElementById('currentPrice');
-        const nameInputEl = shareNameInput || document.getElementById('shareName');
-        const appsUrl = (typeof GOOGLE_APPS_SCRIPT_URL !== 'undefined') ? GOOGLE_APPS_SCRIPT_URL : (window.GOOGLE_APPS_SCRIPT_URL || null);
-        if (!appsUrl || !liveDisplayEl) {
-            if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.warn('Snapshot: missing deps', { appsUrl, liveDisplayEl });
-            return;
-        }
+        if (!code || !GOOGLE_APPS_SCRIPT_URL || !addShareLivePriceDisplay) return;
         const reqId = ++_latestAddFormSnapshotReq;
         const upper = String(code).toUpperCase();
-        try { liveDisplayEl.dataset.loading = 'true'; } catch(_){}
+        addShareLivePriceDisplay.dataset.loading = 'true';
         // Lightweight loading indicator (optional)
-        try { liveDisplayEl.style.display = 'block'; } catch(_){}
-        try { liveDisplayEl.innerHTML = '<div class="mini-loading">Loading...</div>'; } catch(_){ }
-        const resp = await fetch(`${appsUrl}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`);
+        addShareLivePriceDisplay.style.display = 'block';
+        addShareLivePriceDisplay.innerHTML = '<div class="mini-loading">Loading...</div>';
+        const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`);
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
         if (reqId !== _latestAddFormSnapshotReq) return; // stale
-        if (!Array.isArray(data) || data.length === 0) { try { liveDisplayEl.innerHTML = '<p class="ghosted-text">No price data.</p>'; } catch(_){} return; }
+        if (!Array.isArray(data) || data.length === 0) { addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">No price data.</p>'; return; }
         let row = data.find(r => {
             const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
             return c && String(c).toUpperCase().trim() === upper;
         }) || data[0];
-        if (row && row !== data[0] && typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) logDebug('Snapshot: matched exact row for', upper);
-        if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode||row.Code).toUpperCase().trim() !== upper && typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
+        if (row && row !== data[0] && DEBUG_MODE) logDebug('Snapshot: matched exact row for', upper);
+        if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode||row.Code).toUpperCase().trim() !== upper && DEBUG_MODE) {
             logDebug('Snapshot: exact match not found, using first row', { requested: upper, first: row.ASXCode||row.Code });
         }
         const live = parseFloat(row.LivePrice ?? row['Live Price'] ?? row.live ?? row.price ?? row.Last ?? row.LastPrice ?? row['Last Price'] ?? row.LastTrade ?? row['Last Trade']);
@@ -1640,16 +1646,15 @@ async function updateAddFormLiveSnapshot(code) {
         const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
         const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
         // Guard against user switching code mid-flight
-        if (nameInputEl && nameInputEl.value && nameInputEl.value.toUpperCase().trim() !== upper) {
-            if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: nameInputEl.value });
+        if (shareNameInput && shareNameInput.value.toUpperCase().trim() !== upper) {
+            if (DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: shareNameInput.value });
             return;
         }
         // Prefill reference price field with latest live price (always override for accuracy)
-        if (!isNaN(live) && priceInputEl) {
-            try { priceInputEl.value = Number(live).toFixed(2); } catch(_){}
+        if (!isNaN(live) && currentPriceInput) {
+            currentPriceInput.value = Number(live).toFixed(2);
         }
-        try {
-            liveDisplayEl.innerHTML = `
+        addShareLivePriceDisplay.innerHTML = `
             <div class="fifty-two-week-row">
                 <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
                 <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
@@ -1661,9 +1666,8 @@ async function updateAddFormLiveSnapshot(code) {
             <div class="pe-ratio-row">
                 <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? formatAdaptivePrice(pe) : 'N/A'}</span>
             </div>`;
-        } catch(_){}
-        try { liveDisplayEl.style.display = 'block'; } catch(_){}
-        try { liveDisplayEl.removeAttribute('data-loading'); } catch(_){}
+        addShareLivePriceDisplay.style.display = 'block';
+        addShareLivePriceDisplay.removeAttribute('data-loading');
     } catch (e) {
         if (DEBUG_MODE) console.warn('Snapshot: failed for', code, e);
         if (addShareLivePriceDisplay) {
@@ -2387,7 +2391,21 @@ async function fetchLivePrices(opts = {}) {
  * to prevent it from being hidden by the fixed header.
  * Uses scrollHeight to get the full rendered height, including wrapped content.
  */
-function adjustMainContentPadding() { if (window.UI && typeof window.UI.adjustMainContentPadding === 'function') return window.UI.adjustMainContentPadding(); }
+function adjustMainContentPadding() {
+    // Ensure both the header and main content container elements exist.
+    if (appHeader && mainContainer) {
+        // Get the current rendered height of the fixed header, including any wrapped content.
+        // offsetHeight is usually sufficient, but scrollHeight can be more robust if content overflows.
+        // For a fixed header, offsetHeight should reflect its full rendered height.
+        const headerHeight = appHeader.offsetHeight; 
+        
+        // Apply this height as padding to the top of the main content container.
+        mainContainer.style.paddingTop = `${headerHeight}px`;
+        logDebug('Layout: Adjusted main content padding-top to: ' + headerHeight + 'px (Full Header Height).');
+    } else {
+        console.warn('Layout: Could not adjust main content padding-top: appHeader or mainContainer not found.');
+    }
+}
 
 /**
  * Helper function to apply/remove a disabled visual state to non-button elements (like spans/icons).
@@ -2564,23 +2582,21 @@ function closeModals() {
     }
 
 
-    // Delegate actual DOM closing/cleanup to UI module if available
-    if (window.UI && typeof window.UI.closeModals === 'function') {
-        try { window.UI.closeModals(); } catch(e) { console.warn('UI.closeModals failed', e); }
-    } else {
-        document.querySelectorAll('.modal').forEach(modal => {
-            if (modal) {
-                modal.style.setProperty('display', 'none', 'important');
-            }
-        });
-        try { resetCalculator(); } catch(_) {}
-        try { deselectCurrentShare(); } catch(_) {}
-        try { deselectCurrentCashAsset(); } catch(_) {}
-        if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
-        try { hideContextMenu(); } catch(_) {}
-        if (alertPanel) try { hideModal(alertPanel); } catch(_) {}
-        logDebug('Modal: All modals closed.');
-    }
+    document.querySelectorAll('.modal').forEach(modal => {
+        if (modal) {
+            modal.style.setProperty('display', 'none', 'important');
+        }
+    });
+    resetCalculator();
+    deselectCurrentShare();
+
+    // NEW: Deselect current cash asset
+    deselectCurrentCashAsset();
+    if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
+    hideContextMenu();
+    // NEW: Close the alert panel if open (alertPanel is not in current HTML, but kept for consistency)
+    if (alertPanel) hideModal(alertPanel);
+    logDebug('Modal: All modals closed.');
 
     // Clear any lingering active highlight on ASX code buttons when closing modals
     if (asxCodeButtonsContainer) {
@@ -2614,23 +2630,93 @@ function closeModals() {
     }
 }
 
-// Delegate toast/confirm API to UI module when present
-function showCustomAlert(message, duration = 3000, type = 'info') { if (window.UI && typeof window.UI.showCustomAlert === 'function') return window.UI.showCustomAlert(message, duration, type); try { window.alert(message); } catch(_) { console.log('ALERT:', message); } }
-const ToastManager = (window.UI && window.UI.ToastManager) ? window.UI.ToastManager : {
-    info: (m,d) => showCustomAlert(m,d,'info'),
-    success: (m,d) => showCustomAlert(m,d,'success'),
-    error: (m,d) => showCustomAlert(m,d,'error'),
-    confirm: (message, opts) => {
-        if (window.UI && typeof window.UI.ToastManager === 'object' && typeof window.UI.ToastManager.confirm === 'function') return window.UI.ToastManager.confirm(message, opts);
-        // simple fallback: synchronous confirm wrapped as an object-like response
-        const ok = window.confirm(message);
-        if (opts && typeof opts.onConfirm === 'function' && ok) opts.onConfirm(true);
-        if (opts && typeof opts.onCancel === 'function' && !ok) opts.onCancel(false);
-        return ok ? { close: ()=>{} } : null;
-    }
-};
+// Toast-based lightweight alert; keeps API but renders a toast instead of blocking modal
+function showCustomAlert(message, duration = 3000, type = 'info') {
+    // Enforce minimum on-screen time of 3000ms unless explicitly sticky (0)
+    const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
+    try {
+        const container = document.getElementById('toastContainer');
+        if (container) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.setAttribute('role', 'status');
+            toast.innerHTML = `<span class="icon"></span><div class="message"></div>`;
+            toast.querySelector('.message').textContent = message;
+            const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
+            container.appendChild(toast);
+            requestAnimationFrame(()=> toast.classList.add('show'));
+            if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
+            return;
+        }
+    } catch (e) { console.warn('Toast render failed, using alert fallback.', e); }
+    // Minimal fallback
+    try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
+}
 
-function showCustomConfirm(message, callback) { if (window.UI && typeof window.UI.showCustomConfirm === 'function') return window.UI.showCustomConfirm(message, callback); callback(window.confirm(message)); }
+// ToastManager: centralized API
+const ToastManager = (() => {
+    const container = () => document.getElementById('toastContainer');
+    const makeToast = (opts) => {
+        const root = container();
+        if (!root) return null;
+        const { message, type = 'info', duration = 2000, actions = [] } = opts || {};
+        // Enforce minimum 3000ms for auto-dismiss unless explicitly sticky (0)
+        const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        const iconHTML = `<span class="icon"></span>`;
+        const msgHTML = `<div class="message"></div>`;
+        const actionsHTML = actions.length ? `<div class="actions">${actions.map(a=>`<button class=\"btn ${a.variant||''}\">${a.label}</button>`).join('')}</div>` : '';
+        const closeHTML = ``; // REMOVED
+        toast.innerHTML = `${iconHTML}${msgHTML}${actionsHTML}${closeHTML}`;
+        toast.querySelector('.message').textContent = message || '';
+        const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
+        // Wire actions
+        const actionBtns = toast.querySelectorAll('.actions .btn');
+        actionBtns.forEach((btn, idx) => {
+            const cfg = actions[idx];
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                try { cfg && typeof cfg.onClick === 'function' && cfg.onClick(); } finally { remove(); }
+            });
+        });
+        root.appendChild(toast);
+        requestAnimationFrame(()=> toast.classList.add('show'));
+        if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
+        return { el: toast, close: remove };
+    };
+    return {
+    info: (message, duration=3000) => makeToast({ message, type:'info', duration }),
+    success: (message, duration=3000) => makeToast({ message, type:'success', duration }),
+    error: (message, duration=3000) => makeToast({ message, type:'error', duration }),
+        confirm: (message, { confirmText='Yes', cancelText='No', onConfirm, onCancel } = {}) => {
+            return makeToast({
+                message,
+                type: 'info',
+                duration: 0, // sticky until action
+                actions: [
+                    { label: confirmText, variant: 'primary', onClick: () => { onConfirm && onConfirm(true); } },
+                    { label: cancelText, variant: 'danger', onClick: () => { onCancel && onCancel(false); } }
+                ]
+            });
+        }
+    };
+})();
+
+// Migrate confirm dialog to toast confirm (non-blocking UX)
+function showCustomConfirm(message, callback) {
+    const res = ToastManager.confirm(message, {
+        confirmText: 'Yes',
+        cancelText: 'No',
+        onConfirm: () => callback(true),
+        onCancel: () => callback(false)
+    });
+    if (!res) {
+        // Fallback to native confirm if container missing
+        callback(window.confirm(message));
+    }
+}
 
 // Date Formatting Helper Functions (Australian Style)
 
@@ -2844,6 +2930,24 @@ function renderAlertTargetInline(share, opts = {}) {
  * @param {object} share The share object to add.
  */
 function addShareToTable(share) {
+    if (share.shareName && share.shareName.toUpperCase() === 'S32') {
+        const avgPrice = share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)) ? Number(share.portfolioAvgPrice) : null;
+        let priceNow = null;
+        const lpObj = livePrices ? livePrices[share.shareName.toUpperCase()] : undefined;
+        const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+        if (lpObj) {
+            if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceNow = Number(lpObj.live);
+            else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceNow = Number(lpObj.lastLivePrice);
+        }
+        if (priceNow === null || isNaN(priceNow)) {
+            if (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice))) {
+                priceNow = Number(share.currentPrice);
+            }
+        }
+        const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares))) ? Math.trunc(Number(share.portfolioShares)) : '';
+        const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
+        console.log('[DEBUG][Portfolio Table] S32', { priceNow, avgPrice, shares, rowPL, share });
+    }
     if (!shareTableBody) {
         console.error('addShareToTable: shareTableBody element not found.');
         return;
@@ -3449,12 +3553,40 @@ function updateCompactViewButtonState() {
     logDebug('UI State: Compact view button enabled (mode=' + currentMobileViewMode + ').');
 }
 
-function showModal(modalElement) { if (window.UI && typeof window.UI.showModal === 'function') return window.UI.showModal(modalElement); }
+function showModal(modalElement) {
+    if (modalElement) {
+        // Push a new history state for every modal open
+        pushAppState({ modalId: modalElement.id }, '', '');
+        modalElement.style.setProperty('display', 'flex', 'important');
+        modalElement.scrollTop = 0;
+        const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+        if (scrollableContent) {
+            scrollableContent.scrollTop = 0;
+        }
+        // Defensive: ensure autocomplete listeners intact when opening Add Share form
+        if (modalElement.id === 'shareFormSection') {
+            try { if (typeof initializeShareNameAutocomplete === 'function') initializeShareNameAutocomplete(true); } catch(_) {}
+        }
+        logDebug('Modal: Showing modal: ' + modalElement.id);
+    }
+}
 
 // Helper: Show modal without pushing a new browser/history state (used for modal-to-modal back restore)
-function showModalNoHistory(modalElement) { if (window.UI && typeof window.UI.showModalNoHistory === 'function') return window.UI.showModalNoHistory(modalElement); }
+function showModalNoHistory(modalElement) {
+    if (!modalElement) return;
+    modalElement.style.setProperty('display', 'flex', 'important');
+    modalElement.scrollTop = 0;
+    const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+    if (scrollableContent) scrollableContent.scrollTop = 0;
+    logDebug('Modal (no-history): Showing modal: ' + modalElement.id);
+}
 
-function hideModal(modalElement) { if (window.UI && typeof window.UI.hideModal === 'function') return window.UI.hideModal(modalElement); }
+function hideModal(modalElement) {
+    if (modalElement) {
+        modalElement.style.setProperty('display', 'none', 'important');
+        logDebug('Modal: Hiding modal: ' + modalElement.id);
+    }
+}
 
 // Extracted: auto-save logic for the share form so we can call it on back as well
 function autoSaveShareFormOnClose() {
@@ -10176,7 +10308,7 @@ if (sortSelect) {
             closeMenuBtn: !!closeMenuBtn,
             sidebarOverlay: !!sidebarOverlay
         });
-
+        
         // Ensure initial state is correct: always start CLOSED after reload
         if (window.innerWidth > 768) {
             document.body.classList.remove('sidebar-active'); // Do not shift body on load
@@ -10206,7 +10338,7 @@ if (sortSelect) {
             logDebug('UI: Close Menu button CLICKED.');
             toggleAppSidebar(false);
         });
-
+        
         // Unified overlay handler (single authoritative listener) - prevents race/double fire
         if (sidebarOverlay._unifiedHandler) {
             sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);

@@ -1295,7 +1295,7 @@ function makeFilesAvailableToSourceControlCSS() {
     .dropdown-large { font-size:0.95rem; padding:6px 8px; }
     .toggle-asx-buttons-group { order:3; flex:0 0 100%; display:flex; justify-content:center; margin:2px 0 0 0; }
     }
-
+}
 /* --- End Modern Responsive Controls Row & Dropdowns --- */
 @media (min-width: 769px) {
   .toggle-asx-buttons-group {
