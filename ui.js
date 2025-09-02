@@ -150,20 +150,82 @@
         };
     })();
 
-    function showCustomAlert(message, duration = 3000, type = 'info') {
-        const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
+	function showCustomConfirm(message, callback) {
+		var res = ToastManager.confirm(message, {
+			confirmText: 'Yes',
+			cancelText: 'No',
+			onConfirm: function() { callback(true); },
+			onCancel: function() { callback(false); }
+		});
+		if (!res) {
+			try { callback(window.confirm(message)); } catch (_) { callback(false); }
+		}
+	}
+
+	// Expose on window for backward compatibility
+	window.UI = window.UI || {};
+	window.UI.showModal = showModal;
+	window.UI.showModalNoHistory = showModalNoHistory;
+	window.UI.hideModal = hideModal;
+	window.UI.showCustomAlert = showCustomAlert;
+	window.UI.ToastManager = ToastManager;
+	window.UI.showCustomConfirm = showCustomConfirm;
+
+	// Also attach top-level symbols many parts of app reference
+	try { window.showModal = showModal; } catch(_) {}
+	try { window.showModalNoHistory = showModalNoHistory; } catch(_) {}
+	try { window.hideModal = hideModal; } catch(_) {}
+	try { window.showCustomAlert = showCustomAlert; } catch(_) {}
+	try { window.ToastManager = ToastManager; } catch(_) {}
+	try { window.showCustomConfirm = showCustomConfirm; } catch(_) {}
+})();
+
+// Sidebar UI: toggle logic and initialization
+(function() {
+    // Provide UI-level toggle implementation (actual DOM class changes)
+    function _toggleAppSidebarImpl(forceState = null) {
         try {
-            const container = $id('toastContainer');
-            if (container) {
-                const toast = document.createElement('div');
-                toast.className = `toast ${type}`;
-                toast.setAttribute('role', 'status');
-                toast.innerHTML = `<span class="icon"></span><div class="message"></div>`;
-                toast.querySelector('.message').textContent = message;
-                const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
-                container.appendChild(toast);
-                requestAnimationFrame(()=> toast.classList.add('show'));
-                if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
+            var isDesktop = window.innerWidth > 768;
+            var isOpen = appSidebar && appSidebar.classList.contains('open');
+
+            if (forceState === true || (forceState === null && !isOpen)) {
+                if (!isDesktop) {
+                    try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch(_){}
+                }
+                if (appSidebar) appSidebar.classList.add('open');
+                if (sidebarOverlay) sidebarOverlay.classList.add('open');
+                if (appSidebar) { appSidebar.scrollTop = 0; }
+                if (!isDesktop) {
+                    document.body.style.overflow = 'hidden';
+                }
+                if (isDesktop) {
+                    document.body.classList.add('sidebar-active');
+                    if (sidebarOverlay) sidebarOverlay.style.pointerEvents = 'none';
+                } else {
+                    document.body.classList.remove('sidebar-active');
+                    if (sidebarOverlay) sidebarOverlay.style.pointerEvents = 'auto';
+                }
+                if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','true');
+            } else {
+                if (appSidebar) appSidebar.classList.remove('open');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('open');
+                document.body.classList.remove('sidebar-active');
+                document.body.style.overflow = '';
+                if (appSidebar) appSidebar.scrollTop = 0;
+                if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded','false');
+            }
+        } catch (e) { console.warn('UI._toggleAppSidebarImpl failed', e); }
+    }
+
+    // Expose as UI.toggleAppSidebar
+    window.UI = window.UI || {};
+    window.UI.toggleAppSidebar = function(forceState) { return _toggleAppSidebarImpl(forceState); };
+
+    // Initialization: bind hamburger, overlay, menu buttons, focus trap, resize handlers
+    window.UI.initSidebar = function() {
+        try {
+            if (!(hamburgerBtn && appSidebar && closeMenuBtn && sidebarOverlay)) {
+                console.warn('Sidebar Setup: Missing one or more sidebar elements (hamburgerBtn, appSidebar, closeMenuBtn, sidebarOverlay). Sidebar functionality might be impaired.');
                 return;
             }
         } catch (e) { console.warn('Toast render failed, using alert fallback.', e); }
