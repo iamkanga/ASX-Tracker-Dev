@@ -10287,6 +10287,154 @@ if (sortSelect) {
         sidebarOverlay.addEventListener('mousedown', unifiedHandler, true);
         sidebarOverlay._unifiedHandler = unifiedHandler;
 
+        // Accessibility & focus trap for sidebar when open
+        const mainContent = document.getElementById('mainContent') || document.querySelector('main');
+        const firstFocusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+        function trapFocus(e){
+            if (!appSidebar.classList.contains('open')) return;
+            const focusables = Array.from(appSidebar.querySelectorAll(firstFocusableSelector)).filter(el=>!el.disabled && el.offsetParent!==null);
+            if (!focusables.length) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length-1];
+            if (e.key === 'Tab') {
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+        }
+        document.addEventListener('keydown', trapFocus, true);
+
+        // Hook into toggleAppSidebar to set aria-hidden
+        const __origToggle = toggleAppSidebar;
+        window.toggleAppSidebar = function(force){
+            __origToggle(force);
+            const isOpen = appSidebar.classList.contains('open');
+            if (mainContent) mainContent.setAttribute('aria-hidden', isOpen ? 'true':'false');
+            if (isOpen) {
+                // Move initial focus
+                setTimeout(()=>{
+                    const first = appSidebar.querySelector(firstFocusableSelector);
+                    if (first) first.focus();
+                },30);
+            } else {
+                if (mainContent) mainContent.removeAttribute('inert');
+            }
+        };
+
+        // Desktop outside-click closer (capture + swallow to prevent click-through)
+        document.addEventListener('click', (event) => {
+            const isDesktop = window.innerWidth > 768;
+            if (!isDesktop) return; // Mobile uses overlay
+            if (!appSidebar.classList.contains('open')) return;
+            // If click target is outside sidebar & hamburger button
+            if (!appSidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
+                logDebug('Global Click (capture): outside desktop click -> closing sidebar (swallowing event)');
+                // Close sidebar first
+                toggleAppSidebar(false);
+                // Swallow so underlying element does NOT also activate on this same click
+                event.stopPropagation();
+                event.preventDefault();
+            }
+        }, true); // capture phase so we intercept before underlying handlers
+
+        window.addEventListener('resize', () => {
+            logDebug('Window Resize: Resizing window. Closing sidebar if open.');
+            const isDesktop = window.innerWidth > 768;
+            if (appSidebar.classList.contains('open')) {
+                toggleAppSidebar(false);
+            }
+            if (scrollToTopBtn) {
+                if (window.innerWidth > 768) {
+                    scrollToTopBtn.style.display = 'none';
+                } else {
+                    window.dispatchEvent(new Event('scroll'));
+                }
+            }
+            // NEW: Recalculate header height on resize
+            adjustMainContentPadding();
+
+            // NEW: Update the compact view button state on resize
+            updateCompactViewButtonState();
+        });
+
+        const menuButtons = appSidebar.querySelectorAll('.menu-button-item');
+        menuButtons.forEach(button => {
+            button.addEventListener('click', (event) => {
+                const clickedButton = event.currentTarget;
+                logDebug('Sidebar Menu Item Click: Button \'' + clickedButton.textContent.trim() + '\' clicked.');
+
+                // Handle specific action for the toggle compact view button
+                if (clickedButton.id === 'toggleCompactViewBtn') {
+                    toggleMobileViewMode();
+                }
+
+                const closesMenu = clickedButton.dataset.actionClosesMenu !== 'false';
+                if (clickedButton.id === 'forceUpdateBtn') {
+                    // Force update always closes first to avoid stale UI during reload
+                    toggleAppSidebar(false);
+                    forceHardUpdate();
+                    return; // further processing not needed
+                }
+                if (closesMenu) toggleAppSidebar(false);
+            });
+        });
+    } else {
+        console.warn('Sidebar Setup: Fallback: window.UI.initSidebar() not found. Using minimal fallback.');
+        if (hamburgerBtn && appSidebar && closeMenuBtn && sidebarOverlay) {
+            logDebug('Sidebar Setup: Initializing sidebar event listeners. Elements found:', {
+                hamburgerBtn: !!hamburgerBtn,
+                appSidebar: !!appSidebar,
+                closeMenuBtn: !!closeMenuBtn,
+                sidebarOverlay: !!sidebarOverlay
+            });
+            
+            // Ensure initial state is correct: always start CLOSED after reload
+            if (window.innerWidth > 768) {
+                document.body.classList.remove('sidebar-active'); // Do not shift body on load
+                sidebarOverlay.style.pointerEvents = 'none'; // Overlay non-interactive on desktop when closed
+                appSidebar.classList.remove('open'); // Start closed on desktop too
+                logDebug('Sidebar: Desktop: Sidebar initialized as closed.');
+            } else {
+                document.body.classList.remove('sidebar-active'); // No shift on mobile
+                sidebarOverlay.style.pointerEvents = 'auto'; // Overlay interactive on mobile
+                appSidebar.classList.remove('open'); // Sidebar closed by default on mobile
+                logDebug('Sidebar: Mobile: Sidebar initialized as closed.');
+            }
+
+
+            // Unified hamburger listener with idempotent guard
+            if (!hamburgerBtn.dataset.sidebarBound) {
+                hamburgerBtn.addEventListener('click', (event) => {
+                    logDebug('UI: Hamburger button CLICKED. Event:', event);
+                    event.stopPropagation();
+                    const willOpen = !appSidebar.classList.contains('open');
+                    toggleAppSidebar();
+                    if (willOpen) pushAppStateEntry('sidebar','sidebar');
+                });
+                hamburgerBtn.dataset.sidebarBound = '1';
+            }
+            closeMenuBtn.addEventListener('click', () => {
+                logDebug('UI: Close Menu button CLICKED.');
+                toggleAppSidebar(false);
+            });
+            
+            // Unified overlay handler (single authoritative listener) - prevents race/double fire
+            if (sidebarOverlay._unifiedHandler) {
+                sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);
+                sidebarOverlay.removeEventListener('click', sidebarOverlay._unifiedHandler, true);
+                sidebarOverlay.removeEventListener('touchstart', sidebarOverlay._unifiedHandler, true);
+            }
+            const unifiedHandler = (e) => {
+                if (e.target !== sidebarOverlay) return; // Only backdrop clicks
+                if (!appSidebar.classList.contains('open')) return;
+                try { toggleAppSidebar(false); } catch(err){ console.warn('Sidebar close failed', err); }
+                // Suppress any further processing or bubbling to avoid click-throughs
+                if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+                e.stopPropagation();
+                if (e.preventDefault) e.preventDefault();
+            };
+            sidebarOverlay.addEventListener('mousedown', unifiedHandler, true);
+            sidebarOverlay._unifiedHandler = unifiedHandler;
+
             // Accessibility & focus trap for sidebar when open
             const mainContent = document.getElementById('mainContent') || document.querySelector('main');
             const firstFocusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -10482,7 +10630,7 @@ if (sortSelect) {
     // NEW: Set initial state for the compact view button
     updateCompactViewButtonState();
     applyCompactViewMode();
-
+} 
 // This closing brace correctly ends the `initializeAppLogic` function here.
 // Build Marker: v0.1.13 (Network-first CSS/JS, cache bust deploy)
 // Also expose as a runtime variable for lightweight diagnostics
