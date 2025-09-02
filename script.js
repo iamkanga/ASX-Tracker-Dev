@@ -257,16 +257,20 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             updateMainButtonsState(true);
             // Ensure main content scrolls to the top after a view change for consistent UX
-            try { scrollMainToTop(); } catch(_) {}
+            try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
         });
     }
 
     // Helper: scroll main content to top in a resilient way
     function scrollMainToTop(instant = false) {
         try {
+            // Prefer the global smart implementation defined by UI module if present
+            if (typeof window !== 'undefined' && window.scrollMainToTop && window.scrollMainToTop !== scrollMainToTop) {
+                try { window.scrollMainToTop(instant); return; } catch(_) {}
+            }
             const el = document.querySelector('main.container');
             if (el) {
-                el.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' });
+                try { el.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' }); } catch(_){}
                 return;
             }
         } catch (e) { /* ignore */ }
@@ -627,6 +631,19 @@ function logDebug(message, ...optionalParams) {
         console.log(message, ...optionalParams); 
     }
 }
+// Expose core helpers to other modules
+try { window.logDebug = logDebug; } catch(_) {}
+try { window.showModal = function(m){ if (typeof window.UI !== 'undefined' && window.UI.showModal) return window.UI.showModal(m); try { if (m) m.style.setProperty('display','flex','important'); } catch(_){} }; } catch(_) {}
+try { window.hideModal = function(m){ if (typeof window.UI !== 'undefined' && window.UI.hideModal) return window.UI.hideModal(m); try { if (m) m.style.setProperty('display','none','important'); } catch(_){} }; } catch(_) {}
+try { if (!window.scrollMainToTop) window.scrollMainToTop = function(instant){ try { const el = document.querySelector('main.container'); if (el) el.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' }); else window.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' }); } catch(_){} }; } catch(_) {}
+try { window.updateAddFormLiveSnapshot = updateAddFormLiveSnapshot; } catch(_) {}
+
+// Expose utils-derived helpers (needed by ui.js calculators)
+try { window.calculateUnfrankedYield = calculateUnfrankedYield; } catch(_) {}
+try { window.calculateFrankedYield = calculateFrankedYield; } catch(_) {}
+try { window.estimateDividendIncome = estimateDividendIncome; } catch(_) {}
+try { window.formatAdaptivePercent = formatAdaptivePercent; } catch(_) {}
+try { window.formatAdaptivePrice = formatAdaptivePrice; } catch(_) {}
 // --- END DEBUG LOGGING SETUP ---
 
 let db;
@@ -1747,6 +1764,27 @@ function applyAsxButtonsState() {
 
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     applyAsxButtonsState();
+    // Helper: aggressively reset any inner scrollable containers inside main
+    function resetInnerScrollPositions() {
+        try {
+            const mainRoot = document.querySelector('main.container') || document.querySelector('main') || document.body;
+            if (!mainRoot) return;
+            const candidates = Array.from(mainRoot.querySelectorAll('*'));
+            candidates.forEach(el => {
+                try {
+                    const style = window.getComputedStyle(el);
+                    const overflowY = style && (style.overflowY || style.overflow);
+                    if ((overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') && el.scrollHeight > el.clientHeight && el.scrollTop > 0) {
+                        try { el.scrollTop = 0; } catch(_){}
+                    }
+                } catch(_){}
+            });
+            // also reset some known containers
+            try { const tc = document.querySelector('.table-container'); if (tc && tc.scrollTop) tc.scrollTop = 0; } catch(_){}
+            try { const mc = document.getElementById('mobileShareCards'); if (mc && mc.scrollTop) mc.scrollTop = 0; } catch(_){}
+            try { const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0; } catch(_){}
+        } catch(_){}
+    }
     toggleAsxButtonsBtn.addEventListener('click', (e) => {
         // Prevent the click from falling through to the sort select and other handlers
         try { e.stopPropagation(); e.preventDefault(); } catch(_) {}
@@ -1765,9 +1803,32 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
             toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!asxButtonsExpanded));
             const tri = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle'); if (tri) tri.classList.toggle('expanded', !!asxButtonsExpanded);
         } catch(_) {}
-        // Try to keep page view stable (avoid abrupt jumps)
-    try { window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); } catch(_) {}
-    try { scrollMainToTop(); } catch(_) {}
+        // Defer scroll until ASX buttons finish their transition to compute correct header height
+        try { window.__asxToggleWantsScroll = true; } catch(_) {}
+        // Also schedule a couple of fallback scroll attempts in case transitionend doesn't fire or timing varies
+        try {
+            setTimeout(function(){ try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){} }, 220);
+            setTimeout(function(){ try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){} }, 480);
+        } catch(_) {}
+        // Additional forced attempt after layout settles
+        try { setTimeout(function(){ try { if (typeof resetInnerScrollPositions === 'function') resetInnerScrollPositions(); if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){} }, 320); } catch(_) {}
+        try { setTimeout(function(){ try { if (typeof resetInnerScrollPositions === 'function') resetInnerScrollPositions(); if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){} }, 760); } catch(_) {}
+        // Aggressive: repeat-reset common scrollers for a short window to overcome timing/race issues
+        try {
+            let __asxResetAttempts = 0;
+            const __asxResetIv = setInterval(function(){
+                try {
+                    const selIds = ['main.container', '.table-container', '#mobileShareCards', '#portfolioListContainer', '.portfolio-scroll-wrapper'];
+                    selIds.forEach(s => {
+                        try { const el = document.querySelector(s); if (el && typeof el.scrollTop !== 'undefined' && el.scrollHeight > el.clientHeight) el.scrollTop = 0; } catch(_){}
+                    });
+                    try { const docEl = document.scrollingElement || document.documentElement || document.body; if (docEl) { docEl.scrollTop = 0; } } catch(_){}
+                    try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){}
+                } catch(_){}
+                __asxResetAttempts++;
+                if (__asxResetAttempts > 8) try{ clearInterval(__asxResetIv); } catch(_){};
+            }, 60);
+        } catch(_) {}
     });
 
     // Allow clicking the surrounding sort-select-wrapper to toggle ASX Codes as well
@@ -1800,10 +1861,21 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
         }
     } catch(_) {}
 
-    // Also adjust precisely on transition end of the container
+    // Also adjust precisely on transition end of the container and perform deferred scroll if needed
     asxCodeButtonsContainer.addEventListener('transitionend', (ev) => {
         if (ev.propertyName === 'max-height' || ev.propertyName === 'padding' || ev.propertyName === 'opacity') {
             adjustMainContentPadding();
+            // If a scroll was requested while toggling ASX buttons, perform it now
+            try {
+                if (window.__asxToggleWantsScroll) {
+                    // Reset known inner scrollers first to ensure top-of-list is reachable
+                    try { const tc = document.querySelector('.table-container'); if (tc && tc.scrollTop) tc.scrollTop = 0; } catch(_){}
+                    try { const mc = document.getElementById('mobileShareCards'); if (mc && mc.scrollTop) mc.scrollTop = 0; } catch(_){}
+                    try { const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0; } catch(_){}
+                    try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){}
+                    try { delete window.__asxToggleWantsScroll; } catch(_){}
+                }
+            } catch(_){}
         }
     });
 }
@@ -2568,18 +2640,18 @@ function closeModals() {
     if (window.UI && typeof window.UI.closeModals === 'function') {
         try { window.UI.closeModals(); } catch(e) { console.warn('UI.closeModals failed', e); }
     } else {
-        document.querySelectorAll('.modal').forEach(modal => {
-            if (modal) {
-                modal.style.setProperty('display', 'none', 'important');
-            }
-        });
+    document.querySelectorAll('.modal').forEach(modal => {
+        if (modal) {
+            modal.style.setProperty('display', 'none', 'important');
+        }
+    });
         try { resetCalculator(); } catch(_) {}
         try { deselectCurrentShare(); } catch(_) {}
         try { deselectCurrentCashAsset(); } catch(_) {}
-        if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
+    if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
         try { hideContextMenu(); } catch(_) {}
         if (alertPanel) try { hideModal(alertPanel); } catch(_) {}
-        logDebug('Modal: All modals closed.');
+    logDebug('Modal: All modals closed.');
     }
 
     // Clear any lingering active highlight on ASX code buttons when closing modals
@@ -5199,7 +5271,7 @@ function openWatchlistPicker() {
             try { renderSortSelect(); } catch (_) { }
             try { renderWatchlist(); } catch (e) { console.warn('WatchlistPicker: renderWatchlist failed', e); }
             // Ensure the main view scrolls to top after programmatic watchlist selection
-            try { scrollMainToTop(); } catch(_) {}
+            try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
             try { enforceMoversVirtualView(); } catch (e) { console.warn('WatchlistPicker: enforceMoversVirtualView failed', e); }
             if (it.id === '__movers' && typeof debugMoversConsistency === 'function') {
                 try { debugMoversConsistency({ includeLists: true }); } catch (_) { }
@@ -8873,8 +8945,11 @@ async function initializeAppLogic() {
 
             // Fetch live snapshot for the selected code to show context in the form and prefill price
             try {
-                updateAddFormLiveSnapshot(code);
-            } catch { /* ignore transient errors */ }
+                if (typeof window.updateAddFormLiveSnapshot === 'function') window.updateAddFormLiveSnapshot(code);
+                else if (typeof updateAddFormLiveSnapshot === 'function') updateAddFormLiveSnapshot(code);
+            } catch (err) {
+                try { if (typeof updateAddFormLiveSnapshot === 'function') updateAddFormLiveSnapshot(code); } catch(_){}
+            }
         }
 
         function renderShareNameSuggestions(query) {
@@ -8895,15 +8970,20 @@ async function initializeAppLogic() {
                 div.dataset.code = s.code;
                 // Use pointerup or click for selection to avoid blocking touch scroll; keep pointerdown passive
                 const handler = (e) => {
+                    // Mark that a selection is happening so blur handlers don't immediately hide suggestions
+                    try { if (shareNameSuggestions) shareNameSuggestions.dataset.selectionInProgress = '1'; } catch(_){}
                     // Selection handler; do not call preventDefault here to allow scrolling on touch devices
                     applyShareCodeSelection(s.code, s.name);
                 };
-                // pointerdown kept passive to avoid preventing scrolling; use pointerup for stable selection
-                div.addEventListener('pointerup', handler, { once: true, passive: true });
-                div.addEventListener('click', (e) => {
-                    // click as a fallback
-                    handler(e);
-                }, { once: true });
+                // Use pointerdown to capture touch/click early, prevent blur-before-click issues
+                div.addEventListener('pointerdown', function(e){
+                    // prevent default to stop input blur race on some browsers
+                    try { e.preventDefault(); } catch(_){}
+                }, { passive: false });
+                // pointerup triggers the selection
+                div.addEventListener('pointerup', handler, { once: true });
+                // click fallback for older browsers / devices
+                div.addEventListener('click', handler, { once: true });
                 shareNameSuggestions.appendChild(div);
             });
             shareNameSuggestions.classList.add('active');
@@ -8912,7 +8992,7 @@ async function initializeAppLogic() {
         // Keep a lightweight blur handler for clearing company name if field emptied
         shareNameInput.addEventListener('blur', () => {
             setTimeout(() => { // Delay to allow click selection to complete
-                if (shareNameSuggestions) shareNameSuggestions.classList.remove('active');
+                if (shareNameSuggestions && !shareNameSuggestions.dataset.selectionInProgress) shareNameSuggestions.classList.remove('active');
                 const asxCode = shareNameInput.value.trim().toUpperCase();
                 if (!asxCode && formCompanyName) formCompanyName.textContent = '';
                 // Post-blur validation: if a code was intended (from lastSearch) but input empty, restore
@@ -8924,7 +9004,9 @@ async function initializeAppLogic() {
                         if (match && formCompanyName) formCompanyName.textContent = match.name || '';
                     }
                 }
-            }, 100);
+                // clear transient flag
+                try { delete shareNameSuggestions.dataset.selectionInProgress; } catch(_){}
+            }, 250);
         });
     }
 
@@ -9572,7 +9654,7 @@ if (deleteAllUserDataBtn) {
             renderWatchlist();
             try { enforceMoversVirtualView(); } catch(_) {}
         // UX: scroll to top after changing watchlist so users see top content
-        try { scrollMainToTop(); } catch(_) {}
+        try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
         });
     }
 
@@ -9929,118 +10011,24 @@ if (sortSelect) {
         });
     }
 
-    // Dividend Calculator Button
-    if (dividendCalcBtn) {
-        dividendCalcBtn.addEventListener('click', () => {
-            logDebug('UI: Dividend button clicked. Attempting to open modal.');
-            // Corrected references to use unique IDs for dividend calculator inputs
-            if (calcDividendAmountInput) calcDividendAmountInput.value = ''; 
-            if (calcCurrentPriceInput) calcCurrentPriceInput.value = ''; 
-            if (calcFrankingCreditsInput) calcFrankingCreditsInput.value = ''; 
-            if (calcUnfrankedYieldSpan) calcUnfrankedYieldSpan.textContent = '-'; 
-            if (calcFrankedYieldSpan) calcFrankedYieldSpan.textContent = '-'; 
-            if (calcEstimatedDividend) calcEstimatedDividend.textContent = '-'; 
-            if (investmentValueSelect) investmentValueSelect.value = '10000'; // Reset dropdown
-            showModal(dividendCalculatorModal);
-            try { scrollMainToTop(); } catch(_) {}
-            if (calcCurrentPriceInput) calcCurrentPriceInput.focus(); 
-            logDebug('UI: Dividend Calculator modal opened.');
-            toggleAppSidebar(false);
-        });
-    }
-
-    // Dividend Calculator Input Listeners
-    [calcDividendAmountInput, calcCurrentPriceInput, calcFrankingCreditsInput, investmentValueSelect].forEach(input => {
-        if (input) {
-            input.addEventListener('input', updateDividendCalculations);
-            input.addEventListener('change', updateDividendCalculations);
-        }
-    });
-
-    function updateDividendCalculations() {
-        const currentPrice = parseFloat(calcCurrentPriceInput.value);
-        const dividendAmount = parseFloat(calcDividendAmountInput.value);
-        const frankingCredits = parseFloat(calcFrankingCreditsInput.value);
-        const investmentValue = parseFloat(investmentValueSelect.value);
-        
-        const unfrankedYield = calculateUnfrankedYield(dividendAmount, currentPrice);
-        const frankedYield = calculateFrankedYield(dividendAmount, currentPrice, frankingCredits);
-        const estimatedDividend = estimateDividendIncome(investmentValue, dividendAmount, currentPrice);
-        
-    calcUnfrankedYieldSpan.textContent = unfrankedYield !== null ? formatAdaptivePercent(unfrankedYield) + '%' : '-';
-    calcFrankedYieldSpan.textContent = frankedYield !== null ? formatAdaptivePercent(frankedYield) + '%' : '-';
-    calcEstimatedDividend.textContent = estimatedDividend !== null ? '$' + formatAdaptivePrice(estimatedDividend) : '-';
-    }
-
-    // Standard Calculator Button
-    if (standardCalcBtn) {
-        standardCalcBtn.addEventListener('click', () => {
-            logDebug('UI: Standard Calculator button clicked.');
-            resetCalculator();
-            showModal(calculatorModal);
-            try { scrollMainToTop(); } catch(_) {}
-            logDebug('UI: Standard Calculator modal opened.');
-            toggleAppSidebar(false);
-        });
-    }
-
-    // Calculator Buttons
-    if (calculatorButtons) {
-        calculatorButtons.addEventListener('click', (event) => {
-            const target = event.target;
-            if (!target.classList.contains('calc-btn') || target.classList.contains('is-disabled-icon')) { return; }
-            const value = target.dataset.value;
-            const action = target.dataset.action;
-            if (value) { appendNumber(value); }
-            else if (action) { handleAction(action); }
-        });
-    }
-
-    function appendNumber(num) {
-        if (resultDisplayed) { currentCalculatorInput = num; resultDisplayed = false; }
-        else { if (num === '.' && currentCalculatorInput.includes('.')) return; currentCalculatorInput += num; }
-        updateCalculatorDisplay();
-    }
-
-    function handleAction(action) {
-        if (action === 'clear') { resetCalculator(); return; }
-        if (action === 'percentage') { 
-            if (currentCalculatorInput === '' && previousCalculatorInput === '') return;
-            let val;
-            if (currentCalculatorInput !== '') {
-                val = parseFloat(currentCalculatorInput);
-            } else if (previousCalculatorInput !== '') {
-                val = parseFloat(previousCalculatorInput);
+    // Initialize calculators via UI module if available
+    // Ensure calculators are initialized after UI module loaded. Prefer UI.initCalculators when available.
+    try {
+        if (window.UI && typeof window.UI.initCalculators === 'function') {
+            window.UI.initCalculators();
             } else {
-                return;
-            }
-
-            if (isNaN(val)) return;
-
-            if (operator && previousCalculatorInput !== '') {
-                const prevNum = parseFloat(previousCalculatorInput);
-                if (isNaN(prevNum)) return;
-                currentCalculatorInput = (prevNum * (val / 100)).toString();
+            // If UI isn't ready yet, schedule a short retry once so dynamic load order doesn't break functionality
+            setTimeout(() => {
+                try {
+                    if (window.UI && typeof window.UI.initCalculators === 'function') {
+                        window.UI.initCalculators();
             } else {
-                currentCalculatorInput = (val / 100).toString();
-            }
-            resultDisplayed = false;
-            updateCalculatorDisplay();
-            return; 
+                        console.warn('Calculator Setup: window.UI.initCalculators() still not found after retry.');
+                    }
+                } catch (e) { console.warn('Calculator Setup: retry failed', e); }
+            }, 50);
         }
-        if (['add', 'subtract', 'multiply', 'divide'].includes(action)) {
-            if (currentCalculatorInput === '' && previousCalculatorInput === '') return;
-            if (currentCalculatorInput !== '') {
-                if (previousCalculatorInput !== '') { calculateResult(); previousCalculatorInput = calculatorResult.textContent; }
-                else { previousCalculatorInput = currentCalculatorInput; }
-            }
-            operator = action; currentCalculatorInput = ''; resultDisplayed = false; updateCalculatorDisplay(); return;
-        }
-        if (action === 'calculate') {
-            if (previousCalculatorInput === '' || currentCalculatorInput === '' || operator === null) { return; }
-            calculateResult(); operator = null; resultDisplayed = true;
-        }
-    }
+    } catch (e) { console.warn('Calculator Setup: init error', e); }
 
     // Theme Toggle Button (Random Selection)
     if (themeToggleBtn) {
@@ -10176,7 +10164,7 @@ if (sortSelect) {
             closeMenuBtn: !!closeMenuBtn,
             sidebarOverlay: !!sidebarOverlay
         });
-
+        
         // Ensure initial state is correct: always start CLOSED after reload
         if (window.innerWidth > 768) {
             document.body.classList.remove('sidebar-active'); // Do not shift body on load
@@ -10206,7 +10194,7 @@ if (sortSelect) {
             logDebug('UI: Close Menu button CLICKED.');
             toggleAppSidebar(false);
         });
-
+        
         // Unified overlay handler (single authoritative listener) - prevents race/double fire
         if (sidebarOverlay._unifiedHandler) {
             sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);
@@ -10335,6 +10323,7 @@ if (sortSelect) {
             fetchLivePrices();
             showCustomAlert('Refreshing live prices...', 1000);
             toggleAppSidebar(false); // NEW: Close sidebar on refresh
+            try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
         });
     }
 
