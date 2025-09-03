@@ -9819,8 +9819,8 @@ if (sortSelect) {
     if (saveShareBtn) {
         saveShareBtn.addEventListener('click', async () => {
             logDebug('Share Form: Save Share button clicked.');
-            // Call the shared save function, not silent
-            saveShareData(false);
+            // Call service
+            saveShareDataSvc(false);
         });
     }
 
@@ -9834,13 +9834,7 @@ if (sortSelect) {
             }
             if (selectedShareDocId) {
                 try {
-                    const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
-                    await firestore.deleteDoc(shareDocRef);
-                    logDebug('Firestore: Share (ID: ' + selectedShareDocId + ') deleted.');
-                    // New lightweight toast for deletion confirmation
-                    showCustomAlert('Share deleted', 1500, 'success');
-                    closeModals();
-                    updateTargetHitBanner(); // NEW: Update banner after deletion
+                    await deleteShareSvc(selectedShareDocId);
                 } catch (error) {
                     console.error('Firestore: Error deleting share:', error);
                     showCustomAlert('Error deleting share: ' + error.message);
@@ -9884,13 +9878,7 @@ if (sortSelect) {
             }
             if (selectedShareDocId) {
                 try {
-                    const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
-                    await firestore.deleteDoc(shareDocRef);
-                    logDebug('Firestore: Share (ID: ' + selectedShareDocId + ') deleted.');
-                    // New lightweight toast for deletion confirmation
-                    showCustomAlert('Share deleted', 1500, 'success');
-                    closeModals();
-                    updateTargetHitBanner(); // NEW: Update banner after deletion
+                    await deleteShareSvc(selectedShareDocId);
                 } catch (error) {
                     console.error('Firestore: Error deleting share:', error);
                     showCustomAlert('Error deleting share: ' + error.message);
@@ -9921,10 +9909,7 @@ if (sortSelect) {
                 const shareToDeleteId = currentContextMenuShareId;
                 hideContextMenu();
                 try {
-                    const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', shareToDeleteId);
-                    await firestore.deleteDoc(shareDocRef);
-                    // showCustomAlert('Share deleted successfully!', 1500); // Removed as per user request
-                    logDebug('Firestore: Share (ID: ' + shareToDeleteId + ') deleted.');
+                    await deleteShareSvc(shareToDeleteId);
                 } catch (error) {
                     console.error('Firestore: Error deleting share:', error);
                     showCustomAlert('Error deleting share: ' + error.message);
