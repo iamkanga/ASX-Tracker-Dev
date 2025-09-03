@@ -1,5 +1,6 @@
 import { initializeFirebaseAndAuth } from './firebase.js';
 import { initializeAppEventListeners } from './js/init.js';
+import { setupAuthListener } from './js/auth.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
 import { allSharesData, livePrices, userWatchlists, currentSelectedWatchlistIds, sharesAtTargetPrice, currentSortOrder, allAsxCodes, setAllSharesData, setLivePrices, setUserWatchlists, setCurrentSelectedWatchlistIds, setSharesAtTargetPrice, setCurrentSortOrder, setAllAsxCodes } from './js/state.js';
 
@@ -11262,8 +11263,8 @@ function initializeApp() {
         } catch (e) {
             console.warn('Auth: Failed to set persistence (outer), continuing with default.', e);
         }
-
-    authFunctions.onAuthStateChanged(auth, async (user) => {
+    
+    window.__handleAuthStateChange = async (user) => {
             if (user) {
                 // Restore movers view if it was active prior to a storage reset during auth
                 try {
@@ -11424,7 +11425,8 @@ function initializeApp() {
             renderWatchlist();
             try { ensureTitleStructure(); } catch(e) {}
             // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
-        });
+        };
+        setupAuthListener(auth, authFunctions);
     } else {
     console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
         const errorDiv = document.getElementById('firebaseInitError');
@@ -11570,168 +11572,7 @@ function initializeApp() {
             console.warn('Auth: Failed to set persistence (outer), continuing with default.', e);
         }
 
-    authFunctions.onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                // Restore movers view if it was active prior to a storage reset during auth
-                try {
-                    const pre = sessionStorage.getItem('preResetLastSelectedView');
-                    if (pre === '__movers' && !localStorage.getItem('lastSelectedView')) {
-                        setLastSelectedView('__movers');
-                        sessionStorage.removeItem('preResetLastSelectedView');
-                    }
-                } catch(_) {}
-                currentUserId = user.uid;
-                logDebug('AuthState: User signed in: ' + user.uid);
-
-                // Restore user's last state from localStorage
-                restorePersistedState();
-                logDebug('AuthState: User email: ' + user.email);
-                try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
-                // Use dynamic update instead of hard-coded label so it reflects current selection
-                updateMainTitle();
-                logDebug('AuthState: Dynamic title initialized via updateMainTitle().');
-                updateMainButtonsState(true);
-                window._userAuthenticated = true; // Mark user as authenticated
-
-                if (mainContainer) {
-                    mainContainer.classList.remove('app-hidden');
-                }
-                if (appHeader) {
-                    appHeader.classList.remove('app-hidden');
-                }
-                adjustMainContentPadding();
-
-                        // Ensure header click bindings are attached after header becomes visible
-                        try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind after auth show', e); }
-
-                if (splashKangarooIcon) {
-                    splashKangarooIcon.classList.add('pulsing');
-                    logDebug('Splash Screen: Started pulsing animation after sign-in.');
-                }
-
-                targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
-                // Immediately reflect any persisted target count before live data loads
-                try { updateTargetHitBanner(); } catch(e) { console.warn('Auth early Target Alert restore failed', e); }
-
-                // Load user data, then do an initial fetch of live prices before setting the update interval.
-                // This ensures the initial view is correctly sorted by percentage change if selected.
-                await loadUserWatchlistsAndSettings();
-                // Load Firestore UI prefs early then restore view/mode (A & B)
-                try { await loadUserPreferences(); restoreViewAndModeFromPreferences(); } catch(e){ console.warn('Preference restore failed', e); }
-                try { ensureTitleStructure(); } catch(e) {}
-                // Load persisted compact view preference AFTER user data is ready
-                try {
-                    const storedMode = localStorage.getItem('currentMobileViewMode');
-                    let mode = (storedMode === 'compact' || storedMode === 'default') ? storedMode : null;
-                    if (!mode && userPreferences && userPreferences.compactViewMode) {
-                        mode = (userPreferences.compactViewMode === 'compact') ? 'compact' : 'default';
-                    }
-                    currentMobileViewMode = mode || 'default';
-                } catch(e) { console.warn('View Mode: Failed to load persisted mode post-auth', e); currentMobileViewMode = 'default'; }
-                // Apply class now so first rendered watchlist/cards adopt correct layout
-                if (mobileShareCardsContainer) {
-                    if (currentMobileViewMode === 'compact') mobileShareCardsContainer.classList.add('compact-view');
-                    else mobileShareCardsContainer.classList.remove('compact-view');
-                }
-                logDebug('View Mode: Applied persisted mode post-auth (pre-initial render): ' + currentMobileViewMode);
-                // Start alerts listener (enabled alerts only; muted excluded from notifications)
-                await loadTriggeredAlertsListener();
-                startGlobalSummaryListener();
-                // On first auth load, force one live fetch even if starting in Cash view to restore alerts
-                const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
-                await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
-                try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true'); } catch(e) {}
-                startLivePriceUpdates();
-                // Extra safety: ensure target modal not left open from cached state on fresh auth
-                try { if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none' && window.__initialLoadPhase) hideModal(targetHitDetailsModal); } catch(_){ }
-
-                setAllAsxCodes(await loadAsxCodesFromCSV());
-                logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
-
-                // Legacy block replaced by restoreViewAndModeFromPreferences()
-            }
-
-            else {
-                currentUserId = null;
-                // Reset title safely using the inner span, do not expand click target
-                try { ensureTitleStructure(); const t = document.getElementById('dynamicWatchlistTitleText'); if (t) t.textContent = 'Share Watchlist'; } catch(e) {}
-                logDebug('AuthState: User signed out.');
-                updateMainButtonsState(false);
-                clearShareList();
-                clearWatchlistUI();
-                userCashCategories = []; // Clear cash data on logout
-                if (cashCategoriesContainer) cashCategoriesContainer.innerHTML = ''; // Clear cash UI
-                if (totalCashDisplay) totalCashDisplay.textContent = '$0.00'; // Reset total cash
-                if (loadingIndicator) loadingIndicator.style.display = 'none';
-                applyTheme('system-default');
-                if (unsubscribeShares) {
-                    unsubscribeShares();
-                    unsubscribeShares = null;
-                    logDebug('Firestore Listener: Unsubscribed from shares listener on logout.');
-                }
-                if (unsubscribeCashCategories) { // NEW: Unsubscribe from cash categories
-                    unsubscribeCashCategories();
-                    unsubscribeCashCategories = null;
-                    logDebug('Firestore Listener: Unsubscribed from cash categories listener on logout.');
-                }
-                if (unsubscribeAlerts) { // NEW: Unsubscribe from alerts
-                    try { unsubscribeAlerts(); } catch(_) {}
-                    unsubscribeAlerts = null;
-                    logDebug('Firestore Listener: Unsubscribed from alerts listener on logout.');
-                }
-                stopGlobalSummaryListener();
-                stopLivePriceUpdates();
-                
-                window._userAuthenticated = false; // Mark user as not authenticated
-                // If signed out, ensure splash screen is visible for sign-in
-                if (splashScreen) {
-                    splashScreen.style.display = 'flex'; // Ensure splash screen is visible
-                    splashScreen.classList.remove('hidden'); // Ensure it's not hidden
-                    document.body.style.overflow = 'hidden'; // Re-apply overflow hidden
-                    if (splashKangarooIcon) {
-                        splashKangarooIcon.classList.remove('pulsing'); // Stop animation if signed out
-                    }
-                    if (splashSignInBtn) {
-                        splashSignInBtn.disabled = false; // Enable sign-in button
-                        const buttonTextSpan = splashSignInBtn.querySelector('span');
-                        if (buttonTextSpan) {
-                            buttonTextSpan.textContent = 'Sign in with Google'; // Reset only the text, not the icon
-                        }
-                    }
-                    // Hide main app content
-                    if (mainContainer) {
-                        mainContainer.classList.add('app-hidden');
-                    }
-                    if (appHeader) {
-                        appHeader.classList.add('app-hidden');
-                    }
-                    logDebug('Splash Screen: User signed out, splash screen remains visible for sign-in.');
-                } else {
-                    console.warn('Splash Screen: User signed out, but splash screen element not found. App content might be visible.');
-                }
-                // NEW: Reset targetHitIconDismissed and clear localStorage entry on logout for a fresh start on next login
-                targetHitIconDismissed = false; 
-                localStorage.removeItem('targetHitIconDismissed');
-
-            }
-            if (!window._appLogicInitialized) {
-                initializeAppLogic();
-                window._appLogicInitialized = true;
-            } else {
-                // If app logic already initialized, ensure view mode is applied after auth.
-                // This handles cases where user signs out and then signs back in,
-                // and we need to re-apply the correct mobile view class.
-                if (currentMobileViewMode === 'compact' && mobileShareCardsContainer) {
-                    mobileShareCardsContainer.classList.add('compact-view');
-                } else if (mobileShareCardsContainer) {
-                    mobileShareCardsContainer.classList.remove('compact-view');
-                }
-            }
-            // Call renderWatchlist here to ensure correct mobile card rendering after auth state is set
-            renderWatchlist();
-            try { ensureTitleStructure(); } catch(e) {}
-            // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
-        });
+        setupAuthListener(auth, authFunctions);
     } else {
     console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
         const errorDiv = document.getElementById('firebaseInitError');
