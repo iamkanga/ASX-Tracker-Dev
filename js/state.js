@@ -2,19 +2,21 @@
 // Exports state variables and setter functions, and mirrors values to window for non-module scripts
 
 // Core state variables
-export let allSharesData = [];
-export let livePrices = {};
-export let userWatchlists = [];
-export let currentSelectedWatchlistIds = [];
-export let sharesAtTargetPrice = [];
-export let currentSortOrder = 'entryDate-desc';
-export let allAsxCodes = [];
+let allSharesData = [];
+let livePrices = {};
+let userWatchlists = [];
+let userCashCategories = [];
+let currentSelectedWatchlistIds = [];
+let sharesAtTargetPrice = [];
+let currentSortOrder = 'entryDate-desc';
+let allAsxCodes = [];
 
 // Window exposure for compatibility with non-module scripts (e.g., rendering.js)
 if (typeof window !== 'undefined') {
     window.allSharesData = allSharesData;
     window.livePrices = livePrices;
     window.userWatchlists = userWatchlists;
+    window.userCashCategories = userCashCategories;
     window.currentSelectedWatchlistIds = currentSelectedWatchlistIds;
     window.sharesAtTargetPrice = sharesAtTargetPrice;
     window.currentSortOrder = currentSortOrder;
@@ -37,6 +39,11 @@ export function setUserWatchlists(data) {
     if (typeof window !== 'undefined') window.userWatchlists = userWatchlists;
 }
 
+export function setUserCashCategories(data) {
+    userCashCategories = Array.isArray(data) ? data : [];
+    if (typeof window !== 'undefined') window.userCashCategories = userCashCategories;
+}
+
 export function setCurrentSelectedWatchlistIds(ids) {
     currentSelectedWatchlistIds = Array.isArray(ids) ? ids : [];
     if (typeof window !== 'undefined') window.currentSelectedWatchlistIds = currentSelectedWatchlistIds;
@@ -57,4 +64,13 @@ export function setAllAsxCodes(codes) {
     if (typeof window !== 'undefined') window.allAsxCodes = allAsxCodes;
 }
 
+// Getters
+export function getAllSharesData() { return allSharesData; }
+export function getLivePrices() { return livePrices; }
+export function getUserWatchlists() { return userWatchlists; }
+export function getUserCashCategories() { return userCashCategories; }
+export function getCurrentSelectedWatchlistIds() { return currentSelectedWatchlistIds; }
+export function getSharesAtTargetPrice() { return sharesAtTargetPrice; }
+export function getCurrentSortOrder() { return currentSortOrder; }
+export function getAllAsxCodes() { return allAsxCodes; }
 

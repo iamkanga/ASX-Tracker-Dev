@@ -1,4 +1,4 @@
-import { allSharesData, allAsxCodes, livePrices, setLivePrices } from './state.js';
+import { getAllSharesData, getAllAsxCodes, getLivePrices, setLivePrices } from './state.js';
 
 export async function fetchLivePrices(opts = {}) {
     try { if (typeof window.logDebug === 'function') window.logDebug('Live Price: Fetching from Apps Script...'); } catch(_) {}
@@ -24,8 +24,9 @@ export async function fetchLivePrices(opts = {}) {
         }
         if (typeof window.DEBUG_MODE !== 'undefined' && window.DEBUG_MODE && data[0]) console.log('Live Price: Sample keys', Object.keys(data[0]));
 
-        const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
-        const needed = haveShares ? new Set(allSharesData.filter(s => s && s.shareName).map(s => s.shareName.toUpperCase())) : null;
+        const sharesLocal = getAllSharesData();
+        const haveShares = Array.isArray(sharesLocal) && sharesLocal.length > 0;
+        const needed = haveShares ? new Set(sharesLocal.filter(s => s && s.shareName).map(s => s.shareName.toUpperCase())) : null;
         const LOG_LIMIT = 30;
         let skipped = 0, skippedLogged = 0, accepted = 0, surrogate = 0, filtered = 0;
         const newLivePrices = {};
@@ -77,15 +78,16 @@ export async function fetchLivePrices(opts = {}) {
             if (!hasLive && hasPrev) surrogate++;
             accepted++;
 
-            const shareData = haveShares ? allSharesData.find(s => s && s.shareName && s.shareName.toUpperCase() === code) : null;
+            const shareData = haveShares ? sharesLocal.find(s => s && s.shareName && s.shareName.toUpperCase() === code) : null;
             const targetPrice = shareData && !isNaN(parseFloat(shareData.targetPrice)) ? parseFloat(shareData.targetPrice) : undefined;
             const dir = shareData && shareData.targetDirection ? shareData.targetDirection : 'below';
             let hit = false;
             if (targetPrice !== undefined) hit = dir === 'above' ? (effectiveLive >= targetPrice) : (effectiveLive <= targetPrice);
 
             const companyName = (item.CompanyName || item['Company Name'] || item.Name || item.name || '').toString().trim() || null;
-            if (companyName && Array.isArray(allAsxCodes) && !allAsxCodes.some(c => c.code === code)) {
-                allAsxCodes.push({ code, name: companyName });
+            const allAsxCodesLocal = getAllAsxCodes();
+            if (companyName && Array.isArray(allAsxCodesLocal) && !allAsxCodesLocal.some(c => c.code === code)) {
+                allAsxCodesLocal.push({ code, name: companyName });
             }
 
             newLivePrices[code] = {
@@ -114,16 +116,18 @@ export async function fetchLivePrices(opts = {}) {
         }
 
         window.sharesAt52WeekLow = [];
-        if (Array.isArray(allSharesData)) {
-            allSharesData.forEach(share => {
+        if (Array.isArray(sharesLocal)) {
+            const livePricesLocal = getLivePrices();
+            sharesLocal.forEach(share => {
                 const code = (share.shareName || '').toUpperCase();
-                const lpObj = livePrices ? livePrices[code] : undefined;
+                const lpObj = livePricesLocal ? livePricesLocal[code] : undefined;
                 if (!lpObj || lpObj.live == null || isNaN(lpObj.live) || lpObj.Low52 == null || isNaN(lpObj.Low52)) return;
                 const isMuted = !!(window.__low52MutedMap && window.__low52MutedMap[code + '_low']);
                 if (lpObj.live <= lpObj.Low52 && !window.triggered52WeekLowSet?.has(code)) {
                     let displayName = code;
-                    if (Array.isArray(allAsxCodes)) {
-                        const match = allAsxCodes.find(c => c.code === code);
+                    const allAsxCodesLocal2 = getAllAsxCodes();
+                    if (Array.isArray(allAsxCodesLocal2)) {
+                        const match = allAsxCodesLocal2.find(c => c.code === code);
                         if (match && match.name) displayName = match.name;
                     }
                     if (!displayName && share.companyName) displayName = share.companyName;

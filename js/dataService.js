@@ -1,4 +1,5 @@
-import { allSharesData, setAllSharesData, setSharesAtTargetPrice } from './state.js';
+import { getAllSharesData, setAllSharesData, setSharesAtTargetPrice, setUserWatchlists, setCurrentSelectedWatchlistIds, setCurrentSortOrder, setAllAsxCodes, setLivePrices, setSharesAtTargetPrice as setSATP, setAllSharesData as setShares, setUserCashCategories } from './state.js';
+import { db, firestore, currentAppId } from '../firebase.js';
 
 // These functions rely on globals provided by script.js and firebase.js wiring:
 // db, firestore, currentAppId, currentUserId, logDebug, renderWatchlist, hideSplashScreen,
@@ -7,12 +8,15 @@ import { allSharesData, setAllSharesData, setSharesAtTargetPrice } from './state
 // renderAsxCodeButtons, livePrices, sharesAtTargetPriceMuted, alertsEnabledMap,
 // recomputeTriggeredAlerts, targetHitDetailsModal, hideModal, updateTargetHitBanner
 
-export async function loadTriggeredAlertsListener(db, firestore, currentUserId, currentAppId) {
+export async function loadTriggeredAlertsListener(dbArg, firestoreArg, currentUserId, currentAppIdArg) {
+    const dbLocal = dbArg || db;
+    const fsLocal = firestoreArg || firestore;
+    const appIdLocal = currentAppIdArg || currentAppId;
     if (window.unsubscribeAlerts) { try { window.unsubscribeAlerts(); } catch(_){} window.unsubscribeAlerts = null; }
-    if (!db || !currentUserId || !firestore) { console.warn('Alerts: Firestore unavailable for triggered alerts listener'); return; }
+    if (!dbLocal || !currentUserId || !fsLocal) { console.warn('Alerts: Firestore unavailable for triggered alerts listener'); return; }
     try {
-        const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
-        window.unsubscribeAlerts = firestore.onSnapshot(alertsCol, (qs) => { 
+        const alertsCol = fsLocal.collection(dbLocal, 'artifacts/' + appIdLocal + '/users/' + currentUserId + '/alerts');
+        window.unsubscribeAlerts = fsLocal.onSnapshot(alertsCol, (qs) => { 
             const newMap = new Map();
             const alertMetaById = new Map();
             qs.forEach(doc => { 
@@ -38,14 +42,17 @@ export async function loadTriggeredAlertsListener(db, firestore, currentUserId, 
     } catch (e) { console.error('Alerts: failed to init triggered alerts listener', e); }
 }
 
-export async function loadShares(db, firestore, currentUserId, currentAppId) {
+export async function loadShares(dbArg, firestoreArg, currentUserId, currentAppIdArg) {
+    const dbLocal = dbArg || db;
+    const fsLocal = firestoreArg || firestore;
+    const appIdLocal = currentAppIdArg || currentAppId;
     if (window.unsubscribeShares) {
         window.unsubscribeShares();
         window.unsubscribeShares = null;
         window.logDebug && window.logDebug('Firestore Listener: Unsubscribed from previous shares listener.');
     }
 
-    if (!db || !currentUserId || !firestore) {
+    if (!dbLocal || !currentUserId || !fsLocal) {
         console.warn('Shares: Firestore DB, User ID, or Firestore functions not available for loading shares. Clearing list.');
         setAllSharesData([]);
         window._appDataLoaded = false;
@@ -53,10 +60,10 @@ export async function loadShares(db, firestore, currentUserId, currentAppId) {
         return;
     }
     try {
-        const sharesCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
-        let q = firestore.query(sharesCol);
+        const sharesCol = fsLocal.collection(dbLocal, 'artifacts/' + appIdLocal + '/users/' + currentUserId + '/shares');
+        let q = fsLocal.query(sharesCol);
 
-        window.unsubscribeShares = firestore.onSnapshot(q, async (querySnapshot) => {
+        window.unsubscribeShares = fsLocal.onSnapshot(q, async (querySnapshot) => {
             window.logDebug && window.logDebug('Firestore Listener: Shares snapshot received. Processing changes.');
             let fetchedShares = [];
             querySnapshot.forEach((doc) => {
@@ -66,6 +73,7 @@ export async function loadShares(db, firestore, currentUserId, currentAppId) {
 
             setAllSharesData((Array.isArray(fetchedShares) ? fetchedShares : []).filter(Boolean));
             window.logDebug && window.logDebug('Shares: Shares data updated from snapshot. Total shares: ' + (Array.isArray(allSharesData)? allSharesData.length : 0));
+            try { window.renderWatchlist && window.renderWatchlist(); } catch(_) {}
 
             try {
                 if (Array.isArray(allSharesData) && window.alertsEnabledMap && typeof window.alertsEnabledMap === 'object') {
@@ -103,14 +111,17 @@ export async function loadShares(db, firestore, currentUserId, currentAppId) {
     }
 }
 
-export async function loadCashCategories(db, firestore, currentUserId, currentAppId) {
+export async function loadCashCategories(dbArg, firestoreArg, currentUserId, currentAppIdArg) {
+    const dbLocal = dbArg || db;
+    const fsLocal = firestoreArg || firestore;
+    const appIdLocal = currentAppIdArg || currentAppId;
     if (window.unsubscribeCashCategories) {
         window.unsubscribeCashCategories();
         window.unsubscribeCashCategories = null;
         window.logDebug && window.logDebug('Firestore Listener: Unsubscribed from previous cash categories listener.');
     }
 
-    if (!db || !currentUserId || !firestore) {
+    if (!dbLocal || !currentUserId || !fsLocal) {
         console.warn('Cash Categories: Firestore DB, User ID, or Firestore functions not available for loading cash categories. Clearing list.');
         window.userCashCategories = [];
         try { window.renderCashCategories && window.renderCashCategories(); } catch(_) {}
@@ -118,10 +129,10 @@ export async function loadCashCategories(db, firestore, currentUserId, currentAp
     }
 
     try {
-        const cashCategoriesCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories');
-        const q = firestore.query(cashCategoriesCol);
+        const cashCategoriesCol = fsLocal.collection(dbLocal, 'artifacts/' + appIdLocal + '/users/' + currentUserId + '/cashCategories');
+        const q = fsLocal.query(cashCategoriesCol);
 
-        window.unsubscribeCashCategories = firestore.onSnapshot(q, (querySnapshot) => {
+        window.unsubscribeCashCategories = fsLocal.onSnapshot(q, (querySnapshot) => {
             window.logDebug && window.logDebug('Firestore Listener: Cash categories snapshot received. Processing changes.');
             let fetchedCategories = [];
             querySnapshot.forEach((doc) => {
@@ -130,9 +141,11 @@ export async function loadCashCategories(db, firestore, currentUserId, currentAp
             });
 
             window.userCashCategories = fetchedCategories;
+            try { setUserCashCategories(fetchedCategories); } catch(_) {}
             window.logDebug && window.logDebug('Cash Categories: Data updated from snapshot. Total categories: ' + (Array.isArray(window.userCashCategories)? window.userCashCategories.length : 0));
             try { window.renderWatchlist && window.renderWatchlist(); } catch(_) {}
             try { window.calculateTotalCash && window.calculateTotalCash(); } catch(_) {}
+            try { console.log('[Diag][Cash] render invoked. Categories:', JSON.stringify(window.userCashCategories)); } catch(_) {}
 
         }, (error) => {
             console.error('Firestore Listener: Error listening to cash categories:', error);

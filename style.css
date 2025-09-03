@@ -5444,13 +5444,28 @@ table td.live-price-cell.negative-change {
 }
 
 /* ASX Code  prominence and alignment */
-#modalShareName, #modalCashAssetName, #formTitle { /* Apply to all modal titles */
-    margin: 0;
-    padding: 0;
-    font-size: 2.2em;
-    font-weight: 800; /* Made bolder */
-    line-height: 1.1; /* Adjust line height for better spacing */
+#modalShareName, #modalCashAssetName, #formTitle, #cashFormTitle { /* Apply to all modal titles */
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 2.2em !important;
+    font-weight: 800 !important; /* Made bolder */
+    line-height: 1.1 !important; /* Adjust line height for better spacing */
+    color: var(--text-color, #333) !important;
+    text-align: left !important;
+    display: block !important;
     /* Removed flex properties and fixed height to allow natural flow in the container */
+}
+
+/* Extra specificity for cash form title */
+.modal-header-with-icon h2#cashFormTitle {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 2.2em !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+    color: var(--text-color, #333) !important;
+    text-align: left !important;
+    display: block !important;
 }
 
 /* NEW: Container for the modal title (ASX Code + Company Name) */
@@ -6202,15 +6217,208 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
 }
 
 .comments-form-container h3 {
-    display: flex;
-    justify-content: space-between; /* Space out title and icon */
-    align-items: center;
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 1.2em;
-    color: var(--text-color);
-    border-bottom: none;
-    padding-bottom: 0;
+    display: flex !important;
+    justify-content: space-between !important; /* Space out title and icon */
+    align-items: center !important;
+    margin-top: 0 !important;
+    margin-bottom: 15px !important;
+    font-size: 1.2em !important;
+    color: var(--text-color, #333) !important;
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    font-weight: 600 !important;
+    width: 100% !important;
+}
+
+/* ULTRA SPECIFIC FIXES FOR CASH ASSET MODAL */
+
+/* Force the main modal title to display correctly */
+#cashAssetFormModal h2#cashFormTitle {
+    display: block !important;
+    font-size: 2.2em !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: var(--text-color, #333) !important;
+    line-height: 1.1 !important;
+    text-align: left !important;
+    width: 100% !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Force the comments section title to display correctly */
+#cashAssetFormModal .comments-form-container h3 {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    margin: 0 0 15px 0 !important;
+    font-size: 1.2em !important;
+    font-weight: 600 !important;
+    color: var(--text-color, #333) !important;
+    border: none !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-height: 30px !important;
+    line-height: 1.4 !important;
+    box-sizing: border-box !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Force the comments text to be visible */
+#cashAssetFormModal .comments-form-container h3::first-child {
+    flex: 1 1 auto !important;
+    font-weight: 600 !important;
+}
+
+/* Force the add button to display correctly */
+#cashAssetFormModal .comments-form-container h3 span.add-section-icon {
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Force the icon inside the button to be visible */
+#cashAssetFormModal .comments-form-container h3 span.add-section-icon i {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* NUCLEAR OPTION: Most specific selectors possible */
+body #cashAssetFormModal.modal .modal-content .comments-form-container h3 {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin: 0 0 15px 0 !important;
+    font-size: 1.2em !important;
+    font-weight: 600 !important;
+    color: #333 !important; /* Fallback color */
+    border: none !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-height: 30px !important;
+    line-height: 1.4 !important;
+}
+
+body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
+    display: block !important;
+    font-size: 2.2em !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #333 !important; /* Fallback color */
+    line-height: 1.1 !important;
+    text-align: left !important;
+    width: 100% !important;
+}
+
+/* ABSOLUTE NUCLEAR FORCE ADD BUTTON VISIBLE */
+#cashAssetFormModal .comments-form-container h3 span#addCashAssetCommentBtn,
+#cashAssetFormModal .comments-form-container h3 .add-section-icon,
+#cashAssetFormModal .comments-form-container h3 span[id="addCashAssetCommentBtn"],
+#cashAssetFormModal .comments-form-container h3 span.add-section-icon {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: static !important;
+    width: 30px !important;
+    height: 30px !important;
+    background: transparent !important;
+    border: none !important;
+    color: #007bff !important;
+    cursor: pointer !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+}
+
+/* MAIN TITLE: PLAIN TEXT WITHOUT ANY CONTAINER STYLING */
+#cashAssetFormModal h2#cashFormTitle,
+#cashAssetFormModal .modal-content h2 {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: var(--text-color) !important;
+    font-size: 2.2em !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+    text-align: left !important;
+    width: auto !important;
+    display: block !important;
+    transition: none !important;
+}
+
+/* COMMENTS TITLE: BEHAVE LIKE FORM INPUT CONTAINERS */
+#cashAssetFormModal .comments-form-container h3,
+#cashAssetFormModal .modal-content h3 {
+    background-color: var(--input-bg) !important;
+    background: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--input-border) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    padding: 12px 14px !important;
+    margin: 0 0 12px 0 !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    transition: border-color 0.2s ease !important;
+    cursor: default !important;
+}
+
+/* COMMENTS TITLE FOCUS: MATCH FORM INPUT FOCUS BEHAVIOR */
+#cashAssetFormModal .comments-form-container h3:focus,
+#cashAssetFormModal .modal-content h3:focus {
+    border-color: var(--accent-color, #a49393) !important;
+    outline: 2px solid var(--accent-color, #a49393) !important;
+    outline-offset: 2px !important;
+}
+
+/* FORCE COMMENT TITLE INPUTS TO USE PROPER THEME VARIABLES */
+.comment-title-input,
+.comment-text-input {
+    background-color: var(--input-bg) !important;
+    background: var(--input-bg) !important;
+    border: 1px solid var(--input-border) !important;
+    border-radius: 5px !important;
+    color: var(--text-color) !important;
+    font-size: 1em !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    box-shadow: none !important;
+}
+
+/* FORCE COMMENT TITLE INPUT FOCUS BEHAVIOR */
+.comment-title-input:focus,
+.comment-text-input:focus {
+    border-color: var(--accent-color, #a49393) !important;
+    outline: 2px solid var(--accent-color, #a49393) !important;
+    outline-offset: 2px !important;
+}
+
+/* FORCE ICON INSIDE ADD BUTTON */
+#cashAssetFormModal .comments-form-container h3 span#addCashAssetCommentBtn i,
+#cashAssetFormModal .comments-form-container h3 .add-section-icon i,
+#cashAssetFormModal .comments-form-container h3 span[id="addCashAssetCommentBtn"] i,
+#cashAssetFormModal .comments-form-container h3 span.add-section-icon i {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: 1.2em !important;
+    position: static !important;
 }
 
 .add-section-icon {

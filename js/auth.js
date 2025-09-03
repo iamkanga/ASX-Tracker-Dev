@@ -1,4 +1,5 @@
 import { setAllAsxCodes } from './state.js';
+import { auth, authFunctions } from '../firebase.js';
 
 // Functions referenced inside the auth state callback come from script.js and UI helpers.
 // They are attached on window for backwards compatibility; we safely dereference them here.
@@ -6,9 +7,9 @@ function getGlobal(name) {
     try { return window[name]; } catch (_) { return undefined; }
 }
 
-export function setupAuthListener(auth, authFunctions) {
-    if (!auth || !authFunctions || typeof authFunctions.onAuthStateChanged !== 'function') return;
-    authFunctions.onAuthStateChanged(auth, async (user) => {
+export function setupAuthListener(authParam = auth, authFunctionsParam = authFunctions) {
+    if (!authParam || !authFunctionsParam || typeof authFunctionsParam.onAuthStateChanged !== 'function') return;
+    authFunctionsParam.onAuthStateChanged(authParam, async (user) => {
         // Delegate to script.js handler to keep business logic centralized there.
         const handler = getGlobal('__handleAuthStateChange');
         if (typeof handler === 'function') {

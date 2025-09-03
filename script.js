@@ -1,11 +1,12 @@
-import { initializeFirebaseAndAuth } from './firebase.js';
+import { initializeFirebaseAndAuth, db as hubDb, auth as hubAuth, firestore as hubFs, authFunctions as hubAuthFx, currentAppId as hubAppId, firebaseInitialized as hubInit } from './firebase.js';
 import { initializeAppEventListeners } from './js/init.js';
 import { setupAuthListener } from './js/auth.js';
 import { loadShares, loadCashCategories, loadTriggeredAlertsListener } from './js/dataService.js';
 import { fetchLivePrices } from './js/priceService.js';
 import { saveShareData as saveShareDataSvc, deleteShare as deleteShareSvc, saveWatchlistChanges as saveWatchlistChangesSvc, deleteWatchlist as deleteWatchlistSvc, saveCashAsset as saveCashAssetSvc, deleteCashCategory as deleteCashCategorySvc, deleteAllUserData as deleteAllUserDataSvc } from './js/appService.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
-import { allSharesData, livePrices, userWatchlists, currentSelectedWatchlistIds, sharesAtTargetPrice, currentSortOrder, allAsxCodes, setAllSharesData, setLivePrices, setUserWatchlists, setCurrentSelectedWatchlistIds, setSharesAtTargetPrice, setCurrentSortOrder, setAllAsxCodes } from './js/state.js';
+import { getAllSharesData, getLivePrices, getUserWatchlists, getUserCashCategories, getCurrentSelectedWatchlistIds, getSharesAtTargetPrice, getCurrentSortOrder, getAllAsxCodes, setAllSharesData, setLivePrices, setUserWatchlists, setCurrentSelectedWatchlistIds, setSharesAtTargetPrice, setCurrentSortOrder, setAllAsxCodes } from './js/state.js';
+import { applyAsxButtonsState, setAsxButtonsExpanded, getAsxButtonsExpanded, toggleCodeButtonsArrow, renderCashCategories as uiRenderCashCategories, calculateTotalCash as uiCalculateTotalCash, updateAddHeaderButton as uiUpdateAddHeaderButton, updateSidebarAddButtonContext as uiUpdateSidebarAddButtonContext, handleAddShareClick as uiHandleAddShareClick, handleAddCashAssetClick as uiHandleAddCashAssetClick } from './js/uiService.js';
 
 // --- UI Element References ---
 // Copilot: No-op change to trigger source control detection
@@ -1733,48 +1734,7 @@ zeroClearInputs.forEach(inp => {
         }
     });
 });
-// --- ASX Code Toggle Button Functionality ---
-// Persisted ASX code buttons expanded state
-let asxButtonsExpanded = false;
-try { const saved = localStorage.getItem('asxButtonsExpanded'); if (saved === 'true') asxButtonsExpanded = true; } catch(e) {}
-
-function applyAsxButtonsState() {
-    if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) return;
-    const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
-    const hasButtons = asxCodeButtonsContainer && asxCodeButtonsContainer.querySelector('button.asx-code-btn');
-    const shouldShow = !!hasButtons && asxButtonsExpanded;
-
-    if (shouldShow) {
-        asxCodeButtonsContainer.classList.add('expanded');
-        asxCodeButtonsContainer.classList.remove('app-hidden');
-        asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
-    } else {
-        asxCodeButtonsContainer.classList.remove('expanded');
-        asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
-    }
-    // Chevron visibility and state
-    if (!hasButtons) {
-        toggleAsxButtonsBtn.style.display = 'none';
-        toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
-    } else {
-        toggleAsxButtonsBtn.style.display = 'inline-flex'; // Use inline-flex for proper alignment
-        toggleAsxButtonsBtn.removeAttribute('aria-disabled');
-    }
-    // Update accessible pressed/expanded state and label text
-    try {
-        toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
-        toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
-        const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
-        if (labelSpan) labelSpan.textContent = 'ASX Codes';
-    } catch(_) {}
-    // Update chevron rotation
-    const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
-    if (chevronIcon) {
-        chevronIcon.classList.toggle('expanded', shouldShow);
-    }
-    requestAnimationFrame(adjustMainContentPadding);
-}
-
+// --- ASX Code Toggle Button Functionality (moved to uiService) ---
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     applyAsxButtonsState();
     // Helper: aggressively reset any inner scrollable containers inside main
@@ -1801,10 +1761,9 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     toggleAsxButtonsBtn.addEventListener('click', (e) => {
         // Prevent the click from falling through to the sort select and other handlers
         try { e.stopPropagation(); e.preventDefault(); } catch(_) {}
-        asxButtonsExpanded = !asxButtonsExpanded;
-        try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
+        setAsxButtonsExpanded(!getAsxButtonsExpanded());
         applyAsxButtonsState();
-        console.log('[ASX Toggle] Toggled. Expanded=', asxButtonsExpanded);
+        console.log('[ASX Toggle] Toggled. Expanded=', getAsxButtonsExpanded());
         // Close native select popup if it is open
         try { if (typeof sortSelect !== 'undefined' && sortSelect && document.activeElement === sortSelect) sortSelect.blur(); } catch(_) {}
         // Schedule padding adjustment after the CSS transition window
@@ -1812,9 +1771,9 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
         setTimeout(adjustMainContentPadding, 700);
         // Update aria states and visual pressed attribute for button
         try {
-            toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!asxButtonsExpanded));
-            toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!asxButtonsExpanded));
-            const tri = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle'); if (tri) tri.classList.toggle('expanded', !!asxButtonsExpanded);
+            toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!getAsxButtonsExpanded()));
+            toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!getAsxButtonsExpanded()));
+            const tri = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle'); if (tri) tri.classList.toggle('expanded', !!getAsxButtonsExpanded());
         } catch(_) {}
         // Defer scroll until ASX buttons finish their transition to compute correct header height
         try { window.__asxToggleWantsScroll = true; } catch(_) {}
@@ -3763,12 +3722,19 @@ function addCommentSection(container, title = '', text = '', isCashAssetComment 
     commentSectionDiv.className = 'comment-section';
     commentSectionDiv.innerHTML = `
         <div class="comment-section-header">
-            <input type="text" class="comment-title-input" placeholder="Comment Title" value="${title}">
+            <input type="text" class="comment-title-input" placeholder="Comment Title" value="">
             <button type="button" class="comment-delete-btn">&times;</button>
         </div>
-        <textarea class="comment-text-input" placeholder="Your comments here...">${text}</textarea>
+        <textarea class="comment-text-input" placeholder="Your comments here..."></textarea>
     `;
     container.appendChild(commentSectionDiv);
+
+    // Set values after creating elements to avoid HTML injection
+    const titleInput = commentSectionDiv.querySelector('.comment-title-input');
+    const textInput = commentSectionDiv.querySelector('.comment-text-input');
+
+    if (titleInput) titleInput.value = title || '';
+    if (textInput) textInput.value = text || '';
     
     const commentTitleInput = commentSectionDiv.querySelector('.comment-title-input');
     const commentTextInput = commentSectionDiv.querySelector('.comment-text-input');
@@ -5098,22 +5064,22 @@ function sortShares() {
  * Sorts the cash categories based on the currentSortOrder.
  * @returns {Array} The sorted array of cash categories.
  */
-function sortCashCategories() {
-    const sortValue = currentSortOrder;
+function sortCashCategories(categoriesParam) {
+    const categories = Array.isArray(categoriesParam) ? categoriesParam : getUserCashCategories();
+    const sortValue = getCurrentSortOrder();
     if (!sortValue || sortValue === '') {
         logDebug('Sort: Cash sort placeholder selected, no explicit sorting applied.');
-        return [...userCashCategories]; // Return a copy to avoid direct mutation
+        return [...categories];
     }
 
     const [field, order] = sortValue.split('-');
 
-    // Ensure we're only sorting by relevant fields for cash assets
     if (field !== 'name' && field !== 'balance') {
         logDebug('Sort: Invalid sort field for cash assets: ' + field + '. Defaulting to name-asc.');
-        return [...userCashCategories].sort((a, b) => a.name.localeCompare(b.name));
+        return [...categories].sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    const sortedCategories = [...userCashCategories].sort((a, b) => {
+    const sortedCategories = [...categories].sort((a, b) => {
         let valA = a[field];
         let valB = b[field];
 
@@ -5179,7 +5145,8 @@ function renderWatchlistSelect() {
     }
 
     // Add all other user watchlists alphabetically after Movers (exclude Movers and other special IDs from this list)
-    const filtered = userWatchlists.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== 'portfolio' && wl.id !== '__movers' && wl.id !== ALL_SHARES_ID);
+    const __uw = getUserWatchlists();
+    const filtered = Array.isArray(__uw) ? __uw.filter(wl => wl.id !== CASH_BANK_WATCHLIST_ID && wl.id !== 'portfolio' && wl.id !== '__movers' && wl.id !== ALL_SHARES_ID) : [];
     filtered.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
     filtered.forEach(watchlist => {
         // Defensive: avoid appending duplicate <option> elements with the same value
@@ -5195,7 +5162,8 @@ function renderWatchlistSelect() {
     // Attempt to select the watchlist specified in currentSelectedWatchlistIds.
     // This array should already contain the correct ID (e.g., the newly created watchlist's ID)
     // from loadUserWatchlistsAndSettings.
-    let desiredWatchlistId = currentSelectedWatchlistIds.length === 1 ? currentSelectedWatchlistIds[0] : '';
+    const __selIds_renderSelect = getCurrentSelectedWatchlistIds();
+    let desiredWatchlistId = (Array.isArray(__selIds_renderSelect) && __selIds_renderSelect.length === 1) ? __selIds_renderSelect[0] : '';
     // Highest precedence: persisted Movers intent when __forcedInitialMovers flag set
     try {
         if (__forcedInitialMovers) {
@@ -5221,7 +5189,7 @@ function renderWatchlistSelect() {
             } else {
                 watchlistSelect.value = ALL_SHARES_ID;
                 setCurrentSelectedWatchlistIds([ALL_SHARES_ID]);
-                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch(_) {}
                 logDebug('UI Update: Watchlist select defaulted to All Shares (no valid preference).');
             }
         } catch(e) {
@@ -5243,14 +5211,16 @@ function renderSortSelect() {
     // Set the initial placeholder text to "Sort List"
     sortSelect.innerHTML = '<option value="" disabled selected>Sort List</option>';
 
-    // Prepend an interactive ASX Codes toggle option that appears as the first item in the dropdown.
+    // Only inject the ASX toggle option for stock and portfolio views, not for Cash
     try {
+        const isCashView = getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID);
+        if (!isCashView) {
         const asxToggleOption = document.createElement('option');
         asxToggleOption.value = '__asx_toggle';
-        asxToggleOption.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+            asxToggleOption.textContent = (getAsxButtonsExpanded() ? 'ASX Codes — Hide' : 'ASX Codes — Show');
         asxToggleOption.dataset.toggle = 'asx';
-        // Insert as the first selectable option after the disabled placeholder
         sortSelect.appendChild(asxToggleOption);
+        }
     } catch (e) { /* ignore */ }
 
     const stockOptions = [
@@ -5280,19 +5250,19 @@ function renderSortSelect() {
     const cashOptions = [
         { value: 'name-asc', text: 'Asset Name (A-Z)' },
         { value: 'name-desc', text: 'Asset Name (Z-A)' },
-        { value: 'balance-desc', text: 'Balance (High-Low)' },
-        { value: 'balance-asc', text: 'Balance (Low-High)' }
+        { value: 'lastUpdated-desc', text: 'Date (N-O)' },
+        { value: 'lastUpdated-asc', text: 'Date (O-N)' }
     ];
 
     let optionsToShow;
     let logMessage;
     let defaultSortValue;
 
-    if (currentSelectedWatchlistIds.includes('portfolio')) {
+    if (getCurrentSelectedWatchlistIds().includes('portfolio')) {
         optionsToShow = portfolioOptions;
         logMessage = 'Portfolio options';
         defaultSortValue = 'totalDollar-desc';
-    } else if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    } else if (getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID)) {
         optionsToShow = cashOptions;
         logMessage = 'Cash Asset options';
         defaultSortValue = 'name-asc';
@@ -5348,7 +5318,8 @@ function openWatchlistPicker() {
 
     const specialIds = specialWatchlistOrder.map(sw => sw.id);
 
-    const userCreatedWatchlists = userWatchlists
+    const __uw2 = getUserWatchlists();
+    const userCreatedWatchlists = (__uw2||[])
         .filter(wl => !specialIds.includes(wl.id))
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(wl => ({ ...wl, icon: 'fa-list-alt' }));
@@ -5364,7 +5335,8 @@ function openWatchlistPicker() {
 
     finalWatchlistItems.forEach(it => {
         const div = document.createElement('div');
-        const isActive = Array.isArray(currentSelectedWatchlistIds) && currentSelectedWatchlistIds[0] === it.id;
+        const __selIds_picker = getCurrentSelectedWatchlistIds();
+        const isActive = Array.isArray(__selIds_picker) && __selIds_picker[0] === it.id;
         div.className = 'picker-item' + (isActive ? ' active' : '');
         div.innerHTML = `
             <div class="picker-item-content">
@@ -5379,7 +5351,7 @@ function openWatchlistPicker() {
         div.onclick = () => {
             console.log('[WatchlistPicker] Selecting watchlist', it.id);
             setCurrentSelectedWatchlistIds([it.id]);
-            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch (_) { }
+            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch (_) { }
             if (watchlistSelect) watchlistSelect.value = it.id;
             try { setLastSelectedView(it.id); } catch (e) { }
             try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch (e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
@@ -5416,18 +5388,7 @@ function openWatchlistPicker() {
     }
     console.log('[WatchlistPicker] Modal shown. Item count:', watchlistPickerList.children.length);
 }
-function toggleCodeButtonsArrow() {
-    if (!toggleAsxButtonsBtn) return;
-    const current=currentSelectedWatchlistIds[0];
-    if (current===CASH_BANK_WATCHLIST_ID) {
-    toggleAsxButtonsBtn.style.display='none';
-    if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.add('app-hidden'); asxCodeButtonsContainer.style.display='none'; }
-    } else {
-    toggleAsxButtonsBtn.style.display='';
-    if (asxCodeButtonsContainer) { asxCodeButtonsContainer.classList.remove('app-hidden'); if (asxButtonsExpanded) asxCodeButtonsContainer.style.display='flex'; }
-        applyAsxButtonsState();
-    }
-}
+// moved to uiService.toggleCodeButtonsArrow()
 if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
     const openPicker = () => {
         // If the sidebar (hamburger menu) is open, close it and do not open the picker on this click
@@ -5472,6 +5433,8 @@ loadUserWatchlistsAndSettings = async function() {
             const sel = typeof watchlistSelect !== 'undefined' ? watchlistSelect : document.getElementById('watchlistSelect');
             if (sel) sel.value = '__movers';
             if (typeof renderWatchlist === 'function') renderWatchlist();
+            // FIX: Update ASX button state after programmatic watchlist change
+            try { toggleCodeButtonsArrow(); } catch (e) { console.warn('Movers restore: toggleCodeButtonsArrow failed', e); }
             try { scrollMainToTop(); } catch(_) {}
             enforceMoversVirtualView(true);
             console.log('[Movers restore][post-user-data] enforced after loadUserWatchlistsAndSettings');
@@ -5797,10 +5760,12 @@ function renderAsxCodeButtons() {
     const uniqueAsxCodes = new Set();
     
     let sharesForButtons = [];
-    if (currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) { 
-        sharesForButtons = dedupeSharesById(allSharesData);
+    const __selIds_asx = getCurrentSelectedWatchlistIds();
+    const __shares_asx = getAllSharesData();
+    if (__selIds_asx.includes(ALL_SHARES_ID)) { 
+        sharesForButtons = dedupeSharesById(__shares_asx);
     } else {
-        sharesForButtons = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
+        sharesForButtons = dedupeSharesById(__shares_asx).filter(share => __selIds_asx.some(id => shareBelongsTo(share, id)));
     }
 
     sharesForButtons.forEach(share => {
@@ -5839,12 +5804,14 @@ function renderAsxCodeButtons() {
             button.classList.add(buttonPriceChangeClass);
         }
         // Additional context class when in portfolio for stronger theme coloring
-        if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] === 'portfolio') {
+        const __selIds_renderButtons = getCurrentSelectedWatchlistIds();
+        if (Array.isArray(__selIds_renderButtons) && __selIds_renderButtons.length === 1 && __selIds_renderButtons[0] === 'portfolio') {
             button.classList.add('portfolio-context');
         }
 
         // Add target-hit-border class if this ASX code has a target hit AND not dismissed
-        const livePriceDataForButton = livePrices[asxCode.toUpperCase()];
+        const __live_renderButtons = getLivePrices();
+        const livePriceDataForButton = __live_renderButtons ? __live_renderButtons[asxCode.toUpperCase()] : undefined;
         if (livePriceDataForButton && livePriceDataForButton.targetHit && !targetHitIconDismissed) {
             button.classList.add('target-hit-alert'); // Use 'target-hit-alert' for consistency with modal/cards
         } else {
@@ -5878,7 +5845,8 @@ function renderAsxCodeButtons() {
             try {
                 const formVisible = shareFormSection && shareFormSection.style.display !== 'none' && !shareFormSection.classList.contains('app-hidden');
                 if (formVisible && shareNameInput) {
-                    const company = Array.isArray(allAsxCodes) ? (allAsxCodes.find(c => c.code === code)?.name || '') : '';
+                    const __codes = getAllAsxCodes();
+                    const company = Array.isArray(__codes) ? (__codes.find(c => c.code === code)?.name || '') : '';
                     shareNameInput.value = code;
                     if (formCompanyName) formCompanyName.textContent = company;
                     checkFormDirtyState();
@@ -5899,13 +5867,24 @@ function renderAsxCodeButtons() {
         asxCodeButtonsContainer.__delegated = true;
     }
     logDebug('UI: Rendered ' + sortedAsxCodes.length + ' code buttons.');
+    // FIX: Ensure ASX button state is properly restored from localStorage before applying visibility
+    // This fixes the timing issue where applyAsxButtonsState() runs with stale state
+    try {
+        const savedState = localStorage.getItem('asxButtonsExpanded') === 'true';
+        if (typeof window !== 'undefined') {
+            window.asxButtonsExpanded = savedState;
+        }
+    } catch(e) {
+        console.warn('renderAsxCodeButtons: State restoration failed:', e);
+    }
     // Re-apply visibility state centrally and adjust padding via applyAsxButtonsState()
     applyAsxButtonsState();
 }
 
 function scrollToShare(asxCode) {
     logDebug('UI: Attempting to scroll to/highlight share with Code: ' + asxCode);
-    const targetShare = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === asxCode.toUpperCase());
+    const __shares_scroll = getAllSharesData();
+    const targetShare = Array.isArray(__shares_scroll) ? __shares_scroll.find(s => s.shareName && s.shareName.toUpperCase() === asxCode.toUpperCase()) : null;
     if (targetShare) {
         selectShare(targetShare.id);
         let elementToScrollTo = document.querySelector('#shareTable tbody tr[data-doc-id="' + targetShare.id + '"]');
@@ -7762,67 +7741,7 @@ function hideSplashScreenIfReady() {
 /**
  * Renders the cash categories in the UI. (1)
  */
-function renderCashCategories() {
-    if (!cashCategoriesContainer) {
-        console.error('renderCashCategories: cashCategoriesContainer element not found.');
-        return;
-    }
-    cashCategoriesContainer.innerHTML = ''; // Clear existing content
-
-    // Sort cash categories before rendering
-    const sortedCashCategories = sortCashCategories();
-
-    if (sortedCashCategories.length === 0) {
-        const emptyMessage = document.createElement('p');
-        emptyMessage.classList.add('empty-message');
-        emptyMessage.textContent = 'No cash categories added yet. Click "Add Category" to get started!';
-        cashCategoriesContainer.appendChild(emptyMessage);
-        return;
-    }
-
-    sortedCashCategories.forEach(category => {
-        const categoryItem = document.createElement('div');
-        categoryItem.classList.add('cash-category-item');
-        categoryItem.dataset.id = category.id;
-        // Apply 'hidden' class if asset is marked as hidden in its data
-        if (category.isHidden) {
-            categoryItem.classList.add('hidden');
-        }
-
-        // Header for name and icons (3.1)
-        const categoryHeader = document.createElement('div');
-        categoryHeader.classList.add('category-header');
-
-        const nameDisplay = document.createElement('span'); // Use span for display
-        nameDisplay.classList.add('category-name-display');
-        nameDisplay.textContent = category.name || 'Unnamed Asset';
-        categoryHeader.appendChild(nameDisplay);
-
-        // No eye icon button creation here anymore, as visibility is controlled by checkbox in modal.
-        // Edit and Delete buttons are now only in the modal, so they are not added here.
-
-        categoryItem.appendChild(categoryHeader); // Attach header directly
-
-        // Balance Display (3.1)
-    const balanceDisplay = document.createElement('span');
-    balanceDisplay.classList.add('category-balance-display');
-    // Use shared money formatter for commas and currency symbol
-    const balNum = Number(category.balance);
-    balanceDisplay.textContent = formatMoney(!isNaN(balNum) ? balNum : 0);
-    categoryItem.appendChild(balanceDisplay);
-
-        // Add click listener for details modal (2.2)
-        categoryItem.addEventListener('click', () => {
-            logDebug('Cash Categories: Card clicked for category ID: ' + category.id);
-            selectCashAsset(category.id);
-            showCashCategoryDetailsModal(category.id);
-        });
-
-        cashCategoriesContainer.appendChild(categoryItem);
-    });
-    logDebug('Cash Categories: UI rendered.');
-    calculateTotalCash(); // Calculate total after rendering
-}
+// moved to uiService.renderCashCategories()
 /**
  * Adds a new empty cash category to the UI and `userCashCategories` array.
  * This function is now primarily for triggering the modal for a new entry.
@@ -7869,81 +7788,9 @@ async function deleteCashCategory(categoryId) {
 /**
  * Calculates and displays the total cash balance. (1)
  */
-function calculateTotalCash() {
-    let total = 0;
-    userCashCategories.forEach(category => {
-        // Only include assets that are NOT hidden in the total
-        if (!category.isHidden) { // Check the 'isHidden' property directly
-            if (typeof category.balance === 'number' && !isNaN(category.balance)) {
-                total += category.balance;
-            }
-        }
-    });
-    if (totalCashDisplay) {
-    totalCashDisplay.textContent = formatMoney(total);
-    }
-    logDebug('Cash Categories: Total cash calculated: $' + formatAdaptivePrice(total));
-}
+// moved to uiService.calculateTotalCash()
 
-// NEW: Cash Asset Form Modal Functions (2.1)
-function showAddEditCashCategoryModal(assetIdToEdit = null) {
-    clearCashAssetForm(); // Clear form for new entry or before populating for edit
-    selectedCashAssetDocId = assetIdToEdit;
-
-    if (assetIdToEdit) {
-        const assetToEdit = userCashCategories.find(asset => asset.id === assetIdToEdit);
-        if (!assetToEdit) {
-            showCustomAlert('Cash asset not found.');
-            return;
-        }
-        cashFormTitle.textContent = 'Edit Cash Asset';
-        cashAssetNameInput.value = assetToEdit.name || '';
-    cashAssetBalanceInput.value = Number(assetToEdit.balance) !== null && !isNaN(Number(assetToEdit.balance)) ? formatAdaptivePrice(Number(assetToEdit.balance)) : '';
-        setIconDisabled(deleteCashAssetBtn, false); // Enable delete button for existing asset
-        
-        // Populate comments for editing
-        if (cashAssetCommentsContainer) {
-            cashAssetCommentsContainer.innerHTML = ''; // Clear existing dynamic comment sections
-            if (assetToEdit.comments && Array.isArray(assetToEdit.comments) && assetToEdit.comments.length > 0) {
-                assetToEdit.comments.forEach(comment => addCommentSection(cashAssetCommentsContainer, comment.title, comment.text, true));
-            } else {
-                addCommentSection(cashAssetCommentsContainer, '', '', true); // Add one empty comment section
-            }
-        }
-        // Ensure addCashAssetCommentBtn exists before trying to modify its classList
-        if (addCashAssetCommentBtn) {
-            addCashAssetCommentBtn.classList.remove('hidden'); // Show add comment button
-        }
-        // Set checkbox state based on existing asset's isHidden property
-        if (hideCashAssetCheckbox) {
-            hideCashAssetCheckbox.checked = !!assetToEdit.isHidden; // Convert to boolean
-        }
-        originalCashAssetData = getCurrentCashAssetFormData(); // Store original data for dirty check
-        logDebug('Cash Form: Opened edit form for cash asset: ' + assetToEdit.name + ' (ID: ' + assetIdToEdit + ')');
-    } else {
-        cashFormTitle.textContent = 'Add New Cash Asset';
-        setIconDisabled(deleteCashAssetBtn, true); // Hide delete button for new asset
-        if (cashAssetCommentsContainer) {
-            cashAssetCommentsContainer.innerHTML = ''; // Clear any previous comments
-            addCommentSection(cashAssetCommentsContainer, '', '', true); // Add initial empty comment section for new cash asset
-        }
-        // Ensure addCashAssetCommentBtn exists before trying to modify its classList
-        if (addCashAssetCommentBtn) {
-            addCashAssetCommentBtn.classList.remove('hidden'); // Show add comment button
-        }
-        // For new assets, checkbox should be unchecked by default
-        if (hideCashAssetCheckbox) {
-            hideCashAssetCheckbox.checked = false;
-        }
-        originalCashAssetData = null; // No original data for new asset
-        logDebug('Cash Form: Opened add new cash asset form.');
-    }
-    setIconDisabled(saveCashAssetBtn, true); // Save button disabled initially
-    showModal(cashAssetFormModal);
-    try { scrollMainToTop(); } catch(_) {}
-    cashAssetNameInput.focus();
-    checkCashAssetFormDirtyState(); // Initial dirty state check
-}
+// NEW: Cash Asset Form Modal Functions (2.1) moved to uiService
 
 function clearCashAssetForm() {
     if (cashAssetNameInput) cashAssetNameInput.value = '';
@@ -7955,28 +7802,7 @@ function clearCashAssetForm() {
     logDebug('Cash Form: Cash asset form cleared.');
 }
 
-function getCurrentCashAssetFormData() {
-    const comments = [];
-    if (cashAssetCommentsContainer) {
-        cashAssetCommentsContainer.querySelectorAll('.comment-section').forEach(section => {
-            const titleInput = section.querySelector('.comment-title-input');
-            const textInput = section.querySelector('.comment-text-input');
-            const title = titleInput ? titleInput.value.trim() : '';
-            const text = textInput ? textInput.value.trim() : '';
-            if (title || text) {
-                comments.push({ title: title, text: text });
-            }
-        });
-    }
-
-    return {
-        name: cashAssetNameInput?.value?.trim() || '',
-        balance: parseFloat(cashAssetBalanceInput?.value),
-        comments: comments,
-        // NEW: Include the isHidden state from the checkbox
-        isHidden: hideCashAssetCheckbox?.checked || false
-    };
-}
+// moved to uiService.getCurrentCashAssetFormData()
 
 function areCashAssetDataEqual(data1, data2) {
     if (!data1 || !data2) return false;
@@ -9744,6 +9570,11 @@ if (deleteAllUserDataBtn) {
             // Just render the watchlist. The listeners for shares/cash are already active.
             renderWatchlist();
             try { enforceMoversVirtualView(); } catch(_) {}
+            // FIX: Update ASX button state when switching watchlists via dropdown
+            // This was missing and caused the ASX button visibility bug
+            try { toggleCodeButtonsArrow(); } catch (e) { console.warn('Watchlist Select: toggleCodeButtonsArrow failed', e); }
+            // Also update add header button context (consistency with watchlist picker)
+            try { updateAddHeaderButton(); updateSidebarAddButtonContext(); } catch (e) { console.warn('Watchlist Select: header button update failed', e); }
         // UX: scroll to top after changing watchlist so users see top content
         try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
         });
@@ -9756,12 +9587,11 @@ if (sortSelect) {
         // If the ASX toggle pseudo-option was chosen, toggle ASX buttons and restore the current sort selection.
         if (event.target.value === '__asx_toggle') {
             try {
-                asxButtonsExpanded = !asxButtonsExpanded;
-                try { localStorage.setItem('asxButtonsExpanded', asxButtonsExpanded ? 'true':'false'); } catch(e) {}
+                setAsxButtonsExpanded(!getAsxButtonsExpanded());
                 applyAsxButtonsState();
                 // Update the ASX option label to reflect new state
                 const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
-                if (asxOpt) asxOpt.textContent = (asxButtonsExpanded ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+                if (asxOpt) asxOpt.textContent = (getAsxButtonsExpanded() ? 'ASX Codes — Hide' : 'ASX Codes — Show');
             } catch (e) { console.warn('ASX toggle option handler failed', e); }
             // Restore the visible selection back to the active sort (do not trigger a sort)
             try { sortSelect.value = currentSortOrder || (currentSelectedWatchlistIds.includes('portfolio') ? 'totalDollar-desc' : 'entryDate-desc'); } catch(_) {}
@@ -10579,25 +10409,18 @@ if (sortSelect) {
                 console.warn('Save Cash Asset: Save button was disabled, preventing action.');
                 return;
             }
-            await saveCashAsset(false); // Not silent save
+            try {
+                if (window.AppService && typeof window.AppService.saveCashAsset === 'function') {
+                    await window.AppService.saveCashAsset(false);
+                } else if (typeof saveCashAsset === 'function') {
+                    // Legacy fallback
+                    await saveCashAsset(false);
+                }
+            } catch(e) { console.error('Save Cash Asset failed', e); }
         });
     }
 
-    if (deleteCashAssetBtn) {
-        deleteCashAssetBtn.addEventListener('click', async () => {
-            logDebug('Cash Form: Delete Cash Asset button clicked.');
-            if (deleteCashAssetBtn.classList.contains('is-disabled-icon')) {
-                console.warn('Delete Cash Asset: Delete button was disabled, preventing action.');
-                return;
-            }
-            if (selectedCashAssetDocId) {
-                await deleteCashCategory(selectedCashAssetDocId); // Use existing delete function
-                closeModals();
-            } else {
-                showCustomAlert('No cash asset selected for deletion.');
-            }
-        });
-    }
+    // Delete is now handled inside the modal by uiService to avoid duplicate bindings
 
     if (editCashAssetFromDetailBtn) {
         editCashAssetFromDetailBtn.addEventListener('click', () => {
@@ -10797,6 +10620,8 @@ function showTargetHitDetailsModal(options={}) {
                     updateMainTitle('Movers');
                     // Re-render and enforce virtual view now
                     try { renderWatchlist(); enforceMoversVirtualView(); } catch(_) {}
+                    // FIX: Update ASX button state after programmatic watchlist change
+                    try { toggleCodeButtonsArrow(); } catch (e) { console.warn('Global summary portfolio view: toggleCodeButtonsArrow failed', e); }
                     // Safety: re-assert title after potential render-driven updates
                     setTimeout(()=>{ try { updateMainTitle('Movers'); } catch(_) {} }, 30);
                 } else if (act === 'discover') {
@@ -11229,16 +11054,11 @@ if (targetHitIconBtn) {
 let firebaseServices;
 
 document.addEventListener('DOMContentLoaded', async function() {
-    initializeAppEventListeners((services) => {
-        firebaseServices = services;
-        db = services.db;
-        auth = services.auth;
-        currentAppId = services.currentAppId;
-        firestore = services.firestore;
-        authFunctions = services.authFunctions;
-        window._firebaseInitialized = services.firebaseInitialized;
-        initializeApp();
-    });
+    // Prefer hub singletons
+    db = hubDb; auth = hubAuth; currentAppId = hubAppId; firestore = hubFs; authFunctions = hubAuthFx;
+    try { window._firebaseInitialized = !!hubInit; } catch(_) {}
+    initializeAppEventListeners(()=>{});
+    initializeApp();
 });
 
 function initializeApp() {
@@ -11263,7 +11083,7 @@ function initializeApp() {
         } catch (e) {
             console.warn('Auth: Failed to set persistence (outer), continuing with default.', e);
         }
-    
+
     window.__handleAuthStateChange = async (user) => {
             if (user) {
                 // Restore movers view if it was active prior to a storage reset during auth
@@ -11275,6 +11095,7 @@ function initializeApp() {
                     }
                 } catch(_) {}
                 currentUserId = user.uid;
+                window.currentUserId = user.uid; // Set on window object for global access
                 logDebug('AuthState: User signed in: ' + user.uid);
 
                 // Restore user's last state from localStorage
@@ -11345,7 +11166,7 @@ function initializeApp() {
                     } catch(_) {}
                 }, 8000);
                 try {
-                    await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
+                await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
                 } finally {
                     try { clearTimeout(__livePriceSafetyTimer); } catch(_) {}
                 }
@@ -11362,6 +11183,7 @@ function initializeApp() {
 
             else {
                 currentUserId = null;
+                window.currentUserId = null; // Clear from window object
                 // Reset title safely using the inner span, do not expand click target
                 try { ensureTitleStructure(); const t = document.getElementById('dynamicWatchlistTitleText'); if (t) t.textContent = 'Share Watchlist'; } catch(e) {}
                 logDebug('AuthState: User signed out.');
@@ -11497,11 +11319,7 @@ function initializeApp() {
         }
         versionEl.textContent = APP_VERSION;
     }
-    // NEW: Initialize splash screen related flags
-    window._firebaseInitialized = false;
-    window._userAuthenticated = false;
-    window._appDataLoaded = false;
-    window._livePricesLoaded = false;
+    // Splash flags are managed by auth/data/price flows and Firebase hub; do not reset here
 
     // Show splash screen immediately on DOMContentLoaded
     if (splashScreen) {
@@ -11547,7 +11365,7 @@ function initializeApp() {
     setTimeout(()=>{
         try {
             const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
-            const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+            const haveMovers = (getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers');
             if (wantMovers && !haveMovers) {
                 setCurrentSelectedWatchlistIds(['__movers']);
                 if (watchlistSelect) watchlistSelect.value = '__movers';
@@ -11557,13 +11375,7 @@ function initializeApp() {
             }
         } catch(e){ console.warn('[Movers restore][fallback DOMContentLoaded] failed', e); }
     }, 1300);
-    const firebaseServices = initializeFirebaseAndAuth();
-    db = firebaseServices.db;
-    auth = firebaseServices.auth;
-    currentAppId = firebaseServices.currentAppId;
-    firestore = firebaseServices.firestore;
-    authFunctions = firebaseServices.authFunctions;
-    window._firebaseInitialized = firebaseServices.firebaseInitialized;
+    // already set from hub
 
     if (db && auth && currentAppId && firestore && authFunctions) {
         logDebug('Firebase Ready: DB, Auth, and AppId assigned from firebase.js. Setting up auth state listener.');

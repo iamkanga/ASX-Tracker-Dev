@@ -83,3 +83,26 @@ export function initializeFirebaseAndAuth() {
         firebaseInitialized
     };
 }
+
+// Initialize immediately and export live service singletons for all modules
+const __services = initializeFirebaseAndAuth();
+export const db = __services.db;
+export const auth = __services.auth;
+export const firestore = __services.firestore;
+export const authFunctions = __services.authFunctions;
+export const currentAppId = __services.currentAppId;
+export const firebaseInitialized = __services.firebaseInitialized;
+
+// Set Firebase services on window object for global access
+try {
+    if (typeof window !== 'undefined') {
+        window.db = __services.db;
+        window.firestore = __services.firestore;
+        window.auth = __services.auth;
+        window.currentAppId = __services.currentAppId;
+        window._firebaseInitialized = firebaseInitialized;
+        console.log('Firebase: Services set on window object');
+    }
+} catch(e) {
+    console.error('Firebase: Failed to set services on window object:', e);
+}
