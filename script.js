@@ -1,8 +1,36 @@
 import { initializeFirebaseAndAuth } from './firebase.js';
 import { initializeAppEventListeners } from './js/init.js';
 import { setupAuthListener } from './js/auth.js';
+import { loadShares, loadCashCategories, loadTriggeredAlertsListener } from './js/dataService.js';
+import { fetchLivePrices } from './js/priceService.js';
+import { saveShareData as saveShareDataSvc, deleteShare as deleteShareSvc, saveWatchlistChanges as saveWatchlistChangesSvc, deleteWatchlist as deleteWatchlistSvc, saveCashAsset as saveCashAssetSvc, deleteCashCategory as deleteCashCategorySvc, deleteAllUserData as deleteAllUserDataSvc } from './js/appService.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
 import { allSharesData, livePrices, userWatchlists, currentSelectedWatchlistIds, sharesAtTargetPrice, currentSortOrder, allAsxCodes, setAllSharesData, setLivePrices, setUserWatchlists, setCurrentSelectedWatchlistIds, setSharesAtTargetPrice, setCurrentSortOrder, setAllAsxCodes } from './js/state.js';
+
+// --- UI Element References ---
+// Copilot: No-op change to trigger source control detection
+const appHeader = document.getElementById('appHeader'); // Reference to the main header
+const mainContainer = document.querySelector('main.container'); // Reference to the main content container
+// mainTitle removed in favour of dynamicWatchlistTitle only
+const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
+const newShareBtn = document.getElementById('newShareBtn');
+const standardCalcBtn = document.getElementById('standardCalcBtn');
+const dividendCalcBtn = document.getElementById('dividendCalcBtn');
+const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
+// Ensure scroll class applied (id container present in DOM from HTML)
+if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
+    asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll');
+}
+const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
+const shareFormSection = document.getElementById('shareFormSection');
+const formCloseButton = document.querySelector('.form-close-button');
+const formTitle = document.getElementById('formTitle');
+const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
+const saveShareBtn = document.getElementById('saveShareBtn');
+const deleteShareBtn = document.getElementById('deleteShareBtn');
+const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
+const currentPriceInput = document.getElementById('currentPrice'); // Reference (reinstated) to Reference Price input
+const watchlistSelect = document.getElementById('watchlistSelect');
 
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
 // (Moved below DOM references to avoid ReferenceError)
@@ -47,6 +75,8 @@ window.addEventListener('popstate', function(event) {
 // Keep main content padding in sync with header height changes (e.g., viewport resize)
 window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
 document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
+// Ensure UI refs are initialized before any listeners that use them
+// (moved UI const declarations to top after imports)
 // Diagnostic: overlay listener singleton self-check
 document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -1336,7 +1366,7 @@ function updateLivePriceTimestamp(ts) {
 // Patch live price fetch logic to update timestamp after fetch
 if (typeof fetchLivePrices === 'function') {
     const origFetchLivePrices = fetchLivePrices;
-    window.fetchLivePrices = fetchLivePrices = async function(...args) {
+    window.fetchLivePrices = async function(...args) {
         const result = await origFetchLivePrices.apply(this, args);
         updateLivePriceTimestamp(Date.now());
         return result;
@@ -1609,29 +1639,7 @@ let cashAssetVisibility = {}; // This object will still track the *current sessi
 const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
 
 
-// --- UI Element References ---
-// Copilot: No-op change to trigger source control detection
-const appHeader = document.getElementById('appHeader'); // Reference to the main header
-const mainContainer = document.querySelector('main.container'); // Reference to the main content container
-// mainTitle removed in favour of dynamicWatchlistTitle only
-const addShareHeaderBtn = document.getElementById('addShareHeaderBtn'); // This will become the contextual plus icon
-const newShareBtn = document.getElementById('newShareBtn');
-const standardCalcBtn = document.getElementById('standardCalcBtn');
-const dividendCalcBtn = document.getElementById('dividendCalcBtn');
-const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
-// Ensure scroll class applied (id container present in DOM from HTML)
-if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
-    asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll');
-}
-const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
-const shareFormSection = document.getElementById('shareFormSection');
-const formCloseButton = document.querySelector('.form-close-button');
-const formTitle = document.getElementById('formTitle');
-const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
-const saveShareBtn = document.getElementById('saveShareBtn');
-const deleteShareBtn = document.getElementById('deleteShareBtn');
-const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
-const currentPriceInput = document.getElementById('currentPrice'); // Reference (reinstated) to Reference Price input
+// [moved to top after imports]
 // Centralized single-code snapshot handling
 let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
 async function updateAddFormLiveSnapshot(code) {
@@ -1926,7 +1934,6 @@ const calculatorModal = document.getElementById('calculatorModal');
 const calculatorInput = document.getElementById('calculatorInput');
 const calculatorResult = document.getElementById('calculatorResult');
 const calculatorButtons = document.querySelector('.calculator-buttons');
-const watchlistSelect = document.getElementById('watchlistSelect');
 // Dynamic watchlist title + picker modal + sort display (new UI layer)
 const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
 const dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
@@ -2266,6 +2273,7 @@ function updateSortIcon() {
 
 
 const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
+try { window.appsScriptUrl = appsScriptUrl; } catch(_) {}
 
 async function fetchLivePricesAndUpdateUI() {
     logDebug('UI: Refresh Live Prices button clicked.');
@@ -2283,7 +2291,8 @@ async function fetchLivePricesAndUpdateUI() {
  * Fetches live price data from the Google Apps Script Web App.
  * Updates the `livePrices` global object.
  */
-async function fetchLivePrices(opts = {}) {
+/* moved to priceService.js */
+/* async function fetchLivePrices(opts = {}) {
     logDebug('Live Price: Fetching from Apps Script...');
     try {
         // Set last updated timestamp for portfolio view
@@ -2455,7 +2464,7 @@ async function fetchLivePrices(opts = {}) {
         window._livePricesLoaded = true;
         hideSplashScreenIfReady();
     }
-}
+} */
 /**
  * Dynamically adjusts the top padding of the main content area
  * to prevent it from being hidden by the fixed header.
@@ -6649,8 +6658,8 @@ async function loadUserWatchlistsAndSettings() {
         }
 
         // Load shares listener and cash categories listener once here
-        await loadShares(); // Sets up the listener for shares
-        await loadCashCategories(); // Sets up the listener for cash categories
+        await loadShares(db, firestore, currentUserId, currentAppId); // Sets up the listener for shares
+        await loadCashCategories(db, firestore, currentUserId, currentAppId); // Sets up the listener for cash categories
 
         // Initial render based on selected watchlist (stock or cash)
         renderWatchlist(); // This will now correctly display based on the initial currentSelectedWatchlistIds
@@ -6803,7 +6812,8 @@ try {
 } catch(_){ }
 // NEW (Revised): Real-time alerts listener (enabled-only notifications)
 // Muted alerts (enabled === false) must not appear as active notifications or receive styling.
-async function loadTriggeredAlertsListener() {
+/* moved to dataService.js */
+/* async function loadTriggeredAlertsListener() {
     if (unsubscribeAlerts) { try { unsubscribeAlerts(); } catch(_){} unsubscribeAlerts=null; }
     if (!db || !currentUserId || !firestore) { console.warn('Alerts: Firestore unavailable for triggered alerts listener'); return; }
     try {
@@ -6834,7 +6844,7 @@ async function loadTriggeredAlertsListener() {
         }, err => console.error('Alerts: triggered alerts listener error', err));
         logDebug('Alerts: Triggered alerts listener active (enabled-state driven).');
     } catch (e) { console.error('Alerts: failed to init triggered alerts listener', e); }
-}
+} */
 
 // Real-time listener for global summary alert document
 let unsubscribeGlobalSummary = null;
@@ -7593,7 +7603,10 @@ function hideSplashScreenIfReady() {
         splashReady: splashScreenReady
     });
     // Only hide if Firebase is initialized, user is authenticated, and all data flags are true
-    if (window._firebaseInitialized && window._userAuthenticated && window._appDataLoaded && window._livePricesLoaded) {
+    const authGraceOk = (function(){
+        try { return window.__authReadyAt && (Date.now() - window.__authReadyAt) > 9000; } catch(_) { return false; }
+    })();
+    if (window._firebaseInitialized && window._userAuthenticated && window._appDataLoaded && (window._livePricesLoaded || authGraceOk)) {
         if (splashScreenReady) { // Ensure splash screen itself is ready to be hidden
             logDebug('Splash Screen: All data loaded and ready. Hiding splash screen.');
             hideSplashScreen();
@@ -7620,7 +7633,8 @@ function hideSplashScreenIfReady() {
  * Sets up a real-time Firestore listener for shares.
  * Updates `allSharesData` and triggers UI re-render via `renderWatchlist` (indirectly through `fetchLivePrices` or `sortShares`).
  */
-async function loadShares() {
+/* moved to dataService.js */
+/* async function loadShares() {
     if (unsubscribeShares) {
         unsubscribeShares();
         unsubscribeShares = null;
@@ -7692,7 +7706,7 @@ async function loadShares() {
         window._appDataLoaded = false;
         hideSplashScreen(); 
     }
-}
+} */
 
 // NEW: Cash & Assets Functions (3.1)
 
@@ -7700,7 +7714,8 @@ async function loadShares() {
  * Sets up a real-time Firestore listener for cash categories.
  * Updates `userCashCategories` and triggers UI re-render via `renderWatchlist`.
  */
-async function loadCashCategories() {
+/* moved to dataService.js */
+/* async function loadCashCategories() {
     if (unsubscribeCashCategories) {
         unsubscribeCashCategories();
         unsubscribeCashCategories = null;
@@ -7742,7 +7757,7 @@ async function loadCashCategories() {
         console.error('Cash Categories: Error setting up cash categories listener:', error);
         showCustomAlert('Error setting up real-time cash category updates: ' + error.message);
     }
-}
+} */
 
 /**
  * Renders the cash categories in the UI. (1)
@@ -11286,6 +11301,7 @@ function initializeApp() {
                 logDebug('AuthState: Dynamic title initialized via updateMainTitle().');
                 updateMainButtonsState(true);
                 window._userAuthenticated = true; // Mark user as authenticated
+                try { window.__authReadyAt = Date.now(); } catch(_) {}
 
                 if (mainContainer) {
                     mainContainer.classList.remove('app-hidden');
@@ -11329,11 +11345,25 @@ function initializeApp() {
                 }
                 logDebug('View Mode: Applied persisted mode post-auth (pre-initial render): ' + currentMobileViewMode);
                 // Start alerts listener (enabled alerts only; muted excluded from notifications)
-                await loadTriggeredAlertsListener();
+                await loadTriggeredAlertsListener(db, firestore, currentUserId, currentAppId);
                 startGlobalSummaryListener();
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
-                await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
+                // Unblock UI immediately; prices can finish in background
+                try { window._livePricesLoaded = true; hideSplashScreenIfReady(); } catch(_) {}
+                try { console.log('[Live Price] Invoking initial fetch...'); } catch(_) {}
+                const __livePriceSafetyTimer = setTimeout(() => {
+                    try {
+                        console.warn('Live Price: safety timeout reached; marking as loaded to unblock UI');
+                        window._livePricesLoaded = true;
+                        hideSplashScreenIfReady();
+                    } catch(_) {}
+                }, 8000);
+                try {
+                    await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
+                } finally {
+                    try { clearTimeout(__livePriceSafetyTimer); } catch(_) {}
+                }
                 try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true'); } catch(e) {}
                 startLivePriceUpdates();
                 // Extra safety: ensure target modal not left open from cached state on fresh auth
