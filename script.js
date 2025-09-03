@@ -7,6 +7,7 @@ import { saveShareData as saveShareDataSvc, deleteShare as deleteShareSvc, saveW
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
 import { getAllSharesData, getLivePrices, getUserWatchlists, getUserCashCategories, getCurrentSelectedWatchlistIds, getSharesAtTargetPrice, getCurrentSortOrder, getAllAsxCodes, setAllSharesData, setLivePrices, setUserWatchlists, setCurrentSelectedWatchlistIds, setSharesAtTargetPrice, setCurrentSortOrder, setAllAsxCodes } from './js/state.js';
 import { applyAsxButtonsState, setAsxButtonsExpanded, getAsxButtonsExpanded, toggleCodeButtonsArrow, renderCashCategories as uiRenderCashCategories, calculateTotalCash as uiCalculateTotalCash, updateAddHeaderButton as uiUpdateAddHeaderButton, updateSidebarAddButtonContext as uiUpdateSidebarAddButtonContext, handleAddShareClick as uiHandleAddShareClick, handleAddCashAssetClick as uiHandleAddCashAssetClick } from './js/uiService.js';
+import { initializeTheme, applyLow52AlertTheme } from './js/theme.js';
 
 // --- UI Element References ---
 // Copilot: No-op change to trigger source control detection
@@ -99,16 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // ...existing code...
 
-// --- 52-Week Alert Card Dynamic Theming & Mute Button Fix ---
-// Helper to apply dynamic theme class to 52-week alert card
-function applyLow52AlertTheme(card, type) {
-    if (!card) return;
-    card.classList.remove('low52-low', 'low52-high');
-    if (type === 'low') card.classList.add('low52-low');
-    else if (type === 'high') card.classList.add('low52-high');
-    // Always ensure .low52-alert-card is present
-    card.classList.add('low52-alert-card');
-}
+
 
 // Simplified mute button handler after layout fix
 function fixLow52MuteButton(card) {
@@ -9935,106 +9927,13 @@ if (sortSelect) {
         }
     } catch (e) { console.warn('Calculator Setup: init error', e); }
 
-    // Theme Toggle Button (Random Selection)
-    if (themeToggleBtn) {
-        themeToggleBtn.addEventListener('click', () => {
-            logDebug('Theme Debug: Random Theme Toggle button clicked.');
-            if (CUSTOM_THEMES.length > 0) {
-                let randomIndex;
-                let newThemeName;
-                do {
-                    randomIndex = Math.floor(Math.random() * CUSTOM_THEMES.length);
-                    newThemeName = CUSTOM_THEMES[randomIndex];
-                } while (newThemeName === currentActiveTheme && CUSTOM_THEMES.length > 1); // Ensure a different theme if possible
 
-                logDebug('Theme Debug: Selected random nextThemeName: ' + newThemeName);
-                applyTheme(newThemeName);
-            } else {
-                logDebug('Theme Debug: No custom themes defined. Defaulting to system-default.');
-                applyTheme('system-default'); // Fallback if no custom themes defined
-            }
-        });
-    }
 
-    // Color Theme Select Dropdown
-    if (colorThemeSelect) {
-        colorThemeSelect.addEventListener('change', (event) => {
-            logDebug('Theme: Color theme select changed to: ' + event.target.value);
-            const selectedTheme = event.target.value;
-            // If "No Custom Theme" is selected, apply system-default
-            if (selectedTheme === 'none') {
-                applyTheme('system-default');
-            } else {
-                applyTheme(selectedTheme);
-            }
-        });
-    }
 
-    // Revert to Default Theme Button (Toggle Light/Dark)
-    if (revertToDefaultThemeBtn) {
-        revertToDefaultThemeBtn.addEventListener('click', async (event) => {
-            logDebug('Theme Debug: Revert to Default Theme button clicked (now toggling Light/Dark).');
-            event.preventDefault(); // Prevent default button behavior
 
-            const body = document.body;
-            let targetTheme;
 
-            // Remove all custom theme classes and the data-theme attribute
-            body.className = body.className.split(' ').filter(c => !c.startsWith('theme-')).join(' ');
-            body.removeAttribute('data-theme');
-            localStorage.removeItem('selectedTheme'); // Clear custom theme preference
 
-            // Determine target theme based on current state (only considering light/dark classes)
-            if (currentActiveTheme === 'light') {
-                targetTheme = 'dark';
-                body.classList.add('dark-theme');
-                logDebug('Theme: Toggled from Light to Dark theme.');
-            } else if (currentActiveTheme === 'dark') {
-                targetTheme = 'light';
-                body.classList.remove('dark-theme');
-                logDebug('Theme: Toggled from Dark to Light theme.');
-            } else { // This handles the very first click, or when currentActiveTheme is 'system-default' or any custom theme
-                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (systemPrefersDark) {
-                    targetTheme = 'light';
-                    body.classList.remove('dark-theme');
-                    logDebug('Theme: First click from system-default/custom: Toggled from System Dark to Light.');
-                } else {
-                    targetTheme = 'dark';
-                    body.classList.add('dark-theme');
-                    logDebug('Theme: First click from system-default/custom: Toggled from System Light to Dark.');
-                }
-            }
-            
-            currentActiveTheme = targetTheme; // Update global tracking variable
-            localStorage.setItem('theme', targetTheme); // Save preference for light/dark
-            
-            // Save preference to Firestore
-            if (currentUserId && db && firestore) {
-                const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-                try {
-                    await firestore.setDoc(userProfileDocRef, { lastTheme: targetTheme }, { merge: true });
-                    logDebug('Theme: Saved explicit Light/Dark theme preference to Firestore: ' + targetTheme);
-                } catch (error) {
-                    console.error('Theme: Error saving explicit Light/Dark theme preference to Firestore:', error);
-                }
-            }
-            updateThemeToggleAndSelector(); // Update dropdown (it should now show "No Custom Theme")
-        });
-    }
 
-    // System Dark Mode Preference Listener (Keep this as is)
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
-        if (currentActiveTheme === 'system-default') {
-            if (event.matches) {
-                document.body.classList.add('dark-theme');
-            } else {
-                document.body.classList.remove('dark-theme');
-            }
-            logDebug('Theme: System theme preference changed and applied (system-default mode).');
-            updateThemeToggleAndSelector();
-        }
-    });
 
     // Scroll to Top Button
     if (scrollToTopBtn) {
@@ -11058,6 +10957,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     db = hubDb; auth = hubAuth; currentAppId = hubAppId; firestore = hubFs; authFunctions = hubAuthFx;
     try { window._firebaseInitialized = !!hubInit; } catch(_) {}
     initializeAppEventListeners(()=>{});
+    // Initialize theme management with a delay to ensure DOM is ready
+    setTimeout(() => {
+        initializeTheme();
+    }, 100);
     initializeApp();
 });
 
