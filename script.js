@@ -1,4 +1,5 @@
 import { initializeFirebaseAndAuth } from './firebase.js';
+import { initializeAppEventListeners } from './js/init.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
 import { allSharesData, livePrices, userWatchlists, currentSelectedWatchlistIds, sharesAtTargetPrice, currentSortOrder, allAsxCodes, setAllSharesData, setLivePrices, setUserWatchlists, setCurrentSelectedWatchlistIds, setSharesAtTargetPrice, setCurrentSortOrder, setAllAsxCodes } from './js/state.js';
 
@@ -11227,17 +11228,16 @@ if (targetHitIconBtn) {
 let firebaseServices;
 
 document.addEventListener('DOMContentLoaded', async function() {
-    logDebug('script.js DOMContentLoaded fired.');
-
-    firebaseServices = initializeFirebaseAndAuth();
-    db = firebaseServices.db;
-    auth = firebaseServices.auth;
-    currentAppId = firebaseServices.currentAppId;
-    firestore = firebaseServices.firestore;
-    authFunctions = firebaseServices.authFunctions;
-    window._firebaseInitialized = firebaseServices.firebaseInitialized;
-
-    initializeApp();
+    initializeAppEventListeners((services) => {
+        firebaseServices = services;
+        db = services.db;
+        auth = services.auth;
+        currentAppId = services.currentAppId;
+        firestore = services.firestore;
+        authFunctions = services.authFunctions;
+        window._firebaseInitialized = services.firebaseInitialized;
+        initializeApp();
+    });
 });
 
 function initializeApp() {
