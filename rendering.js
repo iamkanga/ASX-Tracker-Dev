@@ -102,25 +102,11 @@
         card.querySelector('.card-live-price').textContent = displayLivePrice;
         card.querySelector('.card-price-change').textContent = displayPriceChange;
         card.querySelector('.card-price-change').className = `price-change-large card-price-change ${priceClass}`;
-        card.querySelector('.fifty-two-week-value.low').textContent = `Low: ${low52Week}`;
-        card.querySelector('.fifty-two-week-value.high').textContent = `High: ${high52Week}`;
-        card.querySelector('.pe-ratio-value').textContent = `P/E: ${peRatio}`;
+        // Removed 52-week and P/E ratio elements for compact design
         const alertTargetRow = card.querySelector('[data-template-conditional="alertTarget"]');
         const alertTargetValue = renderAlertTargetInline(share);
         if (alertTargetValue) { alertTargetRow.querySelector('.data-value').innerHTML = alertTargetValue; alertTargetRow.style.display = ''; } else { alertTargetRow.style.display = 'none'; }
-        card.querySelector('.data-row:nth-of-type(2) .data-value').textContent = share.starRating > 0 ? '⭐ ' + share.starRating : '';
-        const dividendAmount = Number(share.dividendAmount) || 0;
-        const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
-        const enteredPrice = Number(share.currentPrice) || 0;
-        const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$')) ? parseFloat(displayLivePrice.substring(1)) : (enteredPrice > 0 ? enteredPrice : 0);
-        let yieldDisplay = '';
-        if (priceForYield > 0 && (dividendAmount > 0 || frankingCredits > 0)) {
-            const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
-            const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
-            if (frankingCredits > 0 && frankedYield > 0) yieldDisplay = formatAdaptivePercent(frankedYield) + '% (Franked)';
-            else if (unfrankedYield > 0) yieldDisplay = formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
-        }
-        card.querySelector('.data-row:nth-of-type(3) .data-value').textContent = yieldDisplay;
+        // Removed star rating and dividend yield elements for compact design
         card.addEventListener('click', () => { logDebug('Mobile Card Click: Share ID: ' + share.id); selectShare(share.id); showShareDetails(); });
         mobileShareCardsContainer.appendChild(card);
         logDebug('Mobile Cards: Added share ' + share.shareName + ' to mobile cards using template.');
@@ -302,7 +288,7 @@
         let card = mobileShareCardsContainer.querySelector(`div[data-doc-id="${share.id}"]`);
         if (!card) { card = document.createElement('div'); card.classList.add('mobile-card'); card.dataset.docId = share.id; card.addEventListener('click', ()=>{ logDebug('Mobile Card Click: Share ID: '+share.id); selectShare(share.id); showShareDetails(); }); mobileShareCardsContainer.appendChild(card); logDebug('Mobile Cards: Created new card for share ' + share.shareName + '.'); }
         const livePriceData = livePrices[share.shareName.toUpperCase()]; const isTargetHit = livePriceData ? livePriceData.targetHit : false; if (isTargetHit && !targetHitIconDismissed) card.classList.add('target-hit-alert'); else card.classList.remove('target-hit-alert'); const isMarketOpen = isAsxMarketOpen(); let displayLivePrice='N/A', displayPriceChange='', priceClass=''; if (livePriceData){ const currentLivePrice = livePriceData.live; const previousClosePrice=livePriceData.prevClose; const lastFetchedLive=livePriceData.lastLivePrice; const lastFetchedPrevClose=livePriceData.lastPrevClose; if (isMarketOpen){ if (currentLivePrice!==null && !isNaN(currentLivePrice)) displayLivePrice = '$'+formatAdaptivePrice(currentLivePrice); if (currentLivePrice!==null && previousClosePrice!==null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)){ const change=currentLivePrice-previousClosePrice; const percentageChange=(previousClosePrice!==0?(change/previousClosePrice)*100:0); displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`; priceClass = change>0?'positive':(change<0?'negative':'neutral'); } else if (lastFetchedLive!==null && lastFetchedPrevClose!==null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)){ const change=lastFetchedLive-lastFetchedPrevClose; const percentageChange=(lastFetchedPrevClose!==0?(change/lastFetchedPrevClose)*100:0); displayPriceChange=`${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`; priceClass = change>0?'positive':(change<0?'negative':'neutral'); } } else { displayLivePrice = lastFetchedLive!==null && !isNaN(lastFetchedLive) ? '$'+formatAdaptivePrice(lastFetchedLive) : 'N/A'; displayPriceChange='0.00 (0.00%)'; priceClass='neutral'; } }
-        const displayData = getShareDisplayData(share); const { peRatio, high52Week, low52Week } = displayData; if (displayData.cardPriceChangeClass) card.classList.add(displayData.cardPriceChangeClass); let arrowSymbol=''; if (priceClass==='positive') arrowSymbol='▲'; else if (priceClass==='negative') arrowSymbol='▼'; card.innerHTML = `<div class="live-price-display-section"><h3 class="neutral-code-text card-code">${share.shareName}</h3><span class="change-chevron card-chevron ${priceClass}">${arrowSymbol}</span><div class="live-price-main-row"><span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span></div><span class="price-change-large card-price-change ${priceClass}">${displayPriceChange}</span><div class="fifty-two-week-row"><span class="fifty-two-week-value low">Low: ${low52Week}</span><span class="fifty-two-week-value high">High: ${high52Week}</span></div><div class="pe-ratio-row"><span class="pe-ratio-value">P/E: ${peRatio}</span></div></div>`;
+        const displayData = getShareDisplayData(share); const { peRatio, high52Week, low52Week } = displayData; if (displayData.cardPriceChangeClass) card.classList.add(displayData.cardPriceChangeClass); let arrowSymbol=''; if (priceClass==='positive') arrowSymbol='▲'; else if (priceClass==='negative') arrowSymbol='▼'; card.innerHTML = `<div class="live-price-display-section"><div class="card-top-row"><h3 class="neutral-code-text card-code">${share.shareName}</h3><span class="change-chevron card-chevron ${priceClass}">${arrowSymbol}</span></div><div class="live-price-main-row"><span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span></div><span class="price-change-large card-price-change ${priceClass}">${displayPriceChange}</span></div>`;
     };
 
     window.Rendering.enforceTargetHitStyling = function enforceTargetHitStyling() {

@@ -3911,7 +3911,7 @@ table td .share-code-display { /* This class exists, just ensure its emphasis */
     display: flex;
     justify-content: space-between; /* Aligns label left, value right */
     align-items: baseline; /* Aligns text baselines */
-    margin: 5px 0; /* Consistent vertical spacing */
+    margin: 3px 0; /* More compact vertical spacing */
 }
 
 .mobile-card p.data-row .label-text {
@@ -5203,7 +5203,7 @@ table td.live-price-cell.negative-change {
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 15px;
+    padding: 10px;
     box-shadow: 0 2px 5px var(--shadow-color);
     cursor: pointer;
     /* Streamline and ensure relevant transitions are covered for all properties that change */
@@ -5282,10 +5282,9 @@ table td.live-price-cell.negative-change {
 
 /* Mobile Card: ASX Code (h3) and Live Price Styling */
 .mobile-card h3 {
-    margin-top: 0;
-    margin-bottom: 10px;
+    margin: 0;
     color: var(--text-color);
-    font-size: 1.4em; /* Match live-price-large font size as requested */
+    font-size: 1.1em; /* Even more compact for horizontal layout */
     font-weight: 800; /* Bolder for prominence */
 }
 
@@ -5302,19 +5301,28 @@ table td.live-price-cell.negative-change {
 /* Live Price Display Section for Mobile Cards and Modals */
 .live-price-display-section {
     /* Centralized sizing contract */
-    --live-price-size: 1.75em;         /* Primary (ASX Code + Live Price) */
-    --secondary-scale: 0.50;           /* All secondary metrics (change, 52W, P/E, etc.) */
+    --live-price-size: 1.5em;         /* More compact primary size */
+    --secondary-scale: 0.55;           /* Slightly larger secondary scale for better readability */
     background: none !important;
     border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
+    padding: 6px;
+    margin-bottom: 6px;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 2px;
     box-shadow: none !important;
+}
+
+/* Top row with ASX code on left, arrow on right */
+.card-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 2px;
 }
 
 /* New: Row for 52-Week High/Low */

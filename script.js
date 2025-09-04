@@ -3909,9 +3909,7 @@ function addShareToMobileCards(share) {
     livePriceElement.className = `card-live-price ${displayData.isNewShareIndicator || ''}`;
     card.querySelector('.card-price-change').textContent = displayPriceChange;
     card.querySelector('.card-price-change').className = `price-change-large card-price-change ${priceClass}`;
-    card.querySelector('.fifty-two-week-value.low').textContent = `Low: ${low52Week}`;
-    card.querySelector('.fifty-two-week-value.high').textContent = `High: ${high52Week}`;
-    card.querySelector('.pe-ratio-value').textContent = `P/E: ${peRatio}`;
+    // Removed 52-week and P/E ratio elements for compact design
 
     // Handle conditional alert target
     const alertTargetRow = card.querySelector('[data-template-conditional="alertTarget"]');
@@ -3923,27 +3921,7 @@ function addShareToMobileCards(share) {
         alertTargetRow.style.display = 'none';
     }
 
-    // Star rating
-    card.querySelector('.data-row:nth-of-type(2) .data-value').textContent = share.starRating > 0 ? '⭐ ' + share.starRating : '';
-
-    // Dividend Yield
-    const dividendAmount = Number(share.dividendAmount) || 0;
-    const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
-    const enteredPrice = Number(share.currentPrice) || 0;
-    const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
-                        ? parseFloat(displayLivePrice.substring(1))
-                        : (enteredPrice > 0 ? enteredPrice : 0);
-    let yieldDisplay = '';
-    if (priceForYield > 0 && (dividendAmount > 0 || frankingCredits > 0)) {
-        const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
-        const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
-        if (frankingCredits > 0 && frankedYield > 0) {
-            yieldDisplay = formatAdaptivePercent(frankedYield) + '% (Franked)';
-        } else if (unfrankedYield > 0) {
-            yieldDisplay = formatAdaptivePercent(unfrankedYield) + '% (Unfranked)';
-        }
-    }
-    card.querySelector('.data-row:nth-of-type(3) .data-value').textContent = yieldDisplay;
+    // Removed star rating and dividend yield elements for compact design
 
 
     card.addEventListener('click', () => {
