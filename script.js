@@ -10605,6 +10605,20 @@ function showTargetHitDetailsModal(options={}) {
             const tsSpan = document.createElement('span'); tsSpan.className='criteria-timestamp'; tsSpan.textContent = lastUpdatedTs;
             criteriaBar.appendChild(titleSpan);
             criteriaBar.appendChild(badgeContainer);
+
+            // Make the Global Movers criteria bar clickable to open Global Alerts settings
+            criteriaBar.style.cursor = 'pointer';
+            criteriaBar.title = 'Click to configure Global Alerts settings';
+            criteriaBar.addEventListener('click', () => {
+                // Close the Discover Moving Shares modal
+                hideModal(modal);
+                // Open the sidebar
+                toggleAppSidebar(true);
+                // Open the Global Alerts modal
+                setTimeout(() => {
+                    showModal(globalAlertsModal);
+                }, 300); // Small delay to ensure sidebar animation completes
+            });
             if (inlineSummary) {
                 const summarySpan = document.createElement('span');
                 summarySpan.className = 'criteria-summary';
