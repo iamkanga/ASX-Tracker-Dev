@@ -38,6 +38,7 @@ export function applyAsxButtonsState() {
 		const selIds = getCurrentSelectedWatchlistIds();
 		const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
 		const isCashView = Array.isArray(selIds) && selIds.includes(CASH_ID);
+
 		if (isCashView) {
 			toggleAsxButtonsBtn.style.display = 'none';
 			toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');

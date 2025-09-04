@@ -287,20 +287,40 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Helper: scroll main content to top in a resilient way
-    function scrollMainToTop(instant = false) {
+    // Helper: scroll main content to specified position in a resilient way
+    function scrollMainToTop(instant = false, targetPosition = 0) {
+        console.log('[SCROLL DEBUG] scrollMainToTop called, instant:', instant, 'targetPosition:', targetPosition);
+
         try {
             // Prefer the global smart implementation defined by UI module if present
             if (typeof window !== 'undefined' && window.scrollMainToTop && window.scrollMainToTop !== scrollMainToTop) {
-                try { window.scrollMainToTop(instant); return; } catch(_) {}
+                console.log('[SCROLL DEBUG] Using global scrollMainToTop');
+                try { window.scrollMainToTop(instant, targetPosition); return; } catch(error) { console.error('Error with global scrollMainToTop:', error); }
             }
+
             const el = document.querySelector('main.container');
+            console.log('[SCROLL DEBUG] main.container element found:', !!el);
             if (el) {
-                try { el.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' }); } catch(_){}
-                return;
+                console.log('[SCROLL DEBUG] Scrolling main.container to position:', targetPosition, 'current scrollTop:', el.scrollTop);
+                try {
+                    el.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
+                    console.log('[SCROLL DEBUG] Successfully called el.scrollTo on main.container');
+                    return;
+                } catch(error) {
+                    console.error('[SCROLL DEBUG] Error scrolling main.container:', error);
+                }
             }
-        } catch (e) { /* ignore */ }
-        try { window.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' }); } catch(_) { /* ignore */ }
+        } catch (e) {
+            console.error('[SCROLL DEBUG] Error in scrollMainToTop:', e);
+        }
+
+        console.log('[SCROLL DEBUG] Falling back to window.scrollTo, targetPosition:', targetPosition, 'current window scrollY:', window.scrollY);
+        try {
+            window.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
+            console.log('[SCROLL DEBUG] Successfully called window.scrollTo');
+        } catch(error) {
+            console.error('[SCROLL DEBUG] Error with window.scrollTo:', error);
+        }
     }
 
     // Portfolio view logic
@@ -676,7 +696,26 @@ function logDebug(message, ...optionalParams) {
 try { window.logDebug = logDebug; } catch(_) {}
 try { window.showModal = function(m){ if (typeof window.UI !== 'undefined' && window.UI.showModal) return window.UI.showModal(m); try { if (m) m.style.setProperty('display','flex','important'); } catch(_){} }; } catch(_) {}
 try { window.hideModal = function(m){ if (typeof window.UI !== 'undefined' && window.UI.hideModal) return window.UI.hideModal(m); try { if (m) m.style.setProperty('display','none','important'); } catch(_){} }; } catch(_) {}
-try { if (!window.scrollMainToTop) window.scrollMainToTop = function(instant){ try { const el = document.querySelector('main.container'); if (el) el.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' }); else window.scrollTo({ top: 0, left: 0, behavior: instant ? 'auto' : 'smooth' }); } catch(_){} }; } catch(_) {}
+try {
+    if (!window.scrollMainToTop) {
+        window.scrollMainToTop = function(instant, targetPosition = 0){
+            console.log('[ASX Debug] window.scrollMainToTop called with instant:', instant, 'targetPosition:', targetPosition);
+            try {
+                const el = document.querySelector('main.container');
+                console.log('[ASX Debug] window.scrollMainToTop - main.container found:', !!el);
+                if (el) {
+                    console.log('[ASX Debug] window.scrollMainToTop - scrolling main.container to position:', targetPosition);
+                    el.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
+                } else {
+                    console.log('[ASX Debug] window.scrollMainToTop - scrolling window to position:', targetPosition);
+                    window.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
+                }
+            } catch(error) {
+                console.error('[ASX Debug] window.scrollMainToTop error:', error);
+            }
+        };
+    }
+} catch(_) {}
 try { window.updateAddFormLiveSnapshot = updateAddFormLiveSnapshot; } catch(_) {}
 
 // Expose utils-derived helpers (needed by ui.js calculators)
@@ -1727,8 +1766,38 @@ zeroClearInputs.forEach(inp => {
     });
 });
 // --- ASX Code Toggle Button Functionality (moved to uiService) ---
+
+console.log('[ELEMENT CHECK] toggleAsxButtonsBtn exists:', !!document.getElementById('toggleAsxButtonsBtn'));
+console.log('[ELEMENT CHECK] asxCodeButtonsContainer exists:', !!document.getElementById('asxCodeButtonsContainer'));
+
 if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
+    console.log('[TOGGLE SETUP] ASX toggle button found, binding click handler');
+
+    // Debug: Check toggle button visibility and position
+    console.log('[TOGGLE DEBUG] Toggle button style:', {
+        display: toggleAsxButtonsBtn.style.display,
+        visibility: toggleAsxButtonsBtn.style.visibility,
+        pointerEvents: toggleAsxButtonsBtn.style.pointerEvents,
+        position: toggleAsxButtonsBtn.style.position,
+        zIndex: toggleAsxButtonsBtn.style.zIndex,
+        opacity: toggleAsxButtonsBtn.style.opacity
+    });
+
+    const computedStyle = window.getComputedStyle(toggleAsxButtonsBtn);
+    console.log('[TOGGLE DEBUG] Toggle button computed style:', {
+        display: computedStyle.display,
+        visibility: computedStyle.visibility,
+        pointerEvents: computedStyle.pointerEvents,
+        position: computedStyle.position,
+        zIndex: computedStyle.zIndex,
+        opacity: computedStyle.opacity,
+        width: computedStyle.width,
+        height: computedStyle.height
+    });
+
+    // Update ASX button toggle visibility based on current state
     applyAsxButtonsState();
+
     // Helper: aggressively reset any inner scrollable containers inside main
     function resetInnerScrollPositions() {
         try {
@@ -1750,12 +1819,109 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
             try { const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0; } catch(_){}
         } catch(_){}
     }
+
+    console.log('[TOGGLE SETUP] About to bind click event listener');
+
+    // Add multiple event listeners to debug click issues
+    ['mousedown', 'mouseup', 'click'].forEach(eventType => {
+        toggleAsxButtonsBtn.addEventListener(eventType, (e) => {
+            console.log(`[EVENT DEBUG] ${eventType} event fired on toggle button`, {
+                target: e.target.id,
+                currentTarget: e.currentTarget.id,
+                type: e.type,
+                button: e.button,
+                clientX: e.clientX,
+                clientY: e.clientY
+            });
+        });
+    });
+
+    // Add global click listener to monitor clicks near toggle button
+    document.addEventListener('click', (e) => {
+        const toggleBtn = document.getElementById('toggleAsxButtonsBtn');
+        if (toggleBtn) {
+            const rect = toggleBtn.getBoundingClientRect();
+            const clickX = e.clientX;
+            const clickY = e.clientY;
+
+            // Check if click is within 50px of the toggle button
+            const isNearToggle = clickX >= rect.left - 50 && clickX <= rect.right + 50 &&
+                                clickY >= rect.top - 50 && clickY <= rect.bottom + 50;
+
+            if (isNearToggle) {
+                console.log('[GLOBAL CLICK] Click near toggle button area', {
+                    clickX, clickY,
+                    buttonRect: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom },
+                    targetElement: e.target.tagName + (e.target.id ? '#' + e.target.id : ''),
+                    targetClasses: e.target.className
+                });
+            }
+        }
+    });
+
     toggleAsxButtonsBtn.addEventListener('click', (e) => {
+        console.log('[CLICK DEBUG] ASX toggle button clicked!');
         // Prevent the click from falling through to the sort select and other handlers
         try { e.stopPropagation(); e.preventDefault(); } catch(_) {}
-        setAsxButtonsExpanded(!getAsxButtonsExpanded());
+
+        const currentExpanded = getAsxButtonsExpanded();
+        console.log('[CLICK DEBUG] Current expanded state:', currentExpanded);
+        const newExpanded = !currentExpanded;
+        console.log('[CLICK DEBUG] New expanded state:', newExpanded);
+
+        setAsxButtonsExpanded(newExpanded);
         applyAsxButtonsState();
-        console.log('[ASX Toggle] Toggled. Expanded=', getAsxButtonsExpanded());
+
+        const actualExpanded = getAsxButtonsExpanded();
+        console.log('[CLICK DEBUG] Actual expanded state after toggle:', actualExpanded);
+
+        // Set the scroll flag
+        console.log('[CLICK DEBUG] Setting __asxToggleWantsScroll = true');
+        window.__asxToggleWantsScroll = true;
+
+        // Also trigger scroll immediately with a short delay to ensure it happens
+        setTimeout(() => {
+            try {
+                const targetPosition = calculateWatchlistScrollPosition();
+                if (window.scrollMainToTop) {
+                    window.scrollMainToTop(false, targetPosition);
+                } else {
+                    scrollMainToTop(false, targetPosition);
+                }
+                adjustMainContentPadding();
+            } catch(error) {
+                console.error('Error in immediate scroll:', error);
+            }
+        }, 100);
+
+        // Fallback: If transitionend doesn't fire within 500ms, trigger scroll manually
+        setTimeout(() => {
+            if (window.__asxToggleWantsScroll) {
+                try {
+                    // Reset known inner scrollers first
+                    const tc = document.querySelector('.table-container'); if (tc && tc.scrollTop) tc.scrollTop = 0;
+                    const mc = document.getElementById('mobileShareCards'); if (mc && mc.scrollTop) mc.scrollTop = 0;
+                    const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0;
+
+                    // Calculate target position and perform scroll
+                    const targetPosition = calculateWatchlistScrollPosition();
+                    if (window.scrollMainToTop) {
+                        window.scrollMainToTop(false, targetPosition);
+                    } else {
+                        scrollMainToTop(false, targetPosition);
+                    }
+
+                    // Adjust padding
+                    adjustMainContentPadding();
+
+                    // Clear flag
+                    delete window.__asxToggleWantsScroll;
+                } catch(error) {
+                    console.error('Fallback scroll error:', error);
+                }
+            }
+        }, 500);
+
         // Close native select popup if it is open
         try { if (typeof sortSelect !== 'undefined' && sortSelect && document.activeElement === sortSelect) sortSelect.blur(); } catch(_) {}
         // Schedule padding adjustment after the CSS transition window
@@ -1767,32 +1933,16 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
             toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!getAsxButtonsExpanded()));
             const tri = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle'); if (tri) tri.classList.toggle('expanded', !!getAsxButtonsExpanded());
         } catch(_) {}
-        // Defer scroll until ASX buttons finish their transition to compute correct header height
+        // Set flag for transitionend handler to perform proper scrolling after transition completes
         try { window.__asxToggleWantsScroll = true; } catch(_) {}
-        // Also schedule a couple of fallback scroll attempts in case transitionend doesn't fire or timing varies
-        try {
-            setTimeout(function(){ try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){} }, 220);
-            setTimeout(function(){ try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){} }, 480);
-        } catch(_) {}
-        // Additional forced attempt after layout settles
-        try { setTimeout(function(){ try { if (typeof resetInnerScrollPositions === 'function') resetInnerScrollPositions(); if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){} }, 320); } catch(_) {}
-        try { setTimeout(function(){ try { if (typeof resetInnerScrollPositions === 'function') resetInnerScrollPositions(); if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){} }, 760); } catch(_) {}
-        // Aggressive: repeat-reset common scrollers for a short window to overcome timing/race issues
-        try {
-            let __asxResetAttempts = 0;
-            const __asxResetIv = setInterval(function(){
-                try {
-                    const selIds = ['main.container', '.table-container', '#mobileShareCards', '#portfolioListContainer', '.portfolio-scroll-wrapper'];
-                    selIds.forEach(s => {
-                        try { const el = document.querySelector(s); if (el && typeof el.scrollTop !== 'undefined' && el.scrollHeight > el.clientHeight) el.scrollTop = 0; } catch(_){}
-                    });
-                    try { const docEl = document.scrollingElement || document.documentElement || document.body; if (docEl) { docEl.scrollTop = 0; } } catch(_){}
-                    try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){}
-                } catch(_){}
-                __asxResetAttempts++;
-                if (__asxResetAttempts > 8) try{ clearInterval(__asxResetIv); } catch(_){};
-            }, 60);
-        } catch(_) {}
+        // Note: Primary scrolling is now handled by transitionend event for precise timing
+        // Simple fallback scroll after transition completes (kept as safety net)
+        setTimeout(() => {
+            try {
+                const targetPosition = calculateWatchlistScrollPosition();
+                if (window.scrollMainToTop) window.scrollMainToTop(false, targetPosition); else scrollMainToTop(false, targetPosition);
+            } catch(_){}
+        }, 600);
     });
 
     // Allow clicking the surrounding sort-select-wrapper to toggle ASX Codes as well
@@ -1826,22 +1976,68 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     } catch(_) {}
 
     // Also adjust precisely on transition end of the container and perform deferred scroll if needed
-    asxCodeButtonsContainer.addEventListener('transitionend', (ev) => {
-        if (ev.propertyName === 'max-height' || ev.propertyName === 'padding' || ev.propertyName === 'opacity') {
-            adjustMainContentPadding();
-            // If a scroll was requested while toggling ASX buttons, perform it now
+    // Listen for transitionend on the container and its children
+    const handleTransitionEnd = (ev) => {
+
+        // Check if this is the container itself transitioning with relevant properties
+        const isContainerTransition = ev.target === asxCodeButtonsContainer &&
+            (ev.propertyName === 'max-height' || ev.propertyName === 'padding' || ev.propertyName === 'opacity' || ev.propertyName === 'border-width');
+
+        // Also check if this is a child element with relevant transitions
+        const isChildRelevantTransition = asxCodeButtonsContainer.contains(ev.target) &&
+            (ev.propertyName === 'max-height' || ev.propertyName === 'padding' || ev.propertyName === 'opacity' || ev.propertyName === 'border-width');
+
+        // Also listen for any transition on the container itself, even if it's not the properties we expect
+        const isAnyContainerTransition = ev.target === asxCodeButtonsContainer;
+
+        if (isContainerTransition || isChildRelevantTransition || isAnyContainerTransition) {
+            console.log('[TRANSITION DEBUG] Transition end fired, property:', ev.propertyName, 'target:', ev.target.id || ev.target.className);
+            console.log('[TRANSITION DEBUG] __asxToggleWantsScroll:', window.__asxToggleWantsScroll);
+
+            // If a scroll was requested while toggling ASX buttons, perform it BEFORE adjusting padding
             try {
                 if (window.__asxToggleWantsScroll) {
+                    console.log('[TRANSITION DEBUG] Performing scroll before padding adjustment');
                     // Reset known inner scrollers first to ensure top-of-list is reachable
                     try { const tc = document.querySelector('.table-container'); if (tc && tc.scrollTop) tc.scrollTop = 0; } catch(_){}
                     try { const mc = document.getElementById('mobileShareCards'); if (mc && mc.scrollTop) mc.scrollTop = 0; } catch(_){}
                     try { const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0; } catch(_){}
-                    try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_){}
-                    try { delete window.__asxToggleWantsScroll; } catch(_){}
+
+                    // Calculate target position and perform scroll
+                    const targetPosition = calculateWatchlistScrollPosition();
+                    try { if (window.scrollMainToTop) window.scrollMainToTop(false, targetPosition); else scrollMainToTop(false, targetPosition); } catch(error) { console.error('Error calling scrollMainToTop:', error); }
+                } else {
+                    console.log('[TRANSITION DEBUG] No scroll requested, skipping');
+                }
+            } catch(_){}
+
+            // Now adjust the padding to account for the new header height
+            adjustMainContentPadding();
+
+            // Perform a final scroll adjustment in case the padding change affected positioning
+            console.log('[TRANSITION DEBUG] Checking for final scroll adjustment, __asxToggleWantsScroll:', window.__asxToggleWantsScroll);
+            try {
+                if (window.__asxToggleWantsScroll) {
+                    console.log('[TRANSITION DEBUG] Scheduling final scroll adjustment');
+                    setTimeout(() => {
+                        console.log('[TRANSITION DEBUG] Performing final scroll adjustment');
+                        const targetPosition = calculateWatchlistScrollPosition();
+                        try { if (window.scrollMainToTop) window.scrollMainToTop(false, targetPosition); else scrollMainToTop(false, targetPosition); } catch(_){}
+                        try { delete window.__asxToggleWantsScroll; } catch(_){}
+                        console.log('[TRANSITION DEBUG] Final scroll completed, clearing flag');
+                    }, 50);
+                } else {
+                    console.log('[TRANSITION DEBUG] No final scroll needed');
                 }
             } catch(_){}
         }
-    });
+    };
+
+    // Attach the transitionend handler to the container
+    asxCodeButtonsContainer.addEventListener('transitionend', handleTransitionEnd);
+
+    // Also listen for transitionend on child elements (use capture to catch events before they bubble)
+    asxCodeButtonsContainer.addEventListener('transitionend', handleTransitionEnd, true);
 }
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
 const shareTableBody = document.querySelector('#shareTable tbody');
@@ -2435,19 +2631,42 @@ async function fetchLivePricesAndUpdateUI() {
  * Uses scrollHeight to get the full rendered height, including wrapped content.
  */
 function adjustMainContentPadding() {
+    console.log('[PADDING DEBUG] adjustMainContentPadding called');
     // Ensure both the header and main content container elements exist.
     if (appHeader && mainContainer) {
         // Get the current rendered height of the fixed header, including any wrapped content.
         // offsetHeight is usually sufficient, but scrollHeight can be more robust if content overflows.
         // For a fixed header, offsetHeight should reflect its full rendered height.
-        const headerHeight = appHeader.offsetHeight; 
-        
+        const headerHeight = appHeader.offsetHeight;
+        const oldPadding = mainContainer.style.paddingTop;
+
+        console.log('[PADDING DEBUG] Header height:', headerHeight, 'Old padding:', oldPadding);
+
         // Apply this height as padding to the top of the main content container.
         mainContainer.style.paddingTop = `${headerHeight}px`;
         logDebug('Layout: Adjusted main content padding-top to: ' + headerHeight + 'px (Full Header Height).');
+
+        console.log('[PADDING DEBUG] New padding set to:', headerHeight + 'px');
     } else {
-        console.warn('Layout: Could not adjust main content padding-top: appHeader or mainContainer not found.');
+        console.warn('[PADDING DEBUG] Could not adjust main content padding-top: appHeader or mainContainer not found.');
+        console.log('[PADDING DEBUG] appHeader found:', !!appHeader, 'mainContainer found:', !!mainContainer);
     }
+}
+
+/**
+ * Calculates the target scroll position to place watchlist directly underneath the header
+ * @returns {number} The scroll position where watchlist should start
+ */
+function calculateWatchlistScrollPosition() {
+    console.log('[SCROLL CALC] calculateWatchlistScrollPosition called');
+    if (!appHeader) {
+        console.warn('[SCROLL CALC] appHeader not found, returning 0');
+        return 0;
+    }
+
+    const headerHeight = appHeader.offsetHeight;
+    console.log('[SCROLL CALC] Header height:', headerHeight, 'Target scroll position:', headerHeight);
+    return headerHeight;
 }
 
 /**
@@ -5765,6 +5984,12 @@ function renderWatchlist() {
     // Re-render ASX Code Buttons separately
     renderAsxCodeButtons();
 
+    // Update ASX button toggle visibility based on whether buttons are available
+    // Delay slightly to ensure buttons are actually rendered to DOM before checking
+    setTimeout(() => {
+        try { applyAsxButtonsState(); } catch(e) { console.warn('ASX Button State: applyAsxButtonsState failed', e); }
+    }, 10);
+
     // UX: Ensure main content is scrolled to top after rendering to keep focus on the updated content
     try { scrollMainToTop(); } catch(_) {}
 
@@ -5839,21 +6064,31 @@ function renderAsxCodeButtons() {
     if (!asxCodeButtonsContainer) { console.error('renderAsxCodeButtons: asxCodeButtonsContainer element not found.'); return; }
     asxCodeButtonsContainer.innerHTML = '';
     const uniqueAsxCodes = new Set();
-    
+
     let sharesForButtons = [];
     const __selIds_asx = getCurrentSelectedWatchlistIds();
     const __shares_asx = getAllSharesData();
-    if (__selIds_asx.includes(ALL_SHARES_ID)) { 
+    console.log('[ASX Debug] renderAsxCodeButtons - selected IDs:', __selIds_asx);
+    console.log('[ASX Debug] renderAsxCodeButtons - ALL_SHARES_ID:', ALL_SHARES_ID);
+    console.log('[ASX Debug] renderAsxCodeButtons - includes ALL_SHARES_ID:', __selIds_asx.includes(ALL_SHARES_ID));
+    console.log('[ASX Debug] renderAsxCodeButtons - all shares count:', __shares_asx.length);
+
+    if (__selIds_asx.includes(ALL_SHARES_ID)) {
         sharesForButtons = dedupeSharesById(__shares_asx);
+        console.log('[ASX Debug] renderAsxCodeButtons - using ALL_SHARES_ID path, shares count:', sharesForButtons.length);
     } else {
         sharesForButtons = dedupeSharesById(__shares_asx).filter(share => __selIds_asx.some(id => shareBelongsTo(share, id)));
+        console.log('[ASX Debug] renderAsxCodeButtons - using filtered path, shares count:', sharesForButtons.length);
     }
 
     sharesForButtons.forEach(share => {
+        console.log('[ASX Debug] renderAsxCodeButtons - checking share:', share.id, 'shareName:', share.shareName, 'has shareName:', !!share.shareName, 'shareName type:', typeof share.shareName, 'trimmed:', share.shareName ? share.shareName.trim() : 'N/A');
         if (share.shareName && typeof share.shareName === 'string' && share.shareName.trim() !== '') {
                 uniqueAsxCodes.add(share.shareName.trim().toUpperCase());
         }
     });
+
+    console.log('[ASX Debug] renderAsxCodeButtons - unique ASX codes found:', uniqueAsxCodes.size, Array.from(uniqueAsxCodes));
 
     if (uniqueAsxCodes.size === 0) {
         // Let centralized state handler control visibility; just clear contents
@@ -9671,11 +9906,60 @@ if (sortSelect) {
         // If the ASX toggle pseudo-option was chosen, toggle ASX buttons and restore the current sort selection.
         if (event.target.value === '__asx_toggle') {
             try {
-                setAsxButtonsExpanded(!getAsxButtonsExpanded());
+                console.log('[SORT SELECT DEBUG] ASX toggle option selected');
+                const currentExpanded = getAsxButtonsExpanded();
+                console.log('[SORT SELECT DEBUG] Current expanded state:', currentExpanded);
+
+                setAsxButtonsExpanded(!currentExpanded);
                 applyAsxButtonsState();
+
                 // Update the ASX option label to reflect new state
                 const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
                 if (asxOpt) asxOpt.textContent = (getAsxButtonsExpanded() ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+
+                // Trigger scroll logic for ASX toggle
+                console.log('[SORT SELECT DEBUG] Setting __asxToggleWantsScroll = true');
+                window.__asxToggleWantsScroll = true;
+
+                // Trigger scroll with delay to allow DOM to update
+                setTimeout(() => {
+                    try {
+                        const targetPosition = calculateWatchlistScrollPosition();
+                        console.log('[SORT SELECT DEBUG] Scrolling to position:', targetPosition);
+                        if (window.scrollMainToTop) {
+                            window.scrollMainToTop(false, targetPosition);
+                        } else {
+                            scrollMainToTop(false, targetPosition);
+                        }
+                        adjustMainContentPadding();
+                    } catch(error) {
+                        console.error('Error in sort select scroll:', error);
+                    }
+                }, 100);
+
+                // Fallback scroll
+                setTimeout(() => {
+                    if (window.__asxToggleWantsScroll) {
+                        try {
+                            // Reset known inner scrollers first
+                            const tc = document.querySelector('.table-container'); if (tc && tc.scrollTop) tc.scrollTop = 0;
+                            const mc = document.getElementById('mobileShareCards'); if (mc && mc.scrollTop) mc.scrollTop = 0;
+                            const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0;
+
+                            const targetPosition = calculateWatchlistScrollPosition();
+                            if (window.scrollMainToTop) {
+                                window.scrollMainToTop(false, targetPosition);
+                            } else {
+                                scrollMainToTop(false, targetPosition);
+                            }
+                            adjustMainContentPadding();
+                            delete window.__asxToggleWantsScroll;
+                        } catch(error) {
+                            console.error('Fallback scroll error:', error);
+                        }
+                    }
+                }, 500);
+
             } catch (e) { console.warn('ASX toggle option handler failed', e); }
             // Restore the visible selection back to the active sort (do not trigger a sort)
             try { sortSelect.value = currentSortOrder || (currentSelectedWatchlistIds.includes('portfolio') ? 'totalDollar-desc' : 'entryDate-desc'); } catch(_) {}
