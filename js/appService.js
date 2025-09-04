@@ -44,7 +44,7 @@ export async function saveShareData(isSilent = false) {
         }
     }
 
-    // Prepare watchlist IDs - merge with existing ones if updating
+    // Prepare watchlist IDs - use new selection for updates
     let finalWatchlistIds = null;
     if (Array.isArray(selectedWatchlistIdsForSave) && selectedWatchlistIdsForSave.length > 0) {
         finalWatchlistIds = selectedWatchlistIdsForSave;
@@ -52,11 +52,18 @@ export async function saveShareData(isSilent = false) {
         finalWatchlistIds = [selectedWatchlistIdForSave];
     }
 
-    // If we have existing watchlistIds and new ones, merge them
+    // For updates, use the new selection directly (don't merge with existing)
     if (existingWatchlistIds && Array.isArray(existingWatchlistIds) && finalWatchlistIds && Array.isArray(finalWatchlistIds)) {
-        // Merge and deduplicate
-        finalWatchlistIds = [...new Set([...existingWatchlistIds, ...finalWatchlistIds])];
-        console.log('[DEBUG] Merged watchlistIds:', { existing: existingWatchlistIds, selected: selectedWatchlistIdsForSave || [selectedWatchlistIdForSave], final: finalWatchlistIds });
+        // Remove duplicates from the new selection
+        finalWatchlistIds = [...new Set(finalWatchlistIds)];
+        console.log('[DEBUG] Updated watchlistIds:', { existing: existingWatchlistIds, selected: selectedWatchlistIdsForSave || [selectedWatchlistIdForSave], final: finalWatchlistIds });
+
+        // Debug: Track the share data being saved
+        console.log('AppService Share Update Debug:', {
+            shareId: window.selectedShareDocId,
+            shareName: shareName,
+            finalWatchlistIds: finalWatchlistIds
+        });
     }
 
     const shareData = {
@@ -87,8 +94,143 @@ export async function saveShareData(isSilent = false) {
         lastPriceUpdateTime: new Date().toISOString(),
         starRating: form ? form.starRating : (window.shareRatingSelect ? parseInt(window.shareRatingSelect.value) : 0)
     };
-    if (!window.selectedShareDocId) { try { const sharesColUnique = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares'); const dupQuery = firestore.query(sharesColUnique, firestore.where('shareName', '==', shareName)); const dupSnap = await firestore.getDocs(dupQuery); if (!dupSnap.empty) { const existing = dupSnap.docs[0]; window.selectedShareDocId = existing.id; try { window.logDebug && window.logDebug('Uniqueness: Existing share found for code '+shareName+' (ID='+window.selectedShareDocId+'). Converting add into update.'); } catch(_) {} } } catch(e) { console.warn('Uniqueness: lookup failed', e); } }
-    if (window.selectedShareDocId) { const existingShare = (window.allSharesData||[]).find(s => s.id === window.selectedShareDocId); if (shareData.currentPrice !== null && existingShare && existingShare.currentPrice !== shareData.currentPrice) { shareData.previousFetchedPrice = existingShare.lastFetchedPrice; shareData.lastFetchedPrice = shareData.currentPrice; } else if (!existingShare || existingShare.lastFetchedPrice === undefined) { shareData.previousFetchedPrice = shareData.currentPrice; shareData.lastFetchedPrice = shareData.currentPrice; } else { shareData.previousFetchedPrice = existingShare.previousFetchedPrice; shareData.lastFetchedPrice = existingShare.lastFetchedPrice; } try { const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', window.selectedShareDocId); await firestore.updateDoc(shareDocRef, { ...shareData, userId: currentUserId }); try { await window.upsertAlertForShare && window.upsertAlertForShare(window.selectedShareDocId, shareName, shareData, false); } catch(_) {} try { const idx = (window.allSharesData||[]).findIndex(s => s.id === window.selectedShareDocId); if (idx !== -1) window.allSharesData[idx] = { ...window.allSharesData[idx], ...shareData, userId: currentUserId }; } catch(_) {} try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Update successful', 1500); } catch(_) {} window.originalShareData = getCurrentFormData ? getCurrentFormData() : null; window.setIconDisabled && window.setIconDisabled(window.saveShareBtn, true); if (!isSilent && window.shareFormSection) { window.shareFormSection.style.setProperty('display', 'none', 'important'); window.shareFormSection.classList.add('app-hidden'); } if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000); } try { window.deselectCurrentShare && window.deselectCurrentShare(); } catch(_) {} try { await window.fetchLivePrices && window.fetchLivePrices(); } catch(_) {} } catch (error) { console.error('Firestore: Error updating share:', error); try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Error updating share: ' + error.message); } catch(_) {} } } else { shareData.entryDate = new Date().toISOString(); if (shareData.currentPrice === null) { try { const lpLate = (window.livePrices||{})[shareName.toUpperCase()]; if (lpLate && typeof lpLate.live === 'number' && !isNaN(lpLate.live)) shareData.currentPrice = lpLate.live; else if (lpLate && typeof lpLate.lastLivePrice === 'number' && !isNaN(lpLate.lastLivePrice)) shareData.currentPrice = lpLate.lastLivePrice; } catch(_) {} } shareData.lastFetchedPrice = shareData.currentPrice; shareData.previousFetchedPrice = shareData.currentPrice; try { const sharesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares'); const newDocRef = await firestore.addDoc(sharesColRef, { ...shareData, userId: currentUserId }); window.selectedShareDocId = newDocRef.id; try { await window.upsertAlertForShare && window.upsertAlertForShare(window.selectedShareDocId, shareName, shareData, true); } catch(_) {} try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Added successfully', 1500); } catch(_) {} try { window.logDebug && window.logDebug("Firestore: Share '" + shareName + "' added with ID: " + newDocRef.id); } catch(_) {} window.originalShareData = getCurrentFormData ? getCurrentFormData() : null; window.setIconDisabled && window.setIconDisabled(window.saveShareBtn, true); if (!isSilent && window.shareFormSection) { window.shareFormSection.style.setProperty('display', 'none', 'important'); window.shareFormSection.classList.add('app-hidden'); } if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000); } try { window.deselectCurrentShare && window.deselectCurrentShare(); } catch(_) {} try { if (window.fetchLivePrices) await window.fetchLivePrices(); } catch(_) {} } catch (error) { console.error('Firestore: Error adding share:', error); try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Error adding share: ' + error.message); } catch(_) {} } }
+
+
+    if (window.selectedShareDocId) {
+        // Update existing share
+        const existingShare = (window.allSharesData||[]).find(s => s.id === window.selectedShareDocId);
+
+        // Update existing share in Firestore
+        try {
+            const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', window.selectedShareDocId);
+            await firestore.updateDoc(shareDocRef, { ...shareData, userId: currentUserId });
+
+            try {
+                await window.upsertAlertForShare && window.upsertAlertForShare(window.selectedShareDocId, shareName, shareData, false);
+            } catch(_) {}
+
+            try {
+                const idx = (window.allSharesData||[]).findIndex(s => s.id === window.selectedShareDocId);
+                if (idx !== -1) window.allSharesData[idx] = { ...window.allSharesData[idx], ...shareData, userId: currentUserId };
+            } catch(_) {}
+
+            try {
+                if (!isSilent) window.showCustomAlert && window.showCustomAlert('Update successful', 1500);
+            } catch(_) {}
+
+            window.originalShareData = getCurrentFormData ? getCurrentFormData() : null;
+            window.setIconDisabled && window.setIconDisabled(window.saveShareBtn, true);
+
+            if (!isSilent && window.shareFormSection) {
+                window.shareFormSection.style.setProperty('display', 'none', 'important');
+                window.shareFormSection.classList.add('app-hidden');
+            }
+
+            if (!isSilent) {
+                window.suppressShareFormReopen = true;
+                setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000);
+            }
+
+            try {
+                window.deselectCurrentShare && window.deselectCurrentShare();
+            } catch(_) {}
+
+            try {
+                await window.fetchLivePrices && window.fetchLivePrices();
+            } catch(_) {}
+
+            return;
+        } catch (error) {
+            console.error('Error updating share:', error);
+            if (!isSilent) {
+                try {
+                    window.showCustomAlert && window.showCustomAlert('Error updating share: ' + error.message);
+                } catch(_) {}
+            }
+            return;
+        }
+    }
+
+    // Check for duplicate shares when creating a new share (not updating)
+    if (!window.selectedShareDocId) {
+        console.log('[DUPLICATE CHECK] Creating new share, checking for duplicates...');
+
+        try {
+            // Query Firestore for existing shares with the same name
+            const sharesQuery = firestore.query(
+                firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares'),
+                firestore.where('shareName', '==', shareName)
+            );
+            const querySnapshot = await firestore.getDocs(sharesQuery);
+
+            if (!querySnapshot.empty) {
+                console.log('[DUPLICATE CHECK] Found duplicate share:', shareName);
+                if (!isSilent) {
+                    try {
+                        window.showCustomAlert && window.showCustomAlert(`Share "${shareName}" already exists. You cannot create duplicate shares.`);
+                    } catch(_) {}
+                }
+                return;
+            }
+            console.log('[DUPLICATE CHECK] No duplicate found, proceeding with creation...');
+        } catch (error) {
+            console.error('[DUPLICATE CHECK] Error checking for duplicates:', error);
+            // Continue with creation if duplicate check fails
+        }
+
+        // Create new share
+        try {
+            const sharesCollection = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
+            const docRef = await firestore.addDoc(sharesCollection, { ...shareData, userId: currentUserId });
+            const newShareId = docRef.id;
+
+            try {
+                await window.upsertAlertForShare && window.upsertAlertForShare(newShareId, shareName, shareData, true);
+            } catch(_) {}
+
+            // Add to local data
+            try {
+                if (!window.allSharesData) window.allSharesData = [];
+                window.allSharesData.push({ ...shareData, id: newShareId, userId: currentUserId });
+            } catch(_) {}
+
+            try {
+                if (!isSilent) window.showCustomAlert && window.showCustomAlert('Added successfully', 1500);
+            } catch(_) {}
+
+            window.originalShareData = getCurrentFormData ? getCurrentFormData() : null;
+            window.setIconDisabled && window.setIconDisabled(window.saveShareBtn, true);
+
+            if (!isSilent && window.shareFormSection) {
+                window.shareFormSection.style.setProperty('display', 'none', 'important');
+                window.shareFormSection.classList.add('app-hidden');
+            }
+
+            if (!isSilent) {
+                window.suppressShareFormReopen = true;
+                setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000);
+            }
+
+            try {
+                window.deselectCurrentShare && window.deselectCurrentShare();
+            } catch(_) {}
+
+            try {
+                await window.fetchLivePrices && window.fetchLivePrices();
+            } catch(_) {}
+
+            return;
+        } catch (error) {
+            console.error('Error creating share:', error);
+            if (!isSilent) {
+                try {
+                    window.showCustomAlert && window.showCustomAlert('Error creating share: ' + error.message);
+                } catch(_) {}
+            }
+            return;
+        }
+    }
+
     try { if (window.shareDetailModal && window.shareDetailModal.dataset) delete window.shareDetailModal.dataset.shareId; } catch(_) {}
     try { if (!isSilent && window.closeModals) window.closeModals(); } catch(_) {}
 
@@ -167,8 +309,58 @@ export async function saveWatchlistChanges(isSilent = false, newName, watchlistI
                 }
             } catch(_) {}
             try { await window.loadUserWatchlistsAndSettings(); } catch(_) {}
+            
+            // After loadUserWatchlistsAndSettings completes, ensure the newly created watchlist is selected
+            // and navigate to it immediately
+            try {
+                console.log('[WATCHLIST NAV] Setting currentSelectedWatchlistIds to new watchlist:', newDocRef.id);
+                setCurrentSelectedWatchlistIds([newDocRef.id]);
+                
+                // Update the dropdown selection
+                const watchlistSelect = document.getElementById('watchlistSelect');
+                if (watchlistSelect) {
+                    watchlistSelect.value = newDocRef.id;
+                    console.log('[WATCHLIST NAV] Set dropdown value to:', newDocRef.id);
+                }
+                
+                // Save the selection to localStorage
+                try {
+                    localStorage.setItem('lastWatchlistSelection', JSON.stringify([newDocRef.id]));
+                    localStorage.setItem('lastSelectedView', newDocRef.id);
+                } catch (e) {
+                    console.warn('[WATCHLIST NAV] Error saving to localStorage:', e);
+                }
+                
+                // Render the watchlist immediately
+                console.log('[WATCHLIST NAV] Rendering watchlist for new watchlist');
+                if (window.renderWatchlist) {
+                    window.renderWatchlist();
+                }
+                
+                // Update UI elements
+                if (window.updateMainTitle) {
+                    window.updateMainTitle();
+                }
+                if (window.updateAddHeaderButton) {
+                    window.updateAddHeaderButton();
+                }
+                
+            } catch (error) {
+                console.error('[WATCHLIST NAV] Error navigating to new watchlist:', error);
+            }
         }
         try { if (!isSilent) window.closeModals && window.closeModals(); } catch(_) {}
+
+                // If watchlist picker is currently open, refresh it
+                const pickerModal = document.getElementById('watchlistPickerModal');
+                if (pickerModal && !pickerModal.classList.contains('app-hidden')) {
+                    console.log('[WATCHLIST NAV] Refreshing watchlist picker');
+                    // Close and reopen to refresh the list
+                    setTimeout(() => {
+                        if (window.openWatchlistPicker) window.openWatchlistPicker();
+                    }, 100);
+                }
+
         try { window.originalWatchlistData = window.getCurrentWatchlistFormData ? window.getCurrentWatchlistFormData(watchlistId === null) : null; window.checkWatchlistFormDirtyState && window.checkWatchlistFormDirtyState(watchlistId === null); } catch(_) {}
     } catch (error) {
         console.error('Firestore: Error saving watchlist:', error);

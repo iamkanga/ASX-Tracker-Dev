@@ -167,63 +167,64 @@
     letter-spacing: 0.02em;
 }
 
-/* When the timestamp is placed inside the header-top-row, position it bottom-right of the title bar */
-.live-price-inside-header {
-    position: absolute;
-    right: 12px;
-    bottom: 8px; /* sit at the bottom-right corner of the header */
-    width: auto;
-    text-align: right;
-    pointer-events: none;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    align-items: flex-end;
+#livePriceTimestampContainer.live-price-inside-header .live-price-label {
+    font-size: 0.7rem !important;
+    font-weight: 500 !important;
+    color: var(--text-muted, #666) !important;
+    opacity: 1 !important;
+    pointer-events: none !important;
+    margin-bottom: 2px !important;
+    display: block !important; /* Ensure it's displayed */
+    visibility: visible !important; /* Ensure it's visible */
 }
-.live-price-inside-header .live-price-label {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--ghosted-text, rgba(255,255,255,0.75));
-    opacity: 0.95;
-    pointer-events: none;
-}
-.live-price-inside-header #livePriceTimestamp {
-    font-size: 0.92rem;
-    font-weight: 700;
-    color: var(--text-color, #fff);
-    opacity: 0.95;
+#livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp {
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    color: var(--accent-color, #007bff) !important;
+    opacity: 1 !important;
+    white-space: nowrap !important;
+    display: block !important; /* Ensure it's displayed */
+    visibility: visible !important; /* Ensure it's visible */
 }
 
 /* Prevent timestamp from overflowing left side: constrain width relative to header */
-.live-price-inside-header {
-    box-sizing: border-box;
-    padding-left: 8px; /* ensure some breathing room when truncated */
+#livePriceTimestampContainer.live-price-inside-header {
+    box-sizing: border-box !important;
+    padding-left: 8px !important; /* ensure some breathing room when truncated */
     max-width: calc(100% - 120px); /* leave space for left-side controls */
     overflow: visible; /* container can be visible but inner text will ellipsize */
 }
-.live-price-inside-header .live-price-label,
-.live-price-inside-header #livePriceTimestamp {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+#livePriceTimestampContainer.live-price-inside-header .live-price-label,
+#livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
 }
 
 @media (max-width: 640px) {
-    .live-price-inside-header {
-        right: 8px;
-        bottom: 6px;
-        max-width: calc(100% - 90px);
+    #livePriceTimestampContainer.live-price-inside-header {
+        right: 8px !important;
+        top: calc(100% - 32px) !important; /* Use same positioning method */
+        bottom: auto !important;
+        max-width: calc(100% - 90px) !important;
     }
-    .live-price-inside-header .live-price-label { font-size: 0.72rem; }
-    .live-price-inside-header #livePriceTimestamp { font-size: 0.86rem; }
+    #livePriceTimestampContainer.live-price-inside-header .live-price-label { font-size: 0.72rem !important; }
+    #livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp { font-size: 0.86rem !important; }
 }
 
 @media (max-width: 420px) {
     /* On very narrow screens, reduce footprint more aggressively */
-    .live-price-inside-header { max-width: calc(100% - 70px); right: 6px; }
-    .live-price-inside-header .live-price-label { display: none; } /* hide label to save space */
-    .live-price-inside-header #livePriceTimestamp { font-size: 0.82rem; }
+    #livePriceTimestampContainer.live-price-inside-header {
+        max-width: calc(100% - 70px) !important;
+        right: 6px !important;
+    }
+    #livePriceTimestampContainer.live-price-inside-header .live-price-label {
+        display: none !important;
+    } /* hide label to save space */
+    #livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp {
+        font-size: 0.82rem !important;
+    }
 }
 
 /* New: left-aligned inside-header timestamp (under hamburger, centered in left column) */
@@ -256,7 +257,7 @@
 #hamburgerBtn { position: relative; z-index: 80; }
 
 /* Timestamp should be positioned at bottom-right but not overlay interactive controls */
-.live-price-inside-header { z-index: 10; }
+/* Removed conflicting z-index rule that might interfere with positioning */
 
 /* Ensure sort controls area can wrap so the timestamp can occupy its own line
    and appear between the header and the main content. */
@@ -775,6 +776,15 @@
     margin-right: -18px;
     padding: 12px 18px;
     box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+}
+
+/* Override sticky header for Discover Moving Shares modal to allow header to scroll */
+#discoverGlobalModal .modal-header-with-icon {
+    position: static;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
+    box-shadow: none;
 }
 
 /* Ensure the header's bottom gap doesn't overlap the content when sticky */
@@ -3244,6 +3254,10 @@ body.theme-muted-grey {
     justify-content: center;
     text-align: left;
     font-variant-numeric: tabular-nums;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 /* === Mobile Modal Safe Area & Keyboard Handling Enhancements (Appended) === */
@@ -4367,6 +4381,7 @@ h1#dynamicWatchlistTitle {
 .toast.success .icon { background: var(--accent-color); }
 .toast.error .icon { background: var(--brand-red); }
 .toast.info .icon { background: var(--accent-color); }
+.toast.warning .icon { background: var(--accent-color); }
 .toast .message { flex: 1 1 auto; font-size: 0.95rem; line-height: 1.3; }
 .toast .close { background: transparent; border: none; color: inherit; cursor: pointer; font-size: 1rem; padding: 4px; }
 .toast .actions { display:flex; gap:8px; }
@@ -4487,17 +4502,7 @@ header .header-action-btn-right { margin-right:2px !important; }
     cursor: pointer; /* Indicate clickable backdrop */
 }
 
-/* Ensure live price timestamp moved into header-left is visible and centered.
-   High specificity rule to avoid accidental overrides from other header rules. */
-#appHeader .header-top-row .header-left-container #livePriceTimestampContainer.live-price-inside-header-left {
-    display: block !important;
-    position: static !important;
-    width: 100% !important;
-    text-align: center !important;
-    padding-top: 4px !important;
-    box-sizing: border-box !important;
-    z-index: 50 !important;
-}
+
 
 
 /* Close Menu Button for smaller size and consistency */
@@ -8395,8 +8400,10 @@ body.dark-theme .alert-item {
 .sort-line-row {
     display: flex;
     justify-content: center;
+    align-items: center;
     width: 100%;
     margin: 8px 0 4px 0; /* Space below the title */
+    position: relative; /* For absolute positioning of timestamp */
 }
 
 .sort-controls-container {

@@ -365,11 +365,11 @@ document.addEventListener('DOMContentLoaded', function () {
         // Hide portfolio section if present, show normal stock watchlist section
         let portfolioSection = document.getElementById('portfolioSection');
         if (portfolioSection) portfolioSection.style.display = 'none';
-    stockWatchlistSection.style.display = '';
-    stockWatchlistSection.classList.remove('app-hidden');
-    // Also ensure the table and mobile containers are restored from any previous hide
-    if (tableContainer) tableContainer.style.display = '';
-    if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = '';
+        stockWatchlistSection.style.display = '';
+        stockWatchlistSection.classList.remove('app-hidden');
+        // Also ensure the table and mobile containers are restored from any previous hide
+        if (tableContainer) tableContainer.style.display = '';
+        if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = '';
     };
     // Render portfolio list (uses live prices when available)
     window.renderPortfolioList = function() {
@@ -733,6 +733,12 @@ let currentAppId;
 let firestore;
 let authFunctions;
 let selectedShareDocId = null;
+
+// Keep window.selectedShareDocId in sync for compatibility with other modules
+Object.defineProperty(window, 'selectedShareDocId', {
+    get: () => selectedShareDocId,
+    set: (value) => { selectedShareDocId = value; }
+});
 // moved to state.js: allSharesData
 // Prevent duplicate sign-in attempts
 let authInProgress = false;
@@ -1380,7 +1386,11 @@ let globalExternalPriceRows = []; // [{ code, live, prevClose }]
 // --- Live Price Timestamp Update ---
 function updateLivePriceTimestamp(ts) {
     const el = document.getElementById('livePriceTimestamp');
-    if (!el) return;
+    if (!el) {
+        console.error('ERROR: livePriceTimestamp element not found!');
+        return;
+    }
+
     let dateObj;
     if (ts instanceof Date) {
         dateObj = ts;
@@ -1389,17 +1399,33 @@ function updateLivePriceTimestamp(ts) {
     } else {
         dateObj = new Date();
     }
+
     // Format: e.g. '12:34:56 pm' or '12:34 pm' (24h/12h based on locale)
     const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    // Only set the time here; the label 'Updated' is rendered as a separate element in the container
+
+    // Set the content and ensure it's visible
     el.textContent = timeStr;
+    el.style.display = 'block';
+    el.style.visibility = 'visible';
+    el.style.opacity = '1';
+
+
+    // Also ensure the label is visible
+    const labelEl = el.parentElement?.querySelector('.live-price-label');
+    if (labelEl) {
+        labelEl.style.display = 'block';
+        labelEl.style.visibility = 'visible';
+        labelEl.style.opacity = '1';
+        console.log('Label element found and made visible');
+    } else {
+        console.error('Label element not found!');
+    }
 }
 
-// Patch live price fetch logic to update timestamp after fetch
-if (typeof fetchLivePrices === 'function') {
-    const origFetchLivePrices = fetchLivePrices;
+// Ensure fetchLivePrices is available on window
+if (typeof fetchLivePrices === 'function' && !window.fetchLivePrices) {
     window.fetchLivePrices = async function(...args) {
-        const result = await origFetchLivePrices.apply(this, args);
+        const result = await fetchLivePrices.apply(this, args);
         updateLivePriceTimestamp(Date.now());
         return result;
     };
@@ -1408,28 +1434,16 @@ if (typeof fetchLivePrices === 'function') {
 // Also update timestamp on DOMContentLoaded (in case prices are preloaded)
 document.addEventListener('DOMContentLoaded', function() {
     updateLivePriceTimestamp(Date.now());
-    // If the live timestamp container exists inside the header, apply right-bottom positioning helper
-    try {
-        const lpCont = document.getElementById('livePriceTimestampContainer');
-        const header = document.getElementById('appHeader');
-        if (lpCont && header) {
-                // Move the timestamp into the header element so we can absolutely position it bottom-right
-                const headerTop = header.querySelector('.header-top-row') || header;
-                try {
-                    // Ensure the container has a stacked label + time structure
-                    if (!lpCont.querySelector('.live-price-label')) {
-                        // Preserve existing time span id by recreating inner content
-                        lpCont.innerHTML = '<div class="live-price-label">Updated</div><div id="livePriceTimestamp"></div>';
-                    }
-                    // Append to the root header so absolute positioning is relative to the header area
-                    header.appendChild(lpCont);
-                    lpCont.classList.remove('live-price-inside-header-left');
-                    lpCont.classList.add('live-price-inside-header');
-                } catch (e) {
-                    if (header.contains(lpCont)) lpCont.classList.add('live-price-inside-header');
-                }
-        }
-    } catch(_) {}
+
+    // Note: Timestamp debug logging now handled in hideSplashScreen()
+
+
+    // Note: Timestamp positioning and click handler now handled in hideSplashScreen()
+
+    // NOTE: Live price timestamp positioning is now handled manually in HTML and CSS
+    // The timestamp is positioned in the top-right of the header via HTML structure and CSS
+    // The following JavaScript positioning code has been disabled to prevent conflicts
+
 });
 
 // Theme related variables
@@ -2903,6 +2917,9 @@ function showCustomAlert(message, duration = 3000, type = 'info') {
     // Minimal fallback
     try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
 }
+
+// Expose globally for use in other modules
+window.showCustomAlert = showCustomAlert;
 
 // ToastManager: centralized API
 const ToastManager = (() => {
@@ -4692,21 +4709,50 @@ async function saveShareData(isSilent = false) {
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0 // Ensure rating is saved as a number
     };
 
-    // Uniqueness check: if adding new share but a document with same code already exists, switch to update mode
-    if (!selectedShareDocId) {
-        try {
-            const sharesColUnique = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
-            const dupQuery = firestore.query(sharesColUnique, firestore.where('shareName', '==', shareName));
-            const dupSnap = await firestore.getDocs(dupQuery);
-            if (!dupSnap.empty) {
-                const existing = dupSnap.docs[0];
-                selectedShareDocId = existing.id;
-                logDebug('Uniqueness: Existing share found for code '+shareName+' (ID='+selectedShareDocId+'). Converting add into update.');
-            }
-        } catch(e) { console.warn('Uniqueness: lookup failed', e); }
-    }
     if (selectedShareDocId) {
         const existingShare = allSharesData.find(s => s.id === selectedShareDocId);
+
+        // For existing shares, merge watchlist associations
+        if (existingShare) {
+            // Get existing watchlist IDs
+            const existingWatchlistIds = [];
+            if (existingShare.watchlistId) {
+                existingWatchlistIds.push(existingShare.watchlistId);
+            }
+            if (Array.isArray(existingShare.watchlistIds)) {
+                existingWatchlistIds.push(...existingShare.watchlistIds);
+            }
+
+            // Get new watchlist associations
+            const newWatchlistIds = selectedWatchlistIdsForSave || [selectedWatchlistIdForSave];
+
+            // Replace watchlist associations with the new selection (not merge)
+            const finalWatchlistIds = [...new Set(newWatchlistIds)]; // Remove duplicates from new selection
+
+            // Update shareData with the new watchlist associations
+            if (finalWatchlistIds.length > 1) {
+                shareData.watchlistIds = finalWatchlistIds;
+                shareData.watchlistId = finalWatchlistIds[0]; // Keep legacy field for backward compatibility
+            } else if (finalWatchlistIds.length === 1) {
+                shareData.watchlistId = finalWatchlistIds[0];
+                shareData.watchlistIds = finalWatchlistIds;
+            } else {
+                // No watchlists selected - this shouldn't happen, but handle gracefully
+                shareData.watchlistId = null;
+                shareData.watchlistIds = [];
+            }
+
+            logDebug('Share Update: Replacing watchlist associations for existing share. Old: [' +
+                     existingWatchlistIds.join(', ') + '], New: [' + finalWatchlistIds.join(', ') + ']');
+
+            // Debug: Verify the data is being set correctly
+            console.log('Share Update Debug:', {
+                shareId: selectedShareDocId,
+                oldWatchlists: existingWatchlistIds,
+                newWatchlists: finalWatchlistIds
+            });
+        }
+
         if (shareData.currentPrice !== null && existingShare && existingShare.currentPrice !== shareData.currentPrice) {
             shareData.previousFetchedPrice = existingShare.lastFetchedPrice;
             shareData.lastFetchedPrice = shareData.currentPrice;
@@ -4731,9 +4777,21 @@ async function saveShareData(isSilent = false) {
             try {
                 const idx = allSharesData.findIndex(s => s.id === selectedShareDocId);
                 if (idx !== -1) {
+                    const oldShareData = allSharesData[idx];
                     allSharesData[idx] = { ...allSharesData[idx], ...shareData };
+                    console.log('Cache Update Debug:', {
+                        shareId: selectedShareDocId,
+                        oldWatchlistId: oldShareData.watchlistId,
+                        oldWatchlistIds: oldShareData.watchlistIds,
+                        newWatchlistId: shareData.watchlistId,
+                        newWatchlistIds: shareData.watchlistIds
+                    });
+                } else {
+                    console.warn('Cache Update Debug: Share not found in allSharesData for ID:', selectedShareDocId);
                 }
-            } catch(_) {}
+            } catch(e) {
+                console.warn('Cache Update Debug: Error updating cache:', e);
+            }
             if (!isSilent) showCustomAlert('Update successful', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' (ID: ' + selectedShareDocId + ') updated.');
         originalShareData = getCurrentFormData(); // Update original data after successful save
@@ -7879,6 +7937,7 @@ function hideSplashScreen() {
         }
         if (appHeader) { // Assuming header is part of the main app content that needs to be revealed
             appHeader.classList.remove('app-hidden');
+
         }
         // Temporarily remove overflow hidden from body
         document.body.style.overflow = ''; 
@@ -8856,21 +8915,33 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
     }
 
     // Check for duplicate name (case-insensitive, excluding current watchlist if editing)
-    // Check for duplicate name (case-insensitive, excluding current watchlist if editing)
+    console.log('[DUPLICATE CHECK] Checking for watchlist name:', newName);
+    console.log('[DUPLICATE CHECK] Current userWatchlists count:', userWatchlists.length);
+    console.log('[DUPLICATE CHECK] Current userWatchlists:', userWatchlists.map(w => ({ id: w.id, name: w.name })));
+
     const isDuplicate = userWatchlists.some(w => {
         const isMatch = w.name.toLowerCase() === newName.toLowerCase() && w.id !== watchlistId;
-        if (isMatch && DEBUG_MODE) {
-            logDebug('Save Watchlist: Duplicate name detected against existing watchlist: ' + w.name + ' (ID: ' + w.id + ')');
+        if (isMatch) {
+            console.log('[DUPLICATE CHECK] Found duplicate:', w.name, '(ID:', w.id, ')');
         }
         return isMatch;
     });
 
     if (isDuplicate) {
-        if (!isSilent) showCustomAlert('A watchlist with this name already exists!');
-        // Only log the warning if it's a genuine duplicate that caused a skip.
-        console.warn('Save Watchlist: Duplicate watchlist name. Skipping save.');
+        console.warn('[DUPLICATE CHECK] Duplicate watchlist name detected, skipping save');
+        if (!isSilent) {
+            const message = `A watchlist named "${newName}" already exists. Please choose a different name.`;
+            try {
+                showCustomAlert(message, 3000, 'warning');
+            } catch (error) {
+                console.error('[DUPLICATE CHECK] Error showing alert:', error);
+                alert(message);
+            }
+        }
         return; // Exit the function if it's a duplicate
     }
+
+    console.log('[DUPLICATE CHECK] No duplicate found, proceeding with save');
 
     try {
         if (watchlistId) { // Editing existing watchlist
@@ -8924,6 +8995,44 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             // Call loadUserWatchlistsAndSettings to fully refresh the watchlist data,
             // update the dropdown, and render the correct watchlist on the main screen.
             await loadUserWatchlistsAndSettings();
+
+            // After loadUserWatchlistsAndSettings completes, ensure the newly created watchlist is selected
+            // and navigate to it immediately
+            try {
+                console.log('[WATCHLIST NAV] Setting currentSelectedWatchlistIds to new watchlist:', newDocRef.id);
+                setCurrentSelectedWatchlistIds([newDocRef.id]);
+                
+                // Update the dropdown selection
+                if (watchlistSelect) {
+                    watchlistSelect.value = newDocRef.id;
+                    console.log('[WATCHLIST NAV] Set dropdown value to:', newDocRef.id);
+                }
+                
+                // Save the selection to localStorage
+                try {
+                    localStorage.setItem('lastWatchlistSelection', JSON.stringify([newDocRef.id]));
+                    localStorage.setItem('lastSelectedView', newDocRef.id);
+                } catch (e) {
+                    console.warn('[WATCHLIST NAV] Error saving to localStorage:', e);
+                }
+                
+                // Render the watchlist immediately
+                console.log('[WATCHLIST NAV] Rendering watchlist for new watchlist');
+                if (typeof renderWatchlist === 'function') {
+                    renderWatchlist();
+                }
+                
+                // Update UI elements
+                if (typeof updateMainTitle === 'function') {
+                    updateMainTitle();
+                }
+                if (typeof updateAddHeaderButton === 'function') {
+                    updateAddHeaderButton();
+                }
+                
+            } catch (error) {
+                console.error('[WATCHLIST NAV] Error navigating to new watchlist:', error);
+            }
         }
         
         // This block now handles both new and edited watchlists.
@@ -9048,7 +9157,25 @@ async function initializeAppLogic() {
     // NEW: Hide cash asset modals initially
     if (cashAssetFormModal) cashAssetFormModal.style.setProperty('display', 'none', 'important');
     if (cashAssetDetailModal) cashAssetDetailModal.style.setProperty('display', 'none', 'important');
-    if (stockSearchModal) stockSearchModal.style.setProperty('display', 'none', 'important'); // NEW: Hide stock search modal
+    if (stockSearchModal) {
+        console.log('[DEBUG] Initial stock search modal display:', window.getComputedStyle(stockSearchModal).display);
+        console.log('[DEBUG] Hiding stock search modal on initialization');
+        stockSearchModal.style.setProperty('display', 'none', 'important'); // NEW: Hide stock search modal
+        console.log('[DEBUG] Stock search modal display after hide:', window.getComputedStyle(stockSearchModal).display);
+
+        // Add mutation observer to watch for display changes
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    const currentDisplay = window.getComputedStyle(stockSearchModal).display;
+                    console.log('[DEBUG] Stock search modal display changed to:', currentDisplay);
+                }
+            });
+        });
+        observer.observe(stockSearchModal, { attributes: true, attributeFilter: ['style'] });
+    } else {
+        console.log('[DEBUG] stockSearchModal element not found');
+    }
     // The targetHitDetailsModal itself is hidden by showModal/hideModal, so no explicit line needed for its close button.
 
 
@@ -10017,6 +10144,13 @@ if (sortSelect) {
     if (saveShareBtn) {
         saveShareBtn.addEventListener('click', async () => {
             logDebug('Share Form: Save Share button clicked.');
+
+            // Restore selectedShareDocId from modal dataset if not set
+            if (!selectedShareDocId && shareDetailModal && shareDetailModal.dataset && shareDetailModal.dataset.shareId) {
+                selectedShareDocId = shareDetailModal.dataset.shareId;
+                logDebug('Save Share: Restored selectedShareDocId from modal dataset: ' + selectedShareDocId);
+            }
+
             // Call service
             saveShareDataSvc(false);
         });

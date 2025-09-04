@@ -150,6 +150,7 @@
         };
     })();
 
+    // Define showCustomAlert inside the IIFE scope
     function showCustomAlert(message, duration = 3000, type = 'info') {
         const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
         try {
@@ -169,6 +170,7 @@
         } catch (e) { console.warn('Toast render failed, using alert fallback.', e); }
         try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
     }
+
 
     function showCustomConfirm(message, callback) {
         const res = ToastManager.confirm(message, {
@@ -392,6 +394,9 @@
         }catch(e){ console.warn('initCalculators failed', e); }
     }
 
+    // Expose additional functions to window.UI
     window.UI = window.UI || {};
     window.UI.initCalculators = initCalculators;
 })();
+
+// showCustomAlert is already exposed inside the IIFE via Object.assign
