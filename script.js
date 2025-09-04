@@ -2080,7 +2080,20 @@ function popAppStateEntry() { return appBackStack.pop(); }
 // Override showModal to push (wrap existing if not already wrapped)
 if (!window.__origShowModalForBack) {
     window.__origShowModalForBack = showModal;
-    showModal = function(m){ pushAppStateEntry('modal', m); window.__origShowModalForBack(m); };
+    showModal = function(m){ 
+        pushAppStateEntry('modal', m); 
+        window.__origShowModalForBack(m);
+        
+        // If showing the share form modal, setup portfolio auto-selection
+        if (m && m.id === 'shareFormSection') {
+            console.log('Share form modal shown, setting up portfolio auto-selection');
+            
+            // Wait for modal to be fully rendered
+            setTimeout(() => {
+                setupPortfolioAutoSelection();
+            }, 100);
+        }
+    };
 }
 window.addEventListener('popstate', ()=>{
     // Not using deep browser history here; rely on our own stack
@@ -2863,15 +2876,80 @@ function updateWatchlistPulse(isNewShareContext = false) {
     }
 }
 
-// Hook into existing populateShareWatchlistSelect to reapply pulse after population
-const originalPopulateShareWatchlistSelect = typeof populateShareWatchlistSelect === 'function' ? populateShareWatchlistSelect : null;
-if (originalPopulateShareWatchlistSelect) {
-    window.populateShareWatchlistSelect = function(currentShareWatchlistId = null, isNewShare = true) {
-        const res = originalPopulateShareWatchlistSelect(currentShareWatchlistId, isNewShare);
-        // Defer to ensure DOM checkboxes inserted
-        setTimeout(() => updateWatchlistPulse(isNewShare), 30);
-        return res;
-    };
+
+// Function to setup automatic Portfolio watchlist selection
+function setupPortfolioAutoSelection() {
+    const portfolioSharesInput = document.getElementById('portfolioShares');
+    const portfolioAvgPriceInput = document.getElementById('portfolioAvgPrice');
+
+    if (!portfolioSharesInput || !portfolioAvgPriceInput) {
+        console.warn('Portfolio auto-selection: Required input fields not found');
+        return;
+    }
+
+    function autoSelectPortfolioWatchlist() {
+        console.log('autoSelectPortfolioWatchlist called');
+
+        // Check if either input has a value
+        const hasSharesValue = portfolioSharesInput.value && portfolioSharesInput.value.trim() !== '';
+        const hasPriceValue = portfolioAvgPriceInput.value && portfolioAvgPriceInput.value.trim() !== '';
+
+        console.log('hasSharesValue:', hasSharesValue, 'hasPriceValue:', hasPriceValue);
+
+        if (hasSharesValue || hasPriceValue) {
+            // Try to find the Portfolio checkbox with retry logic
+            let attempts = 0;
+            const maxAttempts = 10;
+
+            const tryFindCheckbox = () => {
+                attempts++;
+                console.log(`Attempt ${attempts} to find Portfolio checkbox`);
+
+                const portfolioCheckbox = shareWatchlistEnhanced?.querySelector('input[type="checkbox"][value="portfolio"]');
+
+                if (portfolioCheckbox) {
+                    console.log('Portfolio checkbox found on attempt', attempts);
+                    console.log('Portfolio checkbox currently checked:', portfolioCheckbox.checked);
+
+                    if (!portfolioCheckbox.checked) {
+                        console.log('Auto-selecting Portfolio watchlist');
+                        portfolioCheckbox.checked = true;
+                        // Dispatch change event to trigger UI updates
+                        portfolioCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        console.log('Portfolio checkbox checked and change event dispatched');
+                    } else {
+                        console.log('Portfolio checkbox already checked');
+                    }
+                } else if (attempts < maxAttempts) {
+                    console.log('Portfolio checkbox not found, retrying in 50ms...');
+                    setTimeout(tryFindCheckbox, 50);
+                } else {
+                    console.log('Portfolio checkbox not found after', maxAttempts, 'attempts');
+
+                    // Debug: show all available checkboxes
+                    if (shareWatchlistEnhanced) {
+                        const allCheckboxes = shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]');
+                        console.log('All available checkboxes:');
+                        allCheckboxes.forEach(cb => {
+                            console.log('  - Value:', cb.value, 'Checked:', cb.checked);
+                        });
+                    }
+                }
+            };
+
+            tryFindCheckbox();
+        }
+    }
+
+    // Remove any existing listeners to avoid duplicates
+    portfolioSharesInput.removeEventListener('input', autoSelectPortfolioWatchlist);
+    portfolioAvgPriceInput.removeEventListener('input', autoSelectPortfolioWatchlist);
+
+    // Add input event listeners
+    portfolioSharesInput.addEventListener('input', autoSelectPortfolioWatchlist);
+    portfolioAvgPriceInput.addEventListener('input', autoSelectPortfolioWatchlist);
+
+    console.log('Portfolio auto-selection setup complete');
 }
 
 // Monitor checkbox changes
