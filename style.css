@@ -864,6 +864,394 @@ function makeFilesAvailableToSourceControlCSS() {
     overflow-x: hidden;
 }
 
+/* Portfolio card styling - compact horizontal layout */
+.portfolio-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    padding-bottom: 16px; /* Extra padding at bottom for arrow */
+    min-height: 60px; /* Ensure minimum height for proper positioning */
+}
+
+.portfolio-card:hover {
+    background-color: var(--table-row-hover-bg);
+}
+
+.portfolio-card.expanded {
+    background-color: var(--table-row-hover-bg);
+    border-color: var(--accent-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Compact horizontal top row */
+.portfolio-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    position: relative;
+    width: 100%;
+    flex-wrap: nowrap;
+}
+
+.portfolio-code {
+    font-weight: 700;
+    font-size: 1.1em;
+    color: var(--text-color);
+    min-width: 60px;
+    flex-shrink: 0;
+}
+
+.portfolio-price {
+    font-size: 0.95em;
+    color: var(--text-color);
+    min-width: 80px;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.portfolio-day-change {
+    font-size: 0.9em;
+    font-weight: 600;
+    min-width: 100px;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.portfolio-day-change.positive {
+    color: var(--price-up-color);
+}
+
+.portfolio-day-change.negative {
+    color: var(--price-down-color);
+}
+
+.portfolio-day-change.neutral {
+    color: var(--text-muted);
+}
+
+/* Current Value and Capital Gain lines */
+.portfolio-current-value,
+.portfolio-capital-gain {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    margin-bottom: 2px;
+    font-size: 0.9em;
+}
+
+.portfolio-current-value {
+    margin-bottom: 4px;
+}
+
+.portfolio-capital-gain {
+    margin-bottom: 8px;
+}
+
+.portfolio-label {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.portfolio-val {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.portfolio-val.positive {
+    color: var(--price-up-color);
+}
+
+.portfolio-val.negative {
+    color: var(--price-down-color);
+}
+
+.portfolio-pl {
+    font-size: 1em;
+    font-weight: 700;
+    min-width: 70px;
+    text-align: right;
+    margin-left: auto;
+    margin-right: 8px;
+}
+
+.portfolio-pl.positive {
+    color: var(--price-up-color);
+}
+
+.portfolio-pl.negative {
+    color: var(--price-down-color);
+}
+
+/* Arrow positioned at the bottom center of the card */
+.portfolio-centered-arrow {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.0em;
+    font-weight: normal;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: transform 0.2s ease, color 0.2s ease;
+    user-select: none;
+    z-index: 10;
+    line-height: 1;
+    opacity: 0.6;
+    display: block;
+}
+
+.portfolio-card:hover .portfolio-centered-arrow {
+    color: var(--accent-color);
+}
+
+/* Capital Gain and Current Value on separate lines */
+.portfolio-capital-gain,
+.portfolio-current-value {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 0.9em;
+}
+
+.portfolio-capital-gain {
+    margin-bottom: 2px;
+}
+
+.portfolio-current-value {
+    margin-bottom: 8px;
+}
+
+/* Reduced spacing middle metrics */
+.portfolio-mid-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 4px; /* Reduced spacing */
+}
+
+.portfolio-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    flex: 1;
+}
+
+.portfolio-label {
+    font-weight: 500;
+    color: var(--label-color);
+    white-space: nowrap;
+}
+
+.portfolio-val {
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+.portfolio-val.positive {
+    color: var(--price-up-color);
+}
+
+.portfolio-val.negative {
+    color: var(--price-down-color);
+}
+
+/* Hidden eye button */
+.pc-eye-btn.hidden {
+    display: none !important;
+}
+
+/* Expanded content with reduced spacing */
+.portfolio-expanded-content {
+    padding: 8px 0 4px 0;
+    border-top: 1px solid var(--border-color);
+    margin-top: 4px; /* Reduced spacing */
+    display: none;
+}
+
+.portfolio-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    font-size: 0.85em;
+}
+
+.portfolio-detail-label {
+    font-weight: 500;
+    color: var(--label-color);
+}
+
+.portfolio-detail-val {
+    font-weight: 600;
+    color: var(--text-color);
+    text-align: right;
+}
+
+.portfolio-detail-val.positive {
+    color: var(--price-up-color);
+}
+
+.portfolio-detail-val.negative {
+    color: var(--price-down-color);
+}
+
+.portfolio-detail-pct {
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+    .portfolio-card {
+        padding: 10px;
+        padding-bottom: 12px; /* Extra padding for arrow */
+        margin-bottom: 6px;
+    }
+
+    .portfolio-top-row {
+        gap: 6px;
+        margin-bottom: 6px;
+    }
+
+    .portfolio-code {
+        font-size: 1em;
+        min-width: 50px;
+    }
+
+    .portfolio-price {
+        font-size: 0.9em;
+        min-width: 70px;
+    }
+
+    .portfolio-day-change {
+        font-size: 0.85em;
+        min-width: 90px;
+    }
+
+    .portfolio-current-value,
+    .portfolio-capital-gain {
+        font-size: 0.85em;
+        padding: 3px 0;
+    }
+
+    .portfolio-value {
+        font-size: 0.95em;
+        min-width: 75px;
+    }
+
+    .portfolio-pl {
+        font-size: 0.95em;
+        min-width: 65px;
+        margin-right: 8px;
+    }
+
+    .portfolio-centered-arrow {
+        font-size: 0.9em;
+        bottom: 1px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .portfolio-capital-gain,
+    .portfolio-current-value {
+        font-size: 0.85em;
+        padding: 3px 0;
+    }
+
+    .portfolio-expanded-content {
+        padding: 6px 0 3px 0;
+        margin-top: 6px;
+    }
+
+    .portfolio-detail-row {
+        font-size: 0.8em;
+        padding: 3px 0;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+    .portfolio-card {
+        padding: 8px;
+        padding-bottom: 10px; /* Extra padding for arrow */
+    }
+
+    .portfolio-top-row {
+        gap: 4px;
+        margin-bottom: 4px;
+        flex-wrap: nowrap;
+    }
+
+    .portfolio-code {
+        min-width: 45px;
+        font-size: 0.95em;
+    }
+
+    .portfolio-price {
+        min-width: 65px;
+        font-size: 0.85em;
+    }
+
+    .portfolio-day-change {
+        min-width: 80px;
+        font-size: 0.8em;
+    }
+
+    .portfolio-current-value,
+    .portfolio-capital-gain {
+        font-size: 0.8em;
+        padding: 2px 0;
+    }
+
+    .portfolio-value {
+        min-width: 65px;
+        font-size: 0.9em;
+        margin-bottom: 2px;
+    }
+
+    .portfolio-pl {
+        min-width: 55px;
+        font-size: 0.9em;
+        margin-right: 8px;
+        margin-bottom: 2px;
+    }
+
+    .portfolio-centered-arrow {
+        font-size: 0.8em;
+        bottom: 1px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .portfolio-capital-gain,
+    .portfolio-current-value {
+        font-size: 0.8em;
+        padding: 2px 0;
+        margin-bottom: 1px;
+    }
+
+    .portfolio-expanded-content {
+        padding: 4px 0 2px 0;
+        margin-top: 4px;
+    }
+
+    .portfolio-detail-row {
+        font-size: 0.75em;
+        padding: 2px 0;
+    }
+}
+
 /* --- Portfolio Summary Bar: Fixed 3+2 Grid Layout for Desktop --- */
 /* --- Portfolio Summary Bar: Fixed 4+1 Grid Layout for Desktop --- */
 .portfolio-summary-bar {

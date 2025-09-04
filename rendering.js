@@ -129,9 +129,79 @@
             const shares = Number(share.portfolioShares) || 0; const avg = Number(share.portfolioAvgPrice) || 0; const lpObj = livePrices[share.shareName.toUpperCase()] || {};
             const live = (lpObj.live != null && !isNaN(lpObj.live)) ? Number(lpObj.live) : (lpObj.lastLivePrice != null && !isNaN(lpObj.lastLivePrice) ? Number(lpObj.lastLivePrice) : null);
             const currentValue = (live !== null) ? live * shares : avg * shares; const cost = avg * shares; const pl = currentValue - cost; totalValue += currentValue; totalCostBasis += cost; totalPL += pl;
-            return `<div class="portfolio-row"><div class="p-code">${share.shareName}</div><div class="p-shares">${shares}</div><div class="p-price">${fmtMoney(live || avg)}</div><div class="p-value">${fmtMoney(currentValue)}</div><div class="p-pl ${pl>0?'positive':'negative'}">${fmtMoney(pl)}</div></div>`;
+            const costBasis = avg * shares;
+            const unrealizedPL = currentValue - costBasis;
+            const plPercentage = costBasis !== 0 ? (unrealizedPL / costBasis) * 100 : 0;
+            return `<div class="portfolio-row" data-share-code="${share.shareName}">
+                <div class="p-code">${share.shareName}</div>
+                <div class="p-shares">${shares}</div>
+                <div class="p-price">${fmtMoney(live || avg)}</div>
+                <div class="p-value">${fmtMoney(currentValue)}</div>
+                <div class="p-pl ${pl>0?'positive':'negative'}">${fmtMoney(pl)}</div>
+                <div class="expand-arrow">▼</div>
+                <div class="portfolio-expanded-content">
+                    <div class="detail-row">
+                        <span class="detail-label">Average Cost:</span>
+                        <span class="detail-value">${fmtMoney(avg)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Cost Basis:</span>
+                        <span class="detail-value">${fmtMoney(costBasis)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Unrealized P/L:</span>
+                        <span class="detail-value ${unrealizedPL>=0?'positive':'negative'}">${fmtMoney(unrealizedPL)} (${fmtPct(plPercentage)})</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Live Price:</span>
+                        <span class="detail-value">${live !== null ? fmtMoney(live) : 'N/A'}</span>
+                    </div>
+                </div>
+            </div>`;
         }).join('');
         portfolioListContainer.innerHTML = `<div class="portfolio-summary">Total Value: ${fmtMoney(totalValue)} &nbsp; Cost: ${fmtMoney(totalCostBasis)} &nbsp; P/L: ${fmtMoney(totalPL)}</div><div class="portfolio-rows">${rowsHtml}</div>`;
+
+        // Add expand/collapse functionality to portfolio rows
+        setTimeout(() => {
+            const portfolioRows = portfolioListContainer.querySelectorAll('.portfolio-row');
+            portfolioRows.forEach(row => {
+                const arrow = row.querySelector('.expand-arrow');
+                const content = row.querySelector('.portfolio-expanded-content');
+
+                row.addEventListener('click', (e) => {
+                    // Don't toggle if clicking on the arrow itself (already handled)
+                    if (e.target === arrow) return;
+
+                    const isExpanded = row.classList.contains('expanded');
+                    if (isExpanded) {
+                        row.classList.remove('expanded');
+                        arrow.classList.remove('expanded');
+                        content.classList.remove('show');
+                    } else {
+                        row.classList.add('expanded');
+                        arrow.classList.add('expanded');
+                        content.classList.add('show');
+                    }
+                });
+
+                // Also allow clicking on the arrow specifically
+                if (arrow) {
+                    arrow.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const isExpanded = row.classList.contains('expanded');
+                        if (isExpanded) {
+                            row.classList.remove('expanded');
+                            arrow.classList.remove('expanded');
+                            content.classList.remove('show');
+                        } else {
+                            row.classList.add('expanded');
+                            arrow.classList.add('expanded');
+                            content.classList.add('show');
+                        }
+                    });
+                }
+            });
+        }, 100);
     };
 
     // Move renderWatchlist into Rendering

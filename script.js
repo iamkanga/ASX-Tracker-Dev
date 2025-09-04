@@ -513,50 +513,45 @@ document.addEventListener('DOMContentLoaded', function () {
             // For real neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
             return `<div class="portfolio-card ${testNeutral ? 'neutral' : todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
-                <!-- Top line: code left (eye under it), live price center, day dollar + pct right (single-line) -->
-                <div class="pc-top-line" role="group" aria-label="Top line summary">
-                    <div class="pc-top-left">
-                        <div class="pc-code">${share.shareName || ''}</div>
-                        <button class="pc-eye-btn" aria-label="Hide or show from totals"><span class="fa fa-eye"></span></button>
-                    </div>
-                    <div class="pc-top-center">
-                        <div class="pc-live-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
-                    </div>
-                    <div class="pc-top-right">
-                            <div class="pc-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} <span class="pc-pct">${todayChange !== null ? fmtPct(todayChangePct) : ''}</span></div>
-                        </div>
+                <!-- Single line with ASX code, current price, and day change -->
+                <div class="portfolio-top-row">
+                    <div class="portfolio-code">${share.shareName || ''}</div>
+                    <div class="portfolio-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
+                    <div class="portfolio-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} / ${todayChange !== null ? fmtPct(todayChangePct) : ''}</div>
                 </div>
 
-                <!-- Two-line gap -->
-                <div class="pc-top-spacer" aria-hidden="true"></div>
-                <div class="pc-top-spacer" aria-hidden="true"></div>
-
-                <!-- Middle metrics: Capital Gain and Current Value -->
-                <div class="pc-mid-row">
-                    <div class="pc-metric-line">
-                        <span class="pc-label">Capital Gain</span>
-                        <span class="pc-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</span>
-                    </div>
-                    <div class="pc-metric-line">
-                        <span class="pc-label">Current Value</span>
-                        <span class="pc-val">${rowValue !== null ? fmtMoney(rowValue) : ''}</span>
-                    </div>
+                <!-- Current Value on separate line -->
+                <div class="portfolio-current-value">
+                    <span class="portfolio-label">Current Value</span>
+                    <span class="portfolio-val">${rowValue !== null ? fmtMoney(rowValue) : ''}</span>
                 </div>
 
-                <!-- Controls: centered carat chevron for dropdown -->
-                <div class="pc-controls-row pc-chevron-wrap">
-                    <button class="pc-chevron-btn ${todayClass}" aria-expanded="false" aria-label="Expand/Collapse details"><span class="chevron">▾</span></button>
+                <!-- Capital Gain on separate line -->
+                <div class="portfolio-capital-gain">
+                    <span class="portfolio-label">Capital Gain</span>
+                    <span class="portfolio-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</span>
                 </div>
 
-                <!-- Dropdown details: conditional Alert Target then Units, Cost per Unit, Total Cost -->
-                <div class="pc-details" style="display:none;">
+                <!-- Centered arrow at bottom of card -->
+                <div class="portfolio-centered-arrow">⌄</div>
+
+                <!-- Hidden eye button (can be accessed via long press or right click) -->
+                <button class="pc-eye-btn hidden" aria-label="Hide or show from totals"><span class="fa fa-eye"></span></button>
+
+                <!-- Expanded details with shares, average price, and target -->
+                <div class="portfolio-expanded-content">
+                    <div class="portfolio-detail-row">
+                        <span class="portfolio-detail-label">Amount of Shares</span>
+                        <span class="portfolio-detail-val">${shares !== '' ? shares : ''}</span>
+                    </div>
+                    <div class="portfolio-detail-row">
+                        <span class="portfolio-detail-label">Average Price per Share</span>
+                        <span class="portfolio-detail-val">${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span>
+                    </div>
                     ${(() => {
                         const at = renderAlertTargetInline(share);
-                        return at ? `<div class="pc-detail-row"><span class="pc-label">Alert Target</span><span class="pc-val">${at}</span></div>` : '';
+                        return at ? `<div class="portfolio-detail-row"><span class="portfolio-detail-label">Target Value</span><span class="portfolio-detail-val">${at}</span></div>` : '';
                     })()}
-                    <div class="pc-detail-row"><span class="pc-label">Units</span><span class="pc-val">${shares !== '' ? shares : ''}</span></div>
-                    <div class="pc-detail-row"><span class="pc-label">Cost per Unit</span><span class="pc-val">${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span></div>
-                    <div class="pc-detail-row"><span class="pc-label">Total Cost</span><span class="pc-val">${(typeof shares === 'number' && typeof avgPrice === 'number') ? fmtMoney(shares * avgPrice) : ''}</span></div>
                 </div>
             </div>`;
     });
@@ -603,28 +598,34 @@ document.addEventListener('DOMContentLoaded', function () {
         cardNodes.forEach((card, idx) => {
             // Get the share object for this card
             const share = portfolioShares[idx];
-            const btn = card.querySelector('.pc-chevron-btn');
-            const details = card.querySelector('.pc-details');
-            btn.addEventListener('click', function() {
-                const expanded = btn.getAttribute('aria-expanded') === 'true';
-                // Collapse all other cards
-                cardNodes.forEach(otherCard => {
-                    if (otherCard !== card) {
-                        const otherBtn = otherCard.querySelector('.pc-chevron-btn');
-                        const otherDetails = otherCard.querySelector('.pc-details');
-                        if (otherBtn && otherDetails) {
-                            otherBtn.setAttribute('aria-expanded', false);
-                            otherDetails.style.display = 'none';
-                            otherCard.classList.remove('expanded');
-                            otherBtn.querySelector('.chevron').textContent = '▼';
-                        }
-                    }
-                });
-                // Toggle this card
-                btn.setAttribute('aria-expanded', !expanded);
-                details.style.display = expanded ? 'none' : 'block';
-                card.classList.toggle('expanded', !expanded);
-                btn.querySelector('.chevron').textContent = !expanded ? '▲' : '▼';
+            const arrow = card.querySelector('.portfolio-centered-arrow');
+            const content = card.querySelector('.portfolio-expanded-content');
+
+            // Expand/collapse functionality
+            const toggleExpanded = () => {
+                const isExpanded = card.classList.contains('expanded');
+                if (isExpanded) {
+                    card.classList.remove('expanded');
+                    arrow.textContent = '⌄'; // Point down when closed
+                    content.style.display = 'none';
+                } else {
+                    card.classList.add('expanded');
+                    arrow.textContent = '⌃'; // Point up when open
+                    content.style.display = 'block';
+                }
+            };
+
+            // Click on arrow to toggle
+            arrow.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleExpanded();
+            });
+
+            // Click on card to toggle (but not on eye button)
+            card.addEventListener('click', (e) => {
+                if (!e.target.closest('.pc-eye-btn')) {
+                    toggleExpanded();
+                }
             });
             // Eye icon logic: toggle hide-from-totals (Option A). Click still opens details when CTRL/Meta is held.
             const eyeBtn = card.querySelector('.pc-eye-btn');
