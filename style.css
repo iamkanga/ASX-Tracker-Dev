@@ -8335,3 +8335,648 @@ body.dark-theme .alert-item {
     font-size: 1.2em;
     flex-shrink: 0; /* Prevent button from shrinking */
 }
+
+/* === CSS Fixes: Complete visual cleanup and layout fixes === */
+
+/* Fix 1: Remove unwanted border from Add New Share plus icon (comprehensive) */
+#addShareHeaderBtn,
+#addShareHeaderBtn * {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+#addShareHeaderBtn:focus,
+#addShareHeaderBtn:active,
+#addShareHeaderBtn:focus-visible,
+#addShareHeaderBtn:hover {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    background-color: transparent !important;
+}
+
+#addShareHeaderBtn:focus:not(:focus-visible) {
+    outline: none !important;
+}
+
+/* Fix 2: Stock search modal content sizing and layout optimization with proper scrolling */
+#stockSearchModal,
+.stock-search-modal-content {
+    max-width: 400px !important; /* Match other modals */
+    max-height: 85vh !important; /* Increased from 80vh for better content fit */
+    overflow: hidden !important; /* Container manages its own overflow */
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Make the main content area scrollable while keeping header static */
+#stockSearchModal .modal-content,
+#stockSearchModal .stock-search-modal-content {
+    max-height: 100% !important; /* Fill the modal container */
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important; /* Prevent modal content from overflowing */
+}
+
+/* Header remains static at the top */
+#stockSearchModal .modal-header-with-icon,
+#stockSearchModal .modal-header {
+    flex-shrink: 0 !important; /* Header doesn't shrink */
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    background: var(--modal-content-bg, #fff) !important;
+    border-bottom: 1px solid var(--border-color, #e0e0e0) !important;
+}
+
+/* Scrollable content area - the main body that contains all the scrollable content */
+#stockSearchModal .modal-body,
+#stockSearchModal .stock-search-modal-content .modal-body {
+    flex: 1 1 auto !important; /* Takes remaining space */
+    overflow-y: auto !important; /* Vertical scrolling enabled */
+    overflow-x: hidden !important; /* No horizontal scrolling */
+    -webkit-overflow-scrolling: touch !important; /* Smooth iOS scrolling */
+    padding: 16px !important; /* Reduced padding */
+    box-sizing: border-box !important;
+    max-height: calc(85vh - 80px) !important; /* Account for header height */
+}
+
+/* Ensure search result display scrolls within the modal body */
+#stockSearchModal #searchResultDisplay {
+    max-height: none !important; /* Remove fixed height, let parent handle scrolling */
+    min-height: auto !important; /* Allow natural height */
+}
+
+/* Ensure footer/action buttons remain accessible and don't get cut off */
+#stockSearchModal .modal-action-buttons-footer,
+#stockSearchModal .modal-footer {
+    flex-shrink: 0 !important; /* Footer doesn't shrink */
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 10 !important;
+    background: var(--modal-content-bg, #fff) !important;
+    border-top: 1px solid var(--border-color, #e0e0e0) !important;
+    padding: 12px !important;
+    margin-top: auto !important; /* Push to bottom if needed */
+}
+
+/* Alternative approach: If the modal uses a different structure, ensure scrolling works */
+#stockSearchModal .scrollable-content,
+#stockSearchModal .content-area,
+#stockSearchModal .main-content {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    max-height: calc(85vh - 120px) !important; /* Account for header and footer */
+}
+
+/* Ensure smooth scrolling behavior */
+#stockSearchModal .modal-body::-webkit-scrollbar,
+#stockSearchModal .scrollable-content::-webkit-scrollbar {
+    width: 6px !important;
+}
+
+#stockSearchModal .modal-body::-webkit-scrollbar-track,
+#stockSearchModal .scrollable-content::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+#stockSearchModal .modal-body::-webkit-scrollbar-thumb,
+#stockSearchModal .scrollable-content::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2) !important;
+    border-radius: 3px !important;
+}
+
+#stockSearchModal .modal-body::-webkit-scrollbar-thumb:hover,
+#stockSearchModal .scrollable-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Compact search input styling for smaller modal */
+.stock-search-modal-content .search-input-container {
+    margin-bottom: 12px !important; /* Reduced margin */
+}
+
+.stock-search-modal-content #asxSearchInput {
+    padding: 8px 12px !important; /* Reduced padding */
+    font-size: 0.95rem !important; /* Smaller font */
+    border-radius: 6px !important; /* Smaller radius */
+    width: calc(100% - 16px) !important; /* Adjust for reduced padding */
+}
+
+/* Compact autocomplete suggestions */
+.stock-search-modal-content .autocomplete-suggestions {
+    position: absolute !important;
+    top: 100% !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-height: 150px !important; /* Reduced height */
+    z-index: 1001 !important;
+    font-size: 0.9rem !important; /* Smaller font in suggestions */
+}
+
+.stock-search-modal-content .autocomplete-suggestions .suggestion-item {
+    padding: 8px 12px !important; /* Reduced padding */
+    font-size: 0.9rem !important; /* Smaller font */
+}
+
+/* Compact search results styling */
+.stock-search-modal-content .search-results {
+    max-height: none !important; /* Let the modal body handle scrolling */
+    font-size: 0.9rem !important; /* Smaller font */
+}
+
+.stock-search-modal-content .search-results .result-item {
+    padding: 10px 8px !important; /* Reduced padding */
+    font-size: 0.9rem !important; /* Smaller font */
+    line-height: 1.3 !important; /* Tighter line height */
+}
+
+/* Compact modal header */
+.stock-search-modal-content .modal-header-with-icon {
+    padding: 12px 16px !important; /* Reduced padding */
+}
+
+.stock-search-modal-content .modal-header-with-icon .modal-title {
+    font-size: 1.0rem !important; /* Slightly smaller title */
+    font-weight: 600 !important;
+}
+
+/* Ensure all content fits within the reduced modal width */
+.stock-search-modal-content .search-input-container,
+.stock-search-modal-content .search-results,
+.stock-search-modal-content .autocomplete-suggestions {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* === Ultra-Compact Stock Search Modal Layout === */
+
+/* Base modal content - clean and compact */
+.stock-search-modal-content {
+    max-width: 380px !important; /* Slightly smaller width for better proportions */
+    max-height: 75vh !important; /* More compact height */
+    border-radius: 8px !important;
+    background: var(--modal-content-bg, #fff) !important; /* Standard app theming */
+    border: 1px solid var(--border-color, #e0e0e0) !important; /* Standard border */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important; /* Standard shadow */
+    margin: 0 !important; /* No margin needed with transform centering */
+    position: relative !important; /* Proper positioning context */
+    width: 100% !important; /* Full width of container */
+}
+
+/* Remove any extra container styling from the main modal element */
+#stockSearchModal {
+    background: transparent !important; /* No background on the modal element itself */
+    border: none !important; /* No border on the modal element */
+    box-shadow: none !important; /* No shadow on the modal element */
+}
+
+/* Dramatically reduce font sizes throughout */
+#stockSearchModal .stock-search-modal-content,
+#stockSearchModal .modal-content {
+    font-size: 0.8rem !important; /* Much smaller base font */
+}
+
+/* Stock code and company name - very compact */
+#stockSearchModal #searchResultDisplay h3 {
+    font-size: 1.1rem !important; /* Very small header */
+    font-weight: 600 !important;
+    margin: 0 0 4px 0 !important; /* Minimal margin */
+    line-height: 1.1 !important; /* Very tight line height */
+    letter-spacing: 0.3px !important;
+}
+
+/* All paragraph text elements - very small */
+#stockSearchModal #searchResultDisplay p {
+    font-size: 0.75rem !important; /* Much smaller text */
+    margin: 2px 0 !important; /* Minimal margins */
+    line-height: 1.2 !important; /* Tight line spacing */
+}
+
+/* Ultra-compact price display elements */
+#stockSearchModal .live-price-display-section,
+#stockSearchModal .live-price-display {
+    font-size: 0.95rem !important; /* Much smaller price display */
+    padding: 4px !important; /* Minimal padding */
+    margin-bottom: 4px !important; /* Tiny margin */
+}
+
+/* Very small live price values */
+#stockSearchModal .live-price-large {
+    font-size: 1.0rem !important; /* Much smaller live price */
+    line-height: 1.1 !important; /* Very tight */
+    font-weight: 600 !important;
+}
+
+/* Tiny price change information */
+#stockSearchModal .price-change,
+#stockSearchModal .price-change-large {
+    font-size: 0.65rem !important; /* Very small */
+    line-height: 1.1 !important; /* Very tight */
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Ultra-compact High/Low and P/E ratio information */
+#stockSearchModal .fifty-two-week-row,
+#stockSearchModal .pe-ratio-row,
+#stockSearchModal .fifty-two-week,
+#stockSearchModal .pe-ratio {
+    font-size: 0.65rem !important; /* Very small for secondary info */
+    margin: 1px 0 !important; /* Tiny margins */
+    padding: 2px 0 !important; /* Minimal padding */
+    line-height: 1.1 !important; /* Very tight */
+}
+
+/* External links section with proper spacing */
+#stockSearchModal .external-links-section {
+    border-top: 1px solid var(--border-color) !important;
+    padding-top: 6px !important; /* Slightly more padding for better separation */
+    margin-top: 6px !important; /* Better margin */
+    padding-bottom: 8px !important; /* Add bottom padding to separate from button */
+    margin-bottom: 8px !important; /* Add bottom margin for warning message space */
+    width: 100% !important;
+}
+
+/* Tiny external links section title */
+#stockSearchModal .external-links-section h3 {
+    font-size: 0.8rem !important; /* Very small */
+    margin-bottom: 3px !important; /* Minimal margin */
+    font-weight: 600 !important;
+    line-height: 1.1 !important;
+}
+
+/* Individual external link items with better spacing */
+#stockSearchModal .external-links-section .external-link-item {
+    margin-bottom: 3px !important; /* Slightly more margin for better readability */
+    padding: 2px 0 !important; /* Minimal padding */
+}
+
+/* Last external link item - ensure proper spacing before warning/button */
+#stockSearchModal .external-links-section .external-link-item:last-child {
+    margin-bottom: 6px !important; /* Extra margin for the last link */
+    padding-bottom: 4px !important; /* Extra padding for separation */
+}
+
+/* Very small external link text and anchors */
+#stockSearchModal .external-links-section a,
+#stockSearchModal .external-links-section .external-link {
+    font-size: 0.7rem !important; /* Very small but readable */
+    line-height: 1.2 !important; /* Tight readability */
+    padding: 2px 0 !important; /* Minimal padding */
+    margin: 1px 0 !important; /* Tiny margins */
+    display: block !important; /* Ensure block display */
+    word-wrap: break-word !important; /* Prevent overflow */
+    overflow-wrap: break-word !important;
+}
+
+/* Ultra-compact stock details grid/data rows */
+#stockSearchModal .data-row,
+#stockSearchModal .stock-data-row {
+    padding: 2px 0 !important; /* Very minimal padding */
+    margin: 1px 0 !important; /* Tiny margins */
+    font-size: 0.7rem !important; /* Much smaller font */
+    line-height: 1.1 !important; /* Very tight */
+}
+
+/* Very small label and value pairs within data rows */
+#stockSearchModal .data-row .label-text,
+#stockSearchModal .data-row .label,
+#stockSearchModal .data-row .data-value,
+#stockSearchModal .data-row .value {
+    font-size: 0.7rem !important; /* Very small */
+    line-height: 1.1 !important; /* Very tight */
+    padding: 1px 0 !important; /* Minimal padding */
+    margin: 0 !important; /* No margins */
+}
+
+/* Modal action buttons footer with proper spacing for warning messages */
+#stockSearchModal .modal-action-buttons-footer {
+    margin-top: 12px !important; /* More margin to accommodate warning messages */
+    padding: 10px !important; /* Slightly more padding */
+    gap: 6px !important; /* Smaller gap */
+    border-top: 1px solid var(--border-color) !important;
+    background: var(--modal-content-bg, #fff) !important;
+}
+
+/* Compact action buttons within footer */
+#stockSearchModal .modal-action-buttons-footer .button,
+#stockSearchModal .modal-action-buttons-footer button {
+    padding: 6px 12px !important; /* Much smaller padding */
+    font-size: 0.75rem !important; /* Smaller font */
+    min-width: auto !important; /* Allow natural width */
+    margin: 0 !important; /* Remove margins */
+    height: auto !important; /* Allow natural height */
+    line-height: 1.2 !important; /* Tight line height */
+}
+
+/* Ensure no content overflows horizontally */
+#stockSearchModal .stock-search-modal-content *,
+#stockSearchModal .modal-content * {
+    box-sizing: border-box !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    max-width: 100% !important;
+}
+
+/* Ultra-compact overall search result display container */
+#stockSearchModal #searchResultDisplay {
+    padding: 8px !important; /* Much smaller padding */
+    min-height: auto !important; /* Allow natural height */
+    gap: 4px !important; /* Much smaller gap */
+    margin-top: 4px !important; /* Much smaller margin */
+    border-radius: 4px !important;
+}
+
+/* Very compact company/stock names and info */
+#stockSearchModal .company-name,
+#stockSearchModal .stock-name,
+#stockSearchModal .company-info {
+    font-size: 0.75rem !important; /* Much smaller */
+    line-height: 1.2 !important; /* Tighter */
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    margin: 2px 0 !important; /* Much smaller margins */
+}
+
+/* Make modal body even more compact */
+#stockSearchModal .modal-body {
+    padding: 10px !important; /* Much smaller padding */
+    max-height: calc(75vh - 100px) !important; /* More space for button */
+}
+
+/* Compact modal header */
+#stockSearchModal .modal-header-with-icon {
+    padding: 8px 12px !important; /* Much smaller padding */
+    margin: 0 !important;
+}
+
+#stockSearchModal .modal-header-with-icon .modal-title {
+    font-size: 0.9rem !important; /* Smaller title */
+    font-weight: 600 !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+}
+
+/* Optimize scrolling for ultra-compact modal - minimize scrolling needs */
+#stockSearchModal {
+    -webkit-overflow-scrolling: touch !important;
+}
+
+/* Minimal scrolling - content should fit without scrolling in most cases */
+#stockSearchModal .modal-body {
+    -webkit-transform: translateZ(0) !important;
+    transform: translateZ(0) !important;
+    /* Allow natural height since content is now ultra-compact */
+    max-height: none !important;
+    overflow-y: visible !important; /* Don't force scrolling */
+}
+
+/* Ensure tight spacing between all elements */
+#stockSearchModal .modal-body > * {
+    margin-bottom: 6px !important; /* Much tighter spacing */
+}
+
+#stockSearchModal .modal-body > *:last-child {
+    margin-bottom: 8px !important; /* Small bottom space */
+}
+
+/* Ensure action buttons are prominent and fully visible */
+#stockSearchModal .modal-action-buttons-footer .button,
+#stockSearchModal .modal-action-buttons-footer button {
+    display: block !important;
+    width: 100% !important;
+    margin-bottom: 4px !important; /* Smaller gap between buttons */
+    font-weight: 600 !important; /* Make button text more prominent */
+    border-radius: 4px !important; /* Smaller border radius */
+}
+
+#stockSearchModal .modal-action-buttons-footer .button:last-child,
+#stockSearchModal .modal-action-buttons-footer button:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Ensure modal content is properly centered and sized */
+#stockSearchModal .modal-dialog,
+#stockSearchModal .modal-container {
+    max-height: none !important; /* Allow modal to size to content */
+    height: auto !important; /* Natural height */
+    margin: 0 auto !important; /* Center horizontally */
+    position: relative !important; /* Ensure proper positioning context */
+}
+
+/* Ensure the modal content itself is centered */
+#stockSearchModal .modal-content,
+#stockSearchModal .stock-search-modal-content {
+    margin: 0 auto !important; /* Center the content */
+    position: relative !important; /* Proper positioning context */
+    transform: none !important; /* Remove any transforms that might offset positioning */
+}
+
+/* Modal positioning - clean display without backdrop */
+#stockSearchModal {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important; /* Perfect centering */
+    z-index: 1050 !important;
+    background: transparent !important; /* Remove any background */
+    border: none !important; /* Remove any border */
+    box-shadow: none !important; /* Remove any shadow */
+    width: auto !important; /* Let content determine width */
+    height: auto !important; /* Let content determine height */
+}
+
+/* Additional ultra-compact optimizations for mobile/small screens */
+@media (max-width: 480px) {
+    #stockSearchModal {
+        max-width: 95vw !important; /* Use more screen width on mobile */
+        max-height: 90vh !important; /* Use more screen height on mobile */
+        /* Keep the transform centering for mobile */
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+    }
+    
+    .stock-search-modal-content {
+        max-width: 95vw !important; /* Use more screen width on mobile */
+        max-height: 90vh !important; /* Use more screen height on mobile */
+    }
+
+    #stockSearchModal .stock-search-modal-content,
+    #stockSearchModal .modal-content {
+        font-size: 0.75rem !important; /* Even smaller on mobile for ultra-compact */
+    }
+
+    /* Ultra-compact mobile header */
+    #stockSearchModal .modal-header-with-icon {
+        padding: 6px 10px !important; /* Much smaller padding on mobile */
+    }
+
+    #stockSearchModal .modal-header-with-icon .modal-title {
+        font-size: 0.85rem !important; /* Smaller on mobile */
+    }
+
+    /* Ultra-compact mobile body */
+    #stockSearchModal .modal-body {
+        padding: 8px !important; /* Much smaller padding on mobile */
+    }
+
+    /* Even smaller elements on mobile */
+    #stockSearchModal #searchResultDisplay h3 {
+        font-size: 1.0rem !important; /* Much smaller on mobile */
+        margin: 0 0 2px 0 !important; /* Tiny margin on mobile */
+    }
+
+    #stockSearchModal #searchResultDisplay p {
+        font-size: 0.7rem !important; /* Much smaller on mobile */
+        margin: 1px 0 !important; /* Tiny margins on mobile */
+    }
+
+    #stockSearchModal .live-price-large {
+        font-size: 0.9rem !important; /* Smaller on mobile */
+    }
+
+    #stockSearchModal .external-links-section a,
+    #stockSearchModal .external-links-section .external-link {
+        font-size: 0.65rem !important; /* Much smaller links on mobile */
+        padding: 1px 0 !important; /* Minimal padding on mobile */
+        margin: 1px 0 !important; /* Tiny margins on mobile */
+    }
+
+    /* Ultra-compact mobile footer */
+    #stockSearchModal .modal-action-buttons-footer {
+        padding: 6px !important; /* Much smaller padding on mobile */
+        margin-top: 6px !important; /* Smaller margin on mobile */
+    }
+
+    #stockSearchModal .modal-action-buttons-footer .button,
+    #stockSearchModal .modal-action-buttons-footer button {
+        padding: 5px 10px !important; /* Much smaller padding on mobile */
+        font-size: 0.7rem !important; /* Smaller font on mobile */
+    }
+
+    /* Ensure touch scrolling works well on mobile */
+    #stockSearchModal .modal-body {
+        -webkit-overflow-scrolling: touch !important;
+        scroll-behavior: smooth !important;
+    }
+}
+
+/* Fix 3: Global Movers heading consistency with modal headers */
+.target-hit-section-title {
+    background: transparent !important;
+    color: var(--text-color) !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    margin: 6px 2px 4px 2px !important;
+    padding: 0 2px !important;
+    letter-spacing: 0.5px !important;
+    line-height: 1.25 !important;
+    text-align: left !important;
+    border-radius: 0 !important;
+}
+
+/* Fix 4: Discover modal theming consistency with other modals */
+#discoverGlobalModal,
+.discover-global-modal {
+    background-color: var(--modal-bg, rgba(0, 0, 0, 0.6)) !important;
+}
+
+#discoverGlobalModal .modal-content,
+.discover-global-modal .modal-content {
+    background-color: var(--modal-content-bg, #fff) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px var(--shadow-color, rgba(0, 0, 0, 0.3)) !important;
+    border: 1px solid var(--border-color, #e0e0e0) !important;
+}
+
+body.dark-theme #discoverGlobalModal .modal-content,
+body.dark-theme .discover-global-modal .modal-content {
+    background-color: var(--modal-content-bg, #333) !important;
+}
+
+/* Consistent modal header styling for discover modal */
+#discoverGlobalModal .modal-header-with-icon,
+.discover-global-modal .modal-header-with-icon {
+    background: transparent !important;
+    border-bottom: 1px solid var(--border-color, #e0e0e0) !important;
+    padding: 16px 20px !important;
+    margin: 0 !important;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+#discoverGlobalModal .modal-header-with-icon .modal-title,
+.discover-global-modal .modal-header-with-icon .modal-title {
+    font-family: inherit !important;
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    color: var(--text-color) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-align: left !important;
+    letter-spacing: 0.5px !important;
+    line-height: 1.25 !important;
+}
+
+/* Ensure consistent modal body styling */
+#discoverGlobalModal .modal-body,
+.discover-global-modal .modal-body {
+    padding: 20px !important;
+    background: transparent !important;
+}
+
+/* Update discover modal background elements to match theme */
+.discover-sort-bar,
+.discover-criteria-bar {
+    background: var(--modal-content-bg, #fff) !important;
+    border-color: var(--border-color, #e0e0e0) !important;
+}
+
+body.dark-theme .discover-sort-bar,
+body.dark-theme .discover-criteria-bar {
+    background: var(--modal-content-bg, #333) !important;
+}
+
+/* Ensure discover modal content uses consistent theme colors */
+#discoverGlobalModal .discover-code-list,
+.discover-global-modal .discover-code-list {
+    background: transparent !important;
+}
+
+#discoverGlobalModal .discover-mover,
+.discover-global-modal .discover-mover {
+    background: var(--card-bg, #fff) !important;
+    border-color: var(--border-color, #e0e0e0) !important;
+}
+
+body.dark-theme #discoverGlobalModal .discover-mover,
+body.dark-theme .discover-global-modal .discover-mover {
+    background: var(--card-bg, #444) !important;
+}
+
+/* Ensure consistent modal header styling across all modals */
+.modal-header-with-icon .modal-title,
+.modal-header .modal-title,
+.target-hit-section-title {
+    font-family: inherit !important;
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    color: var(--text-color) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-align: left !important;
+}
