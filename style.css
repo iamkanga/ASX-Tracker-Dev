@@ -8496,13 +8496,20 @@ body.dark-theme .alert-item {
 }
 
 /* Fix 2: Stock search modal content sizing and layout optimization with proper scrolling */
+#stockSearchModal {
+    display: none !important; /* Ensure modal is hidden by default */
+}
+
 #stockSearchModal,
 .stock-search-modal-content {
     max-width: 400px !important; /* Match other modals */
     max-height: 85vh !important; /* Increased from 80vh for better content fit */
     overflow: hidden !important; /* Container manages its own overflow */
-    display: flex !important;
     flex-direction: column !important;
+}
+
+#stockSearchModal.show {
+    display: flex !important;
 }
 
 /* Make the main content area scrollable while keeping header static */

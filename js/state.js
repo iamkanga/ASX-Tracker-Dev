@@ -11,6 +11,7 @@ let sharesAtTargetPrice = [];
 let currentSortOrder = 'entryDate-desc';
 let allAsxCodes = [];
 let watchlistSortOrders = {}; // Stores sort order per watchlist
+let currentMobileViewMode = 'default'; // Stores view mode preference
 
 // Window exposure for compatibility with non-module scripts (e.g., rendering.js)
 if (typeof window !== 'undefined') {
@@ -23,6 +24,7 @@ if (typeof window !== 'undefined') {
     window.currentSortOrder = currentSortOrder;
     window.allAsxCodes = allAsxCodes;
     window.watchlistSortOrders = watchlistSortOrders;
+    window.currentMobileViewMode = currentMobileViewMode;
 }
 
 // Setter helpers keep window mirrors in sync
@@ -81,4 +83,14 @@ export function getSharesAtTargetPrice() { return sharesAtTargetPrice; }
 export function getCurrentSortOrder() { return currentSortOrder; }
 export function getAllAsxCodes() { return allAsxCodes; }
 export function getWatchlistSortOrders() { return watchlistSortOrders; }
+
+// View mode state management
+export function setCurrentMobileViewMode(mode) {
+    currentMobileViewMode = mode && (mode === 'compact' || mode === 'default') ? mode : 'default';
+    if (typeof window !== 'undefined') window.currentMobileViewMode = currentMobileViewMode;
+}
+
+export function getCurrentMobileViewMode() {
+    return currentMobileViewMode;
+}
 

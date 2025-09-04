@@ -218,4 +218,58 @@ export function getSortOrderForWatchlist(watchlistId) {
     return sortOrders[watchlistId] || null;
 }
 
+// View Mode Persistence Functions
+export async function saveViewModePreference(dbArg, firestoreArg, currentUserId, currentAppIdArg, viewMode) {
+    const dbLocal = dbArg || db;
+    const fsLocal = firestoreArg || firestore;
+    const appIdLocal = currentAppIdArg || currentAppId;
+
+    if (!dbLocal || !currentUserId || !fsLocal) {
+        console.warn('[View Mode Persistence] Firestore unavailable for saving view mode');
+        return false;
+    }
+
+    try {
+        const userPrefsRef = fsLocal.doc(dbLocal, 'artifacts/' + appIdLocal + '/users/' + currentUserId + '/preferences/viewMode');
+        await fsLocal.setDoc(userPrefsRef, {
+            mode: viewMode,
+            lastUpdated: fsLocal.serverTimestamp()
+        });
+
+        return true;
+    } catch (error) {
+        console.error('[View Mode Persistence] Error saving view mode preference:', error);
+        return false;
+    }
+}
+
+export async function loadViewModePreference(dbArg, firestoreArg, currentUserId, currentAppIdArg) {
+    const dbLocal = dbArg || db;
+    const fsLocal = firestoreArg || firestore;
+    const appIdLocal = currentAppIdArg || currentAppId;
+
+    if (!dbLocal || !currentUserId || !fsLocal) {
+        console.warn('[View Mode Persistence] Firestore unavailable for loading view mode');
+        return null;
+    }
+
+    try {
+        const userPrefsRef = fsLocal.doc(dbLocal, 'artifacts/' + appIdLocal + '/users/' + currentUserId + '/preferences/viewMode');
+        const docSnap = await fsLocal.getDoc(userPrefsRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const mode = data?.mode;
+            if (mode === 'compact' || mode === 'default') {
+                return mode;
+            }
+        }
+
+        return null;
+    } catch (error) {
+        console.error('[View Mode Persistence] Error loading view mode preference:', error);
+        return null;
+    }
+}
+
 

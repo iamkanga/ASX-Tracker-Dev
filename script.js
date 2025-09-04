@@ -1,7 +1,7 @@
 import { initializeFirebaseAndAuth, db as hubDb, auth as hubAuth, firestore as hubFs, authFunctions as hubAuthFx, currentAppId as hubAppId, firebaseInitialized as hubInit } from './firebase.js';
 import { initializeAppEventListeners } from './js/init.js';
 import { setupAuthListener } from './js/auth.js';
-import { loadShares, loadCashCategories, loadTriggeredAlertsListener, saveWatchlistSortOrder, loadWatchlistSortOrders, getSortOrderForWatchlist } from './js/dataService.js';
+import { loadShares, loadCashCategories, loadTriggeredAlertsListener, saveWatchlistSortOrder, loadWatchlistSortOrders, getSortOrderForWatchlist, saveViewModePreference, loadViewModePreference } from './js/dataService.js';
 import { fetchLivePrices } from './js/priceService.js';
 import { saveShareData as saveShareDataSvc, deleteShare as deleteShareSvc, saveWatchlistChanges as saveWatchlistChangesSvc, deleteWatchlist as deleteWatchlistSvc, saveCashAsset as saveCashAssetSvc, deleteCashCategory as deleteCashCategorySvc, deleteAllUserData as deleteAllUserDataSvc } from './js/appService.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
@@ -369,7 +369,8 @@ document.addEventListener('DOMContentLoaded', function () {
         stockWatchlistSection.classList.remove('app-hidden');
         // Also ensure the table and mobile containers are restored from any previous hide
         if (tableContainer) tableContainer.style.display = '';
-        if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = '';
+        const mobileContainer = getMobileShareCardsContainer();
+        if (mobileContainer) mobileContainer.style.display = '';
     };
     // Render portfolio list (uses live prices when available)
     window.renderPortfolioList = function() {
@@ -746,9 +747,17 @@ let authInProgress = false;
 function shareBelongsTo(share, watchlistId) {
     if (!share) return false;
     if (Array.isArray(share.watchlistIds)) {
-        return share.watchlistIds.includes(watchlistId);
+        const result = share.watchlistIds.includes(watchlistId);
+        if (!result && DEBUG_MODE) {
+            console.log(`Share ${share.shareName} does not belong to ${watchlistId}. Share watchlistIds:`, share.watchlistIds);
+        }
+        return result;
     }
-    return share.watchlistId === watchlistId;
+    const result = share.watchlistId === watchlistId;
+    if (!result && DEBUG_MODE) {
+        console.log(`Share ${share.shareName} does not belong to ${watchlistId}. Share watchlistId:`, share.watchlistId);
+    }
+    return result;
 }
 // Helper: ensure we don't render duplicates when transient optimistic updates or race conditions occur
 function dedupeSharesById(items) {
@@ -1510,23 +1519,381 @@ try {
 } catch(e) {}
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
-let currentMobileViewMode = 'default'; // Will be loaded post-auth, but try early restore now
-// Early restore of persisted mobile view mode so pre-auth UI (and first render) matches last preference
+// SUPER ROBUST: Single source of truth for view mode with immediate DOM application
+let currentMobileViewMode = 'default';
+let viewModeInitialized = false;
+
+// CENTRALIZED VIEW MODE MANAGER - Single point of control
+function setMobileViewMode(newMode, source = 'unknown') {
+    if (newMode !== 'compact' && newMode !== 'default') {
+        console.warn('View Mode: Invalid mode requested:', newMode, 'from:', source);
+        return false;
+    }
+
+    const oldMode = currentMobileViewMode;
+    if (oldMode === newMode) {
+        return true; // Already correct
+    }
+
+    console.log('View mode changed to:', newMode);
+    currentMobileViewMode = newMode;
+    viewModeInitialized = true;
+
+    // IMMEDIATE DOM APPLICATION - Most critical part
+    try {
+        const container = getMobileShareCardsContainer();
+        if (container) {
+            // Always start with clean slate
+            container.classList.remove('compact-view');
+
+            if (newMode === 'compact') {
+                container.classList.add('compact-view');
+            }
+        } else {
+            console.warn('❌ View Mode: mobileShareCardsContainer not available for immediate application');
+        }
+    } catch (error) {
+        console.error('❌ View Mode: Failed to apply mode to DOM:', error);
+    }
+
+    // Force re-render to ensure display properties are correct
+    try {
+        if (typeof renderWatchlist === 'function') {
+            renderWatchlist();
+            console.log('View Mode: Triggered renderWatchlist for display updates');
+        }
+    } catch (error) {
+        console.warn('View Mode: Failed to trigger renderWatchlist:', error);
+    }
+
+    // Update UI elements
+    try {
+        if (typeof updateCompactViewButtonState === 'function') {
+            updateCompactViewButtonState();
+        }
+        if (typeof adjustMainContentPadding === 'function') {
+            adjustMainContentPadding();
+        }
+    } catch (error) {
+        console.warn('View Mode: Failed to update UI elements:', error);
+    }
+
+    // AGGRESSIVE PERSISTENCE - Multiple layers
+    persistViewModeAggressively(newMode, source);
+
+    debugViewModeState('after_setMobileViewMode_' + source);
+    console.log('✅ VIEW MODE SUCCESS:', newMode, 'from:', source);
+
+    // Verify the view mode was applied correctly after a short delay
+    setTimeout(() => {
+        const container = getMobileShareCardsContainer();
+        if (container) {
+            const hasCompactClass = container.classList.contains('compact-view');
+            const expectedCompact = currentMobileViewMode === 'compact';
+            if (hasCompactClass === expectedCompact) {
+            } else {
+                console.warn('View mode mismatch detected');
+                // Auto-correct if there's a mismatch
+                if (expectedCompact && !hasCompactClass) {
+                    container.classList.add('compact-view');
+                } else if (!expectedCompact && hasCompactClass) {
+                    container.classList.remove('compact-view');
+                }
+            }
+        }
+    }, 100);
+
+    return true;
+}
+
+// AGGRESSIVE PERSISTENCE FUNCTION
+function persistViewModeAggressively(mode, source) {
+    // Layer 1: Immediate localStorage
+    try {
+        localStorage.setItem('currentMobileViewMode', mode);
+    } catch (error) {
+        console.error('View Mode: Failed to save to localStorage:', error);
+    }
+
+    // Layer 2: Firestore (if available)
+    if (currentUserId && db && firestore) {
+        saveViewModePreference(db, firestore, currentUserId, currentAppId, mode).catch(error => {
+            console.error('View Mode: Failed to save to Firestore:', error);
+        });
+    }
+
+    // Layer 3: Session storage as backup
+    try {
+        sessionStorage.setItem('lastViewMode', mode);
+    } catch (error) {
+        console.error('View Mode: Failed to save to sessionStorage:', error);
+    }
+
+    // Layer 4: Global variable backup
+    try {
+        window.__lastKnownViewMode = mode;
+    } catch (error) {
+        console.error('View Mode: Failed to save to global backup:', error);
+    }
+}
+
+// VIEW MODE RECOVERY FUNCTION - Called when things might be wrong
+async function recoverViewMode(source = 'unknown') {
+
+    let recoveredMode = null;
+
+    // Try multiple sources in order of preference (sync first, then async)
+    const syncSources = [
+        { name: 'global', getter: () => window.__lastKnownViewMode },
+        { name: 'session', getter: () => sessionStorage.getItem('lastViewMode') },
+        { name: 'localStorage', getter: () => localStorage.getItem('currentMobileViewMode') },
+        { name: 'currentVariable', getter: () => currentMobileViewMode }
+    ];
+
+    // Try synchronous sources first
+    for (const source of syncSources) {
+        try {
+            const mode = source.getter();
+            if (mode === 'compact' || mode === 'default') {
+                recoveredMode = mode;
+                break;
+            }
+        } catch (error) {
+            console.warn('View Mode: Failed to recover from', source.name + ':', error);
+        }
+    }
+
+    // If no sync source worked, try Firestore (async)
+    if (!recoveredMode && currentUserId && db && firestore) {
+        try {
+            const firestoreMode = await loadViewModePreference(db, firestore, currentUserId, currentAppId);
+            if (firestoreMode) {
+                recoveredMode = firestoreMode;
+            }
+        } catch (error) {
+            console.warn('View Mode: Failed to recover from Firestore:', error);
+        }
+    }
+
+    if (recoveredMode) {
+        setMobileViewMode(recoveredMode, 'recovery_from_' + source);
+        return true;
+    } else {
+        console.warn('View Mode: Could not recover mode from any source');
+        return false;
+    }
+}
+
+// FINAL SAFETY CHECK - Run when page is fully loaded
+function performFinalViewModeCheck() {
+    try {
+        // Ensure we have a valid mode
+        if (!currentMobileViewMode || !viewModeInitialized) {
+            recoverViewMode('final_safety_check').catch(error => {
+                console.warn('View Mode: Final safety check recovery failed:', error);
+            });
+        } else {
+            // Double-check that DOM matches our state
+            const container = getMobileShareCardsContainer();
+            if (container) {
+                const hasCompactClass = container.classList.contains('compact-view');
+                const shouldHaveCompactClass = currentMobileViewMode === 'compact';
+
+                if (hasCompactClass !== shouldHaveCompactClass) {
+                    setMobileViewMode(currentMobileViewMode, 'final_safety_check_correction');
+                }
+            }
+        }
+    } catch (error) {
+        console.error('View Mode: Final safety check failed:', error);
+    }
+}
+
+// Run final check when page is fully loaded
+if (typeof window !== 'undefined') {
+    // Ensure view mode is applied as soon as DOM is ready
+    const ensureViewModeApplied = () => {
+        if (currentMobileViewMode && viewModeInitialized) {
+            const container = getMobileShareCardsContainer();
+            if (container) {
+                // Double-check the current state
+                const hasCompactClass = container.classList.contains('compact-view');
+                const shouldHaveCompactClass = currentMobileViewMode === 'compact';
+
+                if (hasCompactClass !== shouldHaveCompactClass) {
+                    console.log('DOM Ready: Correcting view mode state');
+                    setMobileViewMode(currentMobileViewMode, 'dom_ready_correction');
+                }
+            }
+        }
+        performFinalViewModeCheck();
+    };
+
+    if (document.readyState === 'complete') {
+        // Page already loaded
+        setTimeout(ensureViewModeApplied, 100);
+    } else {
+        // Wait for page to load
+        window.addEventListener('load', () => {
+            setTimeout(ensureViewModeApplied, 100);
+        });
+    }
+
+    // Add global debug function for troubleshooting
+    window.debugCompactView = function() {
+        debugViewModeState('manual_debug');
+        console.log('View Mode: Manual debug completed');
+        return {
+            currentMode: currentMobileViewMode,
+            initialized: viewModeInitialized,
+            container: !!getMobileShareCardsContainer(),
+            localStorage: localStorage.getItem('currentMobileViewMode'),
+            sessionStorage: sessionStorage.getItem('lastViewMode'),
+            global: window.__lastKnownViewMode
+        };
+    };
+
+    // Add function to force compact mode for testing
+    window.forceCompactView = function() {
+        console.log('View Mode: Forcing compact view for testing...');
+        setMobileViewMode('compact', 'manual_force');
+    };
+
+    // Add function to force default mode for testing
+    window.forceDefaultView = function() {
+        console.log('View Mode: Forcing default view for testing...');
+        setMobileViewMode('default', 'manual_force');
+    };
+
+    // Debug function to check compact view state
+    window.checkCompactViewState = function() {
+        console.log('View Mode State:', {
+            mode: currentMobileViewMode,
+            initialized: viewModeInitialized,
+            container: !!getMobileShareCardsContainer(),
+            compactClass: getMobileShareCardsContainer()?.classList.contains('compact-view')
+        });
+    };
+
+    // Debug function to test view mode persistence
+    window.testViewModePersistence = async function() {
+        console.log('Testing view mode persistence...');
+
+        try {
+            // Test save/load cycle
+            await saveViewModePreference(db, firestore, currentUserId, currentAppId, 'compact');
+            const loaded = await loadViewModePreference(db, firestore, currentUserId, currentAppId);
+            console.log('Persistence test result:', loaded === 'compact' ? 'PASS' : 'FAIL');
+        } catch (error) {
+            console.error('Persistence test failed:', error.message);
+        }
+    };
+
+    // Debug function to check movers data
+    window.debugMoversData = function() {
+        try {
+            const moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || [];
+            const base = dedupeSharesById(allSharesData);
+            const codeSet = new Set(moversEntries.map(e => e.code));
+            const matchingShares = base.filter(s => s.shareName && codeSet.has(s.shareName.toUpperCase()));
+
+            console.log('Movers Debug:', {
+                moversEntries: moversEntries.length,
+                totalShares: base.length,
+                matchingShares: matchingShares.length,
+                watchlist: currentSelectedWatchlistIds
+            });
+        } catch(e) {
+            console.error('Movers debug failed:', e.message);
+        }
+    };
+
+
+    console.log('✅ State check complete');
+};
+
+// Debug function to check movers state
+window.checkMoversState = function() {
+    try {
+        const moversResult = applyGlobalSummaryFilter({ silent: true, computeOnly: true });
+        console.log('Movers State:', {
+            selectedIds: getCurrentSelectedWatchlistIds(),
+            livePrices: !!livePrices && Object.keys(livePrices).length,
+            totalShares: getAllSharesData().length,
+            moversCount: moversResult ? moversResult.length : 0,
+            hasSnapshot: !!window.__lastMoversSnapshot
+        });
+    } catch(e) {
+        console.error('Movers state check failed:', e.message);
+    }
+};
+
+    // Set up a MutationObserver to watch for DOM changes and apply view mode when container appears
+    const setupDOMWatcher = () => {
+        if (typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    if (mutation.type === 'childList') {
+                        mutation.addedNodes.forEach((node) => {
+                            if (node.nodeType === Node.ELEMENT_NODE) {
+                                // Check if the added element is our container or contains it
+                                const container = node.id === 'mobileShareCards' ? node :
+                                    node.querySelector ? node.querySelector('#mobileShareCards') : null;
+
+                                if (container && currentMobileViewMode && viewModeInitialized) {
+                                    console.log('DOM Watcher: mobileShareCardsContainer appeared, applying view mode');
+                                    // Small delay to ensure element is fully ready
+                                    setTimeout(() => {
+                                        if (currentMobileViewMode === 'compact') {
+                                            container.classList.add('compact-view');
+                                        } else {
+                                            container.classList.remove('compact-view');
+                                        }
+                                        console.log('DOM Watcher: Applied view mode to newly appeared container');
+                                    }, 50);
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+
+            // Start observing the document body for changes
+            if (document.body) {
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+                console.log('DOM Watcher: Started observing for mobileShareCardsContainer');
+            }
+        }
+    };
+
+    // Start the DOM watcher
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupDOMWatcher);
+    } else {
+        setupDOMWatcher();
+    }
+// Early restore of persisted mobile view mode using centralized manager
+// Only set the mode variable, don't try to manipulate DOM yet
 try {
     const __storedModeEarly = localStorage.getItem('currentMobileViewMode');
     if (__storedModeEarly === 'compact' || __storedModeEarly === 'default') {
         currentMobileViewMode = __storedModeEarly;
+        viewModeInitialized = true;
         if (DEBUG_MODE) console.log('View Mode: Early restored mode =', currentMobileViewMode);
     }
 } catch(_) {}
 
 // Helper to ensure compact mode class is always applied
 function applyCompactViewMode() {
-    if (mobileShareCardsContainer) {
+    const container = getMobileShareCardsContainer();
+    if (container) {
         if (currentMobileViewMode === 'compact') {
-            mobileShareCardsContainer.classList.add('compact-view');
+            container.classList.add('compact-view');
         } else {
-            mobileShareCardsContainer.classList.remove('compact-view');
+            container.classList.remove('compact-view');
         }
     }
     // Re-apply ASX buttons visibility since compact view hides them
@@ -1667,7 +2034,7 @@ function restoreViewAndModeFromPreferences() {
         }
         currentMobileViewMode = storedMode;
         try { localStorage.setItem('currentMobileViewMode', currentMobileViewMode); } catch(_) {}
-        applyCompactViewMode();
+        // applyCompactViewMode(); // Disabled - conflicts with robust restoration
     } catch(e) { console.warn('Restore preferences failed', e); }
 }
 
@@ -2080,7 +2447,44 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
 }
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
 const shareTableBody = document.querySelector('#shareTable tbody');
-const mobileShareCardsContainer = document.getElementById('mobileShareCards');
+// Dynamic container getter to handle DOM timing issues
+function getMobileShareCardsContainer() {
+    // Always get fresh reference to handle DOM timing
+    const container = document.getElementById('mobileShareCards');
+    if (!container) {
+        console.warn('View Mode: mobileShareCardsContainer not found in DOM');
+        console.warn('View Mode: Current DOM elements with "mobile" in ID:', Array.from(document.querySelectorAll('[id*="mobile"]')).map(el => el.id));
+        console.warn('View Mode: Document readyState:', document.readyState);
+        console.warn('View Mode: All elements with ID containing "card":', Array.from(document.querySelectorAll('[id*="card"]')).map(el => el.id));
+    }
+    return container;
+}
+
+function getToggleCompactViewBtn() {
+    // Always get fresh reference to handle DOM timing
+    return document.getElementById('toggleCompactViewBtn');
+}
+
+// Debug function to log current view mode state
+function debugViewModeState(source = 'unknown') {
+    const container = getMobileShareCardsContainer();
+    console.log('=== VIEW MODE DEBUG ===');
+    console.log('Source:', source);
+    console.log('currentMobileViewMode:', currentMobileViewMode);
+    console.log('viewModeInitialized:', viewModeInitialized);
+    console.log('Container exists:', !!container);
+    if (container) {
+        console.log('Container has compact-view class:', container.classList.contains('compact-view'));
+        console.log('Container display style:', container.style.display);
+    }
+    console.log('localStorage value:', localStorage.getItem('currentMobileViewMode'));
+    console.log('sessionStorage value:', sessionStorage.getItem('lastViewMode'));
+    console.log('Global backup:', window.__lastKnownViewMode);
+    console.log('=======================');
+}
+
+// Keep for backwards compatibility, but make it dynamic
+let mobileShareCardsContainer = null;
 const tableContainer = document.querySelector('.table-container');
 const loadingIndicator = document.getElementById('loadingIndicator');
 const shareDetailModal = document.getElementById('shareDetailModal');
@@ -2251,6 +2655,10 @@ function scheduleAlertAutoSave(trigger){
 const splashScreen = document.getElementById('splashScreen');
 const searchStockBtn = document.getElementById('searchStockBtn'); // NEW: Search Stock button
 const stockSearchModal = document.getElementById('stockSearchModal'); // NEW: Stock Search Modal
+// Ensure stock search modal is hidden on script load
+if (stockSearchModal) {
+    stockSearchModal.classList.remove('show');
+}
 const stockSearchTitle = document.getElementById('stockSearchTitle'); // NEW: Title for search modal
 const asxSearchInput = document.getElementById('asxSearchInput'); // NEW: Search input field
 const asxSuggestions = document.getElementById('asxSuggestions'); // NEW: Autocomplete suggestions container
@@ -3451,7 +3859,8 @@ function addShareToTable(share) {
 }
 
 function addShareToMobileCards(share) {
-    if (!mobileShareCardsContainer) {
+    const container = getMobileShareCardsContainer();
+    if (!container) {
         console.error('addShareToMobileCards: mobileShareCardsContainer element not found.');
         return;
     }
@@ -3570,7 +3979,10 @@ function addShareToMobileCards(share) {
         selectedElementForTap = null;
     });
 
-    mobileShareCardsContainer.appendChild(card);
+    const mobileContainer = getMobileShareCardsContainer();
+    if (mobileContainer) {
+        mobileContainer.appendChild(card);
+    }
     logDebug('Mobile Cards: Added share ' + share.shareName + ' to mobile cards using template.');
 }
 /**
@@ -3735,12 +4147,13 @@ function updateOrCreateShareTableRow(share) {
  * @param {object} share The share object.
  */
 function updateOrCreateShareMobileCard(share) {
-    if (!mobileShareCardsContainer) {
+    const container = getMobileShareCardsContainer();
+    if (!container) {
         console.error('updateOrCreateShareMobileCard: mobileShareCardsContainer element not found.');
         return;
     }
 
-    let card = mobileShareCardsContainer.querySelector(`div[data-doc-id="${share.id}"]`);
+    let card = container.querySelector(`div[data-doc-id="${share.id}"]`);
 
     if (!card) {
         card = document.createElement('div');
@@ -3758,7 +4171,7 @@ function updateOrCreateShareMobileCard(share) {
     card.addEventListener('touchstart', () => { selectedElementForTap = card; }, { passive: true });
     card.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
 
-        mobileShareCardsContainer.appendChild(card); // Append new cards at the end, sorting will reorder virtually
+        container.appendChild(card); // Append new cards at the end, sorting will reorder virtually
         logDebug('Mobile Cards: Created new card for share ' + share.shareName + '.');
     }
 
@@ -3913,16 +4326,17 @@ function updateMainButtonsState(enable) {
  * This feature is only intended for mobile views (<= 768px).
  */
 function updateCompactViewButtonState() {
-    if (!toggleCompactViewBtn) {
+    const button = getToggleCompactViewBtn();
+    if (!button) {
         return; // Exit if the button doesn't exist
     }
     // Always enable the button, regardless of screen width
-    toggleCompactViewBtn.disabled = false;
+    button.disabled = false;
     const isCompact = currentMobileViewMode === 'compact';
-    toggleCompactViewBtn.title = isCompact ? 'Switch to Default View' : 'Switch to Compact View';
+    button.title = isCompact ? 'Switch to Default View' : 'Switch to Compact View';
     // If button has data-label span or similar, update text without blowing away icon
     try {
-        const labelSpan = toggleCompactViewBtn.querySelector('span') || toggleCompactViewBtn;
+        const labelSpan = button.querySelector('span') || button;
         if (labelSpan) labelSpan.textContent = isCompact ? 'Default View' : 'Compact View';
     } catch(_) {}
     logDebug('UI State: Compact view button enabled (mode=' + currentMobileViewMode + ').');
@@ -3935,7 +4349,7 @@ function showModal(modalElement) {
     try {
         if (!modalElement) return;
         if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id }, '', '');
-        modalElement.style.setProperty('display', 'flex', 'important');
+        modalElement.classList.add('show');
         modalElement.scrollTop = 0;
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (scrollableContent) scrollableContent.scrollTop = 0;
@@ -3951,7 +4365,7 @@ function showModalNoHistory(modalElement) {
     if (window.UI && typeof window.UI.showModalNoHistory === 'function') return window.UI.showModalNoHistory(modalElement);
     try {
         if (!modalElement) return;
-        modalElement.style.setProperty('display', 'flex', 'important');
+        modalElement.classList.add('show');
         modalElement.scrollTop = 0;
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (scrollableContent) scrollableContent.scrollTop = 0;
@@ -3963,7 +4377,7 @@ function hideModal(modalElement) {
     if (window.UI && typeof window.UI.hideModal === 'function') return window.UI.hideModal(modalElement);
     try {
         if (!modalElement) return;
-        modalElement.style.setProperty('display', 'none', 'important');
+        modalElement.classList.remove('show');
         if (typeof logDebug === 'function') logDebug('Modal: Hiding modal: ' + modalElement.id);
     } catch (e) { console.warn('hideModal fallback failed', e); }
 }
@@ -4002,9 +4416,10 @@ function clearWatchlistUI() {
 
 function clearShareListUI() {
     if (!shareTableBody) { console.error('clearShareListUI: shareTableBody element not found.'); return; }
-    if (!mobileShareCardsContainer) { console.error('clearShareListUI: mobileShareCardsContainer element not found.'); return; }
+    const container = getMobileShareCardsContainer();
+    if (!container) { console.error('clearShareListUI: mobileShareCardsContainer element not found.'); return; }
     shareTableBody.innerHTML = '';
-    mobileShareCardsContainer.innerHTML = '';
+    container.innerHTML = '';
     logDebug('UI: Share list UI cleared.');
 }
 
@@ -5877,6 +6292,41 @@ function bindHeaderInteractiveElements() {
  */
 function renderWatchlist() {
     logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + currentSelectedWatchlistIds[0]);
+
+    // Ensure view mode is correct before rendering - use centralized manager
+    try {
+        // If view mode is not initialized or seems wrong, try recovery
+        if (!viewModeInitialized || !currentMobileViewMode) {
+            recoverViewMode('render_watchlist').then(recovered => {
+                if (!recovered) {
+                    // Last resort: ensure we have a valid mode
+                    setMobileViewMode('default', 'render_watchlist_fallback');
+                }
+            }).catch(error => {
+                console.warn('View Mode: Recovery failed in renderWatchlist:', error);
+                setMobileViewMode('default', 'render_watchlist_fallback');
+            });
+        } else {
+            // Re-apply current mode to ensure DOM is correct
+            const container = getMobileShareCardsContainer();
+            if (container) {
+                container.classList.remove('compact-view');
+                if (currentMobileViewMode === 'compact') {
+                    container.classList.add('compact-view');
+                    logDebug('Render: Re-applied COMPACT view mode to container');
+                } else {
+                    logDebug('Render: Re-applied DEFAULT view mode to container');
+                }
+            }
+        }
+    } catch (error) {
+        console.warn('Render: Failed to ensure view mode before rendering:', error);
+        // Emergency recovery
+        recoverViewMode('render_watchlist_error').catch(error => {
+            console.warn('View Mode: Emergency recovery failed:', error);
+        });
+    }
+
     // If first load and user restored to movers, enforce immediately after minimal delay
     try {
         if (!window.__moversInitialEnforced && currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
@@ -5888,26 +6338,29 @@ function renderWatchlist() {
     // --- Compact View Display Logic ---
     const isCompactView = currentMobileViewMode === 'compact';
     const isMobileView = window.innerWidth <= 768;
+    const mobileContainer = getMobileShareCardsContainer();
+
+
     if (isCompactView) {
         // Compact view: show card container as grid, hide table
-        if (mobileShareCardsContainer) {
-            mobileShareCardsContainer.style.display = 'grid';
+        if (mobileContainer) {
+            mobileContainer.style.display = 'grid';
         }
         if (tableContainer) {
             tableContainer.style.display = 'none';
         }
     } else if (isMobileView) {
         // Mobile, not compact: show card container as flex, hide table
-        if (mobileShareCardsContainer) {
-            mobileShareCardsContainer.style.display = 'flex';
+        if (mobileContainer) {
+            mobileContainer.style.display = 'flex';
         }
         if (tableContainer) {
             tableContainer.style.display = 'none';
         }
     } else {
         // Desktop: show table, hide card container
-        if (mobileShareCardsContainer) {
-            mobileShareCardsContainer.style.display = 'none';
+        if (mobileContainer) {
+            mobileContainer.style.display = 'none';
         }
         if (tableContainer) {
             tableContainer.style.display = '';
@@ -5939,13 +6392,15 @@ function renderWatchlist() {
         portfolioSection.style.display = 'block';
         // Hide stock-specific containers
         if (tableContainer) tableContainer.style.display = 'none';
-        if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
+        const mobileContainer = getMobileShareCardsContainer();
+        if (mobileContainer) mobileContainer.style.display = 'none';
         // Update title
     // Title handled by updateMainTitle
     // Show sort dropdown in portfolio too
     sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
-        toggleCompactViewBtn.classList.add('app-hidden');
+        const toggleBtn = getToggleCompactViewBtn();
+        if (toggleBtn) toggleBtn.classList.add('app-hidden');
         exportWatchlistBtn.classList.remove('app-hidden'); // Allow export if desired
         // Render the portfolio list
         if (typeof renderPortfolioList === 'function') {
@@ -5984,7 +6439,8 @@ function renderWatchlist() {
         // Show stock-specific UI elements
         sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.remove('app-hidden');
-        toggleCompactViewBtn.classList.remove('app-hidden');
+        const toggleBtn = getToggleCompactViewBtn();
+        if (toggleBtn) toggleBtn.classList.remove('app-hidden');
         exportWatchlistBtn.classList.remove('app-hidden');
         // startLivePriceUpdates(); // Removed this line to prevent multiple intervals
         updateAddHeaderButton();
@@ -5993,17 +6449,40 @@ function renderWatchlist() {
         let sharesToRender = [];
 
         if (selectedWatchlistId === '__movers') {
-            // Fresh compute of movers (preferred) with fallback to last snapshot, then schedule a retry if empty
+            // Fresh compute of movers (preferred) with fallback to last snapshot, then all shares if still empty
             let moversEntries = [];
             try { if (typeof applyGlobalSummaryFilter === 'function') moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || []; } catch(e){ console.warn('Render movers: compute failed', e); }
             if ((!moversEntries || moversEntries.length === 0) && window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
                 moversEntries = window.__lastMoversSnapshot.entries;
             }
-            const codeSet = new Set((moversEntries||[]).map(e=>e.code));
+
             const base = dedupeSharesById(allSharesData);
-            sharesToRender = base.filter(s => s.shareName && codeSet.has(s.shareName.toUpperCase()));
-            logDebug('Render: Displaying Movers computed ('+sharesToRender.length+' items, codes='+codeSet.size+').');
-            // If still empty but we have shares & livePrices may not be ready, schedule a one-time re-render retry
+
+            if (moversEntries && moversEntries.length > 0) {
+                // Use computed/filtered movers
+                const codeSet = new Set(moversEntries.map(e=>e.code));
+                console.log('[MOVERS DEBUG] Movers entries:', moversEntries.length, 'codes:', Array.from(codeSet));
+                console.log('[MOVERS DEBUG] Available share codes:', base.map(s => s.shareName).filter(Boolean));
+
+                sharesToRender = base.filter(s => {
+                    if (!s.shareName) return false;
+                    const shareCode = s.shareName.toUpperCase();
+                    const hasMatch = codeSet.has(shareCode);
+                    if (!hasMatch) {
+                        console.log('[MOVERS DEBUG] Share', shareCode, 'not in movers list');
+                    }
+                    return hasMatch;
+                });
+
+                console.log('[MOVERS DEBUG] Filtered movers shares:', sharesToRender.length, 'from', moversEntries.length, 'entries');
+                logDebug('Render: Displaying Movers computed ('+sharesToRender.length+' items, codes='+codeSet.size+').');
+            } else {
+                // No movers data available, show top 10 shares by market cap or alphabetically
+                sharesToRender = base.slice(0, 10); // Show first 10 shares as fallback
+                logDebug('Render: Displaying fallback movers (top 10 shares, '+sharesToRender.length+' items) - no live data available.');
+            }
+
+            // If still empty but we have shares, schedule a one-time re-render retry
             if (sharesToRender.length === 0 && base.length > 0 && !window.__moversRenderRetry) {
                 window.__moversRenderRetry = setTimeout(()=>{
                     window.__moversRenderRetry = null;
@@ -6023,9 +6502,10 @@ function renderWatchlist() {
         }
 
         // --- Optimized DOM Update for Shares ---
-        const existingTableRows = Array.from(shareTableBody.children);
-        const existingMobileCards = Array.from(mobileShareCardsContainer.children);
-        const existingAsxButtons = Array.from(asxCodeButtonsContainer.children);
+        const existingTableRows = shareTableBody ? Array.from(shareTableBody.children) : [];
+        const container = getMobileShareCardsContainer();
+        const existingMobileCards = container ? Array.from(container.children) : [];
+        const existingAsxButtons = asxCodeButtonsContainer ? Array.from(asxCodeButtonsContainer.children) : [];
 
         const newShareIds = new Set(sharesToRender.map(s => s.id));
         const newAsxCodes = new Set(sharesToRender.map(s => s.shareName.trim().toUpperCase()));
@@ -6046,18 +6526,20 @@ function renderWatchlist() {
         if (shareTableBody) {
             shareTableBody.innerHTML = '';
         }
-        if (mobileShareCardsContainer) {
-            mobileShareCardsContainer.innerHTML = '';
+        const mobileContainer = getMobileShareCardsContainer();
+        if (mobileContainer) {
+            mobileContainer.innerHTML = '';
         }
 
         // Re-add shares to the UI in their sorted order
+
         if (sharesToRender.length > 0) {
             sharesToRender.forEach(share => {
                 if (tableContainer && tableContainer.style.display !== 'none') {
-                    addShareToTable(share); // Using add functions to ensure new row/card is created in order
+                    addShareToTable(share);
                 }
-                if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
-                    addShareToMobileCards(share); // Using add functions to ensure new row/card is created in order
+                if (mobileContainer && mobileContainer.style.display !== 'none') {
+                    addShareToMobileCards(share);
                 }
             });
         } else {
@@ -6077,8 +6559,8 @@ function renderWatchlist() {
                 tr.appendChild(td);
                 shareTableBody.appendChild(tr);
             }
-            if (mobileShareCardsContainer && mobileShareCardsContainer.style.display !== 'none') {
-                mobileShareCardsContainer.appendChild(emptyWatchlistMessage.cloneNode(true));
+            if (mobileContainer && mobileContainer.style.display !== 'none') {
+                mobileContainer.appendChild(emptyWatchlistMessage.cloneNode(true));
             }
         }
         
@@ -6108,7 +6590,8 @@ function renderWatchlist() {
         renderCashCategories();
         sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
-        toggleCompactViewBtn.classList.add('app-hidden');
+        const toggleBtn = getToggleCompactViewBtn();
+        if (toggleBtn) toggleBtn.classList.add('app-hidden');
         asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
     // Hide in cash view via inline style to avoid class conflicts
     if (targetHitIconBtn) targetHitIconBtn.style.display = 'none';
@@ -6117,7 +6600,8 @@ function renderWatchlist() {
         updateAddHeaderButton();
         // Ensure stock-specific containers are hidden when showing cash assets
         if (tableContainer) tableContainer.style.display = 'none';
-        if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
+        const mobileContainer = getMobileShareCardsContainer();
+        if (mobileContainer) mobileContainer.style.display = 'none';
     }
     // Update sort dropdown options based on selected watchlist type
     renderSortSelect(); // Moved here to ensure it updates for both stock and cash views
@@ -6137,9 +6621,10 @@ function enforceTargetHitStyling() {
     const enabledList = (sharesAtTargetPrice||[]).map(s=>s.id).sort();
     const signature = enabledList.join(',');
     // Cheap existing highlight count (rows + cards)
+    const mobileContainer = getMobileShareCardsContainer();
     const existingHighlights = (
         (shareTableBody? shareTableBody.querySelectorAll('tr.target-hit-alert').length : 0) +
-        (mobileShareCardsContainer? mobileShareCardsContainer.querySelectorAll('.mobile-card.target-hit-alert').length : 0)
+        (mobileContainer? mobileContainer.querySelectorAll('.mobile-card.target-hit-alert').length : 0)
     );
     if (enforceTargetHitStyling.__lastSig === signature && existingHighlights === enabledList.length) {
         // No change; skip verbose DOM walk/log
@@ -6148,7 +6633,7 @@ function enforceTargetHitStyling() {
     enforceTargetHitStyling.__lastSig = signature;
     const enabledIds = new Set(enabledList);
     const rows = shareTableBody ? Array.from(shareTableBody.querySelectorAll('tr[data-doc-id]')) : [];
-    const cards = mobileShareCardsContainer ? Array.from(mobileShareCardsContainer.querySelectorAll('.mobile-card[data-doc-id]')) : [];
+    const cards = mobileContainer ? Array.from(mobileContainer.querySelectorAll('.mobile-card[data-doc-id]')) : [];
     let applied = 0, removed = 0;
     rows.forEach(r => {
         const id = r.dataset.docId;
@@ -6180,8 +6665,39 @@ function renderAsxCodeButtons() {
     if (__selIds_asx.includes(ALL_SHARES_ID)) {
         sharesForButtons = dedupeSharesById(__shares_asx);
         console.log('[ASX Debug] renderAsxCodeButtons - using ALL_SHARES_ID path, shares count:', sharesForButtons.length);
+    } else if (__selIds_asx.includes('__movers')) {
+        // Special handling for movers watchlist - compute movers dynamically
+        let moversEntries = [];
+        try {
+            if (typeof applyGlobalSummaryFilter === 'function') {
+                moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || [];
+            }
+            if ((!moversEntries || moversEntries.length === 0) && window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
+                moversEntries = window.__lastMoversSnapshot.entries;
+            }
+        } catch(e) {
+            console.warn('renderAsxCodeButtons: Movers computation failed', e);
+        }
+
+        if (moversEntries && moversEntries.length > 0) {
+            // Use computed/filtered movers
+            const codeSet = new Set(moversEntries.map(e=>e.code));
+            sharesForButtons = dedupeSharesById(__shares_asx).filter(s => s.shareName && codeSet.has(s.shareName.toUpperCase()));
+            console.log('[ASX Debug] renderAsxCodeButtons - using __movers path, movers count:', moversEntries.length, 'shares count:', sharesForButtons.length);
+        } else {
+            // No movers data available, show top 10 shares as fallback
+            sharesForButtons = dedupeSharesById(__shares_asx).slice(0, 10);
+            console.log('[ASX Debug] renderAsxCodeButtons - using __movers fallback, shares count:', sharesForButtons.length);
+        }
     } else {
-        sharesForButtons = dedupeSharesById(__shares_asx).filter(share => __selIds_asx.some(id => shareBelongsTo(share, id)));
+        sharesForButtons = dedupeSharesById(__shares_asx).filter(share => {
+            const belongsToAny = __selIds_asx.some(id => shareBelongsTo(share, id));
+            if (!belongsToAny && DEBUG_MODE) {
+                console.log('[ASX Debug] Share', share.shareName, 'does not belong to any selected watchlist:', __selIds_asx);
+                console.log('  Share watchlistIds:', share.watchlistIds, 'share.watchlistId:', share.watchlistId);
+            }
+            return belongsToAny;
+        });
         console.log('[ASX Debug] renderAsxCodeButtons - using filtered path, shares count:', sharesForButtons.length);
     }
 
@@ -6694,12 +7210,19 @@ async function loadAsxCodesFromCSV() {
             return [];
         }
 
-        const headers = lines[0].split(',').map(header => header.trim());
-        const asxCodeIndex = headers.indexOf('ASX Code');
-        const companyNameIndex = headers.indexOf('Company Name');
+        // Clean the header line to handle potential BOM or encoding issues
+        const headerLine = lines[0].replace(/^\uFEFF/, '').replace(/^\u00EF\u00BB\u00BF/, '');
+        const headers = headerLine.split(',').map(header => header.trim().replace(/"/g, ''));
+        console.log('CSV: Parsed headers:', headers);
+
+        const asxCodeIndex = headers.findIndex(h => h.toLowerCase().includes('asx code') || h.toLowerCase() === 'asx code');
+        const companyNameIndex = headers.findIndex(h => h.toLowerCase().includes('company name') || h.toLowerCase() === 'company name');
+
+        console.log('CSV: ASX Code index:', asxCodeIndex, 'Company Name index:', companyNameIndex);
 
         if (asxCodeIndex === -1 || companyNameIndex === -1) {
-            throw new Error('CSV: Required headers "ASX Code" or "Company Name" not found in CSV.');
+            console.error('CSV: Available headers:', headers);
+            throw new Error(`CSV: Required headers "ASX Code" (found at index ${asxCodeIndex}) or "Company Name" (found at index ${companyNameIndex}) not found in CSV.`);
         }
 
         const parsedCodes = lines.slice(1).map(line => {
@@ -6975,9 +7498,9 @@ async function loadUserWatchlistsAndSettings() {
 
             if (loadedSelectedWatchlistIds && Array.isArray(loadedSelectedWatchlistIds) && loadedSelectedWatchlistIds.length > 0) {
                 // Filter out invalid or non-existent watchlists from loaded preferences
-                // Treat 'portfolio' as a valid special view alongside All Shares and Cash & Assets
+                // Treat 'portfolio', '__movers' as valid special views alongside All Shares and Cash & Assets
                 setCurrentSelectedWatchlistIds(loadedSelectedWatchlistIds.filter(id =>
-                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || userWatchlists.some(wl => wl.id === id)
+                    id === ALL_SHARES_ID || id === CASH_BANK_WATCHLIST_ID || id === 'portfolio' || id === '__movers' || userWatchlists.some(wl => wl.id === id)
                 ));
                 logDebug('User Settings: Loaded last selected watchlists from profile: ' + currentSelectedWatchlistIds.join(', '));
             } else {
@@ -6991,7 +7514,7 @@ async function loadUserWatchlistsAndSettings() {
         try {
             const lsView = localStorage.getItem('lastSelectedView');
             if (lsView) {
-                const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || userWatchlists.some(wl => wl.id === lsView);
+                const isValid = (lsView === ALL_SHARES_ID) || (lsView === CASH_BANK_WATCHLIST_ID) || (lsView === 'portfolio') || (lsView === '__movers') || userWatchlists.some(wl => wl.id === lsView);
                 if (isValid) {
                     setCurrentSelectedWatchlistIds([lsView]);
                     logDebug('User Settings: Overriding selection with localStorage lastSelectedView: ' + lsView);
@@ -7001,14 +7524,9 @@ async function loadUserWatchlistsAndSettings() {
 
         // Determine final currentSelectedWatchlistIds if not set or invalid after loading/filtering
         if (!currentSelectedWatchlistIds || currentSelectedWatchlistIds.length === 0) {
-            const firstAvailableStockWatchlist = userWatchlists.find(wl => wl.id !== CASH_BANK_WATCHLIST_ID);
-            if (firstAvailableStockWatchlist) {
-                setCurrentSelectedWatchlistIds([firstAvailableStockWatchlist.id]);
-                logDebug('User Settings: Defaulting currentSelectedWatchlistIds to first available stock watchlist: ' + firstAvailableStockWatchlist.name);
-            } else {
-                setCurrentSelectedWatchlistIds([CASH_BANK_WATCHLIST_ID]);
-                logDebug('User Settings: No stock watchlists found, defaulting to Cash & Assets.');
-            }
+            // Default to All Shares as primary fallback (similar to Percentage High to Low for sorting)
+            setCurrentSelectedWatchlistIds([ALL_SHARES_ID]);
+            logDebug('User Settings: Defaulting currentSelectedWatchlistIds to All Shares (robust fallback).');
         }
         logDebug('User Settings: Final currentSelectedWatchlistIds before renderWatchlistSelect: ' + currentSelectedWatchlistIds.join(', '));
 
@@ -7298,13 +7816,35 @@ function stopGlobalSummaryListener() {
 // Apply a temporary filter to main watchlist showing only shares that match the last summary counts
 function applyGlobalSummaryFilter(options = {}) {
     // New logic: compute movers directly from directional thresholds instead of relying on aggregated summary threshold label.
-    if (!livePrices) return null;
+    if (!livePrices) {
+        if (options.computeOnly) {
+            // For computeOnly mode, return empty array if no live prices
+            return [];
+        }
+        return null;
+    }
     const hasUp = (typeof globalPercentIncrease === 'number' && globalPercentIncrease > 0) || (typeof globalDollarIncrease === 'number' && globalDollarIncrease > 0);
     const hasDown = (typeof globalPercentDecrease === 'number' && globalPercentDecrease > 0) || (typeof globalDollarDecrease === 'number' && globalDollarDecrease > 0);
-    // If no thresholds configured at all, nothing to compute (return empty array silently if computeOnly; null if not to indicate inactive)
+    // If no thresholds configured at all, use default thresholds for movers view
+    let usedDefaults = false;
     if (!hasUp && !hasDown) {
-        if (options.computeOnly) return [];
-        return [];
+        if (options.computeOnly) {
+            // For computeOnly mode (used by movers view), use default 1% threshold
+            // Store original values to restore later
+            const origPercentIncrease = globalPercentIncrease;
+            const origPercentDecrease = globalPercentDecrease;
+            const origDollarIncrease = globalDollarIncrease;
+            const origDollarDecrease = globalDollarDecrease;
+
+            globalPercentIncrease = 1.0;
+            globalPercentDecrease = 1.0;
+            globalDollarIncrease = null;
+            globalDollarDecrease = null;
+            usedDefaults = true;
+            console.log('[applyGlobalSummaryFilter] Using default 1% thresholds for movers computation');
+        } else {
+            return [];
+        }
     }
     const entries = [];
     Object.entries(livePrices).forEach(([code, lp]) => {
@@ -7342,6 +7882,16 @@ function applyGlobalSummaryFilter(options = {}) {
         return [];
     }
     try { window.__lastMoversSnapshot = { ts: Date.now(), entries: filteredEntries }; } catch(_) {}
+
+    // Restore original threshold values if we used defaults
+    if (usedDefaults) {
+        globalPercentIncrease = origPercentIncrease;
+        globalPercentDecrease = origPercentDecrease;
+        globalDollarIncrease = origDollarIncrease;
+        globalDollarDecrease = origDollarDecrease;
+        console.log('[applyGlobalSummaryFilter] Restored original threshold values after movers computation');
+    }
+
     if (!options.computeOnly) {
         // Direct DOM filtering (legacy behavior) – retained for backward compatibility
         try {
@@ -7955,59 +8505,151 @@ function renderAlertsInPanel() {
 // Robust persistence with error recovery and debouncing
 let viewModePersistenceTimer = null;
 let sortOrderPersistenceTimer = null;
+let viewModeConsistencyChecker = null;
 
-function toggleMobileViewMode() {
-    if (!mobileShareCardsContainer) {
-        console.error('toggleMobileViewMode: mobileShareCardsContainer not found.');
-        return;
+// View mode watcher to ensure it's applied when DOM is ready
+let viewModeWatcherActive = false;
+let viewModeApplicationInProgress = false;
+let globalViewModeWatcher = null;
+
+// Function to ensure compact view consistency throughout the session
+function startViewModeConsistencyChecker() {
+    if (viewModeConsistencyChecker) {
+        clearInterval(viewModeConsistencyChecker);
     }
 
-    const oldMode = currentMobileViewMode;
-    currentMobileViewMode = (currentMobileViewMode === 'default') ? 'compact' : 'default';
+    viewModeConsistencyChecker = setInterval(() => {
+        if (!viewModeInitialized) return;
 
-    // Apply UI changes immediately
-    if (currentMobileViewMode === 'compact') {
-        mobileShareCardsContainer.classList.add('compact-view');
-        showCustomAlert('Switched to Compact View!', 1000);
-        logDebug('View Mode: Switched to Compact View.');
-    } else {
-        mobileShareCardsContainer.classList.remove('compact-view');
-        showCustomAlert('Switched to Default View!', 1000);
-        logDebug('View Mode: Switched to Default View.');
-    }
+        const container = getMobileShareCardsContainer();
+        if (container) {
+            const hasCompactClass = container.classList.contains('compact-view');
+            const expectedCompact = currentMobileViewMode === 'compact';
 
-    renderWatchlist(); // Re-render to apply new card styling and layout
-    try { updateCompactViewButtonState(); } catch(_) {}
-    try { scrollMainToTop(); } catch(_) {}
+            if (hasCompactClass !== expectedCompact) {
+                console.warn('🚨 View Mode Consistency Check: MISMATCH DETECTED!');
+                console.warn('   Expected:', expectedCompact ? 'compact' : 'default');
+                console.warn('   Actual DOM:', hasCompactClass ? 'compact' : 'default');
+                console.warn('   Current state:', currentMobileViewMode);
 
-    // Debounced persistence to prevent conflicts
-    if (viewModePersistenceTimer) {
-        clearTimeout(viewModePersistenceTimer);
-    }
-
-    viewModePersistenceTimer = setTimeout(async () => {
-        try {
-            // Save to localStorage first (immediate)
-            localStorage.setItem('currentMobileViewMode', currentMobileViewMode);
-            logDebug('View Mode: Saved to localStorage: ' + currentMobileViewMode);
-
-            // Then save to Firestore (async)
-            if (currentUserId && db && firestore) {
-                await persistUserPreference('compactViewMode', currentMobileViewMode);
-                logDebug('View Mode: Saved to Firestore: ' + currentMobileViewMode);
-            } else {
-                logDebug('View Mode: Firestore not available, saved to localStorage only');
-            }
-        } catch (error) {
-            console.error('View Mode: Persistence failed:', error);
-            // Fallback: ensure localStorage is set even if Firestore fails
-            try {
-                localStorage.setItem('currentMobileViewMode', currentMobileViewMode);
-            } catch (localError) {
-                console.error('View Mode: Even localStorage failed:', localError);
+                // Auto-correct the mismatch
+                if (expectedCompact) {
+                    container.classList.add('compact-view');
+                    console.log('🔧 Consistency Check: Restored compact class');
+                } else {
+                    container.classList.remove('compact-view');
+                    console.log('🔧 Consistency Check: Removed compact class');
+                }
             }
         }
-    }, 300); // 300ms debounce
+    }, 5000); // Check every 5 seconds
+
+    console.log('✅ View Mode Consistency Checker started');
+}
+
+function startViewModeWatcher() {
+    if (viewModeWatcherActive) return;
+    viewModeWatcherActive = true;
+
+    logDebug('View Mode: Starting persistent DOM watcher for mobileShareCardsContainer');
+
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds max
+
+    const checkAndApply = async () => {
+        attempts++;
+
+        try {
+            // First, ensure we have the view mode
+            if (!currentMobileViewMode) {
+                const storedMode = localStorage.getItem('currentMobileViewMode');
+                if (storedMode === 'compact' || storedMode === 'default') {
+                    currentMobileViewMode = storedMode;
+                    logDebug('View Mode: Watcher recovered mode from storage: ' + currentMobileViewMode);
+                }
+            }
+
+            const mobileContainer = getMobileShareCardsContainer();
+            if (mobileContainer && currentMobileViewMode) {
+                // Always start with clean slate
+                mobileContainer.classList.remove('compact-view');
+
+                if (currentMobileViewMode === 'compact') {
+                    mobileContainer.classList.add('compact-view');
+                    logDebug('View Mode: Watcher successfully applied COMPACT mode to DOM (attempt ' + attempts + ')');
+                } else {
+                    logDebug('View Mode: Watcher successfully applied DEFAULT mode to DOM (attempt ' + attempts + ')');
+                }
+
+                viewModeWatcherActive = false; // Stop watching once applied
+                return;
+            }
+        } catch (error) {
+            console.warn('View Mode: Watcher failed to apply mode on attempt ' + attempts + ':', error);
+        }
+
+        // If container not ready or max attempts reached, check again
+        if (viewModeWatcherActive && attempts < maxAttempts) {
+            setTimeout(checkAndApply, 100);
+        } else if (attempts >= maxAttempts) {
+            console.warn('View Mode: Watcher gave up after ' + maxAttempts + ' attempts');
+            viewModeWatcherActive = false;
+        }
+    };
+
+    checkAndApply();
+}
+
+// Global view mode enforcer - runs periodically to ensure view mode is maintained
+function startGlobalViewModeEnforcer() {
+    if (globalViewModeWatcher) {
+        clearInterval(globalViewModeWatcher);
+    }
+
+    logDebug('View Mode: Starting global enforcer');
+
+    globalViewModeWatcher = setInterval(() => {
+        try {
+            // Check if DOM matches the expected state
+            const container = getMobileShareCardsContainer();
+            if (container && currentMobileViewMode) {
+                const hasCompactClass = container.classList.contains('compact-view');
+                const shouldHaveCompactClass = currentMobileViewMode === 'compact';
+
+                if (hasCompactClass !== shouldHaveCompactClass) {
+                    // DOM is wrong, fix it using centralized manager
+                    console.log('View Mode: Global enforcer detected mismatch, correcting...');
+                    setMobileViewMode(currentMobileViewMode, 'global_enforcer_correction');
+                }
+            } else if (!currentMobileViewMode || !viewModeInitialized) {
+                // Try to recover the mode
+                console.log('View Mode: Global enforcer detected uninitialized state, attempting recovery...');
+                recoverViewMode('global_enforcer').catch(error => {
+                    console.warn('View Mode: Global enforcer recovery failed:', error);
+                });
+            }
+        } catch (error) {
+            console.warn('View Mode: Global enforcer error:', error);
+        }
+    }, 2000); // Check every 2 seconds (less aggressive to avoid console spam)
+}
+
+async function toggleMobileViewMode() {
+    const newMode = (currentMobileViewMode === 'default') ? 'compact' : 'default';
+
+    // Use the centralized view mode manager
+    const success = setMobileViewMode(newMode, 'toggle_button');
+
+    if (success) {
+        // Show user feedback
+        if (newMode === 'compact') {
+            showCustomAlert('Switched to Compact View!', 1000);
+        } else {
+            showCustomAlert('Switched to Default View!', 1000);
+        }
+    }
+
+    return success;
 }
 
 // Robust sort order persistence with error recovery and debouncing
@@ -8099,6 +8741,23 @@ async function robustRestoreViewAndModeFromPreferences() {
 
     // Step 4: Force UI update to ensure everything is applied
     try {
+        // Use centralized manager to ensure view mode is correct
+        if (currentMobileViewMode) {
+            setMobileViewMode(currentMobileViewMode, 'final_ui_update');
+        }
+
+        // Also do a direct check to ensure DOM is correct
+        const container = getMobileShareCardsContainer();
+        if (container && currentMobileViewMode) {
+            container.classList.remove('compact-view');
+            if (currentMobileViewMode === 'compact') {
+                container.classList.add('compact-view');
+                logDebug('Preferences: Direct DOM correction applied COMPACT mode');
+            } else {
+                logDebug('Preferences: Direct DOM correction applied DEFAULT mode');
+            }
+        }
+
         if (typeof renderWatchlist === 'function') {
             renderWatchlist();
             logDebug('Preferences: UI rendered after restoration');
@@ -8169,7 +8828,23 @@ async function robustRestoreLastView() {
             console.warn('Preferences: Failed to apply last view:', error);
         }
     } else {
-        logDebug('Preferences: No last view found, using defaults');
+        logDebug('Preferences: No last view found, defaulting to All Shares');
+        // Default to All Shares when no valid last view is found
+        try {
+            setCurrentSelectedWatchlistIds([ALL_SHARES_ID]);
+            if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+                watchlistSelect.value = ALL_SHARES_ID;
+            }
+            if (typeof renderWatchlist === 'function') {
+                renderWatchlist();
+            }
+            if (typeof updateMainTitle === 'function') {
+                updateMainTitle();
+            }
+            logDebug('Preferences: Successfully defaulted to All Shares');
+        } catch (error) {
+            console.warn('Preferences: Failed to apply All Shares default:', error);
+        }
     }
 }
 
@@ -8186,10 +8861,17 @@ async function robustRestoreViewMode() {
         console.warn('Preferences: Failed to read view mode from localStorage:', error);
     }
 
-    // Try Firestore fallback
-    if (!storedMode && userPreferences && userPreferences.compactViewMode) {
-        storedMode = userPreferences.compactViewMode;
-        logDebug('Preferences: Using Firestore fallback for view mode: ' + storedMode);
+    // Try Firestore fallback (direct call to new function)
+    if (!storedMode && currentUserId && db && firestore) {
+        try {
+            logDebug('Preferences: Trying to load view mode from Firestore...');
+            storedMode = await loadViewModePreference(db, firestore, currentUserId, currentAppId);
+            if (storedMode) {
+                logDebug('Preferences: Loaded view mode from Firestore: ' + storedMode);
+            }
+        } catch (error) {
+            console.warn('Preferences: Failed to load view mode from Firestore:', error);
+        }
     }
 
     // Validate and apply the mode
@@ -8199,24 +8881,69 @@ async function robustRestoreViewMode() {
     }
 
     try {
-        currentMobileViewMode = storedMode;
-        logDebug('Preferences: Set current mobile view mode to: ' + currentMobileViewMode);
+        // Use the centralized view mode manager
+        setMobileViewMode(storedMode, 'robust_restore');
+        logDebug('Preferences: Successfully restored view mode using centralized manager: ' + storedMode);
+    } catch (error) {
+        console.warn('Preferences: Failed to restore view mode with centralized manager:', error);
+        // Try recovery as last resort
+        recoverViewMode('robust_restore_failed').catch(error => {
+            console.warn('View Mode: Robust restore recovery failed:', error);
+        });
+    }
+}
 
-        // Apply the mode to UI
-        if (mobileShareCardsContainer) {
-            if (currentMobileViewMode === 'compact') {
-                mobileShareCardsContainer.classList.add('compact-view');
-            } else {
-                mobileShareCardsContainer.classList.remove('compact-view');
+// Robust UI application with retry mechanism for DOM readiness
+async function applyViewModeToUI(mode) {
+    // Prevent multiple simultaneous applications
+    if (viewModeApplicationInProgress) {
+        logDebug('View Mode: Application already in progress, skipping: ' + mode);
+        return;
+    }
+
+    viewModeApplicationInProgress = true;
+    const maxRetries = 10;
+    const retryDelay = 100; // 100ms
+
+    try {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                const container = getMobileShareCardsContainer();
+                if (container) {
+                    // Always start with clean slate
+                    container.classList.remove('compact-view');
+
+                    if (mode === 'compact') {
+                        container.classList.add('compact-view');
+                        logDebug('Preferences: Applied COMPACT view mode to UI (attempt ' + attempt + ')');
+                    } else {
+                        logDebug('Preferences: Applied DEFAULT view mode to UI (attempt ' + attempt + ')');
+                    }
+
+                    viewModeApplicationInProgress = false;
+                    return; // Success, exit the retry loop
+                } else {
+                    logDebug('Preferences: mobileShareCardsContainer not ready (attempt ' + attempt + ')');
+                    if (attempt < maxRetries) {
+                        await new Promise(resolve => setTimeout(resolve, retryDelay));
+                    }
+                }
+            } catch (error) {
+                console.warn('Preferences: Failed to apply view mode on attempt ' + attempt + ':', error);
+                if (attempt < maxRetries) {
+                    await new Promise(resolve => setTimeout(resolve, retryDelay));
+                }
             }
-            logDebug('Preferences: Applied view mode to UI: ' + currentMobileViewMode);
-        } else {
-            logDebug('Preferences: mobileShareCardsContainer not ready, view mode will be applied later');
         }
     } catch (error) {
-        console.warn('Preferences: Failed to apply view mode:', error);
-        currentMobileViewMode = 'default'; // Safe fallback
+        console.error('Preferences: Critical error in applyViewModeToUI:', error);
     }
+
+    // Always reset the flag
+    viewModeApplicationInProgress = false;
+
+    // If we get here, all retries failed
+    console.warn('Preferences: Failed to apply view mode after ' + maxRetries + ' attempts');
 }
 
 async function robustRestoreSortOrder() {
@@ -9486,11 +10213,11 @@ async function deleteAllUserData() {
 function restorePersistedState() {
     logDebug('State Management: Restoring persisted state from localStorage.');
 
-    // Restore Compact View Mode
+    // Restore Compact View Mode using centralized manager
     const savedMobileViewMode = localStorage.getItem('currentMobileViewMode');
     if (savedMobileViewMode === 'compact' || savedMobileViewMode === 'default') {
-        currentMobileViewMode = savedMobileViewMode;
-        logDebug(`State Management: Restored mobile view mode to '${currentMobileViewMode}'.`);
+        setMobileViewMode(savedMobileViewMode, 'restore_persisted_state');
+        logDebug(`State Management: Restored mobile view mode using centralized manager: '${savedMobileViewMode}'.`);
     }
 
     // Restore Last Selected Watchlist/View
@@ -9509,7 +10236,18 @@ function restorePersistedState() {
 }
 
 async function initializeAppLogic() {
-    applyCompactViewMode();
+    // Note: View mode application is now handled by robust restoration
+    // applyCompactViewMode(); // Disabled to prevent conflicts
+
+    // Start global view mode enforcer as backup
+    try {
+        startGlobalViewModeEnforcer();
+        startViewModeConsistencyChecker();
+        logDebug('Init: View mode monitoring systems started');
+    } catch (error) {
+        console.warn('Init: Failed to start view mode monitoring:', error);
+    }
+
     // DEBUG: Log when initializeAppLogic starts
     logDebug('initializeAppLogic: Firebase is ready. Starting app logic.');
 
@@ -9528,23 +10266,7 @@ async function initializeAppLogic() {
     if (cashAssetFormModal) cashAssetFormModal.style.setProperty('display', 'none', 'important');
     if (cashAssetDetailModal) cashAssetDetailModal.style.setProperty('display', 'none', 'important');
     if (stockSearchModal) {
-        console.log('[DEBUG] Initial stock search modal display:', window.getComputedStyle(stockSearchModal).display);
-        console.log('[DEBUG] Hiding stock search modal on initialization');
-        stockSearchModal.style.setProperty('display', 'none', 'important'); // NEW: Hide stock search modal
-        console.log('[DEBUG] Stock search modal display after hide:', window.getComputedStyle(stockSearchModal).display);
-
-        // Add mutation observer to watch for display changes
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                    const currentDisplay = window.getComputedStyle(stockSearchModal).display;
-                    console.log('[DEBUG] Stock search modal display changed to:', currentDisplay);
-                }
-            });
-        });
-        observer.observe(stockSearchModal, { attributes: true, attributeFilter: ['style'] });
-    } else {
-        console.log('[DEBUG] stockSearchModal element not found');
+        stockSearchModal.classList.remove('show'); // Ensure stock search modal is hidden on initialization
     }
     // The targetHitDetailsModal itself is hidden by showModal/hideModal, so no explicit line needed for its close button.
 
@@ -10324,6 +11046,31 @@ if (targetPriceInput) {
                 await authFunctions.signOut(currentAuth);
                 showCustomAlert('Logged out successfully!', 1500);
                 logDebug('Auth: User successfully logged out.');
+
+                // Cleanup global watchers
+                try {
+                    if (globalViewModeWatcher) {
+                        clearInterval(globalViewModeWatcher);
+                        globalViewModeWatcher = null;
+                        logDebug('Auth: Global view mode enforcer cleaned up');
+                    }
+                    if (viewModePersistenceTimer) {
+                        clearTimeout(viewModePersistenceTimer);
+                        viewModePersistenceTimer = null;
+                    }
+                    if (sortOrderPersistenceTimer) {
+                        clearTimeout(sortOrderPersistenceTimer);
+                        sortOrderPersistenceTimer = null;
+                    }
+                    if (viewModeConsistencyChecker) {
+                        clearInterval(viewModeConsistencyChecker);
+                        viewModeConsistencyChecker = null;
+                        logDebug('Auth: View mode consistency checker cleaned up');
+                    }
+                } catch (cleanupError) {
+                    console.warn('Auth: Error cleaning up watchers:', cleanupError);
+                }
+
                 toggleAppSidebar(false);
 
                 // NEW: Explicitly ensure splash screen is visible for re-authentication
@@ -11251,7 +11998,7 @@ if (sortSelect) {
 
     // NEW: Set initial state for the compact view button
     updateCompactViewButtonState();
-    applyCompactViewMode();
+    // applyCompactViewMode(); // Disabled - conflicts with robust restoration
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
 // Build Marker: v0.1.13 (Network-first CSS/JS, cache bust deploy)
@@ -11975,21 +12722,17 @@ function initializeApp() {
                     // Continue with default settings
                 }
                 try { ensureTitleStructure(); } catch(e) {}
-                // Load persisted compact view preference AFTER user data is ready
+
+                // Start global view mode enforcer for continuous monitoring
                 try {
-                    const storedMode = localStorage.getItem('currentMobileViewMode');
-                    let mode = (storedMode === 'compact' || storedMode === 'default') ? storedMode : null;
-                    if (!mode && userPreferences && userPreferences.compactViewMode) {
-                        mode = (userPreferences.compactViewMode === 'compact') ? 'compact' : 'default';
-                    }
-                    currentMobileViewMode = mode || 'default';
-                } catch(e) { console.warn('View Mode: Failed to load persisted mode post-auth', e); currentMobileViewMode = 'default'; }
-                // Apply class now so first rendered watchlist/cards adopt correct layout
-                if (mobileShareCardsContainer) {
-                    if (currentMobileViewMode === 'compact') mobileShareCardsContainer.classList.add('compact-view');
-                    else mobileShareCardsContainer.classList.remove('compact-view');
+                    startGlobalViewModeEnforcer();
+                    logDebug('Auth: Global view mode enforcer started');
+                } catch (error) {
+                    console.warn('Auth: Failed to start global view mode enforcer:', error);
                 }
-                logDebug('View Mode: Applied persisted mode post-auth (pre-initial render): ' + currentMobileViewMode);
+
+                // Note: View mode restoration is now handled by robustRestoreViewAndModeFromPreferences()
+                // above. This duplicate code has been removed to prevent conflicts.
                 // Start alerts listener (enabled alerts only; muted excluded from notifications)
                 await loadTriggeredAlertsListener(db, firestore, currentUserId, currentAppId);
                 startGlobalSummaryListener();
@@ -12090,12 +12833,21 @@ function initializeApp() {
                 window._appLogicInitialized = true;
             } else {
                 // If app logic already initialized, ensure view mode is applied after auth.
-                // This handles cases where user signs out and then signs back in,
-                // and we need to re-apply the correct mobile view class.
-                if (currentMobileViewMode === 'compact' && mobileShareCardsContainer) {
-                    mobileShareCardsContainer.classList.add('compact-view');
-                } else if (mobileShareCardsContainer) {
-                    mobileShareCardsContainer.classList.remove('compact-view');
+                // This handles cases where user signs out and then signs back in.
+                // Use the robust application with retry mechanism
+                try {
+                    await applyViewModeToUI(currentMobileViewMode);
+                } catch (error) {
+                    console.warn('Auth: Failed to reapply view mode after re-auth:', error);
+                    startViewModeWatcher(); // Fallback watcher
+                }
+
+                // Restart global enforcer if needed
+                try {
+                    startGlobalViewModeEnforcer();
+                    logDebug('Auth: Global view mode enforcer restarted after re-auth');
+                } catch (error) {
+                    console.warn('Auth: Failed to restart global view mode enforcer:', error);
                 }
             }
             // Call renderWatchlist here to ensure correct mobile card rendering after auth state is set
