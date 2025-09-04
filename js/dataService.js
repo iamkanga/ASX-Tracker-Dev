@@ -1,4 +1,4 @@
-import { getAllSharesData, setAllSharesData, setSharesAtTargetPrice, setUserWatchlists, setCurrentSelectedWatchlistIds, setCurrentSortOrder, setAllAsxCodes, setLivePrices, setSharesAtTargetPrice as setSATP, setAllSharesData as setShares, setUserCashCategories } from './state.js';
+import { getAllSharesData, setAllSharesData, setSharesAtTargetPrice, setUserWatchlists, setCurrentSelectedWatchlistIds, setCurrentSortOrder, setAllAsxCodes, setLivePrices, setSharesAtTargetPrice as setSATP, setAllSharesData as setShares, setUserCashCategories, setWatchlistSortOrders, getWatchlistSortOrders } from './state.js';
 import { db, firestore, currentAppId } from '../firebase.js';
 
 // These functions rely on globals provided by script.js and firebase.js wiring:
@@ -156,6 +156,66 @@ export async function loadCashCategories(dbArg, firestoreArg, currentUserId, cur
         console.error('Cash Categories: Error setting up cash categories listener:', error);
         try { window.showCustomAlert && window.showCustomAlert('Error setting up real-time cash category updates: ' + error.message); } catch(_) {}
     }
+}
+
+// Persistence service for user preferences
+export async function saveWatchlistSortOrder(dbArg, firestoreArg, currentUserId, currentAppIdArg, watchlistId, sortOrder) {
+    const dbLocal = dbArg || db;
+    const fsLocal = firestoreArg || firestore;
+    const appIdLocal = currentAppIdArg || currentAppId;
+
+    if (!dbLocal || !currentUserId || !fsLocal || !watchlistId) {
+        console.warn('Sort Persistence: Missing required parameters for saving watchlist sort order');
+        return;
+    }
+
+    try {
+        const sortPrefsRef = fsLocal.doc(dbLocal, 'artifacts/' + appIdLocal + '/users/' + currentUserId + '/preferences/sortOrders');
+        const updateData = {};
+        updateData[watchlistId] = sortOrder;
+
+        await fsLocal.setDoc(sortPrefsRef, updateData, { merge: true });
+        console.log('[Sort Persistence] Saved sort order for watchlist', watchlistId + ':', sortOrder);
+    } catch (error) {
+        console.error('[Sort Persistence] Error saving watchlist sort order:', error);
+    }
+}
+
+export async function loadWatchlistSortOrders(dbArg, firestoreArg, currentUserId, currentAppIdArg) {
+    const dbLocal = dbArg || db;
+    const fsLocal = firestoreArg || firestore;
+    const appIdLocal = currentAppIdArg || currentAppId;
+
+    if (!dbLocal || !currentUserId || !fsLocal) {
+        console.warn('Sort Persistence: Missing required parameters for loading watchlist sort orders');
+        return {};
+    }
+
+    try {
+        const sortPrefsRef = fsLocal.doc(dbLocal, 'artifacts/' + appIdLocal + '/users/' + currentUserId + '/preferences/sortOrders');
+        const docSnap = await fsLocal.getDoc(sortPrefsRef);
+
+        if (docSnap.exists()) {
+            const sortOrders = docSnap.data();
+            console.log('[Sort Persistence] Loaded watchlist sort orders:', sortOrders);
+            setWatchlistSortOrders(sortOrders); // Update state
+            return sortOrders;
+        } else {
+            console.log('[Sort Persistence] No saved watchlist sort orders found');
+            setWatchlistSortOrders({}); // Reset state
+            return {};
+        }
+    } catch (error) {
+        console.error('[Sort Persistence] Error loading watchlist sort orders:', error);
+        setWatchlistSortOrders({}); // Reset state on error
+        return {};
+    }
+}
+
+// Helper function to get sort order for a specific watchlist
+export function getSortOrderForWatchlist(watchlistId) {
+    const sortOrders = getWatchlistSortOrders();
+    return sortOrders[watchlistId] || null;
 }
 
 

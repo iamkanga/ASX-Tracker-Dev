@@ -1,7 +1,7 @@
 import { initializeFirebaseAndAuth, db as hubDb, auth as hubAuth, firestore as hubFs, authFunctions as hubAuthFx, currentAppId as hubAppId, firebaseInitialized as hubInit } from './firebase.js';
 import { initializeAppEventListeners } from './js/init.js';
 import { setupAuthListener } from './js/auth.js';
-import { loadShares, loadCashCategories, loadTriggeredAlertsListener } from './js/dataService.js';
+import { loadShares, loadCashCategories, loadTriggeredAlertsListener, saveWatchlistSortOrder, loadWatchlistSortOrders, getSortOrderForWatchlist } from './js/dataService.js';
 import { fetchLivePrices } from './js/priceService.js';
 import { saveShareData as saveShareDataSvc, deleteShare as deleteShareSvc, saveWatchlistChanges as saveWatchlistChangesSvc, deleteWatchlist as deleteWatchlistSvc, saveCashAsset as saveCashAssetSvc, deleteCashCategory as deleteCashCategorySvc, deleteAllUserData as deleteAllUserDataSvc } from './js/appService.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
@@ -1619,6 +1619,31 @@ function restoreViewAndModeFromPreferences() {
                     if (opt) {
                         watchlistSelect.value = lastView;
                         setCurrentSelectedWatchlistIds([lastView]);
+
+                        // Restore per-watchlist sort order if available
+                        const watchlistSortOrder = getSortOrderForWatchlist(lastView);
+                        if (watchlistSortOrder) {
+                            setCurrentSortOrder(watchlistSortOrder);
+                            if (DEBUG_MODE) console.log('[Restore] Restored sort order for watchlist:', lastView, watchlistSortOrder);
+                            try {
+                                if (sortSelect) sortSelect.value = watchlistSortOrder;
+                                updateSortIcon();
+                            } catch (e) {
+                                console.warn('[Restore] Failed to update sort select UI:', e);
+                            }
+                        } else {
+                            // No saved sort order, use default
+                            const defaultSort = (lastView === CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'percentageChange-desc';
+                            setCurrentSortOrder(defaultSort);
+                            if (DEBUG_MODE) console.log('[Restore] Using default sort order for watchlist:', lastView, defaultSort);
+                            try {
+                                if (sortSelect) sortSelect.value = defaultSort;
+                                updateSortIcon();
+                            } catch (e) {
+                                console.warn('[Restore] Failed to update sort select UI:', e);
+                            }
+                        }
+
                         renderWatchlist();
                         try { scrollMainToTop(); } catch(_) {}
                         updateMainTitle();
@@ -3012,6 +3037,11 @@ function getShareDisplayData(share) {
     let peRatio = 'N/A';
     let high52Week = 'N/A';
     let low52Week = 'N/A';
+    let isNewShareIndicator = '';
+
+    // Check if this is a completely new share that might need live pricing initialization
+    const isNewShare = !livePriceData && share.shareName;
+    const shareCode = share.shareName?.toUpperCase();
 
     if (livePriceData) {
         const currentLivePrice = livePriceData.live;
@@ -3074,6 +3104,13 @@ function getShareDisplayData(share) {
         else row.classList.add('neutral-change-row');
     } catch(_) {}
 
+    // Set display for new shares without live pricing
+    if (isNewShare) {
+        displayLivePrice = 'Loading...';
+        isNewShareIndicator = 'new-share';
+        console.log('[DISPLAY] New share detected:', shareCode, '- showing loading indicator');
+    }
+
     return {
         displayLivePrice,
         displayPriceChange,
@@ -3081,7 +3118,8 @@ function getShareDisplayData(share) {
         cardPriceChangeClass,
         peRatio,
         high52Week,
-        low52Week
+        low52Week,
+        isNewShareIndicator
     };
 }
 // --- UI State Management Functions ---
@@ -3330,7 +3368,7 @@ function addShareToTable(share) {
             ${companyName ? `<br><small style=\"font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;\">${companyName}</small>` : ''}
         </td>
         <td class="live-price-cell">
-            <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
+            <span class="live-price-value ${displayData.priceClass} ${displayData.isNewShareIndicator || ''}">${displayData.displayLivePrice}</span>
             <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
         </td>
         <td class="numeric-data-cell alert-target-cell">${renderAlertTargetInline(share)}</td>
@@ -3457,7 +3495,9 @@ function addShareToMobileCards(share) {
     card.querySelector('.card-code').textContent = share.shareName || '';
     card.querySelector('.card-chevron').textContent = arrowSymbol;
     card.querySelector('.card-chevron').className = `change-chevron card-chevron ${priceClass}`;
-    card.querySelector('.card-live-price').textContent = displayLivePrice;
+    const livePriceElement = card.querySelector('.card-live-price');
+    livePriceElement.textContent = displayLivePrice;
+    livePriceElement.className = `card-live-price ${displayData.isNewShareIndicator || ''}`;
     card.querySelector('.card-price-change').textContent = displayPriceChange;
     card.querySelector('.card-price-change').className = `price-change-large card-price-change ${priceClass}`;
     card.querySelector('.fifty-two-week-value.low').textContent = `Low: ${low52Week}`;
@@ -5415,8 +5455,11 @@ function sortShares() {
         }
     });
     logDebug('Sort: Shares sorted. Rendering watchlist.');
-    renderWatchlist(); 
+    renderWatchlist();
 }
+
+// Expose sortShares to window for use by other modules
+window.sortShares = sortShares;
 
 /**
  * Sorts the cash categories based on the currentSortOrder.
@@ -6085,6 +6128,9 @@ function renderWatchlist() {
     try { updateTargetHitBanner(); } catch(e) {}
 }
 
+// Expose renderWatchlist to window for use by other modules
+window.renderWatchlist = renderWatchlist;
+
 // Safety net: ensure any share whose livePrices indicates targetHit gets the .target-hit-alert class (unless globally dismissed)
 function enforceTargetHitStyling() {
     if (targetHitIconDismissed) return; // user dismissed icon
@@ -6254,6 +6300,9 @@ function renderAsxCodeButtons() {
     // Re-apply visibility state centrally and adjust padding via applyAsxButtonsState()
     applyAsxButtonsState();
 }
+
+// Expose renderAsxCodeButtons to window for use by other modules
+window.renderAsxCodeButtons = renderAsxCodeButtons;
 
 function scrollToShare(asxCode) {
     logDebug('UI: Attempting to scroll to/highlight share with Code: ' + asxCode);
@@ -6970,18 +7019,38 @@ async function loadUserWatchlistsAndSettings() {
             populateShareWatchlistSelect();
         }
 
+        // Load watchlist-specific sort orders
+        try {
+            await loadWatchlistSortOrders(null, null, currentUserId, null);
+            logDebug('Sort: Loaded watchlist-specific sort orders');
+        } catch (error) {
+            console.warn('Sort: Failed to load watchlist sort orders:', error);
+        }
+
         // Apply saved sort preference to currentSortOrder; let renderSortSelect enforce it after options are built
         let candidateSort = savedSortOrder;
         if (!candidateSort) {
             try { candidateSort = localStorage.getItem('lastSortOrder') || null; } catch (e) { candidateSort = null; }
             if (candidateSort) logDebug('Sort: Loaded sort order from localStorage fallback: ' + candidateSort);
         }
+
+        // Check if there's a watchlist-specific sort order for the current watchlist
+        if (currentSelectedWatchlistIds.length > 0) {
+            const currentWatchlistId = currentSelectedWatchlistIds[0];
+            const watchlistSortOrder = getSortOrderForWatchlist(currentWatchlistId);
+            if (watchlistSortOrder) {
+                candidateSort = watchlistSortOrder;
+                logDebug('Sort: Using watchlist-specific sort order: ' + candidateSort);
+            }
+        }
+
         if (candidateSort) {
             setCurrentSortOrder(candidateSort);
             logDebug('Sort: Using saved sort order: ' + currentSortOrder);
         } else {
-            // Set to default sort for the current view type
-            setCurrentSortOrder(currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'entryDate-desc');
+            // Set to new default sort order: 'percentageChange-desc' for share watchlists, 'name-asc' for cash
+            const defaultSort = currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'percentageChange-desc';
+            setCurrentSortOrder(defaultSort);
             logDebug('Sort: No saved sort order found, defaulting to: ' + currentSortOrder);
         }
         renderSortSelect(); // Build options, then apply currentSortOrder
@@ -7883,16 +7952,20 @@ function renderAlertsInPanel() {
  * Toggles the mobile view mode between default (single column) and compact (two columns).
  * Updates the UI to reflect the new mode and saves preference to local storage.
  */
+// Robust persistence with error recovery and debouncing
+let viewModePersistenceTimer = null;
+let sortOrderPersistenceTimer = null;
+
 function toggleMobileViewMode() {
     if (!mobileShareCardsContainer) {
         console.error('toggleMobileViewMode: mobileShareCardsContainer not found.');
         return;
     }
 
+    const oldMode = currentMobileViewMode;
     currentMobileViewMode = (currentMobileViewMode === 'default') ? 'compact' : 'default';
-    try { localStorage.setItem('currentMobileViewMode', currentMobileViewMode); } catch(_) {}
-    try { persistUserPreference('compactViewMode', currentMobileViewMode); } catch(_) {}
 
+    // Apply UI changes immediately
     if (currentMobileViewMode === 'compact') {
         mobileShareCardsContainer.classList.add('compact-view');
         showCustomAlert('Switched to Compact View!', 1000);
@@ -7902,13 +7975,310 @@ function toggleMobileViewMode() {
         showCustomAlert('Switched to Default View!', 1000);
         logDebug('View Mode: Switched to Default View.');
     }
-    try { persistUserPreference('compactViewMode', currentMobileViewMode); } catch(_) {}
-    
+
     renderWatchlist(); // Re-render to apply new card styling and layout
-    // Update button label/state
     try { updateCompactViewButtonState(); } catch(_) {}
-    // UX: scroll to top after changing compact/default view
     try { scrollMainToTop(); } catch(_) {}
+
+    // Debounced persistence to prevent conflicts
+    if (viewModePersistenceTimer) {
+        clearTimeout(viewModePersistenceTimer);
+    }
+
+    viewModePersistenceTimer = setTimeout(async () => {
+        try {
+            // Save to localStorage first (immediate)
+            localStorage.setItem('currentMobileViewMode', currentMobileViewMode);
+            logDebug('View Mode: Saved to localStorage: ' + currentMobileViewMode);
+
+            // Then save to Firestore (async)
+            if (currentUserId && db && firestore) {
+                await persistUserPreference('compactViewMode', currentMobileViewMode);
+                logDebug('View Mode: Saved to Firestore: ' + currentMobileViewMode);
+            } else {
+                logDebug('View Mode: Firestore not available, saved to localStorage only');
+            }
+        } catch (error) {
+            console.error('View Mode: Persistence failed:', error);
+            // Fallback: ensure localStorage is set even if Firestore fails
+            try {
+                localStorage.setItem('currentMobileViewMode', currentMobileViewMode);
+            } catch (localError) {
+                console.error('View Mode: Even localStorage failed:', localError);
+            }
+        }
+    }, 300); // 300ms debounce
+}
+
+// Robust sort order persistence with error recovery and debouncing
+async function robustSaveSortOrder(sortOrder) {
+    if (!sortOrder) {
+        console.warn('Sort: Cannot save empty sort order');
+        return;
+    }
+
+    // Clear any pending save operation
+    if (sortOrderPersistenceTimer) {
+        clearTimeout(sortOrderPersistenceTimer);
+    }
+
+    // Debounced persistence
+    sortOrderPersistenceTimer = setTimeout(async () => {
+        try {
+            // Save global sort order to localStorage first (immediate)
+            try {
+                localStorage.setItem('lastSortOrder', sortOrder);
+                logDebug('Sort: Saved global sort to localStorage: ' + sortOrder);
+            } catch (localError) {
+                console.warn('Sort: Failed to save global sort to localStorage:', localError);
+            }
+
+            // Save global sort order to Firestore (async)
+            if (currentUserId && db && firestore) {
+                try {
+                    await saveSortOrderPreference(sortOrder);
+                    logDebug('Sort: Saved global sort to Firestore: ' + sortOrder);
+                } catch (firestoreError) {
+                    console.warn('Sort: Failed to save global sort to Firestore:', firestoreError);
+                }
+            }
+
+            // Save per-watchlist sort order
+            if (currentSelectedWatchlistIds.length > 0) {
+                const currentWatchlistId = currentSelectedWatchlistIds[0];
+                if (currentWatchlistId && currentUserId) {
+                    try {
+                        await saveWatchlistSortOrder(null, null, currentUserId, null, currentWatchlistId, sortOrder);
+                        logDebug('Sort: Saved per-watchlist sort for ' + currentWatchlistId + ': ' + sortOrder);
+                    } catch (watchlistError) {
+                        console.warn('Sort: Failed to save per-watchlist sort order for ' + currentWatchlistId + ':', watchlistError);
+                    }
+                }
+            }
+
+        } catch (error) {
+            console.error('Sort: Critical error in robustSaveSortOrder:', error);
+            // Final fallback: ensure localStorage is set
+            try {
+                localStorage.setItem('lastSortOrder', sortOrder);
+                logDebug('Sort: Emergency fallback - saved to localStorage only');
+            } catch (emergencyError) {
+                console.error('Sort: Emergency fallback also failed:', emergencyError);
+            }
+        }
+    }, 500); // 500ms debounce for sort operations
+}
+
+// Robust preference restoration with error recovery
+async function robustRestoreViewAndModeFromPreferences() {
+    logDebug('Preferences: Starting robust restoration...');
+
+    try {
+        // Step 1: Restore last selected view/watchlist
+        await robustRestoreLastView();
+        logDebug('Preferences: Last view restored successfully');
+    } catch (error) {
+        console.warn('Preferences: Failed to restore last view:', error);
+    }
+
+    try {
+        // Step 2: Restore view mode (compact/default)
+        await robustRestoreViewMode();
+        logDebug('Preferences: View mode restored successfully');
+    } catch (error) {
+        console.warn('Preferences: Failed to restore view mode:', error);
+    }
+
+    try {
+        // Step 3: Restore sort order for current watchlist
+        await robustRestoreSortOrder();
+        logDebug('Preferences: Sort order restored successfully');
+    } catch (error) {
+        console.warn('Preferences: Failed to restore sort order:', error);
+    }
+
+    // Step 4: Force UI update to ensure everything is applied
+    try {
+        if (typeof renderWatchlist === 'function') {
+            renderWatchlist();
+            logDebug('Preferences: UI rendered after restoration');
+        }
+        if (typeof updateMainTitle === 'function') {
+            updateMainTitle();
+            logDebug('Preferences: Title updated after restoration');
+        }
+    } catch (error) {
+        console.warn('Preferences: Failed to update UI after restoration:', error);
+    }
+}
+
+async function robustRestoreLastView() {
+    let lastView = null;
+
+    // Try localStorage first (immediate)
+    try {
+        lastView = localStorage.getItem('lastSelectedView');
+        if (lastView) {
+            logDebug('Preferences: Found last view in localStorage: ' + lastView);
+        }
+    } catch (error) {
+        console.warn('Preferences: Failed to read last view from localStorage:', error);
+    }
+
+    // Try Firestore if localStorage didn't work
+    if (!lastView && userPreferences && userPreferences.lastSelectedView) {
+        lastView = userPreferences.lastSelectedView;
+        logDebug('Preferences: Using Firestore fallback for last view: ' + lastView);
+    }
+
+    if (lastView) {
+        try {
+            // Apply the last view
+            if (lastView === 'portfolio') {
+                if (typeof showPortfolioView === 'function') {
+                    showPortfolioView();
+                    try { scrollMainToTop(true); } catch(_) {}
+                    logDebug('Preferences: Restored portfolio view');
+                }
+            } else if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+                // Check if it's a movers virtual view
+                if (lastView === '__movers') {
+                    try { watchlistSelect.value = ALL_SHARES_ID; } catch(_) {}
+                    setCurrentSelectedWatchlistIds(['__movers']);
+                    if (typeof renderWatchlist === 'function') renderWatchlist();
+                    if (typeof enforceMoversVirtualView === 'function') enforceMoversVirtualView();
+                    if (typeof updateMainTitle === 'function') updateMainTitle('Movers');
+                    if (typeof scheduleMoversDeferredEnforce === 'function') scheduleMoversDeferredEnforce();
+                    logDebug('Preferences: Restored movers virtual view');
+                } else {
+                    // Regular watchlist
+                    const opt = Array.from(watchlistSelect.options).find(o => o.value === lastView);
+                    if (opt) {
+                        watchlistSelect.value = lastView;
+                        setCurrentSelectedWatchlistIds([lastView]);
+                        if (typeof renderWatchlist === 'function') renderWatchlist();
+                        try { scrollMainToTop(); } catch(_) {}
+                        if (typeof updateMainTitle === 'function') updateMainTitle();
+                        logDebug('Preferences: Restored watchlist: ' + lastView);
+                    } else {
+                        logDebug('Preferences: Watchlist option not found: ' + lastView);
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Preferences: Failed to apply last view:', error);
+        }
+    } else {
+        logDebug('Preferences: No last view found, using defaults');
+    }
+}
+
+async function robustRestoreViewMode() {
+    let storedMode = null;
+
+    // Try localStorage first
+    try {
+        storedMode = localStorage.getItem('currentMobileViewMode');
+        if (storedMode) {
+            logDebug('Preferences: Found view mode in localStorage: ' + storedMode);
+        }
+    } catch (error) {
+        console.warn('Preferences: Failed to read view mode from localStorage:', error);
+    }
+
+    // Try Firestore fallback
+    if (!storedMode && userPreferences && userPreferences.compactViewMode) {
+        storedMode = userPreferences.compactViewMode;
+        logDebug('Preferences: Using Firestore fallback for view mode: ' + storedMode);
+    }
+
+    // Validate and apply the mode
+    if (storedMode !== 'compact' && storedMode !== 'default') {
+        storedMode = 'default';
+        logDebug('Preferences: Invalid view mode, defaulting to: ' + storedMode);
+    }
+
+    try {
+        currentMobileViewMode = storedMode;
+        logDebug('Preferences: Set current mobile view mode to: ' + currentMobileViewMode);
+
+        // Apply the mode to UI
+        if (mobileShareCardsContainer) {
+            if (currentMobileViewMode === 'compact') {
+                mobileShareCardsContainer.classList.add('compact-view');
+            } else {
+                mobileShareCardsContainer.classList.remove('compact-view');
+            }
+            logDebug('Preferences: Applied view mode to UI: ' + currentMobileViewMode);
+        } else {
+            logDebug('Preferences: mobileShareCardsContainer not ready, view mode will be applied later');
+        }
+    } catch (error) {
+        console.warn('Preferences: Failed to apply view mode:', error);
+        currentMobileViewMode = 'default'; // Safe fallback
+    }
+}
+
+async function robustRestoreSortOrder() {
+    let candidateSort = null;
+
+    // Try watchlist-specific sort order first
+    if (currentSelectedWatchlistIds && currentSelectedWatchlistIds.length > 0) {
+        const currentWatchlistId = currentSelectedWatchlistIds[0];
+        try {
+            const watchlistSortOrder = getSortOrderForWatchlist(currentWatchlistId);
+            if (watchlistSortOrder) {
+                candidateSort = watchlistSortOrder;
+                logDebug('Preferences: Found watchlist-specific sort order: ' + candidateSort);
+            }
+        } catch (error) {
+            console.warn('Preferences: Failed to get watchlist-specific sort order:', error);
+        }
+    }
+
+    // Fallback to global sort order
+    if (!candidateSort) {
+        try {
+            candidateSort = localStorage.getItem('lastSortOrder') || null;
+            if (candidateSort) {
+                logDebug('Preferences: Using global sort order from localStorage: ' + candidateSort);
+            }
+        } catch (error) {
+            console.warn('Preferences: Failed to read global sort order from localStorage:', error);
+        }
+    }
+
+    // Apply the sort order
+    if (candidateSort) {
+        try {
+            setCurrentSortOrder(candidateSort);
+            logDebug('Preferences: Applied sort order: ' + candidateSort);
+
+            // Update UI if elements are ready
+            if (sortSelect) {
+                sortSelect.value = candidateSort;
+                if (typeof updateSortIcon === 'function') {
+                    updateSortIcon();
+                }
+                logDebug('Preferences: Updated sort select UI');
+            } else {
+                logDebug('Preferences: sortSelect not ready, sort order will be applied later');
+            }
+        } catch (error) {
+            console.warn('Preferences: Failed to apply sort order:', error);
+        }
+    } else {
+        // Use default sort order
+        const defaultSort = (currentSelectedWatchlistIds && currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID))
+            ? 'name-asc'
+            : 'percentageChange-desc';
+        try {
+            setCurrentSortOrder(defaultSort);
+            logDebug('Preferences: Using default sort order: ' + defaultSort);
+        } catch (error) {
+            console.warn('Preferences: Failed to set default sort order:', error);
+        }
+    }
 }
 
 // NEW: Splash Screen Functions
@@ -10012,7 +10382,47 @@ if (deleteAllUserDataBtn) {
             setCurrentSelectedWatchlistIds([event.target.value]);
             try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
                     try { setLastSelectedView(event.target.value); } catch(_) {}
-            await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
+
+            // Robust watchlist selection persistence
+            try {
+                await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
+                logDebug('Watchlist: Saved last selected IDs: ' + currentSelectedWatchlistIds.join(', '));
+            } catch (error) {
+                console.warn('Watchlist: Failed to save last selected IDs:', error);
+                // Fallback: ensure localStorage is set
+                try {
+                    localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds));
+                    logDebug('Watchlist: Emergency fallback - saved to localStorage');
+                } catch (localError) {
+                    console.error('Watchlist: Emergency fallback also failed:', localError);
+                }
+            }
+
+            // Restore per-watchlist sort order if available
+            const watchlistSortOrder = getSortOrderForWatchlist(event.target.value);
+            if (watchlistSortOrder) {
+                setCurrentSortOrder(watchlistSortOrder);
+                logDebug('Watchlist Select: Restored sort order for ' + event.target.value + ': ' + watchlistSortOrder);
+                // Update sort select UI to reflect the restored sort order
+                try {
+                    if (sortSelect) sortSelect.value = watchlistSortOrder;
+                    updateSortIcon();
+                } catch (e) {
+                    console.warn('Watchlist Select: Failed to update sort select UI:', e);
+                }
+            } else {
+                // No saved sort order for this watchlist, use default
+                const defaultSort = (event.target.value === CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'percentageChange-desc';
+                setCurrentSortOrder(defaultSort);
+                logDebug('Watchlist Select: Using default sort order for ' + event.target.value + ': ' + defaultSort);
+                try {
+                    if (sortSelect) sortSelect.value = defaultSort;
+                    updateSortIcon();
+                } catch (e) {
+                    console.warn('Watchlist Select: Failed to update sort select UI:', e);
+                }
+            }
+
             // Just render the watchlist. The listeners for shares/cash are already active.
             renderWatchlist();
             try { enforceMoversVirtualView(); } catch(_) {}
@@ -10109,7 +10519,9 @@ if (sortSelect) {
         } else {
             sortShares(); // Sorts allSharesData and calls renderWatchlist
         }
-        await saveSortOrderPreference(currentSortOrder);
+
+        // Robust sort order persistence with error recovery
+        robustSaveSortOrder(currentSortOrder);
 
     // NEW: Scroll to the top of the main content after sorting/rendering
     try { scrollMainToTop(); } catch(_) {}
@@ -11533,11 +11945,35 @@ function initializeApp() {
                 // Immediately reflect any persisted target count before live data loads
                 try { updateTargetHitBanner(); } catch(e) { console.warn('Auth early Target Alert restore failed', e); }
 
-                // Load user data, then do an initial fetch of live prices before setting the update interval.
-                // This ensures the initial view is correctly sorted by percentage change if selected.
-                await loadUserWatchlistsAndSettings();
-                // Load Firestore UI prefs early then restore view/mode (A & B)
-                try { await loadUserPreferences(); restoreViewAndModeFromPreferences(); } catch(e){ console.warn('Preference restore failed', e); }
+                // Robust preference loading with proper sequencing
+                logDebug('Auth: Starting robust preference loading sequence...');
+
+                try {
+                    // Step 1: Load user data first
+                    await loadUserWatchlistsAndSettings();
+                    logDebug('Auth: User watchlists and settings loaded successfully');
+                } catch (error) {
+                    console.warn('Auth: Failed to load user watchlists and settings:', error);
+                    // Continue with other steps even if this fails
+                }
+
+                try {
+                    // Step 2: Load user preferences
+                    await loadUserPreferences();
+                    logDebug('Auth: User preferences loaded successfully');
+                } catch (error) {
+                    console.warn('Auth: Failed to load user preferences:', error);
+                    // Continue with fallback preferences
+                }
+
+                try {
+                    // Step 3: Restore view and mode with error recovery
+                    await robustRestoreViewAndModeFromPreferences();
+                    logDebug('Auth: View and mode preferences restored successfully');
+                } catch (error) {
+                    console.warn('Auth: Failed to restore view and mode preferences:', error);
+                    // Continue with default settings
+                }
                 try { ensureTitleStructure(); } catch(e) {}
                 // Load persisted compact view preference AFTER user data is ready
                 try {

@@ -1,6 +1,6 @@
 // App Service: core CRUD logic extracted from script.js
 // Uses window-bound Firebase services and UI helpers.
-import { getUserWatchlists, setUserWatchlists, setCurrentSelectedWatchlistIds, getCurrentSelectedWatchlistIds, getUserCashCategories, setUserCashCategories } from './state.js';
+import { getUserWatchlists, setUserWatchlists, setCurrentSelectedWatchlistIds, getCurrentSelectedWatchlistIds, getUserCashCategories, setUserCashCategories, getAllSharesData, setAllSharesData } from './state.js';
 import { db, firestore, currentAppId, auth } from '../firebase.js';
 import { getCurrentFormData, getCurrentCashAssetFormData } from './uiService.js';
 
@@ -38,7 +38,7 @@ export async function saveShareData(isSilent = false) {
     let existingWatchlistIds = null;
     if (window.selectedShareDocId) {
         // We're updating an existing share, so we need to merge watchlistIds
-        const existingShare = (window.allSharesData||[]).find(s => s.id === window.selectedShareDocId);
+        const existingShare = getAllSharesData().find(s => s.id === window.selectedShareDocId);
         if (existingShare && existingShare.watchlistIds) {
             existingWatchlistIds = existingShare.watchlistIds;
         }
@@ -96,50 +96,158 @@ export async function saveShareData(isSilent = false) {
     };
 
 
+    // Check if we're trying to update an existing share
     if (window.selectedShareDocId) {
-        // Update existing share
-        const existingShare = (window.allSharesData||[]).find(s => s.id === window.selectedShareDocId);
+        // Store the original ID before potentially clearing it
+        const originalShareDocId = window.selectedShareDocId;
 
-        // Update existing share in Firestore
+        // Check if the document exists before attempting update
+        const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', originalShareDocId);
+
         try {
-            const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', window.selectedShareDocId);
-            await firestore.updateDoc(shareDocRef, { ...shareData, userId: currentUserId });
+            // Try to get the document to verify it exists
+            const docSnapshot = await firestore.getDoc(shareDocRef);
 
-            try {
-                await window.upsertAlertForShare && window.upsertAlertForShare(window.selectedShareDocId, shareName, shareData, false);
-            } catch(_) {}
+            if (!docSnapshot.exists()) {
+                console.warn('Share document does not exist, falling back to creating new share:', originalShareDocId);
+                // Clear the selectedShareDocId to force creation of new share
+                window.selectedShareDocId = null;
+                // Continue to the create new share logic below
+            } else {
+                // Document exists, proceed with update
+                await firestore.updateDoc(shareDocRef, { ...shareData, userId: currentUserId });
 
-            try {
-                const idx = (window.allSharesData||[]).findIndex(s => s.id === window.selectedShareDocId);
-                if (idx !== -1) window.allSharesData[idx] = { ...window.allSharesData[idx], ...shareData, userId: currentUserId };
-            } catch(_) {}
+                try {
+                    await window.upsertAlertForShare && window.upsertAlertForShare(originalShareDocId, shareName, shareData, false);
+                } catch(_) {}
 
-            try {
-                if (!isSilent) window.showCustomAlert && window.showCustomAlert('Update successful', 1500);
-            } catch(_) {}
+                try {
+                    const currentShares = getAllSharesData();
+                    const idx = currentShares.findIndex(s => s.id === originalShareDocId);
+                    if (idx !== -1) {
+                        const updatedShares = [...currentShares];
+                        updatedShares[idx] = { ...updatedShares[idx], ...shareData, userId: currentUserId };
+                        setAllSharesData(updatedShares);
+                    }
+                } catch(_) {}
 
-            window.originalShareData = getCurrentFormData ? getCurrentFormData() : null;
-            window.setIconDisabled && window.setIconDisabled(window.saveShareBtn, true);
+                try {
+                    if (!isSilent) window.showCustomAlert && window.showCustomAlert('Update successful', 1500);
+                } catch(_) {}
 
-            if (!isSilent && window.shareFormSection) {
-                window.shareFormSection.style.setProperty('display', 'none', 'important');
-                window.shareFormSection.classList.add('app-hidden');
+                // First fetch live prices, then update UI with fresh data
+                try {
+                    console.log('[UI UPDATE] Fetching live prices first...');
+                    const currentShares = getAllSharesData();
+                    console.log('[UI UPDATE] Current shares count:', currentShares.length);
+                    console.log('[UI UPDATE] Share codes:', currentShares.map(s => s.shareName).filter(Boolean));
+
+                    // Temporarily enable debug mode for live pricing
+                    const originalDebugMode = window.DEBUG_MODE;
+                    window.DEBUG_MODE = true;
+
+                                    await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true });
+
+                // Restore original debug mode
+                window.DEBUG_MODE = originalDebugMode;
+
+                // Check if we got prices for the updated share
+                const shareCode = shareName.toUpperCase();
+                const livePrices = window.livePrices || {};
+                if (!livePrices[shareCode] || !livePrices[shareCode].live) {
+                    console.log('[UI UPDATE] No live price found for updated share', shareCode, '- retrying in 2 seconds...');
+
+                    // Try again after a delay
+                    setTimeout(async () => {
+                        try {
+                            console.log('[UI UPDATE] Retrying live price fetch for', shareCode);
+                            const retryDebugMode = window.DEBUG_MODE;
+                            window.DEBUG_MODE = true;
+
+                            await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true, stockCode: shareCode });
+
+                            window.DEBUG_MODE = retryDebugMode;
+
+                            // Check if we got the price on retry
+                            const livePricesAfterRetry = window.livePrices || {};
+                            if (livePricesAfterRetry[shareCode] && livePricesAfterRetry[shareCode].live) {
+                                console.log('[UI UPDATE] SUCCESS: Live price found for', shareCode, 'on retry');
+                            } else {
+                                console.log('[UI UPDATE] No live price available for', shareCode, '- this may be normal for new shares');
+                                console.log('[UI UPDATE] Apps Script may need time to initialize data for', shareCode);
+
+                                // Schedule additional retries for shares without pricing
+                                setTimeout(async () => {
+                                    console.log('[UI UPDATE] Final attempt for share', shareCode);
+                                    try {
+                                        await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true, stockCode: shareCode });
+                                        const finalPrices = window.livePrices || {};
+                                        if (finalPrices[shareCode] && finalPrices[shareCode].live) {
+                                            console.log('[UI UPDATE] SUCCESS: Live price finally available for', shareCode);
+                                            if (window.renderWatchlist) window.renderWatchlist();
+                                            if (window.renderAsxCodeButtons) window.renderAsxCodeButtons();
+                                        } else {
+                                            console.log('[UI UPDATE] Live price still unavailable for', shareCode, '- user may need to refresh or try later');
+                                        }
+                                    } catch(error) {
+                                        console.error('[UI UPDATE] Final retry failed for', shareCode, error);
+                                    }
+                                }, 5000); // 5 second final attempt
+                            }
+
+                            // Force UI update again
+                            if (window.renderWatchlist) window.renderWatchlist();
+                            if (window.renderAsxCodeButtons) window.renderAsxCodeButtons();
+                        } catch(error) {
+                            console.error('[UI UPDATE] Retry fetch failed:', error);
+                        }
+                    }, 2000);
+                }
+
+                console.log('[UI UPDATE] Live prices fetched, now updating UI');
+                } catch(error) {
+                    console.error('[UI UPDATE] Error fetching live prices:', error);
+                }
+
+                // Update UI immediately after successful share update
+                try {
+                    console.log('[UI UPDATE] Starting UI update after share update');
+                    if (window.sortShares) {
+                        console.log('[UI UPDATE] Calling sortShares()');
+                        window.sortShares();
+                    }
+                    if (window.renderWatchlist) {
+                        console.log('[UI UPDATE] Calling renderWatchlist()');
+                        window.renderWatchlist();
+                    }
+                    if (window.renderAsxCodeButtons) {
+                        console.log('[UI UPDATE] Calling renderAsxCodeButtons()');
+                        window.renderAsxCodeButtons();
+                    }
+                    console.log('[UI UPDATE] UI update completed');
+                } catch(error) {
+                    console.error('[UI UPDATE] Error during UI update:', error);
+                }
+
+                window.originalShareData = getCurrentFormData ? getCurrentFormData() : null;
+                window.setIconDisabled && window.setIconDisabled(window.saveShareBtn, true);
+
+                if (!isSilent && window.shareFormSection) {
+                    window.shareFormSection.style.setProperty('display', 'none', 'important');
+                    window.shareFormSection.classList.add('app-hidden');
+                }
+
+                if (!isSilent) {
+                    window.suppressShareFormReopen = true;
+                    setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000);
+                }
+
+                try {
+                    window.deselectCurrentShare && window.deselectCurrentShare();
+                } catch(_) {}
+
+                return;
             }
-
-            if (!isSilent) {
-                window.suppressShareFormReopen = true;
-                setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000);
-            }
-
-            try {
-                window.deselectCurrentShare && window.deselectCurrentShare();
-            } catch(_) {}
-
-            try {
-                await window.fetchLivePrices && window.fetchLivePrices();
-            } catch(_) {}
-
-            return;
         } catch (error) {
             console.error('Error updating share:', error);
             if (!isSilent) {
@@ -157,22 +265,26 @@ export async function saveShareData(isSilent = false) {
 
         try {
             // Query Firestore for existing shares with the same name
+            console.log('[DUPLICATE CHECK] Checking Firestore for share:', shareName);
             const sharesQuery = firestore.query(
                 firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares'),
                 firestore.where('shareName', '==', shareName)
             );
             const querySnapshot = await firestore.getDocs(sharesQuery);
+            console.log('[DUPLICATE CHECK] Query returned', querySnapshot.size, 'documents');
 
             if (!querySnapshot.empty) {
-                console.log('[DUPLICATE CHECK] Found duplicate share:', shareName);
+                console.log('[DUPLICATE CHECK] Found duplicate share:', shareName, '- preventing creation');
+                console.log('[DUPLICATE CHECK] Documents found:', querySnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().shareName })));
                 if (!isSilent) {
                     try {
                         window.showCustomAlert && window.showCustomAlert(`Share "${shareName}" already exists. You cannot create duplicate shares.`);
                     } catch(_) {}
                 }
+                console.log('[DUPLICATE CHECK] Duplicate found - returning early to prevent creation');
                 return;
             }
-            console.log('[DUPLICATE CHECK] No duplicate found, proceeding with creation...');
+            console.log('[DUPLICATE CHECK] No duplicate found in Firestore, proceeding with creation...');
         } catch (error) {
             console.error('[DUPLICATE CHECK] Error checking for duplicates:', error);
             // Continue with creation if duplicate check fails
@@ -190,13 +302,119 @@ export async function saveShareData(isSilent = false) {
 
             // Add to local data
             try {
-                if (!window.allSharesData) window.allSharesData = [];
-                window.allSharesData.push({ ...shareData, id: newShareId, userId: currentUserId });
+                const currentShares = getAllSharesData();
+                const updatedShares = [...currentShares, { ...shareData, id: newShareId, userId: currentUserId }];
+                setAllSharesData(updatedShares);
             } catch(_) {}
 
             try {
-                if (!isSilent) window.showCustomAlert && window.showCustomAlert('Added successfully', 1500);
+                if (!isSilent) {
+                    // Check if live price is available and provide appropriate feedback
+                    const newShareCode = shareName.toUpperCase();
+                    const livePrices = window.livePrices || {};
+                    const hasLivePrice = livePrices[newShareCode] && livePrices[newShareCode].live;
+
+                    if (hasLivePrice) {
+                        window.showCustomAlert && window.showCustomAlert('Added successfully', 1500);
+                    } else {
+                        window.showCustomAlert && window.showCustomAlert('Share added successfully. Live pricing may take a moment to appear for new shares.', 3000);
+                    }
+                }
             } catch(_) {}
+
+            // First fetch live prices, then update UI with fresh data
+            try {
+                console.log('[UI UPDATE] Fetching live prices first...');
+                const currentShares = getAllSharesData();
+                console.log('[UI UPDATE] Current shares count:', currentShares.length);
+                console.log('[UI UPDATE] Share codes:', currentShares.map(s => s.shareName).filter(Boolean));
+
+                // Temporarily enable debug mode for live pricing
+                const originalDebugMode = window.DEBUG_MODE;
+                window.DEBUG_MODE = true;
+
+                await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true });
+
+                // Restore original debug mode
+                window.DEBUG_MODE = originalDebugMode;
+
+                // Check if we got prices for the new share
+                const newShareCode = shareName.toUpperCase();
+                const livePrices = window.livePrices || {};
+                if (!livePrices[newShareCode] || !livePrices[newShareCode].live) {
+                    console.log('[UI UPDATE] No live price found for new share', newShareCode, '- retrying in 2 seconds...');
+
+                    // Try again after a delay for new stocks
+                    setTimeout(async () => {
+                        try {
+                            console.log('[UI UPDATE] Retrying live price fetch for', newShareCode);
+                            const retryDebugMode = window.DEBUG_MODE;
+                            window.DEBUG_MODE = true;
+
+                            await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true, stockCode: newShareCode });
+
+                            window.DEBUG_MODE = retryDebugMode;
+
+                            // Check if we got the price on retry
+                            const livePricesAfterRetry = window.livePrices || {};
+                            if (livePricesAfterRetry[newShareCode] && livePricesAfterRetry[newShareCode].live) {
+                                console.log('[UI UPDATE] SUCCESS: Live price found for', newShareCode, 'on retry');
+                            } else {
+                                console.log('[UI UPDATE] No live price available for', newShareCode, '- this may be normal for completely new shares');
+                                console.log('[UI UPDATE] Apps Script may need time to initialize data for', newShareCode);
+
+                                // Schedule additional retries for completely new shares
+                                setTimeout(async () => {
+                                    console.log('[UI UPDATE] Final attempt for new share', newShareCode);
+                                    try {
+                                        await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true, stockCode: newShareCode });
+                                        const finalPrices = window.livePrices || {};
+                                        if (finalPrices[newShareCode] && finalPrices[newShareCode].live) {
+                                            console.log('[UI UPDATE] SUCCESS: Live price finally available for', newShareCode);
+                                            if (window.renderWatchlist) window.renderWatchlist();
+                                            if (window.renderAsxCodeButtons) window.renderAsxCodeButtons();
+                                        } else {
+                                            console.log('[UI UPDATE] Live price still unavailable for', newShareCode, '- user may need to refresh or try later');
+                                        }
+                                    } catch(error) {
+                                        console.error('[UI UPDATE] Final retry failed for', newShareCode, error);
+                                    }
+                                }, 5000); // 5 second final attempt
+                            }
+
+                            // Force UI update again
+                            if (window.renderWatchlist) window.renderWatchlist();
+                            if (window.renderAsxCodeButtons) window.renderAsxCodeButtons();
+                        } catch(error) {
+                            console.error('[UI UPDATE] Retry fetch failed:', error);
+                        }
+                    }, 2000);
+                }
+
+                console.log('[UI UPDATE] Live prices fetched, now updating UI');
+            } catch(error) {
+                console.error('[UI UPDATE] Error fetching live prices:', error);
+            }
+
+            // Update UI immediately after successful share creation
+            try {
+                console.log('[UI UPDATE] Starting UI update after share creation');
+                if (window.sortShares) {
+                    console.log('[UI UPDATE] Calling sortShares()');
+                    window.sortShares();
+                }
+                if (window.renderWatchlist) {
+                    console.log('[UI UPDATE] Calling renderWatchlist()');
+                    window.renderWatchlist();
+                }
+                if (window.renderAsxCodeButtons) {
+                    console.log('[UI UPDATE] Calling renderAsxCodeButtons()');
+                    window.renderAsxCodeButtons();
+                }
+                console.log('[UI UPDATE] UI update completed');
+            } catch(error) {
+                console.error('[UI UPDATE] Error during UI update:', error);
+            }
 
             window.originalShareData = getCurrentFormData ? getCurrentFormData() : null;
             window.setIconDisabled && window.setIconDisabled(window.saveShareBtn, true);
@@ -213,10 +431,6 @@ export async function saveShareData(isSilent = false) {
 
             try {
                 window.deselectCurrentShare && window.deselectCurrentShare();
-            } catch(_) {}
-
-            try {
-                await window.fetchLivePrices && window.fetchLivePrices();
             } catch(_) {}
 
             return;
@@ -266,9 +480,38 @@ export async function deleteShare(shareId) {
         const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', shareId);
         await firestore.deleteDoc(shareDocRef);
         try { window.logDebug && window.logDebug('Firestore: Share (ID: ' + shareId + ') deleted.'); } catch(_) {}
+
+        // Remove from local data immediately
+        try {
+            const currentShares = getAllSharesData();
+            const updatedShares = currentShares.filter(s => s.id !== shareId);
+            setAllSharesData(updatedShares);
+        } catch(_) {}
+
         try { window.showCustomAlert && window.showCustomAlert('Share deleted', 1500, 'success'); } catch(_) {}
         try { window.updateTargetHitBanner && window.updateTargetHitBanner(); } catch(_) {}
         try { window.closeModals && window.closeModals(); } catch(_) {}
+
+        // Update UI immediately after successful share deletion
+        // Note: For deletions, we don't need to fetch live prices as the deleted share won't have prices anyway
+        try {
+            console.log('[UI UPDATE] Starting UI update after share deletion');
+            if (window.sortShares) {
+                console.log('[UI UPDATE] Calling sortShares()');
+                window.sortShares();
+            }
+            if (window.renderWatchlist) {
+                console.log('[UI UPDATE] Calling renderWatchlist()');
+                window.renderWatchlist();
+            }
+            if (window.renderAsxCodeButtons) {
+                console.log('[UI UPDATE] Calling renderAsxCodeButtons()');
+                window.renderAsxCodeButtons();
+            }
+            console.log('[UI UPDATE] UI update completed');
+        } catch(error) {
+            console.error('[UI UPDATE] Error during UI update:', error);
+        }
     } catch (error) {
         console.error('Firestore: Error deleting share:', error);
         try { window.showCustomAlert && window.showCustomAlert('Error deleting share: ' + error.message); } catch(_) {}

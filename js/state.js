@@ -10,6 +10,7 @@ let currentSelectedWatchlistIds = [];
 let sharesAtTargetPrice = [];
 let currentSortOrder = 'entryDate-desc';
 let allAsxCodes = [];
+let watchlistSortOrders = {}; // Stores sort order per watchlist
 
 // Window exposure for compatibility with non-module scripts (e.g., rendering.js)
 if (typeof window !== 'undefined') {
@@ -21,6 +22,7 @@ if (typeof window !== 'undefined') {
     window.sharesAtTargetPrice = sharesAtTargetPrice;
     window.currentSortOrder = currentSortOrder;
     window.allAsxCodes = allAsxCodes;
+    window.watchlistSortOrders = watchlistSortOrders;
 }
 
 // Setter helpers keep window mirrors in sync
@@ -64,6 +66,11 @@ export function setAllAsxCodes(codes) {
     if (typeof window !== 'undefined') window.allAsxCodes = allAsxCodes;
 }
 
+export function setWatchlistSortOrders(orders) {
+    watchlistSortOrders = (orders && typeof orders === 'object') ? orders : {};
+    if (typeof window !== 'undefined') window.watchlistSortOrders = watchlistSortOrders;
+}
+
 // Getters
 export function getAllSharesData() { return allSharesData; }
 export function getLivePrices() { return livePrices; }
@@ -73,4 +80,5 @@ export function getCurrentSelectedWatchlistIds() { return currentSelectedWatchli
 export function getSharesAtTargetPrice() { return sharesAtTargetPrice; }
 export function getCurrentSortOrder() { return currentSortOrder; }
 export function getAllAsxCodes() { return allAsxCodes; }
+export function getWatchlistSortOrders() { return watchlistSortOrders; }
 

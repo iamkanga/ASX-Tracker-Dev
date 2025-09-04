@@ -5118,6 +5118,19 @@ body.dark-theme table td .live-price-value {
     color: #fff !important;
 }
 
+/* New share indicator for shares waiting for live pricing */
+.live-price-value.new-share,
+.card-live-price.new-share {
+    color: var(--accent-color, #007bff);
+    font-style: italic;
+    animation: pulse-loading 2s ease-in-out infinite;
+}
+
+@keyframes pulse-loading {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
 /* Apply coloring to specific text elements */
 /* Now applying to ASX code and live price value directly */
 .positive,
