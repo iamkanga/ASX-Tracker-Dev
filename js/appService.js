@@ -34,11 +34,86 @@ export async function saveShareData(isSilent = false) {
     const comments = form ? (form.comments || []) : [];
     const currentUserId = (function(){ try { return window.currentUserId || (auth && auth.currentUser && auth.currentUser.uid) || null; } catch(_) { return null; } })();
     if (!currentUserId) { console.error('Save Share: Missing currentUserId; user not authenticated.'); try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('You must be signed in to save.'); } catch(_) {} return; }
-    const shareData = { shareName: shareName, userId: currentUserId, currentPrice: isNaN(currentPrice) ? null : currentPrice, targetPrice: isNaN(targetPrice) ? null : targetPrice, targetDirection: (form && form.targetDirection) ? form.targetDirection : ((window.targetAboveCheckbox && window.targetAboveCheckbox.checked) ? 'above' : 'below'), intent: (function(){ try { const dir = (form && form.targetDirection) ? form.targetDirection : ((window.targetAboveCheckbox && window.targetAboveCheckbox.checked) ? 'above' : 'below'); const buyActive = !!(window.targetIntentBuyBtn && window.targetIntentBuyBtn.classList.contains('is-active')); const sellActive = !!(window.targetIntentSellBtn && window.targetIntentSellBtn.classList.contains('is-active')); if (buyActive && !sellActive) return 'buy'; if (sellActive && !buyActive) return 'sell'; return dir === 'above' ? 'sell' : 'buy'; } catch(_) { return (window.targetAboveCheckbox && window.targetAboveCheckbox.checked) ? 'sell' : 'buy'; } })(), dividendAmount: isNaN(dividendAmount) ? null : dividendAmount, frankingCredits: isNaN(frankingCredits) ? null : frankingCredits, comments: comments, watchlistId: selectedWatchlistIdForSave, watchlistIds: Array.isArray(selectedWatchlistIdsForSave) ? selectedWatchlistIdsForSave : (selectedWatchlistIdForSave ? [selectedWatchlistIdForSave] : null), portfolioShares: (form ? form.portfolioShares : null), portfolioAvgPrice: (form ? form.portfolioAvgPrice : null), lastPriceUpdateTime: new Date().toISOString(), starRating: form ? form.starRating : (window.shareRatingSelect ? parseInt(window.shareRatingSelect.value) : 0) };
+    // Check if this is an existing share that we're updating
+    let existingWatchlistIds = null;
+    if (window.selectedShareDocId) {
+        // We're updating an existing share, so we need to merge watchlistIds
+        const existingShare = (window.allSharesData||[]).find(s => s.id === window.selectedShareDocId);
+        if (existingShare && existingShare.watchlistIds) {
+            existingWatchlistIds = existingShare.watchlistIds;
+        }
+    }
+
+    // Prepare watchlist IDs - merge with existing ones if updating
+    let finalWatchlistIds = null;
+    if (Array.isArray(selectedWatchlistIdsForSave) && selectedWatchlistIdsForSave.length > 0) {
+        finalWatchlistIds = selectedWatchlistIdsForSave;
+    } else if (selectedWatchlistIdForSave) {
+        finalWatchlistIds = [selectedWatchlistIdForSave];
+    }
+
+    // If we have existing watchlistIds and new ones, merge them
+    if (existingWatchlistIds && Array.isArray(existingWatchlistIds) && finalWatchlistIds && Array.isArray(finalWatchlistIds)) {
+        // Merge and deduplicate
+        finalWatchlistIds = [...new Set([...existingWatchlistIds, ...finalWatchlistIds])];
+        console.log('[DEBUG] Merged watchlistIds:', { existing: existingWatchlistIds, selected: selectedWatchlistIdsForSave || [selectedWatchlistIdForSave], final: finalWatchlistIds });
+    }
+
+    const shareData = {
+        shareName: shareName,
+        userId: currentUserId,
+        currentPrice: isNaN(currentPrice) ? null : currentPrice,
+        targetPrice: isNaN(targetPrice) ? null : targetPrice,
+        targetDirection: (form && form.targetDirection) ? form.targetDirection : ((window.targetAboveCheckbox && window.targetAboveCheckbox.checked) ? 'above' : 'below'),
+        intent: (function(){
+            try {
+                const dir = (form && form.targetDirection) ? form.targetDirection : ((window.targetAboveCheckbox && window.targetAboveCheckbox.checked) ? 'above' : 'below');
+                const buyActive = !!(window.targetIntentBuyBtn && window.targetIntentBuyBtn.classList.contains('is-active'));
+                const sellActive = !!(window.targetIntentSellBtn && window.targetIntentSellBtn.classList.contains('is-active'));
+                if (buyActive && !sellActive) return 'buy';
+                if (sellActive && !buyActive) return 'sell';
+                return dir === 'above' ? 'sell' : 'buy';
+            } catch(_) {
+                return (window.targetAboveCheckbox && window.targetAboveCheckbox.checked) ? 'sell' : 'buy';
+            }
+        })(),
+        dividendAmount: isNaN(dividendAmount) ? null : dividendAmount,
+        frankingCredits: isNaN(frankingCredits) ? null : frankingCredits,
+        comments: comments,
+        watchlistId: selectedWatchlistIdForSave,
+        watchlistIds: finalWatchlistIds,
+        portfolioShares: (form ? form.portfolioShares : null),
+        portfolioAvgPrice: (form ? form.portfolioAvgPrice : null),
+        lastPriceUpdateTime: new Date().toISOString(),
+        starRating: form ? form.starRating : (window.shareRatingSelect ? parseInt(window.shareRatingSelect.value) : 0)
+    };
     if (!window.selectedShareDocId) { try { const sharesColUnique = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares'); const dupQuery = firestore.query(sharesColUnique, firestore.where('shareName', '==', shareName)); const dupSnap = await firestore.getDocs(dupQuery); if (!dupSnap.empty) { const existing = dupSnap.docs[0]; window.selectedShareDocId = existing.id; try { window.logDebug && window.logDebug('Uniqueness: Existing share found for code '+shareName+' (ID='+window.selectedShareDocId+'). Converting add into update.'); } catch(_) {} } } catch(e) { console.warn('Uniqueness: lookup failed', e); } }
     if (window.selectedShareDocId) { const existingShare = (window.allSharesData||[]).find(s => s.id === window.selectedShareDocId); if (shareData.currentPrice !== null && existingShare && existingShare.currentPrice !== shareData.currentPrice) { shareData.previousFetchedPrice = existingShare.lastFetchedPrice; shareData.lastFetchedPrice = shareData.currentPrice; } else if (!existingShare || existingShare.lastFetchedPrice === undefined) { shareData.previousFetchedPrice = shareData.currentPrice; shareData.lastFetchedPrice = shareData.currentPrice; } else { shareData.previousFetchedPrice = existingShare.previousFetchedPrice; shareData.lastFetchedPrice = existingShare.lastFetchedPrice; } try { const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', window.selectedShareDocId); await firestore.updateDoc(shareDocRef, { ...shareData, userId: currentUserId }); try { await window.upsertAlertForShare && window.upsertAlertForShare(window.selectedShareDocId, shareName, shareData, false); } catch(_) {} try { const idx = (window.allSharesData||[]).findIndex(s => s.id === window.selectedShareDocId); if (idx !== -1) window.allSharesData[idx] = { ...window.allSharesData[idx], ...shareData, userId: currentUserId }; } catch(_) {} try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Update successful', 1500); } catch(_) {} window.originalShareData = getCurrentFormData ? getCurrentFormData() : null; window.setIconDisabled && window.setIconDisabled(window.saveShareBtn, true); if (!isSilent && window.shareFormSection) { window.shareFormSection.style.setProperty('display', 'none', 'important'); window.shareFormSection.classList.add('app-hidden'); } if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000); } try { window.deselectCurrentShare && window.deselectCurrentShare(); } catch(_) {} try { await window.fetchLivePrices && window.fetchLivePrices(); } catch(_) {} } catch (error) { console.error('Firestore: Error updating share:', error); try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Error updating share: ' + error.message); } catch(_) {} } } else { shareData.entryDate = new Date().toISOString(); if (shareData.currentPrice === null) { try { const lpLate = (window.livePrices||{})[shareName.toUpperCase()]; if (lpLate && typeof lpLate.live === 'number' && !isNaN(lpLate.live)) shareData.currentPrice = lpLate.live; else if (lpLate && typeof lpLate.lastLivePrice === 'number' && !isNaN(lpLate.lastLivePrice)) shareData.currentPrice = lpLate.lastLivePrice; } catch(_) {} } shareData.lastFetchedPrice = shareData.currentPrice; shareData.previousFetchedPrice = shareData.currentPrice; try { const sharesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares'); const newDocRef = await firestore.addDoc(sharesColRef, { ...shareData, userId: currentUserId }); window.selectedShareDocId = newDocRef.id; try { await window.upsertAlertForShare && window.upsertAlertForShare(window.selectedShareDocId, shareName, shareData, true); } catch(_) {} try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Added successfully', 1500); } catch(_) {} try { window.logDebug && window.logDebug("Firestore: Share '" + shareName + "' added with ID: " + newDocRef.id); } catch(_) {} window.originalShareData = getCurrentFormData ? getCurrentFormData() : null; window.setIconDisabled && window.setIconDisabled(window.saveShareBtn, true); if (!isSilent && window.shareFormSection) { window.shareFormSection.style.setProperty('display', 'none', 'important'); window.shareFormSection.classList.add('app-hidden'); } if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000); } try { window.deselectCurrentShare && window.deselectCurrentShare(); } catch(_) {} try { if (window.fetchLivePrices) await window.fetchLivePrices(); } catch(_) {} } catch (error) { console.error('Firestore: Error adding share:', error); try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Error adding share: ' + error.message); } catch(_) {} } }
     try { if (window.shareDetailModal && window.shareDetailModal.dataset) delete window.shareDetailModal.dataset.shareId; } catch(_) {}
     try { if (!isSilent && window.closeModals) window.closeModals(); } catch(_) {}
+
+    // Additional safeguard to prevent share detail modal from reopening after save
+    try {
+        if (window.selectedShareDocId) {
+            console.log('[DEBUG] Clearing selectedShareDocId to prevent modal reopening');
+            window.selectedShareDocId = null;
+        }
+
+        // Force close any open share detail modal
+        if (window.shareDetailModal && window.shareDetailModal.style) {
+            console.log('[DEBUG] Force closing share detail modal');
+            window.shareDetailModal.style.display = 'none';
+        }
+
+        // Clear any modal state
+        if (window.wasEditOpenedFromShareDetail) {
+            console.log('[DEBUG] Clearing wasEditOpenedFromShareDetail flag');
+            window.wasEditOpenedFromShareDetail = false;
+        }
+
+    } catch(error) {
+        console.error('[DEBUG] Error in modal cleanup:', error);
+    }
 }
 
 export async function deleteShare(shareId) {
@@ -103,24 +178,155 @@ export async function saveWatchlistChanges(isSilent = false, newName, watchlistI
 
 export async function deleteWatchlist(watchlistId) {
     const currentUserId = window.currentUserId;
-    if (!watchlistId) { try { window.showCustomAlert && window.showCustomAlert('Error: Cannot delete watchlist. ID is missing or invalid.', 2000); } catch(_) {} return; }
-    if (watchlistId === window.ALL_SHARES_ID || watchlistId === window.CASH_BANK_WATCHLIST_ID) { try { window.showCustomAlert && window.showCustomAlert('Cannot delete this special watchlist.', 2000); } catch(_) {} return; }
+
+    if (!watchlistId) {
+        try { window.showCustomAlert && window.showCustomAlert('Error: Cannot delete watchlist. ID is missing or invalid.', 2000); } catch(_) {}
+        return;
+    }
+    if (watchlistId === window.ALL_SHARES_ID || watchlistId === window.CASH_BANK_WATCHLIST_ID) {
+        try { window.showCustomAlert && window.showCustomAlert('Cannot delete this special watchlist.', 2000); } catch(_) {}
+        return;
+    }
+
+    // Show confirmation dialog
+    const watchlistName = getUserWatchlists().find(w => w.id === watchlistId)?.name || 'Unknown Watchlist';
+
+    return new Promise((resolve, reject) => {
+        try {
+            if (window.showCustomConfirm) {
+                window.showCustomConfirm(
+                    `Delete "${watchlistName}"? Shares in this watchlist only will be removed.`,
+                    async (confirmed) => {
+                        if (!confirmed) {
+                            try { window.showCustomAlert && window.showCustomAlert('Watchlist deletion cancelled.', 1000); } catch(_) {}
+                            resolve(false);
+                            return;
+                        }
+
+                        try {
+                            await performSafeWatchlistDeletion(watchlistId, watchlistName);
+                            resolve(true);
+                        } catch (error) {
+                            console.error('Error in safe watchlist deletion:', error);
+                            try { window.showCustomAlert && window.showCustomAlert('Error deleting watchlist: ' + error.message); } catch(_) {}
+                            reject(error);
+                        }
+                    }
+                );
+            } else {
+                // Fallback to native confirm if custom confirm fails
+                if (window.confirm(`Delete "${watchlistName}"? Shares in this watchlist only will be removed.`)) {
+                    performSafeWatchlistDeletion(watchlistId, watchlistName)
+                        .then(() => resolve(true))
+                        .catch((error) => {
+                            console.error('Error in fallback deletion:', error);
+                            try { window.showCustomAlert && window.showCustomAlert('Error deleting watchlist: ' + error.message); } catch(_) {}
+                            reject(error);
+                        });
+                } else {
+                    try { window.showCustomAlert && window.showCustomAlert('Watchlist deletion cancelled.', 1000); } catch(_) {}
+                    resolve(false);
+                }
+            }
+        } catch (confirmError) {
+            console.warn('Confirmation dialog not available, falling back to native confirm:', confirmError);
+            // Fallback to native confirm if custom confirm fails
+            if (window.confirm(`Delete "${watchlistName}"? Shares in this watchlist only will be removed.`)) {
+                performSafeWatchlistDeletion(watchlistId, watchlistName)
+                    .then(() => resolve(true))
+                    .catch((error) => {
+                        console.error('Error in fallback deletion:', error);
+                        try { window.showCustomAlert && window.showCustomAlert('Error deleting watchlist: ' + error.message); } catch(_) {}
+                        reject(error);
+                    });
+            } else {
+                try { window.showCustomAlert && window.showCustomAlert('Watchlist deletion cancelled.', 1000); } catch(_) {}
+                resolve(false);
+            }
+        }
+    });
+}
+
+async function performSafeWatchlistDeletion(watchlistId, watchlistName) {
+    const currentUserId = window.currentUserId;
+
     try {
         const sharesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
-        const q = firestore.query(sharesColRef, firestore.where('watchlistId', '==', watchlistId));
-        const querySnapshot = await firestore.getDocs(q);
+
+        // Query all shares to find those that might be affected
+        const allSharesQuery = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
+        const allSharesSnapshot = await firestore.getDocs(allSharesQuery);
+        console.log('[DEBUG] Found', allSharesSnapshot.docs.length, 'total shares to analyze for deletion');
+
+        const sharesToDelete = [];
+        const sharesToUpdate = [];
+
+        // Analyze each share to determine if it should be deleted or updated
+        allSharesSnapshot.forEach(doc => {
+            const shareData = doc.data();
+            const shareWatchlistIds = shareData.watchlistIds || [];
+
+            // Check if this share belongs to the watchlist being deleted
+            if (shareWatchlistIds.includes(watchlistId)) {
+                console.log('[DEBUG] Share', shareData.shareName, 'belongs to watchlist', watchlistId, '- watchlistIds:', shareWatchlistIds);
+                if (shareWatchlistIds.length === 1) {
+                    // Share belongs only to this watchlist - mark for deletion
+                    console.log('[DEBUG] Marking share', shareData.shareName, 'for DELETION (only in this watchlist)');
+                    sharesToDelete.push(doc.id);
+                } else {
+                    // Share belongs to multiple watchlists - mark for update (remove this watchlist ID)
+                    const updatedWatchlistIds = shareWatchlistIds.filter(id => id !== watchlistId);
+                    console.log('[DEBUG] Marking share', shareData.shareName, 'for UPDATE - removing', watchlistId, 'from watchlistIds:', shareWatchlistIds, '->', updatedWatchlistIds);
+                    sharesToUpdate.push({
+                        id: doc.id,
+                        watchlistIds: updatedWatchlistIds
+                    });
+                }
+            }
+        });
+
+        console.log('[DEBUG] Deletion analysis complete - shares to delete:', sharesToDelete.length, 'shares to update:', sharesToUpdate.length);
+
+        // Perform batch operations
         const batch = firestore.writeBatch(db);
-        querySnapshot.forEach(doc => { const shareRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', doc.id); batch.delete(shareRef); });
-        await batch.commit();
+
+        // Delete shares that belong only to this watchlist
+        console.log('[DEBUG] Executing batch operations...');
+        sharesToDelete.forEach(shareId => {
+            console.log('[DEBUG] Batch: DELETE share', shareId);
+            const shareRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', shareId);
+            batch.delete(shareRef);
+        });
+
+        // Update shares that belong to other watchlists (remove this watchlist ID)
+        sharesToUpdate.forEach(share => {
+            console.log('[DEBUG] Batch: UPDATE share', share.id, 'watchlistIds to', share.watchlistIds);
+            const shareRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', share.id);
+            batch.update(shareRef, { watchlistIds: share.watchlistIds });
+        });
+
+        // Delete the watchlist itself
+        console.log('[DEBUG] Batch: DELETE watchlist', watchlistId);
         const watchlistDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists', watchlistId);
-        await firestore.deleteDoc(watchlistDocRef);
-        try { window.showCustomAlert && window.showCustomAlert('Watchlist deleted successfully!', 2000); } catch(_) {}
+        batch.delete(watchlistDocRef);
+
+        await batch.commit();
+
+        try {
+            window.logDebug && window.logDebug(`Firestore: Watchlist "${watchlistName}" deleted. Deleted ${sharesToDelete.length} exclusive shares, updated ${sharesToUpdate.length} shared shares.`);
+        } catch(_) {}
+
+        try {
+            window.showCustomAlert && window.showCustomAlert(`Watchlist "${watchlistName}" deleted successfully! ${sharesToDelete.length} shares removed, ${sharesToUpdate.length} shares updated.`, 3000);
+        } catch(_) {}
+
         try { window.closeModals && window.closeModals(); } catch(_) {}
         try { setCurrentSelectedWatchlistIds([window.ALL_SHARES_ID]); await window.saveLastSelectedWatchlistIds(getCurrentSelectedWatchlistIds()); } catch(_) {}
         try { await window.loadUserWatchlistsAndSettings(); } catch(_) {}
+
     } catch (error) {
-        console.error('Firestore: Error deleting watchlist:', error);
-        try { window.showCustomAlert && window.showCustomAlert('Error deleting watchlist: ' + error.message); } catch(_) {}
+        console.error('Firestore: Error in safe watchlist deletion:', error);
+        throw error;
     }
 }
 

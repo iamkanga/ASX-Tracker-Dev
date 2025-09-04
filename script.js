@@ -2675,6 +2675,9 @@ function closeModals() {
     }
 }
 
+// Attach closeModals to window for use in other modules
+window.closeModals = closeModals;
+
 // Toast-based lightweight alert; keeps API but renders a toast instead of blocking modal
 function showCustomAlert(message, duration = 3000, type = 'info') {
     if (window.UI && typeof window.UI.showCustomAlert === 'function') return window.UI.showCustomAlert(message, duration, type);
@@ -2733,6 +2736,9 @@ const ToastManager = (() => {
     };
 })();
 
+// Attach ToastManager to window for use in other modules
+window.ToastManager = ToastManager;
+
 // Migrate confirm dialog to toast confirm (non-blocking UX)
 function showCustomConfirm(message, callback) {
     const res = ToastManager.confirm(message, {
@@ -2746,6 +2752,9 @@ function showCustomConfirm(message, callback) {
         callback(window.confirm(message));
     }
 }
+
+// Attach to window object for use in other modules
+window.showCustomConfirm = showCustomConfirm;
 // Date Formatting Helper Functions (Australian Style)
 
 /**
@@ -4925,6 +4934,7 @@ function showShareDetails() {
             if (old) old.remove();
             // Derive watchlist names (excluding special virtual ids except portfolio)
             const wlIds = Array.isArray(share.watchlistIds) ? share.watchlistIds : (share.watchlistId ? [share.watchlistId] : []);
+            console.log('[DEBUG] Watchlist membership for share', share.shareName, '- wlIds:', wlIds);
             const names = [];
             wlIds.forEach(id => {
                 if (!id || id === '__movers' || id === 'portfolio') return;
@@ -4934,6 +4944,7 @@ function showShareDetails() {
             // Check if share is in portfolio (by id)
             const inPortfolio = wlIds.includes('portfolio');
             if (inPortfolio) names.push('Portfolio');
+            console.log('[DEBUG] Watchlist names for footer:', names);
             if (names.length) {
                 const footer = document.createElement('div');
                 footer.className = 'watchlists-membership-footer';
@@ -6733,6 +6744,9 @@ async function loadUserWatchlistsAndSettings() {
         if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
 }
+
+// Attach loadUserWatchlistsAndSettings to window for use in other modules
+window.loadUserWatchlistsAndSettings = loadUserWatchlistsAndSettings;
 
 /**
  * Starts the periodic fetching of live prices.
@@ -9952,36 +9966,13 @@ if (sortSelect) {
                 return;
             }
 
-            const watchlistToDeleteName = userWatchlists.find(w => w.id === watchlistToDeleteId)?.name || 'Unknown Watchlist';
-            
+            // Use the new safe deletion function which handles confirmation internally
             try {
-                const sharesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
-                const q = firestore.query(sharesColRef, firestore.where('watchlistId', '==', watchlistToDeleteId));
-                const querySnapshot = await firestore.getDocs(q);
-
-                const batch = firestore.writeBatch(db);
-                querySnapshot.forEach(doc => {
-                    const shareRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', doc.id);
-                    batch.delete(shareRef);
-                });
-                await batch.commit();
-                logDebug('Firestore: Deleted ' + querySnapshot.docs.length + ' shares from watchlist \'" + watchlistToDeleteName + "\'.');
-
-                const watchlistDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists', watchlistToDeleteId);
-                await firestore.deleteDoc(watchlistDocRef);
-                logDebug('Firestore: Watchlist \'" + watchlistToDeleteName + "\' (ID: ' + watchlistToDeleteId + ') deleted.');
-
-                showCustomAlert('Watchlist \'" + watchlistToDeleteName + "\' and its shares deleted successfully!', 2000);
-                closeModals();
-
-                // After deleting a watchlist, switch the current view to "All Shares"
-                setCurrentSelectedWatchlistIds([ALL_SHARES_ID]);
-                await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); // Save this preference
-
-                await loadUserWatchlistsAndSettings(); // This will re-render everything correctly
+                await deleteWatchlistSvc(watchlistToDeleteId);
+                // The service function handles all UI updates, so no additional actions needed here
             } catch (error) {
-                console.error('Firestore: Error deleting watchlist:', error);
-                showCustomAlert('Error deleting watchlist: ' + error.message);
+                console.error('Error deleting watchlist:', error);
+                // Error handling is done within the service function
             }
         });
     }
