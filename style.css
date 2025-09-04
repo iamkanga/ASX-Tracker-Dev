@@ -1053,6 +1053,120 @@ function makeFilesAvailableToSourceControlCSS() {
     z-index: 2;
 }
 .portfolio-card.expanded { box-shadow: none; }
+/* Three-column layout for portfolio card main information */
+.portfolio-card .pc-top-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.portfolio-card .pc-top-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex: 0 0 auto;
+}
+
+.portfolio-card .pc-top-left .pc-code {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-color);
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.portfolio-card .pc-top-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    text-align: center;
+}
+
+.portfolio-card .pc-top-center .pc-live-price {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+.portfolio-card .pc-top-right {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex: 0 0 auto;
+    text-align: right;
+}
+
+/* Styling for the day's change in the top right */
+.portfolio-card .pc-top-right .pc-day-change {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.portfolio-card .pc-top-right .pc-day-change .pc-pct {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    margin-top: 2px;
+}
+
+/* Mobile responsive adjustments for three-column layout */
+@media (max-width: 560px) {
+    .portfolio-card .pc-top-line {
+        margin-bottom: 6px;
+    }
+
+    .portfolio-card .pc-top-left .pc-code {
+        font-size: 1.1rem;
+    }
+
+    .portfolio-card .pc-top-center .pc-live-price {
+        font-size: 1.3rem;
+    }
+
+    .portfolio-card .pc-top-right .pc-day-change {
+        font-size: 1rem;
+    }
+
+    .portfolio-card .pc-top-right .pc-day-change .pc-pct {
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .portfolio-card .pc-top-line {
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 4px;
+    }
+
+    .portfolio-card .pc-top-left,
+    .portfolio-card .pc-top-center,
+    .portfolio-card .pc-top-right {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .portfolio-card .pc-top-left .pc-code {
+        font-size: 1rem;
+        margin-bottom: 2px;
+    }
+
+    .portfolio-card .pc-top-center .pc-live-price {
+        font-size: 1.2rem;
+    }
+
+    .portfolio-card .pc-top-right .pc-day-change {
+        font-size: 0.95rem;
+    }
+}
+
 .portfolio-card .pc-main-row {
     display: grid;
     grid-template-columns: auto 1fr auto; /* code | live price (fluid) | value */
