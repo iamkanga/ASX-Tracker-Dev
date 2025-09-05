@@ -40,642 +40,191 @@ const watchlistSelect = document.getElementById('watchlistSelect');
 // --- Close Watchlist Picker Modal ---
 // (Moved below DOM references to avoid ReferenceError)
 // Global function to open the ASX search modal and populate the code
-window.showStockSearchModal = function(asxCode) {
-    if (!stockSearchModal || !asxSearchInput) return;
-    showModal(stockSearchModal);
-    try { scrollMainToTop(); } catch(_) {}
-    asxSearchInput.value = asxCode || '';
-    asxSearchInput.focus();
-    if (asxCode && typeof displayStockDetailsInSearchModal === 'function') {
-        displayStockDetailsInSearchModal(asxCode);
-    }
-    // Optionally close sidebar if open
-    if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false);
-};
-// Build Marker: 2025-08-17T00:00Z v2.0.0 (Modal architecture reset: external Global  movers heading, singleton overlay)
-// Deploy bump marker: 2025-08-18T12:00Z (no functional change)
-// If you do NOT see this line in DevTools Sources, you're viewing a stale cached script.
-// Copilot update: 2025-07-29 - change for sync test
-// Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
-// --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
-// Push a new state when opening a modal or navigating to a new in-app view
-function pushAppState(stateObj = {}, title = '', url = '') {
-    history.pushState(stateObj, title, url);
-}
+window.showStockSearchModal = async function(asxCode) {
+        const listEl = modal.querySelector('#discoverGlobalList');
+        if (!listEl) { showModal(modal); return; }
 
-// Listen for the back button (popstate event)
-window.addEventListener('popstate', function(event) {
-    // Let the unified stack-based handler manage modals. Only handle sidebar here.
-    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
-        if (window.toggleAppSidebar) {
-            window.toggleAppSidebar(false); // Explicitly close the sidebar
-        }
-        return; // Exit after handling the sidebar
-    }
-    // Defer modal handling to the stack popstate handler below.
-});
-// Keep main content padding in sync with header height changes (e.g., viewport resize)
-window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
-document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
-// Ensure UI refs are initialized before any listeners that use them
-// (moved UI const declarations to top after imports)
-// Diagnostic: overlay listener singleton self-check
-document.addEventListener('DOMContentLoaded', () => {
-    try {
-        const ov = document.getElementById('sidebarOverlay') || document.querySelector('.sidebar-overlay');
-        if (ov) {
-            // Attempt to enumerate known listener types by dispatch test events counter (best-effort)
-            let fired = 0;
-            const testHandler = () => { fired++; };
-            ov.addEventListener('mousedown', testHandler, { once: true });
-            const evt = new Event('mousedown');
-            ov.dispatchEvent(evt);
-            // fired should be 1 because our once listener ran; actual sidebar close listener also runs silently
-            // Provide console confirmation marker for QA
-            console.log('[Diag] Overlay singleton check executed. Build marker present.');
-        } else {
-            console.warn('[Diag] Overlay element not found during singleton check.');
-        }
-    } catch(e) { console.warn('[Diag] Overlay singleton check failed', e); }
-});
-// ...existing code...
+        // Immediately open modal with a lightweight loading indicator so UI is responsive
+        try {
+            listEl.innerHTML = '<div class="discover-loading">Loading global movers&hellip;</div>';
+        } catch(_){}
+        showModal(modal);
 
+        const summary = summaryData || globalAlertSummary || {};
+        try { window.__lastDiscoverSummaryData = summary; } catch(_) {}
+    try { if (typeof window.logDebug === 'function') window.logDebug('[DiscoverModal] Opening global shares modal (initial render)'); } catch(_){}
+        const nonPortfolioCodes = Array.isArray(summary.nonPortfolioCodes) ? summary.nonPortfolioCodes : [];
+        const appliedMinimumPrice = summary.appliedMinimumPrice;
+        const codeSet = new Set(nonPortfolioCodes.map(c => (c || '').toUpperCase()));
+        const snapshot = (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) ? window.__lastMoversSnapshot : null;
+        const externalRows = Array.isArray(globalExternalPriceRows) ? globalExternalPriceRows : [];
 
-
-// Simplified mute button handler after layout fix
-function fixLow52MuteButton(card) {
-    if (!card) return;
-    const muteBtn = card.querySelector('.low52-mute-btn');
-    if (muteBtn) {
-        // A simple click listener is now sufficient
-        muteBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            // Custom mute logic (toggle hidden/minimized)
-            card.classList.add('low52-card-hidden');
-            // Optionally: persist mute state if needed
-        });
-    }
-}
-
-// Example usage after rendering a 52-week alert card:
-// applyLow52AlertTheme(cardEl, 'low');
-// fixLow52MuteButton(cardEl);
-
-// Title mutation observer guard to restore if emptied by outside DOM ops
-try {
-    (function installTitleGuard(){
-        if (window.__titleGuardInstalled) return; window.__titleGuardInstalled = true;
-        const host = document.getElementById('dynamicWatchlistTitle'); if(!host) return;
-        const obs = new MutationObserver(()=>{
+        // Helper: render entries into the modal list
+        function renderEntries(entries) {
             try {
-                const span = document.getElementById('dynamicWatchlistTitleText');
-                if (!span) return;
-                if (!span.textContent || !span.textContent.trim()) {
-                    let wid = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
-                    let expected;
-                    if (wid === '__movers') expected = 'Movers';
-                    else if (wid === 'portfolio') expected = 'Portfolio';
-                    else if (wid === CASH_BANK_WATCHLIST_ID) expected = 'Cash & Assets';
-                    else if (wid === ALL_SHARES_ID) expected = 'All Shares';
-                    else {
-                        const wl = (userWatchlists||[]).find(w=>w.id===wid);
-                        expected = (wl && wl.name) ? wl.name : 'Share Watchlist';
-                    }
-                    span.textContent = expected;
-                    console.warn('[TitleGuard] Restored empty dynamic title to:', expected);
+                listEl.innerHTML = '';
+                // Header / criteria bar
+                const criteriaBar = document.createElement('div');
+                criteriaBar.className = 'discover-criteria-bar';
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'criteria-title modal-title';
+                const hasNonPortfolio = summary && summary.nonPortfolioCodes && summary.nonPortfolioCodes.length > 0;
+                titleSpan.textContent = hasNonPortfolio ? 'Global Discoveries' : 'Global Alerts';
+                const badgeContainer = document.createElement('div');
+                badgeContainer.className = 'criteria-badges';
+                const criteriaBadges = (function(){
+                    const badges = [];
+                    const upPct = (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ? globalPercentIncrease : null;
+                    const upDol = (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ? globalDollarIncrease : null;
+                    const dnPct = (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ? globalPercentDecrease : null;
+                    const dnDol = (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0) ? globalDollarDecrease : null;
+                    if (upPct) badges.push({ cls:'up', text:'▲ ≥ '+upPct+'%' });
+                    if (upDol) badges.push({ cls:'up', text:'▲ ≥ $'+upDol });
+                    if (dnPct) badges.push({ cls:'down', text:'▼ ≥ '+dnPct+'%' });
+                    if (dnDol) badges.push({ cls:'down', text:'▼ ≥ $'+dnDol });
+                    if (appliedMinimumPrice) badges.push({ cls:'min', text:'Min $'+Number(appliedMinimumPrice).toFixed(2) });
+                    return badges;
+                })();
+                if (criteriaBadges.length) criteriaBadges.forEach(b => { const s=document.createElement('span'); s.className='criteria-badge '+b.cls; s.textContent=b.text; badgeContainer.appendChild(s); });
+                else { const none=document.createElement('span'); none.className='criteria-badge none'; none.textContent='No active thresholds'; badgeContainer.appendChild(none); }
+                const tsSpan = document.createElement('span'); tsSpan.className='criteria-timestamp'; tsSpan.textContent = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+                criteriaBar.appendChild(titleSpan); criteriaBar.appendChild(badgeContainer); criteriaBar.appendChild(tsSpan);
+                criteriaBar.style.cursor = 'pointer';
+                criteriaBar.title = 'Click to configure Global Alerts settings';
+                criteriaBar.addEventListener('click', () => { try { hideModal(modal); toggleAppSidebar(true); setTimeout(()=>{ showModal(globalAlertsModal); },300); } catch(_){} });
+                listEl.appendChild(criteriaBar);
+
+                // Sorting controls
+                const sortWrapper = document.createElement('div');
+                sortWrapper.className = 'discover-sort-bar discover-sort-bar-centered';
+                const sortSelect = document.createElement('select'); sortSelect.id = 'discoverSortSelect';
+                const SORT_OPTIONS = [ { value:'code_asc', label:'A → Z' }, { value:'price_desc', label:'Price ↓' }, { value:'pct_asc', label:'Biggest Losers (% ↓)' }, { value:'chg_asc', label:'Biggest Losers ($ ↓)' } ];
+                const storedSort = (localStorage.getItem('discoverSort') || 'pct_desc');
+                let initialSort = storedSort; if (initialSort === 'pct_desc') initialSort = 'pct_asc'; if (initialSort === 'chg_desc') initialSort = 'chg_asc';
+                SORT_OPTIONS.forEach(opt=>{ const o=document.createElement('option'); o.value=opt.value; o.textContent=opt.label; if (opt.value===initialSort) o.selected=true; sortSelect.appendChild(o); });
+                const sortDesc = document.createElement('div'); sortDesc.className='discover-sort-desc';
+                function sortModeDescription(v){ switch(v){ case 'code_asc': return 'Alphabetical (A → Z)'; case 'price_desc': return 'Highest live price first'; case 'pct_asc': return 'Biggest losers by % (lowest to highest)'; case 'chg_asc': return 'Biggest losers by $ (lowest to highest)'; default: return ''; } }
+                sortDesc.textContent = sortModeDescription(storedSort);
+                sortWrapper.appendChild(sortSelect); sortWrapper.appendChild(sortDesc); listEl.appendChild(sortWrapper);
+
+                // List
+                const ul = document.createElement('ul'); ul.className='discover-code-list enriched global-only card-layout';
+                const contextLine = document.createElement('div'); contextLine.className='discover-context-line discover-context-line-spaced'; contextLine.innerHTML = `<strong>${nonPortfolioCodes.length}</strong> global ${nonPortfolioCodes.length===1?'share':'shares'} matched thresholds`;
+                listEl.appendChild(contextLine);
+
+                if (!entries || !entries.length) { const li=document.createElement('li'); li.className='ghosted-text'; li.textContent='No current global movers meeting threshold.'; ul.appendChild(li); }
+                else {
+                    entries.forEach(en => {
+                        const code = (en.code||'').toUpperCase();
+                        // Try canonical livePrices first
+                        let lpData = (livePrices && livePrices[code]) ? livePrices[code] : null;
+                        // Fallback to globalExternalPriceRows if present
+                        if (!lpData && Array.isArray(globalExternalPriceRows)) {
+                            const ext = globalExternalPriceRows.find(r => (r && (r.code||'').toUpperCase() === code));
+                            if (ext) {
+                                // normalize possible field names
+                                lpData = {
+                                    live: (ext.live ?? ext.LivePrice ?? ext.lastLivePrice ?? ext.price ?? null),
+                                    prevClose: (ext.prevClose ?? ext.PrevClose ?? ext.lastPrevClose ?? ext.prev ?? null),
+                                    High52: (ext.High52 ?? ext.high52 ?? null),
+                                    Low52: (ext.Low52 ?? ext.low52 ?? null),
+                                    companyName: (ext.companyName ?? ext.name ?? ext.CompanyName ?? null)
+                                };
+                            }
+                        }
+                        // Also consider any snapshot/entry-provided values
+                        const rawPrice = en.price ?? en.live ?? (lpData?lpData.live:null);
+                        const rawPrev = en.prevClose ?? (lpData?lpData.prevClose:null);
+                        const price = (rawPrice==null)?null:Number(rawPrice);
+                        const prevClose = (rawPrev==null)?null:Number(rawPrev);
+                        let ch = en.ch ?? en.change ?? (lpData?lpData.change:null);
+                        if ((ch === null || ch === undefined) && price !== null && prevClose !== null) ch = price - prevClose;
+                        let pct = en.pct ?? (lpData?lpData.pct:null);
+                        if ((pct === null || pct === undefined) && ch !== null && prevClose !== null && prevClose !== 0) pct = (ch / prevClose) * 100;
+                        const dir = (ch === null || ch === 0) ? 'flat' : (ch > 0 ? 'up' : 'down');
+                        const colorClass = (ch === null || ch === 0) ? 'neutral' : (ch > 0 ? 'positive' : 'negative');
+                        const li = document.createElement('li'); li.className='discover-mover dir-'+dir; li.dataset.code = code;
+                        const comboLine = (ch!=null && pct!=null) ? `${ch>0?'+':''}${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%` : (ch!=null?`${ch>0?'+':''}${ch.toFixed(2)}`:(pct!=null?`${pct>0?'+':''}${pct.toFixed(2)}%`:'No movement data yet'));
+                        // Expose sort helpers on both the entry and the LI
+                        li._priceForSort = price; li._pctForSort = pct; li._chForSort = ch; en._priceForSort = price; en._pctForSort = pct; en._chForSort = ch;
+                        let companyName=''; try{ if (Array.isArray(allAsxCodes)) { const m=allAsxCodes.find(c=>c.code===code); if (m && m.name) companyName=m.name; } }catch(_){ }
+                        if (!companyName && lpData && lpData.companyName) companyName = lpData.companyName;
+                        const hi52 = (lpData && lpData.High52!=null && !isNaN(lpData.High52)) ? '$'+formatAdaptivePrice(lpData.High52) : '';
+                        const lo52 = (lpData && lpData.Low52!=null && !isNaN(lpData.Low52)) ? '$'+formatAdaptivePrice(lpData.Low52) : '';
+                        const rangeLine = (hi52||lo52) ? `<div class="range-line">${lo52||'?'}<span class="sep">→</span>${hi52||'?'} 52w</div>` : '';
+                        const priceLine = `<div class="price-line">${price!=null?('$'+Number(price).toFixed(2)):'-'} ${comboLine?`<span class="movement-combo ${colorClass}">${comboLine}</span>`:''}</div>`;
+                        li.innerHTML = `<div class="discover-mover-content"><div class="discover-mover-header"><div class="row-top"><span class="code">${code}</span>${companyName?`<span class="company-name">${companyName}</span>`:''}</div></div><div class="discover-mover-details"><div class="price-info">${priceLine}${rangeLine}</div></div></div>`;
+                        li.addEventListener('click',()=>{ try{ hideModal(modal); if (typeof stockSearchModal !== 'undefined' && stockSearchModal) { showModal(stockSearchModal); } else if (typeof searchStockBtn !== 'undefined' && searchStockBtn && searchStockBtn.click) { searchStockBtn.click(); } if (typeof asxSearchInput !== 'undefined' && asxSearchInput) { asxSearchInput.value = code; if (typeof displayStockDetailsInSearchModal === 'function') displayStockDetailsInSearchModal(code); try{ asxSearchInput.focus(); asxSearchInput.setSelectionRange(code.length, code.length); }catch(_){} } }catch(e){} });
+                        ul.appendChild(li);
+                    });
                 }
-            } catch(_) {}
-        });
-        obs.observe(host, { childList:true, characterData:true, subtree:true });
-    })();
-} catch(_) {}
+                listEl.appendChild(ul);
 
-// ...existing code...
-// --- (Aggressive Enforcement Patch Removed) ---
-// The previous patch has been removed as the root cause of the UI issues,
-// a syntax error in index.html, has been corrected. The standard application
-// logic should now function as intended.
-// --- END REMOVED PATCH ---
-
-
-// [Copilot Update] Source control helper
-// This function is a placeholder for automating source control actions (e.g., git add/commit)
-// and for tracking how many times files have been made available to source control.
-// Usage: Call makeFilesAvailableToSourceControl() after major changes if you want to automate this.
-let sourceControlMakeAvailableCount = 0;
-function makeFilesAvailableToSourceControl() {
-    // This is a placeholder for future automation (e.g., via backend or extension)
-    // Instructs the user to use git or triggers a VS Code command if available
-    sourceControlMakeAvailableCount++;
-    if (window && window.showCustomAlert) {
-        window.showCustomAlert('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')', 2000);
-    } else {
-        console.log('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')');
-    }
-    // To actually add to git, run: git init; git add .; git commit -m "Initial commit"
-}
-// End Copilot source control helper
-
-// --- 52-Week Low Alert State ---
-let sharesAt52WeekLow = [];
-const triggered52WeekLowSet = new Set();
-// Load muted 52-week alerts from session storage
-let __low52MutedMap = {};
-try {
-    const stored = sessionStorage.getItem('low52MutedMap');
-    if (stored) {
-        __low52MutedMap = JSON.parse(stored);
-    }
-} catch (e) {
-    __low52MutedMap = {};
-}
-window.__low52MutedMap = __low52MutedMap;
-
-// Helper: Sort shares by percentage change
-function sortSharesByPercentageChange(shares) {
-    return shares.slice().sort((a, b) => {
-        const liveA = livePrices[a.shareName?.toUpperCase()]?.live;
-        const prevA = livePrices[a.shareName?.toUpperCase()]?.prevClose;
-        const liveB = livePrices[b.shareName?.toUpperCase()]?.live;
-        const prevB = livePrices[b.shareName?.toUpperCase()]?.prevClose;
-        const pctA = (prevA && liveA) ? ((liveA - prevA) / prevA) : 0;
-        const pctB = (prevB && liveB) ? ((liveB - prevB) / prevB) : 0;
-        return pctB - pctA; // Descending
-    });
-}
-
-// Lean live prices hook: only resort when sort actually depends on live data
-function onLivePricesUpdated() {
-    try {
-        if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
-            sortShares();
-        } else {
-            renderWatchlist();
-        }
-        if (typeof renderPortfolioList === 'function') {
-            const section = document.getElementById('portfolioSection');
-            if (section && section.style.display !== 'none') {
-                renderPortfolioList();
-            }
-        }
-    } catch (e) {
-        console.error('Live Price: onLivePricesUpdated error:', e);
-    }
-}
-
-// Compatibility stub (legacy callsites may invoke)
-function forceApplyCurrentSort() { /* legacy no-op retained */ }
-document.addEventListener('DOMContentLoaded', function () {
-    // --- Watchlist logic moved to watchlist.js ---
-    // Import and call watchlist functions
-    if (window.watchlistModule) {
-        window.watchlistModule.renderWatchlistSelect();
-    // If we have a persisted lastKnownTargetCount, ensure the notification icon restores pre-live-load
-    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
-        window.watchlistModule.populateShareWatchlistSelect();
-        window.watchlistModule.ensurePortfolioOptionPresent();
-        setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
-    }
-
-    // Automatic closed-market banner and ghosting
-    const marketStatusBanner = document.getElementById('marketStatusBanner');
-    function formatSydneyDate(d) {
-        return new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
-    }
-    function isAfterCloseUntilMidnightSydney() {
-        const now = new Date();
-        const opts = { hour: 'numeric', minute: 'numeric', hour12: false, timeZone: 'Australia/Sydney' };
-        const timeStr = new Intl.DateTimeFormat('en-AU', opts).format(now);
-        const [h, m] = timeStr.split(':').map(Number);
-        return (h > 16) || (h === 16 && m >= 0);
-    }
-    function updateMarketStatusUI() {
-    const open = isAsxMarketOpen();
-        if (marketStatusBanner) {
-            if (!open) {
-                const now = new Date();
-                // Snapshot is the last fetched live as at close; show date to avoid weekend ambiguity
-                marketStatusBanner.textContent = `ASX market is closed. Showing final prices from today. (${formatSydneyDate(now)})`;
-                marketStatusBanner.classList.remove('app-hidden');
-            } else {
-                marketStatusBanner.textContent = '';
-                marketStatusBanner.classList.add('app-hidden');
-            }
-        }
-    // No global disabling; controls remain enabled regardless of market state
-    }
-    // Initial status and periodic re-check each minute
-    updateMarketStatusUI();
-    setInterval(updateMarketStatusUI, 60 * 1000);
-
-    // Ensure Edit Current Watchlist button updates when selection changes
-    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
-        watchlistSelect.addEventListener('change', function () {
-            // If Portfolio is selected, show portfolio view
-            if (watchlistSelect.value === 'portfolio') {
-                showPortfolioView();
-                try { setLastSelectedView('portfolio'); } catch(e){}
-            } else {
-                // Default: show normal watchlist view
-                showWatchlistView();
-                try { setLastSelectedView(watchlistSelect.value); } catch(e){}
-            }
-            updateMainButtonsState(true);
-            // Ensure main content scrolls to the top after a view change for consistent UX
-            try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
-        });
-    }
-
-    // Helper: scroll main content to specified position in a resilient way
-    function scrollMainToTop(instant = false, targetPosition = 0) {
-        console.log('[SCROLL DEBUG] scrollMainToTop called, instant:', instant, 'targetPosition:', targetPosition);
-
-        try {
-            // Prefer the global smart implementation defined by UI module if present
-            if (typeof window !== 'undefined' && window.scrollMainToTop && window.scrollMainToTop !== scrollMainToTop) {
-                console.log('[SCROLL DEBUG] Using global scrollMainToTop');
-                try { window.scrollMainToTop(instant, targetPosition); return; } catch(error) { console.error('Error with global scrollMainToTop:', error); }
-            }
-
-            const el = document.querySelector('main.container');
-            console.log('[SCROLL DEBUG] main.container element found:', !!el);
-            if (el) {
-                console.log('[SCROLL DEBUG] Scrolling main.container to position:', targetPosition, 'current scrollTop:', el.scrollTop);
-                try {
-                    el.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
-                    console.log('[SCROLL DEBUG] Successfully called el.scrollTo on main.container');
-                    return;
-                } catch(error) {
-                    console.error('[SCROLL DEBUG] Error scrolling main.container:', error);
+                // Sorting
+                function applySort(list, selectEl, descEl) {
+                    const mode = selectEl.value;
+                    if (mode === 'code_asc') list.sort((a,b)=> (a.code||'').localeCompare(b.code||''));
+                    else if (mode === 'price_desc') list.sort((a,b)=> ( (b._priceForSort ?? -Infinity) - (a._priceForSort ?? -Infinity) ) );
+                    else if (mode === 'pct_asc') list.sort((a,b)=> ((a._pctForSort ?? 0) - (b._pctForSort ?? 0)) );
+                    else if (mode === 'chg_asc') list.sort((a,b)=> ((a._chForSort ?? 0) - (b._chForSort ?? 0)) );
+                    try { const ordered = list.map(en => ul.querySelector('li.discover-mover[data-code="'+en.code+'"]')).filter(Boolean); ordered.forEach(li=>ul.appendChild(li)); } catch(_){}
+                    if (descEl) descEl.textContent = sortModeDescription(selectEl.value);
                 }
-            }
-        } catch (e) {
-            console.error('[SCROLL DEBUG] Error in scrollMainToTop:', e);
+                sortSelect.addEventListener('change', ()=>{ try{ localStorage.setItem('discoverSort', sortSelect.value); applySort(entries, sortSelect, sortDesc); }catch(_){} });
+            } catch(err) { console.warn('Discover render failed', err); }
         }
 
-        console.log('[SCROLL DEBUG] Falling back to window.scrollTo, targetPosition:', targetPosition, 'current window scrollY:', window.scrollY);
-        try {
-            window.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
-            console.log('[SCROLL DEBUG] Successfully called window.scrollTo');
-        } catch(error) {
-            console.error('[SCROLL DEBUG] Error with window.scrollTo:', error);
+        // Compute initial entries from snapshot / summary (fast)
+        let entries = [];
+    try { if (typeof window.logDebug === 'function') window.logDebug('[DiscoverModal] Building entries from snapshot and codeSet...', { snapshotAvailable: !!snapshot, codeSetSize: codeSet.size }); } catch(_){}
+        if (summary && summary.nonPortfolioCodes && summary.nonPortfolioCodes.length > 0 && summary.comprehensiveScan) {
+            entries = summary.nonPortfolioCodes.map(code => {
+                const lp = livePrices && livePrices[code.toUpperCase()];
+                if (!lp) return null;
+                return { code: code, name: lp.companyName || code, pct: lp.prevClose ? ((lp.live - lp.prevClose) / lp.prevClose) * 100 : 0, live: lp.live, prevClose: lp.prevClose };
+            }).filter(Boolean);
+        } else if (snapshot) {
+            entries = snapshot.entries.slice();
         }
-    }
+        if (!entries.length && codeSet.size) entries = Array.from(codeSet).map(c => ({ code: c }));
+        if (!entries.length && summary && summary.totalCount > 0 && summary.nonPortfolioCodes && summary.nonPortfolioCodes.length > 0) {
+            entries = summary.nonPortfolioCodes.map(code => {
+                const lp = livePrices && livePrices[code.toUpperCase()];
+                if (!lp) return null;
+                return { code: code, name: lp.companyName || code, pct: lp.prevClose ? ((lp.live - lp.prevClose) / lp.prevClose) * 100 : 0, live: lp.live, prevClose: lp.prevClose };
+            }).filter(Boolean);
+        }
+        entries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
 
-    // Portfolio view logic
-    window.showPortfolioView = function() {
-        // Hide normal stock watchlist section, show a dedicated portfolio section (create if needed)
-        if (!document.getElementById('portfolioSection')) {
-            const portfolioSection = document.createElement('div');
-            portfolioSection.id = 'portfolioSection';
-            portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<div id="portfolioViewLastUpdated" class="last-updated-timestamp"></div><div class="portfolio-scroll-wrapper"><div id="portfolioListContainer">Loading portfolio...</div></div>';
-            mainContainer.appendChild(portfolioSection);
+        // Initial fast render (may be partial)
+        renderEntries(entries);
+
+        // If there are missing live prices for the summary codes, fetch them and re-render once ready
+        const missingCodes = Array.from(codeSet).filter(code => !(livePrices && livePrices[code] && livePrices[code].live != null));
+        if (missingCodes.length) {
+            try { if (typeof window.logDebug === 'function') window.logDebug('[DiscoverModal] Missing live prices, fetching in background', missingCodes.length); } catch(_){}
+            try {
+                await fetchLivePrices({ cacheBust: true });
+                // Rebuild entries now that livePrices may be populated
+                let refreshedEntries = [];
+                if (summary && summary.nonPortfolioCodes && summary.nonPortfolioCodes.length > 0 && summary.comprehensiveScan) {
+                    refreshedEntries = summary.nonPortfolioCodes.map(code => {
+                        const lp = livePrices && livePrices[code.toUpperCase()];
+                        if (!lp) return null;
+                        return { code: code, name: lp.companyName || code, pct: lp.prevClose ? ((lp.live - lp.prevClose) / lp.prevClose) * 100 : 0, live: lp.live, prevClose: lp.prevClose };
+                    }).filter(Boolean);
+                } else if (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
+                    refreshedEntries = window.__lastMoversSnapshot.entries.slice();
+                } else if (codeSet.size) {
+                    refreshedEntries = Array.from(codeSet).map(c => ({ code: c }));
+                }
+                refreshedEntries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
+                try { if (typeof window.logDebug === 'function') window.logDebug('[DiscoverModal] Re-rendering after price fetch', refreshedEntries.length); } catch(_){}
+                renderEntries(refreshedEntries);
+            } catch(e) { console.warn('[DiscoverModal] Background fetch for missing codes failed', e); }
         }
-        stockWatchlistSection.style.display = 'none';
-        // Ensure selection state reflects Portfolio for downstream filters (e.g., ASX buttons)
-        // But do not auto-switch away from a forced initial Movers selection unless user explicitly chose portfolio
-        if (!__forcedInitialMovers || (watchlistSelect && watchlistSelect.value === 'portfolio')) {
-            setCurrentSelectedWatchlistIds(['portfolio']);
-        }
-        // Reflect in dropdown if present
-        if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
-            if (watchlistSelect.value !== 'portfolio') {
-                watchlistSelect.value = 'portfolio';
-            }
-        }
-    // Persist user intent
-    try { setLastSelectedView('portfolio'); } catch(e) {}
-        let portfolioSection = document.getElementById('portfolioSection');
-        portfolioSection.style.display = 'block';
-    renderPortfolioList();
-    try { scrollMainToTop(); } catch(_) {}
-    // Keep header text in sync
-    try { updateMainTitle(); } catch(e) {}
-    // Ensure sort options and alerts are correct for Portfolio view
-    try { renderSortSelect(); } catch(e) {}
-    try { updateTargetHitBanner(); } catch(e) {}
-        if (typeof renderAsxCodeButtons === 'function') {
-            if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
-            renderAsxCodeButtons();
-        }
+        // End of discover modal builder — close the async function assignment
     };
-    window.showWatchlistView = function() {
-        // Hide portfolio section if present, show normal stock watchlist section
-        let portfolioSection = document.getElementById('portfolioSection');
-        if (portfolioSection) portfolioSection.style.display = 'none';
-        stockWatchlistSection.style.display = '';
-        stockWatchlistSection.classList.remove('app-hidden');
-        // Also ensure the table and mobile containers are restored from any previous hide
-        if (tableContainer) tableContainer.style.display = '';
-        const mobileContainer = getMobileShareCardsContainer();
-        if (mobileContainer) mobileContainer.style.display = '';
-    };
-    // Render portfolio list (uses live prices when available)
-    window.renderPortfolioList = function() {
-        const portfolioListContainer = document.getElementById('portfolioListContainer');
-        if (!portfolioListContainer) return;
-
-        const portfolioViewLastUpdated = document.getElementById('portfolioViewLastUpdated');
-        if (portfolioViewLastUpdated && window._portfolioLastUpdated) {
-            portfolioViewLastUpdated.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
-        }
-
-        // Show last updated timestamp if available (header and container)
-        const lastUpdatedEl = document.getElementById('portfolioLastUpdated');
-        const lastUpdatedHeader = document.getElementById('portfolioLastUpdatedHeader');
-        if (window._portfolioLastUpdated) {
-            if (lastUpdatedEl) {
-                lastUpdatedEl.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
-                lastUpdatedEl.parentElement.style.display = '';
-            }
-            if (lastUpdatedHeader) {
-                lastUpdatedHeader.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
-            }
-        } else {
-            if (lastUpdatedEl) {
-                lastUpdatedEl.textContent = '';
-                lastUpdatedEl.parentElement.style.display = 'none';
-            }
-            if (lastUpdatedHeader) {
-                lastUpdatedHeader.textContent = '';
-            }
-        }
-
-        // Filter for shares assigned to the Portfolio
-        const portfolioShares = allSharesData.filter(s => shareBelongsTo(s, 'portfolio'));
-        if (portfolioShares.length === 0) {
-            portfolioListContainer.innerHTML = '<p>No shares in your portfolio yet.</p>';
-            return;
-        }
-
-        // Helper functions
-        function fmtMoney(n) { return formatMoney(n); }
-        function fmtPct(n) { return formatPercent(n); }
-
-        // --- Calculate Portfolio Metrics ---
-        let totalValue = 0;
-        let totalPL = 0;
-        let totalCostBasis = 0;
-        let todayNet = 0;
-        let todayNetPct = 0;
-        let overallPLPct = 0;
-        let daysGain = 0;
-        let daysLoss = 0;
-        let profitPLSum = 0;
-        let lossPLSum = 0;
-
-        // For each share, calculate metrics
-    const cards = portfolioShares.map((share, i) => {
-            const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
-                ? Math.trunc(Number(share.portfolioShares)) : '';
-            const avgPrice = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)))
-                ? Number(share.portfolioAvgPrice) : null;
-            const code = (share.shareName || '').toUpperCase();
-            const lpObj = livePrices ? livePrices[code] : undefined;
-            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
-            let priceNow = null;
-            let prevClose = null;
-            if (lpObj) {
-                if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceNow = Number(lpObj.live);
-                else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceNow = Number(lpObj.lastLivePrice);
-                if (lpObj.prevClose !== null && !isNaN(lpObj.prevClose)) prevClose = Number(lpObj.prevClose);
-            }
-            if (priceNow === null || isNaN(priceNow)) {
-                if (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice))) {
-                    priceNow = Number(share.currentPrice);
-                }
-            }
-            if (prevClose === null && lpObj && lpObj.lastPrevClose !== null && !isNaN(lpObj.lastPrevClose)) {
-                prevClose = Number(lpObj.lastPrevClose);
-            }
-            // Value, P/L, Cost Basis
-            const rowValue = (typeof shares === 'number' && typeof priceNow === 'number') ? shares * priceNow : null;
-            const rowPL = (typeof shares === 'number' && typeof priceNow === 'number' && typeof avgPrice === 'number') ? (priceNow - avgPrice) * shares : null;
-            // If this share has been hidden from totals, skip adding its numbers to aggregates
-            const isHidden = hiddenFromTotalsShareIds.has(share.id);
-            if (!isHidden) {
-                if (typeof rowValue === 'number') totalValue += rowValue;
-                if (typeof shares === 'number' && typeof avgPrice === 'number') totalCostBasis += (shares * avgPrice);
-                if (typeof rowPL === 'number') {
-                    totalPL += rowPL;
-                    if (rowPL > 0) profitPLSum += rowPL; else if (rowPL < 0) lossPLSum += rowPL;
-                }
-            }
-            // Today change
-            let todayChange = 0;
-            let todayChangePct = 0;
-            if (typeof shares === 'number' && typeof priceNow === 'number' && typeof prevClose === 'number') {
-                todayChange = (priceNow - prevClose) * shares;
-                todayChangePct = prevClose > 0 ? ((priceNow - prevClose) / prevClose) * 100 : 0;
-                // Only include today's movements in aggregates when the share is NOT hidden
-                if (!isHidden) {
-                    todayNet += todayChange;
-                    if (todayChange > 0) daysGain += todayChange;
-                    if (todayChange < 0) daysLoss += todayChange;
-                }
-            }
-            // P/L %
-
-            const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
-            const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
-        if (plClass === 'neutral') {
-            console.log('[DEBUG] Neutral card assigned:', {
-                shareId: share.id,
-                shareName: share.shareName,
-                rowPL,
-                avgPrice,
-                priceNow,
-                shares
-            });
-        }
-            const todayClass = (todayChange > 0) ? 'positive' : (todayChange < 0 ? 'negative' : 'neutral');
-
-            // DEBUG: Log rowPL and plClass for each card
-            console.log('Portfolio Card Debug:', {
-                shareId: share.id,
-                shareName: share.shareName,
-                rowPL,
-                plClass
-            });
-
-            // Card HTML (collapsed/expandable)
-            // Border color logic: use today's change (todayClass) to reflect recent movement
-            let borderColor = '';
-            let testNeutral = false;
-            // Only apply the test border/background for the explicit TEST-NEUTRAL card
-            if (share.shareName === 'TEST-NEUTRAL') {
-                borderColor = 'border: 4px solid #a49393; background: repeating-linear-gradient(135deg, #a49393, #a49393 10px, #fff 10px, #fff 20px);';
-                testNeutral = true;
-            } else if (todayClass === 'positive') borderColor = 'border: 4px solid #008000;';
-            else if (todayClass === 'negative') borderColor = 'border: 4px solid #c42131;';
-            // For real neutral cards, do NOT set any inline border/background; let CSS handle it
-            // ...existing code...
-            return `<div class="portfolio-card ${testNeutral ? 'neutral' : todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
-                <!-- Single line with ASX code, current price, and day change -->
-                <div class="portfolio-top-row">
-                    <div class="portfolio-code">${share.shareName || ''}</div>
-                    <div class="portfolio-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
-                    <div class="portfolio-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} / ${todayChange !== null ? fmtPct(todayChangePct) : ''}</div>
-                </div>
-
-                <!-- Current Value on separate line -->
-                <div class="portfolio-current-value">
-                    <span class="portfolio-label">Current Value</span>
-                    <span class="portfolio-val">${rowValue !== null ? fmtMoney(rowValue) : ''}</span>
-                </div>
-
-                <!-- Capital Gain on separate line -->
-                <div class="portfolio-capital-gain">
-                    <span class="portfolio-label">Capital Gain</span>
-                    <span class="portfolio-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</span>
-                </div>
-
-                <!-- Centered arrow at bottom of card -->
-                <div class="portfolio-centered-arrow">⌄</div>
-
-                <!-- Hidden eye button (can be accessed via long press or right click) -->
-                <button class="pc-eye-btn hidden" aria-label="Hide or show from totals"><span class="fa fa-eye"></span></button>
-
-                <!-- Expanded details with shares, average price, and target -->
-                <div class="portfolio-expanded-content">
-                    <div class="portfolio-detail-row">
-                        <span class="portfolio-detail-label">Amount of Shares</span>
-                        <span class="portfolio-detail-val">${shares !== '' ? shares : ''}</span>
-                    </div>
-                    <div class="portfolio-detail-row">
-                        <span class="portfolio-detail-label">Average Price per Share</span>
-                        <span class="portfolio-detail-val">${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span>
-                    </div>
-                    ${(() => {
-                        const at = renderAlertTargetInline(share);
-                        return at ? `<div class="portfolio-detail-row"><span class="portfolio-detail-label">Target Value</span><span class="portfolio-detail-val">${at}</span></div>` : '';
-                    })()}
-                </div>
-            </div>`;
-    });
-
-        // Calculate overall %
-        overallPLPct = (totalCostBasis > 0 && typeof totalPL === 'number') ? (totalPL / totalCostBasis) * 100 : 0;
-        daysLoss = Math.abs(daysLoss);
-
-        // After mapping, inject a test neutral card at the start for debug/visual confirmation
-
-    // Compute overall today percentage from aggregated totalValue (excluding hidden shares)
-    todayNetPct = (totalValue > 0) ? ((todayNet / totalValue) * 100) : 0;
-
-    // --- Summary Bar ---
-        const summaryBar = `<div class="portfolio-summary-bar">
-            <div class="summary-card ${daysGain > 0 ? 'positive' : daysGain < 0 ? 'negative' : 'neutral'}">
-                <div class="summary-label">Day's Gain</div>
-                <div class="summary-value positive">${fmtMoney(daysGain)} <span class="summary-pct positive">${fmtPct(totalValue > 0 ? (daysGain / totalValue) * 100 : 0)}</span></div>
-            </div>
-            <div class="summary-card ${daysLoss > 0 ? 'negative' : daysLoss < 0 ? 'positive' : 'neutral'}">
-                <div class="summary-label">Day's Loss</div>
-                <div class="summary-value negative">${fmtMoney(-daysLoss)} <span class="summary-pct negative">${fmtPct(totalValue > 0 ? (daysLoss / totalValue) * 100 : 0)}</span></div>
-            </div>
-            <div class="summary-card ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">
-                <div class="summary-label">Day Change</div>
-                <div class="summary-value ${todayNet >= 0 ? 'positive' : 'negative'}">${fmtMoney(todayNet)} <span class="summary-pct">${fmtPct(todayNetPct)}</span></div>
-            </div>
-            <div class="summary-card ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : 'neutral'}">
-                <div class="summary-label">Total Return</div>
-                <div class="summary-value ${totalPL >= 0 ? 'positive' : 'negative'}">${fmtMoney(totalPL)} <span class="summary-pct">${fmtPct(overallPLPct)}</span></div>
-            </div>
-            <div class="summary-card neutral">
-                <div class="summary-label">Total Portfolio Value</div>
-                <div class="summary-value">${fmtMoney(totalValue)}</div>
-            </div>
-        </div>`;
-
-        // --- Cards Grid ---
-        const cardsGrid = `<div class="portfolio-cards-grid">${cards.join('')}</div>`;
-        portfolioListContainer.innerHTML = summaryBar + cardsGrid;
-
-        // --- Expand/Collapse Logic (Accordion) & Eye Button ---
-        const cardNodes = portfolioListContainer.querySelectorAll('.portfolio-card');
-        cardNodes.forEach((card, idx) => {
-            // Get the share object for this card
-            const share = portfolioShares[idx];
-            const arrow = card.querySelector('.portfolio-centered-arrow');
-            const content = card.querySelector('.portfolio-expanded-content');
-
-            // Expand/collapse functionality
-            const toggleExpanded = () => {
-                const isExpanded = card.classList.contains('expanded');
-                if (isExpanded) {
-                    card.classList.remove('expanded');
-                    arrow.textContent = '⌄'; // Point down when closed
-                    content.style.display = 'none';
-                } else {
-                    card.classList.add('expanded');
-                    arrow.textContent = '⌃'; // Point up when open
-                    content.style.display = 'block';
-                }
-            };
-
-            // Click on arrow to toggle
-            arrow.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleExpanded();
-            });
-
-            // Click on card to toggle (but not on eye button)
-            card.addEventListener('click', (e) => {
-                if (!e.target.closest('.pc-eye-btn')) {
-                    toggleExpanded();
-                }
-            });
-            // Eye icon logic: toggle hide-from-totals (Option A). Click still opens details when CTRL/Meta is held.
-            const eyeBtn = card.querySelector('.pc-eye-btn');
-            if (eyeBtn) {
-                // Set initial visual state on eye button and card
-                if (hiddenFromTotalsShareIds.has(share.id)) {
-                    eyeBtn.classList.add('hidden-from-totals');
-                    card.classList.add('hidden-from-totals');
-                }
-                eyeBtn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    // If user held Ctrl/Meta or Shift while clicking, treat as 'open details' to preserve previous flow
-                    if (e.ctrlKey || e.metaKey || e.shiftKey) {
-                        selectShare(share.id);
-                        showShareDetails();
-                        return;
-                    }
-                    const wasHidden = hiddenFromTotalsShareIds.has(share.id);
-                    if (wasHidden) {
-                        hiddenFromTotalsShareIds.delete(share.id);
-                        eyeBtn.classList.remove('hidden-from-totals');
-                        card.classList.remove('hidden-from-totals');
-                    } else {
-                        hiddenFromTotalsShareIds.add(share.id);
-                        eyeBtn.classList.add('hidden-from-totals');
-                        card.classList.add('hidden-from-totals');
-                    }
-                    persistHiddenFromTotals();
-                    // Re-render totals and summary immediately
-                    try { renderPortfolioList(); } catch(_) {}
-                });
-            }
-            // (Removed deprecated shortcut button — click-to-open is handled by card click-through)
-
-            // Click-through: clicking a portfolio card (except interactive controls) opens the viewing modal
-            if (!card.__clickThroughAttached) {
-                card.addEventListener('click', function(e) {
-                    // Ignore clicks on buttons, links, inputs or elements that handle their own click
-                    const interactive = e.target.closest('button, a, input, .pc-eye-btn, .pc-chevron-btn');
-                    if (interactive) return;
-                    try {
-                        selectShare(share.id);
-                        showShareDetails();
-                    } catch (err) { console.warn('Card click-through handler failed', err); }
-                });
-                card.__clickThroughAttached = true;
-            }
-        });
-    };
-});
 
 // On full page load (including reload), ensure main content starts at the top
 window.addEventListener('load', () => {
@@ -685,13 +234,13 @@ window.addEventListener('load', () => {
 
 // --- GLOBAL VARIABLES ---
 let DEBUG_MODE = false; // Quiet by default; enable via window.toggleDebug(true)
-window.toggleDebug = (on) => { DEBUG_MODE = !!on; console.log('Debug mode', DEBUG_MODE ? 'ENABLED' : 'DISABLED'); };
+window.toggleDebug = (on) => { DEBUG_MODE = !!on; try { if (typeof window.logDebug === 'function') window.logDebug('Debug mode', DEBUG_MODE ? 'ENABLED' : 'DISABLED'); } catch(_){} };
 
 // Custom logging function to control verbosity
 function logDebug(message, ...optionalParams) {
     if (DEBUG_MODE) {
-        // This line MUST call the native console.log, NOT logDebug itself.
-        console.log(message, ...optionalParams); 
+        try { if (typeof window.logDebug === 'function') window.logDebug(message, ...optionalParams); } catch(_) {}
+    try { if (typeof window.logDebug === 'function') window.logDebug(message, ...optionalParams); } catch(_){}
     }
 }
 // Expose core helpers to other modules
@@ -701,15 +250,15 @@ try { window.hideModal = function(m){ if (typeof window.UI !== 'undefined' && wi
 try {
     if (!window.scrollMainToTop) {
         window.scrollMainToTop = function(instant, targetPosition = 0){
-            console.log('[ASX Debug] window.scrollMainToTop called with instant:', instant, 'targetPosition:', targetPosition);
+            try { if (typeof window.logDebug === 'function') window.logDebug('[ASX Debug] window.scrollMainToTop called', { instant, targetPosition }); } catch(_){}
             try {
                 const el = document.querySelector('main.container');
-                console.log('[ASX Debug] window.scrollMainToTop - main.container found:', !!el);
+                try { if (typeof window.logDebug === 'function') window.logDebug('[ASX Debug] window.scrollMainToTop - main.container found', !!el); } catch(_){}
                 if (el) {
-                    console.log('[ASX Debug] window.scrollMainToTop - scrolling main.container to position:', targetPosition);
+                    try { if (typeof window.logDebug === 'function') window.logDebug('[ASX Debug] window.scrollMainToTop - scrolling main.container', targetPosition); } catch(_){}
                     el.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
                 } else {
-                    console.log('[ASX Debug] window.scrollMainToTop - scrolling window to position:', targetPosition);
+                    try { if (typeof window.logDebug === 'function') window.logDebug('[ASX Debug] window.scrollMainToTop - scrolling window', targetPosition); } catch(_){}
                     window.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
                 }
             } catch(error) {
@@ -4542,6 +4091,33 @@ function showModal(modalElement) {
         modalElement.scrollTop = 0;
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (scrollableContent) scrollableContent.scrollTop = 0;
+        // Runtime guard: ensure certain modals don't keep sticky headers due to inline styles or re-applied classes
+        try {
+            const id = modalElement.id || '';
+            if (id === 'discoverGlobalModal' || id === 'globalAlertsModal') {
+                // Clear inline positioning on header and discover/filter bars so the modal-content becomes the single scroll container
+                const header = modalElement.querySelector('.modal-header-with-icon');
+                if (header) {
+                    header.style.position = '';
+                    header.style.top = '';
+                    header.style.zIndex = '';
+                    header.style.marginLeft = '';
+                    header.style.marginRight = '';
+                    header.style.boxShadow = '';
+                    header.style.background = '';
+                }
+                const criteria = modalElement.querySelectorAll('.discover-criteria-bar, .discover-sort-bar, .discover-global-list, .discover-code-list');
+                criteria.forEach(el=>{
+                    try {
+                        el.style.position = '';
+                        el.style.top = '';
+                        el.style.zIndex = '';
+                        el.style.overflow = '';
+                        el.style.maxHeight = '';
+                    } catch(e){}
+                });
+            }
+        } catch(e) { /* non-fatal */ }
         if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') {
             try { initializeShareNameAutocomplete(true); } catch(_) {}
         }
@@ -8007,11 +7583,14 @@ function startGlobalSummaryListener() {
         unsubscribeGlobalSummary = firestore.onSnapshot(summaryRef, (snap) => {
             if (snap && snap.exists()) {
                 const newData = snap.data() || null;
-                console.log('[GlobalAlerts] Listener received GA_SUMMARY:', newData);
-                if (newData && newData.nonPortfolioCodes) {
-                    console.log('[GlobalAlerts] nonPortfolioCodes from Firestore:', newData.nonPortfolioCodes);
-            } else {
-                    console.log('[GlobalAlerts] WARNING: nonPortfolioCodes missing from GA_SUMMARY!');
+                // Received summary update; capture non-portfolio mover codes for proactive price fetching
+                if (newData && Array.isArray(newData.nonPortfolioCodes)) {
+                    try {
+                        window._globalNeededCodes = new Set(newData.nonPortfolioCodes.map(c => (c||'').toUpperCase()));
+                    } catch(_) {
+                        window._globalNeededCodes = new Set();
+                    }
+                    console.log('[GlobalAlerts] GA_SUMMARY updated — registered', window._globalNeededCodes.size, 'global codes for proactive fetch');
                 }
 
                 // Only update globalAlertSummary with regular data if we don't have comprehensive data
@@ -8037,14 +7616,14 @@ function startGlobalSummaryListener() {
         unsubscribeGlobalSummaryComprehensive = firestore.onSnapshot(comprehensiveSummaryRef, (snap) => {
             if (snap && snap.exists()) {
                 const comprehensiveData = snap.data() || null;
-                console.log('[GlobalAlerts] Listener received GA_SUMMARY_COMPREHENSIVE:', comprehensiveData);
-                if (comprehensiveData && comprehensiveData.nonPortfolioCodes) {
-                    console.log('[GlobalAlerts] Comprehensive nonPortfolioCodes from Firestore:', comprehensiveData.nonPortfolioCodes);
+                if (comprehensiveData && Array.isArray(comprehensiveData.nonPortfolioCodes)) {
+                    try {
+                        window._globalNeededCodes = new Set(comprehensiveData.nonPortfolioCodes.map(c => (c||'').toUpperCase()));
+                    } catch(_) { window._globalNeededCodes = new Set(); }
+                    console.log('[GlobalAlerts] GA_SUMMARY_COMPREHENSIVE updated — registered', window._globalNeededCodes.size, 'global codes for proactive fetch');
                 }
-
                 // Always prioritize comprehensive data over regular data
                 globalAlertSummary = comprehensiveData;
-                console.log('[GlobalAlerts] Updated with COMPREHENSIVE scan data');
             } else {
                 console.log('[GlobalAlerts] Listener: GA_SUMMARY_COMPREHENSIVE document does not exist');
                 // Keep existing comprehensive data if available, otherwise fall back to regular data
@@ -8445,15 +8024,7 @@ function evaluateGlobalPriceAlerts() {
     const hasDecrease = (globalPercentDecrease && globalPercentDecrease > 0) || (globalDollarDecrease && globalDollarDecrease > 0);
     if (!hasIncrease && !hasDecrease) return;
 
-    console.log('[GlobalAlerts] Starting evaluation with thresholds:', {
-        globalPercentIncrease,
-        globalDollarIncrease,
-        globalPercentDecrease,
-        globalDollarDecrease,
-        globalMinimumPrice,
-        hasIncrease,
-        hasDecrease
-    });
+    try { if (typeof window.logDebug === 'function') window.logDebug('[GlobalAlerts] Starting evaluation with thresholds', { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease, globalMinimumPrice, hasIncrease, hasDecrease }); } catch(_) {}
     const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
     let increaseCount = 0; let decreaseCount = 0; let dominantThreshold = null; let dominantType = null;
     const nonPortfolioCodes = new Set();
@@ -8461,7 +8032,7 @@ function evaluateGlobalPriceAlerts() {
     // Build quick lookup of portfolio/watchlist codes the user owns
     const userCodes = new Set();
     (allSharesData||[]).forEach(s => { if (s && s.shareName) userCodes.add(s.shareName.toUpperCase()); });
-    if (DEBUG_MODE) console.log('[GlobalAlerts] Evaluating with thresholds', { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease });
+    if (DEBUG_MODE) try { console.log('[GlobalAlerts] Evaluating with thresholds', { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease }); } catch(_) {}
     // Helper to eval a single movement
     function evaluateMovement(code, live, prev) {
         if (live == null || prev == null) return;
@@ -8471,14 +8042,14 @@ function evaluateGlobalPriceAlerts() {
         const pct = prev !== 0 ? (absChange / prev) * 100 : 0;
         let triggered = false; let type = null; let thresholdHit = null;
 
-        console.log(`[GlobalAlerts] Evaluating ${code}: live=${live}, prev=${prev}, change=${change}, absChange=${absChange}, pct=${pct.toFixed(2)}%`);
+    if (DEBUG_MODE) try { console.log(`[GlobalAlerts] Evaluating ${code}: live=${live}, prev=${prev}, change=${change}, absChange=${absChange}, pct=${pct.toFixed(2)}%`); } catch(_) {}
         if (change > 0) {
             // OR logic: trigger if EITHER percent OR dollar increase threshold satisfied (first satisfied determines threshold label)
             if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { triggered = true; type='increase'; thresholdHit = globalPercentIncrease + '%'; }
             else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { triggered = true; type='increase'; thresholdHit = '$' + Number(globalDollarIncrease).toFixed(2); }
             if (triggered) {
                 increaseCount++;
-                console.log(`[GlobalAlerts] INCREASE TRIGGERED for ${code}: ${thresholdHit}`);
+                try { if (typeof window.logDebug === 'function') window.logDebug(`[GlobalAlerts] INCREASE TRIGGERED for ${code}`, thresholdHit); } catch(_) {}
             }
         } else { // decrease
             // OR logic: trigger if EITHER percent OR dollar decrease threshold satisfied
@@ -8486,7 +8057,7 @@ function evaluateGlobalPriceAlerts() {
             else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { triggered = true; type='decrease'; thresholdHit = '$' + Number(globalDollarDecrease).toFixed(2); }
             if (triggered) {
                 decreaseCount++;
-                console.log(`[GlobalAlerts] DECREASE TRIGGERED for ${code}: ${thresholdHit}`);
+                try { if (typeof window.logDebug === 'function') window.logDebug(`[GlobalAlerts] DECREASE TRIGGERED for ${code}`, thresholdHit); } catch(_) {}
             }
         }
         if (triggered) {
@@ -12605,28 +12176,60 @@ function showTargetHitDetailsModal(options={}) {
     }
 
     async function openDiscoverModal(summaryData) {
+        // Guard against rapid re-entrant refreshes
+        const requestTs = Date.now();
+        if (!window.__discoverRenderTs) window.__discoverRenderTs = 0;
+        if (requestTs - window.__discoverRenderTs < 500) {
+            console.log('[DiscoverModal] Suppressing re-entrant render (too-quick).');
+            return;
+        }
+        window.__discoverRenderTs = requestTs;
         let modal = document.getElementById('discoverGlobalModal');
         if (!modal) { console.warn('Discover modal element missing.'); return; }
         
-        // Fetch live prices for global shares if not already available
-        console.log('[DiscoverModal] Checking if we need to fetch live prices for global shares...');
+        // Show modal immediately with a lightweight loading placeholder so UI is responsive
+        const listEl = modal.querySelector('#discoverGlobalList');
+        if (listEl) {
+            try { listEl.innerHTML = '<div class="discover-loading">Loading global movers&hellip;</div>'; } catch(_){}
+            try { showModal(modal); } catch(_){}
+        }
+
+        // Fetch live prices for global shares in background if any are missing (do not block initial render)
+        console.log('[DiscoverModal] Checking if we need to fetch live prices for global shares (background)...');
         const globalCodes = summaryData?.nonPortfolioCodes || [];
-        const missingCodes = globalCodes.filter(code => !livePrices[code]);
-        
+        const missingCodes = globalCodes.filter(code => !(livePrices && livePrices[code] && livePrices[code].live != null));
         if (missingCodes.length > 0) {
-            console.log(`[DiscoverModal] Fetching live prices for ${missingCodes.length} global shares:`, missingCodes.slice(0, 10));
-            try {
-                // Temporarily add global codes to the needed set for fetching
-                const originalNeeded = window._globalNeededCodes;
-                window._globalNeededCodes = new Set([...missingCodes]);
-                await fetchLivePrices({ cacheBust: true });
-                window._globalNeededCodes = originalNeeded;
-                console.log('[DiscoverModal] Live prices fetched for global shares');
-            } catch (error) {
-                console.warn('[DiscoverModal] Failed to fetch live prices for global shares:', error);
+            // Prevent duplicate background fetches
+            if (!window.__discoverFetchInProgress) {
+                window.__discoverFetchInProgress = true;
+                console.log(`[DiscoverModal] Scheduling background fetch for ${missingCodes.length} global shares`);
+                // Ensure priceService knows which global codes we need
+                const originalGlobalNeeded = window._globalNeededCodes;
+                try {
+                    const upCodes = new Set(missingCodes.map(c => (c||'').toUpperCase()));
+                    window._globalNeededCodes = new Set([...(originalGlobalNeeded || new Set()), ...upCodes]);
+                } catch(e) { window._globalNeededCodes = new Set(missingCodes.map(c => (c||'').toUpperCase())); }
+
+                // fire-and-forget; when complete, refresh modal contents if still open and restore original set
+                fetchLivePrices({ cacheBust: true }).then(() => {
+                    window.__discoverFetchInProgress = false;
+                    try {
+                        // restore original needed set
+                        if (originalGlobalNeeded === undefined || originalGlobalNeeded === null) delete window._globalNeededCodes;
+                        else window._globalNeededCodes = originalGlobalNeeded;
+                    } catch(_) { /* ignore */ }
+                    console.log('[DiscoverModal] Background live price fetch complete — refreshing modal contents');
+                    try { if (modal && modal.style && modal.style.display !== 'none') openDiscoverModal(summaryData); } catch(e) { console.warn('Discover modal refresh failed after background fetch', e); }
+                }).catch(err => {
+                    window.__discoverFetchInProgress = false;
+                    try {
+                        if (originalGlobalNeeded === undefined || originalGlobalNeeded === null) delete window._globalNeededCodes;
+                        else window._globalNeededCodes = originalGlobalNeeded;
+                    } catch(_) {}
+                    console.warn('[DiscoverModal] Background fetch failed', err);
+                });
             }
         }
-        const listEl = modal.querySelector('#discoverGlobalList');
         if (listEl) {
             const summary = summaryData || globalAlertSummary || {};
 
@@ -12722,6 +12325,19 @@ function showTargetHitDetailsModal(options={}) {
             }
             entries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
 
+            // Ensure we include placeholders for any codes present in the codeSet but missing from entries
+            try {
+                const presentCodes = new Set(entries.map(e => (e && e.code || '').toUpperCase()));
+                const missingFromEntries = [];
+                codeSet.forEach(c => { const up = (c||'').toUpperCase(); if (!presentCodes.has(up)) missingFromEntries.push(up); });
+                if (missingFromEntries.length) {
+                    if (DEBUG_MODE) console.log('[DiscoverModal] Adding', missingFromEntries.length, 'placeholder entries for missing codes from summary/codeSet', missingFromEntries.slice(0,10));
+                    missingFromEntries.forEach(c => entries.push({ code: c }));
+                    // Keep sort stable: resort after appending placeholders
+                    entries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
+                }
+            } catch(e) { console.warn('DiscoverModal: failed to merge codeSet placeholders', e); }
+
             listEl.innerHTML='';
             // Header / criteria bar
             const criteriaBar = document.createElement('div');
@@ -12775,6 +12391,16 @@ function showTargetHitDetailsModal(options={}) {
                 criteriaBar.appendChild(summarySpan);
             }
             criteriaBar.appendChild(tsSpan);
+            // Ensure criteria bar and its title are not left with inline sticky styles
+            try {
+                const titleInCriteria = criteriaBar.querySelector('.criteria-title');
+                if (titleInCriteria) titleInCriteria.classList.add('modal-title');
+                criteriaBar.style.position = '';
+                criteriaBar.style.top = '';
+                criteriaBar.style.zIndex = '';
+                criteriaBar.style.boxShadow = '';
+                criteriaBar.style.background = '';
+            } catch(e){}
             listEl.appendChild(criteriaBar);
             // Sorting controls (create once per render)
             const sortWrapper = document.createElement('div');
@@ -12810,6 +12436,11 @@ function showTargetHitDetailsModal(options={}) {
             sortDesc.textContent = sortModeDescription(storedSort);
             sortWrapper.appendChild(sortDesc);
             listEl.appendChild(sortWrapper);
+            try {
+                sortWrapper.style.position = '';
+                sortWrapper.style.top = '';
+                sortWrapper.style.zIndex = '';
+            } catch(e){}
 
             function applySort(list) {
                 const mode = sortSelect.value;
@@ -13272,7 +12903,14 @@ if (targetHitIconBtn) {
         showTargetHitDetailsModal({ explicit:true });
     });
 }
-let firebaseServices;
+// Ensure firebaseServices exists on the global scope without redeclaring it.
+// This avoids a SyntaxError if another bundle or earlier script used `let firebaseServices`.
+if (typeof firebaseServices === 'undefined') {
+    // Create a global holder if needed
+    window.firebaseServices = window.firebaseServices || {};
+}
+// Ensure local reference points to the global holder
+firebaseServices = window.firebaseServices;
 
 document.addEventListener('DOMContentLoaded', async function() {
     // Prefer hub singletons

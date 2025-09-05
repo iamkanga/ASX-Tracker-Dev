@@ -106,15 +106,15 @@ export async function fetchLivePrices(opts = {}) {
             };
         });
 
-        setLivePrices(newLivePrices);
-        console.log('[GlobalAlerts] About to call evaluateGlobalPriceAlerts from priceService.js');
+    setLivePrices(newLivePrices);
+    try { if (typeof window.logDebug === 'function') window.logDebug('[priceService] setLivePrices applied, triggering downstream updates'); } catch(_) {}
         try { if (typeof window.evaluateGlobalPriceAlerts === 'function') window.evaluateGlobalPriceAlerts(); } catch(_) {}
         
         // Call recomputeTriggeredAlerts to update target hit notifications
         try { 
-            if (typeof window.recomputeTriggeredAlerts === 'function') {
+                if (typeof window.recomputeTriggeredAlerts === 'function') {
                 window.recomputeTriggeredAlerts(); 
-                console.log('[PriceService] Called recomputeTriggeredAlerts');
+                try { if (typeof window.logDebug === 'function') window.logDebug('[priceService] recomputeTriggeredAlerts called'); } catch(_) {}
             }
         } catch(e) { 
             console.warn('[PriceService] Failed to call recomputeTriggeredAlerts:', e); 

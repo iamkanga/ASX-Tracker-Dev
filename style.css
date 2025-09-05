@@ -9655,3 +9655,85 @@ body.dark-theme .discover-global-modal .discover-mover {
     margin: 20px 0;
     border: 1px solid var(--border-color, #ddd);
 }
+
+/* ------------------------------------------------------------------
+   Accessibility/UX Fix: Disable sticky headers for specific modals
+   Reason: #discoverGlobalModal and #globalAlertsModal should scroll
+           as a single surface; header and filter bars must scroll away
+           with the content (consistent with other modals).
+   This block intentionally uses !important to override earlier rules
+   that set position: sticky for these modal header areas.
+   ------------------------------------------------------------------ */
+
+/* Discover modal: ensure title, sort and criteria bars are not sticky */
+#discoverGlobalModal .modal-header-with-icon,
+#discoverGlobalModal .discover-criteria-bar,
+#discoverGlobalModal .discover-sort-bar,
+.discover-global-modal .modal-header-with-icon,
+.discover-global-modal .discover-criteria-bar,
+.discover-global-modal .discover-sort-bar {
+    position: static !important;
+    position: relative !important; /* ensure normal flow */
+    top: auto !important;
+    z-index: auto !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Global Alerts modal: disable sticky header so header scrolls away */
+.global-alerts-modal .modal-header-with-icon,
+#globalAlertsModal .modal-header-with-icon {
+    position: static !important;
+    position: relative !important;
+    top: auto !important;
+    z-index: auto !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Also ensure any adjacent spacing rules that assumed a sticky header do not
+   introduce unexpected gaps when header is non-sticky. */
+.single-scroll-modal .modal-header-with-icon + * {
+    margin-top: 0 !important;
+}
+
+/* Ensure discover modal uses the modal-content as the single scroll container.
+   Remove inner scrolling on the list so the header and filter bars scroll away
+   with the content instead of remaining visually fixed. */
+#discoverGlobalModal .discover-global-list,
+#discoverGlobalModal .discover-code-list,
+.discover-global-modal .discover-global-list,
+.discover-global-modal .discover-code-list {
+    overflow: visible !important;
+    max-height: none !important;
+}
+
+/* If any inner wrapper was set to scroll for global alerts, prefer the modal-content
+   to be the scroll container so header can scroll away naturally. */
+#globalAlertsModal .modal-content,
+.modal .modal-content.global-alerts-modal {
+    /* Keep modal content as the scroll container (if needed) */
+    overflow-y: auto !important;
+    max-height: calc(100dvh - 40px) !important;
+}
+
+/* Extra high-specificity fallback: force non-sticky behavior even if other rules use !important */
+#discoverGlobalModal.modal .modal-content.single-scroll-modal .modal-header-with-icon,
+#discoverGlobalModal.modal .modal-content.single-scroll-modal .discover-criteria-bar,
+#discoverGlobalModal.modal .modal-content.single-scroll-modal .discover-sort-bar,
+#globalAlertsModal.modal .modal-content.single-scroll-modal .modal-header-with-icon {
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Ensure lists inside the discover modal don't form independent scroll areas */
+#discoverGlobalModal.modal .modal-content.single-scroll-modal #discoverGlobalList,
+#discoverGlobalModal.modal .modal-content.single-scroll-modal .discover-code-list,
+#discoverGlobalModal.modal .modal-content.single-scroll-modal .discover-global-list {
+    overflow: visible !important;
+    max-height: none !important;
+}
+
