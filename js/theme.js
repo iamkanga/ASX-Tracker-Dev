@@ -88,7 +88,8 @@ function applyTheme(themeName) {
         logDebug('Theme: Applied dark theme');
     } else if (CUSTOM_THEMES.includes(themeName)) {
         // Custom theme
-        body.classList.add('theme-' + themeName);
+        const themeClassName = themeName.toLowerCase().replace(/\s+/g, '-');
+        body.classList.add('theme-' + themeClassName);
         body.setAttribute('data-theme', themeName);
         logDebug('Theme: Applied custom theme: ' + themeName);
     }
