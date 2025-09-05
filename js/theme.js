@@ -24,7 +24,7 @@ let themeToggleBtn;
 let revertToDefaultThemeBtn;
 
 // --- External Dependencies ---
-let db, auth, firestore, authFunctions, currentUserId, currentAppId;
+// Note: Global variables are accessed dynamically from window object
 
 // --- Utility Functions ---
 
@@ -97,6 +97,12 @@ function applyTheme(themeName) {
     localStorage.setItem('theme', themeName);
 
     // Save to Firestore if user is logged in
+    // Get current values dynamically from window object
+    const currentUserId = window.currentUserId;
+    const db = window.db;
+    const firestore = window.firestore;
+    const currentAppId = window.currentAppId;
+    
     if (currentUserId && db && firestore) {
         const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
         try {
@@ -167,13 +173,7 @@ export function initializeTheme() {
             revertToDefaultThemeBtn: !!revertToDefaultThemeBtn
         });
 
-        // Get external dependencies
-        db = window.db || (typeof window.hubDb !== 'undefined' ? window.hubDb : null);
-        auth = window.auth || (typeof window.hubAuth !== 'undefined' ? window.hubAuth : null);
-        firestore = window.firestore || (typeof window.hubFs !== 'undefined' ? window.hubFs : null);
-        authFunctions = window.authFunctions || (typeof window.hubAuthFx !== 'undefined' ? window.hubAuthFx : null);
-        currentUserId = window.currentUserId;
-        currentAppId = window.currentAppId;
+        // External dependencies are now accessed dynamically from window object
 
         // Set up event listeners (only if elements exist)
         setupThemeEventListeners();
@@ -265,6 +265,12 @@ function setupThemeEventListeners() {
             localStorage.setItem('theme', targetTheme);
 
             // Save preference to Firestore
+            // Get current values dynamically from window object
+            const currentUserId = window.currentUserId;
+            const db = window.db;
+            const firestore = window.firestore;
+            const currentAppId = window.currentAppId;
+            
             if (currentUserId && db && firestore) {
                 const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
                 try {
