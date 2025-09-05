@@ -1955,6 +1955,7 @@ function makeFilesAvailableToSourceControlCSS() {
 /* Movement backgrounds (Light mode) - Increased specificity to ensure override */
 body table tbody tr.positive-change-row, #mobileShareCards .mobile-card.positive-change-card { background-color: var(--watch-bg-positive) !important; }
 body table tbody tr.negative-change-row, #mobileShareCards .mobile-card.negative-change-card { background-color: var(--watch-bg-negative) !important; }
+body table tbody tr.entry-price-change-row, #mobileShareCards .mobile-card.entry-price-card { background-color: rgba(52, 152, 219, 0.08) !important; border-left: 4px solid var(--brand-blue); border-right: 4px solid var(--brand-blue); }
 body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-change-card { background-color: var(--watch-bg-neutral) !important; }
 
 /* Target-Hit Override: Full 4px rounded border with pulse */
@@ -2098,12 +2099,124 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 }
 .discover-code-list.card-layout .discover-mover:hover {
     background: rgba(255,255,255,0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Discover mover content structure */
+.discover-mover-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.discover-mover-header {
+    width: 100%;
+}
+
+.discover-mover-details {
+    width: 100%;
+    margin-top: 4px;
+}
+
+.price-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Code and company name styling */
+.discover-mover .code {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-color, #fff);
+    margin-right: 8px;
+    letter-spacing: 0.5px;
+}
+
+.discover-mover .company-name {
+    font-size: 1rem;
+    color: var(--ghosted-text, #aaa);
+    font-weight: 400;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Price and movement styling */
+.discover-mover .price-line {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-color, #fff);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.discover-mover .movement-combo {
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.1);
+}
+
+.discover-mover .movement-combo.positive {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.discover-mover .movement-combo.negative {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.discover-mover .movement-combo.neutral {
+    background: rgba(156, 163, 175, 0.2);
+    color: #9ca3af;
+}
+
+/* 52-week range styling */
+.discover-mover .range-line {
+    font-size: 0.9rem;
+    color: var(--ghosted-text, #888);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.discover-mover .range-line .sep {
+    color: var(--accent-color, #007bff);
+    margin: 0 2px;
 }
 .discover-mover .row-top {
     display: flex;
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* Context line styling */
+.discover-context-line {
+    font-size: 1.1rem;
+    color: var(--text-color, #fff);
+    text-align: center;
+    margin: 16px 0 24px 0;
+    padding: 12px 16px;
+    background: var(--panel-bg, rgba(255,255,255,0.08));
+    border-radius: 8px;
+    border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+}
+
+.discover-context-line strong {
+    color: var(--accent-color, #007bff);
+    font-weight: 700;
 }
 .discover-mover .company {
     font-size: 1.05rem;
@@ -5548,6 +5661,16 @@ body.dark-theme table td .live-price-value {
     color: var(--price-neutral-color) !important;
 }
 
+.entry-price,
+.share-code-display.entry-price,
+.live-price-value.entry-price,
+.mobile-card h3.entry-price,
+.live-price-large.entry-price,
+.asx-code-btn.entry-price {
+    color: var(--brand-blue) !important; /* Blue to indicate entry price */
+    font-style: italic; /* Italic to differentiate from live prices */
+}
+
 /* Remove background color from table cells, as text color is desired */
 table td.live-price-cell.positive-change,
 table td.live-price-cell.negative-change {
@@ -5833,6 +5956,8 @@ table td.live-price-cell.negative-change {
 /* Remove gradient backgrounds – pure text color only */
 .price-change-large.positive { color: var(--brand-green) !important; background:none !important; }
 .price-change-large.negative { color: var(--brand-red) !important; background:none !important; }
+.price-change.entry-price,
+.price-change-large.entry-price { color: var(--brand-blue) !important; background:none !important; font-style: italic; }
 .price-change-large.neutral { color: var(--text-color) !important; background:none !important; }
 
 /* Larger arrow sizing inside pill (inherit current font-size, arrow is part of text) */
@@ -9516,4 +9641,17 @@ body.dark-theme .discover-global-modal .discover-mover {
     border: none !important;
     box-shadow: none !important;
     text-align: left !important;
+
+/* Removed quota warning modal styles - using original quota-safe approach */
+
+/* No shares message styling */
+.no-shares-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-color, #666);
+    font-style: italic;
+    background: var(--modal-bg, #f8f9fa);
+    border-radius: 8px;
+    margin: 20px 0;
+    border: 1px solid var(--border-color, #ddd);
 }

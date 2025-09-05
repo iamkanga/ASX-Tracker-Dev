@@ -164,6 +164,7 @@ export function getCurrentFormData() {
 	}
 
 	const shareNameInput = document.getElementById('shareName');
+	const currentPriceInput = document.getElementById('currentPrice');
 	const targetPriceInput = document.getElementById('targetPrice');
 	const dividendAmountInput = document.getElementById('dividendAmount');
 	const frankingCreditsInput = document.getElementById('frankingCredits');
@@ -178,7 +179,9 @@ export function getCurrentFormData() {
 
 	return {
 		shareName: (shareNameInput && shareNameInput.value ? shareNameInput.value : '').trim().toUpperCase(),
-		currentPrice: null,
+		currentPrice: currentPriceInput ? parseFloat(currentPriceInput.value) : null,
+		entryPrice: null, // Will be populated from currentPrice in appService.js
+		entryDate: null, // Will be populated with current date in appService.js
 		targetPrice: targetPriceInput ? parseFloat(targetPriceInput.value) : NaN,
 		targetDirection: (document.getElementById('targetAboveCheckbox') && document.getElementById('targetAboveCheckbox').checked) ? 'above' : 'below',
 		dividendAmount: dividendAmountInput ? parseFloat(dividendAmountInput.value) : NaN,

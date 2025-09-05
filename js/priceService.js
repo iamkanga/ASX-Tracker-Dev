@@ -24,24 +24,26 @@ export async function fetchLivePrices(opts = {}) {
         }
         if (typeof window.DEBUG_MODE !== 'undefined' && window.DEBUG_MODE && data[0]) console.log('Live Price: Sample keys', Object.keys(data[0]));
 
-        const sharesLocal = getAllSharesData();
-        const haveShares = Array.isArray(sharesLocal) && sharesLocal.length > 0;
-        const needed = haveShares ? new Set(sharesLocal.filter(s => s && s.shareName).map(s => s.shareName.toUpperCase())) : null;
+        const allSharesData = getAllSharesData();
+        const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
+        const portfolioNeeded = haveShares ? new Set(allSharesData.filter(s => s && s.shareName).map(s => s.shareName.toUpperCase())) : new Set();
+        const globalNeeded = window._globalNeededCodes || new Set();
+        const needed = new Set([...portfolioNeeded, ...globalNeeded]);
         const LOG_LIMIT = 30;
         let skipped = 0, skippedLogged = 0, accepted = 0, surrogate = 0, filtered = 0;
         const newLivePrices = {};
         window.globalExternalPriceRows = [];
 
         const numOrNull = v => {
-            if (v === null || v === undefined) return null;
+            if (v === null || v === undefined) return 0;
             if (typeof v === 'string') {
                 const t = v.trim();
-                if (!t || t.toUpperCase() === '#N/A') return null;
+                if (!t || t.toUpperCase() === '#N/A') return 0;
                 const parsed = parseFloat(t.replace(/,/g,''));
-                return isNaN(parsed) ? null : parsed;
+                return isNaN(parsed) ? 0 : parsed;
             }
-            if (typeof v === 'number') return isNaN(v) ? null : v;
-            return null;
+            if (typeof v === 'number') return isNaN(v) ? 0 : v;
+            return 0;
         };
 
         data.forEach(item => {
@@ -78,7 +80,7 @@ export async function fetchLivePrices(opts = {}) {
             if (!hasLive && hasPrev) surrogate++;
             accepted++;
 
-            const shareData = haveShares ? sharesLocal.find(s => s && s.shareName && s.shareName.toUpperCase() === code) : null;
+            const shareData = haveShares ? allSharesData.find(s => s && s.shareName && s.shareName.toUpperCase() === code) : null;
             const targetPrice = shareData && !isNaN(parseFloat(shareData.targetPrice)) ? parseFloat(shareData.targetPrice) : undefined;
             const dir = shareData && shareData.targetDirection ? shareData.targetDirection : 'below';
             let hit = false;
@@ -105,7 +107,18 @@ export async function fetchLivePrices(opts = {}) {
         });
 
         setLivePrices(newLivePrices);
+        console.log('[GlobalAlerts] About to call evaluateGlobalPriceAlerts from priceService.js');
         try { if (typeof window.evaluateGlobalPriceAlerts === 'function') window.evaluateGlobalPriceAlerts(); } catch(_) {}
+        
+        // Call recomputeTriggeredAlerts to update target hit notifications
+        try { 
+            if (typeof window.recomputeTriggeredAlerts === 'function') {
+                window.recomputeTriggeredAlerts(); 
+                console.log('[PriceService] Called recomputeTriggeredAlerts');
+            }
+        } catch(e) { 
+            console.warn('[PriceService] Failed to call recomputeTriggeredAlerts:', e); 
+        }
         if (typeof window.DEBUG_MODE !== 'undefined' && window.DEBUG_MODE) {
             const parts = [`accepted=${accepted}`];
             if (surrogate) parts.push(`surrogate=${surrogate}`);
@@ -116,14 +129,14 @@ export async function fetchLivePrices(opts = {}) {
         }
 
         window.sharesAt52WeekLow = [];
-        if (Array.isArray(sharesLocal)) {
+        if (Array.isArray(allSharesData)) {
             const livePricesLocal = getLivePrices();
-            sharesLocal.forEach(share => {
+            allSharesData.forEach(share => {
                 const code = (share.shareName || '').toUpperCase();
                 const lpObj = livePricesLocal ? livePricesLocal[code] : undefined;
                 if (!lpObj || lpObj.live == null || isNaN(lpObj.live) || lpObj.Low52 == null || isNaN(lpObj.Low52)) return;
                 const isMuted = !!(window.__low52MutedMap && window.__low52MutedMap[code + '_low']);
-                if (lpObj.live <= lpObj.Low52 && !window.triggered52WeekLowSet?.has(code)) {
+                if (lpObj.live <= lpObj.Low52 && !(window.triggered52WeekLowSet && window.triggered52WeekLowSet.has(code))) {
                     let displayName = code;
                     const allAsxCodesLocal2 = getAllAsxCodes();
                     if (Array.isArray(allAsxCodesLocal2)) {

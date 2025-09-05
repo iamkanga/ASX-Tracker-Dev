@@ -575,13 +575,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="summary-label">Day's Loss</div>
                 <div class="summary-value negative">${fmtMoney(-daysLoss)} <span class="summary-pct negative">${fmtPct(totalValue > 0 ? (daysLoss / totalValue) * 100 : 0)}</span></div>
             </div>
-            <div class="summary-card ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : 'neutral'}">
-                <div class="summary-label">Total Return</div>
-                <div class="summary-value ${totalPL >= 0 ? 'positive' : 'negative'}">${fmtMoney(totalPL)} <span class="summary-pct">${fmtPct(overallPLPct)}</span></div>
-            </div>
             <div class="summary-card ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">
                 <div class="summary-label">Day Change</div>
                 <div class="summary-value ${todayNet >= 0 ? 'positive' : 'negative'}">${fmtMoney(todayNet)} <span class="summary-pct">${fmtPct(todayNetPct)}</span></div>
+            </div>
+            <div class="summary-card ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : 'neutral'}">
+                <div class="summary-label">Total Return</div>
+                <div class="summary-value ${totalPL >= 0 ? 'positive' : 'negative'}">${fmtMoney(totalPL)} <span class="summary-pct">${fmtPct(overallPLPct)}</span></div>
             </div>
             <div class="summary-card neutral">
                 <div class="summary-label">Total Portfolio Value</div>
@@ -2735,8 +2735,83 @@ if (!window.__origShowModalForBack) {
             // Wait for modal to be fully rendered
             setTimeout(() => {
                 setupPortfolioAutoSelection();
-            }, 100);
-        }
+                }, 100);
+}
+
+// Test function to verify 52-week low detection is working
+function test52WeekLowDetection() {
+    console.log('[TEST] Testing 52-week low detection...');
+    
+    // Find a share with 52-week low data
+    const sharesWith52WeekLow = allSharesData.filter(share => 
+        share && share.shareName && 
+        livePrices[share.shareName.toUpperCase()] && 
+        livePrices[share.shareName.toUpperCase()].Low52
+    );
+    
+    if (sharesWith52WeekLow.length === 0) {
+        console.log('[TEST] No shares with 52-week low data found');
+        return;
+    }
+    
+    const testShare = sharesWith52WeekLow[0];
+    const code = testShare.shareName.toUpperCase();
+    const liveData = livePrices[code];
+    
+    console.log(`[TEST] Testing with ${code}:`);
+    console.log(`[TEST] - Current live price: $${liveData.live}`);
+    console.log(`[TEST] - 52-week low: $${liveData.Low52}`);
+    console.log(`[TEST] - Is at 52-week low: ${liveData.live <= liveData.Low52}`);
+    
+    // Temporarily set live price to 52-week low to test detection
+    const originalPrice = liveData.live;
+    liveData.live = liveData.Low52;
+    console.log(`[TEST] - Temporarily set live price to 52-week low: $${liveData.live}`);
+    
+    // Clear existing 52-week low alerts
+    window.sharesAt52WeekLow = [];
+    
+    // Trigger 52-week low detection
+    if (Array.isArray(allSharesData)) {
+        allSharesData.forEach(share => {
+            const shareCode = (share.shareName || '').toUpperCase();
+            const lpObj = livePrices[shareCode];
+            if (!lpObj || lpObj.live == null || isNaN(lpObj.live) || lpObj.Low52 == null || isNaN(lpObj.Low52)) return;
+            
+            if (lpObj.live <= lpObj.Low52) {
+                let displayName = shareCode;
+                const allAsxCodesLocal = getAllAsxCodes();
+                if (Array.isArray(allAsxCodesLocal)) {
+                    const match = allAsxCodesLocal.find(c => c.code === shareCode);
+                    if (match && match.name) displayName = match.name;
+                }
+                if (!displayName && share.companyName) displayName = share.companyName;
+                
+                window.sharesAt52WeekLow.push({ 
+                    code: shareCode, 
+                    name: displayName, 
+                    live: lpObj.live, 
+                    low52: lpObj.Low52, 
+                    type: 'low', 
+                    muted: false 
+                });
+                console.log(`[TEST] ✅ Added 52-week low alert for ${shareCode}: $${lpObj.live} <= $${lpObj.Low52}`);
+            }
+        });
+    }
+    
+    console.log(`[TEST] Found ${window.sharesAt52WeekLow.length} 52-week low alerts`);
+    
+    // Restore original price
+    liveData.live = originalPrice;
+    console.log(`[TEST] - Restored original price: $${originalPrice}`);
+    
+    // Show modal
+    if (typeof window.showTargetHitDetailsModal === 'function') {
+        window.showTargetHitDetailsModal({ explicit: true });
+        console.log('[TEST] Opened modal to show 52-week low alerts');
+    }
+}
     };
 }
 window.addEventListener('popstate', ()=>{
@@ -2930,17 +3005,17 @@ async function fetchLivePricesAndUpdateUI() {
     // Reset external rows container for this cycle
     globalExternalPriceRows = [];
 
-        // Helper: normalize numeric fields; treat null / undefined / '' / '#N/A' as null
+        // Helper: normalize numeric fields; treat null / undefined / '' / '#N/A' as zero
         const numOrNull = v => {
-            if (v === null || v === undefined) return null;
+            if (v === null || v === undefined) return 0;
             if (typeof v === 'string') {
                 const t = v.trim();
-                if (!t || t.toUpperCase() === '#N/A') return null;
+                if (!t || t.toUpperCase() === '#N/A') return 0;
                 const parsed = parseFloat(t.replace(/,/g,''));
-                return isNaN(parsed) ? null : parsed;
+                return isNaN(parsed) ? 0 : parsed;
             }
-            if (typeof v === 'number') return isNaN(v) ? null : v;
-            return null;
+            if (typeof v === 'number') return isNaN(v) ? 0 : v;
+            return 0;
         };
 
     data.forEach(item => {
@@ -3008,6 +3083,7 @@ async function fetchLivePricesAndUpdateUI() {
 
         setLivePrices(newLivePrices);
     // After updating livePrices but before recomputeTriggeredAlerts, evaluate global alert thresholds
+    console.log('[GlobalAlerts] About to call evaluateGlobalPriceAlerts from script.js fetchLivePrices');
     try { evaluateGlobalPriceAlerts(); } catch(e){ console.warn('Global Alerts: evaluation failed', e); }
         if (DEBUG_MODE) {
             const parts = [`accepted=${accepted}`];
@@ -3018,48 +3094,37 @@ async function fetchLivePricesAndUpdateUI() {
             console.log('Live Price: Summary ' + parts.join(', '));
         }
         // --- 52-Week Low Alert Detection ---
-        sharesAt52WeekLow = [];
-        if (Array.isArray(allSharesData)) {
-            allSharesData.forEach(share => {
-                const code = (share.shareName || '').toUpperCase();
-                const lpObj = livePrices ? livePrices[code] : undefined;
-                if (!lpObj || lpObj.live == null || isNaN(lpObj.live) || lpObj.Low52 == null || isNaN(lpObj.Low52)) return;
-                const isMuted = !!(window.__low52MutedMap && window.__low52MutedMap[code + '_low']);
-                if (lpObj.live <= lpObj.Low52 && !triggered52WeekLowSet.has(code)) {
-                    // Try to get the correct company name from allAsxCodes
-                    let displayName = code;
-                    if (Array.isArray(allAsxCodes)) {
-                        const match = allAsxCodes.find(c => c.code === code);
-                        if (match && match.name) displayName = match.name;
-                    }
-                    if (!displayName && share.companyName) displayName = share.companyName;
-                    sharesAt52WeekLow.push({
-                        code,
-                        name: displayName,
-                        live: lpObj.live,
-                        low52: lpObj.Low52,
-                        type: 'low',
-                        muted: isMuted
-                    });
-                    triggered52WeekLowSet.add(code);
-                }
-            });
+        if (!window.__isTesting52WeekLowAlerts) {
+            sharesAt52WeekLow = [];
         }
-        // Inject a test 52-week low alert card for CBA (for UI testing only)
-        if (Array.isArray(sharesAt52WeekLow)) {
-            const alreadyHasTest = sharesAt52WeekLow.some(item => item && item.code === 'CBA' && item.isTestCard);
-            if (!alreadyHasTest) {
-                sharesAt52WeekLow.unshift({
-                    code: 'CBA',
-                    name: 'Commonwealth Bank (Test Card)',
-                    type: 'low',
-                    low52: 90.00,
-                    high52: 120.00,
-                    live: 91.23,
-                    isTestCard: true,
-                    muted: !!window.__low52MutedMap['CBA_low']
+        if (!window.__isTesting52WeekLowAlerts) {
+            if (Array.isArray(allSharesData)) {
+                allSharesData.forEach(share => {
+                    const code = (share.shareName || '').toUpperCase();
+                    const lpObj = livePrices ? livePrices[code] : undefined;
+                    if (!lpObj || lpObj.live == null || isNaN(lpObj.live) || lpObj.Low52 == null || isNaN(lpObj.Low52)) return;
+                    const isMuted = !!(window.__low52MutedMap && window.__low52MutedMap[code + '_low']);
+                    if (lpObj.live <= lpObj.Low52 && !triggered52WeekLowSet.has(code)) {
+                        // Try to get the correct company name from allAsxCodes
+                        let displayName = code;
+                        if (Array.isArray(allAsxCodes)) {
+                            const match = allAsxCodes.find(c => c.code === code);
+                            if (match && match.name) displayName = match.name;
+                        }
+                        if (!displayName && share.companyName) displayName = share.companyName;
+                        sharesAt52WeekLow.push({
+                            code,
+                            name: displayName,
+                            live: lpObj.live,
+                            low52: lpObj.Low52,
+                            type: 'low',
+                            muted: isMuted
+                        });
+                        triggered52WeekLowSet.add(code);
+                    }
                 });
             }
+            // Test card removed - 52-week low detection is now working properly
         }
         onLivePricesUpdated();
         window._livePricesLoaded = true;
@@ -3212,9 +3277,11 @@ function closeModals() {
     // Auto-save logic for share form
     if (shareFormSection && shareFormSection.style.display !== 'none') {
         logDebug('Auto-Save: Share form modal is closing. Checking for unsaved changes.');
+
+
         const currentData = getCurrentFormData();
         const isShareNameValid = currentData.shareName.trim() !== '';
-        
+
         // The cancel button fix means clearForm() is called before closeModals()
         // For auto-save on clicking outside or other non-cancel closes:
         if (selectedShareDocId) { // Existing share
@@ -3458,9 +3525,9 @@ function getShareDisplayData(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-        peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) ? formatAdaptivePrice(livePriceData.PE) : 'N/A';
-        high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) ? formatMoney(livePriceData.High52) : 'N/A';
-        low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) ? formatMoney(livePriceData.Low52) : 'N/A';
+        peRatio = livePriceData.PE !== null && !isNaN(livePriceData.PE) && livePriceData.PE !== 0 ? formatAdaptivePrice(livePriceData.PE) : (livePriceData.PE === 0 ? '0.00' : 'N/A');
+        high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) && livePriceData.High52 !== 0 ? formatMoney(livePriceData.High52) : (livePriceData.High52 === 0 ? '0.00' : 'N/A');
+        low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) && livePriceData.Low52 !== 0 ? formatMoney(livePriceData.Low52) : (livePriceData.Low52 === 0 ? '0.00' : 'N/A');
 
         function half(val) { return typeof val === 'number' ? val / 2 : val; }
 
@@ -3476,7 +3543,7 @@ function getShareDisplayData(share) {
                 percentageChange = half(percentageChange);
                 displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 let change = lastFetchedLive - lastFetchedPrevClose;
                 let percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
@@ -3485,13 +3552,83 @@ function getShareDisplayData(share) {
                 percentageChange = half(percentageChange);
                 displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : '');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
             }
         } else {
-            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? formatMoney(lastFetchedLive) : 'N/A';
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? formatMoney(lastFetchedLive) : '0.00';
             displayPriceChange = '0.00 (0.00%)';
             priceClass = 'neutral';
             cardPriceChangeClass = '';
+        }
+    } else {
+        // No live price data available - use entry price as fallback
+        if (share.entryPrice && !isNaN(Number(share.entryPrice))) {
+            displayLivePrice = formatMoney(Number(share.entryPrice));
+
+            // Try to show meaningful price change information
+            let priceChangeCalculated = false;
+
+            // First priority: Use the share's stored price history (most reliable for new shares)
+            if (share.lastFetchedPrice && share.previousFetchedPrice &&
+                !isNaN(Number(share.lastFetchedPrice)) && !isNaN(Number(share.previousFetchedPrice)) &&
+                Number(share.lastFetchedPrice) !== Number(share.previousFetchedPrice)) {
+                // Use the share's own price history for change calculation
+                let change = Number(share.lastFetchedPrice) - Number(share.previousFetchedPrice);
+                let percentageChange = (Number(share.previousFetchedPrice) !== 0 ?
+                    (change / Number(share.previousFetchedPrice)) * 100 : 0);
+
+                // Apply the same 50% reduction used for live prices
+                function half(val) { return typeof val === 'number' ? val / 2 : val; }
+                change = half(change);
+                percentageChange = half(percentageChange);
+
+                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
+                priceChangeCalculated = true;
+
+                console.log('[DISPLAY] Using stored price history for day change:', shareCode, 'change:', change, 'pct:', percentageChange);
+            }
+
+            // Second priority: Use live price data if stored data isn't available
+            if (!priceChangeCalculated && livePrices && livePrices[shareCode]) {
+                const liveData = livePrices[shareCode];
+                if (liveData.live !== null && liveData.prevClose !== null &&
+                    !isNaN(liveData.live) && !isNaN(liveData.prevClose) &&
+                    liveData.live !== liveData.prevClose) {
+                    let change = liveData.live - liveData.prevClose;
+                    let percentageChange = (liveData.prevClose !== 0 ? (change / liveData.prevClose) * 100 : 0);
+
+                    // Apply the same 50% reduction used for live prices
+                    function half(val) { return typeof val === 'number' ? val / 2 : val; }
+                    change = half(change);
+                    percentageChange = half(percentageChange);
+
+                    displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
+                    priceChangeCalculated = true;
+
+                    console.log('[DISPLAY] Using live price data for day change:', shareCode, 'change:', change, 'pct:', percentageChange);
+                }
+            }
+
+            // If still no price change data available, show nothing or zero
+            if (!priceChangeCalculated) {
+                displayPriceChange = '0.00 (0.00%)';
+                priceClass = 'neutral';
+                cardPriceChangeClass = '';
+                console.log('[DISPLAY] No price change data available for:', shareCode, '- showing zero values');
+            }
+
+            console.log('[DISPLAY] Using entry price as fallback for', shareCode, ':', displayLivePrice, 'with change:', displayPriceChange, {
+                entryPrice: share.entryPrice,
+                lastFetchedPrice: share.lastFetchedPrice,
+                previousFetchedPrice: share.previousFetchedPrice,
+                hasPriceHistory: !!(share.lastFetchedPrice && share.previousFetchedPrice)
+            });
+        } else {
+            displayLivePrice = 'N/A';
         }
     }
 
@@ -3505,19 +3642,88 @@ function getShareDisplayData(share) {
                 changeVal = livePriceData.lastLivePrice - livePriceData.lastPrevClose;
             }
         }
-        row.classList.remove('positive-change-row','negative-change-row','neutral-change-row');
+        row.classList.remove('positive-change-row','negative-change-row','neutral-change-row','entry-price-change-row');
     // Ensure unified side border helper present
     if (!row.classList.contains('movement-sides')) row.classList.add('movement-sides');
         if (changeVal > 0) row.classList.add('positive-change-row');
         else if (changeVal < 0) row.classList.add('negative-change-row');
+        else if (priceClass === 'entry-price') row.classList.add('entry-price-change-row');
         else row.classList.add('neutral-change-row');
     } catch(_) {}
 
     // Set display for new shares without live pricing
     if (isNewShare) {
-        displayLivePrice = 'Loading...';
-        isNewShareIndicator = 'new-share';
-        console.log('[DISPLAY] New share detected:', shareCode, '- showing loading indicator');
+        // If we have entry price data, show it immediately instead of loading
+        if (share.entryPrice && !isNaN(Number(share.entryPrice))) {
+            displayLivePrice = formatMoney(Number(share.entryPrice));
+
+            // Try to show meaningful price change information for new shares
+            let priceChangeCalculated = false;
+
+            // First priority: Use the share's stored price history (most reliable for new shares)
+            if (share.lastFetchedPrice && share.previousFetchedPrice &&
+                !isNaN(Number(share.lastFetchedPrice)) && !isNaN(Number(share.previousFetchedPrice)) &&
+                Number(share.lastFetchedPrice) !== Number(share.previousFetchedPrice)) {
+                // Use the share's own price history for change calculation
+                let change = Number(share.lastFetchedPrice) - Number(share.previousFetchedPrice);
+                let percentageChange = (Number(share.previousFetchedPrice) !== 0 ?
+                    (change / Number(share.previousFetchedPrice)) * 100 : 0);
+
+                // Apply the same 50% reduction used for live prices
+                function half(val) { return typeof val === 'number' ? val / 2 : val; }
+                change = half(change);
+                percentageChange = half(percentageChange);
+
+                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
+                priceChangeCalculated = true;
+
+                console.log('[DISPLAY] New share using stored price history for day change:', shareCode, 'change:', change, 'pct:', percentageChange);
+            }
+
+            // Second priority: Use live price data if stored data isn't available
+            if (!priceChangeCalculated && livePrices && livePrices[shareCode]) {
+                const liveData = livePrices[shareCode];
+                if (liveData.live !== null && liveData.prevClose !== null &&
+                    !isNaN(liveData.live) && !isNaN(liveData.prevClose) &&
+                    liveData.live !== liveData.prevClose) {
+                    let change = liveData.live - liveData.prevClose;
+                    let percentageChange = (liveData.prevClose !== 0 ? (change / liveData.prevClose) * 100 : 0);
+
+                    // Apply the same 50% reduction used for live prices
+                    function half(val) { return typeof val === 'number' ? val / 2 : val; }
+                    change = half(change);
+                    percentageChange = half(percentageChange);
+
+                    displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
+                    priceChangeCalculated = true;
+
+                    console.log('[DISPLAY] New share using live price data for day change:', shareCode, 'change:', change, 'pct:', percentageChange);
+                }
+            }
+
+            // If still no price change data available, show zero values
+            if (!priceChangeCalculated) {
+                displayPriceChange = '0.00 (0.00%)';
+                priceClass = 'neutral';
+                cardPriceChangeClass = '';
+                console.log('[DISPLAY] New share no price change data available for:', shareCode, '- showing zero values');
+            }
+
+            console.log('[DISPLAY] New share with entry price:', shareCode, '- showing entry price immediately with change:', displayPriceChange, {
+                entryPrice: share.entryPrice,
+                lastFetchedPrice: share.lastFetchedPrice,
+                previousFetchedPrice: share.previousFetchedPrice,
+                hasPriceHistory: !!(share.lastFetchedPrice && share.previousFetchedPrice)
+            });
+        } else {
+            displayLivePrice = 'Loading...';
+            isNewShareIndicator = 'new-share';
+            console.log('[DISPLAY] New share detected:', shareCode, '- showing loading indicator');
+        }
     }
 
     return {
@@ -3812,10 +4018,11 @@ function addShareToTable(share) {
         const lp = livePrices[share.shareName.toUpperCase()];
         let change = null;
         if (lp && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) change = lp.live - lp.prevClose;
-        row.classList.remove('positive-change-row','negative-change-row','neutral-change-row');
+        row.classList.remove('positive-change-row','negative-change-row','neutral-change-row','entry-price-change-row');
     if (!row.classList.contains('movement-sides')) row.classList.add('movement-sides');
         if (change > 0) row.classList.add('positive-change-row');
         else if (change < 0) row.classList.add('negative-change-row');
+        else if (!lp && share.entryPrice && !isNaN(Number(share.entryPrice))) row.classList.add('entry-price-change-row');
         else row.classList.add('neutral-change-row');
     } catch(_) {}
 
@@ -4211,9 +4418,12 @@ function updateOrCreateShareMobileCard(share) {
 
     // Apply card-specific price change class
     // Remove previous price change classes before adding current one
-    card.classList.remove('positive-change-card', 'negative-change-card', 'neutral-change-card');
+    card.classList.remove('positive-change-card', 'negative-change-card', 'neutral-change-card', 'entry-price-card');
     if (cardPriceChangeClass) {
         card.classList.add(cardPriceChangeClass);
+    } else if (priceClass === 'entry-price') {
+        // Tag entry price cards for blue styling
+        card.classList.add('entry-price-card');
     } else if (priceClass === 'neutral') {
         // Tag neutral cards for muted coffee fill styling
         card.classList.add('neutral');
@@ -4356,6 +4566,8 @@ function hideModal(modalElement) {
     if (window.UI && typeof window.UI.hideModal === 'function') return window.UI.hideModal(modalElement);
     try {
         if (!modalElement) return;
+
+
         modalElement.classList.remove('show');
         if (typeof logDebug === 'function') logDebug('Modal: Hiding modal: ' + modalElement.id);
     } catch (e) { console.warn('hideModal fallback failed', e); }
@@ -4511,6 +4723,8 @@ function clearForm() {
     const portfolioAvgPriceInput = document.getElementById('portfolioAvgPrice');
     if (portfolioSharesInput) portfolioSharesInput.value = '';
     if (portfolioAvgPriceInput) portfolioAvgPriceInput.value = '';
+
+    // Entry data is now handled by display elements, no input fields to clear
     if (commentsFormContainer) { // This now refers to #dynamicCommentsArea
         commentsFormContainer.innerHTML = ''; // Clears ONLY the dynamically added comments
     }
@@ -4540,14 +4754,7 @@ function clearForm() {
     setIconDisabled(saveShareBtn, true); // Save button disabled on clear
     logDebug('Form: Form fields cleared and selectedShareDocId reset. saveShareBtn disabled.');
     // Reset auto details read-only placeholders
-    if (autoEntryDateDisplay) {
-        autoEntryDateDisplay.textContent = 'Auto when saved';
-        autoEntryDateDisplay.classList.add('ghosted-text');
-    }
-    if (autoReferencePriceDisplay) {
-        autoReferencePriceDisplay.textContent = 'Auto when saved';
-        autoReferencePriceDisplay.classList.add('ghosted-text');
-    }
+    // Removed - old static display elements no longer exist
 }
 
 /**
@@ -4768,6 +4975,8 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     if (shareNameInput) shareNameInput.value = shareToEdit.shareName || '';
     // Removed setting manual currentPrice input (field no longer present)
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimalStrict(shareToEdit.targetPrice) : '';
+
+    // Entry data is now handled by display elements above, no input fields to populate
     
     // Reset toggle state helpers
     userManuallyOverrodeDirection = false;
@@ -4843,7 +5052,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
             }
         }
         if (autoReferencePriceDisplay) {
-            const rp = (shareToEdit.currentPrice !== undefined && shareToEdit.currentPrice !== null && !isNaN(Number(shareToEdit.currentPrice))) ? Number(shareToEdit.currentPrice) : null;
+            const rp = (shareToEdit.entryPrice !== undefined && shareToEdit.entryPrice !== null && !isNaN(Number(shareToEdit.entryPrice))) ? Number(shareToEdit.entryPrice) : null;
             if (rp !== null) {
                 autoReferencePriceDisplay.textContent = formatMoney(rp);
                 autoReferencePriceDisplay.classList.remove('ghosted-text');
@@ -4855,6 +5064,8 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     } catch(e) { console.warn('Auto Details: Failed to populate auto fields', e); }
 
     showModal(shareFormSection);
+    // Ensure accordion is properly initialized after modal is shown
+    setTimeout(() => initShareFormAccordion(true), 10);
     try { scrollMainToTop(); } catch(_) {}
     shareNameInput.focus();
     // Always show live price snapshot if code is present
@@ -5368,7 +5579,7 @@ function showShareDetails() {
     }
     modalShareName.className = modalTitleClasses; // Apply all classes
 
-    const enteredPriceNum = Number(share.currentPrice);
+    const enteredPriceNum = Number(share.entryPrice || share.currentPrice);
 
     // Get live price data from the global livePrices object
     const livePriceData = livePrices[share.shareName.toUpperCase()];
@@ -7106,6 +7317,8 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 // Fetch snapshot to prefill reference price & live view
                 try { updateAddFormLiveSnapshot(currentSearchShareData.shareCode); } catch(_) {}
                 showModal(shareFormSection); // Show add/edit modal
+                // Ensure accordion is properly initialized after modal is shown
+                setTimeout(() => initShareFormAccordion(true), 10);
                 if (targetPriceInput) targetPriceInput.focus();
                 checkFormDirtyState(); // Recompute dirty state
             });
@@ -7643,7 +7856,12 @@ function updateTargetHitBanner() {
     }
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
-    const low52Count = Array.isArray(sharesAt52WeekLow) ? sharesAt52WeekLow.filter(item => !item.muted).length : 0;
+    const low52Count = Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.filter(item => !item.muted).length : 0;
+    
+    // Debug logging for 52-week low count
+    console.log('[BANNER-DEBUG] sharesAt52WeekLow:', window.sharesAt52WeekLow);
+    console.log('[BANNER-DEBUG] low52Count:', low52Count);
+    console.log('[BANNER-DEBUG] enabledCount:', enabledCount);
     // Treat global summary counts as zero if directional thresholds are fully inactive (prevents stale badge after clearing)
     const directionalActive = isDirectionalThresholdsActive ? isDirectionalThresholdsActive() : (
         (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ||
@@ -7653,6 +7871,10 @@ function updateTargetHitBanner() {
     );
     const globalSummaryCount = (directionalActive && globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0;
     const displayCount = enabledCount + globalSummaryCount + low52Count;
+    
+    // Debug logging for final count
+    console.log('[BANNER-DEBUG] globalSummaryCount:', globalSummaryCount);
+    console.log('[BANNER-DEBUG] displayCount:', displayCount);
     const snapshot = window.__lastTargetBannerSnapshot;
     const snapshotUnchanged = snapshot.enabledCount === enabledCount && snapshot.displayCount === displayCount && snapshot.dismissed === !!targetHitIconDismissed;
     if (!snapshotUnchanged) {
@@ -7768,28 +7990,77 @@ try {
     } catch (e) { console.error('Alerts: failed to init triggered alerts listener', e); }
 } */
 
-// Real-time listener for global summary alert document
+// Real-time listener for global summary alert documents (both regular and comprehensive)
 let unsubscribeGlobalSummary = null;
+let unsubscribeGlobalSummaryComprehensive = null;
+
 function startGlobalSummaryListener() {
     if (unsubscribeGlobalSummary) { try { unsubscribeGlobalSummary(); } catch(_){} unsubscribeGlobalSummary = null; }
+    if (unsubscribeGlobalSummaryComprehensive) { try { unsubscribeGlobalSummaryComprehensive(); } catch(_){} unsubscribeGlobalSummaryComprehensive = null; }
     if (!db || !currentUserId || !firestore) return;
+
     try {
         const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+
+        // Listener for regular global summary (GA_SUMMARY)
         const summaryRef = firestore.doc(alertsCol, 'GA_SUMMARY');
         unsubscribeGlobalSummary = firestore.onSnapshot(summaryRef, (snap) => {
             if (snap && snap.exists()) {
-                globalAlertSummary = snap.data() || null;
+                const newData = snap.data() || null;
+                console.log('[GlobalAlerts] Listener received GA_SUMMARY:', newData);
+                if (newData && newData.nonPortfolioCodes) {
+                    console.log('[GlobalAlerts] nonPortfolioCodes from Firestore:', newData.nonPortfolioCodes);
             } else {
+                    console.log('[GlobalAlerts] WARNING: nonPortfolioCodes missing from GA_SUMMARY!');
+                }
+
+                // Only update globalAlertSummary with regular data if we don't have comprehensive data
+                if (!globalAlertSummary || globalAlertSummary.comprehensiveScan !== true) {
+                    globalAlertSummary = newData;
+                    console.log('[GlobalAlerts] Updated with REGULAR scan data (no comprehensive available)');
+                }
+            } else {
+                console.log('[GlobalAlerts] Listener: GA_SUMMARY document does not exist');
+                // Don't set to null if we have comprehensive data
+                if (!globalAlertSummary || globalAlertSummary.comprehensiveScan !== true) {
                 globalAlertSummary = null;
+                }
             }
             try { updateTargetHitBanner(); } catch(e) {}
-        }, err => console.error('Global Alerts: summary listener error', err));
-        logDebug('Global Alerts: Summary listener active.');
-    } catch(e) { console.error('Global Alerts: failed to start summary listener', e); }
+        }, err => {
+            console.error('[GlobalAlerts] Regular listener error:', err);
+            console.error('Global Alerts: summary listener error', err);
+        });
+
+        // Listener for comprehensive global summary (GA_SUMMARY_COMPREHENSIVE)
+        const comprehensiveSummaryRef = firestore.doc(alertsCol, 'GA_SUMMARY_COMPREHENSIVE');
+        unsubscribeGlobalSummaryComprehensive = firestore.onSnapshot(comprehensiveSummaryRef, (snap) => {
+            if (snap && snap.exists()) {
+                const comprehensiveData = snap.data() || null;
+                console.log('[GlobalAlerts] Listener received GA_SUMMARY_COMPREHENSIVE:', comprehensiveData);
+                if (comprehensiveData && comprehensiveData.nonPortfolioCodes) {
+                    console.log('[GlobalAlerts] Comprehensive nonPortfolioCodes from Firestore:', comprehensiveData.nonPortfolioCodes);
+                }
+
+                // Always prioritize comprehensive data over regular data
+                globalAlertSummary = comprehensiveData;
+                console.log('[GlobalAlerts] Updated with COMPREHENSIVE scan data');
+            } else {
+                console.log('[GlobalAlerts] Listener: GA_SUMMARY_COMPREHENSIVE document does not exist');
+                // Keep existing comprehensive data if available, otherwise fall back to regular data
+            }
+            try { updateTargetHitBanner(); } catch(e) {}
+        }, err => {
+            console.error('[GlobalAlerts] Comprehensive listener error:', err);
+        });
+
+        logDebug('Global Alerts: Summary listeners active (regular + comprehensive).');
+    } catch(e) { console.error('Global Alerts: failed to start summary listeners', e); }
 }
 
 function stopGlobalSummaryListener() {
     if (unsubscribeGlobalSummary) { try { unsubscribeGlobalSummary(); } catch(_){} unsubscribeGlobalSummary = null; }
+    if (unsubscribeGlobalSummaryComprehensive) { try { unsubscribeGlobalSummaryComprehensive(); } catch(_){} unsubscribeGlobalSummaryComprehensive = null; }
 }
 
 // Apply a temporary filter to main watchlist showing only shares that match the last summary counts
@@ -8088,14 +8359,15 @@ function recomputeTriggeredAlerts() {
     const lpEntries = Object.entries(livePrices || {});
     const byCode = new Map();
     (allSharesData||[]).forEach(s => { if (s && s.shareName) byCode.set(s.shareName.toUpperCase(), s); });
-    lpEntries.forEach(([code, lp]) => {
-        if (!lp || !lp.targetHit) return; // only shares currently at target
-        const share = byCode.get(code);
-        if (!share) return;
-        const enabledState = alertsEnabledMap.has(share.id) ? alertsEnabledMap.get(share.id) : true;
-        const clone = { ...share };
-        if (enabledState) enabled.push(clone); else muted.push(clone);
-    });
+    
+            lpEntries.forEach(([code, lp]) => {
+            if (!lp || !lp.targetHit) return; // only shares currently at target
+            const share = byCode.get(code);
+            if (!share) return;
+            const enabledState = alertsEnabledMap.has(share.id) ? alertsEnabledMap.get(share.id) : true;
+            const clone = { ...share };
+            if (enabledState) enabled.push(clone); else muted.push(clone);
+        });
     const newEnabled = dedupeSharesById(enabled);
     const newMuted = dedupeSharesById(muted);
     // Build signatures to detect no-op updates
@@ -8125,12 +8397,137 @@ function recomputeTriggeredAlerts() {
     }
 }
 
-// === Global Price Alerts ===
+// === Global Price Alerts (Original approach - uses existing data only) ===
+
+// Original approach: Only uses existing data (livePrices + globalExternalPriceRows)
+// No new API calls to Google Apps Script - quota safe!
+
+// Helper function to evaluate all ASX shares
+// Removed evaluateAllAsxShares function - using original quota-safe approach instead
+// Removed evaluateAllAsxShares function - using original quota-safe approach instead
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function evaluateGlobalPriceAlerts() {
     if (!currentUserId || !db || !firestore) return;
     const hasIncrease = (globalPercentIncrease && globalPercentIncrease > 0) || (globalDollarIncrease && globalDollarIncrease > 0);
     const hasDecrease = (globalPercentDecrease && globalPercentDecrease > 0) || (globalDollarDecrease && globalDollarDecrease > 0);
     if (!hasIncrease && !hasDecrease) return;
+
+    console.log('[GlobalAlerts] Starting evaluation with thresholds:', {
+        globalPercentIncrease,
+        globalDollarIncrease,
+        globalPercentDecrease,
+        globalDollarDecrease,
+        globalMinimumPrice,
+        hasIncrease,
+        hasDecrease
+    });
     const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
     let increaseCount = 0; let decreaseCount = 0; let dominantThreshold = null; let dominantType = null;
     const nonPortfolioCodes = new Set();
@@ -8147,16 +8544,24 @@ function evaluateGlobalPriceAlerts() {
         const absChange = Math.abs(change);
         const pct = prev !== 0 ? (absChange / prev) * 100 : 0;
         let triggered = false; let type = null; let thresholdHit = null;
+
+        console.log(`[GlobalAlerts] Evaluating ${code}: live=${live}, prev=${prev}, change=${change}, absChange=${absChange}, pct=${pct.toFixed(2)}%`);
         if (change > 0) {
             // OR logic: trigger if EITHER percent OR dollar increase threshold satisfied (first satisfied determines threshold label)
             if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { triggered = true; type='increase'; thresholdHit = globalPercentIncrease + '%'; }
             else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { triggered = true; type='increase'; thresholdHit = '$' + Number(globalDollarIncrease).toFixed(2); }
-            if (triggered) increaseCount++;
+            if (triggered) {
+                increaseCount++;
+                console.log(`[GlobalAlerts] INCREASE TRIGGERED for ${code}: ${thresholdHit}`);
+            }
         } else { // decrease
             // OR logic: trigger if EITHER percent OR dollar decrease threshold satisfied
             if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) { triggered = true; type='decrease'; thresholdHit = globalPercentDecrease + '%'; }
             else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { triggered = true; type='decrease'; thresholdHit = '$' + Number(globalDollarDecrease).toFixed(2); }
-            if (triggered) decreaseCount++;
+            if (triggered) {
+                decreaseCount++;
+                console.log(`[GlobalAlerts] DECREASE TRIGGERED for ${code}: ${thresholdHit}`);
+            }
         }
         if (triggered) {
             if (!dominantThreshold) { dominantThreshold = thresholdHit; dominantType = type; }
@@ -8172,6 +8577,7 @@ function evaluateGlobalPriceAlerts() {
     // Evaluate external (non-portfolio) collected rows from last fetch
     (globalExternalPriceRows||[]).forEach(r => { if (r && r.code && !userCodes.has(r.code)) evaluateMovement(r.code, r.live, r.prevClose); });
     const total = increaseCount + decreaseCount;
+    console.log(`[GlobalAlerts] Evaluation complete: total=${total}, increase=${increaseCount}, decrease=${decreaseCount}, portfolio=${portfolioCount}, nonPortfolio=${nonPortfolioCodes.size}`);
     if (total > 0) {
         const docId = 'GA_SUMMARY';
         const alertDocRef = firestore.doc(alertsCol, docId);
@@ -8199,9 +8605,17 @@ function evaluateGlobalPriceAlerts() {
             updatedAt: firestore.serverTimestamp(),
             createdAt: firestore.serverTimestamp()
         };
+        console.log('[GlobalAlerts] Writing GA_SUMMARY to Firestore:', payload);
+        console.log('[GlobalAlerts] nonPortfolioCodes array:', Array.from(nonPortfolioCodes));
         firestore.setDoc(alertDocRef, payload, { merge: true })
-            .then(()=> { logDebug('Global Alerts: Summary upserted. Total='+ total + ' portfolio=' + portfolioCount + ' discover=' + nonPortfolioCodes.size + ' inc=' + increaseCount + ' dec=' + decreaseCount + ' threshold=' + dominantThreshold); })
-            .catch(e=> console.error('Global Alerts: summary upsert failed', e));
+            .then(()=> {
+                console.log('[GlobalAlerts] SUCCESS: Summary upserted. Total='+ total + ' portfolio=' + portfolioCount + ' discover=' + nonPortfolioCodes.size + ' inc=' + increaseCount + ' dec=' + decreaseCount + ' threshold=' + dominantThreshold);
+                logDebug('Global Alerts: Summary upserted. Total='+ total + ' portfolio=' + portfolioCount + ' discover=' + nonPortfolioCodes.size + ' inc=' + increaseCount + ' dec=' + decreaseCount + ' threshold=' + dominantThreshold);
+            })
+            .catch(e=> {
+                console.error('[GlobalAlerts] ERROR: summary upsert failed', e);
+                console.error('Global Alerts: summary upsert failed', e);
+            });
     }
 }
 
@@ -8268,6 +8682,657 @@ function applyLoadedGlobalAlertSettings(settings) {
     if (globalMinimumPriceInput) globalMinimumPriceInput.value = globalMinimumPrice ?? '';
         updateGlobalAlertsSettingsSummary();
     } catch(e){ console.warn('Global Alerts: apply directional settings failed', e); }
+}
+
+// Test function to verify global alert logic
+function testGlobalAlertLogic() {
+    console.log('[TEST] Testing global alert evaluation logic...');
+
+    // Test case 1: 20% increase with 15% threshold
+    const testCases = [
+        { code: 'TEST1', live: 12, prev: 10, expectedTrigger: true, description: '20% increase vs 15% threshold' },
+        { code: 'TEST2', live: 8, prev: 10, expectedTrigger: true, description: '20% decrease vs 15% threshold' },
+        { code: 'TEST3', live: 11, prev: 10, expectedTrigger: false, description: '10% increase vs 15% threshold' },
+    ];
+
+    // Set test thresholds
+    const origPercentIncrease = globalPercentIncrease;
+    const origPercentDecrease = globalPercentDecrease;
+    const origDollarIncrease = globalDollarIncrease;
+    const origDollarDecrease = globalDollarDecrease;
+
+    globalPercentIncrease = 15;
+    globalPercentDecrease = 15;
+    globalDollarIncrease = null;
+    globalDollarDecrease = null;
+
+    testCases.forEach(testCase => {
+        const change = testCase.live - testCase.prev;
+        const absChange = Math.abs(change);
+        const pct = testCase.prev !== 0 ? (absChange / testCase.prev) * 100 : 0;
+
+        let triggered = false;
+        let type = null;
+        let thresholdHit = null;
+
+        if (change > 0) {
+            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) {
+                triggered = true;
+                type = 'increase';
+                thresholdHit = globalPercentIncrease + '%';
+            }
+        } else {
+            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) {
+                triggered = true;
+                type = 'decrease';
+                thresholdHit = globalPercentDecrease + '%';
+            }
+        }
+
+        console.log(`[TEST] ${testCase.description}: ${testCase.code} ${testCase.live}->${testCase.prev} (${pct.toFixed(1)}%) -> ${triggered ? 'TRIGGERED' : 'NOT TRIGGERED'} (expected: ${testCase.expectedTrigger ? 'TRIGGERED' : 'NOT TRIGGERED'})`);
+    });
+
+    // Restore original values
+    globalPercentIncrease = origPercentIncrease;
+    globalPercentDecrease = origPercentDecrease;
+    globalDollarIncrease = origDollarIncrease;
+    globalDollarDecrease = origDollarDecrease;
+
+    console.log('[TEST] Test completed');
+}
+
+// Test function to manually evaluate global alerts with test data
+function testGlobalAlertEvaluation() {
+    console.log('[TEST] Testing global alert evaluation with sample data...');
+
+    // Set test thresholds
+    const origPercentIncrease = globalPercentIncrease;
+    const origPercentDecrease = globalPercentDecrease;
+    globalPercentIncrease = 5; // 5% increase threshold
+    globalPercentDecrease = 5; // 5% decrease threshold
+
+    // Mock some test data
+    const testLivePrices = {
+        'CBA': { live: 120, prevClose: 100 }, // 20% increase - should trigger
+        'ANZ': { live: 25, prevClose: 30 },   // 16.67% decrease - should trigger
+        'NAB': { live: 35, prevClose: 34 },   // 2.94% increase - should NOT trigger
+        'WBC': { live: 22, prevClose: 22 },   // No change - should NOT trigger
+    };
+
+    const testExternalRows = [
+        { code: 'RIO', live: 110, prevClose: 100 }, // 10% increase - should trigger
+        { code: 'BHP', live: 40, prevClose: 45 },   // 11.11% decrease - should trigger
+    ];
+
+    // Mock user codes (portfolio)
+    const mockUserCodes = new Set(['CBA', 'ANZ']);
+
+    console.log('[TEST] Test thresholds:', { globalPercentIncrease, globalPercentDecrease });
+    console.log('[TEST] Test livePrices:', testLivePrices);
+    console.log('[TEST] Test externalRows:', testExternalRows);
+
+    let increaseCount = 0;
+    let decreaseCount = 0;
+
+    function evaluateMovement(code, live, prev) {
+        if (live == null || prev == null) return;
+        const change = live - prev;
+        if (change === 0) return;
+        const absChange = Math.abs(change);
+        const pct = prev !== 0 ? (absChange / prev) * 100 : 0;
+        let triggered = false;
+        let type = null;
+        let thresholdHit = null;
+
+        if (change > 0) {
+            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) {
+                triggered = true;
+                type = 'increase';
+                thresholdHit = globalPercentIncrease + '%';
+            }
+        } else {
+            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) {
+                triggered = true;
+                type = 'decrease';
+                thresholdHit = globalPercentDecrease + '%';
+            }
+        }
+
+        if (triggered) {
+            if (change > 0) increaseCount++;
+            else decreaseCount++;
+            console.log(`[TEST] ALERT TRIGGERED: ${code} ${live} vs ${prev} (${pct.toFixed(2)}%) - ${thresholdHit} ${type}`);
+        } else {
+            console.log(`[TEST] No alert: ${code} ${live} vs ${prev} (${pct.toFixed(2)}%)`);
+        }
+    }
+
+    // Test user-owned codes
+    Object.entries(testLivePrices).forEach(([code, lp]) => {
+        evaluateMovement(code, lp.live, lp.prevClose);
+    });
+
+    // Test external codes (excluding user-owned)
+    testExternalRows.forEach(r => {
+        if (!mockUserCodes.has(r.code)) {
+            evaluateMovement(r.code, r.live, r.prevClose);
+        }
+    });
+
+    console.log(`[TEST] Final counts: increase=${increaseCount}, decrease=${decreaseCount}, total=${increaseCount + decreaseCount}`);
+
+    // Restore original values
+    globalPercentIncrease = origPercentIncrease;
+    globalPercentDecrease = origPercentDecrease;
+
+    console.log('[TEST] Evaluation test completed');
+}
+
+// Debug function to check current global alert state
+function debugGlobalAlerts() {
+    console.log('[DEBUG] === GLOBAL ALERTS DEBUG ===');
+    console.log('[DEBUG] Current thresholds:', {
+        globalPercentIncrease,
+        globalDollarIncrease,
+        globalPercentDecrease,
+        globalDollarDecrease,
+        globalMinimumPrice
+    });
+    console.log('[DEBUG] Thresholds active?', isDirectionalThresholdsActive());
+    console.log('[DEBUG] Current user:', currentUserId ? 'Logged in' : 'Not logged in');
+    console.log('[DEBUG] Current app:', currentAppId || 'Not set');
+    console.log('[DEBUG] Firestore available?', !!(db && firestore));
+    console.log('[DEBUG] Global alert summary:', globalAlertSummary);
+
+    // Check if global alert summary has the expected dollar thresholds
+    if (globalAlertSummary) {
+        console.log('[DEBUG] GA_SUMMARY dollar thresholds:', {
+            globalDollarIncrease: globalAlertSummary.globalDollarIncrease,
+            globalDollarDecrease: globalAlertSummary.globalDollarDecrease,
+            decreaseCount: globalAlertSummary.decreaseCount,
+            increaseCount: globalAlertSummary.increaseCount
+        });
+    }
+
+    console.log('[DEBUG] Live prices count:', livePrices ? Object.keys(livePrices).length : 0);
+    console.log('[DEBUG] External price rows count:', Array.isArray(globalExternalPriceRows) ? globalExternalPriceRows.length : 0);
+    console.log('[DEBUG] Shares data count:', Array.isArray(allSharesData) ? allSharesData.length : 0);
+    console.log('[DEBUG] Shares at target price count:', Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0);
+    console.log('[DEBUG] === END DEBUG ===');
+}
+
+// Test function to force evaluation and show results
+function testGlobalAlertsNow() {
+    console.log('[TEST] Force evaluating global alerts now...');
+
+    // First check current state
+    debugGlobalAlerts();
+
+    // Force evaluation
+    console.log('[TEST] Calling evaluateGlobalPriceAlerts...');
+    try {
+        evaluateGlobalPriceAlerts();
+    } catch(e) {
+        console.error('[TEST] Error during evaluation:', e);
+    }
+
+    // Show updated state
+    setTimeout(() => {
+        console.log('[TEST] After evaluation:');
+        debugGlobalAlerts();
+
+        // Force modal render to see if global summary appears
+        if (typeof showTargetHitDetailsModal === 'function') {
+            console.log('[TEST] Forcing modal render...');
+            showTargetHitDetailsModal();
+        }
+    }, 1000);
+}
+
+// Test function to specifically test the discover modal
+function testDiscoverModal() {
+    console.log('[TEST] Testing discover modal...');
+
+    // First refresh the movers data
+    console.log('[TEST] Refreshing movers data...');
+    applyGlobalSummaryFilter({ silent: true, computeOnly: true });
+
+    // Wait a bit for the snapshot to be created, then use global wrapper
+    setTimeout(() => {
+        console.log('[TEST] Opening discover modal via global wrapper...');
+        if (typeof window.openGlobalDiscoverModal === 'function') {
+            window.openGlobalDiscoverModal(globalAlertSummary);
+        } else {
+            console.log('[TEST] Global wrapper not available');
+        }
+    }, 200);
+}
+
+// Global wrapper for opening discover modal (for testing)
+if (typeof window !== 'undefined') {
+    window.openGlobalDiscoverModal = function(summaryData) {
+        console.log('[GLOBAL] Opening discover modal with summary:', summaryData);
+        // Call showTargetHitDetailsModal which contains openDiscoverModal
+        if (typeof showTargetHitDetailsModal === 'function') {
+            showTargetHitDetailsModal();
+            // After modal opens, trigger the discover tab
+            setTimeout(() => {
+                const discoverBtn = document.querySelector('[data-action="discover"]');
+                if (discoverBtn && !discoverBtn.disabled) {
+                    discoverBtn.click();
+                } else {
+                    console.log('[GLOBAL] Discover button not found or disabled');
+                }
+            }, 200);
+        } else {
+            console.error('[GLOBAL] showTargetHitDetailsModal not available');
+        }
+    };
+
+    // Function to load ALL ASX codes from CSV
+    window.loadAllAsxCodes = async function() {
+        try {
+            console.log('[GLOBAL] Loading ALL ASX codes from CSV...');
+            const response = await fetch('./asx_codes.csv');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const csvText = await response.text();
+
+            const lines = csvText.split('\n').filter(line => line.trim() !== '');
+            if (lines.length === 0) {
+                console.warn('[GLOBAL] ASX codes CSV is empty.');
+                return [];
+            }
+
+            // Clean the header line
+            const headerLine = lines[0].replace(/^\uFEFF/, '').replace(/^\u00EF\u00BB\u00BF/, '');
+            const headers = headerLine.split(',').map(header => header.trim().replace(/"/g, ''));
+
+            const asxCodeIndex = headers.findIndex(h => h.toLowerCase().includes('asx code') || h.toLowerCase() === 'asx code');
+            const companyNameIndex = headers.findIndex(h => h.toLowerCase().includes('company name') || h.toLowerCase() === 'company name');
+
+            const allAsxCodes = [];
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const values = line.split(',');
+                if (values.length > asxCodeIndex && values[asxCodeIndex]) {
+                    const code = values[asxCodeIndex].trim().replace(/"/g, '');
+                    const name = values[companyNameIndex] ? values[companyNameIndex].trim().replace(/"/g, '') : '';
+                    if (code) {
+                        allAsxCodes.push({ code: code.toUpperCase(), name: name });
+                    }
+                }
+            }
+
+            console.log(`[GLOBAL] Loaded ${allAsxCodes.length} ASX codes`);
+            return allAsxCodes;
+        } catch (error) {
+            console.error('[GLOBAL] Error loading ASX codes:', error);
+            return [];
+        }
+    };
+
+    // Function to fetch prices for ALL ASX codes (for global alerts)
+    window.fetchAllAsxPrices = async function(allAsxCodes) {
+        try {
+            console.log('[GLOBAL] Fetching prices for ALL ASX codes...');
+
+            const defaultAppsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
+            const baseUrl = (typeof window.GOOGLE_APPS_SCRIPT_URL !== 'undefined' && window.GOOGLE_APPS_SCRIPT_URL)
+                ? window.GOOGLE_APPS_SCRIPT_URL
+                : ((typeof window.appsScriptUrl !== 'undefined' && window.appsScriptUrl)
+                    ? window.appsScriptUrl
+                    : defaultAppsScriptUrl);
+
+            if (!baseUrl) throw new Error('Apps Script URL not defined');
+
+            // Request ALL ASX codes (not just portfolio ones)
+            const allCodes = allAsxCodes.map(item => item.code);
+            const batchSize = 100; // Process in batches to avoid URL length limits
+            const allPriceData = {};
+
+            for (let i = 0; i < allCodes.length; i += batchSize) {
+                const batch = allCodes.slice(i, i + batchSize);
+                console.log(`[GLOBAL] Fetching batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allCodes.length/batchSize)} (${batch.length} codes)...`);
+
+                const qs = new URLSearchParams();
+                qs.set('_ts', Date.now().toString());
+                qs.set('allAsxCodes', 'true'); // Special flag to indicate we want ALL codes
+
+                // Add the codes to the query string
+                batch.forEach(code => {
+                    qs.append('codes', code);
+                });
+
+                const url = qs.toString() ? (baseUrl + (baseUrl.includes('?') ? '&' : '?') + qs.toString()) : baseUrl;
+
+                try {
+                    const response = await fetch(url, { cache: 'no-store' });
+                    if (!response.ok) {
+                        console.warn(`[GLOBAL] Batch failed with status ${response.status}, continuing...`);
+                        continue;
+                    }
+
+                    const data = await response.json();
+                    if (Array.isArray(data)) {
+                        data.forEach(item => {
+                            const codeRaw = item.ASXCode || item.ASX_Code || item['ASX Code'] || item.Code || item.code;
+                            if (codeRaw) {
+                                const code = String(codeRaw).toUpperCase().trim();
+                                const liveParsed = parseFloat(item.LivePrice || item['Live Price'] || item.live || item.price || 0);
+                                const prevParsed = parseFloat(item.PrevClose || item['Prev Close'] || item.previous || item.prev || item.prevClose || 0);
+
+                                if (liveParsed && prevParsed && !isNaN(liveParsed) && !isNaN(prevParsed)) {
+                                    allPriceData[code] = {
+                                        live: liveParsed,
+                                        prevClose: prevParsed,
+                                        companyName: item.CompanyName || item['Company Name'] || item.Name || item.name || ''
+                                    };
+                                }
+                            }
+                        });
+                    }
+                } catch (batchError) {
+                    console.warn('[GLOBAL] Batch error:', batchError);
+                    continue;
+                }
+
+                // Small delay between batches to avoid overwhelming the service
+                if (i + batchSize < allCodes.length) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+            }
+
+            console.log(`[GLOBAL] Fetched prices for ${Object.keys(allPriceData).length} ASX shares`);
+            return allPriceData;
+        } catch (error) {
+            console.error('[GLOBAL] Error fetching all ASX prices:', error);
+            return {};
+        }
+    };
+}
+
+// Make debug and test functions available globally
+if (typeof window !== 'undefined') {
+    window.testGlobalAlertLogic = testGlobalAlertLogic;
+    window.testGlobalAlertEvaluation = testGlobalAlertEvaluation;
+    window.debugGlobalAlerts = debugGlobalAlerts;
+    window.testGlobalAlertsNow = testGlobalAlertsNow;
+    window.testDiscoverModal = testDiscoverModal;
+
+    // Debug function to check 52-week low alerts state
+    window.debug52WeekLowAlerts = function() {
+        console.log('[DEBUG] 52-week low alerts state:');
+        console.log('- Total alerts:', window.sharesAt52WeekLow ? window.sharesAt52WeekLow.length : 0);
+        console.log('- Muted map:', window.__low52MutedMap);
+
+        if (window.sharesAt52WeekLow) {
+            window.sharesAt52WeekLow.forEach((alert, idx) => {
+                const mutedStatus = window.__low52MutedMap && window.__low52MutedMap[alert.code + '_low'];
+                console.log(`${idx + 1}. ${alert.code}: ${alert.name} - Live: $${alert.live?.toFixed(2)} <= Low52: $${alert.low52?.toFixed(2)} (muted: ${alert.muted}, mapMuted: ${mutedStatus})`);
+            });
+        }
+
+        const low52Count = Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.filter(item => !item.muted).length : 0;
+        console.log('- Unmuted count:', low52Count);
+        console.log('- Should display in modal:', window.sharesAt52WeekLow.filter(item => !item.muted).map(item => item.code).join(', '));
+    };
+
+    // Test function for 52-week low alerts
+    window.test52WeekLowAlerts = async function() {
+        console.log('[TEST] Testing 52-week low alerts...');
+        window.__isTesting52WeekLowAlerts = true; // Set flag
+
+        if (typeof window.fetchLivePrices === 'function') {
+            await window.fetchLivePrices({ cacheBust: true });
+        }
+
+        // Reset the triggered set to allow re-triggering
+        window.triggered52WeekLowSet = new Set();
+
+        // Clear existing alerts
+        window.sharesAt52WeekLow = [];
+
+        // Clear muted status for test alerts
+        if (window.__low52MutedMap) {
+            ['FBR', 'BOT', 'GEM', 'CBA'].forEach(code => {
+                delete window.__low52MutedMap[code + '_low'];
+            });
+            try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
+        }
+
+        // Force re-evaluation of all shares for 52-week lows
+        const sharesLocal = window.allSharesData || [];
+        const livePricesLocal = window.livePrices || {};
+
+        console.log(`[TEST] Checking ${sharesLocal.length} shares for 52-week low conditions`);
+        console.log(`[TEST] Live prices available for ${Object.keys(livePricesLocal).length} codes`);
+
+        sharesLocal.forEach(share => {
+            const code = (share.shareName || '').toUpperCase();
+            const lpObj = livePricesLocal[code];
+            
+            if (!lpObj) {
+                console.log(`[TEST] No live price data for ${code}`);
+                return;
+            }
+            
+            if (lpObj.live == null || isNaN(lpObj.live)) {
+                console.log(`[TEST] Invalid live price for ${code}: ${lpObj.live}`);
+                return;
+            }
+            
+            if (lpObj.Low52 == null || isNaN(lpObj.Low52)) {
+                console.log(`[TEST] Invalid Low52 for ${code}: ${lpObj.Low52}`);
+                return;
+            }
+
+            console.log(`[TEST] Checking ${code}: live=$${lpObj.live.toFixed(2)}, Low52=$${lpObj.Low52.toFixed(2)}`);
+
+            // For test alerts, don't check muted status - force them to be unmuted for testing
+            const isMuted = false; // Force unmuted for test alerts
+
+            // Force trigger for testing - simulate price at or below 52-week low
+            if (lpObj.live <= lpObj.Low52 + 0.01) { // Add small buffer for floating point
+                let displayName = code;
+                const allAsxCodesLocal = window.allAsxCodes || [];
+                if (Array.isArray(allAsxCodesLocal)) {
+                    const match = allAsxCodesLocal.find(c => c.code === code);
+                    if (match && match.name) displayName = match.name;
+                }
+                if (!displayName && share.companyName) displayName = share.companyName;
+
+                window.sharesAt52WeekLow.push({
+                    code,
+                    name: displayName,
+                    live: lpObj.live,
+                    low52: lpObj.Low52,
+                    type: 'low',
+                    muted: isMuted,
+                    testTriggered: true
+                });
+
+                window.triggered52WeekLowSet.add(code);
+                console.log(`[TEST] 52-week low triggered for ${code}: Live $${lpObj.live.toFixed(2)} <= Low52 $${lpObj.Low52.toFixed(2)}`);
+            } else {
+                console.log(`[TEST] ${code} does not meet 52-week low condition: $${lpObj.live.toFixed(2)} > $${(lpObj.Low52 + 0.01).toFixed(2)}`);
+            }
+        });
+
+        // Test card removed - 52-week low detection is now working properly
+
+        // Update UI
+        if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner();
+        if (typeof window.recomputeTriggeredAlerts === 'function') window.recomputeTriggeredAlerts();
+
+                        console.log(`[TEST] 52-week low test complete. Found ${window.sharesAt52WeekLow.length} alerts (including test card)`);
+
+        // Debug: Log all alerts with their properties
+        console.log('[TEST] Current alerts in sharesAt52WeekLow:');
+        window.sharesAt52WeekLow.forEach((alert, idx) => {
+            const livePriceData = window.livePrices && window.livePrices[alert.code.toUpperCase()];
+            console.log(`${idx + 1}. ${alert.code}: ${alert.name} - muted: ${alert.muted}, isTestCard: ${alert.isTestCard}, testTriggered: ${alert.testTriggered}, hasLivePrice: ${!!livePriceData}`);
+        });
+
+        // Add a watcher to detect when the array gets modified
+        const originalArray = [...window.sharesAt52WeekLow];
+        console.log('[TEST] Starting array watcher with original array:', originalArray.map(a => a.code));
+        
+        const checkArray = () => {
+            if (window.sharesAt52WeekLow.length !== originalArray.length) {
+                console.log(`[TEST] ARRAY MODIFIED! Was ${originalArray.length}, now ${window.sharesAt52WeekLow.length}`);
+                console.log('[TEST] Original array:', originalArray.map(a => a.code));
+                console.log('[TEST] Current array:', window.sharesAt52WeekLow.map(a => a.code));
+                console.log('[TEST] Stack trace:', new Error().stack);
+            }
+        };
+        
+        // Check every 50ms for 5 seconds
+        const interval = setInterval(checkArray, 50);
+        setTimeout(() => clearInterval(interval), 5000);
+
+                    // Force open the notifications modal to show the alerts
+            if (typeof window.showTargetHitDetailsModal === 'function') {
+                console.log('[TEST] Opening notifications modal to display 52-week low alerts...');
+                console.log('[TEST] About to call showTargetHitDetailsModal with data:', {
+                    sharesAt52WeekLow: window.sharesAt52WeekLow,
+                    length: window.sharesAt52WeekLow ? window.sharesAt52WeekLow.length : 0
+                });
+
+                // Add a small delay to ensure the array doesn't get cleared
+                setTimeout(() => {
+                    console.log('[TEST] About to call modal - sharesAt52WeekLow length:', window.sharesAt52WeekLow ? window.sharesAt52WeekLow.length : 0);
+
+                    // Create a backup of the array before calling modal
+                    const backupArray = [...window.sharesAt52WeekLow];
+                    console.log('[TEST] Created backup array with length:', backupArray.length);
+
+                    // Call the modal
+                    window.showTargetHitDetailsModal({ explicit: true });
+
+                    // Update the notification banner AFTER the modal is opened
+                    setTimeout(() => {
+                        try { 
+                            console.log('[TEST] Updating notification banner - sharesAt52WeekLow length:', window.sharesAt52WeekLow ? window.sharesAt52WeekLow.length : 0);
+                            updateTargetHitBanner(); 
+                            console.log('[TEST] Updated notification banner with new count');
+                        } catch(e) { 
+                            console.warn('[TEST] Failed to update notification banner:', e); 
+                        }
+                    }, 200);
+
+                    // Check if array was modified after modal call
+                    setTimeout(() => {
+                        if (window.sharesAt52WeekLow.length !== backupArray.length) {
+                            console.log('[TEST] Array was modified after modal call! Restoring backup...');
+                            console.log('[TEST] Was:', backupArray.length, 'Now:', window.sharesAt52WeekLow.length);
+                            window.sharesAt52WeekLow = [...backupArray];
+                            console.log('[TEST] Restored array, now calling modal again...');
+                            window.showTargetHitDetailsModal({ explicit: true });
+                        }
+                    }, 50);
+                }, 100);
+
+        // Reset flag after a short delay to ensure modal has time to render
+        setTimeout(() => {
+            window.__isTesting52WeekLowAlerts = false;
+            console.log('[TEST] Testing flag reset after modal render');
+        }, 1000);
+        } else {
+            console.error('[TEST] showTargetHitDetailsModal function not available!');
+            window.__isTesting52WeekLowAlerts = false; // Reset flag if modal not available
+        }
+    };
+
+    // Function to remove the CBA test card after testing
+    window.remove52WeekLowTestCard = function() {
+        console.log('[CLEANUP] Removing 52-week low test card...');
+
+        // Remove from sharesAt52WeekLow array
+        if (window.sharesAt52WeekLow) {
+            const originalLength = window.sharesAt52WeekLow.length;
+            window.sharesAt52WeekLow = window.sharesAt52WeekLow.filter(item => !(item.code === 'CBA' && item.isTestCard));
+            console.log(`[CLEANUP] Removed ${originalLength - window.sharesAt52WeekLow.length} test card(s)`);
+        }
+
+        // Remove from muted map
+        if (window.__low52MutedMap && window.__low52MutedMap['CBA_low']) {
+            delete window.__low52MutedMap['CBA_low'];
+            try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
+        }
+
+        // Update UI
+        if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner();
+        if (typeof window.recomputeTriggeredAlerts === 'function') window.recomputeTriggeredAlerts();
+
+        console.log('[CLEANUP] 52-week low test card removal complete');
+    };
+
+    // Target Hit Notifications Test Functions
+    window.testTargetHitNotifications = function() {
+        console.log('[TEST] Testing target hit notifications...');
+        
+        // Check if we have shares with target prices
+        const sharesWithTargets = allSharesData.filter(share => 
+            share && share.targetPrice && !isNaN(parseFloat(share.targetPrice))
+        );
+        
+        console.log(`[TEST] Found ${sharesWithTargets.length} shares with target prices:`);
+        sharesWithTargets.forEach(share => {
+            console.log(`[TEST] - ${share.shareName}: Target $${share.targetPrice} (${share.targetDirection || 'below'})`);
+        });
+        
+        // Check live prices for these shares
+        const livePrices = getLivePrices();
+        console.log(`[TEST] Live prices available for ${Object.keys(livePrices).length} shares`);
+        
+        // Check which shares are currently at target
+        const sharesAtTarget = [];
+        sharesWithTargets.forEach(share => {
+            const code = share.shareName.toUpperCase();
+            const liveData = livePrices[code];
+            if (liveData && liveData.targetHit) {
+                sharesAtTarget.push(share);
+                console.log(`[TEST] ✅ ${code}: Live $${liveData.live} - TARGET HIT!`);
+            } else if (liveData) {
+                console.log(`[TEST] ❌ ${code}: Live $${liveData.live} - Not at target`);
+            } else {
+                console.log(`[TEST] ⚠️ ${code}: No live price data`);
+            }
+        });
+        
+        console.log(`[TEST] Target hit test complete. Found ${sharesAtTarget.length} shares at target`);
+        
+        // Force recompute and show modal
+        try {
+            if (typeof window.recomputeTriggeredAlerts === 'function') {
+                window.recomputeTriggeredAlerts();
+                console.log('[TEST] Called recomputeTriggeredAlerts');
+            } else {
+                console.error('[TEST] recomputeTriggeredAlerts function not found!');
+            }
+            
+            if (typeof window.showTargetHitDetailsModal === 'function') {
+                window.showTargetHitDetailsModal({ explicit: true });
+                console.log('[TEST] Opened target hit details modal');
+            }
+        } catch(e) {
+            console.error('[TEST] Error in target hit test:', e);
+        }
+    };
+
+    window.debugTargetHitState = function() {
+        console.log('[DEBUG] Target Hit State Debug:');
+        console.log('[DEBUG] sharesAtTargetPrice:', sharesAtTargetPrice);
+        console.log('[DEBUG] sharesAtTargetPriceMuted:', sharesAtTargetPriceMuted);
+        console.log('[DEBUG] livePrices keys:', Object.keys(livePrices || {}));
+        console.log('[DEBUG] livePrices with targetHit:', Object.entries(livePrices || {}).filter(([k,v]) => v && v.targetHit));
+        console.log('[DEBUG] alertsEnabledMap:', alertsEnabledMap);
+        console.log('[DEBUG] allSharesData with targets:', allSharesData.filter(s => s && s.targetPrice));
+    };
 }
 
 // Helper: are any directional thresholds currently active?
@@ -8352,6 +9417,19 @@ function initGlobalAlertsUI(force) {
             showCustomAlert('Global alert settings saved', 1200);
             try { hideModal(globalAlertsModal); } catch(e){}
             updateGlobalAlertsSettingsSummary();
+            
+            // Clear cached results when thresholds change to force fresh evaluation
+            try {
+                if (db && currentUserId && firestore) {
+                    const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
+                    const summaryRef = firestore.doc(alertsCol, 'GA_SUMMARY');
+                    const comprehensiveRef = firestore.doc(alertsCol, 'GA_SUMMARY_COMPREHENSIVE');
+                    await firestore.deleteDoc(summaryRef).catch(()=>{});
+                    await firestore.deleteDoc(comprehensiveRef).catch(()=>{});
+                    globalAlertSummary = null; // local cache clear
+                    console.log('[GlobalAlerts] Cleared cached results due to threshold changes');
+                }
+            } catch(delErr) { console.warn('Global Alerts: failed to clear cached results after threshold change', delErr); }
             // If all thresholds cleared, also clear summary doc counts by re-evaluating (it will early return)
             // Auto-refresh evaluation after saving settings so summary & counts reflect immediately
             try {
@@ -8367,15 +9445,18 @@ function initGlobalAlertsUI(force) {
             const clearedAll = !globalPercentIncrease && !globalDollarIncrease && !globalPercentDecrease && !globalDollarDecrease;
             if (clearedAll) {
                 try { delete window.__lastMoversSnapshot; } catch(_) {}
-                // Proactively delete GA_SUMMARY doc so listener emits null (prevents stale global counts)
+                // Proactively delete GA_SUMMARY docs so listener emits null (prevents stale global counts)
                 try {
                     if (db && currentUserId && firestore) {
                         const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
                         const summaryRef = firestore.doc(alertsCol, 'GA_SUMMARY');
+                        const comprehensiveRef = firestore.doc(alertsCol, 'GA_SUMMARY_COMPREHENSIVE');
                         await firestore.deleteDoc(summaryRef).catch(()=>{});
+                        await firestore.deleteDoc(comprehensiveRef).catch(()=>{});
                         globalAlertSummary = null; // local cache clear
+                        console.log('[GlobalAlerts] Cleared both GA_SUMMARY and GA_SUMMARY_COMPREHENSIVE');
                     }
-                } catch(delErr) { console.warn('Global Alerts: failed to delete GA_SUMMARY after clear', delErr); }
+                } catch(delErr) { console.warn('Global Alerts: failed to delete GA_SUMMARY docs after clear', delErr); }
                 // Hide any open target hit modal if it only contained global summary
                 try {
                     const onlyGlobal = sharesAtTargetPrice.length === 0 && (!sharesAtTargetPriceMuted || !sharesAtTargetPriceMuted.length);
@@ -9563,6 +10644,8 @@ function updateAddHeaderButton() {
 function handleAddShareClick() {
     logDebug('UI: Add Share button clicked (contextual).');
     clearForm();
+    // Reset accordion state - only Core Info section should be open for new shares
+    initShareFormAccordion(true);
     formTitle.textContent = 'Add New Share';
     userManuallyOverrodeDirection = false;
     try {
@@ -9586,6 +10669,8 @@ function handleAddShareClick() {
     if (deleteShareBtn) { deleteShareBtn.classList.add('hidden'); }
     populateShareWatchlistSelect(null, true); // true indicates new share
     showModal(shareFormSection);
+    // Ensure accordion is properly initialized after modal is shown
+    setTimeout(() => initShareFormAccordion(true), 10);
     try { scrollMainToTop(); } catch(_) {}
     shareNameInput.focus();
     // Always show live price snapshot if code is present
@@ -9597,6 +10682,48 @@ function handleAddShareClick() {
     }
     addCommentSection(commentsFormContainer); // Add an initial empty comment section for new shares
     checkFormDirtyState(); // Check dirty state immediately after opening for new share
+
+    // Pre-populate entry price and entry date displays for new shares
+    if (!selectedShareDocId) {
+        console.log('[MODAL INIT] Pre-populating entry data displays for new share');
+
+        // Set current date in entry date display
+        if (autoEntryDateDisplay) {
+            const now = new Date();
+            const dateString = formatDate(now.toISOString());
+            autoEntryDateDisplay.textContent = dateString;
+            autoEntryDateDisplay.classList.remove('ghosted-text');
+            console.log('[MODAL INIT] Set entry date display to:', dateString);
+        }
+
+        // Function to update entry price when live price becomes available
+        const updateEntryPriceDisplay = () => {
+            const currentPriceInput = document.getElementById('currentPrice');
+
+            if (currentPriceInput && currentPriceInput.value && autoReferencePriceDisplay) {
+                const currentPrice = parseFloat(currentPriceInput.value);
+                if (!isNaN(currentPrice) && currentPrice > 0) {
+                    autoReferencePriceDisplay.textContent = formatMoney(currentPrice);
+                    autoReferencePriceDisplay.classList.remove('ghosted-text');
+                    console.log('[MODAL INIT] Auto-populated entry price display to:', formatMoney(currentPrice));
+                }
+            }
+        };
+
+        // Set up a mutation observer to watch for live price changes
+        const currentPriceInput = document.getElementById('currentPrice');
+        if (currentPriceInput) {
+            const observer = new MutationObserver(updateEntryPriceDisplay);
+            observer.observe(currentPriceInput, { attributes: true, attributeFilter: ['value'] });
+
+            // Also update immediately and after a short delay
+            setTimeout(updateEntryPriceDisplay, 100);
+            setTimeout(updateEntryPriceDisplay, 500);
+            setTimeout(updateEntryPriceDisplay, 1000);
+        }
+
+        console.log('[MODAL INIT] Entry data displays populated');
+    }
 }
 
 /**
@@ -9865,7 +10992,7 @@ function exportWatchlistToCSV() {
     csvRows.push(headers.map(escapeCsvValue).join(','));
 
     sharesToExport.forEach(share => {
-        const enteredPriceNum = Number(share.currentPrice);
+        const enteredPriceNum = Number(share.entryPrice || share.currentPrice);
         const dividendAmountNum = Number(share.dividendAmount);
         const frankingCreditsNum = Number(share.frankingCredits);
         const targetPriceNum = Number(share.targetPrice);
@@ -11289,6 +12416,7 @@ if (sortSelect) {
                 logDebug('Save Share: Restored selectedShareDocId from modal dataset: ' + selectedShareDocId);
             }
 
+
             // Call service
             saveShareDataSvc(false);
         });
@@ -12010,7 +13138,17 @@ function showTargetHitDetailsModal(options={}) {
     targetHitSharesList.innerHTML = ''; // Clear previous content
 
     // --- 52 week high/low Section (horizontal, smart UI) ---
+    // Use window.sharesAt52WeekLow to ensure we're looking at the global variable
+    const sharesAt52WeekLow = window.sharesAt52WeekLow;
+    console.log(`[52W-MODAL] Checking 52-week low alerts: ${sharesAt52WeekLow ? sharesAt52WeekLow.length : 0} alerts available`);
+    console.log(`[52W-MODAL] sharesAt52WeekLow type: ${typeof sharesAt52WeekLow}, isArray: ${Array.isArray(sharesAt52WeekLow)}`);
+    console.log(`[52W-MODAL] Testing flag status: __isTesting52WeekLowAlerts = ${window.__isTesting52WeekLowAlerts}`);
+    console.log(`[52W-MODAL] Full sharesAt52WeekLow array:`, sharesAt52WeekLow);
+    console.log(`[52W-MODAL] window.sharesAt52WeekLow:`, window.sharesAt52WeekLow);
+    console.log(`[52W-MODAL] Are they the same?`, sharesAt52WeekLow === window.sharesAt52WeekLow);
     if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
+        console.log(`[52W-MODAL] Creating 52-week low section with ${sharesAt52WeekLow.length} alerts`);
+        console.log(`[52W-MODAL] Alert details:`, sharesAt52WeekLow.map(item => ({ code: item.code, name: item.name, muted: item.muted, isTestCard: item.isTestCard })));
     // Section title styled like global movers, with dynamic arrow icon
     const sectionHeader = document.createElement('div');
     sectionHeader.className = 'low52-section-header';
@@ -12038,16 +13176,22 @@ function showTargetHitDetailsModal(options={}) {
         alertsContainer.className = 'low52-alerts-container';
 
         sharesAt52WeekLow.forEach((item, idx) => {
+            console.log(`[52W-MODAL] Processing alert ${idx + 1}: ${item.code} - muted: ${!!item.muted}, isTestCard: ${item.isTestCard}`);
+            console.log(`[52W-MODAL] Alert ${item.code} full data:`, item);
+
             const card = document.createElement('div');
             const isMuted = !!item.muted;
-            // Apply theme using the helper function for consistency
-            applyLow52AlertTheme(card, item.type);
+            // Apply basic styling for 52-week low alerts
+            card.className = 'low52-alert-card low52-low';
             if (isMuted) {
                 card.classList.add('low52-card-muted');
+                console.log(`[52W-MODAL] Alert ${item.code} is muted, adding muted class`);
             }
 
             let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
             let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : '<span class="low52-price-na">N/A</span>';
+
+            console.log(`[52W-MODAL] Alert ${item.code} - liveVal: ${liveVal}, liveDisplay: ${liveDisplay}`);
 
             card.innerHTML = `
                 <div class="low52-card-row low52-header-row">
@@ -12087,16 +13231,39 @@ function showTargetHitDetailsModal(options={}) {
             };
 
             alertsContainer.appendChild(card);
+            console.log(`[52W-MODAL] Added card for ${item.code} to container`);
+            console.log(`[52W-MODAL] Container now has ${alertsContainer.children.length} cards`);
         });
 
         targetHitSharesList.appendChild(alertsContainer);
+        console.log(`[52W-MODAL] Added alerts container with ${sharesAt52WeekLow.length} alerts to modal`);
     }
 
     // Inject headings + global summary card (Global movers heading ABOVE card)
     // Only show global summary if thresholds still active to avoid displaying stale counts after clear
-    const hasGlobalSummary = !!(isDirectionalThresholdsActive() && globalAlertSummary && globalAlertSummary.totalCount > 0);
+    // Priority: Check for comprehensive scan results first, then fall back to regular scan
+    let data = null;
+    let isComprehensive = false;
+
+    if (isDirectionalThresholdsActive()) {
+        // First check for comprehensive scan results (GA_SUMMARY_COMPREHENSIVE)
+        if (globalAlertSummary && globalAlertSummary.comprehensiveScan === true && globalAlertSummary.totalCount > 0) {
+            data = globalAlertSummary;
+            isComprehensive = true;
+            console.log('[GlobalAlerts] Using COMPREHENSIVE scan results:', data);
+        }
+        // Fall back to regular scan results (GA_SUMMARY)
+        else if (globalAlertSummary && globalAlertSummary.totalCount > 0) {
+            data = globalAlertSummary;
+            isComprehensive = false;
+            console.log('[GlobalAlerts] Using REGULAR scan results:', data);
+        }
+    }
+
+    const hasGlobalSummary = !!data;
+    console.log('[GlobalAlerts] Modal render - hasGlobalSummary:', hasGlobalSummary, 'isComprehensive:', isComprehensive, 'isDirectionalThresholdsActive:', isDirectionalThresholdsActive(), 'globalAlertSummary:', globalAlertSummary);
+
     if (hasGlobalSummary) {
-        const data = globalAlertSummary;
         const total = data.totalCount || 0;
         const inc = data.increaseCount || 0;
         const dec = data.decreaseCount || 0;
@@ -12107,7 +13274,7 @@ function showTargetHitDetailsModal(options={}) {
         const heading = document.createElement('h3');
         heading.className = 'target-hit-section-title global-movers-heading';
         heading.id = 'globalMoversTitle';
-        heading.textContent = 'Global movers';
+        heading.textContent = isComprehensive ? 'Global Movers (All ASX)' : 'Global Movers';
         targetHitSharesList.appendChild(heading);
         const container = document.createElement('div');
         container.classList.add('target-hit-item','global-summary-alert');
@@ -12116,12 +13283,12 @@ function showTargetHitDetailsModal(options={}) {
         container.innerHTML = `
             <div class="global-summary-inner">
                 ${arrowsRow}
-                <div class="global-summary-detail total-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}</div>
+                <div class="global-summary-detail total-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}${isComprehensive && data.totalSharesScanned ? ` (scanned ${data.totalSharesScanned} total)` : ''}</div>
                 <div class="global-summary-detail portfolio-line">${portfolioCount} from your portfolio</div>
                 ${minText?`<div class=\"global-summary-detail ignoring-line\">${minText}</div>`:''}
             </div>
             <div class=\"global-summary-actions\">
-                <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverCount?`Global (${discoverCount})`:'Global'}</button>
+                <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverCount?`Global (${discoverCount})`:'View All'}</button>
                 <button data-action=\"view-portfolio\" ${portfolioCount?'':'disabled'}>${portfolioCount?`Local (${portfolioCount})`:'Local'}</button>
                 <button data-action=\"mute-global\" title=\"${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}\">${enabled ? 'Mute' : 'Unmute'}</button>
             </div>`;
@@ -12131,25 +13298,18 @@ function showTargetHitDetailsModal(options={}) {
                 const btn = e.target.closest('button'); if (!btn) return;
                 const act = btn.getAttribute('data-action');
                 if (act === 'view-portfolio') {
-                    try { applyGlobalSummaryFilter({ silent:true, computeOnly:true }); } catch(e){ console.warn('Global summary filter failed', e);} hideModal(targetHitDetailsModal);
-                    setCurrentSelectedWatchlistIds(['__movers']);
-                    try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
-                    // Sync hidden/native select so subsequent title updates reflect Movers
-                    if (watchlistSelect) {
-                        try { watchlistSelect.value = '__movers'; } catch(_) {}
-                    }
-                    try { setLastSelectedView('__movers'); } catch(_) {}
-                    // Persist to Firestore if helper available (cross-device restore consistency)
-                    try { if (typeof saveLastSelectedWatchlistIds === 'function') saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } catch(_) {}
-                    updateMainTitle('Movers');
-                    // Re-render and enforce virtual view now
-                    try { renderWatchlist(); enforceMoversVirtualView(); } catch(_) {}
-                    // FIX: Update ASX button state after programmatic watchlist change
-                    try { toggleCodeButtonsArrow(); } catch (e) { console.warn('Global summary portfolio view: toggleCodeButtonsArrow failed', e); }
-                    // Safety: re-assert title after potential render-driven updates
-                    setTimeout(()=>{ try { updateMainTitle('Movers'); } catch(_) {} }, 30);
+                    try {
+                        // Show local/portfolio shares that met global criteria
+                        openLocalSharesModal(data);
+                    } catch(e){ console.warn('Local shares modal open failed', e); }
                 } else if (act === 'discover') {
-                    try { openDiscoverModal(data); } catch(e){ console.warn('Discover modal open failed', e); }
+                    try {
+                        // Ensure we have the latest movers data before opening the modal
+                        applyGlobalSummaryFilter({ silent: true, computeOnly: true });
+                        setTimeout(() => {
+                            openDiscoverModal(data);
+                        }, 100); // Small delay to allow snapshot to be created
+                    } catch(e){ console.warn('Discover modal open failed', e); }
                 } else if (act === 'mute-global') {
                     e.preventDefault();
                     toggleGlobalSummaryEnabled();
@@ -12159,20 +13319,47 @@ function showTargetHitDetailsModal(options={}) {
         targetHitSharesList.appendChild(container);
     }
 
-    function openDiscoverModal(summaryData) {
+    async function openDiscoverModal(summaryData) {
         let modal = document.getElementById('discoverGlobalModal');
         if (!modal) { console.warn('Discover modal element missing.'); return; }
+        
+        // Fetch live prices for global shares if not already available
+        console.log('[DiscoverModal] Checking if we need to fetch live prices for global shares...');
+        const globalCodes = summaryData?.nonPortfolioCodes || [];
+        const missingCodes = globalCodes.filter(code => !livePrices[code]);
+        
+        if (missingCodes.length > 0) {
+            console.log(`[DiscoverModal] Fetching live prices for ${missingCodes.length} global shares:`, missingCodes.slice(0, 10));
+            try {
+                // Temporarily add global codes to the needed set for fetching
+                const originalNeeded = window._globalNeededCodes;
+                window._globalNeededCodes = new Set([...missingCodes]);
+                await fetchLivePrices({ cacheBust: true });
+                window._globalNeededCodes = originalNeeded;
+                console.log('[DiscoverModal] Live prices fetched for global shares');
+            } catch (error) {
+                console.warn('[DiscoverModal] Failed to fetch live prices for global shares:', error);
+            }
+        }
         const listEl = modal.querySelector('#discoverGlobalList');
         if (listEl) {
             const summary = summaryData || globalAlertSummary || {};
+
+            // Update modal title for global shares
+            const titleEl = modal.querySelector('.modal-title');
+            if (titleEl) {
+                titleEl.textContent = 'Global Movers (All ASX)';
+            }
             // Persist last summary for re-sorts
             try { window.__lastDiscoverSummaryData = summary; } catch(_) {}
+            console.log('[DiscoverModal] Opening global shares modal');
             const nonPortfolioCodes = Array.isArray(summary.nonPortfolioCodes) ? summary.nonPortfolioCodes : [];
             const threshold = (typeof summary.threshold === 'number') ? summary.threshold : null;
             const appliedMinimumPrice = summary.appliedMinimumPrice;
             const codeSet = new Set(nonPortfolioCodes.map(c => (c || '').toUpperCase()));
             const snapshot = (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) ? window.__lastMoversSnapshot : null;
             const externalRows = Array.isArray(globalExternalPriceRows) ? globalExternalPriceRows : [];
+
 
             // Build global criteria badges (percent / dollar up+down thresholds + min price)
             function buildCriteriaBadges() {
@@ -12192,11 +13379,61 @@ function showTargetHitDetailsModal(options={}) {
             const lastUpdatedTs = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
 
             let entries = [];
-            if (snapshot) {
-                entries = snapshot.entries.filter(e => codeSet.has(String(e.code || '').toUpperCase()));
+            console.log('[DiscoverModal] Building entries from snapshot and codeSet...');
+            console.log('[DiscoverModal] snapshot available:', !!snapshot);
+            console.log('[DiscoverModal] snapshot entries count:', snapshot ? snapshot.entries.length : 0);
+            console.log('[DiscoverModal] summary nonPortfolioCodes count:', summary && summary.nonPortfolioCodes ? summary.nonPortfolioCodes.length : 0);
+
+            // For Global modal with comprehensive data, prioritize the comprehensive scan results
+            if (summary && summary.nonPortfolioCodes && summary.nonPortfolioCodes.length > 0 && summary.comprehensiveScan) {
+                console.log('[DiscoverModal] Using comprehensive scan non-portfolio codes for Global modal');
+                entries = summary.nonPortfolioCodes.map(code => {
+                    const lp = livePrices && livePrices[code.toUpperCase()];
+                    if (!lp) return null;
+
+                    return {
+                        code: code,
+                        name: lp.companyName || code,
+                        pct: lp.prevClose ? ((lp.live - lp.prevClose) / lp.prevClose) * 100 : 0,
+                        live: lp.live,
+                        prevClose: lp.prevClose
+                    };
+                }).filter(Boolean);
+                console.log('[DiscoverModal] Created entries from comprehensive scan:', entries.length);
             }
+            // Fallback to snapshot if no comprehensive data or for regular scans
+            else if (snapshot) {
+                console.log('[DiscoverModal] Using snapshot entries for Global modal');
+                entries = snapshot.entries.filter(e => {
+                    const code = String(e.code || '').toUpperCase();
+                    // Include both portfolio and non-portfolio shares that met the global criteria
+                    return true; // Include all shares from the snapshot that met global criteria
+                });
+                console.log('[DiscoverModal] Created entries from snapshot:', entries.length);
+            }
+
+            // Fallback: if no snapshot entries, try to create from codeSet
             if (!entries.length && codeSet.size) {
                 entries = Array.from(codeSet).map(c => ({ code: c }));
+                console.log('[DiscoverModal] Created entries from codeSet:', entries.length);
+            }
+
+            // Final fallback: show non-portfolio shares from existing data
+            if (!entries.length && summary && summary.totalCount > 0 && summary.nonPortfolioCodes && summary.nonPortfolioCodes.length > 0) {
+                console.log('[DiscoverModal] Final fallback: using summary nonPortfolioCodes');
+                entries = summary.nonPortfolioCodes.map(code => {
+                    const lp = livePrices && livePrices[code.toUpperCase()];
+                    if (!lp) return null;
+
+                    return {
+                        code: code,
+                        name: lp.companyName || code,
+                        pct: lp.prevClose ? ((lp.live - lp.prevClose) / lp.prevClose) * 100 : 0,
+                        live: lp.live,
+                        prevClose: lp.prevClose
+                    };
+                }).filter(Boolean);
+                console.log('[DiscoverModal] Created entries from final fallback:', entries.length);
             }
             entries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
 
@@ -12206,7 +13443,9 @@ function showTargetHitDetailsModal(options={}) {
             criteriaBar.className = 'discover-criteria-bar';
             const titleSpan = document.createElement('span');
             titleSpan.className = 'criteria-title';
-            titleSpan.textContent = 'Global Movers';
+            // Show different title based on whether we have discoveries or just portfolio alerts
+            const hasNonPortfolio = summary && summary.nonPortfolioCodes && summary.nonPortfolioCodes.length > 0;
+            titleSpan.textContent = hasNonPortfolio ? 'Global Discoveries' : 'Global Alerts';
             const badgeContainer = document.createElement('div');
             badgeContainer.className = 'criteria-badges';
             if (criteriaBadges.length) {
@@ -12319,6 +13558,14 @@ function showTargetHitDetailsModal(options={}) {
                     if ((!lpData || lpData.live == null) && externalRows.length) {
                         ext = externalRows.find(r => r.code === code);
                     }
+                    
+                    // Debug logging for first few entries (temporarily enabled)
+                    if (entries.indexOf(en) < 3) {
+                        console.log(`[DiscoverModal] Entry ${entries.indexOf(en)}: ${code}`, {
+                            hasLivePrice: !!(lpData && lpData.live != null),
+                            livePricesSample: Object.keys(livePrices || {}).slice(0, 10)
+                        });
+                    }
                     // Map snapshot & external fields: live -> price fallback, change->ch
                     function num(v){ if (v===null||v===undefined||v==='') return null; const n=Number(v); return isNaN(n)?null:n; }
                     const price = num(en.price) ?? num(en.live) ?? num(lpData.live) ?? (ext?num(ext.live):null);
@@ -12357,9 +13604,33 @@ function showTargetHitDetailsModal(options={}) {
                     const lo52 = (lpData && lpData.Low52!=null && !isNaN(lpData.Low52)) ? '$'+formatAdaptivePrice(lpData.Low52) : '';
                     const rangeLine = (hi52||lo52) ? `<div class=\"range-line\">${lo52||'?'}<span class=\"sep\">→</span>${hi52||'?'} 52w</div>` : '';
                     const priceLine = `<div class=\"price-line\">${price!=null?('$'+Number(price).toFixed(2)):'-'} ${comboLine?`<span class=\"movement-combo ${colorClass}\">${comboLine}</span>`:''}</div>`;
-                    li.innerHTML = `<div class=\"row-top\"><span class=\"code\">${code}</span></div>`+
-                        (companyName?`<div class=\"company\" title=\"${companyName}\">${companyName}</div>`:'')+
-                        priceLine + rangeLine;
+
+                    // Create a more structured layout with proper containers
+                    li.innerHTML = `
+                        <div class="discover-mover-content">
+                            <div class="discover-mover-header">
+                                <div class="row-top">
+                                    <span class="code">${code}</span>
+                                    ${companyName ? `<span class="company-name">${companyName}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="discover-mover-details">
+                                <div class="price-info">
+                                    ${priceLine}
+                                    ${rangeLine}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Debug logging for first few entries (temporarily enabled)
+                    if (entries.indexOf(en) < 3) {
+                        console.log(`[DiscoverModal] Rendered HTML for ${code}:`, {
+                            price,
+                            comboLine,
+                            hasLivePrice: !!(lpData && lpData.live != null)
+                        });
+                    }
                     li.addEventListener('click',()=>{
                         try { hideModal(modal); } catch(_) {}
                         // Open Stock Search & Research modal instead of Add Share form
@@ -12416,6 +13687,129 @@ function showTargetHitDetailsModal(options={}) {
                 ordered.forEach(li => ul.appendChild(li));
                 sortDesc.textContent = sortModeDescription(sortSelect.value);
             });
+            listEl.appendChild(ul);
+        }
+        showModal(modal);
+    }
+
+    // Function to show local/portfolio shares that met global criteria
+    function openLocalSharesModal(summaryData) {
+        let modal = document.getElementById('discoverGlobalModal');
+        if (!modal) { console.warn('Local shares modal element missing.'); return; }
+        const listEl = modal.querySelector('#discoverGlobalList');
+        if (listEl) {
+            const summary = summaryData || globalAlertSummary || {};
+            console.log('[LocalModal] Opening local shares modal with summary:', summary);
+
+            // Build portfolio codes set (recreate userCodes logic)
+            const portfolioCodes = new Set();
+            (allSharesData||[]).forEach(s => { if (s && s.shareName) portfolioCodes.add(s.shareName.toUpperCase()); });
+
+            // Build local entries from live prices - only portfolio shares that met global criteria
+            let entries = Object.entries(livePrices || {}).map(([code, lp]) => ({
+                code: code,
+                name: lp.companyName || code,
+                pct: lp.prevClose ? ((lp.live - lp.prevClose) / lp.prevClose) * 100 : 0,
+                live: lp.live,
+                prevClose: lp.prevClose
+            })).filter(entry => {
+                const code = entry.code.toUpperCase();
+                const isPortfolioShare = portfolioCodes.has(code);
+
+                // Only include PORTFOLIO shares that would have triggered based on current thresholds
+                if (!isPortfolioShare) {
+                    return false; // Exclude non-portfolio shares from local view
+                }
+
+                const change = entry.live - entry.prevClose;
+                const absChange = Math.abs(change);
+                const triggered = (change > 0 && globalDollarIncrease && absChange >= globalDollarIncrease) ||
+                                (change < 0 && globalDollarDecrease && absChange >= globalDollarDecrease);
+
+                return triggered;
+            });
+
+            // Update modal title for local shares
+            const titleEl = modal.querySelector('.modal-title');
+            if (titleEl) {
+                titleEl.textContent = 'Local Movers (Portfolio)';
+            }
+
+            listEl.innerHTML = '';
+
+            if (entries.length === 0) {
+                const contextLine = document.createElement('div');
+                contextLine.className = 'discover-context-line discover-context-line-spaced';
+                contextLine.innerHTML = `<strong>0</strong> portfolio shares matched global thresholds`;
+                listEl.appendChild(contextLine);
+
+                listEl.innerHTML += '<div class="no-shares-message">No portfolio shares currently meet your global alert criteria.</div>';
+                showModal(modal);
+                return;
+            }
+
+            // Sort by absolute percentage change
+            entries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
+
+            // Add context line showing count
+            const contextLine = document.createElement('div');
+            contextLine.className = 'discover-context-line discover-context-line-spaced';
+            contextLine.innerHTML = `<strong>${entries.length}</strong> portfolio ${entries.length===1?'share':'shares'} matched global thresholds`;
+            listEl.appendChild(contextLine);
+
+            const ul = document.createElement('ul');
+            ul.className = 'discover-code-list enriched global-only card-layout';
+
+            entries.forEach(entry => {
+                const li = document.createElement('li');
+                li.className = 'discover-mover';
+                li.dataset.code = entry.code;
+
+                const change = entry.live - entry.prevClose;
+                const pct = entry.pct;
+                const isPositive = change > 0;
+                const isNegative = change < 0;
+
+                // Get 52-week range data if available
+                const lpData = (livePrices && livePrices[entry.code]) ? livePrices[entry.code] : {};
+                const hi52 = (lpData && lpData.High52!=null && !isNaN(lpData.High52)) ? '$'+formatAdaptivePrice(lpData.High52) : '';
+                const lo52 = (lpData && lpData.Low52!=null && !isNaN(lpData.Low52)) ? '$'+formatAdaptivePrice(lpData.Low52) : '';
+                const rangeLine = (hi52||lo52) ? `<div class="range-line">${lo52||'?'}<span class="sep">→</span>${hi52||'?'} 52w</div>` : '';
+                const priceLine = `<div class="price-line">$${entry.live.toFixed(2)} <span class="movement-combo ${isPositive ? 'positive' : isNegative ? 'negative' : 'neutral'}">${change > 0 ? '+' : ''}$${change.toFixed(2)} (${pct > 0 ? '+' : ''}${pct.toFixed(2)}%)</span></div>`;
+
+                // Use the same structured layout as Global modal
+                li.innerHTML = `
+                    <div class="discover-mover-content">
+                        <div class="discover-mover-header">
+                            <div class="row-top">
+                                <span class="code">${entry.code}</span>
+                                ${entry.name ? `<span class="company-name">${entry.name}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="discover-mover-details">
+                            <div class="price-info">
+                                ${priceLine}
+                                ${rangeLine}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                li.addEventListener('click', () => {
+                    if (typeof selectShare === 'function') {
+                        // Find the share ID for this code
+                        const share = allSharesData.find(s => s.shareName && s.shareName.toUpperCase() === entry.code.toUpperCase());
+                        if (share) {
+                            hideModal(modal);
+                            selectShare(share.id);
+                            showShareDetails();
+                        }
+                    }
+                });
+
+                ul.appendChild(li);
+            });
+
             listEl.appendChild(ul);
         }
         showModal(modal);
@@ -12523,6 +13917,10 @@ function showTargetHitDetailsModal(options={}) {
     __userInitiatedTargetModal = true; // mark that user has seen modal this session
     logDebug('Target Hit Modal: Displayed details. Enabled=' + sharesAtTargetPrice.length + ' Muted=' + (sharesAtTargetPriceMuted?sharesAtTargetPriceMuted.length:0));
 }
+
+// Expose the function to window object for global access
+window.showTargetHitDetailsModal = showTargetHitDetailsModal;
+window.recomputeTriggeredAlerts = recomputeTriggeredAlerts;
 
 // Toggle GA_SUMMARY enabled flag (mute/unmute for session)
 async function toggleGlobalSummaryEnabled() {
@@ -12850,21 +14248,7 @@ function initializeApp() {
         hideSplashScreen();
     }
 
-    // Inject a test 52-week low alert card for CBA (for UI testing only)
-    if (Array.isArray(sharesAt52WeekLow)) {
-        const alreadyHasTest = sharesAt52WeekLow.some(item => item && item.code === 'CBA' && item.isTestCard);
-        if (!alreadyHasTest) {
-            sharesAt52WeekLow.unshift({
-                code: 'CBA',
-                name: 'Commonwealth Bank (Test Card)',
-                type: 'low',
-                low52: 90.00,
-                high52: 120.00,
-                live: 91.23,
-                isTestCard: true
-            });
-        }
-    }
+    // Test card removed - 52-week low detection is now working properly
     // Ensure header interactive bindings are attached even on first load
     try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
     // Early notification restore from persisted count

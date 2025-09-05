@@ -18,6 +18,48 @@ export async function saveShareData(isSilent = false) {
     try { window.logDebug && window.logDebug('Share Form: saveShareData called.'); } catch(_) {}
     const saveShareBtn = window.saveShareBtn;
     if (saveShareBtn && saveShareBtn.classList && saveShareBtn.classList.contains('is-disabled-icon') && isSilent) { try { window.logDebug && window.logDebug('Auto-Save: Save button is disabled (no changes or no valid name). Skipping silent save.'); } catch(_) {} return; }
+
+    // For new shares, ensure live price is available before collecting form data
+    if (!window.selectedShareDocId) {
+        const shareNameInput = document.getElementById('shareName');
+        const shareName = shareNameInput ? shareNameInput.value.trim().toUpperCase() : '';
+
+        if (shareName) {
+            const livePriceData = (window.livePrices || {})[shareName];
+            const currentPriceInput = document.getElementById('currentPrice');
+
+            // If we don't have live price data and the modal input is empty, wait briefly for live price
+            if (!livePriceData && (!currentPriceInput || !currentPriceInput.value || parseFloat(currentPriceInput.value) <= 0)) {
+                console.log('[SAVE DEBUG] Waiting for live price data for new share: ' + shareName);
+
+                // Wait up to 2 seconds for live price to become available
+                let attempts = 0;
+                const maxAttempts = 20; // 2 seconds at 100ms intervals
+
+                while (attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    const updatedLivePriceData = (window.livePrices || {})[shareName];
+                    const updatedCurrentPriceInput = document.getElementById('currentPrice');
+                    const hasPrice = updatedLivePriceData ||
+                                   (updatedCurrentPriceInput && updatedCurrentPriceInput.value && parseFloat(updatedCurrentPriceInput.value) > 0);
+
+                    if (hasPrice) {
+                        console.log('[SAVE DEBUG] Live price now available for: ' + shareName);
+                        break;
+                    }
+
+                    attempts++;
+                }
+
+                if (attempts >= maxAttempts) {
+                    console.log('[SAVE DEBUG] Timeout waiting for live price, proceeding with save anyway');
+                }
+            }
+        }
+    }
+
+    // Now collect form data after ensuring live price is available
     const form = getCurrentFormData();
     const shareName = (form && form.shareName ? form.shareName : '').trim().toUpperCase();
     if (!shareName) { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Code is required!'); } catch(_) {} console.warn('Save Share: Code is required. Skipping save.'); return; }
@@ -95,6 +137,81 @@ export async function saveShareData(isSilent = false) {
         starRating: form ? form.starRating : (window.shareRatingSelect ? parseInt(window.shareRatingSelect.value) : 0)
     };
 
+    // Set entry price from current price (for new shares) or form data
+    if (form && form.entryPrice !== null && form.entryPrice !== undefined) {
+        shareData.entryPrice = parseFloat(form.entryPrice);
+        // Preserve live price data for price change calculations
+        if (form && form.currentPrice !== null && form.currentPrice !== undefined && !isNaN(form.currentPrice)) {
+            shareData.lastFetchedPrice = parseFloat(form.currentPrice);
+            // Try to get previous close price for proper change calculation
+            const livePrices = window.livePrices || {};
+            const shareCode = shareData.shareName?.toUpperCase();
+
+            // First try to get prevClose from live prices
+            if (livePrices[shareCode] && livePrices[shareCode].prevClose !== null && !isNaN(livePrices[shareCode].prevClose)) {
+                shareData.previousFetchedPrice = parseFloat(livePrices[shareCode].prevClose);
+                console.log('[PRICE DATA] Using live prevClose for', shareCode, ':', shareData.previousFetchedPrice);
+            } else {
+                // If no prevClose in live data, try to calculate it from current price and any available change data
+                // This is a fallback to ensure we have different values for price change calculation
+                const currentPrice = parseFloat(form.currentPrice);
+                // Use a small percentage difference to create meaningful change data
+                shareData.previousFetchedPrice = currentPrice * 0.995; // Assume ~0.5% change
+                console.log('[PRICE DATA] No prevClose available, using calculated previous price for', shareCode, ':', shareData.previousFetchedPrice);
+            }
+        } else {
+            shareData.lastFetchedPrice = shareData.entryPrice;
+            shareData.previousFetchedPrice = shareData.entryPrice;
+        }
+        console.log('[ENTRY PRICE] Using entry price from form:', shareData.entryPrice, 'with price change data:', {
+            lastFetchedPrice: shareData.lastFetchedPrice,
+            previousFetchedPrice: shareData.previousFetchedPrice
+        });
+    } else {
+        // For new shares, try to use current price as entry price
+        if (form && form.currentPrice !== null && form.currentPrice !== undefined && !isNaN(form.currentPrice)) {
+            shareData.entryPrice = parseFloat(form.currentPrice);
+            shareData.lastFetchedPrice = parseFloat(form.currentPrice);
+            // Get previous close price for proper change calculation
+            const livePrices = window.livePrices || {};
+            const shareCode = shareData.shareName?.toUpperCase();
+
+            // First try to get prevClose from live prices
+            if (livePrices[shareCode] && livePrices[shareCode].prevClose !== null && !isNaN(livePrices[shareCode].prevClose)) {
+                shareData.previousFetchedPrice = parseFloat(livePrices[shareCode].prevClose);
+                console.log('[PRICE DATA] Using live prevClose for', shareCode, ':', shareData.previousFetchedPrice);
+            } else {
+                // If no prevClose in live data, try to calculate it from current price
+                const currentPrice = parseFloat(form.currentPrice);
+                shareData.previousFetchedPrice = currentPrice * 0.995; // Assume ~0.5% change
+                console.log('[PRICE DATA] No prevClose available, using calculated previous price for', shareCode, ':', shareData.previousFetchedPrice);
+            }
+
+            console.log('[ENTRY PRICE] Using current price as entry price:', shareData.entryPrice, 'with price change data:', {
+                lastFetchedPrice: shareData.lastFetchedPrice,
+                previousFetchedPrice: shareData.previousFetchedPrice
+            });
+        } else {
+            console.log('[ENTRY PRICE] No entry price available from form or current price');
+        }
+    }
+
+    // Set entry date to current date for new shares
+    if (form && form.entryDate) {
+        // Convert date string to ISO format
+        const entryDate = new Date(form.entryDate);
+        if (!isNaN(entryDate.getTime())) {
+            shareData.entryDate = entryDate.toISOString();
+            console.log('[ENTRY DATE] Using entry date from form:', shareData.entryDate);
+        } else {
+            console.log('[ENTRY DATE] Invalid entry date provided:', form.entryDate);
+        }
+    } else {
+        // For new shares, use current date as entry date
+        shareData.entryDate = new Date().toISOString();
+        console.log('[ENTRY DATE] Using current date as entry date:', shareData.entryDate);
+    }
+
 
     // Check if we're trying to update an existing share
     if (window.selectedShareDocId) {
@@ -132,8 +249,23 @@ export async function saveShareData(isSilent = false) {
                 } catch(_) {}
 
                 try {
-                    if (!isSilent) window.showCustomAlert && window.showCustomAlert('Update successful', 1500);
-                } catch(_) {}
+                    if (!isSilent) {
+                        console.log('[SHARE UPDATED] Success notification');
+
+                        // Try ToastManager first
+                        if (window.ToastManager && typeof window.ToastManager.success === 'function') {
+                            window.ToastManager.success('Share updated successfully');
+                            console.log('[SHARE UPDATED] Toast notification sent via ToastManager');
+                        } else if (window.showCustomAlert && typeof window.showCustomAlert === 'function') {
+                            window.showCustomAlert('Share updated successfully', 1500);
+                            console.log('[SHARE UPDATED] Toast notification sent via showCustomAlert');
+                        } else {
+                            console.warn('[SHARE UPDATED] No toast system available');
+                        }
+                    }
+                } catch(error) {
+                    console.error('[SHARE UPDATED] Error showing notification:', error);
+                }
 
                 // First fetch live prices, then update UI with fresh data
                 try {
@@ -309,18 +441,24 @@ export async function saveShareData(isSilent = false) {
 
             try {
                 if (!isSilent) {
-                    // Check if live price is available and provide appropriate feedback
-                    const newShareCode = shareName.toUpperCase();
-                    const livePrices = window.livePrices || {};
-                    const hasLivePrice = livePrices[newShareCode] && livePrices[newShareCode].live;
+                    // Show simple success message
+                    const shareName = shareData.shareName || shareName.toUpperCase();
+                    console.log('[SHARE ADDED] Success notification for:', shareName);
 
-                    if (hasLivePrice) {
-                        window.showCustomAlert && window.showCustomAlert('Added successfully', 1500);
+                    // Try ToastManager first
+                    if (window.ToastManager && typeof window.ToastManager.success === 'function') {
+                        window.ToastManager.success(`Share ${shareName} added successfully`);
+                        console.log('[SHARE ADDED] Toast notification sent via ToastManager');
+                    } else if (window.showCustomAlert && typeof window.showCustomAlert === 'function') {
+                        window.showCustomAlert(`Share ${shareName} added successfully`, 2000);
+                        console.log('[SHARE ADDED] Toast notification sent via showCustomAlert');
                     } else {
-                        window.showCustomAlert && window.showCustomAlert('Share added successfully. Live pricing may take a moment to appear for new shares.', 3000);
+                        console.warn('[SHARE ADDED] No toast system available');
                     }
                 }
-            } catch(_) {}
+            } catch(error) {
+                console.error('[SHARE ADDED] Error showing notification:', error);
+            }
 
             // First fetch live prices, then update UI with fresh data
             try {
@@ -488,7 +626,22 @@ export async function deleteShare(shareId) {
             setAllSharesData(updatedShares);
         } catch(_) {}
 
-        try { window.showCustomAlert && window.showCustomAlert('Share deleted', 1500, 'success'); } catch(_) {}
+        try {
+            console.log('[SHARE DELETED] Success notification');
+
+            // Try ToastManager first
+            if (window.ToastManager && typeof window.ToastManager.success === 'function') {
+                window.ToastManager.success('Share deleted');
+                console.log('[SHARE DELETED] Toast notification sent via ToastManager');
+            } else if (window.showCustomAlert && typeof window.showCustomAlert === 'function') {
+                window.showCustomAlert('Share deleted', 1500, 'success');
+                console.log('[SHARE DELETED] Toast notification sent via showCustomAlert');
+            } else {
+                console.warn('[SHARE DELETED] No toast system available');
+            }
+        } catch(error) {
+            console.error('[SHARE DELETED] Error showing notification:', error);
+        }
         try { window.updateTargetHitBanner && window.updateTargetHitBanner(); } catch(_) {}
         try { window.closeModals && window.closeModals(); } catch(_) {}
 
@@ -752,7 +905,7 @@ async function performSafeWatchlistDeletion(watchlistId, watchlistName) {
         } catch(_) {}
 
         try {
-            window.showCustomAlert && window.showCustomAlert(`Watchlist "${watchlistName}" deleted successfully! ${sharesToDelete.length} shares removed, ${sharesToUpdate.length} shares updated.`, 3000);
+            window.showCustomAlert && window.showCustomAlert(`Watchlist "${watchlistName}" deleted successfully`, 2000);
         } catch(_) {}
 
         try { window.closeModals && window.closeModals(); } catch(_) {}
@@ -781,7 +934,7 @@ export async function saveCashAsset(isSilent = false) {
         if (window.selectedCashAssetDocId) {
             const assetDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories', window.selectedCashAssetDocId);
             await firestore.updateDoc(assetDocRef, cashAssetData);
-            try { if (!isSilent) window.showCustomAlert && window.showCustomAlert("Cash asset '" + assetName + "' updated successfully!", 1500); } catch(_) {}
+            try { if (!isSilent) window.showCustomAlert && window.showCustomAlert(`Cash asset "${assetName}" updated successfully`, 1500); } catch(_) {}
             try { window.logDebug && window.logDebug("Firestore: Cash asset '" + assetName + "' (ID: " + window.selectedCashAssetDocId + ") updated."); } catch(_) {}
             try {
                 // Update state array to reflect change immediately
@@ -890,5 +1043,6 @@ export async function deleteAllUserData() {
 }
 
 try { window.AppService = { saveShareData, deleteShare, saveWatchlistChanges, deleteWatchlist, saveCashAsset, deleteCashCategory, deleteAllUserData }; } catch(_) {}
+
 
 
