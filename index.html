@@ -15,30 +15,6 @@
     <!-- Toast notifications container (single instance) -->
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <!-- Debug Panel for Global Alerts Testing -->
-    <div id="debugPanel" style="position: fixed; top: 10px; right: 10px; background: #f0f0f0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; z-index: 10000; display: none;">
-        <h4>Global Alerts Debug</h4>
-        <button onclick="debugGlobalAlerts()">Debug State</button>
-        <button onclick="testGlobalAlertsNow()">Test Now</button>
-        <button onclick="testGlobalAlertEvaluation()">Test Logic</button>
-        <button onclick="testDiscoverModal()">Test Discover</button>
-        <button onclick="showTargetHitDetailsModal()">Show Modal</button>
-        <br><br>
-        <button onclick="testComprehensiveGlobalAlerts()" style="background: #4CAF50; color: white;">Test Comprehensive</button>
-        <br><br>
-        <h4>52-Week Low Alerts Debug</h4>
-        <button onclick="test52WeekLowAlerts()" style="background: #ff6b35; color: white;">Test 52W Low</button>
-        <button onclick="debug52WeekLowAlerts()" style="background: #ff9800; color: white;">Debug 52W State</button>
-        <button onclick="remove52WeekLowTestCard()" style="background: #4CAF50; color: white;">Remove Test Card</button>
-        <br><br>
-        <h4>Target Hit Notifications Debug</h4>
-        <button onclick="testTargetHitNotifications()" style="background: #2196F3; color: white;">Test Target Hits</button>
-        <button onclick="debugTargetHitState()" style="background: #9C27B0; color: white;">Debug Target State</button>
-        <button onclick="test52WeekLowDetection()" style="background: #FF9800; color: white;">Test 52-Week Low Detection</button>
-        <br><br>
-        <button onclick="document.getElementById('debugPanel').style.display='none'">Hide</button>
-    </div>
-    <button onclick="document.getElementById('debugPanel').style.display='block'" style="position: fixed; top: 10px; right: 10px; z-index: 9999; background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 3px;">Debug</button>
     <div id="splashScreen" class="splash-screen">
     <p id="splashAppVersion" class="app-version-splash app-version-splash-top"></p>
         <img id="splashKangarooIcon" src="Kangaicon.jpg" alt="Kangaroo App Icon" class="splash-icon">
