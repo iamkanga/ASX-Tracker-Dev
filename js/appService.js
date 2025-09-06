@@ -137,56 +137,32 @@ export async function saveShareData(isSilent = false) {
         starRating: form ? form.starRating : (window.shareRatingSelect ? parseInt(window.shareRatingSelect.value) : 0)
     };
 
-    // Set entry price from current price (for new shares) or form data
-    if (form && form.entryPrice !== null && form.entryPrice !== undefined) {
-        shareData.entryPrice = parseFloat(form.entryPrice);
-        // Preserve live price data for price change calculations
-        if (form && form.currentPrice !== null && form.currentPrice !== undefined && !isNaN(form.currentPrice)) {
-            shareData.lastFetchedPrice = parseFloat(form.currentPrice);
-            // Try to get previous close price for proper change calculation
-            const livePrices = window.livePrices || {};
-            const shareCode = shareData.shareName?.toUpperCase();
-
-            // First try to get prevClose from live prices
-            if (livePrices[shareCode] && livePrices[shareCode].prevClose !== null && !isNaN(livePrices[shareCode].prevClose)) {
-                shareData.previousFetchedPrice = parseFloat(livePrices[shareCode].prevClose);
-                console.log('[PRICE DATA] Using live prevClose for', shareCode, ':', shareData.previousFetchedPrice);
-            } else {
-                // If no prevClose in live data, try to calculate it from current price and any available change data
-                // This is a fallback to ensure we have different values for price change calculation
-                const currentPrice = parseFloat(form.currentPrice);
-                // Use a small percentage difference to create meaningful change data
-                shareData.previousFetchedPrice = currentPrice * 0.995; // Assume ~0.5% change
-                console.log('[PRICE DATA] No prevClose available, using calculated previous price for', shareCode, ':', shareData.previousFetchedPrice);
-            }
-        } else {
-            shareData.lastFetchedPrice = shareData.entryPrice;
-            shareData.previousFetchedPrice = shareData.entryPrice;
+    // Set entry price logic
+    if (window.selectedShareDocId) {
+        // Editing existing share: preserve original entryPrice
+        const existingShare = getAllSharesData().find(s => s.id === window.selectedShareDocId);
+        if (existingShare && existingShare.entryPrice !== undefined) {
+            shareData.entryPrice = existingShare.entryPrice;
+            shareData.lastFetchedPrice = existingShare.lastFetchedPrice || existingShare.entryPrice;
+            shareData.previousFetchedPrice = existingShare.previousFetchedPrice || existingShare.entryPrice;
+            console.log('[ENTRY PRICE] Preserved original entry price for edit:', shareData.entryPrice);
         }
-        console.log('[ENTRY PRICE] Using entry price from form:', shareData.entryPrice, 'with price change data:', {
-            lastFetchedPrice: shareData.lastFetchedPrice,
-            previousFetchedPrice: shareData.previousFetchedPrice
-        });
     } else {
-        // For new shares, try to use current price as entry price
+        // Creating new share: set entryPrice from current price
         if (form && form.currentPrice !== null && form.currentPrice !== undefined && !isNaN(form.currentPrice)) {
             shareData.entryPrice = parseFloat(form.currentPrice);
             shareData.lastFetchedPrice = parseFloat(form.currentPrice);
             // Get previous close price for proper change calculation
             const livePrices = window.livePrices || {};
             const shareCode = shareData.shareName?.toUpperCase();
-
-            // First try to get prevClose from live prices
             if (livePrices[shareCode] && livePrices[shareCode].prevClose !== null && !isNaN(livePrices[shareCode].prevClose)) {
                 shareData.previousFetchedPrice = parseFloat(livePrices[shareCode].prevClose);
                 console.log('[PRICE DATA] Using live prevClose for', shareCode, ':', shareData.previousFetchedPrice);
             } else {
-                // If no prevClose in live data, try to calculate it from current price
                 const currentPrice = parseFloat(form.currentPrice);
-                shareData.previousFetchedPrice = currentPrice * 0.995; // Assume ~0.5% change
+                shareData.previousFetchedPrice = currentPrice * 0.995;
                 console.log('[PRICE DATA] No prevClose available, using calculated previous price for', shareCode, ':', shareData.previousFetchedPrice);
             }
-
             console.log('[ENTRY PRICE] Using current price as entry price:', shareData.entryPrice, 'with price change data:', {
                 lastFetchedPrice: shareData.lastFetchedPrice,
                 previousFetchedPrice: shareData.previousFetchedPrice
