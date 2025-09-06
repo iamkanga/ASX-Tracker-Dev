@@ -183,18 +183,28 @@
     }
 
     function showModal(modalElement) {
-        if (modalElement) {
-            try { if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id }, '', ''); } catch(_) {}
-            modalElement.style.setProperty('display', 'flex', 'important');
-            modalElement.scrollTop = 0;
-            const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
-            if (scrollableContent) scrollableContent.scrollTop = 0;
-            try { if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') initializeShareNameAutocomplete(true); } catch(_) {}
+        if (!modalElement) return;
+        // Push in-app back stack and a browser history state so Back consistently closes modals
+    try {
+        if (typeof window.stackHasModal === 'function' && window.stackHasModal(modalElement)) {
+            // Already on stack, just show without pushing
+        } else if (typeof window.__appBackStackPush === 'function') {
+            window.__appBackStackPush('modal', modalElement);
+            if (window.logBackDebug) window.logBackDebug('MODAL open push (UI)', modalElement && modalElement.id);
         }
+    } catch(_) {}
+    try { if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id || true }, '', '#modal'); } catch(_) {}
+    try { if (window.toggleAppSidebar && window.appSidebar && window.appSidebar.classList.contains('open')) window.toggleAppSidebar(false); } catch(_) {}
+        modalElement.style.setProperty('display', 'flex', 'important');
+        modalElement.scrollTop = 0;
+        const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+    if (scrollableContent) scrollableContent.scrollTop = 0;
+    try { if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') initializeShareNameAutocomplete(true); } catch(_) {}
     }
 
     function showModalNoHistory(modalElement) {
         if (!modalElement) return;
+        // No stack and no browser history push: used when restoring a previous modal on back
         modalElement.style.setProperty('display', 'flex', 'important');
         modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
@@ -202,7 +212,9 @@
     }
 
     function hideModal(modalElement) {
-        if (modalElement) modalElement.style.setProperty('display', 'none', 'important');
+        if (!modalElement) return;
+        try { if (typeof window.removeModalFromStack === 'function') window.removeModalFromStack(modalElement); } catch(_) {}
+        modalElement.style.setProperty('display', 'none', 'important');
     }
 
     function adjustMainContentPadding() {
@@ -253,7 +265,8 @@
     // Expose lightweight API on window.UI for backwards-compatible calls from script.js
     window.UI = window.UI || {};
     Object.assign(window.UI, {
-        showModal,
+        // Use the locally defined showModal to enforce history+stack push
+        showModal: (el)=> showModal(el),
         showModalNoHistory,
         hideModal,
         closeModals,

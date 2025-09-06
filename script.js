@@ -22,7 +22,25 @@ const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer
 // Ensure scroll class applied (id container present in DOM from HTML)
 if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
     asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll');
-}
+try {
+    // Standard hide: remove from stack, then hide visually
+    window.hideModal = function(m){
+        if (typeof window.UI !== 'undefined' && window.UI.hideModal) { removeModalFromStack(m); return window.UI.hideModal(m); }
+        try { if (m) { removeModalFromStack(m); m.style.setProperty('display','none','important'); m.classList.remove('show'); } } catch(_){}
+    };
+    // Visual-only hide that preserves the modal entry on the appBackStack (used for modal-to-modal transitions)
+    window.hideModalKeepStack = function(m){
+        try {
+            // Set a short-lived guard to avoid global click handlers closing everything mid-transition
+            window.__modalTransitioning = Date.now();
+            if (m) {
+                m.style.setProperty('display','none','important');
+                m.classList.remove('show');
+            }
+            setTimeout(()=>{ try { if (window.__modalTransitioning) window.__modalTransitioning = 0; } catch(_){} }, 250);
+        } catch(_){}
+    };
+} catch(_) {}
 const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
 const shareFormSection = document.getElementById('shareFormSection');
 const formCloseButton = document.querySelector('.form-close-button');
@@ -42,7 +60,8 @@ const watchlistSelect = document.getElementById('watchlistSelect');
 // Global function to open the ASX search modal and populate the code
 window.showStockSearchModal = function(asxCode) {
     if (!stockSearchModal || !asxSearchInput) return;
-    showModal(stockSearchModal);
+    // Avoid duplicate modal stack entries
+    try { if (!stackHasModal(stockSearchModal)) showModal(stockSearchModal); else { UI && UI.showModalNoHistory ? UI.showModalNoHistory(stockSearchModal) : showModalNoHistory(stockSearchModal); } } catch(_) { showModal(stockSearchModal); }
     try { scrollMainToTop(); } catch(_) {}
     asxSearchInput.value = asxCode || '';
     asxSearchInput.focus();
@@ -65,14 +84,8 @@ function pushAppState(stateObj = {}, title = '', url = '') {
 
 // Listen for the back button (popstate event)
 window.addEventListener('popstate', function(event) {
-    // Let the unified stack-based handler manage modals. Only handle sidebar here.
-    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
-        if (window.toggleAppSidebar) {
-            window.toggleAppSidebar(false); // Explicitly close the sidebar
-        }
-        return; // Exit after handling the sidebar
-    }
-    // Defer modal handling to the stack popstate handler below.
+    // No-op: unified popstate handler below manages all back behavior (modal → sidebar → watchlist/view)
+    // Intentionally left blank to avoid double-handling.
 });
 // Keep main content padding in sync with header height changes (e.g., viewport resize)
 window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
@@ -272,6 +285,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Ensure Edit Current Watchlist button updates when selection changes
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
         watchlistSelect.addEventListener('change', function () {
+            // Capture previous selection for shallow back
+            try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; pushAppStateEntry('watchlist', prev); logBackDebug('WATCHLIST change push prev=', prev); } catch(_) {}
             // If Portfolio is selected, show portfolio view
             if (watchlistSelect.value === 'portfolio') {
                 showPortfolioView();
@@ -281,6 +296,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 showWatchlistView();
                 try { setLastSelectedView(watchlistSelect.value); } catch(e){}
             }
+            // Push a browser history entry so Back triggers popstate -> handleGlobalBack
+            try { if (typeof pushAppState === 'function') pushAppState({ watchlist: watchlistSelect.value }, '', '#watchlist'); } catch(_) {}
             updateMainButtonsState(true);
             // Ensure main content scrolls to the top after a view change for consistent UX
             try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
@@ -681,6 +698,16 @@ document.addEventListener('DOMContentLoaded', function () {
 window.addEventListener('load', () => {
     try { scrollMainToTop(true); } catch(_) {}
 });
+// Log modal close clicks to correlate with [Back] history handling
+try {
+    document.addEventListener('click', function(e){
+        const closeBtn = e.target && (e.target.closest && (e.target.closest('[data-dismiss="modal"], [data-close-modal], .modal .close, .modal .modal-close, .close-modal') || null));
+        if (closeBtn) {
+            const modalEl = closeBtn.closest && closeBtn.closest('.modal');
+            try { if (window.logBackDebug) window.logBackDebug('CLICK close', modalEl && modalEl.id); } catch(_) {}
+        }
+    }, true);
+} catch(_) {}
 //  This script interacts with Firebase Firestore for data storage.
 
 // --- GLOBAL VARIABLES ---
@@ -696,8 +723,44 @@ function logDebug(message, ...optionalParams) {
 }
 // Expose core helpers to other modules
 try { window.logDebug = logDebug; } catch(_) {}
-try { window.showModal = function(m){ if (typeof window.UI !== 'undefined' && window.UI.showModal) return window.UI.showModal(m); try { if (m) m.style.setProperty('display','flex','important'); } catch(_){} }; } catch(_) {}
-try { window.hideModal = function(m){ if (typeof window.UI !== 'undefined' && window.UI.hideModal) return window.UI.hideModal(m); try { if (m) m.style.setProperty('display','none','important'); } catch(_){} }; } catch(_) {}
+// Lightweight console noise filter for routine UI logs (keeps [Back] and errors)
+(function(){
+    try {
+        const noisyPrefixes = [
+            '[PADDING DEBUG]', '[BANNER-DEBUG]', '[ASX Debug]', '[Diag]', '[MOVERS DEBUG]', 'Portfolio Card Debug', '[DEBUG] '
+        ];
+        const origLog = console.log.bind(console);
+        console.__origLog = origLog;
+        console.log = function(...args){
+            try {
+                const first = args && args[0];
+                if (typeof first === 'string') {
+                    // Never filter [Back] logs
+                    if (first.startsWith('[Back]')) return origLog(...args);
+                    // Filter known-noise prefixes
+                    if (noisyPrefixes.some(p => first.startsWith(p))) return;
+                }
+            } catch(_) {}
+            return origLog(...args);
+        };
+        // Expose a toggle to disable filtering if needed
+        window.__disableConsoleFilter = function(){ try { console.log = console.__origLog || console.log; } catch(_) {} };
+    } catch(_) {}
+})();
+try {
+    window.showModal = function(m){
+        // Prefer UI module which also pushes history/stack
+        if (typeof window.UI !== 'undefined' && window.UI.showModal) {
+            // Avoid duplicate push
+            try { if (stackHasModal(m)) { return window.UI.showModalNoHistory ? window.UI.showModalNoHistory(m) : UI.showModal(m); } } catch(_) {}
+            return window.UI.showModal(m);
+        }
+        // Fallback: push into back stack and browser history, then show
+    try { if (m && !stackHasModal(m) && typeof window.__appBackStackPush === 'function') { window.__appBackStackPush('modal', m); logBackDebug('MODAL open push', m && m.id); } } catch(_) {}
+    try { if (m && typeof pushAppState === 'function') { pushAppState({ modalId: m.id || true }, '', '#modal'); } } catch(_) {}
+    try { if (m) { m.style.setProperty('display','flex','important'); m.classList.add('show'); } } catch(_){}
+    };
+} catch(_) {}
 try {
     if (!window.scrollMainToTop) {
         window.scrollMainToTop = function(instant, targetPosition = 0){
@@ -841,6 +904,7 @@ try {
     if (lsLastWatch) {
         const parsed = JSON.parse(lsLastWatch);
         if (Array.isArray(parsed) && parsed.length) {
+            try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev.join(',') !== parsed.join(',')) pushAppStateEntry('watchlist', prev); } catch(_) {}
             setCurrentSelectedWatchlistIds(parsed);
         }
     }
@@ -852,7 +916,8 @@ try {
     const lastView = localStorage.getItem('lastSelectedView');
     if (lastView === '__movers') {
         // Immediate forced selection BEFORE any data. Will re-render later as data arrives.
-        setCurrentSelectedWatchlistIds(['__movers']);
+    try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== '__movers') pushAppStateEntry('watchlist', prev); } catch(_) {}
+    setCurrentSelectedWatchlistIds(['__movers']);
         __forcedInitialMovers = true;
     try { console.log('[Movers init] Forced initial Movers selection before data load'); } catch(_) {}
         // Set select value if present
@@ -867,7 +932,8 @@ try {
     // Schedule fallback to All Shares if movers never attaches
     scheduleMoversFallback();
     } else if (lastView === 'portfolio') {
-        setCurrentSelectedWatchlistIds(['portfolio']);
+    try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== 'portfolio') pushAppStateEntry('watchlist', prev); } catch(_) {}
+    setCurrentSelectedWatchlistIds(['portfolio']);
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
         // Defer actual DOM switch until initial data load completes; hook into data load readiness
         window.addEventListener('load', () => {
@@ -879,7 +945,8 @@ try {
     try { ensureTitleStructure(); } catch(e) {}
     try { updateTargetHitBanner(); } catch(e) {}
     } else if (lastView && lastView !== 'portfolio') {
-        setCurrentSelectedWatchlistIds([lastView]);
+    try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== lastView) pushAppStateEntry('watchlist', prev); } catch(_) {}
+    setCurrentSelectedWatchlistIds([lastView]);
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = lastView; }
         try { updateMainTitle(); } catch(e) {}
         try { ensureTitleStructure(); } catch(e) {}
@@ -1831,6 +1898,12 @@ window.checkMoversState = function() {
 
     // Set up a MutationObserver to watch for DOM changes and apply view mode when container appears
     const setupDOMWatcher = () => {
+        // Guard against multiple registrations
+        if (window.__domWatcherSetup) {
+            try { console.debug('DOM Watcher: Already set up, skipping duplicate registration'); } catch(_) {}
+            return;
+        }
+        window.__domWatcherSetup = true;
         if (typeof MutationObserver !== 'undefined') {
             const observer = new MutationObserver((mutations) => {
                 for (const mutation of mutations) {
@@ -2529,42 +2602,15 @@ const calculatorButtons = document.querySelector('.calculator-buttons');
 const dynamicWatchlistTitle = document.getElementById('dynamicWatchlistTitle');
 const dynamicWatchlistTitleText = document.getElementById('dynamicWatchlistTitleText');
 // --- Watchlist Title Click: Open Watchlist Picker Modal ---
+// Use the unified binding further below (openPicker). We deliberately avoid binding here
+// to prevent double-open and duplicate back-stack pushes.
 // (Moved below watchlistPickerModal initialization to avoid ReferenceError)
 const watchlistPickerModal = document.getElementById('watchlistPickerModal');
-// --- Watchlist Title Click: Open Watchlist Picker Modal ---
-if (dynamicWatchlistTitleText && watchlistPickerModal) {
-    dynamicWatchlistTitleText.addEventListener('click', function(e) {
-        e.preventDefault();
-        if (typeof showModal === 'function') {
-            showModal(watchlistPickerModal);
-        } else {
-            watchlistPickerModal.style.display = 'block';
-        }
-    });
-    dynamicWatchlistTitleText.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            if (typeof showModal === 'function') {
-                showModal(watchlistPickerModal);
-            } else {
-                watchlistPickerModal.style.display = 'block';
-            }
-        }
-    });
-}
 const watchlistPickerList = document.getElementById('watchlistPickerList');
 const closeWatchlistPickerBtn = document.getElementById('closeWatchlistPickerBtn');
 
 // --- Close Watchlist Picker Modal ---
-if (closeWatchlistPickerBtn && watchlistPickerModal) {
-    closeWatchlistPickerBtn.addEventListener('click', function() {
-        if (typeof hideModal === 'function') {
-            hideModal(watchlistPickerModal);
-        } else {
-            watchlistPickerModal.style.display = 'none';
-        }
-    });
-}
+// Binding handled later alongside openPicker to avoid duplicate listeners.
 // ...rest of the code...
 
 // Removed legacy currentSortDisplay element (text summary of sort) now that dropdown itself is visible
@@ -2712,31 +2758,41 @@ if (typeof window.formatUserDecimalStrict !== 'function') {
     };
 }
 
-// ----- Lightweight Back Stack Handling (limit to 2 states) -----
+// ----- Lightweight Back Stack Handling (with debug) -----
+function logBackDebug(...args){ try { console.log('[Back]', ...args); } catch(_) {} }
 const appBackStack = [];
 function pushAppStateEntry(type, ref) {
     appBackStack.push({type, ref});
-    if (appBackStack.length > 2) appBackStack.shift();
+    // Allow up to ten shallow steps to avoid accidental truncation in mixed flows
+    if (appBackStack.length > 10) appBackStack.shift();
+    logBackDebug('PUSH', type, ref && (ref.id || ref), 'stack=', appBackStack.map(e=>e.type+':'+(e.ref && (e.ref.id||e.ref))).join(' | '));
 }
-function popAppStateEntry() { return appBackStack.pop(); }
+function popAppStateEntry() { const e = appBackStack.pop(); logBackDebug('POP', e && e.type, e && e.ref && (e.ref.id||e.ref), 'stack=', appBackStack.map(x=>x.type+':'+(x.ref && (x.ref.id||x.ref))).join(' | ')); return e; }
+// Expose a safe, minimal hook so other modules (e.g., ui.js) can push into the back stack
+try { window.__appBackStackPush = function(type, ref){ pushAppStateEntry(type, ref); }; } catch(_) {}
+
+// Helpers: modal stack maintenance
+function stackHasModal(modalEl){
+    try {
+        const id = modalEl && (modalEl.id || (modalEl.ref && modalEl.ref.id));
+        return appBackStack.some(e => e.type === 'modal' && (e.ref === modalEl || (e.ref && (e.ref.id||e.ref) === id)));
+    } catch(_) { return false; }
+}
+function removeModalFromStack(modalEl){
+    try {
+        const id = modalEl && (modalEl.id || (modalEl.ref && modalEl.ref.id));
+        let removed = false;
+        for (let i = appBackStack.length - 1; i >= 0; i--) {
+            const e = appBackStack[i];
+            const eid = e && e.ref && (e.ref.id || e.ref);
+            if (e && e.type === 'modal' && (e.ref === modalEl || eid === id)) { appBackStack.splice(i,1); removed = true; }
+        }
+        if (removed) logBackDebug('STACK purge modal', id, 'stack=', appBackStack.map(e=>e.type+':'+(e.ref && (e.ref.id||e.ref))).join(' | '));
+    } catch(_) {}
+}
 
 // Removed legacy early hamburger push listener (consolidated later) – now handled in unified sidebar setup
-// Override showModal to push (wrap existing if not already wrapped)
-if (!window.__origShowModalForBack) {
-    window.__origShowModalForBack = showModal;
-    showModal = function(m){ 
-        pushAppStateEntry('modal', m); 
-        window.__origShowModalForBack(m);
-        
-        // If showing the share form modal, setup portfolio auto-selection
-        if (m && m.id === 'shareFormSection') {
-            console.log('Share form modal shown, setting up portfolio auto-selection');
-            
-            // Wait for modal to be fully rendered
-            setTimeout(() => {
-                setupPortfolioAutoSelection();
-                }, 100);
-}
+// Remove legacy wrapper that caused duplicate pushes; use central window.UI.showModal path only
 
 // Test function to verify 52-week low detection is working
 function test52WeekLowDetection() {
@@ -2812,48 +2868,108 @@ function test52WeekLowDetection() {
         console.log('[TEST] Opened modal to show 52-week low alerts');
     }
 }
-    };
-}
-window.addEventListener('popstate', ()=>{
-    // Not using deep browser history here; rely on our own stack
-    const last = popAppStateEntry();
-    if (!last) return;
-    if (last.type === 'modal') {
-        // Smart modal back: hide current modal and restore the previous one (if any)
-        const currentModal = last.ref && last.ref.nodeType === 1 ? last.ref : (last.ref ? document.getElementById(last.ref.id || last.ref) : null);
-        // Targeted auto-save when backing out of the Share Form modal
-        if (currentModal && shareFormSection && currentModal === shareFormSection) {
+function handleGlobalBack(){
+    // 1) Close the currently active/top modal if any tracked in our stack
+    const last = appBackStack[appBackStack.length - 1];
+    if (last && last.type === 'modal') {
+        const entry = popAppStateEntry();
+        const currentModal = entry && entry.ref && entry.ref.nodeType === 1 ? entry.ref : (entry && entry.ref ? document.getElementById(entry.ref.id || entry.ref) : null);
+        if (currentModal && currentModal.id === 'shareFormSection') {
             try { autoSaveShareFormOnClose(); } catch(e) { console.warn('Auto-save on back (share form) failed', e); }
         }
-        if (currentModal && typeof hideModal === 'function') {
+        if (currentModal) {
             hideModal(currentModal);
         } else {
-            // Fallback: hide all if we cannot resolve the modal element
-            closeModals();
-            return;
+            // No resolvable modal ref: only close if at least one modal is visibly open
+            try {
+                const anyOpen = Array.from(document.querySelectorAll('.modal')).some(m => {
+                    const ds = (m.style && m.style.display) || '';
+                    const hasShow = m.classList && m.classList.contains('show');
+                    const cs = window.getComputedStyle ? window.getComputedStyle(m).display : '';
+                    return ds === 'flex' || hasShow || cs === 'flex';
+                });
+                if (anyOpen) closeModals();
+            } catch(_) {}
         }
-        // Peek previous stack entry; if it is also a modal, show it without pushing history
+        // If previous is also a modal, restore it without pushing history
         const prev = appBackStack[appBackStack.length - 1];
         if (prev && prev.type === 'modal') {
             const prevModal = prev.ref && prev.ref.nodeType === 1 ? prev.ref : (prev.ref ? document.getElementById(prev.ref.id || prev.ref) : null);
-            if (prevModal) {
-                try { showModalNoHistory(prevModal); } catch(e) { console.warn('Failed to restore previous modal on back', e); }
-            }
+            if (prevModal) { try { showModalNoHistory(prevModal); } catch(e){ console.warn('Restore modal failed', e); } }
         }
-    } else if (last.type === 'sidebar') {
-        // Use the unified closer to fully reset layout, overlay, and scroll locks
-        if (typeof toggleAppSidebar === 'function') {
-            toggleAppSidebar(false);
-        } else if (appSidebar) {
-            // Fallback: ensure classes and styles are reset to avoid layout gaps
-            appSidebar.classList.remove('open');
-            document.body.classList.remove('sidebar-active');
-            document.body.style.overflow = '';
-            if (typeof sidebarOverlay !== 'undefined' && sidebarOverlay) {
-                sidebarOverlay.classList.remove('open');
-                sidebarOverlay.style.pointerEvents = 'none';
-            }
+        return true;
+    }
+    // 1a) If any modal is visible but not on stack (legacy open path), close it to avoid coupling to watchlist
+    try {
+        const candidates = Array.from(document.querySelectorAll('.modal'));
+        const openModal = candidates.find(m => {
+            const ds = (m.style && m.style.display) || '';
+            const hasShow = m.classList && m.classList.contains('show');
+            const cs = window.getComputedStyle ? window.getComputedStyle(m).display : '';
+            return ds === 'flex' || hasShow || cs === 'flex';
+        });
+        if (openModal && (!last || last.type !== 'modal')) { logBackDebug('Closing visible modal (no stack)', openModal && openModal.id); hideModal(openModal); return true; }
+    } catch(_) {}
+    // 2) Close the sidebar if open
+    if (window.appSidebar && window.appSidebar.classList.contains('open')) {
+        if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false);
+        else {
+            try {
+                appSidebar.classList.remove('open');
+                document.body.classList.remove('sidebar-active');
+                document.body.style.overflow = '';
+                if (sidebarOverlay){ sidebarOverlay.classList.remove('open'); sidebarOverlay.style.pointerEvents='none'; }
+            } catch(_){}
         }
+        return true;
+    }
+    // 2b) Revert a watchlist change: restore the previous selection directly (no picker)
+    if (last && last.type === 'watchlist') {
+        const entry = popAppStateEntry();
+        const prevIds = (entry && Array.isArray(entry.ref)) ? entry.ref.slice(0) : [];
+        try {
+            const restoreIds = prevIds.length ? prevIds : [ALL_SHARES_ID];
+            // Apply state
+            setCurrentSelectedWatchlistIds(restoreIds);
+            // Reflect in dropdown if present
+            if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
+                watchlistSelect.value = restoreIds[0] || '';
+            }
+            // Persist locally and remotely if available
+            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(restoreIds)); } catch(_) {}
+            try { if (typeof saveLastSelectedWatchlistIds === 'function') saveLastSelectedWatchlistIds(restoreIds); } catch(_) {}
+            // Switch broader UI context
+            if (restoreIds[0] === 'portfolio') {
+                try { showPortfolioView(); } catch(_) {}
+            } else {
+                try { showWatchlistView(); } catch(_) {}
+            }
+            // Re-render current view
+            try { if (typeof renderWatchlist === 'function') renderWatchlist(); } catch(_) {}
+        } catch(e) { console.warn('Back: failed to restore previous watchlist selection', e); }
+        return true;
+    }
+    // 2c) Revert a view mode change
+    if (last && last.type === 'viewMode') {
+        const entry = popAppStateEntry();
+        const prevMode = entry && entry.ref;
+        if (prevMode === 'compact' || prevMode === 'default') {
+            try { setMobileViewMode(prevMode, 'back_restore'); } catch(e){ console.warn('Back: view mode restore failed', e); }
+            try { showCustomAlert(prevMode === 'compact' ? 'Compact View' : 'Default View', 700); } catch(_) {}
+            return true;
+        }
+    }
+    // 3) No UI to reverse, allow browser to navigate back if possible
+    return false;
+}
+
+// Hook browser back to our handler; if nothing to handle, let it fall through
+window.addEventListener('popstate', (ev)=>{
+    const consumed = handleGlobalBack();
+    logBackDebug('POPSTATE handled?', consumed, 'stack=', appBackStack.map(e=>e.type+':'+(e.ref && (e.ref.id||e.ref))).join(' | '));
+    if (consumed) {
+        // Consumed by UI reversal; prevent further handling
+        return;
     }
 });
 
@@ -2864,6 +2980,12 @@ window.addEventListener('keydown', e=>{
         if (last) { e.preventDefault(); history.back(); }
     }
 });
+// Expose a simple in-app back function for buttons to call
+window.goBack = function(){
+    if (!handleGlobalBack()) {
+        try { history.back(); } catch(_){ /* no-op */ }
+    }
+};
 const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
 const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
 const addCashCategoryBtn = document.getElementById('addCashCategoryBtn'); // This will be removed or repurposed
@@ -3358,6 +3480,16 @@ function closeModals() {
         }
     }
 
+
+    // Purge any modal entries from the back stack (we're closing all modals)
+    try {
+        if (Array.isArray(appBackStack) && appBackStack.length) {
+            for (let i = appBackStack.length - 1; i >= 0; i--) {
+                if (appBackStack[i] && appBackStack[i].type === 'modal') appBackStack.splice(i,1);
+            }
+            logBackDebug('STACK purge all modals', 'stack=', appBackStack.map(e=>e.type+':'+(e.ref && (e.ref.id||e.ref))).join(' | '));
+        }
+    } catch(_) {}
 
     // Delegate actual DOM closing/cleanup to UI module if available
     if (window.UI && typeof window.UI.closeModals === 'function') {
@@ -4537,7 +4669,8 @@ function showModal(modalElement) {
     // Fallback minimal implementation
     try {
         if (!modalElement) return;
-        if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id }, '', '');
+    if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id }, '', '');
+    try { pushAppStateEntry('modal', modalElement); } catch(_){}
         modalElement.classList.add('show');
         modalElement.scrollTop = 0;
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
@@ -6312,6 +6445,16 @@ function openWatchlistPicker() {
         console.warn('Watchlist Picker: Modal elements not found. modal?', !!watchlistPickerModal, ' list?', !!watchlistPickerList);
         return;
     }
+    // Strong de-dup guard: if already visible or already on stack, just ensure it's visible without pushing
+    try {
+        const isVisible = watchlistPickerModal.style.display === 'flex' || watchlistPickerModal.classList.contains('show');
+        const alreadyOnStack = (typeof stackHasModal === 'function') ? stackHasModal(watchlistPickerModal) : false;
+        if (isVisible || alreadyOnStack) {
+            try { if (window.UI && window.UI.showModalNoHistory) window.UI.showModalNoHistory(watchlistPickerModal); else showModalNoHistory(watchlistPickerModal); } catch(_) { watchlistPickerModal.style.display = 'flex'; }
+            console.debug('[WatchlistPicker] Already open/on stack; showing without new push.');
+            return;
+        }
+    } catch(_) {}
     console.log('[WatchlistPicker] Opening picker...');
     watchlistPickerList.innerHTML = '';
 
@@ -6356,7 +6499,11 @@ function openWatchlistPicker() {
 
         div.onclick = () => {
             console.log('[WatchlistPicker] Selecting watchlist', it.id);
+            // Push previous selection for shallow back
+            try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; pushAppStateEntry('watchlist', prev); } catch(_) {}
             setCurrentSelectedWatchlistIds([it.id]);
+            // Create a browser history entry so hardware/back triggers our popstate handler
+            try { if (typeof pushAppState === 'function') pushAppState({ watchlist: it.id }, '', '#watchlist'); } catch(_) {}
             try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch (_) { }
             if (watchlistSelect) watchlistSelect.value = it.id;
             try { setLastSelectedView(it.id); } catch (e) { }
@@ -6387,7 +6534,12 @@ function openWatchlistPicker() {
     });
 
     try {
-        showModal(watchlistPickerModal);
+        // Only push if not already on stack
+        if (!(typeof stackHasModal === 'function' && stackHasModal(watchlistPickerModal))) {
+            showModal(watchlistPickerModal);
+        } else {
+            if (window.UI && window.UI.showModalNoHistory) window.UI.showModalNoHistory(watchlistPickerModal); else showModalNoHistory(watchlistPickerModal);
+        }
     } catch (e) {
         watchlistPickerModal.classList.remove('app-hidden');
         watchlistPickerModal.style.display = 'flex';
@@ -6419,9 +6571,20 @@ if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
         clickable.setAttribute('data-picker-bound','true');
     }
 }
-if (closeWatchlistPickerBtn) closeWatchlistPickerBtn.addEventListener('click', ()=>{ const modalEl=document.getElementById('watchlistPickerModal'); if (modalEl) { try { hideModal(modalEl); } catch(_) { modalEl.classList.add('app-hidden'); } } if (dynamicWatchlistTitle) { dynamicWatchlistTitle.setAttribute('aria-expanded','false'); } if (dynamicWatchlistTitleText) { dynamicWatchlistTitleText.focus(); } });
-window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
-window.addEventListener('keydown', e=>{ if(e.key==='Escape' && watchlistPickerModal && watchlistPickerModal.style.display!=='none' && !watchlistPickerModal.classList.contains('app-hidden')){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
+if (closeWatchlistPickerBtn && !closeWatchlistPickerBtn.getAttribute('data-picker-close-bound')) {
+    closeWatchlistPickerBtn.addEventListener('click', ()=>{
+        const modalEl=document.getElementById('watchlistPickerModal');
+        if (modalEl) { try { hideModal(modalEl); } catch(_) { modalEl.classList.add('app-hidden'); } }
+        if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false');
+        if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus();
+    });
+    closeWatchlistPickerBtn.setAttribute('data-picker-close-bound','true');
+}
+if (!window.__watchlistPickerGlobalBound) {
+    window.__watchlistPickerGlobalBound = true;
+    window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
+    window.addEventListener('keydown', e=>{ if(e.key==='Escape' && watchlistPickerModal && watchlistPickerModal.style.display!=='none' && !watchlistPickerModal.classList.contains('app-hidden')){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
+}
 
 // Wrap loadUserWatchlistsAndSettings to refresh new UI parts after data load
 const __origLoadUserWatchlistsAndSettings = loadUserWatchlistsAndSettings;
@@ -6435,6 +6598,7 @@ loadUserWatchlistsAndSettings = async function() {
         const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
         const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
         if (wantMovers && !haveMovers) {
+            try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== '__movers') pushAppStateEntry('watchlist', prev); } catch(_) {}
             setCurrentSelectedWatchlistIds(['__movers']);
             const sel = typeof watchlistSelect !== 'undefined' ? watchlistSelect : document.getElementById('watchlistSelect');
             if (sel) sel.value = '__movers';
@@ -9367,7 +9531,8 @@ function updateGlobalAlertsSettingsSummary() {
 
 // Modal wiring after DOMContentLoaded
 function initGlobalAlertsUI(force) {
-    if (!force && globalAlertsBtn) return; // already initialized
+    if (window.__globalAlertsUIReady && !force) return; // already initialized
+    window.__globalAlertsUIReady = true;
     globalAlertsBtn = document.getElementById('globalAlertsBtn');
     globalAlertsModal = document.getElementById('globalAlertsModal');
     saveGlobalAlertsBtn = document.getElementById('saveGlobalAlertsBtn');
@@ -9522,10 +9687,13 @@ window.runDirectionalThresholdDiagnostics = runDirectionalThresholdDiagnostics;
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => initGlobalAlertsUI());
-// Safety: if script loaded after DOMContentLoaded already fired
-if (document.readyState === 'interactive' || document.readyState === 'complete') {
-    try { initGlobalAlertsUI(); } catch(_){}
+if (!window.__globalAlertsDomReadyBound) {
+    window.__globalAlertsDomReadyBound = true;
+    document.addEventListener('DOMContentLoaded', () => initGlobalAlertsUI());
+    // Safety: if script loaded after DOMContentLoaded already fired
+    if (document.readyState === 'interactive' || document.readyState === 'complete') {
+        try { initGlobalAlertsUI(); } catch(_){}
+    }
 }
 
 // (Deprecated) Previous alerts settings listener retained for reference
@@ -9574,9 +9742,9 @@ let globalViewModeWatcher = null;
 
 // Function to ensure compact view consistency throughout the session
 function startViewModeConsistencyChecker() {
-    if (viewModeConsistencyChecker) {
-        clearInterval(viewModeConsistencyChecker);
-    }
+    // Ensure only one consistency checker interval runs
+    try { if (window.__viewModeConsistencyActive && viewModeConsistencyChecker) clearInterval(viewModeConsistencyChecker); } catch(_) {}
+    window.__viewModeConsistencyActive = true;
 
     viewModeConsistencyChecker = setInterval(() => {
         if (!viewModeInitialized) return;
@@ -9662,9 +9830,9 @@ function startViewModeWatcher() {
 
 // Global view mode enforcer - runs periodically to ensure view mode is maintained
 function startGlobalViewModeEnforcer() {
-    if (globalViewModeWatcher) {
-        clearInterval(globalViewModeWatcher);
-    }
+    // Ensure only one global enforcer interval runs
+    try { if (window.__globalViewModeEnforcerActive && globalViewModeWatcher) clearInterval(globalViewModeWatcher); } catch(_) {}
+    window.__globalViewModeEnforcerActive = true;
 
     logDebug('View Mode: Starting global enforcer');
 
@@ -9696,6 +9864,10 @@ function startGlobalViewModeEnforcer() {
 
 async function toggleMobileViewMode() {
     const newMode = (currentMobileViewMode === 'default') ? 'compact' : 'default';
+    // Push previous mode for shallow back restore
+    try { pushAppStateEntry('viewMode', currentMobileViewMode); } catch(_) {}
+    // Also push a browser history entry so popstate fires on Back
+    try { if (typeof pushAppState === 'function') pushAppState({ viewMode: newMode }, '', '#view'); } catch(_) {}
 
     // Use the centralized view mode manager
     const success = setMobileViewMode(newMode, 'toggle_button');
@@ -10913,17 +11085,21 @@ function hideContextMenu() {
 
 function toggleAppSidebar(forceState = null) {
     // Delegate to UI module if present
-    if (window.UI && typeof window.UI.toggleAppSidebar === 'function') return window.UI.toggleAppSidebar(forceState);
+    if (window.UI && typeof window.UI.toggleAppSidebar === 'function') {
+        const wasOpen = appSidebar && appSidebar.classList.contains('open');
+        const result = window.UI.toggleAppSidebar(forceState);
+        const isOpen = appSidebar && appSidebar.classList.contains('open');
+        if (!wasOpen && isOpen) { try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch(_){} }
+        return result;
+    }
 
     // Minimal fallback behavior if UI module absent
     try {
         const isDesktop = window.innerWidth > 768;
         const isOpen = appSidebar && appSidebar.classList.contains('open');
         if (forceState === true || (forceState === null && !isOpen)) {
-            if (!isDesktop) {
-                try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch(_){}
-                document.body.style.overflow = 'hidden';
-            }
+            try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch(_){}
+            document.body.style.overflow = 'hidden';
             if (appSidebar) appSidebar.classList.add('open');
             if (sidebarOverlay) sidebarOverlay.classList.add('open');
             if (isDesktop) document.body.classList.add('sidebar-active');
@@ -11961,6 +12137,8 @@ if (targetPriceInput) {
 
     // Global click listener to close modals/context menu if clicked outside
     window.addEventListener('click', (event) => {
+        // If we're in a brief modal-to-modal transition, skip global close logic
+        try { if (window.__modalTransitioning && (Date.now() - window.__modalTransitioning) < 250) return; } catch(_) {}
         // Handle targetHitDetailsModal minimization specifically.
         // This ensures clicks *outside* the modal content and *not* on the trigger button minimize it.
         if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
@@ -12456,10 +12634,20 @@ if (sortSelect) {
             }
             // Mark that the edit form was opened from share details so back restores it
             wasEditOpenedFromShareDetail = true;
-            // Ensure the details modal is recorded just before we open the edit modal
-            try { pushAppStateEntry('modal', shareDetailModal); } catch(_) {}
-            // Close the detail modal first to avoid overlay conflicts, then open the edit form
-            hideModal(shareDetailModal);
+            // Close the detail modal visually only (keep it in the back stack) to avoid overlay conflicts
+            try {
+                if (typeof hideModalKeepStack === 'function') {
+                    logBackDebug && logBackDebug('DETAIL→EDIT keep-stack hide', 'shareDetailModal');
+                    hideModalKeepStack(shareDetailModal);
+                } else if (window.UI && window.UI.hideModal) {
+                    // UI.hideModal will purge; instead do a visual hide to preserve stack
+                    shareDetailModal.style.setProperty('display','none','important');
+                    shareDetailModal.classList.remove('show');
+                } else {
+                    shareDetailModal.style.setProperty('display','none','important');
+                    shareDetailModal.classList.remove('show');
+                }
+            } catch(_) {}
             if (typeof showEditFormForSelectedShare === 'function') {
                 showEditFormForSelectedShare();
             }
@@ -12743,7 +12931,6 @@ if (sortSelect) {
                 event.stopPropagation();
                 const willOpen = !appSidebar.classList.contains('open');
                 toggleAppSidebar();
-                if (willOpen) pushAppStateEntry('sidebar','sidebar');
             });
             hamburgerBtn.dataset.sidebarBound = '1';
         }
@@ -12891,7 +13078,6 @@ if (sortSelect) {
                     event.stopPropagation();
                     const willOpen = !appSidebar.classList.contains('open');
                     toggleAppSidebar();
-                    if (willOpen) pushAppStateEntry('sidebar','sidebar');
                 });
                 hamburgerBtn.dataset.sidebarBound = '1';
             }
@@ -13990,6 +14176,8 @@ if (targetHitIconBtn) {
 let firebaseServices;
 
 document.addEventListener('DOMContentLoaded', async function() {
+    if (window.__appDomBootstrapped) { try { console.debug('Init: DOMContentLoaded bootstrap already run; skipping'); } catch(_){} return; }
+    window.__appDomBootstrapped = true;
     // Prefer hub singletons
     db = hubDb; auth = hubAuth; currentAppId = hubAppId; firestore = hubFs; authFunctions = hubAuthFx;
     try { window._firebaseInitialized = !!hubInit; } catch(_) {}
@@ -13998,7 +14186,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     setTimeout(() => {
         initializeTheme();
     }, 100);
-    initializeApp();
+    if (!window.__initializeAppCalled) { window.__initializeAppCalled = true; initializeApp(); }
 });
 
 function initializeApp() {
@@ -14232,7 +14420,13 @@ function initializeApp() {
             try { ensureTitleStructure(); } catch(e) {}
             // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
         };
-        setupAuthListener(auth, authFunctions);
+        // Prevent duplicate auth listener registration
+        if (!window.__authListenerSetup) {
+            window.__authListenerSetup = true;
+            setupAuthListener(auth, authFunctions);
+        } else {
+            try { console.debug('Auth: setupAuthListener already registered; skipping duplicate'); } catch(_) {}
+        }
     } else {
     console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
         const errorDiv = document.getElementById('firebaseInitError');
@@ -14354,7 +14548,13 @@ function initializeApp() {
             console.warn('Auth: Failed to set persistence (outer), continuing with default.', e);
         }
 
-        setupAuthListener(auth, authFunctions);
+        // Prevent duplicate auth listener registration (late path)
+        if (!window.__authListenerSetup) {
+            window.__authListenerSetup = true;
+            setupAuthListener(auth, authFunctions);
+        } else {
+            try { console.debug('Auth: setupAuthListener already registered (late path); skipping'); } catch(_) {}
+        }
     } else {
     console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
         const errorDiv = document.getElementById('firebaseInitError');
@@ -14640,4 +14840,6 @@ try {
         }
     } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
-// --- End Super Debug Always-Install --- OK now on the mobile cards the actual information the sell or buy
+// --- End Super Debug Always-Install ---
+
+}

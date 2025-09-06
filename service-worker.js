@@ -73,6 +73,15 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     // Only cache GET requests
     if (event.request.method === 'GET') {
+        // Skip non-http(s) schemes (e.g., chrome-extension, file, data)
+        try {
+            const u = new URL(event.request.url);
+            if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+                return; // Let the browser handle it; Cache API doesn't support these schemes
+            }
+        } catch (_) {
+            return; // If URL can't be parsed, don't attempt to handle/capture
+        }
         // Pre-compute whether this is a cross-origin request so we can avoid noisy logging for CDN failures
         let requestUrl;
         let isCrossOrigin = false;
