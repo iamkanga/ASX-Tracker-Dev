@@ -632,17 +632,34 @@ document.addEventListener('DOMContentLoaded', function () {
             const arrow = card.querySelector('.portfolio-centered-arrow');
             const content = card.querySelector('.portfolio-expanded-content');
 
-            // Expand/collapse functionality
+            // Accordion expand/collapse logic
+            const expandCard = () => {
+                cardNodes.forEach((otherCard) => {
+                    if (otherCard !== card) {
+                        otherCard.classList.remove('expanded');
+                        const otherArrow = otherCard.querySelector('.portfolio-centered-arrow');
+                        const otherContent = otherCard.querySelector('.portfolio-expanded-content');
+                        if (otherArrow) otherArrow.textContent = '⌄';
+                        if (otherContent) otherContent.style.display = 'none';
+                    }
+                });
+                card.classList.add('expanded');
+                arrow.textContent = '⌃';
+                content.style.display = 'block';
+            };
+
+            const collapseCard = () => {
+                card.classList.remove('expanded');
+                arrow.textContent = '⌄';
+                content.style.display = 'none';
+            };
+
             const toggleExpanded = () => {
                 const isExpanded = card.classList.contains('expanded');
                 if (isExpanded) {
-                    card.classList.remove('expanded');
-                    arrow.textContent = '⌄'; // Point down when closed
-                    content.style.display = 'none';
+                    collapseCard();
                 } else {
-                    card.classList.add('expanded');
-                    arrow.textContent = '⌃'; // Point up when open
-                    content.style.display = 'block';
+                    expandCard();
                 }
             };
 
