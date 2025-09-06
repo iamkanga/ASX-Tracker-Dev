@@ -94,25 +94,12 @@ export async function saveShareData(isSilent = false) {
         finalWatchlistIds = [selectedWatchlistIdForSave];
     }
 
-    // Prevent duplicate shares in Portfolio
-    if (!window.selectedShareDocId && Array.isArray(finalWatchlistIds) && finalWatchlistIds.includes('portfolio')) {
-        const allShares = getAllSharesData();
-        const alreadyInPortfolio = allShares.some(s => s.shareName === shareName && Array.isArray(s.watchlistIds) && s.watchlistIds.includes('portfolio'));
-        if (alreadyInPortfolio) {
-            if (!isSilent) {
-                window.showCustomAlert && window.showCustomAlert(`Share "${shareName}" is already in your Portfolio. You cannot add it again.`);
-            }
-            console.warn('[DUPLICATE PORTFOLIO] Prevented double-up for', shareName);
-            return;
-        }
-    }
-
     // For updates, use the new selection directly (don't merge with existing)
     if (existingWatchlistIds && Array.isArray(existingWatchlistIds) && finalWatchlistIds && Array.isArray(finalWatchlistIds)) {
         // Remove duplicates from the new selection
         finalWatchlistIds = [...new Set(finalWatchlistIds)];
         console.log('[DEBUG] Updated watchlistIds:', { existing: existingWatchlistIds, selected: selectedWatchlistIdsForSave || [selectedWatchlistIdForSave], final: finalWatchlistIds });
-    }
+
         // Debug: Track the share data being saved
         console.log('AppService Share Update Debug:', {
             shareId: window.selectedShareDocId,
@@ -600,7 +587,7 @@ export async function saveShareData(isSilent = false) {
     } catch(error) {
         console.error('[DEBUG] Error in modal cleanup:', error);
     }
-// End of saveShareData
+}
 
 export async function deleteShare(shareId) {
     if (!shareId) { try { window.showCustomAlert && window.showCustomAlert('No share selected for deletion.'); } catch(_) {} return; }
