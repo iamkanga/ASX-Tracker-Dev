@@ -558,9 +558,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="portfolio-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} / ${todayChange !== null ? fmtPct(todayChangePct) : ''}</div>
                 </div>
 
-                <!-- Current Value on separate line -->
+                <!-- Current Value row with centered eye icon -->
                 <div class="portfolio-current-value">
                     <span class="portfolio-label">Current Value</span>
+                    <button class="pc-eye-btn" aria-label="Hide or show from totals"><span class="fa fa-eye"></span></button>
                     <span class="portfolio-val">${rowValue !== null ? fmtMoney(rowValue) : ''}</span>
                 </div>
 
@@ -572,9 +573,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 <!-- Centered arrow at bottom of card -->
                 <div class="portfolio-centered-arrow">⌄</div>
-
-                <!-- Hidden eye button (can be accessed via long press or right click) -->
-                <button class="pc-eye-btn hidden" aria-label="Hide or show from totals"><span class="fa fa-eye"></span></button>
 
                 <!-- Expanded details with shares, average price, and target -->
                 <div class="portfolio-expanded-content">
