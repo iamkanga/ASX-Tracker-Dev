@@ -747,10 +747,12 @@
 
 /* Single-container modal: ensure the modal content itself scrolls as one block (improves mobile keyboard/scroll behavior) */
 .single-scroll-modal {
-    max-height: calc(100vh - 80px); /* Leave room for header and safe area */
-    overflow-y: auto; /* Single scrolling container */
-    -webkit-overflow-scrolling: touch; /* Smooth native scrolling on iOS */
-    padding: 18px 18px 24px; /* Ensure comfortable padding inside modal */
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 18px 18px 24px;
     box-sizing: border-box;
 }
 
@@ -761,7 +763,12 @@
 
 /* Small viewport tweak: reduce modal top margin and padding to fit mobile screens */
 @media (max-width: 640px) {
-    .single-scroll-modal { max-height: calc(100vh - 48px); padding: 12px; }
+    .single-scroll-modal {
+        height: 100dvh;
+        max-height: 100dvh;
+        min-height: 0;
+        padding: 12px;
+    }
 }
 
 /* Keep modal header fixed inside a single-scroll-modal so title/action row doesn't scroll under content */

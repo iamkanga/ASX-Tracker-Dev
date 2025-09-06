@@ -3228,6 +3228,38 @@ function adjustMainContentPadding() {
     if (appHeader && mainContainer) {
         // Get the current rendered height of the fixed header, including any wrapped content.
         // offsetHeight is usually sufficient, but scrollHeight can be more robust if content overflows.
+
+// --- Mobile Keyboard Scroll Fix for Add/Edit Share Modal ---
+function enableShareFormMobileScrollFix() {
+    if (!shareFormSection) return;
+    // Only apply on mobile devices
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isMobile) return;
+    shareFormSection.addEventListener('focusin', function(e) {
+        const target = e.target;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+            // Use scrollIntoView with options for best UX
+            setTimeout(() => {
+                try {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                } catch(_) {}
+            }, 120); // Delay to allow keyboard to appear
+        }
+    });
+    // Optionally, adjust modal height if visualViewport API is available
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', function() {
+            const modalContent = shareFormSection.querySelector('.single-scroll-modal');
+            if (modalContent) {
+                modalContent.style.height = window.visualViewport.height + 'px';
+                modalContent.style.maxHeight = window.visualViewport.height + 'px';
+            }
+        });
+    }
+}
+
+// Enable the fix on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', enableShareFormMobileScrollFix);
         // For a fixed header, offsetHeight should reflect its full rendered height.
         const headerHeight = appHeader.offsetHeight;
         const oldPadding = mainContainer.style.paddingTop;
