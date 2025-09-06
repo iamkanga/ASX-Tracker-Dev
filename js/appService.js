@@ -139,16 +139,19 @@ export async function saveShareData(isSilent = false) {
 
     // Set entry price logic
     if (window.selectedShareDocId) {
-        // Editing existing share: preserve original entryPrice
+        // Editing existing share: always ignore entryPrice from form, preserve only original
         const existingShare = getAllSharesData().find(s => s.id === window.selectedShareDocId);
         if (existingShare && existingShare.entryPrice !== undefined) {
             shareData.entryPrice = existingShare.entryPrice;
             shareData.lastFetchedPrice = existingShare.lastFetchedPrice || existingShare.entryPrice;
             shareData.previousFetchedPrice = existingShare.previousFetchedPrice || existingShare.entryPrice;
             console.log('[ENTRY PRICE] Preserved original entry price for edit:', shareData.entryPrice);
+        } else {
+            // Fallback: if for some reason the share is missing, do not set entryPrice at all
+            console.warn('[ENTRY PRICE] Could not find existing share to preserve entry price.');
         }
     } else {
-        // Creating new share: set entryPrice from current price
+        // Creating new share: set entryPrice from current price only
         if (form && form.currentPrice !== null && form.currentPrice !== undefined && !isNaN(form.currentPrice)) {
             shareData.entryPrice = parseFloat(form.currentPrice);
             shareData.lastFetchedPrice = parseFloat(form.currentPrice);
