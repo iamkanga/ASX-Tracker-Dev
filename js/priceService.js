@@ -150,10 +150,7 @@ export async function fetchLivePrices(opts = {}) {
             });
         }
         if (Array.isArray(window.sharesAt52WeekLow)) {
-            const alreadyHasTest = window.sharesAt52WeekLow.some(item => item && item.code === 'CBA' && item.isTestCard);
-            if (!alreadyHasTest) {
-                window.sharesAt52WeekLow.unshift({ code: 'CBA', name: 'Commonwealth Bank (Test Card)', type: 'low', low52: 90.00, high52: 120.00, live: 91.23, isTestCard: true, muted: !!(window.__low52MutedMap && window.__low52MutedMap['CBA_low']) });
-            }
+            // Removed CBA test card injection
         }
         try { if (typeof window.onLivePricesUpdated === 'function') window.onLivePricesUpdated(); } catch(_) {}
         window._livePricesLoaded = true;

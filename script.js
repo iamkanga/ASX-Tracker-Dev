@@ -541,16 +541,11 @@ document.addEventListener('DOMContentLoaded', function () {
             // Card HTML (collapsed/expandable)
             // Border color logic: use today's change (todayClass) to reflect recent movement
             let borderColor = '';
-            let testNeutral = false;
-            // Only apply the test border/background for the explicit TEST-NEUTRAL card
-            if (share.shareName === 'TEST-NEUTRAL') {
-                borderColor = 'border: 4px solid #a49393; background: repeating-linear-gradient(135deg, #a49393, #a49393 10px, #fff 10px, #fff 20px);';
-                testNeutral = true;
-            } else if (todayClass === 'positive') borderColor = 'border: 4px solid #008000;';
+            if (todayClass === 'positive') borderColor = 'border: 4px solid #008000;';
             else if (todayClass === 'negative') borderColor = 'border: 4px solid #c42131;';
-            // For real neutral cards, do NOT set any inline border/background; let CSS handle it
+            // For neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
-            return `<div class="portfolio-card ${testNeutral ? 'neutral' : todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
+            return `<div class="portfolio-card ${todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
                 <!-- Single line with ASX code, current price, and day change -->
                 <div class="portfolio-top-row">
                     <div class="portfolio-code">${share.shareName || ''}</div>
@@ -2813,80 +2808,6 @@ function removeModalFromStack(modalEl){
 // Removed legacy early hamburger push listener (consolidated later) – now handled in unified sidebar setup
 // Remove legacy wrapper that caused duplicate pushes; use central window.UI.showModal path only
 
-// Test function to verify 52-week low detection is working
-function test52WeekLowDetection() {
-    console.log('[TEST] Testing 52-week low detection...');
-    
-    // Find a share with 52-week low data
-    const sharesWith52WeekLow = allSharesData.filter(share => 
-        share && share.shareName && 
-        livePrices[share.shareName.toUpperCase()] && 
-        livePrices[share.shareName.toUpperCase()].Low52
-    );
-    
-    if (sharesWith52WeekLow.length === 0) {
-        console.log('[TEST] No shares with 52-week low data found');
-        return;
-    }
-    
-    const testShare = sharesWith52WeekLow[0];
-    const code = testShare.shareName.toUpperCase();
-    const liveData = livePrices[code];
-    
-    console.log(`[TEST] Testing with ${code}:`);
-    console.log(`[TEST] - Current live price: $${liveData.live}`);
-    console.log(`[TEST] - 52-week low: $${liveData.Low52}`);
-    console.log(`[TEST] - Is at 52-week low: ${liveData.live <= liveData.Low52}`);
-    
-    // Temporarily set live price to 52-week low to test detection
-    const originalPrice = liveData.live;
-    liveData.live = liveData.Low52;
-    console.log(`[TEST] - Temporarily set live price to 52-week low: $${liveData.live}`);
-    
-    // Clear existing 52-week low alerts
-    window.sharesAt52WeekLow = [];
-    
-    // Trigger 52-week low detection
-    if (Array.isArray(allSharesData)) {
-        allSharesData.forEach(share => {
-            const shareCode = (share.shareName || '').toUpperCase();
-            const lpObj = livePrices[shareCode];
-            if (!lpObj || lpObj.live == null || isNaN(lpObj.live) || lpObj.Low52 == null || isNaN(lpObj.Low52)) return;
-            
-            if (lpObj.live <= lpObj.Low52) {
-                let displayName = shareCode;
-                const allAsxCodesLocal = getAllAsxCodes();
-                if (Array.isArray(allAsxCodesLocal)) {
-                    const match = allAsxCodesLocal.find(c => c.code === shareCode);
-                    if (match && match.name) displayName = match.name;
-                }
-                if (!displayName && share.companyName) displayName = share.companyName;
-                
-                window.sharesAt52WeekLow.push({ 
-                    code: shareCode, 
-                    name: displayName, 
-                    live: lpObj.live, 
-                    low52: lpObj.Low52, 
-                    type: 'low', 
-                    muted: false 
-                });
-                console.log(`[TEST] ✅ Added 52-week low alert for ${shareCode}: $${lpObj.live} <= $${lpObj.Low52}`);
-            }
-        });
-    }
-    
-    console.log(`[TEST] Found ${window.sharesAt52WeekLow.length} 52-week low alerts`);
-    
-    // Restore original price
-    liveData.live = originalPrice;
-    console.log(`[TEST] - Restored original price: $${originalPrice}`);
-    
-    // Show modal
-    if (typeof window.showTargetHitDetailsModal === 'function') {
-        window.showTargetHitDetailsModal({ explicit: true });
-        console.log('[TEST] Opened modal to show 52-week low alerts');
-    }
-}
 function handleGlobalBack(){
     // 1) Close the currently active/top modal if any tracked in our stack
     const last = appBackStack[appBackStack.length - 1];
@@ -8939,65 +8860,6 @@ function testGlobalAlertEvaluation() {
     globalPercentDecrease = 5; // 5% decrease threshold
 
     // Mock some test data
-    const testLivePrices = {
-        'CBA': { live: 120, prevClose: 100 }, // 20% increase - should trigger
-        'ANZ': { live: 25, prevClose: 30 },   // 16.67% decrease - should trigger
-        'NAB': { live: 35, prevClose: 34 },   // 2.94% increase - should NOT trigger
-        'WBC': { live: 22, prevClose: 22 },   // No change - should NOT trigger
-    };
-
-    const testExternalRows = [
-        { code: 'RIO', live: 110, prevClose: 100 }, // 10% increase - should trigger
-        { code: 'BHP', live: 40, prevClose: 45 },   // 11.11% decrease - should trigger
-    ];
-
-    // Mock user codes (portfolio)
-    const mockUserCodes = new Set(['CBA', 'ANZ']);
-
-    console.log('[TEST] Test thresholds:', { globalPercentIncrease, globalPercentDecrease });
-    console.log('[TEST] Test livePrices:', testLivePrices);
-    console.log('[TEST] Test externalRows:', testExternalRows);
-
-    let increaseCount = 0;
-    let decreaseCount = 0;
-
-    function evaluateMovement(code, live, prev) {
-        if (live == null || prev == null) return;
-        const change = live - prev;
-        if (change === 0) return;
-        const absChange = Math.abs(change);
-        const pct = prev !== 0 ? (absChange / prev) * 100 : 0;
-        let triggered = false;
-        let type = null;
-        let thresholdHit = null;
-
-        if (change > 0) {
-            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) {
-                triggered = true;
-                type = 'increase';
-                thresholdHit = globalPercentIncrease + '%';
-            }
-        } else {
-            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) {
-                triggered = true;
-                type = 'decrease';
-                thresholdHit = globalPercentDecrease + '%';
-            }
-        }
-
-        if (triggered) {
-            if (change > 0) increaseCount++;
-            else decreaseCount++;
-            console.log(`[TEST] ALERT TRIGGERED: ${code} ${live} vs ${prev} (${pct.toFixed(2)}%) - ${thresholdHit} ${type}`);
-        } else {
-            console.log(`[TEST] No alert: ${code} ${live} vs ${prev} (${pct.toFixed(2)}%)`);
-        }
-    }
-
-    // Test user-owned codes
-    Object.entries(testLivePrices).forEach(([code, lp]) => {
-        evaluateMovement(code, lp.live, lp.prevClose);
-    });
 
     // Test external codes (excluding user-owned)
     testExternalRows.forEach(r => {
@@ -9285,7 +9147,7 @@ if (typeof window !== 'undefined') {
 
         // Clear muted status for test alerts
         if (window.__low52MutedMap) {
-            ['FBR', 'BOT', 'GEM', 'CBA'].forEach(code => {
+            ['FBR', 'BOT', 'GEM'].forEach(code => {
                 delete window.__low52MutedMap[code + '_low'];
             });
             try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
@@ -9338,8 +9200,7 @@ if (typeof window !== 'undefined') {
                     live: lpObj.live,
                     low52: lpObj.Low52,
                     type: 'low',
-                    muted: isMuted,
-                    testTriggered: true
+                    muted: isMuted
                 });
 
                 window.triggered52WeekLowSet.add(code);
@@ -9435,28 +9296,7 @@ if (typeof window !== 'undefined') {
     };
 
     // Function to remove the CBA test card after testing
-    window.remove52WeekLowTestCard = function() {
-        console.log('[CLEANUP] Removing 52-week low test card...');
-
-        // Remove from sharesAt52WeekLow array
-        if (window.sharesAt52WeekLow) {
-            const originalLength = window.sharesAt52WeekLow.length;
-            window.sharesAt52WeekLow = window.sharesAt52WeekLow.filter(item => !(item.code === 'CBA' && item.isTestCard));
-            console.log(`[CLEANUP] Removed ${originalLength - window.sharesAt52WeekLow.length} test card(s)`);
-        }
-
-        // Remove from muted map
-        if (window.__low52MutedMap && window.__low52MutedMap['CBA_low']) {
-            delete window.__low52MutedMap['CBA_low'];
-            try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
-        }
-
-        // Update UI
-        if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner();
-        if (typeof window.recomputeTriggeredAlerts === 'function') window.recomputeTriggeredAlerts();
-
-        console.log('[CLEANUP] 52-week low test card removal complete');
-    };
+    // Removed function to remove the CBA test card after testing
 
     // Target Hit Notifications Test Functions
     window.testTargetHitNotifications = function() {
