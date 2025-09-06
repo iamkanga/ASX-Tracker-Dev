@@ -5197,7 +5197,11 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     } catch(e) { console.warn('Auto Details: Failed to populate auto fields', e); }
 
     showModal(shareFormSection);
-    // Ensure accordion is properly initialized after modal is shown
+    // Always clear accordion init flag before re-initializing (fixes edit modal bug)
+    const accordion = document.getElementById('shareFormAccordion');
+    if (accordion && accordion.dataset.accordionInit) {
+        delete accordion.dataset.accordionInit;
+    }
     setTimeout(() => initShareFormAccordion(true), 10);
     try { scrollMainToTop(); } catch(_) {}
     shareNameInput.focus();
