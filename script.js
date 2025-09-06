@@ -82,10 +82,31 @@ function pushAppState(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
 }
 
-// Listen for the back button (popstate event)
+// Prevent back button from closing the app when at main screen (PWA UX patch)
+function preventPwaExitOnMainScreen() {
+    // Push a dummy state if at the main screen
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        history.replaceState({pwaRoot:true}, '', location.href);
+        history.pushState({pwaDummy:true}, '', location.href);
+    }
+}
+
+window.addEventListener('DOMContentLoaded', preventPwaExitOnMainScreen);
+
 window.addEventListener('popstate', function(event) {
-    // No-op: unified popstate handler below manages all back behavior (modal → sidebar → watchlist/view)
-    // Intentionally left blank to avoid double-handling.
+    // If there is no modal, sidebar, or other in-app state to go back to, stay in app
+    const modalOpen = document.querySelector('.modal.show');
+    const sidebarOpen = document.querySelector('.sidebar.show');
+    // If at root and nothing is open, immediately push dummy state back
+    if ((event.state && event.state.pwaDummy) && !modalOpen && !sidebarOpen) {
+        history.pushState({pwaDummy:true}, '', location.href);
+        // Optionally show a toast or vibrate to indicate no further back
+        if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+            window.ToastManager.info('Pressing back again will not exit the app.');
+        }
+        return;
+    }
+    // Otherwise, allow normal back navigation (e.g., close modal/sidebar)
 });
 // Keep main content padding in sync with header height changes (e.g., viewport resize)
 window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
