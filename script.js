@@ -3991,10 +3991,41 @@ function toggleAccordionSection(section) {
     const opening = !section.classList.contains('open');
     section.classList.toggle('open');
     toggleBtn.setAttribute('aria-expanded', String(opening));
+    
+    // Handle scrolling adjustments for mobile and modal context
     if (opening && window.innerWidth < 650) {
         setTimeout(() => {
             try { toggleBtn.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
         }, 30);
+    }
+    
+    // Additional scroll adjustment for modal context after accordion animation
+    if (opening) {
+        // Wait for the CSS transition to complete (350ms from .accordion-panel transition)
+        setTimeout(() => {
+            const modal = section.closest('.single-scroll-modal');
+            if (modal) {
+                // Check if the toggle button is still visible in the viewport
+                const rect = toggleBtn.getBoundingClientRect();
+                const modalRect = modal.getBoundingClientRect();
+                
+                // If toggle button is too close to the top (less than 100px from modal top)
+                if (rect.top - modalRect.top < 100) {
+                    modal.scrollBy({
+                        top: (rect.top - modalRect.top) - 100,
+                        behavior: 'smooth'
+                    });
+                }
+                
+                // If toggle button is below the visible area, scroll it into view
+                if (rect.bottom > modalRect.bottom) {
+                    modal.scrollBy({
+                        top: rect.bottom - modalRect.bottom + 20,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        }, 350); // Match the CSS transition duration
     }
 }
 
