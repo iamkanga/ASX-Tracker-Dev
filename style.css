@@ -9727,3 +9727,33 @@ body.dark-theme .discover-global-modal .discover-mover {
     margin: 20px 0;
     border: 1px solid var(--border-color, #ddd);
 }
+
+/* ---------- compact mobile header override (final) ---------- */
+@media (max-width: 480px) {
+    /* Reduce horizontal padding and top padding by ~50% for grid header */
+    #appHeader .header-top-row.grid-header {
+        gap: 4px !important;
+        padding: 6px 6px 3px !important; /* top and sides ~50% smaller */
+    }
+
+    #appHeader .header-top-row.grid-header .header-left-container,
+    #appHeader .header-top-row.grid-header .header-action-btn-right {
+        width: 40px !important;
+        height: 40px !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    #appHeader .header-top-row.grid-header #hamburgerBtn svg,
+    #appHeader .header-top-row.grid-header #addShareHeaderBtn svg {
+        width: 24px !important;
+        height: 24px !important;
+    }
+
+    #appHeader .header-top-row.grid-header h1#dynamicWatchlistTitle {
+        font-size: 1.05rem !important;
+        margin-left: 6px !important;
+        margin-right: 6px !important;
+    }
+}
+
