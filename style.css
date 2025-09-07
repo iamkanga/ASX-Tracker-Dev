@@ -4488,8 +4488,7 @@ table td .share-code-display { /* This class exists, just ensure its emphasis */
 
 /* Remove separation lines from specific detail card sections */
 .share-detail-sections .detail-card[data-section="alerts"],
-.share-detail-sections .detail-card[data-section="comments"],
-.share-detail-sections .detail-card[data-section="dividends"] {
+.share-detail-sections .detail-card[data-section="comments"] {
     border: none;
     box-shadow: none;
 }

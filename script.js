@@ -5954,18 +5954,46 @@ function showShareDetails() {
 
     /* Hide empty sections for a cleaner view */
     try {
-        const dividendsCard = document.querySelector('.detail-card[data-section="dividends"]');
-        const hasDividend = share.dividendAmount && !isNaN(Number(share.dividendAmount)) && Number(share.dividendAmount) !== 0;
-        const hasFranking = share.frankingCredits && !isNaN(Number(share.frankingCredits)) && Number(share.frankingCredits) !== 0;
-        if (dividendsCard) {
-            dividendsCard.style.display = (!hasDividend && !hasFranking) ? 'none' : '';
+        // Hide alerts section if no target
+        const alertsCard = document.querySelector('.detail-card[data-section="alerts"]');
+        if (alertsCard) {
+            const hasTarget = share.targetPrice && !isNaN(Number(share.targetPrice)) && Number(share.targetPrice) !== 0;
+            alertsCard.style.display = hasTarget ? '' : 'none';
         }
-        // Comments section should always be visible to maintain proper layout
-        // const commentsCard = document.querySelector('.detail-card[data-section="comments"]');
-        // if (commentsCard) {
-        //     const hasComments = Array.isArray(share.comments) && share.comments.some(c => c && (c.text || c.comment));
-        //     commentsCard.style.display = hasComments ? '' : 'none';
-        // }
+
+        // Hide comments section if no comments
+        const commentsCard = document.querySelector('.detail-card[data-section="comments"]');
+        if (commentsCard) {
+            const hasComments = Array.isArray(share.comments) && share.comments.some(c => c && (c.text || c.comment));
+            commentsCard.style.display = hasComments ? '' : 'none';
+        }
+
+        // Hide holdings & dividends section if no holdings
+        const dividendsCard = document.querySelector('.detail-card[data-section="dividends"]');
+        if (dividendsCard) {
+            const hasHoldings = (share.portfolioShares && !isNaN(Number(share.portfolioShares)) && Number(share.portfolioShares) !== 0) ||
+                                (share.portfolioAvgPrice && !isNaN(Number(share.portfolioAvgPrice)) && Number(share.portfolioAvgPrice) !== 0);
+            dividendsCard.style.display = hasHoldings ? '' : 'none';
+
+            // Within, hide dividend rows if no dividend info
+            if (hasHoldings) {
+                const hasDividend = share.dividendAmount && !isNaN(Number(share.dividendAmount)) && Number(share.dividendAmount) !== 0;
+                const hasFranking = share.frankingCredits && !isNaN(Number(share.frankingCredits)) && Number(share.frankingCredits) !== 0;
+                const dividendRows = dividendsCard.querySelectorAll('.detail-row');
+                dividendRows.forEach(row => {
+                    const label = row.querySelector('.detail-label');
+                    if (label && (label.textContent.includes('Dividend') || label.textContent.includes('Franking') || label.textContent.includes('Yield'))) {
+                        row.style.display = (hasDividend || hasFranking) ? '' : 'none';
+                    }
+                });
+            }
+        }
+
+        // Hide star rating row if rating 0
+        const starRatingRow = document.querySelector('#modalStarRating').closest('.detail-row');
+        if (starRatingRow) {
+            starRatingRow.style.display = (share.starRating > 0) ? '' : 'none';
+        }
     } catch(e) { console.warn('Hide Empty Sections: issue applying visibility', e); }
 
     modalTargetPrice.innerHTML = renderAlertTargetInline(share, { emptyReturn: '' });
