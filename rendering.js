@@ -44,7 +44,7 @@
             </td>
             <td class="numeric-data-cell alert-target-cell">${renderAlertTargetInline(share)}</td>
             <td class="star-rating-cell numeric-data-cell">
-                ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
+                ${share.starRating > 0 ? '⭐'.repeat(share.starRating) : ''}
             </td>
             <td class="numeric-data-cell">
                 ${(() => {
@@ -106,6 +106,53 @@
         const alertTargetRow = card.querySelector('[data-template-conditional="alertTarget"]');
         const alertTargetValue = renderAlertTargetInline(share);
         if (alertTargetValue) { alertTargetRow.querySelector('.data-value').innerHTML = alertTargetValue; alertTargetRow.style.display = ''; } else { alertTargetRow.style.display = 'none'; }
+        
+        // Populate bottom info row with comments title and star rating
+        const bottomInfoRow = card.querySelector('.bottom-info-row');
+        const commentsTitleEl = bottomInfoRow.querySelector('.comments-title');
+        const starRatingEl = bottomInfoRow.querySelector('.star-rating');
+        
+        // Handle comments title (left side) - show actual comment content
+        const comments = share.comments || [];
+        let commentDisplayText = '';
+        if (Array.isArray(comments) && comments.length > 0) {
+            // Get the first comment that has content
+            const firstComment = comments.find(c => c && (c.title || c.text));
+            if (firstComment) {
+                // Prefer title, fall back to text
+                commentDisplayText = firstComment.title || firstComment.text || '';
+                // Truncate if too long for mobile display
+                if (commentDisplayText.length > 20) {
+                    commentDisplayText = commentDisplayText.substring(0, 17) + '...';
+                }
+            }
+        }
+        
+        if (commentDisplayText) {
+            commentsTitleEl.textContent = commentDisplayText;
+            commentsTitleEl.style.display = '';
+        } else {
+            commentsTitleEl.textContent = '';
+            commentsTitleEl.style.display = 'none';
+        }
+        
+        // Handle star rating (right side, just stars)
+        const starRating = share.starRating || 0;
+        if (starRating > 0) {
+            starRatingEl.textContent = '⭐'.repeat(starRating);
+            starRatingEl.style.display = '';
+        } else {
+            starRatingEl.textContent = '';
+            starRatingEl.style.display = 'none';
+        }
+        
+        // Hide entire bottom row if both elements are hidden
+        if (!commentDisplayText && starRating === 0) {
+            bottomInfoRow.style.display = 'none';
+        } else {
+            bottomInfoRow.style.display = '';
+        }
+        
         // Removed star rating and dividend yield elements for compact design
         card.addEventListener('click', () => { logDebug('Mobile Card Click: Share ID: ' + share.id); selectShare(share.id); showShareDetails(); });
         mobileShareCardsContainer.appendChild(card);
@@ -347,7 +394,7 @@
             <td class="live-price-cell"><span class="live-price-value ${priceClass}">${displayLivePrice}</span><span class="price-change ${priceClass}">${displayPriceChange}</span></td>
             <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
             <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
-            <td class="star-rating-cell numeric-data-cell">${share.starRating>0? '⭐ '+share.starRating:''}</td>
+            <td class="star-rating-cell numeric-data-cell">${share.starRating>0? '⭐'.repeat(share.starRating):''}</td>
             <td class="numeric-data-cell">${(() => { const dividendAmount = Number(share.dividendAmount) || 0; const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0); const enteredPrice = Number(share.currentPrice) || 0; const priceForYield = (displayLivePrice!=='N/A' && displayLivePrice.startsWith('$')) ? parseFloat(displayLivePrice.substring(1)) : (enteredPrice>0?enteredPrice:0); if (priceForYield===0 || (dividendAmount===0 && frankingCredits===0)) return ''; const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits); const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield); if (frankingCredits>0 && frankedYield>0) return formatAdaptivePercent(frankedYield)+'% (F)'; else if (unfrankedYield>0) return formatAdaptivePercent(unfrankedYield)+'% (U)'; return ''; })()}</td>
         `;
         logDebug('Table: Updated/Created row for share ' + share.shareName + '.');

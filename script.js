@@ -4138,7 +4138,7 @@ function addShareToTable(share) {
         </td>
         <td class="numeric-data-cell alert-target-cell">${renderAlertTargetInline(share)}</td>
         <td class="star-rating-cell numeric-data-cell">
-            ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
+            ${share.starRating > 0 ? '⭐'.repeat(share.starRating) : ''}
         </td>
         <td class="numeric-data-cell">
             ${
@@ -4279,7 +4279,40 @@ function addShareToMobileCards(share) {
         alertTargetRow.style.display = 'none';
     }
 
-    // Removed star rating and dividend yield elements for compact design
+    // Handle bottom info row: raw comment title (left) and star symbols (right)
+    const bottomInfoRow = card.querySelector('.bottom-info-row');
+    if (bottomInfoRow) {
+        const commentsTitleSpan = bottomInfoRow.querySelector('.comments-title');
+        const starRatingSpan = bottomInfoRow.querySelector('.star-rating');
+
+        // Clear existing content
+        if (commentsTitleSpan) commentsTitleSpan.textContent = '';
+        if (starRatingSpan) starRatingSpan.textContent = '';
+
+        // Display raw comment title on the left (only if comments exist)
+        if (share.comments && Array.isArray(share.comments) && share.comments.length > 0) {
+            const firstComment = share.comments[0];
+            if (firstComment && firstComment.title && firstComment.title.trim()) {
+                if (commentsTitleSpan) {
+                    commentsTitleSpan.textContent = firstComment.title.trim();
+                }
+            }
+        }
+
+        // Display star symbols on the right (only if rating > 0)
+        if (share.starRating && share.starRating > 0) {
+            if (starRatingSpan) {
+                starRatingSpan.textContent = '⭐'.repeat(share.starRating);
+            }
+        }
+
+        // Show bottom row only if there's content to display
+        if ((commentsTitleSpan && commentsTitleSpan.textContent) || (starRatingSpan && starRatingSpan.textContent)) {
+            bottomInfoRow.style.display = '';
+        } else {
+            bottomInfoRow.style.display = 'none';
+        }
+    }
 
 
     card.addEventListener('click', () => {
@@ -4470,7 +4503,7 @@ function updateOrCreateShareTableRow(share) {
     <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
     <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
         <td class="star-rating-cell numeric-data-cell">
-            ${share.starRating > 0 ? '⭐ ' + share.starRating : ''}
+            ${share.starRating > 0 ? '⭐'.repeat(share.starRating) : ''}
         </td>
         <td class="numeric-data-cell">${yieldDisplay}</td>
     `;
@@ -4615,7 +4648,7 @@ function updateOrCreateShareMobileCard(share) {
         <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
     <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
     ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value">${renderAlertTargetInline(share)}</span></p>` : '' })()}
-        <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐ ' + share.starRating : ''}</span></p>
+        <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐'.repeat(share.starRating) : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
 
@@ -5882,7 +5915,7 @@ function showShareDetails() {
 
     // Populate Entry Date after Franked Yield
     modalEntryDate.textContent = formatDate(share.entryDate) || 'N/A';
-    modalStarRating.textContent = share.starRating > 0 ? '⭐ ' + share.starRating : '';
+    modalStarRating.textContent = share.starRating > 0 ? '⭐'.repeat(share.starRating) : '';
 
     if (modalCommentsContainer) {
         modalCommentsContainer.innerHTML = '';

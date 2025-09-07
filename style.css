@@ -4440,6 +4440,29 @@ table td .share-code-display { /* This class exists, just ensure its emphasis */
     text-overflow: ellipsis; /* Add ellipsis if text is too long */
 }
 
+/* Bottom info row for comments title and star rating */
+.mobile-card .bottom-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: 8px;
+    padding-top: 8px;
+    font-size: 0.85em;
+}
+
+.mobile-card .bottom-info-row .comments-title {
+    font-weight: 600;
+    color: var(--label-color);
+    flex-shrink: 0;
+}
+
+.mobile-card .bottom-info-row .star-rating {
+    font-size: 1.2em;
+    color: var(--text-color);
+    flex-shrink: 0;
+}
+
 /* For Share Detail Modal Data Elements */
 #shareDetailModal p { /* Target all paragraphs in the modal body for flex display */
     display: flex;
