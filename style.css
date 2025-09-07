@@ -747,8 +747,10 @@
 
 /* Single-container modal: ensure the modal content itself scrolls as one block (improves mobile keyboard/scroll behavior) */
 .single-scroll-modal {
-    height: 100dvh;
-    max-height: 100dvh;
+    /* Let JS manage the exact usable height to account for virtual keyboard resizing.
+       Use max-height to constrain modal within viewport while allowing inline height override. */
+    height: auto;
+    max-height: 100vh; /* fallback for browsers without visualViewport support */
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;

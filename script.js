@@ -3278,27 +3278,62 @@ function enableShareFormMobileScrollFix() {
     // Only apply on mobile devices
     const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (!isMobile) return;
+    // Better focus handling: scroll the focused input into the visible area of the modal
     shareFormSection.addEventListener('focusin', function(e) {
         const target = e.target;
         if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
-            // Use scrollIntoView with options for best UX
+            // Short timeout to allow virtual keyboard to appear and visualViewport to stabilize
             setTimeout(() => {
                 try {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+                    const modalContent = shareFormSection.querySelector('.single-scroll-modal') || shareFormSection;
+                    // Determine the visible viewport rect (prefer visualViewport when available)
+                    let vvTop = 0, vvHeight = window.innerHeight;
+                    if (window.visualViewport) { vvTop = window.visualViewport.offsetTop || 0; vvHeight = window.visualViewport.height; }
+
+                    // Compute target position relative to modal
+                    const targetRect = target.getBoundingClientRect();
+                    const modalRect = modalContent.getBoundingClientRect();
+                    const relativeTop = targetRect.top - modalRect.top;
+
+                    // If target is outside the visible area (above or below), scroll it into view within modal
+                    if (relativeTop < 0 || (relativeTop + targetRect.height) > modalRect.height) {
+                        // Preferred: use modal's scrollTo with an offset so the input sits comfortably above keyboard
+                        const desiredTop = Math.max(0, relativeTop - 80);
+                        try { modalContent.scrollTo({ top: desiredTop, behavior: 'smooth' }); } catch(_) { modalContent.scrollTop = desiredTop; }
+                    }
                 } catch(_) {}
-            }, 120); // Delay to allow keyboard to appear
+            }, 140);
         }
     });
-    // Optionally, adjust modal height if visualViewport API is available
+
+    // Adjust modal container height/padding when visualViewport changes (keyboard show/hide)
+    const applyViewportSizing = () => {
+        const modalContent = shareFormSection.querySelector('.single-scroll-modal') || shareFormSection;
+        if (!modalContent) return;
+        if (window.visualViewport) {
+            try {
+                // Use the visualViewport height as the usable area and set padding-bottom to account for keyboard
+                const vv = window.visualViewport;
+                modalContent.style.height = vv.height + 'px';
+                modalContent.style.maxHeight = vv.height + 'px';
+                // Add padding-bottom equal to viewport offset (some browsers expose offsetTop when keyboard present)
+                const extraBottom = Math.max(12, Math.floor((window.innerHeight - vv.height)));
+                modalContent.style.paddingBottom = (18 + extraBottom) + 'px';
+            } catch(_) {}
+        } else {
+            // Fallback: ensure modal fills viewport
+            modalContent.style.height = '100vh';
+            modalContent.style.maxHeight = '100vh';
+            modalContent.style.paddingBottom = '24px';
+        }
+    };
+
     if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', function() {
-            const modalContent = shareFormSection.querySelector('.single-scroll-modal');
-            if (modalContent) {
-                modalContent.style.height = window.visualViewport.height + 'px';
-                modalContent.style.maxHeight = window.visualViewport.height + 'px';
-            }
-        });
+        window.visualViewport.addEventListener('resize', applyViewportSizing);
+        window.visualViewport.addEventListener('scroll', applyViewportSizing);
     }
+    // Also run once to initialize sizes
+    setTimeout(applyViewportSizing, 60);
 }
 
 // Enable the fix on DOMContentLoaded
