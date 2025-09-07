@@ -82,6 +82,10 @@ function pushAppState(stateObj = {}, title = '', url = '') {
     history.pushState(stateObj, title, url);
 }
 
+// Track consecutive back button presses to warn user before app exit
+let consecutiveBackPresses = 0;
+let backPressTimeout = null;
+
 // Prevent back button from closing the app when at main screen (PWA UX patch)
 function preventPwaExitOnMainScreen() {
     // Push a dummy state if at the main screen
@@ -99,10 +103,49 @@ window.addEventListener('popstate', function(event) {
     const sidebarOpen = document.querySelector('.sidebar.show');
     // If at root and nothing is open, immediately push dummy state back to prevent app exit
     if ((event.state && event.state.pwaDummy) && !modalOpen && !sidebarOpen) {
-        // Push another dummy state to keep the history stack populated
-        history.pushState({pwaDummy:true}, '', location.href);
-        // Prevent default back navigation to keep user in app
-        return;
+        // Clear any existing timeout
+        if (backPressTimeout) {
+            clearTimeout(backPressTimeout);
+        }
+
+        consecutiveBackPresses++;
+
+        if (consecutiveBackPresses === 1) {
+            // First back press - show warning toast and push state back
+            if (window.ToastManager && window.ToastManager.info) {
+                window.ToastManager.info('Press back again to exit the app', 3000);
+            } else {
+                // Fallback if ToastManager not available
+                console.log('Press back again to exit the app');
+            }
+
+            // Push another dummy state to keep the history stack populated
+            history.pushState({pwaDummy:true}, '', location.href);
+
+            // Reset counter after 3 seconds if no second press
+            backPressTimeout = setTimeout(() => {
+                consecutiveBackPresses = 0;
+            }, 3000);
+
+            // Prevent default back navigation to keep user in app
+            return;
+        } else if (consecutiveBackPresses >= 2) {
+            // Second back press - allow app exit
+            consecutiveBackPresses = 0;
+            if (backPressTimeout) {
+                clearTimeout(backPressTimeout);
+                backPressTimeout = null;
+            }
+            // Allow normal back navigation (app will exit)
+            return;
+        }
+    } else {
+        // Reset counter when navigating within app
+        consecutiveBackPresses = 0;
+        if (backPressTimeout) {
+            clearTimeout(backPressTimeout);
+            backPressTimeout = null;
+        }
     }
     // Otherwise, allow normal back navigation (e.g., close modal/sidebar)
 });
