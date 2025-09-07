@@ -4034,6 +4034,11 @@ function toggleAccordionSection(section) {
     const toggleBtn = section.querySelector('.accordion-toggle');
     if (!toggleBtn) return;
     const opening = !section.classList.contains('open');
+    // If a temporary suppression is requested (e.g., during autocomplete selection on mobile),
+    // do not allow passive auto-open behavior to run. Allow closing however.
+    try {
+        if (opening && window.__suppressShareFormAccordionOpen) return;
+    } catch(_) {}
     section.classList.toggle('open');
     toggleBtn.setAttribute('aria-expanded', String(opening));
     
@@ -11699,21 +11704,48 @@ async function initializeAppLogic() {
         }
 
         async function applyShareCodeSelection(code, name) {
-            shareNameInput.value = code;
-            if (formCompanyName) formCompanyName.textContent = name || '';
-            if (shareNameSuggestions) shareNameSuggestions.classList.remove('active');
-            // Optionally move focus to next field for quicker entry
-            const next = targetPriceInput;
-            if (next) next.focus();
-            checkFormDirtyState();
+                // Mark selection in progress to prevent blur handlers from hiding UI incorrectly
+                try { window.__shareFormSelectionInProgress = true; } catch(_){}
 
-            // Fetch live snapshot for the selected code to show context in the form and prefill price
-            try {
-                if (typeof window.updateAddFormLiveSnapshot === 'function') window.updateAddFormLiveSnapshot(code);
-                else if (typeof updateAddFormLiveSnapshot === 'function') updateAddFormLiveSnapshot(code);
-            } catch (err) {
-                try { if (typeof updateAddFormLiveSnapshot === 'function') updateAddFormLiveSnapshot(code); } catch(_){}
-            }
+                shareNameInput.value = code;
+                if (formCompanyName) formCompanyName.textContent = name || '';
+                if (shareNameSuggestions) shareNameSuggestions.classList.remove('active');
+
+                // On touch devices, avoid forcing focus to the next input to prevent visualViewport/keyboard
+                // changes that can cause mobile layout jumps (which were opening the "Other Details" accordion)
+                const next = targetPriceInput;
+                try {
+                    if (!('ontouchstart' in window) && next) next.focus();
+                } catch(_) {}
+
+                checkFormDirtyState();
+
+                // Temporarily suppress any passive auto-open behavior for the share form accordion
+                try { window.__suppressShareFormAccordionOpen = true; } catch(_) {}
+
+                // Fetch live snapshot for the selected code to show context in the form and prefill price
+                try {
+                    if (typeof window.updateAddFormLiveSnapshot === 'function') window.updateAddFormLiveSnapshot(code);
+                    else if (typeof updateAddFormLiveSnapshot === 'function') updateAddFormLiveSnapshot(code);
+                } catch (err) {
+                    try { if (typeof updateAddFormLiveSnapshot === 'function') updateAddFormLiveSnapshot(code); } catch(_){ }
+                }
+
+                // Ensure the "Other Details" accordion section remains closed after selection (defensive)
+                try {
+                    const other = document.querySelector('#shareFormAccordion .accordion-section[data-section="other"]');
+                    if (other) {
+                        other.classList.remove('open');
+                        const toggleBtn = other.querySelector('.accordion-toggle');
+                        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+                    }
+                } catch(_){}
+
+                // Clear suppression/selection flags shortly after to restore normal behavior
+                setTimeout(() => {
+                    try { delete window.__suppressShareFormAccordionOpen; } catch(_){}
+                    try { delete window.__shareFormSelectionInProgress; } catch(_){}
+                }, 400);
         }
 
         function renderShareNameSuggestions(query) {
