@@ -162,29 +162,16 @@
         text-align: right;
     }
 }
-#livePriceTimestamp {
-    font-weight: 500;
-    letter-spacing: 0.02em;
-}
-
-#livePriceTimestampContainer.live-price-inside-header .live-price-label {
-    font-size: 0.7rem !important;
-    font-weight: 500 !important;
-    color: var(--text-muted, #666) !important;
-    opacity: 1 !important;
-    pointer-events: none !important;
-    margin-bottom: 2px !important;
-    display: block !important; /* Ensure it's displayed */
-    visibility: visible !important; /* Ensure it's visible */
-}
-#livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp {
-    font-size: 0.75rem !important;
-    font-weight: 600 !important;
-    color: var(--accent-color, #007bff) !important;
-    opacity: 1 !important;
-    white-space: nowrap !important;
-    display: block !important; /* Ensure it's displayed */
-    visibility: visible !important; /* Ensure it's visible */
+@media (min-width: 641px) {
+    #livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp {
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+        color: var(--accent-color, #007bff) !important;
+        opacity: 1 !important;
+        white-space: nowrap !important;
+        display: block !important; /* Ensure it's displayed */
+        visibility: visible !important; /* Ensure it's visible */
+    }
 }
 
 /* Prevent timestamp from overflowing left side: constrain width relative to header */
