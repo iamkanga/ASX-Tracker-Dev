@@ -210,7 +210,7 @@
         max-width: calc(100% - 90px) !important;
     }
     #livePriceTimestampContainer.live-price-inside-header .live-price-label { font-size: 0.72rem !important; }
-    #livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp { font-size: 0.86rem !important; }
+    #livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp { font-size: 0.645rem !important; }
 }
 
 @media (max-width: 420px) {
@@ -223,7 +223,7 @@
         display: none !important;
     } /* hide label to save space */
     #livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp {
-        font-size: 0.82rem !important;
+        font-size: 0.615rem !important;
     }
 }
 
@@ -4634,8 +4634,19 @@ body.sidebar-active {
 
 @media (max-width: 640px) {
     #appHeader {
-        padding: 15px 10px 0;
+        padding: 15px 5px 0;
     }
+    /* Make hamburger and plus closer to edges */
+    header .header-action-btn-left { margin-left: 0 !important; }
+    header .header-action-btn-right { margin-right: 0 !important; }
+    /* Adjust timestamp: smaller and closer to top-right */
+    #livePriceTimestampContainer.live-price-inside-header {
+        right: 6px !important;
+        top: calc(100% - 28px) !important;
+        max-width: calc(100% - 70px) !important;
+    }
+    #livePriceTimestampContainer.live-price-inside-header .live-price-label { font-size: 0.7rem !important; }
+    #livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp { font-size: 0.78rem !important; }
 }
 
 #dynamicWatchlistTitle {
