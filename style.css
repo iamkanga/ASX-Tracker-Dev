@@ -4531,6 +4531,13 @@ body.dark-theme .detail-row { border-bottom:1px dashed rgba(255,255,255,0.1); }
 /* Remove any border from the modal comments container in the comments section */
 .share-detail-sections .detail-card[data-section="comments"] .modal-comments-sections {
     border-top: none !important;
+    margin-top: 2px !important;
+}
+
+/* Reduce margin on the title in the comments section */
+.share-detail-sections .detail-card[data-section="comments"] .detail-card-title {
+    border-bottom: none !important;
+    margin-bottom: 2px !important;
 }
 .detail-label { font-weight:500; color:var(--label-color); flex:0 0 auto; }
 .detail-value { font-weight:600; color:var(--text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
