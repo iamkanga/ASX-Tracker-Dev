@@ -172,10 +172,6 @@
     window.Rendering.renderPortfolioList = function renderPortfolioList() {
         const portfolioListContainer = document.getElementById('portfolioListContainer');
         if (!portfolioListContainer) return;
-        const portfolioViewLastUpdated = document.getElementById('portfolioViewLastUpdated');
-        if (portfolioViewLastUpdated && window._portfolioLastUpdated) portfolioViewLastUpdated.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
-        const lastUpdatedEl = document.getElementById('portfolioLastUpdated');
-        if (window._portfolioLastUpdated) { if (lastUpdatedEl) { lastUpdatedEl.textContent = `Last Updated: ${window._portfolioLastUpdated}`; lastUpdatedEl.parentElement.style.display = ''; } }
         const portfolioShares = allSharesData.filter(s => shareBelongsTo(s, 'portfolio'));
         if (portfolioShares.length === 0) { portfolioListContainer.innerHTML = '<p>No shares in your portfolio yet.</p>'; return; }
         function fmtMoney(n){ return formatMoney(n); }

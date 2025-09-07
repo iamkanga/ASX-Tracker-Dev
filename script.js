@@ -409,7 +409,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const portfolioSection = document.createElement('div');
             portfolioSection.id = 'portfolioSection';
             portfolioSection.className = 'portfolio-section';
-            portfolioSection.innerHTML = '<div id="portfolioViewLastUpdated" class="last-updated-timestamp"></div><div class="portfolio-scroll-wrapper"><div id="portfolioListContainer">Loading portfolio...</div></div>';
+            portfolioSection.innerHTML = '<div class="portfolio-scroll-wrapper"><div id="portfolioListContainer">Loading portfolio...</div></div>';
             mainContainer.appendChild(portfolioSection);
         }
         stockWatchlistSection.style.display = 'none';
@@ -455,32 +455,6 @@ document.addEventListener('DOMContentLoaded', function () {
     window.renderPortfolioList = function() {
         const portfolioListContainer = document.getElementById('portfolioListContainer');
         if (!portfolioListContainer) return;
-
-        const portfolioViewLastUpdated = document.getElementById('portfolioViewLastUpdated');
-        if (portfolioViewLastUpdated && window._portfolioLastUpdated) {
-            portfolioViewLastUpdated.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
-        }
-
-        // Show last updated timestamp if available (header and container)
-        const lastUpdatedEl = document.getElementById('portfolioLastUpdated');
-        const lastUpdatedHeader = document.getElementById('portfolioLastUpdatedHeader');
-        if (window._portfolioLastUpdated) {
-            if (lastUpdatedEl) {
-                lastUpdatedEl.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
-                lastUpdatedEl.parentElement.style.display = '';
-            }
-            if (lastUpdatedHeader) {
-                lastUpdatedHeader.textContent = `Last Updated: ${window._portfolioLastUpdated}`;
-            }
-        } else {
-            if (lastUpdatedEl) {
-                lastUpdatedEl.textContent = '';
-                lastUpdatedEl.parentElement.style.display = 'none';
-            }
-            if (lastUpdatedHeader) {
-                lastUpdatedHeader.textContent = '';
-            }
-        }
 
         // Filter for shares assigned to the Portfolio
         const portfolioShares = allSharesData.filter(s => shareBelongsTo(s, 'portfolio'));
@@ -1040,7 +1014,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.12.2';
+const APP_VERSION = '2.15.0';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();

@@ -192,12 +192,12 @@
 @media (max-width: 640px) {
     #livePriceTimestampContainer.live-price-inside-sort-left {
         right: 8px !important;
-        top: calc(100% - 32px) !important; /* Use same positioning method */
-        bottom: auto !important;
+        top: auto !important;
+        bottom: 0 !important;
         max-width: calc(100% - 90px) !important;
     }
     #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { font-size: 0.72rem !important; }
-    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.387rem !important; }
+    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.72rem !important; }
 }
 
 @media (max-width: 420px) {
@@ -205,6 +205,8 @@
     #livePriceTimestampContainer.live-price-inside-sort-left {
         max-width: calc(100% - 70px) !important;
         right: 6px !important;
+        top: auto !important;
+        bottom: 0 !important;
     }
     #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label {
         display: none !important;
@@ -251,15 +253,15 @@
 .sort-controls-container {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-end;
+    justify-content: space-between;
     gap: 8px;
 }
 
 .sort-controls-container .live-price-timestamp-container {
-    /* Force to its own row and stretch across the header width */
-    flex: 0 0 100%;
-    order: 2; /* place after primary controls within the container */
-    text-align: right; /* keep aligned to right edge; change to left if preferred */
+    /* Position timestamp in bottom-right corner of the sort controls row */
+    margin-left: auto;
+    text-align: right;
     padding: 6px 16px 0 16px;
 }
 
@@ -3753,8 +3755,9 @@ body.theme-muted-grey {
     font-variant-numeric: tabular-nums;
     position: absolute;
     right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
+    bottom: 0;
+    top: auto;
+    transform: none;
 }
 
 /* === Mobile Modal Safe Area & Keyboard Handling Enhancements (Appended) === */
@@ -4615,25 +4618,19 @@ body.sidebar-active {
     box-sizing: border-box;
     display: flex; /* Use flexbox for internal layout */
     flex-direction: column; /* Stack children vertically */
-    padding: 15px 20px 0; /* Removed padding-bottom, will be determined by content + gap */
+    padding: 8px 20px 0; /* Reduced vertical padding by half */
     gap: 4px; /* Space between header rows */
 }
 
 @media (max-width: 640px) {
     #appHeader {
-        padding: 15px 5px 0;
+        padding: 8px 5px 0;
     }
     /* Make hamburger and plus closer to edges */
     header .header-action-btn-left { margin-left: 0 !important; }
     header .header-action-btn-right { margin-right: 0 !important; }
-    /* Adjust timestamp: smaller and closer to top-right */
-    #livePriceTimestampContainer.live-price-inside-sort-left {
-        right: 6px !important;
-        top: calc(100% - 28px) !important;
-        max-width: calc(100% - 70px) !important;
-    }
-    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { font-size: 0.6rem !important; }
-    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.387rem !important; }
+    /* Removed absolute positioning - now using flexbox layout */
+    /* Font sizes now unified globally */
 }
 
 #dynamicWatchlistTitle {
@@ -4670,6 +4667,7 @@ main.container {
 .header-top-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     width: 100%;
     box-sizing: border-box;
     padding: 0;
@@ -4695,9 +4693,9 @@ main.container {
 
 .live-price-timestamp-container {
     display: block;
-    margin-top: 4px;
-    text-align: left;
-    width: 100%;
+    margin-left: auto;
+    text-align: right;
+    width: auto;
 }
 
 .live-price-timestamp {
@@ -5591,7 +5589,7 @@ table tbody tr:not(.selected):hover {
     #portfolioSection .portfolio-table thead th:nth-child(4) { min-width: 64px; }
     /* Make timestamp even smaller on very narrow screens */
     #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { font-size: 0.55rem !important; }
-    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.369rem !important; }
+    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.55rem !important; }
     /* Ensure plus icon is positioned correctly on very narrow screens */
     #addShareHeaderBtn { margin-right: -15px !important; }
 }
@@ -9016,6 +9014,7 @@ body.dark-theme .alert-item {
     display: flex;
     justify-content: center;
     align-items: center;
+    flex-wrap: nowrap;
     width: 100%;
     margin: 8px 0 4px 0; /* Space below the title */
     position: relative; /* For absolute positioning of timestamp */
