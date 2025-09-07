@@ -210,7 +210,7 @@
         max-width: calc(100% - 90px) !important;
     }
     #livePriceTimestampContainer.live-price-inside-header .live-price-label { font-size: 0.72rem !important; }
-    #livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp { font-size: 0.645rem !important; }
+    #livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp { font-size: 0.387rem !important; }
 }
 
 @media (max-width: 420px) {
@@ -223,7 +223,7 @@
         display: none !important;
     } /* hide label to save space */
     #livePriceTimestampContainer.live-price-inside-header #livePriceTimestamp {
-        font-size: 0.615rem !important;
+        font-size: 0.369rem !important;
     }
 }
 
@@ -6012,7 +6012,7 @@ table td.live-price-cell.negative-change {
 #hamburgerBtn, #addShareHeaderBtn { font-size:2.05rem; width:52px; height:52px; display:inline-flex; align-items:center; justify-content:center; padding:0; margin:0; }
 #addShareHeaderBtn i { opacity:1 !important; color:var(--accent-color,#a49393) !important; filter:none !important; }
 #hamburgerBtn { margin-left:-6px; }
-#addShareHeaderBtn { margin-right:-6px; }
+#addShareHeaderBtn { margin-right:-9px; }
 #hamburgerBtn svg, #addShareHeaderBtn svg { width:34px; height:34px; }
 
 /* Modal action icons (generic) */
