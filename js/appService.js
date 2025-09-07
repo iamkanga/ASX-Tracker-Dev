@@ -374,8 +374,36 @@ export async function saveShareData(isSilent = false) {
     if (!window.selectedShareDocId) {
         console.log('[DUPLICATE CHECK] Creating new share, checking for duplicates...');
 
+        // First, check locally for duplicates (fast and reliable)
         try {
-            // Query Firestore for existing shares with the same name
+            const currentShares = getAllSharesData();
+            const localDuplicate = currentShares.find(share =>
+                share.shareName && share.shareName.toLowerCase() === shareName.toLowerCase()
+            );
+
+            if (localDuplicate) {
+                console.log('[DUPLICATE CHECK] Found local duplicate share:', shareName, '- preventing creation');
+                console.log('[DUPLICATE CHECK] Local duplicate details:', {
+                    id: localDuplicate.id,
+                    name: localDuplicate.shareName,
+                    userId: localDuplicate.userId
+                });
+                if (!isSilent) {
+                    try {
+                        window.showCustomAlert && window.showCustomAlert(`Share "${shareName}" already exists. You cannot create duplicate shares.`);
+                    } catch(_) {}
+                }
+                console.log('[DUPLICATE CHECK] Local duplicate found - returning early to prevent creation');
+                return;
+            }
+            console.log('[DUPLICATE CHECK] No local duplicate found, proceeding with Firestore check...');
+        } catch (error) {
+            console.error('[DUPLICATE CHECK] Error in local duplicate check:', error);
+            // Continue with Firestore check if local check fails
+        }
+
+        // Then check Firestore for duplicates (slower but authoritative)
+        try {
             console.log('[DUPLICATE CHECK] Checking Firestore for share:', shareName);
             const sharesQuery = firestore.query(
                 firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares'),
@@ -385,20 +413,31 @@ export async function saveShareData(isSilent = false) {
             console.log('[DUPLICATE CHECK] Query returned', querySnapshot.size, 'documents');
 
             if (!querySnapshot.empty) {
-                console.log('[DUPLICATE CHECK] Found duplicate share:', shareName, '- preventing creation');
-                console.log('[DUPLICATE CHECK] Documents found:', querySnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().shareName })));
+                console.log('[DUPLICATE CHECK] Found Firestore duplicate share:', shareName, '- preventing creation');
+                console.log('[DUPLICATE CHECK] Firestore duplicate documents:', querySnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    name: doc.data().shareName
+                })));
                 if (!isSilent) {
                     try {
                         window.showCustomAlert && window.showCustomAlert(`Share "${shareName}" already exists. You cannot create duplicate shares.`);
                     } catch(_) {}
                 }
-                console.log('[DUPLICATE CHECK] Duplicate found - returning early to prevent creation');
+                console.log('[DUPLICATE CHECK] Firestore duplicate found - returning early to prevent creation');
                 return;
             }
-            console.log('[DUPLICATE CHECK] No duplicate found in Firestore, proceeding with creation...');
+            console.log('[DUPLICATE CHECK] No Firestore duplicate found, proceeding with creation...');
         } catch (error) {
-            console.error('[DUPLICATE CHECK] Error checking for duplicates:', error);
-            // Continue with creation if duplicate check fails
+            console.error('[DUPLICATE CHECK] Error checking Firestore for duplicates:', error);
+            // CRITICAL: Do NOT continue with creation if Firestore check fails
+            // This prevents duplicates on mobile with poor network/auth issues
+            if (!isSilent) {
+                try {
+                    window.showCustomAlert && window.showCustomAlert('Unable to verify share uniqueness. Please check your connection and try again.');
+                } catch(_) {}
+            }
+            console.log('[DUPLICATE CHECK] Firestore check failed - preventing creation to avoid duplicates');
+            return;
         }
 
         // Create new share
