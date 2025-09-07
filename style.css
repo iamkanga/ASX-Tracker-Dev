@@ -4632,6 +4632,12 @@ body.sidebar-active {
     gap: 4px; /* Space between header rows */
 }
 
+@media (max-width: 640px) {
+    #appHeader {
+        padding: 15px 10px 0;
+    }
+}
+
 #dynamicWatchlistTitle {
     display: flex;
     align-items: baseline;
