@@ -97,13 +97,11 @@ window.addEventListener('popstate', function(event) {
     // If there is no modal, sidebar, or other in-app state to go back to, stay in app
     const modalOpen = document.querySelector('.modal.show');
     const sidebarOpen = document.querySelector('.sidebar.show');
-    // If at root and nothing is open, immediately push dummy state back
+    // If at root and nothing is open, immediately push dummy state back to prevent app exit
     if ((event.state && event.state.pwaDummy) && !modalOpen && !sidebarOpen) {
+        // Push another dummy state to keep the history stack populated
         history.pushState({pwaDummy:true}, '', location.href);
-        // Optionally show a toast or vibrate to indicate no further back
-        if (window.ToastManager && typeof window.ToastManager.info === 'function') {
-            window.ToastManager.info('Pressing back again will not exit the app.');
-        }
+        // Prevent default back navigation to keep user in app
         return;
     }
     // Otherwise, allow normal back navigation (e.g., close modal/sidebar)
