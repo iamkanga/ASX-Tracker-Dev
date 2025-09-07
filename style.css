@@ -4493,6 +4493,14 @@ table td .share-code-display { /* This class exists, just ensure its emphasis */
 .share-detail-sections .detail-card { background:var(--card-bg); border:1px solid var(--border-color); border-radius:12px; padding:14px 16px 16px; box-shadow:0 2px 4px rgba(0,0,0,0.05); display:flex; flex-direction:column; gap:8px; min-height:0; }
 .share-detail-sections .detail-card.full-span { grid-column:1 / -1; }
 .detail-card-title { margin:0 0 4px; font-size:0.95rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--ghosted-text); }
+
+/* Remove separation lines from specific detail card sections */
+.share-detail-sections .detail-card[data-section="alerts"],
+.share-detail-sections .detail-card[data-section="comments"],
+.share-detail-sections .detail-card[data-section="dividends"] {
+    border: none;
+    box-shadow: none;
+}
 .watchlists-membership-footer {
     margin-top:auto; /* push to bottom */
     text-align:center;
@@ -4506,6 +4514,24 @@ table td .share-code-display { /* This class exists, just ensure its emphasis */
 .detail-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:4px 0; font-size:0.9rem; border-bottom:1px dashed rgba(0,0,0,0.08); }
 body.dark-theme .detail-row { border-bottom:1px dashed rgba(255,255,255,0.1); }
 .detail-row:last-child { border-bottom:none; }
+
+/* Remove internal dashed lines from detail rows in alerts, comments, dividends, and entry-meta sections */
+.share-detail-sections .detail-card[data-section="alerts"] .detail-row,
+.share-detail-sections .detail-card[data-section="comments"] .detail-row,
+.share-detail-sections .detail-card[data-section="dividends"] .detail-row,
+.share-detail-sections .detail-card[data-section="entry-meta"] .detail-row {
+    border-bottom: none !important;
+}
+
+/* Remove any border from the title in the comments section */
+.share-detail-sections .detail-card[data-section="comments"] .detail-card-title {
+    border-bottom: none !important;
+}
+
+/* Remove any border from the modal comments container in the comments section */
+.share-detail-sections .detail-card[data-section="comments"] .modal-comments-sections {
+    border-top: none !important;
+}
 .detail-label { font-weight:500; color:var(--label-color); flex:0 0 auto; }
 .detail-value { font-weight:600; color:var(--text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* Research links grid refinement */

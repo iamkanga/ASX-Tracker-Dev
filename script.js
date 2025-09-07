@@ -2601,6 +2601,8 @@ const modalEntryDate = document.getElementById('modalEntryDate');
 const modalCommentsContainer = document.getElementById('modalCommentsContainer');
 const modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
 const modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
+const modalPortfolioShares = document.getElementById('modalPortfolioShares');
+const modalPortfolioAvgPrice = document.getElementById('modalPortfolioAvgPrice');
 const editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
 const deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
 const modalNewsLink = document.getElementById('modalNewsLink');
@@ -5888,11 +5890,12 @@ function showShareDetails() {
         if (dividendsCard) {
             dividendsCard.style.display = (!hasDividend && !hasFranking) ? 'none' : '';
         }
-        const commentsCard = document.querySelector('.detail-card[data-section="comments"]');
-        if (commentsCard) {
-            const hasComments = Array.isArray(share.comments) && share.comments.some(c => c && (c.text || c.comment));
-            commentsCard.style.display = hasComments ? '' : 'none';
-        }
+        // Comments section should always be visible to maintain proper layout
+        // const commentsCard = document.querySelector('.detail-card[data-section="comments"]');
+        // if (commentsCard) {
+        //     const hasComments = Array.isArray(share.comments) && share.comments.some(c => c && (c.text || c.comment));
+        //     commentsCard.style.display = hasComments ? '' : 'none';
+        // }
     } catch(e) { console.warn('Hide Empty Sections: issue applying visibility', e); }
 
     modalTargetPrice.innerHTML = renderAlertTargetInline(share, { emptyReturn: '' });
@@ -5903,6 +5906,10 @@ function showShareDetails() {
 
     modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val, {force2:true}) : '')(displayDividendAmount);
     modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? Math.trunc(val) + '%' : '')(displayFrankingCredits);
+
+    // Populate Holdings fields
+    modalPortfolioShares.textContent = (share.portfolioShares ? share.portfolioShares : '');
+    modalPortfolioAvgPrice.textContent = (share.portfolioAvgPrice ? '$' + formatAdaptivePrice(share.portfolioAvgPrice) : '');
 
     const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
     const unfrankedYield = calculateUnfrankedYield(displayDividendAmount, priceForYield); 
