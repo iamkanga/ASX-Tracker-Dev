@@ -4370,32 +4370,45 @@ function addShareToMobileCards(share) {
         const commentsTitleSpan = bottomInfoRow.querySelector('.comments-title');
         const starRatingSpan = bottomInfoRow.querySelector('.star-rating');
 
+        // Determine compact state for mobile container; if compact we must not inject comments or stars
+        const mobileContainerRef = getMobileShareCardsContainer();
+        const isCompact = (mobileContainerRef && mobileContainerRef.classList && mobileContainerRef.classList.contains('compact-view')) || currentMobileViewMode === 'compact';
+
         // Clear existing content
         if (commentsTitleSpan) commentsTitleSpan.textContent = '';
         if (starRatingSpan) starRatingSpan.textContent = '';
 
-        // Display raw comment title on the left (only if comments exist)
-        if (share.comments && Array.isArray(share.comments) && share.comments.length > 0) {
-            const firstComment = share.comments[0];
-            if (firstComment && firstComment.title && firstComment.title.trim()) {
-                if (commentsTitleSpan) {
-                    commentsTitleSpan.textContent = firstComment.title.trim();
+        if (isCompact) {
+            // Never show comments or star rating in compact mode
+            if (commentsTitleSpan) commentsTitleSpan.style.display = 'none';
+            if (starRatingSpan) starRatingSpan.style.display = 'none';
+            bottomInfoRow.style.display = 'none';
+        } else {
+            // Display raw comment title on the left (only if comments exist)
+            if (share.comments && Array.isArray(share.comments) && share.comments.length > 0) {
+                const firstComment = share.comments[0];
+                if (firstComment && firstComment.title && firstComment.title.trim()) {
+                    if (commentsTitleSpan) {
+                        commentsTitleSpan.textContent = firstComment.title.trim();
+                        commentsTitleSpan.style.display = '';
+                    }
                 }
             }
-        }
 
-        // Display star symbols on the right (only if rating > 0)
-        if (share.starRating && share.starRating > 0) {
-            if (starRatingSpan) {
-                starRatingSpan.textContent = '⭐'.repeat(share.starRating);
+            // Display star symbols on the right (only if rating > 0)
+            if (share.starRating && share.starRating > 0) {
+                if (starRatingSpan) {
+                    starRatingSpan.textContent = '⭐'.repeat(share.starRating);
+                    starRatingSpan.style.display = '';
+                }
             }
-        }
 
-        // Show bottom row only if there's content to display
-        if ((commentsTitleSpan && commentsTitleSpan.textContent) || (starRatingSpan && starRatingSpan.textContent)) {
-            bottomInfoRow.style.display = '';
-        } else {
-            bottomInfoRow.style.display = 'none';
+            // Show bottom row only if there's content to display
+            if ((commentsTitleSpan && commentsTitleSpan.textContent) || (starRatingSpan && starRatingSpan.textContent)) {
+                bottomInfoRow.style.display = '';
+            } else {
+                bottomInfoRow.style.display = 'none';
+            }
         }
     }
 

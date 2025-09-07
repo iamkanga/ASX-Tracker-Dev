@@ -111,46 +111,55 @@
         const bottomInfoRow = card.querySelector('.bottom-info-row');
         const commentsTitleEl = bottomInfoRow.querySelector('.comments-title');
         const starRatingEl = bottomInfoRow.querySelector('.star-rating');
-        
-        // Handle comments title (left side) - show actual comment content
-        const comments = share.comments || [];
-        let commentDisplayText = '';
-        if (Array.isArray(comments) && comments.length > 0) {
-            // Get the first comment that has content
-            const firstComment = comments.find(c => c && (c.title || c.text));
-            if (firstComment) {
-                // Prefer title, fall back to text
-                commentDisplayText = firstComment.title || firstComment.text || '';
-                // Truncate if too long for mobile display
-                if (commentDisplayText.length > 20) {
-                    commentDisplayText = commentDisplayText.substring(0, 17) + '...';
+
+        // Don't inject comments or star rating into compact view cards - keep DOM minimal
+        const isCompactRender = (mobileShareCardsContainer && mobileShareCardsContainer.classList && mobileShareCardsContainer.classList.contains('compact-view')) || currentMobileViewMode === 'compact';
+        if (isCompactRender) {
+            // Ensure they're empty/hidden for compact layout
+            try { commentsTitleEl.textContent = ''; commentsTitleEl.style.display = 'none'; } catch(_){}
+            try { starRatingEl.textContent = ''; starRatingEl.style.display = 'none'; } catch(_){}
+            try { bottomInfoRow.style.display = 'none'; } catch(_){}
+        } else {
+            // Handle comments title (left side) - show actual comment content
+            const comments = share.comments || [];
+            let commentDisplayText = '';
+            if (Array.isArray(comments) && comments.length > 0) {
+                // Get the first comment that has content
+                const firstComment = comments.find(c => c && (c.title || c.text));
+                if (firstComment) {
+                    // Prefer title, fall back to text
+                    commentDisplayText = firstComment.title || firstComment.text || '';
+                    // Truncate if too long for mobile display
+                    if (commentDisplayText.length > 20) {
+                        commentDisplayText = commentDisplayText.substring(0, 17) + '...';
+                    }
                 }
             }
-        }
-        
-        if (commentDisplayText) {
-            commentsTitleEl.textContent = commentDisplayText;
-            commentsTitleEl.style.display = '';
-        } else {
-            commentsTitleEl.textContent = '';
-            commentsTitleEl.style.display = 'none';
-        }
-        
-        // Handle star rating (right side, just stars)
-        const starRating = share.starRating || 0;
-        if (starRating > 0) {
-            starRatingEl.textContent = '⭐'.repeat(starRating);
-            starRatingEl.style.display = '';
-        } else {
-            starRatingEl.textContent = '';
-            starRatingEl.style.display = 'none';
-        }
-        
-        // Hide entire bottom row if both elements are hidden
-        if (!commentDisplayText && starRating === 0) {
-            bottomInfoRow.style.display = 'none';
-        } else {
-            bottomInfoRow.style.display = '';
+
+            if (commentDisplayText) {
+                commentsTitleEl.textContent = commentDisplayText;
+                commentsTitleEl.style.display = '';
+            } else {
+                commentsTitleEl.textContent = '';
+                commentsTitleEl.style.display = 'none';
+            }
+
+            // Handle star rating (right side, just stars)
+            const starRating = share.starRating || 0;
+            if (starRating > 0) {
+                starRatingEl.textContent = '⭐'.repeat(starRating);
+                starRatingEl.style.display = '';
+            } else {
+                starRatingEl.textContent = '';
+                starRatingEl.style.display = 'none';
+            }
+
+            // Hide entire bottom row if both elements are hidden
+            if (!commentDisplayText && (share.starRating || 0) === 0) {
+                bottomInfoRow.style.display = 'none';
+            } else {
+                bottomInfoRow.style.display = '';
+            }
         }
         
         // Removed star rating and dividend yield elements for compact design

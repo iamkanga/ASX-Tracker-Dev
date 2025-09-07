@@ -5769,6 +5769,13 @@ table td.live-price-cell.negative-change {
     grid-template-columns: repeat(2, 1fr); /* 2 columns for mobile */
 }
 
+/* Hide comments title and star rating in compact view cards (desktop & compact mobile)
+   These details should only appear in the full mobile card view and the Share Details modal. */
+.mobile-share-cards.compact-view .mobile-card .bottom-info-row .comments-title,
+.mobile-share-cards.compact-view .mobile-card .bottom-info-row .star-rating {
+    display: none !important;
+}
+
 @media (min-width: 769px) {
     .mobile-share-cards.compact-view {
         grid-template-columns: repeat(4, 1fr); /* 4 columns for desktop */
