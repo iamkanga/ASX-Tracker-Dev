@@ -28,7 +28,6 @@ export function setAsxButtonsExpanded(value) {
 export function applyAsxButtonsState() {
 	const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
 	const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn');
-	const asxCodeButtonsToggle = document.getElementById('asxCodeButtonsToggle');
 	if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) {
 		console.warn('applyAsxButtonsState: Missing elements - container:', !!asxCodeButtonsContainer, 'button:', !!toggleAsxButtonsBtn);
 		return;
@@ -101,14 +100,6 @@ export function applyAsxButtonsState() {
 		toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
 		const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
 		if (labelSpan) labelSpan.textContent = 'ASX Codes';
-	} catch(_) {}
-
-	// Also update the new header toggle element if it exists
-	try {
-		if (asxCodeButtonsToggle) {
-			asxCodeButtonsToggle.setAttribute('aria-pressed', String(!!shouldShow));
-			asxCodeButtonsToggle.setAttribute('aria-expanded', String(!!shouldShow));
-		}
 	} catch(_) {}
 
 	const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
