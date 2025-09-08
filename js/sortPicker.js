@@ -109,9 +109,16 @@ function updateSortPickerButtonText(retryCount = 0) {
             try {
                 const s = window.SORT_SOURCE;
                 const all = [];
-                if (s && Array.isArray(s.stockOptions)) all.push(...s.stockOptions);
-                if (s && Array.isArray(s.portfolioOptions)) all.push(...s.portfolioOptions);
-                if (s && Array.isArray(s.cashOptions)) all.push(...s.cashOptions);
+                // Prefer labels from the active view to avoid mismatched text for identical values
+                let sel = [];
+                try { sel = getCurrentSelectedWatchlistIds() || []; } catch(_) { sel = []; }
+                const inPortfolio = Array.isArray(sel) && sel.includes('portfolio');
+                if (s) {
+                    if (inPortfolio && Array.isArray(s.portfolioOptions)) all.push(...s.portfolioOptions);
+                    if (Array.isArray(s.stockOptions)) all.push(...s.stockOptions);
+                    if (!inPortfolio && Array.isArray(s.portfolioOptions)) all.push(...s.portfolioOptions);
+                    if (Array.isArray(s.cashOptions)) all.push(...s.cashOptions);
+                }
                 const hit = all.find(o => o.value === current);
                 if (hit) found = hit;
                 console.log('[DEBUG] Found option from SORT_SOURCE:', found);
@@ -253,7 +260,14 @@ export function openSortPicker() {
     // Choose which options to render according to the current view
     let optionsToShow = [];
     if (Array.isArray(sel) && sel.includes('portfolio')) {
+        // Limit to Portfolio-relevant fields
         optionsToShow = liveOptions.filter(o => ['dayDollar-desc','dayDollar-asc','percentageChange-desc','percentageChange-asc','capitalGain-desc','capitalGain-asc','totalDollar-desc','totalDollar-asc','shareName-asc','shareName-desc'].includes(o.value));
+        // Enforce Portfolio-specific labels regardless of the underlying select's current label set
+        optionsToShow = optionsToShow.map(o => {
+            if (o.value && o.value.startsWith('dayDollar')) return { ...o, text: 'Daily P/L' };
+            if (o.value && o.value.startsWith('percentageChange')) return { ...o, text: 'Daily Change' };
+            return o;
+        });
     } else if (Array.isArray(sel) && (sel.includes('cash') || sel.includes('cashBank') || sel.includes('cash-assets') || sel.includes('__cash') || sel.includes('cash-bank') || sel.includes('cash_bank') || sel.includes('CASH') || sel.includes('CASH_BANK'))) {
         // Cash & Assets: only name and balance sorts
         optionsToShow = liveOptions.filter(o => ['name-asc','name-desc','totalDollar-desc','totalDollar-asc'].includes(o.value));

@@ -1021,7 +1021,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.15.0';
+const APP_VERSION = '2.15.1';
 
 // Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
@@ -6651,9 +6651,9 @@ function renderSortSelect() {
         // Daily Change (percentage)
         { value: 'percentageChange-desc', text: 'Daily Change' },
         { value: 'percentageChange-asc', text: 'Daily Change' },
-        // Daily Change (dollar)
-        { value: 'dayDollar-desc', text: 'Daily Change' },
-        { value: 'dayDollar-asc', text: 'Daily Change' },
+    // Daily Change (dollar)
+    { value: 'dayDollar-desc', text: 'Daily Change' },
+    { value: 'dayDollar-asc', text: 'Daily Change' },
         // Star Rating
         { value: 'starRating-desc', text: 'Star Rating' },
         { value: 'starRating-asc', text: 'Star Rating' },
@@ -6670,12 +6670,12 @@ function renderSortSelect() {
         // ASX Code
         { value: 'shareName-asc', text: 'ASX Code' },
         { value: 'shareName-desc', text: 'ASX Code' },
+        // Daily Change (percentage)
+        { value: 'percentageChange-desc', text: 'Daily Change' },
+        { value: 'percentageChange-asc', text: 'Daily Change' },
         // Daily P/L (dollar)
         { value: 'dayDollar-desc', text: 'Daily P/L' },
         { value: 'dayDollar-asc', text: 'Daily P/L' },
-        // Daily P/L (percentage)
-        { value: 'percentageChange-desc', text: 'Daily P/L' },
-        { value: 'percentageChange-asc', text: 'Daily P/L' },
         // Current Value
         { value: 'totalDollar-desc', text: 'Current Value' },
         { value: 'totalDollar-asc', text: 'Current Value' },
