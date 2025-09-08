@@ -832,13 +832,28 @@
 .sort-picker-direction.down { color: var(--negative, #d73a49); }
 
 
-.header-sort-btn { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; background:var(--surface, #fff); border:1px solid var(--divider, #e6e6e6); cursor:pointer; }
+.header-sort-btn { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; background:var(--surface, #fff); border:1px solid var(--divider, #e6e6e6); cursor:pointer; flex-shrink: 0; }
 /* Icon now lives inside the title span so it flows and scales with the text */
 .header-sort-btn #sortPickerBtnText { display:inline-flex; align-items:center; gap:8px; }
 .header-sort-btn #sortIcon { display:inline-flex; align-items:center; justify-content:center; color: #ffffff; /* force white */ width:20px; height:20px; }
 .header-sort-btn #sortIcon i { font-size:1.05em; line-height:1; }
 /* Header triangle (direction) that appears at the end of the title should be white */
 .header-sort-btn .sort-title-triangle { color: #ffffff; margin-left:6px; font-weight:700; font-size:0.98em; display:inline-flex; align-items:center; }
+
+/* Prevent sort title from wrapping on mobile */
+.header-sort-btn #sortPickerLabel {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+}
+
+/* Mobile adjustments for sort title */
+@media (max-width: 600px) {
+    .header-sort-btn #sortPickerLabel {
+        max-width: 80px;
+    }
+}
 
 /* Ensure left-side icons in picker rows scale consistently with surrounding text */
 .sort-picker-icon i { font-size: 1em; line-height: 1; }
