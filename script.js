@@ -6675,6 +6675,7 @@ function renderSortSelect() {
         optionsToShow = portfolioOptions;
         logMessage = 'Portfolio options';
         defaultSortValue = 'totalDollar-desc';
+        console.log('[DEBUG] Portfolio view detected, using portfolioOptions:', portfolioOptions);
     } else if (getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID)) {
         optionsToShow = cashOptions;
         logMessage = 'Cash Asset options';
@@ -6684,6 +6685,7 @@ function renderSortSelect() {
         optionsToShow = stockOptions;
         logMessage = 'Stock options';
         defaultSortValue = 'percentageChange-desc';
+        console.log('[DEBUG] Non-portfolio view detected, using stockOptions:', stockOptions);
     }
 
     console.log('[DEBUG] Current selected watchlist IDs:', getCurrentSelectedWatchlistIds());

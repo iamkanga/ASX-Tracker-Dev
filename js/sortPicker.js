@@ -72,13 +72,19 @@ function buildRow(opt, currentValue) {
 // Local helper to update the header button text to reflect current sort
 function updateSortPickerButtonText(retryCount = 0) {
     try {
+        console.log('[DEBUG] updateSortPickerButtonText called (retry:', retryCount, ')');
         const current = getCurrentSortOrder();
+        console.log('[DEBUG] Current sort order:', current);
+
         const textEl = document.getElementById('sortPickerBtnText');
         const iconEl = document.getElementById('sortIcon');
         const labelSpan = document.getElementById('sortPickerLabel');
 
+        console.log('[DEBUG] DOM elements found - textEl:', !!textEl, 'iconEl:', !!iconEl, 'labelSpan:', !!labelSpan);
+
         // If critical elements are missing, retry after a longer delay (max 3 retries)
         if ((!textEl || !iconEl || !labelSpan) && retryCount < 3) {
+            console.log('[DEBUG] Critical DOM elements missing, retrying in 100ms (attempt', retryCount + 1, 'of 3)');
             setTimeout(() => updateSortPickerButtonText(retryCount + 1), 100);
             return;
         }
@@ -89,8 +95,10 @@ function updateSortPickerButtonText(retryCount = 0) {
             if (liveSelect && liveSelect.options && liveSelect.options.length > 0) {
                 const liveOptions = Array.from(liveSelect.options).map(o => ({ value: o.value, text: o.textContent }));
                 found = liveOptions.find(o => o.value === current) || null;
+                console.log('[DEBUG] Found option from DOM select:', found);
             }
         } catch(_) {
+            console.log('[DEBUG] Failed to get option from DOM select');
             found = null;
         }
 
@@ -106,15 +114,19 @@ function updateSortPickerButtonText(retryCount = 0) {
                 if (s && Array.isArray(s.cashOptions)) all.push(...s.cashOptions);
                 const hit = all.find(o => o.value === current);
                 if (hit) found = hit;
+                console.log('[DEBUG] Found option from SORT_SOURCE:', found);
             } catch(_) {
+                console.log('[DEBUG] Failed to get option from SORT_SOURCE');
                 found = null;
             }
         }
 
         if (textEl) {
+            console.log('[DEBUG] Updating text element');
             // keep icon node intact; write actual label text into dedicated span so icon isn't removed
             const triChar = (found && found.value && found.value.endsWith('-desc')) ? '\u25B2' : '\u25BC';
             if (labelSpan) {
+                console.log('[DEBUG] Updating label span with:', found ? found.text : 'Sort List');
                 labelSpan.textContent = found ? found.text : 'Sort List';
                 // Clean/recreate tri span inside the label span and apply themed color
                 if (labelSpan) {
@@ -133,10 +145,14 @@ function updateSortPickerButtonText(retryCount = 0) {
                     } catch(_) {}
                     labelSpan.appendChild(triSpan);
                 }
+                console.log('[DEBUG] Label span updated successfully');
             }
+        } else {
+            console.log('[DEBUG] textEl not found!');
         }
     // Update header icon span with a matching left icon based on the sort field
         if (iconEl) {
+            console.log('[DEBUG] Updating icon element');
             try {
                 let leftIcon = 'fa-sort';
                 const val = found ? found.value : '';
@@ -164,12 +180,17 @@ function updateSortPickerButtonText(retryCount = 0) {
                         if (cs && cs.color) iconEl.style.color = cs.color;
                     }
                 } catch(_) {}
+                console.log('[DEBUG] Icon element updated successfully with icon:', leftIcon);
             } catch(_) {
+                console.log('[DEBUG] Failed to update icon');
                 iconEl.innerHTML = '';
             }
+        } else {
+            console.log('[DEBUG] iconEl not found!');
         }
+        console.log('[DEBUG] updateSortPickerButtonText completed successfully');
     } catch(error) {
-        console.error('SortPicker: updateSortPickerButtonText failed:', error);
+        console.error('[DEBUG] updateSortPickerButtonText failed:', error);
     }
 }
 
@@ -246,8 +267,12 @@ export function openSortPicker() {
 
     // Choose which options to render according to the current view
     let optionsToShow = [];
+    console.log('[DEBUG] SortPicker - Current selected watchlist IDs:', sel);
+    console.log('[DEBUG] SortPicker - Available liveOptions:', liveOptions);
     if (Array.isArray(sel) && sel.includes('portfolio')) {
         optionsToShow = liveOptions.filter(o => ['dayDollar-desc','dayDollar-asc','percentageChange-desc','percentageChange-asc','capitalGain-desc','capitalGain-asc','totalDollar-desc','totalDollar-asc','shareName-asc','shareName-desc'].includes(o.value));
+        console.log('[DEBUG] SortPicker - Portfolio view detected, filtered options:', optionsToShow);
+        console.log('[DEBUG] SortPicker - Day dollar options in filtered list:', optionsToShow.filter(o => o.value.startsWith('dayDollar-')));
     } else if (Array.isArray(sel) && (sel.includes('cash') || sel.includes('cashBank') || sel.includes('cash-assets') || sel.includes('__cash') || sel.includes('cash-bank') || sel.includes('cash_bank') || sel.includes('CASH') || sel.includes('CASH_BANK'))) {
         // Cash & Assets: only name and balance sorts
         optionsToShow = liveOptions.filter(o => ['name-asc','name-desc','totalDollar-desc','totalDollar-asc'].includes(o.value));
@@ -255,6 +280,7 @@ export function openSortPicker() {
         // Main watchlist: ensure Date Added appears last
         const preferredOrder = ['percentageChange-desc','percentageChange-asc','dayDollar-desc','dayDollar-asc','shareName-asc','shareName-desc','starRating-desc','starRating-asc','dividendAmount-desc','dividendAmount-asc','entryDate-desc','entryDate-asc'];
         optionsToShow = preferredOrder.map(val => liveOptions.find(o => o.value === val)).filter(Boolean);
+        console.log('[DEBUG] SortPicker - Stock view detected, ordered options:', optionsToShow);
     }
 
     // Re-read current sort order right before building rows to ensure we use live state
@@ -317,15 +343,19 @@ export function openSortPicker() {
 export function initSortPicker() {
     const btn = document.getElementById('sortPickerBtn');
     const textEl = document.getElementById('sortPickerBtnText');
+    // initSortPicker invoked
     if (!btn) return;
 
     // Check if DOM elements are ready before proceeding
     const labelSpan = document.getElementById('sortPickerLabel');
     const iconEl = document.getElementById('sortIcon');
     if (!textEl || !labelSpan || !iconEl) {
+        console.log('[DEBUG] initSortPicker: DOM elements not ready, retrying in 100ms');
         setTimeout(() => initSortPicker(), 100);
         return;
     }
+
+    console.log('[DEBUG] initSortPicker: All DOM elements ready, proceeding with initialization');
 
     btn.addEventListener('click', (e) => {
         e.preventDefault();
