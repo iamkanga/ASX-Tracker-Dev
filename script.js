@@ -6616,12 +6616,12 @@ function renderSortSelect() {
         // ASX Code
         { value: 'shareName-asc', text: 'ASX Code' },
         { value: 'shareName-desc', text: 'ASX Code' },
-        // Daily Change (percentage)
-        { value: 'percentageChange-desc', text: 'Daily Change' },
-        { value: 'percentageChange-asc', text: 'Daily Change' },
-        // Daily Change (dollar)
-        { value: 'dayDollar-desc', text: 'Daily Change' },
-        { value: 'dayDollar-asc', text: 'Daily Change' },
+        // Day Change (percentage)
+        { value: 'percentageChange-desc', text: 'Day Change' },
+        { value: 'percentageChange-asc', text: 'Day Change' },
+        // Day Change (dollar)
+        { value: 'dayDollar-desc', text: 'Day Change' },
+        { value: 'dayDollar-asc', text: 'Day Change' },
         // Star Rating
         { value: 'starRating-desc', text: 'Star Rating' },
         { value: 'starRating-asc', text: 'Star Rating' },
@@ -6638,12 +6638,12 @@ function renderSortSelect() {
         // ASX Code
         { value: 'shareName-asc', text: 'ASX Code' },
         { value: 'shareName-desc', text: 'ASX Code' },
-        // Daily P/L (dollar)
-        { value: 'dayDollar-desc', text: 'Daily P/L' },
-        { value: 'dayDollar-asc', text: 'Daily P/L' },
-        // Daily P/L (percentage)
-        { value: 'percentageChange-desc', text: 'Daily P/L' },
-        { value: 'percentageChange-asc', text: 'Daily P/L' },
+        // Day P/L (dollar)
+        { value: 'dayDollar-desc', text: 'Day P/L' },
+        { value: 'dayDollar-asc', text: 'Day P/L' },
+        // Day Change (percentage)
+        { value: 'percentageChange-desc', text: 'Day Change' },
+        { value: 'percentageChange-asc', text: 'Day Change' },
         // Current Value
         { value: 'totalDollar-desc', text: 'Current Value' },
         { value: 'totalDollar-asc', text: 'Current Value' },
@@ -6675,6 +6675,7 @@ function renderSortSelect() {
         optionsToShow = portfolioOptions;
         logMessage = 'Portfolio options';
         defaultSortValue = 'totalDollar-desc';
+        console.log('[DEBUG] Portfolio view detected, using portfolioOptions:', portfolioOptions);
     } else if (getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID)) {
         optionsToShow = cashOptions;
         logMessage = 'Cash Asset options';
@@ -6684,7 +6685,11 @@ function renderSortSelect() {
         optionsToShow = stockOptions;
         logMessage = 'Stock options';
         defaultSortValue = 'percentageChange-desc';
+        console.log('[DEBUG] Non-portfolio view detected, using stockOptions:', stockOptions);
     }
+
+    console.log('[DEBUG] Current selected watchlist IDs:', getCurrentSelectedWatchlistIds());
+    console.log('[DEBUG] Options to show:', optionsToShow);
 
     optionsToShow.forEach(opt => {
         const optionElement = document.createElement('option');

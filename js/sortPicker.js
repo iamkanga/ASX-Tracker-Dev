@@ -228,17 +228,32 @@ export function openSortPicker() {
     try {
         const src = window.SORT_SOURCE;
         if (src && (Array.isArray(src.stockOptions) || Array.isArray(src.portfolioOptions) || Array.isArray(src.cashOptions))) {
-            // Merge unique options preserving order: stock, portfolio, cash as built by renderSortSelect
-            const merged = [];
-            const pushIfNew = (arr) => {
-                (arr||[]).forEach(o => {
-                    if (!merged.find(m => m.value === o.value)) merged.push({ value: o.value, text: o.text });
-                });
-            };
-            pushIfNew(src.stockOptions);
-            pushIfNew(src.portfolioOptions);
-            pushIfNew(src.cashOptions);
-            liveOptions = merged;
+            // For Portfolio view, prioritize portfolioOptions labels over stockOptions for same values
+            if (Array.isArray(sel) && sel.includes('portfolio')) {
+                // Start with portfolio options, then add unique stock and cash options
+                const merged = [];
+                const pushIfNew = (arr) => {
+                    (arr||[]).forEach(o => {
+                        if (!merged.find(m => m.value === o.value)) merged.push({ value: o.value, text: o.text });
+                    });
+                };
+                pushIfNew(src.portfolioOptions); // Portfolio options first for correct labels
+                pushIfNew(src.stockOptions);
+                pushIfNew(src.cashOptions);
+                liveOptions = merged;
+            } else {
+                // For other views, use the original merge order
+                const merged = [];
+                const pushIfNew = (arr) => {
+                    (arr||[]).forEach(o => {
+                        if (!merged.find(m => m.value === o.value)) merged.push({ value: o.value, text: o.text });
+                    });
+                };
+                pushIfNew(src.stockOptions);
+                pushIfNew(src.portfolioOptions);
+                pushIfNew(src.cashOptions);
+                liveOptions = merged;
+            }
         } else {
             // Fallback to DOM options when SORT_SOURCE is not available
             const liveSelect = document.getElementById('sortSelect');
@@ -252,8 +267,12 @@ export function openSortPicker() {
 
     // Choose which options to render according to the current view
     let optionsToShow = [];
+    console.log('[DEBUG] SortPicker - Current selected watchlist IDs:', sel);
+    console.log('[DEBUG] SortPicker - Available liveOptions:', liveOptions);
     if (Array.isArray(sel) && sel.includes('portfolio')) {
         optionsToShow = liveOptions.filter(o => ['dayDollar-desc','dayDollar-asc','percentageChange-desc','percentageChange-asc','capitalGain-desc','capitalGain-asc','totalDollar-desc','totalDollar-asc','shareName-asc','shareName-desc'].includes(o.value));
+        console.log('[DEBUG] SortPicker - Portfolio view detected, filtered options:', optionsToShow);
+        console.log('[DEBUG] SortPicker - Day dollar options in filtered list:', optionsToShow.filter(o => o.value.startsWith('dayDollar-')));
     } else if (Array.isArray(sel) && (sel.includes('cash') || sel.includes('cashBank') || sel.includes('cash-assets') || sel.includes('__cash') || sel.includes('cash-bank') || sel.includes('cash_bank') || sel.includes('CASH') || sel.includes('CASH_BANK'))) {
         // Cash & Assets: only name and balance sorts
         optionsToShow = liveOptions.filter(o => ['name-asc','name-desc','totalDollar-desc','totalDollar-asc'].includes(o.value));
@@ -261,6 +280,7 @@ export function openSortPicker() {
         // Main watchlist: ensure Date Added appears last
         const preferredOrder = ['percentageChange-desc','percentageChange-asc','dayDollar-desc','dayDollar-asc','shareName-asc','shareName-desc','starRating-desc','starRating-asc','dividendAmount-desc','dividendAmount-asc','entryDate-desc','entryDate-asc'];
         optionsToShow = preferredOrder.map(val => liveOptions.find(o => o.value === val)).filter(Boolean);
+        console.log('[DEBUG] SortPicker - Stock view detected, ordered options:', optionsToShow);
     }
 
     // Re-read current sort order right before building rows to ensure we use live state
