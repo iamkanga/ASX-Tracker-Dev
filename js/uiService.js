@@ -257,15 +257,24 @@ export function getCurrentCashAssetFormData() {
 			if (title || text) comments.push({ title: title, text: text });
 		});
 	}
-	const cashAssetNameInput = document.getElementById('cashAssetName');
-	const cashAssetBalanceInput = document.getElementById('cashAssetBalance');
-	const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
-	return {
-		name: (cashAssetNameInput && cashAssetNameInput.value ? cashAssetNameInput.value : '').trim(),
-		balance: cashAssetBalanceInput ? parseFloat(cashAssetBalanceInput.value) : NaN,
-		comments: comments,
-		isHidden: !!(hideCashAssetCheckbox && hideCashAssetCheckbox.checked)
-	};
+    const cashAssetNameInput = document.getElementById('cashAssetName');
+    const cashAssetBalanceInput = document.getElementById('cashAssetBalance');
+    // The modal checkbox was removed; use the model's isHidden value when editing an existing asset.
+    return {
+        name: (cashAssetNameInput && cashAssetNameInput.value ? cashAssetNameInput.value : '').trim(),
+        balance: cashAssetBalanceInput ? parseFloat(cashAssetBalanceInput.value) : NaN,
+        comments: comments,
+        isHidden: (function(){
+            try {
+                if (window.selectedCashAssetDocId) {
+                    const current = getUserCashCategories() || [];
+                    const found = current.find(c => c && c.id === window.selectedCashAssetDocId);
+                    return !!(found && found.isHidden);
+                }
+            } catch(_) {}
+            return false;
+        })()
+    };
 }
 
 // Backwards-compat: expose helpers on window for older code paths
@@ -328,6 +337,81 @@ export function renderCashCategories() {
         nameDisplay.classList.add('category-name-display');
         nameDisplay.textContent = category.name || 'Unnamed Asset';
         categoryHeader.appendChild(nameDisplay);
+
+        // Add on-card hide/show toggle (eye icon). Clicking the icon toggles visibility
+        try {
+            const hideBtn = document.createElement('button');
+            hideBtn.type = 'button';
+            hideBtn.className = 'hide-toggle-btn';
+            hideBtn.title = category.isHidden ? 'Show asset' : 'Hide asset';
+            // Use innerHTML to insert the font-awesome eye/eye-slash icons which are present elsewhere in the app
+            hideBtn.innerHTML = category.isHidden ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+            // Reflect hidden state on the button
+            if (category.isHidden) hideBtn.classList.add('hidden-icon');
+
+            // Prevent card click from firing when toggling the icon
+            hideBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                try { window.logDebug && window.logDebug('Cash Categories: hide toggle clicked for ID=' + category.id); } catch(_) {}
+
+                const newHidden = !Boolean(category.isHidden);
+
+                // Optimistically update UI
+                try {
+                    category.isHidden = newHidden;
+                    if (newHidden) {
+                        categoryItem.classList.add('hidden');
+                        hideBtn.classList.add('hidden-icon');
+                        hideBtn.title = 'Show asset';
+                        hideBtn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+                    } else {
+                        categoryItem.classList.remove('hidden');
+                        hideBtn.classList.remove('hidden-icon');
+                        hideBtn.title = 'Hide asset';
+                        hideBtn.innerHTML = '<i class="fas fa-eye"></i>';
+                    }
+                    // Recalculate total immediately
+                    try { if (typeof calculateTotalCash === 'function') calculateTotalCash(); } catch(_) {}
+                } catch(_) {}
+
+                // Persist change via AppService if available
+                try {
+                    if (window.AppService && typeof window.AppService.updateCashCategoryVisibility === 'function') {
+                        await window.AppService.updateCashCategoryVisibility(category.id, !!newHidden);
+                    } else if (window.AppService && typeof window.AppService.saveCashAsset === 'function') {
+                        // Fallback: perform a targeted save by selecting the asset and calling saveCashAsset
+                        try { window.selectedCashAssetDocId = category.id; } catch(_) {}
+                        // Prepare a shallow form snapshot so saveCashAsset will pick up isHidden
+                        // NOTE: getCurrentCashAssetFormData no longer includes a checkbox; rely on category.isHidden to be preserved by AppService before calling save
+                        try { await window.AppService.saveCashAsset(true); } catch(e) { throw e; }
+                    } else {
+                        console.warn('No persistence API available to update cash category visibility.');
+                    }
+                } catch (err) {
+                    console.error('Error persisting cash category visibility change:', err);
+                    // Revert optimistic UI change on failure
+                    try {
+                        category.isHidden = !newHidden;
+                        if (category.isHidden) {
+                            categoryItem.classList.add('hidden');
+                            hideBtn.classList.add('hidden-icon');
+                            hideBtn.title = 'Show asset';
+                            hideBtn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+                        } else {
+                            categoryItem.classList.remove('hidden');
+                            hideBtn.classList.remove('hidden-icon');
+                            hideBtn.title = 'Hide asset';
+                            hideBtn.innerHTML = '<i class="fas fa-eye"></i>';
+                        }
+                        try { if (typeof calculateTotalCash === 'function') calculateTotalCash(); } catch(_) {}
+                    } catch(_) {}
+                    try { window.showCustomAlert && window.showCustomAlert('Error saving visibility change'); } catch(_) {}
+                }
+            });
+
+            categoryHeader.appendChild(hideBtn);
+        } catch(_) {}
         categoryItem.appendChild(categoryHeader);
 
         const balanceDisplay = document.createElement('span');
@@ -434,7 +518,6 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
     const cashAssetCommentsContainer = document.getElementById('cashAssetCommentsArea') || document.getElementById('cashAssetCommentsContainer');
     const addCashAssetCommentBtn = document.getElementById('addCashAssetCommentBtn');
     const deleteCashAssetBtn = document.getElementById('deleteCashAssetBtn');
-    const hideCashAssetCheckbox = document.getElementById('hideCashAssetCheckbox');
     if (!cashAssetFormModal) return;
 
     function addCommentSection(container, title, text, focus) {
@@ -618,7 +701,7 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
             }, 200);
         }
         if (addCashAssetCommentBtn) try { addCashAssetCommentBtn.classList.remove('hidden'); } catch(_) {}
-        if (hideCashAssetCheckbox) hideCashAssetCheckbox.checked = !!asset.isHidden;
+    // isHidden is managed on the card via the on-card toggle; modal does not expose a hide checkbox
         if (deleteCashAssetBtn) {
             try {
                 deleteCashAssetBtn.onclick = null;
@@ -754,7 +837,7 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
             }, 200);
         }
         if (addCashAssetCommentBtn) try { addCashAssetCommentBtn.classList.remove('hidden'); } catch(_) {}
-        if (hideCashAssetCheckbox) hideCashAssetCheckbox.checked = false;
+    // Modal reset: isHidden remains controlled by the card state; no modal checkbox to reset
         try { window.selectedCashAssetDocId = null; } catch(_) {}
     }
 

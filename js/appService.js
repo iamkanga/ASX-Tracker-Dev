@@ -782,6 +782,27 @@ export async function saveWatchlistChanges(isSilent = false, newName, watchlistI
     }
 }
 
+// Update a single cash category's visibility (isHidden) field.
+export async function updateCashCategoryVisibility(categoryId, isHidden) {
+    if (!categoryId) throw new Error('Missing categoryId');
+    try {
+        const currentUserId = (function(){ try { return window.currentUserId || (auth && auth.currentUser && auth.currentUser.uid) || null; } catch(_) { return null; } })();
+        if (!currentUserId) { throw new Error('User not authenticated'); }
+        const categoryDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories', categoryId);
+        await firestore.updateDoc(categoryDocRef, { isHidden: !!isHidden, lastUpdated: new Date().toISOString() });
+        try {
+            const current = getUserCashCategories() || [];
+            const idx = current.findIndex(c => c && c.id === categoryId);
+            if (idx !== -1) { const next = current.slice(); next[idx] = { ...current[idx], isHidden: !!isHidden }; setUserCashCategories(next); }
+        } catch(_) {}
+        try { window.logDebug && window.logDebug('Firestore: Cash category visibility updated for ' + categoryId + ' -> ' + isHidden); } catch(_) {}
+        return true;
+    } catch (error) {
+        console.error('Error updating cash category visibility:', error);
+        throw error;
+    }
+}
+
 export async function deleteWatchlist(watchlistId) {
     const currentUserId = window.currentUserId;
 
@@ -1122,7 +1143,7 @@ export async function deleteAllUserData() {
     return await (async()=>{ return window.deleteAllUserData(); })();
 }
 
-try { window.AppService = { saveShareData, deleteShare, saveWatchlistChanges, deleteWatchlist, saveCashAsset, deleteCashCategory, deleteAllUserData }; } catch(_) {}
+try { window.AppService = { saveShareData, deleteShare, saveWatchlistChanges, deleteWatchlist, saveCashAsset, deleteCashCategory, deleteAllUserData, updateCashCategoryVisibility }; } catch(_) {}
 
 
 
