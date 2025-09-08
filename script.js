@@ -2669,6 +2669,10 @@ const modalUnfrankedYieldSpan = document.getElementById('modalUnfrankedYield');
 const modalFrankedYieldSpan = document.getElementById('modalFrankedYield');
 const modalPortfolioShares = document.getElementById('modalPortfolioShares');
 const modalPortfolioAvgPrice = document.getElementById('modalPortfolioAvgPrice');
+// New computed fields in Share Details modal
+const modalPurchaseCost = document.getElementById('modalPurchaseCost');
+const modalCurrentValue = document.getElementById('modalCurrentValue');
+const modalCapitalGain = document.getElementById('modalCapitalGain');
 const editShareFromDetailBtn = document.getElementById('editShareFromDetailBtn');
 const deleteShareFromDetailBtn = document.getElementById('deleteShareFromDetailBtn');
 const modalNewsLink = document.getElementById('modalNewsLink');
@@ -6056,6 +6060,63 @@ function showShareDetails() {
     // Populate Holdings fields
     modalPortfolioShares.textContent = (share.portfolioShares ? share.portfolioShares : '');
     modalPortfolioAvgPrice.textContent = (share.portfolioAvgPrice ? '$' + formatAdaptivePrice(share.portfolioAvgPrice) : '');
+
+    // Compute and populate Purchase Cost, Current Value, Capital Gain
+    try {
+        const sharesNum = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares))) ? Number(share.portfolioShares) : null;
+        const avgPriceNum = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice))) ? Number(share.portfolioAvgPrice) : null;
+
+        // Determine live price with existing fallback logic
+        const lpForCode = livePrices[share.shareName?.toUpperCase()];
+        let livePriceForCalc = (lpForCode && lpForCode.live !== null && !isNaN(lpForCode.live)) ? lpForCode.live : undefined;
+        if (livePriceForCalc === undefined || livePriceForCalc === null || isNaN(livePriceForCalc)) {
+            livePriceForCalc = (lpForCode && lpForCode.lastLivePrice !== null && !isNaN(lpForCode.lastLivePrice)) ? lpForCode.lastLivePrice : undefined;
+        }
+        if (livePriceForCalc === undefined || livePriceForCalc === null || isNaN(livePriceForCalc)) {
+            livePriceForCalc = (share.currentPrice !== null && share.currentPrice !== undefined && !isNaN(Number(share.currentPrice))) ? Number(share.currentPrice) : undefined;
+        }
+        if (livePriceForCalc === undefined || livePriceForCalc === null || isNaN(livePriceForCalc)) {
+            livePriceForCalc = enteredPriceNum; // fallback to entry/current logic used elsewhere
+        }
+
+        // Helper to clear classes
+        const clearPosNeg = (el) => { if (!el) return; el.classList.remove('positive'); el.classList.remove('negative'); };
+
+        if (sharesNum !== null && avgPriceNum !== null) {
+            const purchaseCostNum = sharesNum * avgPriceNum;
+            modalPurchaseCost.textContent = formatMoney(purchaseCostNum, { decimals: 2 });
+        } else {
+            if (modalPurchaseCost) modalPurchaseCost.textContent = '';
+        }
+
+        if (sharesNum !== null && livePriceForCalc !== undefined && livePriceForCalc !== null && !isNaN(livePriceForCalc)) {
+            const currentValueNum = sharesNum * Number(livePriceForCalc);
+            modalCurrentValue.textContent = formatMoney(currentValueNum, { decimals: 2 });
+            // Color by comparison with purchase cost when available
+            if (sharesNum !== null && avgPriceNum !== null) {
+                const purchaseCostNum = sharesNum * avgPriceNum;
+                clearPosNeg(modalCurrentValue);
+                if (currentValueNum > purchaseCostNum) modalCurrentValue.classList.add('positive');
+                else if (currentValueNum < purchaseCostNum) modalCurrentValue.classList.add('negative');
+            } else {
+                clearPosNeg(modalCurrentValue);
+            }
+        } else {
+            if (modalCurrentValue) { modalCurrentValue.textContent = ''; clearPosNeg(modalCurrentValue); }
+        }
+
+        if (sharesNum !== null && avgPriceNum !== null && livePriceForCalc !== undefined && livePriceForCalc !== null && !isNaN(livePriceForCalc)) {
+            const purchaseCostNum = sharesNum * avgPriceNum;
+            const currentValueNum = sharesNum * Number(livePriceForCalc);
+            const capitalGainNum = currentValueNum - purchaseCostNum;
+            modalCapitalGain.textContent = (capitalGainNum !== null && !isNaN(capitalGainNum)) ? formatMoney(capitalGainNum, { decimals: 2 }) : '';
+            clearPosNeg(modalCapitalGain);
+            if (capitalGainNum > 0) modalCapitalGain.classList.add('positive');
+            else if (capitalGainNum < 0) modalCapitalGain.classList.add('negative');
+        } else {
+            if (modalCapitalGain) { modalCapitalGain.textContent = ''; clearPosNeg(modalCapitalGain); }
+        }
+    } catch (e) { console.warn('Modal computed fields: error computing purchase/current/gain', e); }
 
     const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
     const unfrankedYield = calculateUnfrankedYield(displayDividendAmount, priceForYield); 
