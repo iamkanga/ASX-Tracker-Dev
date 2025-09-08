@@ -148,7 +148,7 @@
     left: 15px;
     text-align: left;
     font-size: 0.98em;
-    color: var(--accent-color, #a49393);
+    color: var(--accent-color);
     cursor: pointer;
     user-select: none;
     display: flex;
@@ -159,7 +159,7 @@
 }
 
 .asx-code-buttons-toggle:hover {
-    color: var(--link-hover-color, #8d7f7f);
+    color: var(--accent-color, #007bff);
 }
 
 .asx-code-buttons-toggle .asx-toggle-label {
@@ -190,7 +190,7 @@
     #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp {
         font-size: 0.75rem !important;
         font-weight: 600 !important;
-    color: var(--accent-color, #a49393) !important;
+        color: var(--accent-color, #007bff) !important;
         opacity: 1 !important;
         white-space: nowrap !important;
         display: block !important; /* Ensure it's displayed */
@@ -211,8 +211,7 @@
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
-    /* Unify timestamp + label color with coffee accent, scoped to header container only */
-    color: var(--accent-color, #a49393) !important;
+    color: var(--accent-color) !important;
 }
 
 @media (max-width: 640px) {
