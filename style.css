@@ -141,19 +141,43 @@
     transform: rotate(180deg);
 }
 
-/* Live price timestamp: display as a full-width block under the header/title bar
-   so it sits visually between the header and main content on all viewports. */
-.live-price-timestamp-container {
-    position: static; /* flow normally in document under the header */
-    display: block;
-    width: 100%;
-    text-align: right; /* keep aligned to the right edge; change to left/center if preferred */
-    padding: 6px 16px 0 16px; /* give breathing room from header edges */
+/* ASX Code Buttons Toggle - positioned opposite to live price timestamp */
+.asx-code-buttons-toggle {
+    position: absolute;
+    bottom: 0;
+    left: 15px;
+    text-align: left;
     font-size: 0.98em;
     color: var(--ghosted-text, #888);
-    pointer-events: none;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+    padding: 6px 0 0 0;
     z-index: 2;
-    background: transparent;
+}
+
+.asx-code-buttons-toggle:hover {
+    color: var(--accent-color, #007bff);
+}
+
+.asx-code-buttons-toggle .asx-toggle-label {
+    font-weight: 600;
+    font-size: 0.75rem;
+    line-height: 1;
+    margin: 0;
+    padding: 0;
+}
+
+@media (max-width: 600px) {
+    .asx-code-buttons-toggle {
+        font-size: 0.74em !important;
+        left: 12px !important;
+    }
+    .asx-code-buttons-toggle .asx-toggle-label {
+        font-size: 0.72rem !important;
+    }
 }
 @media (max-width: 600px) {
     .live-price-timestamp-container {
