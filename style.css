@@ -832,13 +832,15 @@
 .sort-picker-direction.down { color: var(--negative, #d73a49); }
 
 
-.header-sort-btn { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; background:var(--surface, #fff); border:1px solid var(--divider, #e6e6e6); cursor:pointer; }
+.header-sort-btn { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; background:var(--surface, #fff); border:1px solid var(--divider, #e6e6e6); cursor:pointer; white-space: nowrap; }
 /* Icon now lives inside the title span so it flows and scales with the text */
-.header-sort-btn #sortPickerBtnText { display:inline-flex; align-items:center; gap:8px; }
+.header-sort-btn #sortPickerBtnText { display:inline-flex; align-items:center; gap:8px; white-space: nowrap; }
 .header-sort-btn #sortIcon { display:inline-flex; align-items:center; justify-content:center; color: #ffffff; /* force white */ width:20px; height:20px; }
 .header-sort-btn #sortIcon i { font-size:1.05em; line-height:1; }
+/* Ensure both icons align consistently vertically */
+.header-sort-btn #sortIcon, .header-sort-btn .sort-title-triangle { vertical-align: middle; }
 /* Header triangle (direction) that appears at the end of the title should be white */
-.header-sort-btn .sort-title-triangle { color: #ffffff; margin-left:6px; font-weight:700; font-size:0.98em; display:inline-flex; align-items:center; }
+.header-sort-btn .sort-title-triangle { color: #ffffff; margin-left:6px; font-weight:700; font-size:0.98em; display:inline-flex; align-items:center; line-height: 1; }
 
 /* Ensure left-side icons in picker rows scale consistently with surrounding text */
 .sort-picker-icon i { font-size: 1em; line-height: 1; }
@@ -9133,12 +9135,25 @@ body.dark-theme .alert-item {
 
 /* Override dropdown-large for this specific context to be dynamically sized */
 .sort-controls-container .dropdown-large {
-    width: auto; /* Key change: allow width to fit content */
-    min-width: 140px; /* Set a reasonable minimum */
+    width: auto; /* allow width to fit content */
+    min-width: 140px; /* reasonable minimum */
+    max-width: none !important; /* remove 220px cap from .dropdown-large */
     padding-right: 28px; /* Ensure space for sort icon */
-    text-align: center; /* Center text within the select box */
+    text-align: center; /* Center text within the select box/button */
     text-align-last: center; /* For Firefox */
     -moz-text-align-last: center; /* For Firefox */
+}
+/* Explicitly apply non-wrapping and no max-width to the header sort button */
+.sort-controls-container .header-sort-btn {
+    max-width: none !important;
+    white-space: nowrap;
+}
+/* Expand slightly on desktop to avoid wrapping of longer labels */
+@media (min-width: 520px) {
+    .sort-controls-container .header-sort-btn {
+        width: max-content;
+        min-width: max-content; /* effectively adds ~few chars of room as needed */
+    }
 }
 
 .sort-icon { /* keep class but used inside text now; old absolute usage removed */ display:inline-flex; }
