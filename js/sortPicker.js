@@ -133,7 +133,25 @@ function updateSortPickerButtonText(retryCount = 0) {
         if (textEl) {
             console.log('[DEBUG] Updating text element');
             // keep icon node intact; write actual label text into dedicated span so icon isn't removed
-            const triChar = (found && found.value && found.value.endsWith('-desc')) ? '\u25B2' : '\u25BC';
+                // Determine triangle direction consistently with modal logic:
+                // - Alphabetical sorts (shareName/name): asc (A→Z) -> ▲, desc (Z→A) -> ▼
+                // - Numeric/monetary sorts: desc (High→Low) -> ▲, asc (Low→High) -> ▼
+                let triChar = '';
+                try {
+                    const val = found && found.value ? found.value : '';
+                    const parts = val.split('-');
+                    const fieldKey = parts[0] || '';
+                    const isDesc = val.endsWith('-desc');
+                    const isAsc = val.endsWith('-asc');
+                    const isAlpha = (fieldKey === 'shareName' || fieldKey === 'name');
+                    if (isAlpha) {
+                        triChar = isAsc ? '\u25B2' : '\u25BC';
+                    } else {
+                        triChar = isDesc ? '\u25B2' : '\u25BC';
+                    }
+                } catch(_) {
+                    triChar = (found && found.value && found.value.endsWith('-desc')) ? '\u25B2' : '\u25BC';
+                }
             if (labelSpan) {
                 console.log('[DEBUG] Updating label span with:', found ? found.text : 'Sort List');
                 labelSpan.textContent = found ? found.text : 'Sort List';
