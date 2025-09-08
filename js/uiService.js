@@ -83,16 +83,18 @@ export function applyAsxButtonsState() {
 		asxCodeButtonsContainer.style.opacity = '1';
 		asxCodeButtonsContainer.style.maxHeight = '500px';
 
-	} else {
-		asxCodeButtonsContainer.classList.remove('expanded');
-		asxCodeButtonsContainer.classList.add('app-hidden');
-		asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
-		// Clear forced styles when hiding
-		asxCodeButtonsContainer.style.display = '';
-		asxCodeButtonsContainer.style.opacity = '';
-		asxCodeButtonsContainer.style.maxHeight = '';
+    } else {
+        asxCodeButtonsContainer.classList.remove('expanded');
+        asxCodeButtonsContainer.classList.add('app-hidden');
+        asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
+        // Ensure the container is hidden when collapsed or when empty.
+        // Use explicit 'none' instead of clearing the inline display so CSS defaults
+        // (which may include a visible display like flex) don't leave an empty box.
+        asxCodeButtonsContainer.style.display = 'none';
+        asxCodeButtonsContainer.style.opacity = '';
+        asxCodeButtonsContainer.style.maxHeight = '';
 
-	}
+    }
 
     if (!hasButtons) {
 		toggleAsxButtonsBtn.style.display = 'none';
@@ -176,12 +178,12 @@ export function toggleCodeButtonsArrow() {
             asxCodeButtonsToggle.setAttribute('aria-pressed', String(!!getAsxButtonsExpanded()));
             asxCodeButtonsToggle.setAttribute('aria-expanded', String(!!getAsxButtonsExpanded()));
         }
-		if (asxCodeButtonsContainer) {
-			asxCodeButtonsContainer.classList.remove('app-hidden');
-			if (getAsxButtonsExpanded()) {
-				asxCodeButtonsContainer.style.display = 'flex';
-			}
-		}
+        if (asxCodeButtonsContainer) {
+            asxCodeButtonsContainer.classList.remove('app-hidden');
+            // Explicitly reflect the expanded state in inline style so the
+            // container does not remain visible when collapsed.
+            asxCodeButtonsContainer.style.display = getAsxButtonsExpanded() ? 'flex' : 'none';
+        }
 		applyAsxButtonsState();
 	}
 }

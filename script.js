@@ -3756,7 +3756,7 @@ function getShareDisplayData(share) {
         high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) && livePriceData.High52 !== 0 ? formatMoney(livePriceData.High52) : (livePriceData.High52 === 0 ? '0.00' : 'N/A');
         low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) && livePriceData.Low52 !== 0 ? formatMoney(livePriceData.Low52) : (livePriceData.Low52 === 0 ? '0.00' : 'N/A');
 
-        function half(val) { return typeof val === 'number' ? val / 2 : val; }
+    // (Removed legacy halving; display full change values)
 
         if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
@@ -3765,18 +3765,12 @@ function getShareDisplayData(share) {
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 let change = currentLivePrice - previousClosePrice;
                 let percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                // Reduce by 50% for target hit notifications
-                change = half(change);
-                percentageChange = half(percentageChange);
                 displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 let change = lastFetchedLive - lastFetchedPrevClose;
                 let percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                // Reduce by 50% for target hit notifications
-                change = half(change);
-                percentageChange = half(percentageChange);
                 displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
@@ -3804,10 +3798,7 @@ function getShareDisplayData(share) {
                 let percentageChange = (Number(share.previousFetchedPrice) !== 0 ?
                     (change / Number(share.previousFetchedPrice)) * 100 : 0);
 
-                // Apply the same 50% reduction used for live prices
-                function half(val) { return typeof val === 'number' ? val / 2 : val; }
-                change = half(change);
-                percentageChange = half(percentageChange);
+                // Use full change values (removed legacy 50% reduction)
 
                 displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
@@ -3826,10 +3817,7 @@ function getShareDisplayData(share) {
                     let change = liveData.live - liveData.prevClose;
                     let percentageChange = (liveData.prevClose !== 0 ? (change / liveData.prevClose) * 100 : 0);
 
-                    // Apply the same 50% reduction used for live prices
-                    function half(val) { return typeof val === 'number' ? val / 2 : val; }
-                    change = half(change);
-                    percentageChange = half(percentageChange);
+                    // Use full change values (removed legacy 50% reduction)
 
                     displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                     priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
@@ -3896,10 +3884,7 @@ function getShareDisplayData(share) {
                 let percentageChange = (Number(share.previousFetchedPrice) !== 0 ?
                     (change / Number(share.previousFetchedPrice)) * 100 : 0);
 
-                // Apply the same 50% reduction used for live prices
-                function half(val) { return typeof val === 'number' ? val / 2 : val; }
-                change = half(change);
-                percentageChange = half(percentageChange);
+                // Use full change values (removed legacy 50% reduction)
 
                 displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
@@ -3918,10 +3903,7 @@ function getShareDisplayData(share) {
                     let change = liveData.live - liveData.prevClose;
                     let percentageChange = (liveData.prevClose !== 0 ? (change / liveData.prevClose) * 100 : 0);
 
-                    // Apply the same 50% reduction used for live prices
-                    function half(val) { return typeof val === 'number' ? val / 2 : val; }
-                    change = half(change);
-                    percentageChange = half(percentageChange);
+                    // Use full change values (removed legacy 50% reduction)
 
                     displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
                     priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
