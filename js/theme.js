@@ -89,7 +89,9 @@ function applyTheme(themeName) {
     } else if (CUSTOM_THEMES.includes(themeName)) {
         // Custom theme
         const themeClassName = themeName.toLowerCase().replace(/\s+/g, '-');
-        body.classList.add('theme-' + themeClassName);
+    // Ensure any global dark-theme class is removed so custom theme colours are not overridden
+    body.classList.remove('dark-theme');
+    body.classList.add('theme-' + themeClassName);
         body.setAttribute('data-theme', themeName);
         logDebug('Theme: Applied custom theme: ' + themeName);
     }
@@ -247,34 +249,21 @@ function setupThemeEventListeners() {
             // Determine target theme based on current state
             if (currentActiveTheme === 'light') {
                 targetTheme = 'dark';
-                body.classList.add('dark-theme');
-                logDebug('Theme: Toggled from Light to Dark theme.');
+                logDebug('Theme: Will toggle from Light to Dark theme.');
             } else if (currentActiveTheme === 'dark') {
                 targetTheme = 'light';
-                body.classList.remove('dark-theme');
-                logDebug('Theme: Toggled from Dark to Light theme.');
+                logDebug('Theme: Will toggle from Dark to Light theme.');
             } else {
                 const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (systemPrefersDark) {
-                    targetTheme = 'light';
-                } else {
-                    targetTheme = 'dark';
-                }
+                // If we were following system-default, toggle to the opposite explicit theme
+                targetTheme = systemPrefersDark ? 'light' : 'dark';
+                logDebug('Theme: System default detected; toggling to explicit: ' + targetTheme);
             }
 
-            currentActiveTheme = targetTheme;
-            localStorage.setItem('theme', targetTheme);
+            // Apply the computed explicit theme immediately so the class changes take effect on first click
+            applyTheme(targetTheme);
 
-            // Save preference to Firestore
-            if (currentUserId && db && firestore) {
-                const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-                try {
-                    await firestore.setDoc(userProfileDocRef, { lastTheme: targetTheme }, { merge: true });
-                    logDebug('Theme: Saved explicit Light/Dark theme preference to Firestore: ' + targetTheme);
-                } catch (error) {
-                    console.error('Theme: Error saving explicit Light/Dark theme preference to Firestore:', error);
-                }
-            }
+            // Persist the explicit selection is handled inside applyTheme (localStorage + Firestore attempt)
 
             updateThemeToggleAndSelector();
         });

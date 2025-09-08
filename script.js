@@ -7,7 +7,8 @@ import { saveShareData as saveShareDataSvc, deleteShare as deleteShareSvc, saveW
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
 import { getAllSharesData, getLivePrices, getUserWatchlists, getUserCashCategories, getCurrentSelectedWatchlistIds, getSharesAtTargetPrice, getCurrentSortOrder, getAllAsxCodes, setAllSharesData, setLivePrices, setUserWatchlists, setCurrentSelectedWatchlistIds, setSharesAtTargetPrice, setCurrentSortOrder, setAllAsxCodes, setWatchlistSortOrder } from './js/state.js';
 import { applyAsxButtonsState, setAsxButtonsExpanded, getAsxButtonsExpanded, toggleCodeButtonsArrow, renderCashCategories as uiRenderCashCategories, calculateTotalCash as uiCalculateTotalCash, updateAddHeaderButton as uiUpdateAddHeaderButton, updateSidebarAddButtonContext as uiUpdateSidebarAddButtonContext, handleAddShareClick as uiHandleAddShareClick, handleAddCashAssetClick as uiHandleAddCashAssetClick } from './js/uiService.js';
-import { initializeTheme, applyLow52AlertTheme } from './js/theme.js';
+// Import the centralized theme apply function and helpers so script.js delegates theme changes to a single source of truth
+import { initializeTheme, applyLow52AlertTheme, applyTheme as moduleApplyTheme, updateThemeToggleAndSelector as moduleUpdateThemeToggle } from './js/theme.js';
 
 // --- UI Element References ---
 // Copilot: No-op change to trigger source control detection
@@ -8073,83 +8074,30 @@ function resetCalculator() {
 }
 
 async function applyTheme(themeName) {
-    const body = document.body;
-    // Remove all existing theme classes
-    body.className = body.className.split(' ').filter(c => !c.endsWith('-theme') && !c.startsWith('theme-')).join(' ');
-
-    logDebug('Theme Debug: Attempting to apply theme: ' + themeName);
-    currentActiveTheme = themeName;
-
-    if (themeName === 'system-default') {
-        body.removeAttribute('data-theme');
-        localStorage.removeItem('selectedTheme');
-        localStorage.removeItem('theme');
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (systemPrefersDark) {
-            body.classList.add('dark-theme');
-        }
-        logDebug('Theme Debug: Reverted to system default theme.');
-        // When reverting to system-default, ensure currentCustomThemeIndex is reset to -1
-        currentCustomThemeIndex = -1; 
-    } else if (themeName === 'light' || themeName === 'dark') {
-        body.removeAttribute('data-theme');
-        localStorage.removeItem('selectedTheme');
-        localStorage.setItem('theme', themeName);
-        if (themeName === 'dark') {
-            body.classList.add('dark-theme');
-        }
-        logDebug('Theme Debug: Applied explicit default theme: ' + themeName);
-        // When applying explicit light/dark, ensure currentCustomThemeIndex is reset to -1
-        currentCustomThemeIndex = -1; 
-    } else {
-        // For custom themes, apply the class and set data-theme attribute
-        // The class name is 'theme-' followed by the themeName (e.g., 'theme-bold-1', 'theme-muted-blue')
-        body.classList.add('theme-' + themeName.toLowerCase().replace(/\s/g, '-')); // Convert "Muted Blue" to "muted-blue" for class
-        body.setAttribute('data-theme', themeName); // Keep the full name in data-theme
-        localStorage.setItem('selectedTheme', themeName);
-        localStorage.removeItem('theme');
-        logDebug('Theme Debug: Applied custom theme: ' + themeName);
-        // When applying a custom theme, set currentCustomThemeIndex to its position
-        currentCustomThemeIndex = CUSTOM_THEMES.indexOf(themeName); 
+    // Delegate theme application to the centralized theme module to ensure a single source of truth.
+    try {
+        return await moduleApplyTheme(themeName);
+    } catch (e) {
+        console.warn('applyTheme delegation to moduleApplyTheme failed, falling back to no-op. Error:', e);
+        return;
     }
-    
-    logDebug('Theme Debug: Body classes after applying: ' + body.className);
-    logDebug('Theme Debug: currentCustomThemeIndex after applying: ' + currentCustomThemeIndex);
-
-    if (currentUserId && db && firestore) {
-        const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-        try {
-            await firestore.setDoc(userProfileDocRef, { lastTheme: themeName }, { merge: true });
-            logDebug('Theme: Saved theme preference to Firestore: ' + themeName);
-        } catch (error) {
-            console.error('Theme: Error saving theme preference to Firestore:', error);
-        }
-    }
-    updateThemeToggleAndSelector();
 }
 
 function updateThemeToggleAndSelector() {
-    if (colorThemeSelect) {
-        // Set the dropdown value to the current active theme if it's a custom theme
-        if (CUSTOM_THEMES.includes(currentActiveTheme)) {
-            colorThemeSelect.value = currentActiveTheme;
-        } else {
-            // If not a custom theme (system-default, light, dark), set dropdown to 'none' (No Custom Theme)
-            colorThemeSelect.value = 'none';
+    try {
+        moduleUpdateThemeToggle();
+    } catch (e) {
+        console.warn('updateThemeToggleAndSelector: moduleUpdateThemeToggle failed, error:', e);
+        // Fallback: perform minimal local update
+        if (colorThemeSelect) {
+            if (CUSTOM_THEMES.includes(currentActiveTheme)) colorThemeSelect.value = currentActiveTheme;
+            else colorThemeSelect.value = 'none';
         }
-        logDebug('Theme UI: Color theme select updated to: ' + colorThemeSelect.value);
     }
-
-    // This part ensures currentCustomThemeIndex is correctly set based on the currentActiveTheme
-    // regardless of whether it was set by toggle or dropdown/load.
-    // This is crucial for the toggle button to know where it is in the cycle.
-    if (CUSTOM_THEMES.includes(currentActiveTheme)) {
-        currentCustomThemeIndex = CUSTOM_THEMES.indexOf(currentActiveTheme);
-    } else {
-        currentCustomThemeIndex = -1; // Not a custom theme, so reset index
-    }
-    logDebug('Theme UI: currentCustomThemeIndex after updateThemeToggleAndSelector: ' + currentCustomThemeIndex);
 }
+
+// expose for other scripts that use a global accessor
+window.applyTheme = applyTheme;
 
 function getDefaultWatchlistId(userId) {
     return userId + '_' + DEFAULT_WATCHLIST_ID_SUFFIX;
