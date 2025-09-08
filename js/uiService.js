@@ -26,8 +26,9 @@ export function setAsxButtonsExpanded(value) {
 }
 
 export function applyAsxButtonsState() {
-	const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
-	const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn');
+    const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
+    const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn');
+    const asxCodeButtonsToggle = document.getElementById('asxCodeButtonsToggle');
 	if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) {
 		console.warn('applyAsxButtonsState: Missing elements - container:', !!asxCodeButtonsContainer, 'button:', !!toggleAsxButtonsBtn);
 		return;
@@ -39,11 +40,17 @@ export function applyAsxButtonsState() {
 		const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
 		const isCashView = Array.isArray(selIds) && selIds.includes(CASH_ID);
 
-		if (isCashView) {
+        if (isCashView) {
 			toggleAsxButtonsBtn.style.display = 'none';
 			toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
 			toggleAsxButtonsBtn.setAttribute('aria-expanded', 'false');
 			toggleAsxButtonsBtn.setAttribute('aria-pressed', 'false');
+            if (asxCodeButtonsToggle) {
+                asxCodeButtonsToggle.style.display = 'none';
+                asxCodeButtonsToggle.setAttribute('aria-disabled', 'true');
+                asxCodeButtonsToggle.setAttribute('aria-expanded', 'false');
+                asxCodeButtonsToggle.setAttribute('aria-pressed', 'false');
+            }
 			asxCodeButtonsContainer.classList.add('app-hidden');
 			asxCodeButtonsContainer.classList.remove('expanded');
 			asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
@@ -87,12 +94,20 @@ export function applyAsxButtonsState() {
 
 	}
 
-	if (!hasButtons) {
+    if (!hasButtons) {
 		toggleAsxButtonsBtn.style.display = 'none';
 		toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
+        if (asxCodeButtonsToggle) {
+            asxCodeButtonsToggle.style.display = 'none';
+            asxCodeButtonsToggle.setAttribute('aria-disabled', 'true');
+        }
 	} else {
 		toggleAsxButtonsBtn.style.display = 'inline-flex';
 		toggleAsxButtonsBtn.removeAttribute('aria-disabled');
+        if (asxCodeButtonsToggle) {
+            asxCodeButtonsToggle.style.display = 'inline-block';
+            asxCodeButtonsToggle.removeAttribute('aria-disabled');
+        }
 	}
 
 	try {
@@ -102,6 +117,14 @@ export function applyAsxButtonsState() {
 		if (labelSpan) labelSpan.textContent = 'ASX Codes';
 	} catch(_) {}
 
+    // Reflect state on new header two-line toggle
+    try {
+        if (asxCodeButtonsToggle) {
+            asxCodeButtonsToggle.setAttribute('aria-pressed', String(!!shouldShow));
+            asxCodeButtonsToggle.setAttribute('aria-expanded', String(!!shouldShow));
+        }
+    } catch(_) {}
+
 	const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
 	if (chevronIcon) chevronIcon.classList.toggle('expanded', shouldShow);
 
@@ -109,8 +132,9 @@ export function applyAsxButtonsState() {
 }
 
 export function toggleCodeButtonsArrow() {
-	const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn');
-	const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
+    const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn');
+    const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
+    const asxCodeButtonsToggle = document.getElementById('asxCodeButtonsToggle');
 
 	if (!toggleAsxButtonsBtn) {
 		console.warn('toggleCodeButtonsArrow: toggleAsxButtonsBtn not found');
@@ -121,8 +145,14 @@ export function toggleCodeButtonsArrow() {
 	const current = (selIds && selIds[0]) || null;
 	const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
 
-	if (current === CASH_ID) {
+    if (current === CASH_ID) {
 		toggleAsxButtonsBtn.style.display = 'none';
+        if (asxCodeButtonsToggle) {
+            asxCodeButtonsToggle.style.display = 'none';
+            asxCodeButtonsToggle.setAttribute('aria-disabled', 'true');
+            asxCodeButtonsToggle.setAttribute('aria-expanded', 'false');
+            asxCodeButtonsToggle.setAttribute('aria-pressed', 'false');
+        }
 		if (asxCodeButtonsContainer) {
 			asxCodeButtonsContainer.classList.add('app-hidden');
 			asxCodeButtonsContainer.style.display = 'none';
@@ -139,7 +169,13 @@ export function toggleCodeButtonsArrow() {
 			console.warn('ASX state restoration in toggleCodeButtonsArrow failed:', e);
 		}
 
-		toggleAsxButtonsBtn.style.display = '';
+        toggleAsxButtonsBtn.style.display = '';
+        if (asxCodeButtonsToggle) {
+            asxCodeButtonsToggle.style.display = '';
+            asxCodeButtonsToggle.removeAttribute('aria-disabled');
+            asxCodeButtonsToggle.setAttribute('aria-pressed', String(!!getAsxButtonsExpanded()));
+            asxCodeButtonsToggle.setAttribute('aria-expanded', String(!!getAsxButtonsExpanded()));
+        }
 		if (asxCodeButtonsContainer) {
 			asxCodeButtonsContainer.classList.remove('app-hidden');
 			if (getAsxButtonsExpanded()) {

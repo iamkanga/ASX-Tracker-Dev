@@ -42,6 +42,7 @@ try {
     };
 } catch(_) {}
 const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
+const asxCodeButtonsToggle = document.getElementById('asxCodeButtonsToggle'); // New header two-line text toggle
 const shareFormSection = document.getElementById('shareFormSection');
 const formCloseButton = document.querySelector('.form-close-button');
 const formTitle = document.getElementById('formTitle');
@@ -2582,6 +2583,37 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     // Also listen for transitionend on child elements (use capture to catch events before they bubble)
     asxCodeButtonsContainer.addEventListener('transitionend', handleTransitionEnd, true);
 }
+
+// Bind header two-line text toggle to existing logic
+try {
+    if (asxCodeButtonsToggle) {
+        const syncAria = () => {
+            try {
+                const expanded = getAsxButtonsExpanded();
+                asxCodeButtonsToggle.setAttribute('aria-pressed', String(!!expanded));
+                asxCodeButtonsToggle.setAttribute('aria-expanded', String(!!expanded));
+            } catch(_) {}
+        };
+        asxCodeButtonsToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            const currentExpanded = getAsxButtonsExpanded();
+            setAsxButtonsExpanded(!currentExpanded);
+            applyAsxButtonsState();
+            syncAria();
+        });
+        asxCodeButtonsToggle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const currentExpanded = getAsxButtonsExpanded();
+                setAsxButtonsExpanded(!currentExpanded);
+                applyAsxButtonsState();
+                syncAria();
+            }
+        });
+        // Initial aria sync
+        syncAria();
+    }
+} catch(_) {}
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
 const shareTableBody = document.querySelector('#shareTable tbody');
 // Dynamic container getter to handle DOM timing issues
