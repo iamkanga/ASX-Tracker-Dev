@@ -5,7 +5,7 @@ import { loadShares, loadCashCategories, loadTriggeredAlertsListener, saveWatchl
 import { fetchLivePrices } from './js/priceService.js';
 import { saveShareData as saveShareDataSvc, deleteShare as deleteShareSvc, saveWatchlistChanges as saveWatchlistChangesSvc, deleteWatchlist as deleteWatchlistSvc, saveCashAsset as saveCashAssetSvc, deleteCashCategory as deleteCashCategorySvc, deleteAllUserData as deleteAllUserDataSvc } from './js/appService.js';
 import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
-import { getAllSharesData, getLivePrices, getUserWatchlists, getUserCashCategories, getCurrentSelectedWatchlistIds, getSharesAtTargetPrice, getCurrentSortOrder, getAllAsxCodes, setAllSharesData, setLivePrices, setUserWatchlists, setCurrentSelectedWatchlistIds, setSharesAtTargetPrice, setCurrentSortOrder, setAllAsxCodes } from './js/state.js';
+import { getAllSharesData, getLivePrices, getUserWatchlists, getUserCashCategories, getCurrentSelectedWatchlistIds, getSharesAtTargetPrice, getCurrentSortOrder, getAllAsxCodes, setAllSharesData, setLivePrices, setUserWatchlists, setCurrentSelectedWatchlistIds, setSharesAtTargetPrice, setCurrentSortOrder, setAllAsxCodes, setWatchlistSortOrder } from './js/state.js';
 import { applyAsxButtonsState, setAsxButtonsExpanded, getAsxButtonsExpanded, toggleCodeButtonsArrow, renderCashCategories as uiRenderCashCategories, calculateTotalCash as uiCalculateTotalCash, updateAddHeaderButton as uiUpdateAddHeaderButton, updateSidebarAddButtonContext as uiUpdateSidebarAddButtonContext, handleAddShareClick as uiHandleAddShareClick, handleAddCashAssetClick as uiHandleAddCashAssetClick } from './js/uiService.js';
 import { initializeTheme, applyLow52AlertTheme } from './js/theme.js';
 
@@ -207,7 +207,7 @@ try {
                 const span = document.getElementById('dynamicWatchlistTitleText');
                 if (!span) return;
                 if (!span.textContent || !span.textContent.trim()) {
-                    let wid = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
+                    let wid = getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0];
                     let expected;
                     if (wid === '__movers') expected = 'Movers';
                     else if (wid === 'portfolio') expected = 'Portfolio';
@@ -283,7 +283,9 @@ function sortSharesByPercentageChange(shares) {
 // Lean live prices hook: only resort when sort actually depends on live data
 function onLivePricesUpdated() {
     try {
-        if (currentSortOrder && (currentSortOrder.startsWith('percentageChange') || currentSortOrder.startsWith('dividendAmount'))) {
+        // Read authoritative sort order from state module
+        const __liveSortOrder = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
+        if (__liveSortOrder && (__liveSortOrder.startsWith('percentageChange') || __liveSortOrder.startsWith('dividendAmount'))) {
             sortShares();
         } else {
             renderWatchlist();
@@ -434,6 +436,7 @@ document.addEventListener('DOMContentLoaded', function () {
     try { updateMainTitle(); } catch(e) {}
     // Ensure sort options and alerts are correct for Portfolio view
     try { renderSortSelect(); } catch(e) {}
+    try { updateSortPickerButtonText(); } catch(e) {}
     try { updateTargetHitBanner(); } catch(e) {}
         if (typeof renderAsxCodeButtons === 'function') {
             if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
@@ -450,6 +453,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (tableContainer) tableContainer.style.display = '';
         const mobileContainer = getMobileShareCardsContainer();
         if (mobileContainer) mobileContainer.style.display = '';
+        // Update sort picker button text when switching to watchlist view
+        try { updateSortPickerButtonText(); } catch(e) {}
     };
     // Render portfolio list (uses live prices when available)
     window.renderPortfolioList = function() {
@@ -773,7 +778,8 @@ try { window.logDebug = logDebug; } catch(_) {}
 (function(){
     try {
         const noisyPrefixes = [
-            '[PADDING DEBUG]', '[BANNER-DEBUG]', '[ASX Debug]', '[Diag]', '[MOVERS DEBUG]', 'Portfolio Card Debug', '[DEBUG] '
+            '[PADDING DEBUG]', '[BANNER-DEBUG]', '[ASX Debug]', '[Diag]', '[MOVERS DEBUG]', 'Portfolio Card Debug', '[DEBUG] ',
+            'UI TRACE', '[TRANSITION DEBUG]', '[SCROLL DEBUG]', '[SingleScroll]', '[TOGGLE DEBUG]', '[EVENT DEBUG]', '[CLICK DEBUG]'
         ];
         const origLog = console.log.bind(console);
         console.__origLog = origLog;
@@ -930,13 +936,13 @@ function scheduleMoversFallback() {
     setTimeout(()=>{
         try {
             const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
-            const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+            const haveMovers = getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers';
             if (wantMovers && !haveMovers) {
                 // Fallback to All Shares (user request) while preserving intent logs
                 setCurrentSelectedWatchlistIds([ALL_SHARES_ID]);
                 if (typeof watchlistSelect !== 'undefined' && watchlistSelect) watchlistSelect.value = ALL_SHARES_ID;
                 try { setLastSelectedView(ALL_SHARES_ID); } catch(_) {}
-                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
+                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch(_) {}
                 if (typeof renderWatchlist === 'function') { try { renderWatchlist(); } catch(_) {} }
                 console.warn('[Movers restore][fallback->allShares] Movers failed to attach; defaulted to All Shares.');
                 try { scrollMainToTop(); } catch(_) {}
@@ -2115,6 +2121,7 @@ function restoreViewAndModeFromPreferences() {
                             try {
                                 if (sortSelect) sortSelect.value = watchlistSortOrder;
                                 updateSortIcon();
+                                setTimeout(() => updateSortPickerButtonText(), 100);
                             } catch (e) {
                                 console.warn('[Restore] Failed to update sort select UI:', e);
                             }
@@ -2126,6 +2133,7 @@ function restoreViewAndModeFromPreferences() {
                             try {
                                 if (sortSelect) sortSelect.value = defaultSort;
                                 updateSortIcon();
+                                setTimeout(() => updateSortPickerButtonText(), 100);
                             } catch (e) {
                                 console.warn('[Restore] Failed to update sort select UI:', e);
                             }
@@ -2364,6 +2372,15 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
 
     // Add global click listener to monitor clicks near toggle button
     document.addEventListener('click', (e) => {
+        // Respect a short-lived sentinel used by smaller modules (e.g., Sort Picker)
+        // to avoid immediate global-close races when a modal is programmatically opened.
+        try {
+            if (window.__sortPickerOpeningUntil && Date.now() < window.__sortPickerOpeningUntil) {
+                // Suppress this global click handling while Sort Picker is opening
+                return;
+            }
+        } catch (_) {}
+
         const toggleBtn = document.getElementById('toggleAsxButtonsBtn');
         if (toggleBtn) {
             const rect = toggleBtn.getBoundingClientRect();
@@ -2905,6 +2922,7 @@ function handleGlobalBack(){
             const restoreIds = prevIds.length ? prevIds : [ALL_SHARES_ID];
             // Apply state
             setCurrentSelectedWatchlistIds(restoreIds);
+            updateSortPickerButtonText();
             // Reflect in dropdown if present
             if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
                 watchlistSelect.value = restoreIds[0] || '';
@@ -3457,7 +3475,7 @@ function closeModals() {
         } else { // New share
             // Only attempt to save if a share name was entered AND a watchlist was selected (if applicable)
             const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
-            const needsWatchlistSelection = currentSelectedWatchlistIds.includes(ALL_SHARES_ID);
+            const needsWatchlistSelection = getCurrentSelectedWatchlistIds().includes(ALL_SHARES_ID);
             
             if (isShareNameValid && isWatchlistSelected) { // Always require watchlist selection for new shares
                 logDebug('Auto-Save: New share detected with valid name and watchlist. Attempting silent save.');
@@ -3503,20 +3521,24 @@ function closeModals() {
         logDebug('Auto-Save: Cash Asset form modal is closing. Checking for unsaved changes.');
         const currentCashData = getCurrentCashAssetFormData();
         const isCashAssetNameValid = currentCashData.name.trim() !== '';
-
-        if (selectedCashAssetDocId) { // Existing cash asset
-            if (originalCashAssetData && !areCashAssetDataEqual(originalCashAssetData, currentCashData)) {
-                logDebug('Auto-Save: Unsaved changes detected for existing cash asset. Attempting silent save.');
-                saveCashAsset(true); // true indicates silent save
-            } else {
-                logDebug('Auto-Save: No changes detected for existing cash asset.');
-            }
-        } else { // New cash asset
-            if (isCashAssetNameValid) {
-                logDebug('Auto-Save: New cash asset detected with valid name. Attempting silent save.');
-                saveCashAsset(true); // true indicates silent save
-            } else {
-                logDebug('Auto-Save: New cash asset has no name. Discarding changes.');
+        // Avoid triggering auto-save if a save is already in progress (prevents duplicate saves and races)
+        if (window.__modalSaveInProgress) {
+            logDebug('Auto-Save: Skipping cash asset auto-save because a save is already in progress.');
+        } else {
+            if (selectedCashAssetDocId) { // Existing cash asset
+                if (originalCashAssetData && !areCashAssetDataEqual(originalCashAssetData, currentCashData)) {
+                    logDebug('Auto-Save: Unsaved changes detected for existing cash asset. Attempting silent save.');
+                    saveCashAsset(true); // true indicates silent save
+                } else {
+                    logDebug('Auto-Save: No changes detected for existing cash asset.');
+                }
+            } else { // New cash asset
+                if (isCashAssetNameValid) {
+                    logDebug('Auto-Save: New cash asset detected with valid name. Attempting silent save.');
+                    saveCashAsset(true); // true indicates silent save
+                } else {
+                    logDebug('Auto-Save: New cash asset has no name. Discarding changes.');
+                }
             }
         }
     }
@@ -4787,6 +4809,7 @@ function updateCompactViewButtonState() {
 }
 
 function showModal(modalElement) {
+    try { console.debug && console.debug('TRACE showModal called for:', modalElement && modalElement.id); } catch(_){}
     // Prefer UI module if available
     if (window.UI && typeof window.UI.showModal === 'function') return window.UI.showModal(modalElement);
     // Fallback minimal implementation
@@ -4794,7 +4817,11 @@ function showModal(modalElement) {
         if (!modalElement) return;
     if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id }, '', '');
     try { pushAppStateEntry('modal', modalElement); } catch(_){}
-        modalElement.classList.add('show');
+    // Ensure any defensive "app-hidden" class (used at load-time) is removed so
+    // the .modal.show rule can make the element visible. Some CSS places
+    // .app-hidden after .modal.show which prevents display unless we remove it here.
+    try { modalElement.classList.remove('app-hidden'); } catch(_){}
+    modalElement.classList.add('show');
         modalElement.scrollTop = 0;
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (scrollableContent) scrollableContent.scrollTop = 0;
@@ -4807,10 +4834,13 @@ function showModal(modalElement) {
 
 // Helper: Show modal without pushing a new browser/history state (used for modal-to-modal back restore)
 function showModalNoHistory(modalElement) {
+    try { console.debug && console.debug('TRACE showModalNoHistory called for:', modalElement && modalElement.id); } catch(_){}
     if (window.UI && typeof window.UI.showModalNoHistory === 'function') return window.UI.showModalNoHistory(modalElement);
     try {
         if (!modalElement) return;
-        modalElement.classList.add('show');
+    // Remove initial hide marker before showing (see comment in showModal)
+    try { modalElement.classList.remove('app-hidden'); } catch(_){}
+    modalElement.classList.add('show');
         modalElement.scrollTop = 0;
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (scrollableContent) scrollableContent.scrollTop = 0;
@@ -4819,12 +4849,16 @@ function showModalNoHistory(modalElement) {
 }
 
 function hideModal(modalElement) {
+    try { console.debug && console.debug('TRACE hideModal called for:', modalElement && modalElement.id); } catch(_){}
     if (window.UI && typeof window.UI.hideModal === 'function') return window.UI.hideModal(modalElement);
     try {
         if (!modalElement) return;
 
 
-        modalElement.classList.remove('show');
+    // Hide the modal and restore the initial hidden marker so that
+    // styles relying on `.app-hidden` remain consistent when closed.
+    modalElement.classList.remove('show');
+    try { modalElement.classList.add('app-hidden'); } catch(_){}
         if (typeof logDebug === 'function') logDebug('Modal: Hiding modal: ' + modalElement.id);
     } catch (e) { console.warn('hideModal fallback failed', e); }
 }
@@ -5021,7 +5055,7 @@ function clearForm() {
 */
 function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare = true) {
     logDebug('populateShareWatchlistSelect called. isNewShare: ' + isNewShare + ', currentShareWatchlistId: ' + currentShareWatchlistId);
-    logDebug('Current currentSelectedWatchlistIds: ' + currentSelectedWatchlistIds.join(', '));
+    logDebug('Current currentSelectedWatchlistIds: ' + getCurrentSelectedWatchlistIds().join(', '));
     logDebug('User watchlists available: ' + userWatchlists.map(wl => wl.name + ' (' + wl.id + ')').join(', '));
 
     if (!shareWatchlistSelect) {
@@ -5096,7 +5130,7 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
             }
         } else if (stockWatchlists.length > 0) {
             // No original ID on the share; default to current view if it's Portfolio, else leave blank
-            if (Array.isArray(currentSelectedWatchlistIds) && currentSelectedWatchlistIds[0] === 'portfolio') {
+            if (Array.isArray(getCurrentSelectedWatchlistIds()) && getCurrentSelectedWatchlistIds()[0] === 'portfolio') {
                 selectedOptionId = 'portfolio';
                 if (!preselectedIds.includes('portfolio')) preselectedIds.push('portfolio');
                 logDebug('Share Form: Editing share: No original watchlist; defaulting to current view Portfolio.');
@@ -5544,7 +5578,7 @@ async function saveShareData(isSilent = false) {
         return selectedWatchlistIdForSave ? [selectedWatchlistIdForSave] : null;
     })();
     // For new shares from 'All Shares' view, force watchlist selection
-    if (!selectedShareDocId && currentSelectedWatchlistIds.includes(ALL_SHARES_ID)) {
+    if (!selectedShareDocId && getCurrentSelectedWatchlistIds().includes(ALL_SHARES_ID)) {
         if (!selectedWatchlistIdForSave || selectedWatchlistIdForSave === '') { // Check for empty string too
             if (!isSilent) showCustomAlert('Please select a watchlist to assign the new share to.');
             console.warn('Save Share: New share from All Shares: Watchlist not selected. Skipping save.');
@@ -6171,8 +6205,17 @@ function showShareDetails() {
 }
 
 function sortShares() {
-    const sortValue = currentSortOrder;
+    // Read the authoritative sort order from the centralized state module when available.
+    // Fallback to window.currentSortOrder for legacy callers.
+    const sortValue = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : (window.currentSortOrder || '');
     logDebug('AGGRESSIVE DEBUG: sortShares called with currentSortOrder: ' + sortValue);
+    // Lightweight runtime tracing to help QA: show active sort and a small before/after sample only when DEBUG_MODE
+    try {
+        if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
+            console.log('[SORT DEBUG] sortShares invoked. sortValue=', sortValue, 'allSharesData.length=', Array.isArray(allSharesData)? allSharesData.length : 0);
+            try { console.log('[SORT DEBUG] sample BEFORE sort:', Array.isArray(allSharesData) ? allSharesData.slice(0,6).map(s => (s && (s.shareName || s.id)) || s) : []); } catch(_) {}
+        }
+    } catch(_) {}
     if (!sortValue || sortValue === '') {
         logDebug('Sort: Sort placeholder selected, no explicit sorting applied.');
         renderWatchlist(); 
@@ -6220,39 +6263,54 @@ function sortShares() {
 
             // Now perform numerical comparison for non-null values
             return order === 'asc' ? percentageChangeA - percentageChangeB : percentageChangeB - percentageChangeA;
-        } else if (field === 'dayDollar' || field === 'totalDollar') {
+        } else if (field === 'dayDollar' || field === 'totalDollar' || field === 'capitalGain') {
+            const safeNum = (v) => {
+                const n = Number(v);
+                return (typeof n === 'number' && !isNaN(n)) ? n : null;
+            };
             const getPortfolioMetric = (share) => {
-                const lp = livePrices[share.shareName?.toUpperCase()];
-                if (!lp) return null;
+                try {
+                    const lp = livePrices[(share.shareName || '').toUpperCase()];
+                    // Determine priceNow with fallbacks
+                    const priceNowRaw = (lp && (safeNum(lp.live) !== null)) ? lp.live : (lp && (safeNum(lp.lastLivePrice) !== null) ? lp.lastLivePrice : share.currentPrice);
+                    const priceNow = safeNum(priceNowRaw);
+                    if (priceNow === null) return null;
 
-                const priceNow = lp.live ?? lp.lastLivePrice ?? share.currentPrice ?? null;
-                if (priceNow === null || isNaN(priceNow)) return null;
+                    const sharesRaw = share.portfolioShares;
+                    const shares = safeNum(sharesRaw);
+                    if (shares === null || shares === 0) return null;
 
-                const shares = share.portfolioShares ?? null;
-                if (shares === null || isNaN(shares) || shares === 0) return null;
+                    if (field === 'dayDollar') {
+                        const prevCloseRaw = lp ? (lp.prevClose ?? lp.lastPrevClose) : null;
+                        const prevClose = safeNum(prevCloseRaw);
+                        if (prevClose === null) return null;
+                        return (priceNow - prevClose) * shares;
+                    }
 
-                if (field === 'dayDollar') {
-                    const prevClose = lp.prevClose ?? lp.lastPrevClose ?? null;
-                    if (prevClose === null || isNaN(prevClose)) return null;
-                    return (priceNow - prevClose) * shares;
-                }
+                    if (field === 'capitalGain') {
+                        const avgPrice = safeNum(share.portfolioAvgPrice);
+                        if (avgPrice === null) return null;
+                        return (priceNow - avgPrice) * shares;
+                    }
 
-                if (field === 'totalDollar') {
-                    const avgPrice = share.portfolioAvgPrice ?? null;
-                    if (avgPrice === null || isNaN(avgPrice)) return null;
-                    return (priceNow - avgPrice) * shares;
-                }
-                return null;
+                    if (field === 'totalDollar') {
+                        return priceNow * shares;
+                    }
+                    return null;
+                } catch (e) { return null; }
             };
 
-            const valA = getPortfolioMetric(a);
-            const valB = getPortfolioMetric(b);
+            const valAraw = getPortfolioMetric(a);
+            const valBraw = getPortfolioMetric(b);
+            const valA = safeNum(valAraw);
+            const valB = safeNum(valBraw);
 
+            // deterministic null handling: push nulls to the end for both asc/desc
             if (valA === null && valB === null) return 0;
             if (valA === null) return 1;
             if (valB === null) return -1;
 
-            return order === 'asc' ? valA - valB : valB - valA;
+            return order === 'asc' ? (valA - valB) : (valB - valA);
         }
 
         let valA = a[field];
@@ -6329,7 +6387,16 @@ function sortShares() {
         } else if (field === 'starRating') {
             const ratingA = a.starRating !== undefined && a.starRating !== null && !isNaN(parseInt(a.starRating)) ? parseInt(a.starRating) : 0;
             const ratingB = b.starRating !== undefined && b.starRating !== null && !isNaN(parseInt(b.starRating)) ? parseInt(b.starRating) : 0;
-            return order === 'asc' ? ratingA - ratingB : ratingB - ratingA;
+            // When sorting ascending (Low to High), treat rating 0 as "no rating" and push to the bottom.
+            if (order === 'asc') {
+                const aIsZero = ratingA === 0;
+                const bIsZero = ratingB === 0;
+                if (aIsZero && bIsZero) return 0;
+                if (aIsZero) return 1; // A goes to bottom
+                if (bIsZero) return -1; // B goes to bottom
+                return ratingA - ratingB;
+            }
+            return ratingB - ratingA;
         } else if (field === 'entryDate') {
             // UPDATED: Robust date parsing for sorting
             const dateA = new Date(valA);
@@ -6353,6 +6420,7 @@ function sortShares() {
         }
     });
     logDebug('Sort: Shares sorted. Rendering watchlist.');
+    try { if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[SORT DEBUG] sample AFTER sort:', Array.isArray(allSharesData) ? allSharesData.slice(0,6).map(s => (s && (s.shareName || s.id)) || s) : []); } catch(_) {}
     renderWatchlist();
 }
 
@@ -6373,19 +6441,34 @@ function sortCashCategories(categoriesParam) {
 
     const [field, order] = sortValue.split('-');
 
-    if (field !== 'name' && field !== 'balance') {
+    // Map logical sort fields to actual object properties.
+    // 'totalDollar' from the UI maps to the cash asset's 'balance' property.
+    const sortField = (field === 'totalDollar') ? 'balance' : field;
+
+    if (sortField !== 'name' && sortField !== 'balance') {
         logDebug('Sort: Invalid sort field for cash assets: ' + field + '. Defaulting to name-asc.');
         return [...categories].sort((a, b) => a.name.localeCompare(b.name));
     }
 
     const sortedCategories = [...categories].sort((a, b) => {
-        let valA = a[field];
-        let valB = b[field];
+        let valA = a[sortField];
+        let valB = b[sortField];
 
-        if (field === 'balance') {
-            valA = (typeof valA === 'number' && !isNaN(valA)) ? valA : (order === 'asc' ? Infinity : -Infinity);
-            valB = (typeof valB === 'number' && !isNaN(valB)) ? valB : (order === 'asc' ? Infinity : -Infinity);
-            return order === 'asc' ? valA - valB : valB - valA;
+        if (sortField === 'balance') {
+            // Robust numeric parsing: accept numbers, numeric strings, or formatted currency (commas, $)
+            const parseNum = (v) => {
+                if (v === null || typeof v === 'undefined') return 0;
+                if (typeof v === 'number' && !isNaN(v)) return v;
+                try {
+                    // Remove any non-numeric chars except dot/minus
+                    const cleaned = String(v).replace(/[^0-9.\-]/g, '');
+                    const n = parseFloat(cleaned);
+                    return isNaN(n) ? 0 : n;
+                } catch (_) { return 0; }
+            };
+            const numA = parseNum(valA);
+            const numB = parseNum(valB);
+            return order === 'asc' ? numA - numB : numB - numA;
         } else if (field === 'name') {
             const nameA = (a.name || '').toUpperCase().trim();
             const nameB = (b.name || '').toUpperCase().trim();
@@ -6484,16 +6567,22 @@ function renderWatchlistSelect() {
                 // If persisted is movers, keep it even if data not yet loaded
                 watchlistSelect.value = lsView;
                 setCurrentSelectedWatchlistIds([lsView]);
+                // Defer to ensure DOM elements are ready after renderSortSelect
+                setTimeout(() => updateSortPickerButtonText(), 100);
                 logDebug('UI Update: Watchlist select applied lastSelectedView from localStorage: ' + lsView);
             } else {
                 watchlistSelect.value = ALL_SHARES_ID;
                 setCurrentSelectedWatchlistIds([ALL_SHARES_ID]);
+                // Defer to ensure DOM elements are ready after renderSortSelect
+                setTimeout(() => updateSortPickerButtonText(), 100);
                 try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch(_) {}
                 logDebug('UI Update: Watchlist select defaulted to All Shares (no valid preference).');
             }
         } catch(e) {
             watchlistSelect.value = ALL_SHARES_ID;
             setCurrentSelectedWatchlistIds([ALL_SHARES_ID]);
+            // Defer to ensure DOM elements are ready after renderSortSelect
+            setTimeout(() => updateSortPickerButtonText(), 100);
             logDebug('UI Update: Watchlist select defaulted to All Shares due to error reading localStorage.');
         }
     }
@@ -6522,36 +6611,61 @@ function renderSortSelect() {
         }
     } catch (e) { /* ignore */ }
 
+    // Main Watchlist - simplified labels and specific order (ASX Code first)
     const stockOptions = [
-        { value: 'percentageChange-desc', text: 'Change % (H-L)' },
-        { value: 'percentageChange-asc', text: 'Change % (L-H)' },
-        { value: 'shareName-asc', text: 'Code (A-Z)' },
-        { value: 'shareName-desc', text: 'Code (Z-A)' },
-        { value: 'entryDate-desc', text: 'Date (N-O)' },
-        { value: 'entryDate-asc', text: 'Date (O-N)' },
-        { value: 'starRating-desc', text: '⭐ (H-L)' },
-        { value: 'starRating-asc', text: '⭐ (L-H)' },
-        { value: 'dividendAmount-desc', text: 'Yield % (H-L)' },
-        { value: 'dividendAmount-asc', text: 'Yield % (L-H)' }
+        // ASX Code
+        { value: 'shareName-asc', text: 'ASX Code' },
+        { value: 'shareName-desc', text: 'ASX Code' },
+        // Daily Change (percentage)
+        { value: 'percentageChange-desc', text: 'Daily Change' },
+        { value: 'percentageChange-asc', text: 'Daily Change' },
+        // Daily Change (dollar)
+        { value: 'dayDollar-desc', text: 'Daily Change' },
+        { value: 'dayDollar-asc', text: 'Daily Change' },
+        // Star Rating
+        { value: 'starRating-desc', text: 'Star Rating' },
+        { value: 'starRating-asc', text: 'Star Rating' },
+        // Dividends
+        { value: 'dividendAmount-desc', text: 'Dividends' },
+        { value: 'dividendAmount-asc', text: 'Dividends' },
+        // Date Added
+        { value: 'entryDate-desc', text: 'Date Added' },
+        { value: 'entryDate-asc', text: 'Date Added' }
     ];
 
+    // Portfolio view - simplified labels and specific order
     const portfolioOptions = [
-        { value: 'dayDollar-desc', text: 'Day $ (H-L)' },
-        { value: 'dayDollar-asc', text: 'Day $ (L-H)' },
-        { value: 'percentageChange-desc', text: 'Change % (H-L)' },
-        { value: 'percentageChange-asc', text: 'Change % (L-H)' },
-        { value: 'shareName-asc', text: 'Code (A-Z)' },
-        { value: 'shareName-desc', text: 'Code (Z-A)' },
-        { value: 'totalDollar-desc', text: 'Total $ (H-L)' },
-        { value: 'totalDollar-asc', text: 'Total $ (L-H)' }
+        // ASX Code
+        { value: 'shareName-asc', text: 'ASX Code' },
+        { value: 'shareName-desc', text: 'ASX Code' },
+        // Daily P/L (dollar)
+        { value: 'dayDollar-desc', text: 'Daily P/L' },
+        { value: 'dayDollar-asc', text: 'Daily P/L' },
+        // Daily P/L (percentage)
+        { value: 'percentageChange-desc', text: 'Daily P/L' },
+        { value: 'percentageChange-asc', text: 'Daily P/L' },
+        // Current Value
+        { value: 'totalDollar-desc', text: 'Current Value' },
+        { value: 'totalDollar-asc', text: 'Current Value' },
+        // Capital Gain
+        { value: 'capitalGain-desc', text: 'Capital Gain' },
+        { value: 'capitalGain-asc', text: 'Capital Gain' }
     ];
 
+
+    // Cash & Assets view - simplified labels
     const cashOptions = [
-        { value: 'name-asc', text: 'Asset Name (A-Z)' },
-        { value: 'name-desc', text: 'Asset Name (Z-A)' },
-        { value: 'lastUpdated-desc', text: 'Date (N-O)' },
-        { value: 'lastUpdated-asc', text: 'Date (O-N)' }
+        { value: 'name-asc', text: 'Asset Name' },
+        { value: 'name-desc', text: 'Asset Name' },
+        { value: 'totalDollar-desc', text: 'Current Value' },
+        { value: 'totalDollar-asc', text: 'Current Value' }
     ];
+
+    // Publish the authoritative option arrays so other modules (e.g., the Sort Picker)
+    // can read the live source instead of parsing DOM options. This object is
+    // refreshed each time renderSortSelect() runs so it always reflects current
+    // view-specific ordering and any dynamic changes.
+    try { window.SORT_SOURCE = { stockOptions: stockOptions.slice(), portfolioOptions: portfolioOptions.slice(), cashOptions: cashOptions.slice() }; } catch(_) {}
 
     let optionsToShow;
     let logMessage;
@@ -6566,9 +6680,10 @@ function renderSortSelect() {
         logMessage = 'Cash Asset options';
         defaultSortValue = 'name-asc';
     } else {
+        // Use Daily Change (percentage) as the default for general stock/watchlist views
         optionsToShow = stockOptions;
         logMessage = 'Stock options';
-        defaultSortValue = 'entryDate-desc';
+        defaultSortValue = 'percentageChange-desc';
     }
 
     optionsToShow.forEach(opt => {
@@ -6628,10 +6743,24 @@ function openWatchlistPicker() {
     const specialIds = specialWatchlistOrder.map(sw => sw.id);
 
     const __uw2 = getUserWatchlists();
+    // Icon pool for user watchlists — will be assigned deterministically per id so icons stay stable
+    const watchlistIconPool = ['fa-list-alt','fa-folder-open','fa-bookmark','fa-star','fa-user','fa-users','fa-layer-group','fa-tags','fa-gem','fa-briefcase'];
+    const pickIconForId = (id) => {
+        try {
+            const s = String(id || '');
+            let h = 0;
+            for (let i = 0; i < s.length; i++) {
+                h = ((h << 5) - h) + s.charCodeAt(i);
+                h |= 0;
+            }
+            return watchlistIconPool[Math.abs(h) % watchlistIconPool.length];
+        } catch (_) { return 'fa-list-alt'; }
+    };
+
     const userCreatedWatchlists = (__uw2||[])
         .filter(wl => !specialIds.includes(wl.id))
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(wl => ({ ...wl, icon: 'fa-list-alt' }));
+        .map(wl => ({ ...wl, icon: pickIconForId(wl.id) }));
 
     let finalWatchlistItems = [...specialWatchlistOrder, ...userCreatedWatchlists];
 
@@ -6645,7 +6774,10 @@ function openWatchlistPicker() {
     finalWatchlistItems.forEach(it => {
         const div = document.createElement('div');
         const __selIds_picker = getCurrentSelectedWatchlistIds();
-        const isActive = Array.isArray(__selIds_picker) && __selIds_picker[0] === it.id;
+        // Normalize IDs to strings, trim whitespace and lowercase to avoid mismatches
+        const activeId = Array.isArray(__selIds_picker) && __selIds_picker[0] ? String(__selIds_picker[0]).trim().toLowerCase() : '';
+        const itemId = it.id ? String(it.id).trim().toLowerCase() : '';
+        const isActive = activeId && itemId && activeId === itemId;
         div.className = 'picker-item' + (isActive ? ' active' : '');
         div.innerHTML = `
             <div class="picker-item-content">
@@ -6661,21 +6793,68 @@ function openWatchlistPicker() {
             console.log('[WatchlistPicker] Selecting watchlist', it.id);
             // Push previous selection for shallow back
             try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; pushAppStateEntry('watchlist', prev); } catch(_) {}
-            setCurrentSelectedWatchlistIds([it.id]);
+            // Normalize stored id to the canonical form used elsewhere
+            const canonicalId = it.id ? String(it.id).trim() : it.id;
+            setCurrentSelectedWatchlistIds([canonicalId]);
             // Create a browser history entry so hardware/back triggers our popstate handler
             try { if (typeof pushAppState === 'function') pushAppState({ watchlist: it.id }, '', '#watchlist'); } catch(_) {}
             try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch (_) { }
-            if (watchlistSelect) watchlistSelect.value = it.id;
+            if (watchlistSelect) try { watchlistSelect.value = canonicalId; } catch(_) { watchlistSelect.value = it.id; }
+            // If the watchlist picker modal is open, update the active class on items immediately
+            try {
+                const listEl = document.getElementById('watchlistPickerList');
+                if (listEl && listEl.children && listEl.children.length > 0) {
+                    Array.from(listEl.children).forEach(child => {
+                        try {
+                            const span = child.querySelector('.picker-item-content span');
+                            const txt = span ? String(span.textContent || '').trim().toLowerCase() : '';
+                            const candidate = String(it.name || '').trim().toLowerCase();
+                            if (txt && candidate && txt === candidate) {
+                                child.classList.add('active');
+                            } else {
+                                child.classList.remove('active');
+                            }
+                        } catch(_) {}
+                    });
+                }
+            } catch(_) {}
             try { setLastSelectedView(it.id); } catch (e) { }
-            try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(currentSelectedWatchlistIds); } } catch (e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
+            try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(getCurrentSelectedWatchlistIds()); } } catch (e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
 
             if (it.id === '__movers') {
                 updateMainTitle('Movers');
             } else {
                 updateMainTitle();
             }
-            try { renderSortSelect(); } catch (_) { }
-            try { renderWatchlist(); } catch (e) { console.warn('WatchlistPicker: renderWatchlist failed', e); }
+            try {
+                // Rebuild sort options for the newly selected watchlist and apply a validated sort
+                try { renderSortSelect(); } catch(_) {}
+                try { 
+                    // Defer to ensure DOM elements are ready after renderSortSelect
+                    setTimeout(() => updateSortPickerButtonText(), 100); 
+                } catch(_) {}
+                const availableOptionValues = Array.from(sortSelect ? sortSelect.options : []).map(o => o.value);
+                const watchlistSortOrder = getSortOrderForWatchlist(canonicalId);
+                if (watchlistSortOrder && availableOptionValues.includes(watchlistSortOrder)) {
+                    try { setCurrentSortOrder(watchlistSortOrder); if (sortSelect) sortSelect.value = watchlistSortOrder; updateSortIcon(); } catch(_) {}
+                    logDebug('[WatchlistPicker] Applied saved per-watchlist sort for ' + canonicalId + ': ' + watchlistSortOrder);
+                } else {
+                    const def = (canonicalId === CASH_BANK_WATCHLIST_ID) ? 'name-asc' : (canonicalId === 'portfolio' ? 'totalDollar-desc' : 'percentageChange-desc');
+                    const chosen = availableOptionValues.includes(def) ? def : (availableOptionValues[0] || def);
+                    try { setCurrentSortOrder(chosen); if (sortSelect) sortSelect.value = chosen; updateSortIcon(); } catch(_) {}
+                    logDebug('[WatchlistPicker] Applied fallback/default sort for ' + canonicalId + ': ' + chosen);
+                    // Persist fallback so this watchlist remembers the chosen default
+                    try {
+                        setWatchlistSortOrder(canonicalId, chosen);
+                        try { robustSaveSortOrder(chosen); } catch(_) {}
+                        logDebug('[WatchlistPicker] Persisted fallback sort for ' + canonicalId + ': ' + chosen);
+                    } catch (persistErr) {
+                        console.warn('[WatchlistPicker] Failed to persist fallback sort for ' + canonicalId, persistErr);
+                    }
+                }
+            } catch (e) { console.warn('WatchlistPicker: Sort restoration failed', e); }
+
+            try { sortShares(); } catch (e) { console.warn('WatchlistPicker: sortShares failed', e); }
             // Ensure the main view scrolls to top after programmatic watchlist selection
             try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
             try { enforceMoversVirtualView(); } catch (e) { console.warn('WatchlistPicker: enforceMoversVirtualView failed', e); }
@@ -6756,13 +6935,13 @@ loadUserWatchlistsAndSettings = async function() {
     // Post-load Movers enforcement: if persisted as lastSelectedView but not active (race conditions), activate now
     try {
         const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
-        const haveMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+        const haveMovers = getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers';
         if (wantMovers && !haveMovers) {
             try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== '__movers') pushAppStateEntry('watchlist', prev); } catch(_) {}
             setCurrentSelectedWatchlistIds(['__movers']);
             const sel = typeof watchlistSelect !== 'undefined' ? watchlistSelect : document.getElementById('watchlistSelect');
             if (sel) sel.value = '__movers';
-            if (typeof renderWatchlist === 'function') renderWatchlist();
+            if (typeof sortShares === 'function') sortShares();
             // FIX: Update ASX button state after programmatic watchlist change
             try { toggleCodeButtonsArrow(); } catch (e) { console.warn('Movers restore: toggleCodeButtonsArrow failed', e); }
             try { scrollMainToTop(); } catch(_) {}
@@ -6843,7 +7022,7 @@ function renderWatchlist() {
 
     // If first load and user restored to movers, enforce immediately after minimal delay
     try {
-        if (!window.__moversInitialEnforced && currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+        if (!window.__moversInitialEnforced && getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers') {
             window.__moversInitialEnforced = true;
             setTimeout(()=>{ try { enforceMoversVirtualView(); } catch(e){ console.warn('Initial movers enforce failed', e); } }, 150);
         }
@@ -6881,7 +7060,7 @@ function renderWatchlist() {
         }
     }
 
-    const selectedWatchlistId = currentSelectedWatchlistIds[0];
+    const selectedWatchlistId = getCurrentSelectedWatchlistIds()[0];
 
     // Hide both sections initially
     stockWatchlistSection.classList.add('app-hidden');
@@ -7001,15 +7180,15 @@ function renderWatchlist() {
                 window.__moversRenderRetry = setTimeout(()=>{
                     window.__moversRenderRetry = null;
                     if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
-                        try { renderWatchlist(); } catch(e){ console.warn('Movers re-render retry failed', e); }
+                        try { sortShares(); } catch(e){ console.warn('Movers re-render retry failed', e); }
                     }
                 }, 900);
             }
         } else if (selectedWatchlistId === ALL_SHARES_ID) {
             sharesToRender = dedupeSharesById(allSharesData);
             logDebug('Render: Displaying all shares (from ALL_SHARES_ID in currentSelectedWatchlistIds).');
-        } else if (currentSelectedWatchlistIds.length === 1) {
-            sharesToRender = dedupeSharesById(allSharesData).filter(share => currentSelectedWatchlistIds.some(id => shareBelongsTo(share, id)));
+        } else if (getCurrentSelectedWatchlistIds().length === 1) {
+            sharesToRender = dedupeSharesById(allSharesData).filter(share => getCurrentSelectedWatchlistIds().some(id => shareBelongsTo(share, id)));
             logDebug('Render: Displaying shares from watchlist: ' + selectedWatchlistId);
         } else {
             logDebug('Render: No specific stock watchlists selected or multiple selected, showing empty state.');
@@ -7119,6 +7298,10 @@ function renderWatchlist() {
     }
     // Update sort dropdown options based on selected watchlist type
     renderSortSelect(); // Moved here to ensure it updates for both stock and cash views
+    try { 
+        // Defer to ensure DOM elements are ready after renderSortSelect
+        setTimeout(() => updateSortPickerButtonText(), 100); 
+    } catch(e) {}
     updateMainButtonsState(!!currentUserId); // Ensure button states (like Edit Watchlist) are correct for the current view
     adjustMainContentPadding();
     try { updateMainTitle(); } catch(e) {}
@@ -8088,6 +8271,10 @@ async function loadUserWatchlistsAndSettings() {
             logDebug('Sort: No saved sort order found, defaulting to: ' + currentSortOrder);
         }
         renderSortSelect(); // Build options, then apply currentSortOrder
+        try { 
+            // Defer the initial update to ensure DOM elements are ready
+            setTimeout(() => updateSortPickerButtonText(), 100); 
+        } catch(e) {}
 
         // Apply saved theme or default
         if (savedTheme) {
@@ -8487,7 +8674,7 @@ function applyGlobalSummaryFilter(options = {}) {
 
 // Enforce virtual Movers view: after a render, hide non-mover rows/cards; restore when leaving
 function enforceMoversVirtualView(force) {
-    const isMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+    const isMovers = getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers';
     if (isMovers) {
         // Safety: ensure persistence keys reflect Movers so reload restores correctly even if earlier writes were skipped
     try { setLastSelectedView('__movers'); } catch(_) {}
@@ -8539,7 +8726,7 @@ function enforceMoversVirtualView(force) {
             window.__moversRetryTimer = setTimeout(() => {
                 window.__moversRetryTimer = null;
                 // Re-run only if still in movers view and nothing visible
-                const stillMovers = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers';
+                const stillMovers = getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers';
                 const anyVisible = Array.from(document.querySelectorAll('#shareTable tbody tr,.mobile-share-cards .mobile-card'))
                     .some(el => el.style.display !== 'none');
                 if (stillMovers && !anyVisible) {
@@ -8630,7 +8817,7 @@ window.debugMoversConsistency = debugMoversConsistency; // expose globally
 document.addEventListener('keydown', (e)=>{
     try {
         if (e.altKey && e.shiftKey && e.code === 'KeyM') {
-            if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
+            if (getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers') {
                 debugMoversConsistency({ includeLists: true });
             } else {
                 console.info('[MoversDebug] Hotkey pressed but not in Movers view.');
@@ -10115,7 +10302,7 @@ async function robustRestoreLastView() {
                 if (lastView === '__movers') {
                     try { watchlistSelect.value = ALL_SHARES_ID; } catch(_) {}
                     setCurrentSelectedWatchlistIds(['__movers']);
-                    if (typeof renderWatchlist === 'function') renderWatchlist();
+                    if (typeof sortShares === 'function') sortShares();
                     if (typeof enforceMoversVirtualView === 'function') enforceMoversVirtualView();
                     if (typeof updateMainTitle === 'function') updateMainTitle('Movers');
                     if (typeof scheduleMoversDeferredEnforce === 'function') scheduleMoversDeferredEnforce();
@@ -10126,7 +10313,7 @@ async function robustRestoreLastView() {
                     if (opt) {
                         watchlistSelect.value = lastView;
                         setCurrentSelectedWatchlistIds([lastView]);
-                        if (typeof renderWatchlist === 'function') renderWatchlist();
+                        if (typeof sortShares === 'function') sortShares();
                         try { scrollMainToTop(); } catch(_) {}
                         if (typeof updateMainTitle === 'function') updateMainTitle();
                         logDebug('Preferences: Restored watchlist: ' + lastView);
@@ -10146,8 +10333,8 @@ async function robustRestoreLastView() {
             if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
                 watchlistSelect.value = ALL_SHARES_ID;
             }
-            if (typeof renderWatchlist === 'function') {
-                renderWatchlist();
+            if (typeof sortShares === 'function') {
+                sortShares();
             }
             if (typeof updateMainTitle === 'function') {
                 updateMainTitle();
@@ -10535,7 +10722,11 @@ function hideSplashScreenIfReady() {
 function addCashCategoryUI() {
     logDebug('Cash Categories: Add new category UI triggered.');
     // This function now directly opens the modal for a new cash asset.
-    showAddEditCashCategoryModal(null); // Pass null to indicate a new asset
+    try {
+        // If suppression is active for cash modal reopens, avoid programmatic opens for the just-saved ID
+        const shouldOpen = !(window.__suppressCashModalReopen && window.__justSavedCashAssetId);
+        if (shouldOpen) showAddEditCashCategoryModal(null); else { window.logDebug && window.logDebug('Suppressed programmatic open of Add Cash modal due to recent save'); }
+    } catch(_) { try { showAddEditCashCategoryModal(null); } catch(__) {} }
 }
 
 /**
@@ -10636,63 +10827,34 @@ function checkCashAssetFormDirtyState() {
 }
 
 async function saveCashAsset(isSilent = false) {
-    logDebug('Cash Form: saveCashAsset called.');
-    if (saveCashAssetBtn.classList.contains('is-disabled-icon') && isSilent) {
-        logDebug('Auto-Save: Save button is disabled (no changes or no valid name). Skipping silent save.');
-        return;
-    }
+    logDebug('Cash Form: saveCashAsset called (delegated-only).');
 
-    const assetName = cashAssetNameInput.value.trim();
-    if (!assetName) {
-        if (!isSilent) showCustomAlert('Asset name is required!');
-        console.warn('Save Cash Asset: Asset name is required. Skipping save.');
-        return;
-    }
-
-    const assetBalance = parseFloat(cashAssetBalanceInput.value);
-
-    const comments = [];
-    if (cashAssetCommentsContainer) {
-        cashAssetCommentsContainer.querySelectorAll('.comment-section').forEach(section => {
-            const titleInput = section.querySelector('.comment-title-input');
-            const textInput = section.querySelector('.comment-text-input');
-            const title = titleInput ? titleInput.value.trim() : '';
-            const text = textInput ? textInput.value.trim() : '';
-            if (title || text) {
-                comments.push({ title: title, text: text });
-            }
-        });
-    }
-
-    const cashAssetData = {
-        name: assetName,
-        balance: isNaN(assetBalance) ? 0 : assetBalance, // Default to 0 if NaN
-        comments: comments, // NEW: Include comments
-        userId: currentUserId,
-        lastUpdated: new Date().toISOString(),
-        // NEW: Save the isHidden state from the checkbox
-        isHidden: hideCashAssetCheckbox ? hideCashAssetCheckbox.checked : false
-    };
-
-    try {
-        if (selectedCashAssetDocId) {
-            const assetDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories', selectedCashAssetDocId);
-            await firestore.updateDoc(assetDocRef, cashAssetData);
-            if (!isSilent) showCustomAlert('Cash asset \'' + assetName + '\' updated successfully!', 1500);
-            logDebug('Firestore: Cash asset \'' + assetName + '\' (ID: ' + selectedCashAssetDocId + ') updated.');
-        } else {
-            const cashCategoriesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories');
-            const newDocRef = await firestore.addDoc(cashCategoriesColRef, cashAssetData);
-            selectedCashAssetDocId = newDocRef.id; // Set selected ID for newly added
-            if (!isSilent) showCustomAlert('Cash asset \'' + assetName + '\' added successfully!', 1500);
-            logDebug('Firestore: Cash asset \'' + assetName + '\' added with ID: ' + newDocRef.id);
+    // Enforce single canonical save path: AppService.saveCashAsset must exist.
+    if (!window.AppService || typeof window.AppService.saveCashAsset !== 'function') {
+        console.error('saveCashAsset: AppService.saveCashAsset not available — cannot complete save.');
+        if (!isSilent) {
+            try { window.showCustomAlert && window.showCustomAlert('Internal error: Save service unavailable. Please refresh the page.', 4000); } catch(_) {}
         }
-        originalCashAssetData = getCurrentCashAssetFormData(); // Update original data after save
-        setIconDisabled(saveCashAssetBtn, true); // Disable save button after saving
-        if (!isSilent) closeModals();
+        return;
+    }
+
+    // Delegate to canonical service and mirror minimal local UI sync after it returns.
+    try {
+        try { window.logDebug && window.logDebug('saveCashAsset: Delegating to AppService.saveCashAsset'); } catch(_) {}
+        await window.AppService.saveCashAsset(isSilent);
+
+        // Sync local selected ID/state from AppService (AppService sets window.selectedCashAssetDocId)
+        try { selectedCashAssetDocId = window.selectedCashAssetDocId; } catch(_) {}
+        try { originalCashAssetData = getCurrentCashAssetFormData(); } catch(_) { originalCashAssetData = null; }
+        try { setIconDisabled(saveCashAssetBtn, true); } catch(_) {}
     } catch (error) {
-        console.error('Firestore: Error saving cash asset:', error);
-        if (!isSilent) showCustomAlert('Error saving cash asset: ' + error.message);
+        console.error('saveCashAsset: Delegated save failed:', error);
+        if (!isSilent) {
+            try { window.showCustomAlert && window.showCustomAlert('Error saving cash asset: ' + (error && error.message ? error.message : 'Unknown error')); } catch(_) {}
+        }
+    } finally {
+        try { window.__modalSaveInProgress = false; } catch(_) { window.__modalSaveInProgress = false; }
+        try { checkCashAssetFormDirtyState(); } catch(_) {}
     }
 }
 
@@ -10764,7 +10926,7 @@ function updateMainTitle(overrideTitle) {
         return;
     }
 
-    const activeId = currentSelectedWatchlistIds && currentSelectedWatchlistIds[0];
+    const activeId = getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0];
 
     // Ensure an ephemeral Movers option exists if Movers is active but missing from select (prevents fallback to generic label)
     function ensureEphemeralMoversOption(){
@@ -10805,26 +10967,20 @@ function updateMainTitle(overrideTitle) {
     const selValue = watchlistSelect.value;
     const selTextRaw = watchlistSelect.selectedIndex >=0 ? (watchlistSelect.options[watchlistSelect.selectedIndex]?.textContent || '') : '';
     let resolved;
-    if (selValue === ALL_SHARES_ID) resolved = 'All Shares';
-    else if (selValue === CASH_BANK_WATCHLIST_ID) resolved = 'Cash & Assets';
-    else if (selValue === 'portfolio') resolved = 'Portfolio';
-    else if (selValue === '__movers') resolved = 'Movers';
-    else if (selTextRaw && selTextRaw.trim()) resolved = selTextRaw.trim();
+    if (activeId === ALL_SHARES_ID) resolved = 'All Shares';
+    else if (activeId === CASH_BANK_WATCHLIST_ID) resolved = 'Cash & Assets';
+    else if (activeId === 'portfolio') resolved = 'Portfolio';
+    else if (activeId === '__movers') resolved = 'Movers';
     else {
-        const wl = (userWatchlists||[]).find(w=>w.id===selValue);
+        const wl = (userWatchlists||[]).find(w=>w.id===activeId);
         resolved = (wl && wl.name) ? wl.name : 'Share Watchlist';
-    }
-
-    // If activeId indicates Movers but select isn't reflecting it (race / rebuild), override to Movers
-    if (activeId === '__movers' && selValue !== '__movers') {
-        resolved = 'Movers';
     }
 
     try { ensureTitleStructure(); } catch(_) {}
     if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = resolved; else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = resolved;
     // Defensive: avoid blank
     try { if (dynamicWatchlistTitleText && !dynamicWatchlistTitleText.textContent.trim()) dynamicWatchlistTitleText.textContent = resolved || 'Share Watchlist'; } catch(_) {}
-    logDebug('UI: Dynamic title updated to: ' + resolved + ' (activeId=' + activeId + ', selValue=' + selValue + ')');
+    logDebug('UI: Dynamic title updated to: ' + resolved + ' (activeId=' + activeId + ')');
     // Persist resolved selection if it maps to a concrete logical view (avoid noisy writes during early boot with undefined)
     if (resolved === 'Movers') { try { setLastSelectedView('__movers'); } catch(_) {} }
     else if (resolved === 'Portfolio') { try { setLastSelectedView('portfolio'); } catch(_) {} }
@@ -10864,7 +11020,7 @@ function ensureTitleStructure() {
  * If 'Cash & Assets' is selected, they open the cash asset form. Otherwise, they open the share form.
  */
 function updateAddHeaderButton() {
-    logDebug('DEBUG: updateAddHeaderButton called. Current selected watchlist IDs: ' + currentSelectedWatchlistIds.join(', '));
+    logDebug('DEBUG: updateAddHeaderButton called. Current selected watchlist IDs: ' + getCurrentSelectedWatchlistIds().join(', '));
     if (!addShareHeaderBtn) {
         console.warn('updateAddHeaderButton: addShareHeaderBtn not found.');
         return;
@@ -10875,7 +11031,7 @@ function updateAddHeaderButton() {
     addShareHeaderBtn.removeEventListener('click', handleAddCashAssetClick);
 
     // Set the appropriate event listener for the header button
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID)) {
         addShareHeaderBtn.addEventListener('click', handleAddCashAssetClick);
         logDebug('DEBUG: Header Plus Button (addShareHeaderBtn) now opens Add Cash Asset modal.');
     } else {
@@ -10992,7 +11148,7 @@ function handleAddCashAssetClick() {
  * It will open the Share Form or Cash Asset Form based on the selected watchlist.
  */
 function updateSidebarAddButtonContext() {
-    logDebug('DEBUG: updateSidebarAddButtonContext called. Current selected watchlist IDs: ' + currentSelectedWatchlistIds.join(', '));
+    logDebug('DEBUG: updateSidebarAddButtonContext called. Current selected watchlist IDs: ' + getCurrentSelectedWatchlistIds().join(', '));
     if (!newShareBtn) {
         console.warn('updateSidebarAddButtonContext: newShareBtn not found.');
         return;
@@ -11003,7 +11159,7 @@ function updateSidebarAddButtonContext() {
     newShareBtn.removeEventListener('click', handleAddCashAssetClick);
 
     // Set the appropriate event listener for the sidebar button
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID)) {
         newShareBtn.addEventListener('click', handleAddCashAssetClick);
         // Update the text/icon if needed (optional, but good for clarity)
         const sidebarSpan = newShareBtn.querySelector('span');
@@ -11203,13 +11359,13 @@ function toggleAppSidebar(forceState = null) {
  * Exports the current watchlist data to a CSV file.
  */
 function exportWatchlistToCSV() {
-    if (!currentUserId || currentSelectedWatchlistIds.length === 0) {
+    if (!currentUserId || getCurrentSelectedWatchlistIds().length === 0) {
         showCustomAlert('Please sign in and select watchlists to export.');
         return;
     }
     
     // Do not export cash data via this function
-    if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+    if (getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID)) {
         showCustomAlert('Cash & Assets data cannot be exported via this function. Please switch to a stock watchlist.', 3000); // UPDATED TEXT
         return;
     }
@@ -11217,8 +11373,8 @@ function exportWatchlistToCSV() {
     let sharesToExport = [];
     let exportFileNamePrefix = 'selected_watchlists';
 
-    if (currentSelectedWatchlistIds.length === 1) {
-        const selectedWatchlistId = currentSelectedWatchlistIds[0];
+    if (getCurrentSelectedWatchlistIds().length === 1) {
+        const selectedWatchlistId = getCurrentSelectedWatchlistIds()[0];
         if (selectedWatchlistId === ALL_SHARES_ID) {
             sharesToExport = [...allSharesData];
             exportFileNamePrefix = 'all_shares';
@@ -12535,33 +12691,45 @@ if (deleteAllUserDataBtn) {
                 }
             }
 
-            // Restore per-watchlist sort order if available
-            const watchlistSortOrder = getSortOrderForWatchlist(event.target.value);
-            if (watchlistSortOrder) {
-                setCurrentSortOrder(watchlistSortOrder);
-                logDebug('Watchlist Select: Restored sort order for ' + event.target.value + ': ' + watchlistSortOrder);
-                // Update sort select UI to reflect the restored sort order
-                try {
-                    if (sortSelect) sortSelect.value = watchlistSortOrder;
-                    updateSortIcon();
-                } catch (e) {
-                    console.warn('Watchlist Select: Failed to update sort select UI:', e);
+            // Restore per-watchlist sort order if available, but validate it's applicable for the newly-selected view.
+            try {
+                // Rebuild the sort select options for the new view so we can validate restored values
+                try { renderSortSelect(); } catch(_) {}
+                const availableOptionValues = Array.from(sortSelect ? sortSelect.options : []).map(o => o.value);
+
+                let watchlistSortOrder = getSortOrderForWatchlist(event.target.value);
+                if (watchlistSortOrder && availableOptionValues.includes(watchlistSortOrder)) {
+                    setCurrentSortOrder(watchlistSortOrder);
+                    logDebug('Watchlist Select: Restored valid per-watchlist sort for ' + event.target.value + ': ' + watchlistSortOrder);
+                    try { if (sortSelect) sortSelect.value = watchlistSortOrder; updateSortIcon(); } catch(_) {}
+                } else {
+                    // If saved order is invalid or missing, pick a sensible default for this view
+                    const sensibleDefault = (event.target.value === CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'percentageChange-desc';
+                    // If portfolio view, prefer totalDollar-desc as default
+                    const portfolioDefault = (event.target.value === 'portfolio') ? 'totalDollar-desc' : sensibleDefault;
+                    const chosenDefault = availableOptionValues.includes(portfolioDefault) ? portfolioDefault : (availableOptionValues[0] || sensibleDefault);
+                    setCurrentSortOrder(chosenDefault);
+                    logDebug('Watchlist Select: Applied fallback/default sort for ' + event.target.value + ': ' + chosenDefault);
+                    try { if (sortSelect) sortSelect.value = chosenDefault; updateSortIcon(); } catch(_) {}
+                    // Persist this fallback back to per-watchlist preferences so subsequent switches remember it
+                    try {
+                        setWatchlistSortOrder(event.target.value, chosenDefault);
+                        // Use robust persistence helper (debounced and resilient)
+                        try { robustSaveSortOrder(chosenDefault); } catch(_) {}
+                        logDebug('Watchlist Select: Persisted fallback sort for ' + event.target.value + ': ' + chosenDefault);
+                    } catch (persistErr) {
+                        console.warn('Watchlist Select: Failed to persist fallback sort for ' + event.target.value, persistErr);
+                    }
                 }
-            } else {
-                // No saved sort order for this watchlist, use default
-                const defaultSort = (event.target.value === CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'percentageChange-desc';
-                setCurrentSortOrder(defaultSort);
-                logDebug('Watchlist Select: Using default sort order for ' + event.target.value + ': ' + defaultSort);
-                try {
-                    if (sortSelect) sortSelect.value = defaultSort;
-                    updateSortIcon();
-                } catch (e) {
-                    console.warn('Watchlist Select: Failed to update sort select UI:', e);
-                }
+            } catch (err) {
+                console.warn('Watchlist Select: Error restoring/validating per-watchlist sort, falling back to global/defaults', err);
+                // As a last resort, apply a safe default
+                const safeDefault = (event.target.value === CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'percentageChange-desc';
+                try { setCurrentSortOrder(safeDefault); if (sortSelect) sortSelect.value = safeDefault; updateSortIcon(); } catch(_) {}
             }
 
             // Just render the watchlist. The listeners for shares/cash are already active.
-            renderWatchlist();
+            sortShares();
             try { enforceMoversVirtualView(); } catch(_) {}
             // FIX: Update ASX button state when switching watchlists via dropdown
             // This was missing and caused the ASX button visibility bug
@@ -12636,29 +12804,39 @@ if (sortSelect) {
 
             } catch (e) { console.warn('ASX toggle option handler failed', e); }
             // Restore the visible selection back to the active sort (do not trigger a sort)
-            try { sortSelect.value = currentSortOrder || (currentSelectedWatchlistIds.includes('portfolio') ? 'totalDollar-desc' : 'entryDate-desc'); } catch(_) {}
+            try { sortSelect.value = currentSortOrder || (getCurrentSelectedWatchlistIds().includes('portfolio') ? 'totalDollar-desc' : 'entryDate-desc'); } catch(_) {}
             try { updateSortIcon(); } catch(_) {}
             return; // do not apply sorting when toggling ASX codes
         }
 
         setCurrentSortOrder(sortSelect.value);
+        // Immediately reflect this choice in the in-memory per-watchlist mapping so subsequent view switches see it
+        try {
+            const curIds = getCurrentSelectedWatchlistIds();
+            if (Array.isArray(curIds) && curIds.length > 0) {
+                const wid = curIds[0];
+                if (wid) try { setWatchlistSortOrder(wid, sortSelect.value); } catch(_) {}
+            }
+        } catch(_) {}
         updateSortIcon();
-        
+
         // AGGRESSIVE FIX: Force apply sort immediately for percentage change sorts
-        if (currentSortOrder === 'percentageChange-desc' || currentSortOrder === 'percentageChange-asc') {
+        const __selectedSortNow = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
+        if (__selectedSortNow === 'percentageChange-desc' || __selectedSortNow === 'percentageChange-asc') {
             logDebug('AGGRESSIVE SORT: Percentage change sort selected, forcing immediate application');
             forceApplyCurrentSort();
         }
         
         // Determine whether to sort shares or cash assets
-        if (currentSelectedWatchlistIds.includes(CASH_BANK_WATCHLIST_ID)) {
+        if (getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID)) {
             renderCashCategories(); // Re-render cash categories with new sort order
         } else {
             sortShares(); // Sorts allSharesData and calls renderWatchlist
         }
 
-        // Robust sort order persistence with error recovery
-        robustSaveSortOrder(currentSortOrder);
+    // Robust sort order persistence with error recovery - save the authoritative value
+    const __toPersistSort = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
+    robustSaveSortOrder(__toPersistSort);
 
     // NEW: Scroll to the top of the main content after sorting/rendering
     try { scrollMainToTop(); } catch(_) {}
@@ -12700,9 +12878,26 @@ if (sortSelect) {
                 logDebug('Save Share: Restored selectedShareDocId from modal dataset: ' + selectedShareDocId);
             }
 
+            // Prevent duplicate rapid clicks by disabling immediately and awaiting the service
+            try {
+                window.setIconDisabled && window.setIconDisabled(saveShareBtn, true);
+            } catch(_) {}
 
-            // Call service
-            saveShareDataSvc(false);
+            try {
+                // Await the AppService save so modal close behavior and state is consistent
+                if (typeof saveShareDataSvc === 'function') {
+                    await saveShareDataSvc(false);
+                } else if (window.AppService && typeof window.AppService.saveShareData === 'function') {
+                    await window.AppService.saveShareData(false);
+                } else {
+                    // Fallback to old call if function reference not available
+                    saveShareDataSvc(false);
+                }
+            } catch (err) {
+                console.error('Share Form: Error saving share via service:', err);
+                // Re-enable on error so user can retry
+                try { window.setIconDisabled && window.setIconDisabled(saveShareBtn, false); } catch(_) {}
+            }
         });
     }
 
@@ -13353,14 +13548,24 @@ if (sortSelect) {
                 console.warn('Save Cash Asset: Save button was disabled, preventing action.');
                 return;
             }
+            // Prevent duplicate clicks
+            try { window.setIconDisabled && window.setIconDisabled(saveCashAssetBtn, true); } catch(_) {}
             try {
                 if (window.AppService && typeof window.AppService.saveCashAsset === 'function') {
                     await window.AppService.saveCashAsset(false);
-                } else if (typeof saveCashAsset === 'function') {
-                    // Legacy fallback
-                    await saveCashAsset(false);
+                } else {
+                    // Enforce canonical save path: refuse to fall back to legacy code.
+                    console.error('Save Cash Asset: AppService.saveCashAsset not available — aborting save to avoid legacy fallback.');
+                    try { window.showCustomAlert && window.showCustomAlert('Internal error: Save service unavailable. Please refresh the page.'); } catch(_) {}
+                    throw new Error('AppService.saveCashAsset not available');
                 }
-            } catch(e) { console.error('Save Cash Asset failed', e); }
+                // Ensure modal is closed after successful save - AppService attempts this but be defensive
+                try { if (typeof closeModals === 'function') closeModals(); else if (window.closeModals) window.closeModals(); } catch(_) {}
+            } catch(e) {
+                console.error('Save Cash Asset failed', e);
+                // Re-enable on error so user can retry
+                try { window.setIconDisabled && window.setIconDisabled(saveCashAssetBtn, false); } catch(_) {}
+            }
         });
     }
 
@@ -13371,7 +13576,25 @@ if (sortSelect) {
             logDebug('Cash Details: Edit Cash Asset button clicked.');
             if (selectedCashAssetDocId) {
                 hideModal(cashAssetDetailModal);
-                showAddEditCashCategoryModal(selectedCashAssetDocId);
+                try {
+                    // Defensive guard: if we just saved this asset very recently, suppress immediate reopen
+                    if (window.__suppressCashModalReopen && window.__justSavedCashAssetId && window.__justSavedCashAssetId === selectedCashAssetDocId) {
+                        try { window.logDebug && window.logDebug('Cash Details: Suppressed immediate reopen for just-saved asset ID=' + selectedCashAssetDocId); } catch(_) {}
+                    } else {
+                        try {
+                            const shouldOpen = !(window.__suppressCashModalReopen && window.__justSavedCashAssetId && window.__justSavedCashAssetId === selectedCashAssetDocId);
+                            if (shouldOpen) showAddEditCashCategoryModal(selectedCashAssetDocId);
+                            else window.logDebug && window.logDebug('Suppressed reopening cash modal for just-saved asset ID: ' + selectedCashAssetDocId);
+                        } catch(e) { try { showAddEditCashCategoryModal(selectedCashAssetDocId); } catch(_) {} }
+                    }
+                } catch (e) {
+                    console.warn('Cash Details: Failed to open edit modal defensively', e);
+                    try {
+                        const shouldOpen = !(window.__suppressCashModalReopen && window.__justSavedCashAssetId && window.__justSavedCashAssetId === selectedCashAssetDocId);
+                        if (shouldOpen) showAddEditCashCategoryModal(selectedCashAssetDocId);
+                        else window.logDebug && window.logDebug('Suppressed reopening cash modal for just-saved asset ID: ' + selectedCashAssetDocId);
+                    } catch(e) { try { showAddEditCashCategoryModal(selectedCashAssetDocId); } catch(_) {} }
+                }
             } else {
                 showCustomAlert('No cash asset selected for editing.');
             }

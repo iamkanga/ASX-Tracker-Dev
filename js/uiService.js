@@ -244,16 +244,30 @@ export function renderCashCategories() {
 
     const sortValue = getCurrentSortOrder();
     const [field, order] = (sortValue||'').split('-');
+    // Prefer centralized sort function if available (keeps behavior consistent across modules)
     let sorted = Array.isArray(categories) ? [...categories] : [];
-    if (field === 'balance') {
-        sorted.sort((a,b)=>{
-            const aN = (typeof a.balance === 'number' && !isNaN(a.balance)) ? a.balance : (order==='asc'?Infinity:-Infinity);
-            const bN = (typeof b.balance === 'number' && !isNaN(b.balance)) ? b.balance : (order==='asc'?Infinity:-Infinity);
-            return order==='asc' ? aN-bN : bN-aN;
-        });
-    } else if (field === 'name') {
-        sorted.sort((a,b)=> (a.name||'').toUpperCase().localeCompare((b.name||'').toUpperCase()));
-        if (order==='desc') sorted.reverse();
+    try {
+        if (window && typeof window.sortCashCategories === 'function') {
+            const maybe = window.sortCashCategories(categories);
+            if (Array.isArray(maybe)) {
+                sorted = maybe;
+            }
+        } else {
+            // Map UI logical fields to actual model properties
+            const sortField = (field === 'totalDollar') ? 'balance' : field;
+            if (sortField === 'balance') {
+                sorted.sort((a,b)=>{
+                    const aN = (typeof a.balance === 'number' && !isNaN(a.balance)) ? a.balance : (order==='asc'?Infinity:-Infinity);
+                    const bN = (typeof b.balance === 'number' && !isNaN(b.balance)) ? b.balance : (order==='asc'?Infinity:-Infinity);
+                    return order==='asc' ? aN-bN : bN-aN;
+                });
+            } else if (sortField === 'name') {
+                sorted.sort((a,b)=> (a.name||'').toUpperCase().localeCompare((b.name||'').toUpperCase()));
+                if (order==='desc') sorted.reverse();
+            }
+        }
+    } catch (e) {
+        console.warn('renderCashCategories: error using centralized sorter, falling back to local sort.', e);
     }
 
     if (!sorted.length) {
@@ -294,7 +308,11 @@ export function renderCashCategories() {
         categoryItem.addEventListener('click', () => {
             try { window.logDebug && window.logDebug('Cash Categories: Card clicked for category ID: ' + category.id); } catch(_) {}
             try { window.selectCashAsset && window.selectCashAsset(category.id); } catch(_) {}
-            try { showAddEditCashCategoryModal(category.id); } catch(_) {}
+            try {
+                // Diagnostic: record intent to open the modal and the current suppression state
+                try { window.logDebug && window.logDebug('UI: Requesting showAddEditCashCategoryModal for ID=' + category.id + ' (suppress=' + (window.__suppressCashModalReopen || 0) + ', justSaved=' + (window.__justSavedCashAssetId || 'null') + ')'); } catch(_) {}
+                showAddEditCashCategoryModal(category.id);
+            } catch(_) {}
         });
 
         cashCategoriesContainer.appendChild(categoryItem);
@@ -405,6 +423,17 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
         const asset = (getUserCashCategories()||[]).find(a=>a && a.id===assetIdToEdit);
         if (!asset) { try { window.showCustomAlert && window.showCustomAlert('Cash asset not found.'); } catch(_) {} return; }
         try { window.selectedCashAssetDocId = assetIdToEdit; } catch(_) {}
+        // Guard: if a cash asset was just saved, suppress immediate re-open to avoid close->reopen loop
+        try {
+            if (window.__suppressCashModalReopen && window.__justSavedCashAssetId) {
+                // If this open is for the same asset that was just saved, ignore it
+                if (assetIdToEdit && window.__justSavedCashAssetId === assetIdToEdit) {
+                    try { window.logDebug && window.logDebug('UI: Suppressing immediate reopen of cash modal for just-saved asset ID: ' + assetIdToEdit); } catch(_) {}
+                    try { console.trace && console.trace('TRACE: Suppressed cash modal reopen for asset ID: ' + assetIdToEdit); } catch(_) {}
+                    return; // Suppress reopen
+                }
+            }
+        } catch(_) {}
         if (cashFormTitle) {
             cashFormTitle.textContent = 'Edit Cash Asset';
 
@@ -692,7 +721,12 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
     }
 
     try { window.setIconDisabled && window.setIconDisabled(document.getElementById('saveCashAssetBtn'), true); } catch(_) {}
-    try { window.showModal ? window.showModal(cashAssetFormModal) : cashAssetFormModal.classList.remove('app-hidden'); cashAssetFormModal.style.display='flex'; } catch(_) {}
+    try {
+        try { window.logDebug && window.logDebug('UI: Showing cash asset modal for ID=' + (assetIdToEdit || 'new')); } catch(_) {}
+        try { console.trace && console.trace('TRACE: showAddEditCashCategoryModal called for ID=' + (assetIdToEdit || 'new')); } catch(_) {}
+        window.showModal ? window.showModal(cashAssetFormModal) : cashAssetFormModal.classList.remove('app-hidden');
+        cashAssetFormModal.style.display='flex';
+    } catch(_) {}
 
     // FINAL FORCE: Ensure add button is visible after modal is shown
     setTimeout(() => {

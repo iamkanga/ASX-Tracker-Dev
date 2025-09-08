@@ -195,7 +195,19 @@
     } catch(_) {}
     try { if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id || true }, '', '#modal'); } catch(_) {}
     try { if (window.toggleAppSidebar && window.appSidebar && window.appSidebar.classList.contains('open')) window.toggleAppSidebar(false); } catch(_) {}
-        modalElement.style.setProperty('display', 'flex', 'important');
+        // Unhide any hidden ancestor modals so nested modals are not blocked by parent's app-hidden
+        try {
+            let anc = modalElement.parentElement;
+            while (anc && anc !== document.body) {
+                try { if (anc.classList && anc.classList.contains('app-hidden')) anc.classList.remove('app-hidden'); } catch(_){}
+                anc = anc.parentElement;
+            }
+        } catch(_){}
+        // Remove any load-time hiding marker so CSS rules like .modal.show can take effect
+        try { modalElement.classList.remove('app-hidden'); } catch(_){}
+        // Add semantic class for visibility
+        try { modalElement.classList.add('show'); } catch(_){}
+    modalElement.style.setProperty('display', 'flex', 'important');
         modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
     if (scrollableContent) scrollableContent.scrollTop = 0;
@@ -205,7 +217,16 @@
     function showModalNoHistory(modalElement) {
         if (!modalElement) return;
         // No stack and no browser history push: used when restoring a previous modal on back
-        modalElement.style.setProperty('display', 'flex', 'important');
+        try {
+            let anc = modalElement.parentElement;
+            while (anc && anc !== document.body) {
+                try { if (anc.classList && anc.classList.contains('app-hidden')) anc.classList.remove('app-hidden'); } catch(_){}
+                anc = anc.parentElement;
+            }
+        } catch(_){}
+        try { modalElement.classList.remove('app-hidden'); } catch(_){}
+        try { modalElement.classList.add('show'); } catch(_){}
+    modalElement.style.setProperty('display', 'flex', 'important');
         modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (scrollableContent) scrollableContent.scrollTop = 0;
@@ -214,6 +235,8 @@
     function hideModal(modalElement) {
         if (!modalElement) return;
         try { if (typeof window.removeModalFromStack === 'function') window.removeModalFromStack(modalElement); } catch(_) {}
+        try { modalElement.classList.remove('show'); } catch(_){}
+        try { modalElement.classList.add('app-hidden'); } catch(_){}
         modalElement.style.setProperty('display', 'none', 'important');
     }
 

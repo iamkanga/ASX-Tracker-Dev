@@ -59,8 +59,12 @@
         <div id="sortLine" class="sort-line-row">
             <div class="sort-controls-container">
                 <div class="sort-select-wrapper">
-                    <select id="sortSelect" class="dropdown-large" aria-label="Sort"></select>
-                    <span id="sortIcon" class="sort-icon"></span>
+                    <!-- Keep native select for compatibility but hide it; new UI uses the button below -->
+                    <select id="sortSelect" class="dropdown-large app-hidden" aria-label="Sort"></select>
+                    <button id="sortPickerBtn" class="dropdown-large header-sort-btn" aria-haspopup="dialog" aria-expanded="false" aria-label="Open sort picker">
+                        <!-- Icon placed inside the text span so it flows and sizes with the title; label lives in its own span so JS can update it safely -->
+                        <span id="sortPickerBtnText"><span id="sortIcon" class="sort-icon" aria-hidden="true"></span><span id="sortPickerLabel">Sort List</span></span>
+                    </button>
                 </div>
                 <button id="toggleAsxButtonsBtn" aria-label="Toggle ASX Codes" aria-pressed="false" aria-expanded="false" aria-controls="asxCodeButtonsContainer" class="toggle-asx-btn">
                     <span class="asx-toggle-label">ASX Codes</span>
@@ -108,6 +112,9 @@
                         <button id="closeGlobalAlertsBtn" class="icon-button close-button" title="Close" aria-label="Close"><i class="fas fa-times"></i></button>
                     </div>
                 </div>
+
+                    <!-- Sort Picker Modal: moved out of nested modals to be a top-level sibling to avoid ancestor hiding conflicts -->
+                    <!-- Sort Picker will be shown as a top-level modal so it isn't blocked by other modal containers. -->
                 <form id="globalAlertsForm" class="global-alerts-form" novalidate>
                     <fieldset class="ga-section">
                         <legend>Minimum Price Filter</legend>
@@ -282,6 +289,18 @@
     </nav>
 
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
+    <!-- Top-level Sort Picker Modal (kept separate to avoid ancestor app-hidden conflicts) -->
+    <div id="sortPickerModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="sortPickerTitle">
+        <div class="modal-content sort-picker-modal single-scroll-modal">
+            <div class="modal-header-with-icon">
+                <h3 id="sortPickerTitle">Sort List</h3>
+                <div class="modal-header-action-group">
+                    <button id="closeSortPickerBtn" class="icon-button close-button" title="Close" aria-label="Close"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div id="sortPickerList" class="sort-picker-list"></div>
+        </div>
+    </div>
 
     <main class="container app-hidden">
         <div id="firebaseInitError" class="error-message" style="display: none;">
@@ -785,6 +804,12 @@
     <script type="module" src="js/appService.js"></script>
     <script type="module" src="js/theme.js"></script>
     <script src="rendering.js" defer></script>
+    <script type="module" src="js/sortPicker.js"></script>
+    <script type="module">
+        // Explicitly import and init the Sort Picker to ensure the header button is wired
+        import SortPicker from './js/sortPicker.js';
+        try { if (SortPicker && typeof SortPicker.initSortPicker === 'function') SortPicker.initSortPicker(); } catch(e) { console.warn('SortPicker auto-init failed', e); }
+    </script>
     <script src="script.js?v=2.15.0" type="module"></script>
     <!-- Service worker registration and immediate update helper -->
     <script>

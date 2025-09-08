@@ -939,6 +939,13 @@ async function performSafeWatchlistDeletion(watchlistId, watchlistName) {
 export async function saveCashAsset(isSilent = false) {
     try { window.logDebug && window.logDebug('Cash Form: saveCashAsset called.'); } catch(_) {}
 
+    // Prevent duplicate saves when a modal save is already in progress
+    if (window.__modalSaveInProgress) {
+        try { window.logDebug && window.logDebug('AppService.saveCashAsset: Skipping because another modal save is in progress.'); } catch(_) {}
+        return;
+    }
+    try { window.__modalSaveInProgress = true; } catch(_) { window.__modalSaveInProgress = true; }
+
 
 
     const saveCashAssetBtn = window.saveCashAssetBtn; if (saveCashAssetBtn && saveCashAssetBtn.classList && saveCashAssetBtn.classList.contains('is-disabled-icon') && isSilent) { try { window.logDebug && window.logDebug('Auto-Save: Save button is disabled (no changes or no valid name). Skipping silent save.'); } catch(_) {} return; }
@@ -961,50 +968,105 @@ export async function saveCashAsset(isSilent = false) {
                 if (idx !== -1) { const next = current.slice(); next[idx] = { ...current[idx], ...cashAssetData, id: window.selectedCashAssetDocId }; setUserCashCategories(next); }
             } catch(_) {}
         } else {
-            const cashCategoriesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories');
-            const newDocRef = await firestore.addDoc(cashCategoriesColRef, cashAssetData);
-            window.selectedCashAssetDocId = newDocRef.id;
-            try { if (!isSilent) window.showCustomAlert && window.showCustomAlert("Cash asset '" + assetName + "' added successfully!", 1500); } catch(_) {}
-            try { window.logDebug && window.logDebug("Firestore: Cash asset '" + assetName + "' added with ID: " + newDocRef.id); } catch(_) {}
+            // Prevent rapid duplicate creates for the same asset name by doing a quick local duplicate check
             try {
-                // Optimistically update state so UI reflects immediately
+                const normalizedName = (assetName || '').trim().toLowerCase();
                 const current = getUserCashCategories() || [];
-                setUserCashCategories([...current, { id: newDocRef.id, ...cashAssetData }]);
-            } catch(_) {}
+                const localDuplicate = current.find(c => c && c.name && String(c.name).trim().toLowerCase() === normalizedName);
+                if (localDuplicate) {
+                    // Found a local duplicate, avoid creating another document
+                    try { window.logDebug && window.logDebug('AppService.saveCashAsset: Local duplicate detected for cash asset: ' + assetName); } catch(_) {}
+                    if (!isSilent) try { window.showCustomAlert && window.showCustomAlert(`Cash asset "${assetName}" already exists.`, 2000); } catch(_) {}
+                    return;
+                }
+
+                // Transient in-progress guard keyed by normalized name to avoid two near-simultaneous adds
+                window.__cashAddInProgress = window.__cashAddInProgress || {};
+                const last = window.__cashAddInProgress[normalizedName] || 0;
+                const now = Date.now();
+                if (now - last < 3000) {
+                    try { window.logDebug && window.logDebug('AppService.saveCashAsset: Suppressing rapid duplicate add for ' + assetName); } catch(_) {}
+                    return;
+                }
+                window.__cashAddInProgress[normalizedName] = now;
+                // Ensure the transient guard is cleared after a short window
+                setTimeout(() => { try { if (window.__cashAddInProgress) delete window.__cashAddInProgress[normalizedName]; } catch(_) {} }, 3500);
+
+                const cashCategoriesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories');
+                const newDocRef = await firestore.addDoc(cashCategoriesColRef, cashAssetData);
+                window.selectedCashAssetDocId = newDocRef.id;
+                try { if (!isSilent) window.showCustomAlert && window.showCustomAlert("Cash asset '" + assetName + "' added successfully!", 1500); } catch(_) {}
+                try { window.logDebug && window.logDebug("Firestore: Cash asset '" + assetName + "' added with ID: " + newDocRef.id); } catch(_) {}
+                try {
+                    // Optimistically update state so UI reflects immediately
+                    const current = getUserCashCategories() || [];
+                    setUserCashCategories([...current, { id: newDocRef.id, ...cashAssetData }]);
+                } catch(_) {}
+            } catch (innerError) {
+                // If inner duplicate check or addDoc failed unexpectedly, rethrow to be caught by outer catch
+                throw innerError;
+            }
         }
         // Clear original data to prevent auto-save on modal close
         window.originalCashAssetData = null;
         window.setIconDisabled && window.setIconDisabled(window.saveCashAssetBtn, true);
                 try { if (typeof window.renderCashCategories === 'function') window.renderCashCategories(); } catch(_) {}
         try { if (typeof window.calculateTotalCash === 'function') window.calculateTotalCash(); } catch(_) {}
+        // Suppress immediate modal re-open triggered by onSnapshot or UI re-renders
+        try {
+            if (!isSilent) {
+                window.__suppressCashModalReopen = Date.now();
+                window.__justSavedCashAssetId = window.selectedCashAssetDocId || null;
+                try { window.logDebug && window.logDebug('AppService: Set __suppressCashModalReopen for saved asset ID=' + (window.__justSavedCashAssetId || 'null')); } catch(_) {}
+                setTimeout(() => { try { window.__suppressCashModalReopen = 0; window.__justSavedCashAssetId = null; try { window.logDebug && window.logDebug('AppService: Cleared __suppressCashModalReopen'); } catch(_) {} } catch(_) {} }, 1500);
+            }
+        } catch(_) {}
         if (!isSilent) {
             // Small delay to ensure UI updates are complete before closing modal
             setTimeout(() => {
-                // Try to call closeModals function (might be defined globally or in window scope)
+                // Preferred API: window.UI.closeModals (exposed by ui.js)
                 try {
-                    // First try window.closeModals
+                    if (window.UI && typeof window.UI.closeModals === 'function') {
+                        window.UI.closeModals();
+                        return;
+                    }
+                } catch(e) { console.error('Error calling window.UI.closeModals:', e); }
+
+                // Fallbacks: try window.closeModals, then global closeModals
+                try {
                     if (typeof window.closeModals === 'function') {
                         window.closeModals();
-                    }
-                    // Then try direct function call if it's in global scope
-                    else if (typeof closeModals === 'function') {
+                        return;
+                    } else if (typeof closeModals === 'function') {
                         closeModals();
+                        return;
                     }
-                } catch(e) {
-                    console.error('Error calling closeModals:', e);
-                }
+                } catch(e) { console.error('Error calling closeModals fallback:', e); }
 
-                // Always try to directly close the cash asset modal as fallback
-                const cashAssetModal = document.getElementById('cashAssetFormModal');
-                if (cashAssetModal) {
-                    cashAssetModal.style.display = 'none';
-                }
+                // Try using UI.hideModal if available for targeted close
+                try {
+                    if (window.UI && typeof window.UI.hideModal === 'function') {
+                        const el = document.getElementById('cashAssetFormModal');
+                        if (el) window.UI.hideModal(el);
+                    }
+                } catch(e) { console.error('Error calling UI.hideModal fallback:', e); }
+
+                // Last resort: directly hide elements with .modal selector
+                try {
+                    document.querySelectorAll('.modal').forEach(modal => {
+                        if (modal) modal.style.setProperty('display', 'none', 'important');
+                    });
+                } catch(e) { console.error('Error hiding modal elements directly:', e); }
+
             }, 100);
         }
     } catch (error) {
         console.error('Firestore: Error saving cash asset:', error);
         console.error('Error details:', { message: error.message, code: error.code, stack: error.stack });
         try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Error saving cash asset: ' + (error.message || 'Unknown error')); } catch(_) {}
+    }
+    finally {
+        try { window.__modalSaveInProgress = false; } catch(_) { window.__modalSaveInProgress = false; }
     }
 }
 

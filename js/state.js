@@ -73,6 +73,16 @@ export function setWatchlistSortOrders(orders) {
     if (typeof window !== 'undefined') window.watchlistSortOrders = watchlistSortOrders;
 }
 
+// Set a single watchlist's sort order in-memory
+export function setWatchlistSortOrder(watchlistId, sortOrder) {
+    try {
+        if (!watchlistId) return;
+        watchlistSortOrders = watchlistSortOrders || {};
+        watchlistSortOrders[watchlistId] = sortOrder;
+        if (typeof window !== 'undefined') window.watchlistSortOrders = watchlistSortOrders;
+    } catch(_) {}
+}
+
 // Getters
 export function getAllSharesData() { return allSharesData; }
 export function getLivePrices() { return livePrices; }
