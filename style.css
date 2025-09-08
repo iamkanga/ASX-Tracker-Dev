@@ -148,7 +148,7 @@
     left: 15px;
     text-align: left;
     font-size: 0.98em;
-    color: var(--accent-color);
+    color: var(--ghosted-text, #888);
     cursor: pointer;
     user-select: none;
     display: flex;
@@ -211,7 +211,6 @@
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
-    color: var(--accent-color) !important;
 }
 
 @media (max-width: 640px) {
