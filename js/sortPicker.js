@@ -53,9 +53,11 @@ function buildRow(opt, currentValue) {
         triangleClass = isDesc ? 'sort-picker-triangle desc' : 'sort-picker-triangle asc';
     }
 
-    // If leftIcon is null for shareName, render an inline ASX image if available, otherwise fallback to hashtag icon
+    // If leftIcon is null for shareName, render an inline ASX image if available, otherwise fallback to hashtag
+        // Use inline SVG for the ASX mark so it can inherit color via `currentColor`.
+        // Keep the hashtag fallback for older clients.
         const iconHtml = (leftIcon === null)
-                ? `<img src="asx-icon.svg" alt="ASX" class="sort-asx-icon" onerror="this.style.display='none'" />` +
+                ? `<svg class="sort-asx-icon" width="20" height="20" viewBox="0 0 24 24" role="img" aria-label="ASX" xmlns="http://www.w3.org/2000/svg"><text x="12" y="16" font-family="Inter, Arial, Helvetica, sans-serif" font-size="9" fill="currentColor" text-anchor="middle" font-weight="700">ASX</text></svg>` +
                     `<i class="fas fa-hashtag sort-asx-fallback" aria-hidden="true"></i>`
                 : `<i class="fas ${leftIcon}"></i>`;
 
@@ -174,7 +176,8 @@ function updateSortPickerButtonText(retryCount = 0) {
                 else if (val.startsWith('dividendAmount')) leftIcon = 'fa-money-bill-wave';
                 // If leftIcon is null, render ASX image with a hidden fallback hashtag
                 if (leftIcon === null) {
-                    iconEl.innerHTML = `<img src="asx-icon.svg" alt="ASX" class="sort-asx-icon" onerror="this.style.display='none'" />` +
+                    // Inline SVG uses currentColor so we can theme it by setting iconEl.style.color below
+                    iconEl.innerHTML = `<svg class="sort-asx-icon" width="20" height="20" viewBox="0 0 24 24" role="img" aria-label="ASX" xmlns="http://www.w3.org/2000/svg"><text x="12" y="16" font-family="Inter, Arial, Helvetica, sans-serif" font-size="9" fill="currentColor" text-anchor="middle" font-weight="700">ASX</text></svg>` +
                                        `<i class="fas fa-hashtag sort-asx-fallback" aria-hidden="true"></i>`;
                 } else {
                     iconEl.innerHTML = `<i class="fas ${leftIcon}"></i>`;
@@ -184,7 +187,15 @@ function updateSortPickerButtonText(retryCount = 0) {
                     const titleEl = document.getElementById('dynamicWatchlistTitleText') || document.getElementById('dynamicWatchlistTitle');
                     if (titleEl) {
                         const cs = window.getComputedStyle(titleEl);
-                        if (cs && cs.color) iconEl.style.color = cs.color;
+                        if (cs && cs.color) {
+                            // Apply to container
+                            iconEl.style.color = cs.color;
+                            // Also explicitly set on any inline SVG child to be extra robust
+                            try {
+                                const svgChild = iconEl.querySelector('svg');
+                                if (svgChild) svgChild.style.color = cs.color;
+                            } catch(_) {}
+                        }
                     }
                 } catch(_) {}
                 console.log('[DEBUG] Icon element updated successfully with icon:', leftIcon);

@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" role="img" aria-label="ASX">
-  <!-- Monochrome ASX mark: white text on transparent background for reliable styling -->
-  <text x="12" y="16" font-family="Inter, Arial, Helvetica, sans-serif" font-size="9" fill="#FFFFFF" text-anchor="middle" font-weight="700">ASX</text>
+  <!-- Monochrome ASX mark: use currentColor so embedding context controls the color -->
+  <text x="12" y="16" font-family="Inter, Arial, Helvetica, sans-serif" font-size="9" fill="currentColor" text-anchor="middle" font-weight="700">ASX</text>
 </svg>

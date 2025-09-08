@@ -811,7 +811,7 @@
     background: transparent !important;
     box-shadow: none !important;
 }
-.sort-asx-icon { color: #ffffff; }
+.sort-asx-icon { color: inherit; }
 /* Remove hashtag fallback entirely per request: keep fallback markup in DOM for robustness but hide visually */
 .sort-asx-fallback { display: none !important; }
 .sort-picker-label { flex:1; font-weight:600; text-align:left; }
@@ -835,12 +835,12 @@
 .header-sort-btn { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; background:var(--surface, #fff); border:1px solid var(--divider, #e6e6e6); cursor:pointer; white-space: nowrap; }
 /* Icon now lives inside the title span so it flows and scales with the text */
 .header-sort-btn #sortPickerBtnText { display:inline-flex; align-items:center; gap:8px; white-space: nowrap; }
-.header-sort-btn #sortIcon { display:inline-flex; align-items:center; justify-content:center; color: #ffffff; /* force white */ width:20px; height:20px; }
+.header-sort-btn #sortIcon { display:inline-flex; align-items:center; justify-content:center; color: inherit; width:20px; height:20px; }
 .header-sort-btn #sortIcon i { font-size:1.05em; line-height:1; }
 /* Ensure both icons align consistently vertically */
 .header-sort-btn #sortIcon, .header-sort-btn .sort-title-triangle { vertical-align: middle; }
 /* Header triangle (direction) that appears at the end of the title should be white */
-.header-sort-btn .sort-title-triangle { color: #ffffff; margin-left:6px; font-weight:700; font-size:0.98em; display:inline-flex; align-items:center; line-height: 1; }
+.header-sort-btn .sort-title-triangle { color: inherit; margin-left:6px; font-weight:700; font-size:0.98em; display:inline-flex; align-items:center; line-height: 1; }
 
 /* Ensure left-side icons in picker rows scale consistently with surrounding text */
 .sort-picker-icon i { font-size: 1em; line-height: 1; }
