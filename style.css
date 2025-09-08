@@ -9649,6 +9649,42 @@ body.dark-theme .alert-item {
     overflow-y: visible !important; /* Don't force scrolling */
 }
 
+/* === OVERRIDE: Make Stock Search modal use the standard modal sizing === */
+/* This block intentionally overrides the ultra-compact rules above so the stock search modal
+   displays at the same size as other modals (better readability and consistency). */
+#stockSearchModal,
+#stockSearchModal .modal-content,
+.stock-search-modal-content {
+    /* Match the default .modal-content sizing used across the app */
+    max-width: 540px !important;
+    width: 94% !important;
+    padding: 25px !important;
+    border-radius: 10px !important;
+    box-shadow: 0 5px 15px var(--shadow-color) !important;
+    background-color: var(--modal-content-bg) !important;
+    color: var(--text-color) !important;
+    box-sizing: border-box !important;
+    max-height: 90vh !important; /* allow modal to grow taller when needed */
+    overflow: auto !important; /* allow scrolling for content inside */
+    font-size: 1rem !important; /* restore normal font sizing */
+}
+
+/* Ensure header and footer use normal modal paddings and are visible */
+#stockSearchModal .modal-header-with-icon,
+#stockSearchModal .modal-header,
+#stockSearchModal .modal-action-buttons-footer,
+#stockSearchModal .modal-footer {
+    padding: 16px 0 !important;
+    background: var(--modal-content-bg, #fff) !important;
+}
+
+/* Ensure modal body scrolls within the restored modal content */
+#stockSearchModal .modal-body {
+    padding: 16px !important;
+    overflow-y: auto !important;
+    max-height: calc(90vh - 120px) !important; /* account for header/footer */
+}
+
 /* Ensure tight spacing between all elements */
 #stockSearchModal .modal-body > * {
     margin-bottom: 6px !important; /* Much tighter spacing */
@@ -9800,6 +9836,44 @@ body.dark-theme .alert-item {
 #discoverGlobalModal,
 .discover-global-modal {
     background-color: var(--modal-bg, rgba(0, 0, 0, 0.6)) !important;
+}
+
+/* ======================================================================
+   FINAL OVERRIDE: Ensure Stock Search modal is readable on mobile
+   This block is placed at the end of the stylesheet and uses high
+   specificity + !important to counter the earlier ultra-compact rules.
+   It forces the search modal to behave like other standard modals on
+   small screens (wider, larger fonts, scrollable body).
+   ====================================================================== */
+@media (max-width: 820px) {
+    body #stockSearchModal,
+    body #stockSearchModal .modal-content,
+    body #stockSearchModal .stock-search-modal-content {
+        max-width: 94vw !important;
+        width: calc(100vw - 32px) !important; /* account for safe margins */
+        padding: 16px !important;
+        border-radius: 10px !important;
+        font-size: 1rem !important; /* restore readable font on mobile */
+        box-shadow: 0 5px 15px var(--shadow-color) !important;
+        background: var(--modal-content-bg) !important;
+        color: var(--text-color) !important;
+        overflow: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Keep header/footer visible and with standard spacing */
+    body #stockSearchModal .modal-header-with-icon,
+    body #stockSearchModal .modal-action-buttons-footer,
+    body #stockSearchModal .modal-footer {
+        padding: 12px 0 !important;
+    }
+
+    /* Modal body should scroll inside the modal and have sensible padding */
+    body #stockSearchModal .modal-body {
+        padding: 12px !important;
+        overflow-y: auto !important;
+        max-height: calc(90vh - 120px) !important;
+    }
 }
 
 #discoverGlobalModal .modal-content,
