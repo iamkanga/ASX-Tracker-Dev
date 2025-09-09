@@ -6,7 +6,7 @@
     <title>Share Watchlist (Updated)</title>
     <link rel="icon" href="favicon.png" type="image/png">
 
-    <link rel="stylesheet" href="style.css?v=2.15.0">
+    <link rel="stylesheet" href="style.css?v=2.15.1">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
@@ -709,11 +709,13 @@
                 <label for="cashAssetBalance">Balance ($):</label>
                 <input type="number" id="cashAssetBalance" step="0.01" placeholder="e.g., 10000.00" required>
                 
-                <div class="comments-form-container">
-                    <h3>Comments <span id="addCashAssetCommentBtn" class="add-section-icon"><i class="fas fa-plus"></i></span></h3>
-                    
-                    <div id="cashAssetCommentsArea">
-                        </div>
+                <!-- Split: title row and comments area are separate left-aligned containers -->
+                <div class="comments-title-container">
+                    <h3 class="comments-title">Comments:</h3>
+                    <span id="addCashAssetCommentBtn" class="add-section-icon" title="Add Comment"><i class="fas fa-plus"></i></span>
+                </div>
+
+                <div id="cashAssetCommentsArea" class="comments-area">
                 </div>
 
                 <!-- Hide toggle moved to the cash category card (on-card eye icon). Removed modal checkbox. -->
@@ -814,7 +816,7 @@
         import SortPicker from './js/sortPicker.js';
         try { if (SortPicker && typeof SortPicker.initSortPicker === 'function') SortPicker.initSortPicker(); } catch(e) { console.warn('SortPicker auto-init failed', e); }
     </script>
-    <script src="script.js?v=2.15.0" type="module"></script>
+    <script src="script.js?v=2.15.2" type="module"></script>
     <!-- Service worker registration and immediate update helper -->
     <script>
         if ('serviceWorker' in navigator) {

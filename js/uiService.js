@@ -520,21 +520,60 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
     const deleteCashAssetBtn = document.getElementById('deleteCashAssetBtn');
     if (!cashAssetFormModal) return;
 
+    // Prefer the centralized comment-section builder from the main script to avoid
+    // having two different implementations that can both render into the same DOM
+    // container (which can cause duplicate comment blocks). If the global
+    // addCommentSection is available, delegate to it. Otherwise, use a small
+    // fallback that mirrors the minimal structure.
     function addCommentSection(container, title, text, focus) {
+        try {
+            if (typeof window !== 'undefined' && typeof window.addCommentSection === 'function') {
+                // The shared implementation in script.js accepts (container, title, text, isCashAssetComment)
+                // For cash asset forms we pass true for the isCashAssetComment flag so dirty checks wire correctly.
+                try { window.addCommentSection(container, title || '', text || '', true); return; } catch (_) {}
+            }
+        } catch(_) {}
+        // Fallback minimal builder (only used if global is not available)
         if (!container) return;
         const wrap = document.createElement('div');
         wrap.className = 'comment-section';
+
+        const top = document.createElement('div');
+        top.className = 'comment-section-top';
+
         const titleInput = document.createElement('input');
+        titleInput.type = 'text';
         titleInput.className = 'comment-title-input';
-        titleInput.placeholder = 'Title';
+        titleInput.placeholder = 'Title (optional)';
         titleInput.value = typeof title === 'string' ? title : '';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'comment-delete-btn';
+        deleteBtn.innerHTML = '<span aria-hidden="true">&times;</span>';
+
+        top.appendChild(titleInput);
+        top.appendChild(deleteBtn);
+
         const textArea = document.createElement('textarea');
         textArea.className = 'comment-text-input';
-        textArea.placeholder = 'Comment';
+        textArea.placeholder = 'Your comments here...';
         textArea.value = typeof text === 'string' ? text : '';
-        wrap.appendChild(titleInput);
+
+        wrap.appendChild(top);
         wrap.appendChild(textArea);
         container.appendChild(wrap);
+
+        // Wire events consistent with canonical builder
+        try { titleInput.addEventListener('input', checkCashAssetFormDirtyState); } catch(_) {}
+        try { textArea.addEventListener('input', checkCashAssetFormDirtyState); } catch(_) {}
+        deleteBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const el = e.target.closest('.comment-section');
+            if (el) el.remove();
+            try { checkCashAssetFormDirtyState(); } catch(_) {}
+        });
+
         if (focus) {
             try { titleInput.focus(); } catch(_) {}
         }
@@ -558,27 +597,9 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
         if (cashFormTitle) {
             cashFormTitle.textContent = 'Edit Cash Asset';
 
-            // Force styles with inline styles that can't be overridden - PLAIN TEXT
-            cashFormTitle.setAttribute('style',
-                'display: block !important; ' +
-                'font-size: 2.2em !important; ' +
-                'font-weight: 800 !important; ' +
-                'margin: 0 !important; ' +
-                'padding: 0 !important; ' +
-                'color: var(--text-color) !important; ' +
-                'background: transparent !important; ' +
-                'background-color: transparent !important; ' +
-                'border: none !important; ' +
-                'border-radius: 0 !important; ' +
-                'box-shadow: none !important; ' +
-                'text-shadow: none !important; ' +
-                'line-height: 1.1 !important; ' +
-                'text-align: left !important; ' +
-                'width: auto !important; ' +
-                'visibility: visible !important; ' +
-                'opacity: 1 !important; ' +
-                'transition: none !important;'
-            );
+            // Use stylesheet class instead of forcing inline boxed styles
+            cashFormTitle.classList.remove('boxed-modal-title');
+            cashFormTitle.classList.add('plain-modal-title');
 
             // Debug the applied styles
             setTimeout(() => {
@@ -605,100 +626,10 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
                 addCommentSection(cashAssetCommentsContainer, '', '', true);
             }
 
-            // Force styles and debug the comments title after it's populated
-            setTimeout(() => {
-                const commentsTitle = document.querySelector('#cashAssetFormModal .comments-form-container h3');
-                if (commentsTitle) {
-                    // Force styles with JavaScript - using inline styles that can't be overridden
-                    commentsTitle.setAttribute('style',
-                        'display: flex !important; ' +
-                        'justify-content: space-between !important; ' +
-                        'align-items: center !important; ' +
-                        'flex-direction: row !important; ' +
-                        'margin: 0 0 12px 0 !important; ' +
-                        'font-size: 1rem !important; ' +
-                        'font-weight: 600 !important; ' +
-                        'color: var(--text-color) !important; ' +
-                        'background-color: var(--input-bg) !important; ' +
-                        'background: var(--input-bg) !important; ' +
-                        'border: 1px solid var(--input-border) !important; ' +
-                        'border-radius: 6px !important; ' +
-                        'box-shadow: none !important; ' +
-                        'text-shadow: none !important; ' +
-                        'padding: 12px 14px !important; ' +
-                        'width: 100% !important; ' +
-                        'min-height: 30px !important; ' +
-                        'line-height: 1.4 !important; ' +
-                        'box-sizing: border-box !important; ' +
-                        'visibility: visible !important; ' +
-                        'opacity: 1 !important; ' +
-                        'transition: border-color 0.2s ease !important; ' +
-                        'cursor: default !important;'
-                    );
-
-                    // Force styles on the add button using inline styles
-                    const addButton = commentsTitle.querySelector('.add-section-icon');
-                    if (addButton) {
-                        // Force remove any hidden classes
-                        addButton.classList.remove('hidden');
-                        addButton.classList.remove('is-disabled-icon');
-
-                        addButton.setAttribute('style',
-                            'flex-shrink: 0 !important; ' +
-                            'margin-left: auto !important; ' +
-                            'display: inline-flex !important; ' +
-                            'align-items: center !important; ' +
-                            'justify-content: center !important; ' +
-                            'visibility: visible !important; ' +
-                            'opacity: 1 !important; ' +
-                            'background: transparent !important; ' +
-                            'border: none !important; ' +
-                            'color: #007bff !important; ' +
-                            'cursor: pointer !important; ' +
-                            'width: 30px !important; ' +
-                            'height: 30px !important; ' +
-                            'border-radius: 50% !important; ' +
-                            'position: static !important;'
-                        );
-
-                        const icon = addButton.querySelector('i');
-                        if (icon) {
-                            icon.setAttribute('style',
-                                'display: inline-block !important; ' +
-                                'visibility: visible !important; ' +
-                                'opacity: 1 !important; ' +
-                                'font-size: 1.2em !important; ' +
-                                'position: static !important;'
-                            );
-                        }
-                    } else {
-                        console.error('Add button not found in comments title');
-                    }
-
-                    console.log('Comments title found:', commentsTitle);
-                    console.log('Comments title text:', commentsTitle.textContent);
-                    console.log('Comments title innerHTML:', commentsTitle.innerHTML);
-                    console.log('Add button found:', addButton);
-                    console.log('Add button computed styles:', addButton ? window.getComputedStyle(addButton) : 'N/A');
-                    console.log('Add button display:', addButton ? window.getComputedStyle(addButton).display : 'N/A');
-                    console.log('Add button visibility:', addButton ? window.getComputedStyle(addButton).visibility : 'N/A');
-                    console.log('Add button opacity:', addButton ? window.getComputedStyle(addButton).opacity : 'N/A');
-                    console.log('Add button classList:', addButton ? addButton.classList : 'N/A');
-                    console.log('Add button innerHTML:', addButton ? addButton.innerHTML : 'N/A');
-                    console.log('Comments title styles after JS:', window.getComputedStyle(commentsTitle));
-                    console.log('Comments title display:', window.getComputedStyle(commentsTitle).display);
-                    console.log('Comments title background:', window.getComputedStyle(commentsTitle).backgroundColor);
-                    console.log('Comments title color:', window.getComputedStyle(commentsTitle).color);
-                    console.log('Comments title border:', window.getComputedStyle(commentsTitle).border);
-                    console.log('Comments title border-radius:', window.getComputedStyle(commentsTitle).borderRadius);
-                    console.log('Comments title padding:', window.getComputedStyle(commentsTitle).padding);
-                    console.log('Comments title font-size:', window.getComputedStyle(commentsTitle).fontSize);
-                    console.log('Comments title flex-direction:', window.getComputedStyle(commentsTitle).flexDirection);
-                    console.log('Comments title justify-content:', window.getComputedStyle(commentsTitle).justifyContent);
-                } else {
-                    console.error('Comments title not found');
-                }
-            }, 200);
+            // Allow CSS to control the comments header and add button visuals.
+            // Removed forced inline styles so the canonical comment-section markup
+            // (created by window.addCommentSection) renders identically for initial
+            // and subsequently added comment blocks.
         }
         if (addCashAssetCommentBtn) try { addCashAssetCommentBtn.classList.remove('hidden'); } catch(_) {}
     // isHidden is managed on the card via the on-card toggle; modal does not expose a hide checkbox
@@ -727,7 +658,7 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
                         // Update UI and close modal
                         try { if (typeof window.renderCashCategories === 'function') window.renderCashCategories(); } catch(_) {}
                         try { if (typeof window.calculateTotalCash === 'function') window.calculateTotalCash(); } catch(_) {}
-                        try { if (window.closeModals) window.closeModals(); else if (cashAssetFormModal) cashAssetFormModal.style.display='none'; } catch(_) {}
+                        try { if (window.closeModals) window.closeModals(); else if (cashAssetFormModal) { try { cashAssetFormModal.classList.remove('modal-open'); } catch(_) { cashAssetFormModal.style.setProperty('display','none','important'); } } } catch(_) {}
                     } catch(e) {
                         console.error('Delete cash asset failed', e);
                         try { window.showCustomAlert && window.showCustomAlert('Failed to delete cash asset.', 2000); } catch(_) {}
@@ -738,27 +669,9 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
     } else {
         if (cashFormTitle) {
             cashFormTitle.textContent = 'Add New Cash Asset';
-            // Force styles with inline styles that can't be overridden - PLAIN TEXT
-            cashFormTitle.setAttribute('style',
-                'display: block !important; ' +
-                'font-size: 2.2em !important; ' +
-                'font-weight: 800 !important; ' +
-                'margin: 0 !important; ' +
-                'padding: 0 !important; ' +
-                'color: var(--text-color) !important; ' +
-                'background: transparent !important; ' +
-                'background-color: transparent !important; ' +
-                'border: none !important; ' +
-                'border-radius: 0 !important; ' +
-                'box-shadow: none !important; ' +
-                'text-shadow: none !important; ' +
-                'line-height: 1.1 !important; ' +
-                'text-align: left !important; ' +
-                'width: auto !important; ' +
-                'visibility: visible !important; ' +
-                'opacity: 1 !important; ' +
-                'transition: none !important;'
-            );
+            // Use stylesheet class instead of forcing inline boxed styles
+            cashFormTitle.classList.remove('boxed-modal-title');
+            cashFormTitle.classList.add('plain-modal-title');
         }
         if (cashAssetNameInput) cashAssetNameInput.value = '';
         if (cashAssetBalanceInput) cashAssetBalanceInput.value = '';
@@ -768,70 +681,25 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
 
             // Force styles for comments title in add mode
             setTimeout(() => {
-                const commentsTitle = document.querySelector('#cashAssetFormModal .comments-form-container h3');
-                if (commentsTitle) {
-                    commentsTitle.setAttribute('style',
-                        'display: flex !important; ' +
-                        'justify-content: space-between !important; ' +
-                        'align-items: center !important; ' +
-                        'flex-direction: row !important; ' +
-                        'margin: 0 0 12px 0 !important; ' +
-                        'font-size: 1rem !important; ' +
-                        'font-weight: 600 !important; ' +
-                        'color: var(--text-color) !important; ' +
-                        'background-color: var(--input-bg) !important; ' +
-                        'background: var(--input-bg) !important; ' +
-                        'border: 1px solid var(--input-border) !important; ' +
-                        'border-radius: 6px !important; ' +
-                        'box-shadow: none !important; ' +
-                        'text-shadow: none !important; ' +
-                        'padding: 12px 14px !important; ' +
-                        'width: 100% !important; ' +
-                        'min-height: 30px !important; ' +
-                        'line-height: 1.4 !important; ' +
-                        'box-sizing: border-box !important; ' +
-                        'visibility: visible !important; ' +
-                        'opacity: 1 !important; ' +
-                        'transition: border-color 0.2s ease !important; ' +
-                        'cursor: default !important;'
-                    );
+                // New DOM: comments title is in its own container with id/class .comments-title-container
+                const commentsTitleRow = document.querySelector('#cashAssetFormModal .comments-title-container');
+                if (commentsTitleRow) {
+                    const commentsTitle = commentsTitleRow.querySelector('.comments-title');
+                    if (commentsTitle) {
+                        commentsTitle.classList.remove('boxed-comments-title');
+                        commentsTitle.classList.add('comments-title-plain');
+                    }
 
-                    const addButton = commentsTitle.querySelector('.add-section-icon');
+                    // Add button lives as a sibling inside .comments-title-container
+                    const addButton = commentsTitleRow.querySelector('#addCashAssetCommentBtn');
                     if (addButton) {
-                        // Force remove any hidden classes
                         addButton.classList.remove('hidden');
                         addButton.classList.remove('is-disabled-icon');
-
-                        addButton.setAttribute('style',
-                            'flex-shrink: 0 !important; ' +
-                            'margin-left: auto !important; ' +
-                            'display: inline-flex !important; ' +
-                            'align-items: center !important; ' +
-                            'justify-content: center !important; ' +
-                            'visibility: visible !important; ' +
-                            'opacity: 1 !important; ' +
-                            'background: transparent !important; ' +
-                            'border: none !important; ' +
-                            'color: #007bff !important; ' +
-                            'cursor: pointer !important; ' +
-                            'width: 30px !important; ' +
-                            'height: 30px !important; ' +
-                            'border-radius: 50% !important; ' +
-                            'position: static !important;'
-                        );
-
+                        addButton.classList.add('visible-add-btn');
                         const icon = addButton.querySelector('i');
-                        if (icon) {
-                            icon.setAttribute('style',
-                                'display: inline-block !important; ' +
-                                'visibility: visible !important; ' +
-                                'opacity: 1 !important; ' +
-                                'font-size: 1.2em !important; ' +
-                                'position: static !important;'
-                            );
-                        }
+                        if (icon) icon.classList.add('visible-add-icon');
                     } else {
-                        console.error('Add button not found in comments title (add mode)');
+                        console.error('Add button not found in comments title row (add mode)');
                     }
                 }
             }, 200);
@@ -845,20 +713,31 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
     try {
         try { window.logDebug && window.logDebug('UI: Showing cash asset modal for ID=' + (assetIdToEdit || 'new')); } catch(_) {}
         try { console.trace && console.trace('TRACE: showAddEditCashCategoryModal called for ID=' + (assetIdToEdit || 'new')); } catch(_) {}
-        window.showModal ? window.showModal(cashAssetFormModal) : cashAssetFormModal.classList.remove('app-hidden');
-        cashAssetFormModal.style.display='flex';
+    // Show modal using class toggle to avoid inline-style conflicts
+    window.showModal ? window.showModal(cashAssetFormModal) : cashAssetFormModal.classList.remove('app-hidden');
+    try { cashAssetFormModal.classList.add('modal-open'); } catch(_) { try { cashAssetFormModal.style.setProperty('display','flex','important'); } catch(_){} }
     } catch(_) {}
 
     // FINAL FORCE: Ensure add button is visible after modal is shown
     setTimeout(() => {
         const addBtn = document.getElementById('addCashAssetCommentBtn');
         if (addBtn) {
+            // Defensive cleanup: remove any leftover layout-related inline styles
+            // that older codepaths or cached assets may have left on the element.
+            try {
+                const inlineStylesToRemove = ['display', 'visibility', 'opacity', 'margin-left', 'left', 'right', 'top', 'bottom'];
+                inlineStylesToRemove.forEach(prop => {
+                    try { addBtn.style.removeProperty(prop); } catch(_) {}
+                });
+            } catch(_) {}
+
+            // Ensure visual state via classes; layout is controlled by CSS (flex + margin-left:auto)
             addBtn.classList.remove('hidden');
             addBtn.classList.remove('is-disabled-icon');
-            addBtn.style.display = 'inline-flex';
-            addBtn.style.visibility = 'visible';
-            addBtn.style.opacity = '1';
-            console.log('FINAL FORCE: Add button visibility ensured');
+            addBtn.classList.add('visible-add-btn');
+            const icon = addBtn.querySelector && addBtn.querySelector('i');
+            if (icon) icon.classList.add('visible-add-icon');
+            console.log('FINAL FORCE: Add button classes ensured and inline layout styles removed');
         } else {
             console.error('FINAL FORCE: Add button not found');
         }
