@@ -6298,8 +6298,8 @@ table td.live-price-cell.negative-change {
     position: absolute !important;
     /* Align to modal content left inset (modal padding is 25px); moved further left by 4px */
     left: 1px !important;
-    /* Move slightly closer to the top of the comments title container (moved up 2px) */
-    top: 2px !important; /* nudged up 2px from previous */
+    /* Move slightly closer to the top of the comments title container (shifted up 20px from previous) */
+    top: 17px !important; /* moved up 20px */
     transform: translateY(0) !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -6311,6 +6311,24 @@ table td.live-price-cell.negative-change {
     z-index: 30 !important;
 }
 .cash-modal-mid-blank #addCashAssetCommentBtn i { font-size: 0.84em !important; /* reduced 20% from 1.05em */ }
+
+/* Comments title container in cash modal: align left, match modal label/title sizing and spacing */
+#cashAssetFormModal .comments-title-container {
+    display: block;
+    margin: 0 0 6px 0; /* space below title, matches modal label spacing */
+    padding: 0 0 0 0;
+    position: absolute; /* position over the mid-blank spacer */
+    left: -1px; /* moved right 3px from previous -4px */
+    top: -4px; /* moved down additional 3px as requested */
+}
+#cashAssetFormModal .comments-title {
+    display: inline-block;
+    font-weight: 600; /* match modal label weight */
+    color: var(--label-color);
+    font-size: 1.05em; /* match other modal label sizing for prominence */
+    margin: 0; /* ensure no extra margin */
+    padding-left: 0; /* align to modal content left inset */
+}
 
 /* ASX Code  prominence and alignment */
 #modalShareName, #modalCashAssetName, #formTitle, #cashFormTitle { /* Apply to all modal titles */
@@ -6494,6 +6512,16 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
 }
 
 .modal-content label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--label-color);
+    font-size: 0.95em;
+}
+
+/* Ensure Comments label in Cash modal matches the Balance label typography */
+#cashAssetFormModal .comments-title,
+#cashAssetFormModal #cashCommentsTitle {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
@@ -7526,7 +7554,7 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
 #cashAssetFormModal .comments-form-container .add-above-title {
     position: absolute !important;
     left: 8px !important;
-    top: -36px !important; /* fallback; JS will set exact top */
+    top: -21px !important; /* fallback moved down 15px; JS will set exact top */
     width: 30px !important;
     height: 30px !important;
     display: inline-flex !important;
@@ -7551,7 +7579,7 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
 .comments-form-container {
     position: relative; /* positioning context for comments-action-row */
     /* Reserve space at the top so the add icon can sit above the first comment title */
-    padding-top: 44px !important;
+    padding-top: 69px !important; /* moved down additional 15px */
 }
 .cash-modal-mid-blank {
     display: flex !important;
@@ -7567,7 +7595,7 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
 .comments-form-container .comments-action-row {
     position: absolute;
     left: 25px !important; /* align with modal content left padding */
-    top: 8px; /* small gap above the title container */
+    top: 33px; /* moved down 15px */
     right: auto !important;
     bottom: auto !important;
     display: flex;

@@ -696,7 +696,6 @@
     <div id="cashAssetFormModal" class="modal">
         <div class="modal-content single-scroll-modal">
             <!-- Blank spacer container above the cash modal title (full-width) -->
-            <div class="cash-modal-top-blank" aria-hidden="true"></div>
             <div class="modal-header-with-icon">
                 <h2 id="cashFormTitle">Add New Cash Asset</h2>
                 <div class="modal-header-action-group">
@@ -712,18 +711,21 @@
                 <input type="number" id="cashAssetBalance" step="0.01" placeholder="e.g., 10000.00" required>
                 
                 <!-- Blank spacer between Balance input and Comments area; new mid container inserted above the add icon -->
-                <div class="cash-modal-mid-blank" aria-hidden="true">
+                <div class="cash-modal-mid-blank" aria-hidden="true" style="width:400px; height:35px; margin-top:20px;">
                     <!-- User-requested container: sits below the Balance input but above the plus icon -->
                     <div class="cash-modal-mid-container" aria-hidden="true"></div>
+                    <div class="comments-title-container" aria-hidden="true">
+                        <label class="comments-title" id="cashCommentsTitle">Comments:</label>
+                    </div>
                     <span id="addCashAssetCommentBtn" class="add-section-icon" title="Add Comment"><i class="fas fa-plus"></i></span>
                 </div>
 
-                <div class="comments-form-container">
+                <div class="comments-form-container" style="padding-top: 64px;">
                     <div id="cashAssetCommentsArea">
                     </div>
 
                     <!-- Add button moved to mid spacer above comments area -->
-                    <div class="comments-action-row">
+                    <div class="comments-action-row" style="position: absolute; left: 25px; top: 28px;">
                     </div>
                 </div>
 

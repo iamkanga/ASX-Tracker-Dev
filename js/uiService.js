@@ -892,6 +892,33 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
         }
     }, 100);
 
+    // FINAL POSITIONING FORCE: ensure comments title, action-row and container reflect desired offsets
+    setTimeout(() => {
+        try {
+            const titleContainer = document.querySelector('#cashAssetFormModal .comments-title-container');
+            if (titleContainer) {
+                // Move down 15px relative to previous -12px -> 3px
+                titleContainer.style.position = 'absolute';
+                titleContainer.style.left = '-1px';
+                titleContainer.style.top = '-4px';
+            }
+
+            const commentsForm = document.querySelector('#cashAssetFormModal .comments-form-container');
+            if (commentsForm) {
+                // Increase top padding so content sits lower (moved down 15px)
+                commentsForm.style.paddingTop = '69px';
+            }
+
+            const actionRow = document.querySelector('#cashAssetFormModal .comments-form-container .comments-action-row');
+            if (actionRow) {
+                actionRow.style.position = 'absolute';
+                actionRow.style.left = '25px';
+                actionRow.style.top = '33px';
+            }
+            console.log('FINAL POSITIONING FORCE: applied inline styles for cash modal comments');
+        } catch (e) { console.error('Error applying final positioning force', e); }
+    }, 140);
+
     // Positioning is handled by CSS; previous JS-based positioning removed.
 
     try { (cashAssetNameInput || {}).focus && cashAssetNameInput.focus(); } catch(_) {}
@@ -899,4 +926,44 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
 }
 
 try { window.showAddEditCashCategoryModal = showAddEditCashCategoryModal; } catch(_) {}
+
+// Ensure the comments area positioning is reapplied whenever the cash modal DOM updates
+function applyCashCommentsOffsets() {
+    try {
+        const modal = document.getElementById('cashAssetFormModal');
+        if (!modal) return;
+        const titleContainer = modal.querySelector('.comments-title-container');
+        if (titleContainer) {
+            titleContainer.style.position = 'absolute';
+            titleContainer.style.left = '-1px';
+            titleContainer.style.top = '-4px';
+        }
+        const commentsForm = modal.querySelector('.comments-form-container');
+        if (commentsForm) {
+            commentsForm.style.paddingTop = '69px';
+        }
+        const actionRow = modal.querySelector('.comments-form-container .comments-action-row');
+        if (actionRow) {
+            actionRow.style.position = 'absolute';
+            actionRow.style.left = '25px';
+            actionRow.style.top = '33px';
+        }
+        // Debug hook
+        try { console.log('applyCashCommentsOffsets executed'); } catch(_) {}
+    } catch (e) { try { console.error('applyCashCommentsOffsets error', e); } catch(_) {} }
+}
+
+try {
+    const cashModal = document.getElementById('cashAssetFormModal');
+    if (cashModal) {
+        // Observe subtree and attribute changes to reapply positions when elements are added/changed
+        const mo = new MutationObserver((mutations) => {
+            applyCashCommentsOffsets();
+        });
+        mo.observe(cashModal, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+
+        // Apply immediately in case modal already present
+        setTimeout(applyCashCommentsOffsets, 50);
+    }
+} catch(_) {}
 
