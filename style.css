@@ -6296,8 +6296,8 @@ table td.live-price-cell.negative-change {
 .cash-modal-mid-blank { position: relative; }
 .cash-modal-mid-blank #addCashAssetCommentBtn {
     position: absolute !important;
-    /* Align to modal content left inset (modal padding is 25px); moved further left by 4px */
-    left: 1px !important;
+    /* Align to modal content left inset (modal padding is 25px); nudged 15px to the right */
+    left: 61px !important;
     /* Move slightly closer to the top of the comments title container (shifted up 20px from previous) */
     top: 17px !important; /* moved up 20px */
     transform: translateY(0) !important;
@@ -6310,6 +6310,8 @@ table td.live-price-cell.negative-change {
     color: var(--accent-color, #a49393) !important;
     z-index: 30 !important;
 }
+.cash-modal-mid-blank #addCashAssetCommentBtn { left: 91px !important; }
+#cashAssetFormModal .cash-modal-mid-blank #addCashAssetCommentBtn { left: 91px !important; }
 .cash-modal-mid-blank #addCashAssetCommentBtn i { font-size: 0.84em !important; /* reduced 20% from 1.05em */ }
 
 /* Comments title container in cash modal: align left, match modal label/title sizing and spacing */
@@ -6319,7 +6321,7 @@ table td.live-price-cell.negative-change {
     padding: 0 0 0 0;
     position: absolute; /* position over the mid-blank spacer */
     left: -1px; /* moved right 3px from previous -4px */
-    top: -4px; /* moved down additional 3px as requested */
+    top: 23px; /* moved down additional 7px as requested */
 }
 #cashAssetFormModal .comments-title {
     display: inline-block;
@@ -7591,6 +7593,11 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
     width: 100% !important;
     height: 18px !important; /* small spacer height between Balance and add icon */
     margin-bottom: 6px !important; /* slight gap between spacer and icon */
+}
+
+/* Move the mid spacer container 30px to the right to nudge the add icon placement */
+#cashAssetFormModal .cash-modal-mid-container {
+    transform: translateX(30px) !important;
 }
 .comments-form-container .comments-action-row {
     position: absolute;

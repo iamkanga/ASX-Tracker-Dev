@@ -900,7 +900,7 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
                 // Move down 15px relative to previous -12px -> 3px
                 titleContainer.style.position = 'absolute';
                 titleContainer.style.left = '-1px';
-                titleContainer.style.top = '-4px';
+                titleContainer.style.top = '23px';
             }
 
             const commentsForm = document.querySelector('#cashAssetFormModal .comments-form-container');
@@ -936,7 +936,7 @@ function applyCashCommentsOffsets() {
         if (titleContainer) {
             titleContainer.style.position = 'absolute';
             titleContainer.style.left = '-1px';
-            titleContainer.style.top = '-4px';
+            titleContainer.style.top = '23px';
         }
         const commentsForm = modal.querySelector('.comments-form-container');
         if (commentsForm) {
