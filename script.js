@@ -4988,45 +4988,37 @@ function addCommentSection(container, title = '', text = '', isCashAssetComment 
     if (!container) { console.error('addCommentSection: comments container not found.'); return; }
     const commentSectionDiv = document.createElement('div');
     commentSectionDiv.className = 'comment-section';
-
-    const top = document.createElement('div');
-    top.className = 'comment-section-top';
-
-    const titleInput = document.createElement('input');
-    titleInput.type = 'text';
-    titleInput.className = 'comment-title-input';
-    titleInput.placeholder = 'Title (optional)';
-    titleInput.value = title || '';
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.type = 'button';
-    deleteBtn.className = 'comment-delete-btn';
-    deleteBtn.innerHTML = '<span aria-hidden="true">&times;</span>';
-
-    top.appendChild(titleInput);
-    top.appendChild(deleteBtn);
-
-    const textarea = document.createElement('textarea');
-    textarea.className = 'comment-text-input';
-    textarea.placeholder = 'Your comments here...';
-    textarea.value = text || '';
-
-    commentSectionDiv.appendChild(top);
-    commentSectionDiv.appendChild(textarea);
+    commentSectionDiv.innerHTML = `
+        <div class="comment-section-header">
+            <input type="text" class="comment-title-input" placeholder="Comment Title" value="">
+            <button type="button" class="comment-delete-btn" title="Delete Comment"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>
+        </div>
+        <textarea class="comment-text-input" placeholder="Your comments here..."></textarea>
+    `;
     container.appendChild(commentSectionDiv);
 
-    // Wire events for dirty checking
-    titleInput.addEventListener('input', isCashAssetComment ? checkCashAssetFormDirtyState : checkFormDirtyState);
-    textarea.addEventListener('input', isCashAssetComment ? checkCashAssetFormDirtyState : checkFormDirtyState);
+    // Set values after creating elements to avoid HTML injection
+    const titleInput = commentSectionDiv.querySelector('.comment-title-input');
+    const textInput = commentSectionDiv.querySelector('.comment-text-input');
 
-    deleteBtn.addEventListener('click', (event) => {
+    if (titleInput) titleInput.value = title || '';
+    if (textInput) textInput.value = text || '';
+    
+    const commentTitleInput = commentSectionDiv.querySelector('.comment-title-input');
+    const commentTextInput = commentSectionDiv.querySelector('.comment-text-input');
+    
+    if (commentTitleInput) {
+        commentTitleInput.addEventListener('input', isCashAssetComment ? checkCashAssetFormDirtyState : checkFormDirtyState);
+    }
+    if (commentTextInput) {
+        commentTextInput.addEventListener('input', isCashAssetComment ? checkCashAssetFormDirtyState : checkFormDirtyState);
+    }
+
+    commentSectionDiv.querySelector('.comment-delete-btn').addEventListener('click', (event) => {
         logDebug('Comments: Delete comment button clicked.');
-        event.preventDefault();
-        const el = event.target.closest('.comment-section');
-        if (el) el.remove();
+        event.target.closest('.comment-section').remove();
         isCashAssetComment ? checkCashAssetFormDirtyState() : checkFormDirtyState();
     });
-
     logDebug('Comments: Added new comment section.');
 }
 function clearForm() {
@@ -6247,8 +6239,9 @@ function showShareDetails() {
         commSecLoginMessage.style.fontSize = '75%';
         commSecLoginMessage.style.fontWeight = 'normal';
         commSecLoginMessage.style.color = 'var(--label-color, #888)';
-    // Move layout-control to CSS class for consistent styling and easier overrides
-    commSecLoginMessage.classList.add('commsec-login-message--compact');
+        commSecLoginMessage.style.marginTop = '2px';
+        commSecLoginMessage.style.marginBottom = '0';
+        commSecLoginMessage.style.padding = '0';
     }
 
     showModal(shareDetailModal);
@@ -11808,8 +11801,8 @@ async function initializeAppLogic() {
     if (targetHitIconBtn) targetHitIconBtn.style.display = 'none'; // Ensure icon is hidden initially via inline style
     if (alertPanel) alertPanel.style.display = 'none'; // NEW: Ensure alert panel is hidden initially
     // NEW: Hide cash asset modals initially
-    if (cashAssetFormModal) try { cashAssetFormModal.classList.remove('modal-open'); } catch(_) { try { cashAssetFormModal.style.setProperty('display', 'none', 'important'); } catch(_){} }
-    if (cashAssetDetailModal) try { cashAssetDetailModal.classList.remove('modal-open'); } catch(_) { try { cashAssetDetailModal.style.setProperty('display', 'none', 'important'); } catch(_){} }
+    if (cashAssetFormModal) cashAssetFormModal.style.setProperty('display', 'none', 'important');
+    if (cashAssetDetailModal) cashAssetDetailModal.style.setProperty('display', 'none', 'important');
     if (stockSearchModal) {
         stockSearchModal.classList.remove('show'); // Ensure stock search modal is hidden on initialization
     }
@@ -12385,14 +12378,8 @@ if (targetPriceInput) {
     if (addCashAssetCommentBtn) {
         setIconDisabled(addCashAssetCommentBtn, false);
         addCashAssetCommentBtn.addEventListener('click', () => {
-            // Resolve the comments container at click time to avoid relying on a stale/undefined variable
-            const resolvedContainer = document.getElementById('cashAssetCommentsArea') || document.getElementById('cashAssetCommentsContainer');
-            if (!resolvedContainer) {
-                console.warn('Add Comment: comments container not found');
-                return;
-            }
-            addCommentSection(resolvedContainer, '', '', true); // true for cash asset comment
-            try { checkCashAssetFormDirtyState(); } catch(_) {}
+            addCommentSection(cashAssetCommentsContainer, '', '', true); // true for cash asset comment
+            checkCashAssetFormDirtyState();
         });
     }
     // Close buttons for modals

@@ -6272,9 +6272,37 @@ table td.live-price-cell.negative-change {
     margin-bottom: 20px;
     position: relative;
     padding-bottom: 10px;
-    border-bottom: none; /* removed: avoid boxed divider between header and body */
+    border-bottom: 1px solid var(--border-color);
     flex-wrap: nowrap; /* Prevent wrapping on small screens */
 }
+
+/* Blank spacer at top of Add/Edit Cash Asset modal */
+/* .cash-modal-top-blank removed: spacer moved/adjusted via mid blank */
+
+/* Mid spacer between balance input and comments area */
+.cash-modal-mid-blank {
+    width: 100%;
+    height: 12px;
+    background: transparent;
+    margin-bottom: 6px;
+}
+
+/* Place the add icon inside the mid-blank spacer on the left, vertically centered */
+.cash-modal-mid-blank { position: relative; }
+.cash-modal-mid-blank #addCashAssetCommentBtn {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    color: var(--accent-color, #a49393);
+}
+.cash-modal-mid-blank #addCashAssetCommentBtn i { font-size: 1.05em; }
 
 /* ASX Code  prominence and alignment */
 #modalShareName, #modalCashAssetName, #formTitle, #cashFormTitle { /* Apply to all modal titles */
@@ -6305,11 +6333,10 @@ table td.live-price-cell.negative-change {
 .modal-title-container {
     display: flex;
     flex-direction: column;
-    align-items: flex-start; /* Left-align the code and name to match form content */
+    align-items: center; /* Center the code and name */
     flex-grow: 1; /* Allow it to take up space */
-    text-align: left;
-    margin: 0 10px; /* horizontal spacing from icons */
-    padding-left: 10px; /* align left edge with .comments-form-container */
+    text-align: center;
+    margin: 0 10px; /* Add some margin to not touch the icons */
 }
 
 .modal-company-name-display {
@@ -7046,10 +7073,180 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
 /* Comments Section in Modals */
 .comments-form-container {
     margin-top: 20px;
-    /* Divider removed per UI refinement: no border between balance and comments */
-    border-top: none;
-    padding-top: 6px; /* reduce spacing to align with form labels */
-    padding-left: 10px; /* align left edge with modal title */
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+}
+
+/* Add Share modal: remove visual chrome around comment sections (no border, no fill, no divider) */
+#shareFormSection .comments-form-container {
+    border-top: none !important; /* remove dividing line above comments area */
+    padding-top: 0 !important;
+    margin-top: 12px !important;
+}
+
+#shareFormSection .comment-section {
+    border: none !important; /* keep wrapper borderless so each field has its own box */
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin-bottom: 12px !important;
+    overflow: visible !important;
+}
+
+/* Make title input and textarea look like the ASX code input (individual boxed fields) */
+#shareFormSection .comment-section .comment-title-input,
+#shareFormSection .comment-section .comment-text-input {
+    width: 100% !important;
+    padding: 10px !important;
+    border: 1px solid var(--input-border) !important;
+    border-radius: 8px !important;
+    background-color: var(--input-bg) !important;
+    background: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    font-size: 1.05em !important;
+    transition: border-color 0.2s ease, box-shadow 0.15s ease !important;
+    box-sizing: border-box !important;
+    box-shadow: none !important;
+}
+
+/* Single-line title input sizing */
+#shareFormSection .comment-section .comment-title-input {
+    height: 42px !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+}
+
+/* Multi-line textarea sizing */
+#shareFormSection .comment-section .comment-text-input {
+    min-height: 100px !important;
+    resize: vertical !important;
+    margin-top: 8px !important;
+}
+
+/* Layout for header row (title + delete icon) */
+#shareFormSection .comment-section-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin-bottom: 8px !important;
+    border-bottom: none !important;
+}
+
+#shareFormSection .comment-section-header .comment-title-input {
+    flex: 1 1 auto !important;
+}
+
+#shareFormSection .comment-section .comment-delete-btn {
+    flex: 0 0 36px !important;
+    width: 36px !important;
+    height: 36px !important;
+}
+
+/* === Mirror Add Share comment styles for Add New Cash Asset modal === */
+#cashAssetFormModal .comments-form-container {
+    border-top: none !important;
+    padding-top: 0 !important;
+    margin-top: 12px !important;
+}
+
+#cashAssetFormModal .comment-section {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin-bottom: 12px !important;
+    overflow: visible !important;
+}
+
+/* Title input and textarea boxed like ASX input */
+#cashAssetFormModal .comment-section .comment-title-input,
+#cashAssetFormModal .comment-section .comment-text-input,
+#cashAssetFormModal .comments-form-container .comment-title-input,
+#cashAssetFormModal .comments-form-container .comment-text-input {
+    width: 100% !important;
+    padding: 10px !important;
+    border: 1px solid var(--input-border) !important;
+    border-radius: 8px !important;
+    background-color: var(--input-bg) !important;
+    background: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    font-size: 1.05em !important;
+    transition: border-color 0.2s ease, box-shadow 0.15s ease !important;
+    box-sizing: border-box !important;
+    box-shadow: none !important;
+}
+
+#cashAssetFormModal .comment-section .comment-title-input { height: 42px !important; }
+#cashAssetFormModal .comment-section .comment-text-input { min-height: 100px !important; margin-top: 8px !important; resize: vertical !important; }
+
+/* Align title input and delete button: title slightly smaller, delete to the right (match Add Share modal) */
+#cashAssetFormModal .comment-section-header {
+    display:flex !important;
+    gap:10px !important;
+    align-items:center !important;
+    margin-bottom:8px !important;
+    justify-content:space-between !important;
+}
+#cashAssetFormModal .comment-section-header .comment-title-input {
+    flex: 1 1 auto !important;
+    max-width: calc(100% - 46px) !important; /* leave space for 36px delete + gap */
+    width: auto !important;
+    height: 42px !important; /* match Add Share title height */
+}
+#cashAssetFormModal .comment-section .comment-delete-btn {
+    flex: 0 0 36px !important;
+    width: 36px !important;
+    height: 36px !important;
+    margin-left: 8px !important;
+}
+
+/* Ensure add icon in cash modal behaves like add-section-icon */
+#cashAssetFormModal .comments-form-container h3,
+#cashAssetFormModal .comments-header-row {
+    display:flex !important;
+    justify-content:space-between !important;
+    align-items:center !important;
+    margin:0 0 12px 0 !important;
+    padding:0 !important;
+}
+
+#cashAssetFormModal .comments-form-container .add-section-icon,
+#cashAssetFormModal .comments-header-row .add-section-icon,
+#cashAssetFormModal h3 span.add-section-icon {
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:30px !important;
+    height:30px !important;
+    background:transparent !important;
+    border:none !important;
+    color: var(--accent-color, #a49393) !important; /* coffee */
+}
+
+/* Make delete button a trash icon, sized and colored like the add icon (coffee/action color) */
+.comment-section .comment-delete-btn {
+    background: none;
+    border: none;
+    color: var(--icon-action-color) !important; /* app coffee/action color */
+    font-size: 1.05rem !important; /* size similar to add icon */
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: color 0.15s ease, transform 0.08s ease !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    border-radius: 50% !important;
+}
+
+.comment-section .comment-delete-btn:hover {
+    color: var(--icon-action-hover-color) !important;
+    transform: translateY(-1px) scale(1.02) !important;
+}
+
+.comment-section .comment-delete-btn:focus-visible {
+    outline: 2px solid var(--accent-color) !important;
+    outline-offset: 2px !important;
 }
 
 .comments-form-container h3 {
@@ -7064,6 +7261,9 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
     padding-bottom: 0 !important;
     font-weight: 600 !important;
     width: 100% !important;
+    background: transparent !important; /* remove border/background */
+    border: none !important;
+    box-shadow: none !important;
 }
 
 /* ULTRA SPECIFIC FIXES FOR CASH ASSET MODAL */
@@ -7083,17 +7283,24 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
     opacity: 1 !important;
 }
 
-/* Make the comments section header match standard form labels (clean, unboxed) */
+/* Force the comments section title to display correctly */
 #cashAssetFormModal .comments-form-container h3 {
-    display: block !important;
-    margin: 0 0 6px 0 !important;
-    font-size: 1rem !important; /* Match Asset Name / Balance labels */
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    margin: 0 0 15px 0 !important;
+    font-size: 1.2em !important;
     font-weight: 600 !important;
-    color: var(--label-color, var(--text-color)) !important;
+    color: var(--text-color, #333) !important;
+    border: none !important;
     padding: 0 !important;
     width: 100% !important;
-    border: none !important; /* remove any box or container look */
-    background: transparent !important;
+    min-height: 30px !important;
+    line-height: 1.4 !important;
+    box-sizing: border-box !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 /* Force the comments text to be visible */
@@ -7148,25 +7355,25 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
     width: 100% !important;
 }
 
-/* ABSOLUTE NUCLEAR FORCE ADD BUTTON VISIBLE */
-#cashAssetFormModal .comments-form-container h3 span#addCashAssetCommentBtn,
-#cashAssetFormModal .comments-form-container h3 .add-section-icon,
-#cashAssetFormModal .comments-form-container h3 span[id="addCashAssetCommentBtn"],
-#cashAssetFormModal .comments-form-container h3 span.add-section-icon {
+/* Add button for cash asset comments: bottom-left action row */
+#cashAssetFormModal .comments-form-container .comments-action-row #addCashAssetCommentBtn,
+#cashAssetFormModal .comments-form-container .comments-action-row .add-section-icon,
+#cashAssetFormModal .comments-form-container .comments-action-row span[id="addCashAssetCommentBtn"],
+#cashAssetFormModal .comments-form-container .comments-action-row span.add-section-icon {
     display: inline-flex !important;
     visibility: visible !important;
     opacity: 1 !important;
-    position: static !important;
-    width: 30px !important;
-    height: 30px !important;
+    position: relative !important;
+    width: 36px !important;
+    height: 36px !important;
     background: transparent !important;
     border: none !important;
-    color: #007bff !important;
+    color: var(--accent-color, #a49393) !important;
     cursor: pointer !important;
     align-items: center !important;
     justify-content: center !important;
-    border-radius: 50% !important;
-    margin-left: auto !important;
+    border-radius: 6px !important;
+    margin: 0 !important;
     flex-shrink: 0 !important;
 }
 
@@ -7191,96 +7398,64 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
     transition: none !important;
 }
 
-/* Keep comments header minimal and consistent with other labels */
+/* COMMENTS TITLE: BEHAVE LIKE FORM INPUT CONTAINERS */
 #cashAssetFormModal .comments-form-container h3,
 #cashAssetFormModal .modal-content h3 {
-    background: transparent !important;
-    color: var(--label-color, var(--text-color)) !important;
-    padding: 0 !important;
-    margin: 0 0 8px 0 !important;
+    background-color: var(--input-bg) !important;
+    background: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--input-border) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    padding: 12px 14px !important;
+    margin: 0 0 12px 0 !important;
     font-size: 1rem !important;
     font-weight: 600 !important;
+    transition: border-color 0.2s ease !important;
+    cursor: default !important;
 }
 
-/* COMMENTS TITLE FOCUS: Use :focus-visible so programmatic focus doesn't force a boxed outline */
-#cashAssetFormModal .comments-form-container h3:focus-visible,
-#cashAssetFormModal .modal-content h3:focus-visible {
-    border-color: var(--accent-color, #a49393) !important;
-    outline: 2px solid var(--accent-color, #a49393) !important;
-    outline-offset: 2px !important;
-}
-
-/* Compatibility: apply previous h3-based rules to the new title container */
-#cashAssetFormModal .comments-title-container .comments-title:focus-visible {
-    border-color: var(--accent-color, #a49393) !important;
-    outline: 2px solid var(--accent-color, #a49393) !important;
-    outline-offset: 2px !important;
-}
-
-/* Remove the enclosing container styling for comments in the cash asset modal
-   so the title and the comment inputs appear as plain, left-aligned form fields. */
-#cashAssetFormModal .comments-area,
-#cashAssetFormModal .comments-title-container,
-#cashAssetFormModal .comments-form-container {
+/* Override for Add New Cash Asset modal: make comments title plain (no border or fill) */
+#cashAssetFormModal .comments-form-container h3 {
     background: transparent !important;
+    background-color: transparent !important;
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
-    margin: 0 !important;
+    margin: 0 0 12px 0 !important;
+    color: var(--text-color) !important;
 }
 
-/* Make individual comment blocks blend with the form (remove card look) */
-#cashAssetFormModal .comment-section {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    margin: 0 0 10px 0 !important;
-}
-
-/* Title row inside each comment: left-aligned title input, delete x on the right */
-#cashAssetFormModal .comment-section-top {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 8px !important;
-    padding: 0 !important;
-    background: transparent !important;
-    border-bottom: none !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-}
-
-/* Ensure the title input and text area look like normal form controls in the modal */
+/* Boxed inputs for cash asset comments (title + textarea) to match Add Share modal styling */
 #cashAssetFormModal .comment-section .comment-title-input,
-#cashAssetFormModal .comment-section .comment-text-input {
-    background: transparent !important;
-    border: 1px solid var(--input-border) !important;
-    border-radius: 4px !important;
-    padding: 6px 8px !important;
-    box-shadow: none !important;
+#cashAssetFormModal .comment-section .comment-text-input,
+#cashAssetFormModal .comments-form-container .comment-title-input,
+#cashAssetFormModal .comments-form-container .comment-text-input {
     width: 100% !important;
+    padding: 10px !important;
+    border: 1px solid var(--input-border) !important;
+    border-radius: 8px !important;
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    font-size: 1.05em !important;
+    transition: border-color 0.2s ease, box-shadow 0.15s ease !important;
     box-sizing: border-box !important;
+    box-shadow: none !important;
 }
 
-/* Remove the small x/delete visual container spacing so the inputs align left */
-/* Delete button placed at the right end of the title row */
-#cashAssetFormModal .comment-section-top .comment-delete-btn {
-    flex: 0 0 34px !important;
-    width: 34px !important;
-    height: 34px !important;
-    margin-left: 8px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
+#cashAssetFormModal .comment-section .comment-title-input { height: 42px !important; }
+#cashAssetFormModal .comment-section .comment-text-input { min-height: 100px !important; margin-top: 8px !important; resize: vertical !important; }
 
-/* Title input should take remaining room but leave space for the delete button */
-#cashAssetFormModal .comment-section-top .comment-title-input {
-    flex: 1 1 auto !important;
-    max-width: calc(100% - 48px) !important; /* leave room for delete button */
-    margin: 0 !important;
-    padding: 6px 8px !important;
-    box-sizing: border-box !important;
+#cashAssetFormModal .comment-section-header { display:flex !important; gap:10px !important; align-items:center !important; margin-bottom:8px !important; }
+#cashAssetFormModal .comment-section-header .comment-delete-btn { flex:0 0 36px !important; width:36px !important; height:36px !important; }
+
+/* COMMENTS TITLE FOCUS: MATCH FORM INPUT FOCUS BEHAVIOR */
+#cashAssetFormModal .comments-form-container h3:focus,
+#cashAssetFormModal .modal-content h3:focus {
+    border-color: var(--accent-color, #a49393) !important;
+    outline: 2px solid var(--accent-color, #a49393) !important;
+    outline-offset: 2px !important;
 }
 
 /* FORCE COMMENT TITLE INPUTS TO USE PROPER THEME VARIABLES */
@@ -7296,22 +7471,19 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
     box-shadow: none !important;
 }
 
-/* FORCE COMMENT TITLE INPUT FOCUS BEHAVIOR: prefer :focus-visible to avoid programmatic focus outlines */
-.comment-title-input:focus-visible,
-.comment-text-input:focus-visible {
+/* FORCE COMMENT TITLE INPUT FOCUS BEHAVIOR */
+.comment-title-input:focus,
+.comment-text-input:focus {
     border-color: var(--accent-color, #a49393) !important;
     outline: 2px solid var(--accent-color, #a49393) !important;
     outline-offset: 2px !important;
 }
 
 /* FORCE ICON INSIDE ADD BUTTON */
-#cashAssetFormModal .comments-form-container h3 span#addCashAssetCommentBtn i,
-#cashAssetFormModal .comments-form-container h3 .add-section-icon i,
-#cashAssetFormModal .comments-form-container h3 span[id="addCashAssetCommentBtn"] i,
-#cashAssetFormModal .comments-form-container h3 span.add-section-icon i,
-/* New selectors for split title container */
-#cashAssetFormModal .comments-title-container #addCashAssetCommentBtn i,
-#cashAssetFormModal .comments-title-container .add-section-icon i {
+#cashAssetFormModal .comments-form-container .comments-action-row #addCashAssetCommentBtn i,
+#cashAssetFormModal .comments-form-container .comments-action-row .add-section-icon i,
+#cashAssetFormModal .comments-form-container .comments-action-row span[id="addCashAssetCommentBtn"] i,
+#cashAssetFormModal .comments-form-container .comments-action-row span.add-section-icon i {
     display: inline-block !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -7322,7 +7494,7 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
 .add-section-icon {
     background: none;
     border: none;
-    color: var(--accent-color); /* Themed with primary 'coffee' accent */
+    color: var(--icon-action-color);
     font-size: 1.5em;
     display: flex;
     justify-content: center;
@@ -7341,70 +7513,88 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
     transform: translateY(-1px);
 }
 
-/* Comment blocks: lighter, compact, inline with form fields */
+/* When the add icon should sit above the comment title input (left side) */
+.comments-form-container .add-above-title,
+#cashAssetFormModal .comments-form-container .add-above-title {
+    position: absolute !important;
+    left: 8px !important;
+    top: -36px !important; /* fallback; JS will set exact top */
+    width: 30px !important;
+    height: 30px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    border-radius: 50% !important;
+    color: var(--accent-color, #a49393) !important;
+    z-index: 10 !important;
+}
 
-/* Make comment editing blocks look like the boxed comment card used elsewhere */
 .comment-section {
-    background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    margin-bottom: 12px;
-    overflow: hidden; /* Keep title bar contained */
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    margin-bottom: 15px;
+    background-color: var(--card-bg);
+    position: relative;
+    overflow: hidden; /* Ensure title bar background doesn't overflow */
 }
 
-.comment-section-top {
+/* Position the action row (add button) at the bottom-left of the comments container */
+.comments-form-container {
+    position: relative; /* positioning context for comments-action-row */
+    /* Reserve space at the top so the add icon can sit above the first comment title */
+    padding-top: 44px !important;
+}
+.comments-form-container .comments-action-row {
+    position: absolute;
+    left: 25px !important; /* align with modal content left padding */
+    top: 8px; /* small gap above the title container */
+    right: auto !important;
+    bottom: auto !important;
     display: flex;
-    gap: 8px;
     align-items: center;
-    margin: 0; /* Title bar sits flush with card */
-    padding: 10px 10px; /* reduce right padding and align left with modal gutters */
-    background-color: var(--comment-title-bg);
-    border-bottom: 1px solid var(--border-color);
+    gap: 8px;
+    z-index: 15 !important; /* ensure it sits above comment blocks */
+}
+.comments-form-container .comments-action-row #addCashAssetCommentBtn {
+    box-shadow: none !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    padding: 6px !important;
+    border-radius: 6px !important;
 }
 
-.comment-section-top .comment-title-input {
-    flex: 1 1 auto;
-    margin: 0;
-    font-weight: 700;
-    background: transparent;
-    border: none;
-    padding: 6px 8px;
-    border-radius: 6px;
-    box-sizing: border-box;
-    color: var(--text-color);
+.comment-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.comment-section-header .comment-title-input {
+    flex-grow: 1;
+    margin-bottom: 0;
+    margin-right: 10px;
+    font-weight: 600;
+    width: auto;
+    min-width: 0;
 }
 
 .comment-section .comment-text-input {
-    min-height: 80px;
-    resize: vertical;
-    padding: 12px 14px;
-    box-sizing: border-box;
-    background-color: transparent; /* sits inside card */
-    border: none;
-    color: var(--text-color);
-    overflow-y: auto;
-    white-space: pre-wrap;
-}
-
-.comment-delete-btn {
-    background: transparent;
-    border: none;
-    color: var(--accent-color);
-    font-size: 1.1em;
-    cursor: pointer;
-    width: 34px;
-    height: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    min-height: 100px; /* Make it taller by default */
+    resize: vertical; /* Allow vertical resizing */
+    /* Ensure resize handle is visible and scrollbar is usable */
+    padding-right: 25px; /* Add extra padding to make space for resize handle/scrollbar */
+    box-sizing: border-box; /* Include padding in width calculation */
+    overflow-y: auto; /* Ensure vertical scrollbar appears when content overflows */
+    white-space: pre-wrap; /* Preserve whitespace and line breaks */
 }
 
 
 .comment-section .comment-delete-btn {
     background: none;
     border: none;
-    color: var(--accent-color);
+    color: var(--icon-danger-color);
     font-size: 1.5em;
     cursor: pointer;
     transition: color 0.2s ease;
@@ -7420,99 +7610,9 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
 }
 
 .comment-section .comment-delete-btn:hover {
-    color: var(--icon-action-hover-color);
+    color: var(--icon-danger-hover-color);
     transform: scale(1.1);
 }
-
-/* Remove extra separators between consecutive comment cards to match the desired continuous look */
-.comments-form-container .comment-section + .comment-section {
-    margin-top: 8px;
-}
-
-/* Ensure modal header action icons on mobile retain the larger header icon sizing so trash/save match other modals */
-@media (max-width: 640px) {
-    .modal-header-with-icon .modal-action-icon,
-    .modal-header-with-icon .modal-action-icon i,
-    #cashAssetFormModal .modal-header-with-icon .modal-action-icon {
-        font-size: 1.9rem !important;
-        width: 54px !important;
-        height: 54px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 6px !important;
-    }
-}
-
-/* CASH ASSET MODAL: ensure header and comments left edges align exactly */
-#cashAssetFormModal .modal-header-with-icon,
-#cashAssetFormModal .comments-title-container,
-#cashAssetFormModal .comments-area {
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-    box-sizing: border-box !important;
-}
-
-/* New: separate title row (left-aligned) and the comments area below it */
-/* Title row: left title, add button at far right (align with modal action area) */
-/* Title container aligns with modal form fields (same left edge as inputs) */
-/* Cash Asset modals: make title row and comments area left-aligned and add a visible gap between them */
-#cashAssetFormModal .comments-title-container,
-#cashAssetDetailModal .comments-title-container {
-    display: flex !important;
-    align-items: flex-start !important; /* ensure title sits at the top of the row */
-    justify-content: space-between !important; /* title left, add button right */
-    gap: 12px !important; /* space between title and add button */
-    margin: 0 0 8px 0 !important; /* small gap below title row */
-    width: 100%;
-    padding-left: 25px !important; /* align with modal gutters */
-    padding-right: 25px !important;
-    box-sizing: border-box !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-/* Match comment title size with form labels (Asset Name / Balance) */
-#cashAssetFormModal .comments-title-container .comments-title {
-    margin: 0 !important;
-    font-size: 0.95em !important; /* matches .modal-content label */
-    font-weight: 600 !important;
-    color: var(--label-color, var(--text-color)) !important;
-    text-align: left !important;
-    flex: 1 1 auto !important;
-}
-
-/* Comments area sits below the title and is left-aligned with the modal header */
-/* Comments area: sit below title row, left-aligned with the title text and modal fields */
-#cashAssetFormModal .comments-area,
-#cashAssetDetailModal .comments-area {
-    margin: 0 0 16px 0 !important; /* breathing room below area */
-    width: 100% !important;
-    padding-left: 25px !important; /* align left edge with title */
-    padding-right: 25px !important;
-    box-sizing: border-box !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-/* Place the add button at the far right of the modal header row */
-/* Ensure add button sits at the far right of the modal content area */
-#cashAssetFormModal .comments-title-container #addCashAssetCommentBtn,
-#cashAssetDetailModal .comments-title-container #addCashAssetCommentBtn {
-    margin-left: 8px !important;
-    margin-right: 10px !important;
-    order: 3 !important;
-    align-self: flex-start !important; /* align with the top of the title */
-    flex: 0 0 auto !important;
-}
-
-#cashAssetFormModal .comment-section-top {
-    padding-left: 10px !important;
-}
-
-#cashAssetFormModal .comment-section { margin-left: 0 !important; margin-right: 0 !important; }
 
 /* REMOVED: Action Buttons in Modals (Save, Delete, etc.) - These are now in the header */
 .form-action-buttons,
@@ -8959,10 +9059,6 @@ body.dark-theme .alert-item {
     color: var(--text-color);
 }
 
-/* Modal visibility toggles: prefer class-based control over inline styles to avoid layout conflicts */
-.modal { display: none; }
-.modal.modal-open { display: flex !important; }
-
 #cashAssetDetailModal .modal-body-scrollable p strong {
     color: var(--label-color);
 }
@@ -9319,59 +9415,6 @@ body.dark-theme .alert-item {
     display: flex;
     align-items: center;
 }
-/* Strong overrides: ensure no visible divider, shadow or negative sticky margins
-   which can be introduced by single-scroll-modal or other specific modal rules. */
-.single-scroll-modal .modal-header-with-icon,
-#cashAssetFormModal .modal-header-with-icon,
-#shareFormSection .modal-content .modal-header-with-icon,
-#sortPickerModal .modal-content .modal-header-with-icon {
-    margin-left: 0 !important;   /* cancel earlier negative margins used for sticky headers */
-    margin-right: 0 !important;
-    padding: 0 10px !important;  /* keep small horizontal padding consistent with modal body */
-    box-shadow: none !important; /* remove subtle shadow that appears like a divider */
-    background: transparent !important; /* avoid any filled background that creates a seam */
-    border-bottom: none !important; /* force removal of divider line */
-}
-
-/* Ensure the title and comments left edges use the same offset regardless of modal variant */
-.modal-title-container, .comments-form-container {
-    padding-left: 10px !important; /* consistent left offset from modal inner edge */
-}
-
-/* Classes to replace prior inline forcing of boxed styles */
-.plain-modal-title {
-    display: block !important;
-    font-size: 2.2em !important;
-    font-weight: 800 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    color: var(--text-color, #333) !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    line-height: 1.1 !important;
-    text-align: left !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-.comments-title-plain {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    margin: 0 0 6px 0 !important;
-    font-size: 1rem !important;
-    font-weight: 600 !important;
-    color: var(--label-color, var(--text-color)) !important;
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    width: 100% !important;
-    line-height: 1.2 !important;
-}
-
-.visible-add-btn { display: inline-flex !important; visibility: visible !important; opacity: 1 !important; background: transparent !important; border: none !important; }
-.visible-add-icon { display: inline-block !important; visibility: visible !important; opacity: 1 !important; font-size: 1.2em !important; }
 
 /* Override dropdown-large for this specific context to be dynamically sized */
 .sort-controls-container .dropdown-large {
