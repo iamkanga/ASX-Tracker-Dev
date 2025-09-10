@@ -6277,7 +6277,12 @@ table td.live-price-cell.negative-change {
 }
 
 /* Blank spacer at top of Add/Edit Cash Asset modal */
-/* .cash-modal-top-blank removed: spacer moved/adjusted via mid blank */
+.cash-modal-top-blank {
+    width: 100%;
+    height: 28px; /* small visual spacer */
+    background: transparent; /* keep transparent but reserve space */
+    margin-bottom: 6px;
+}
 
 /* Mid spacer between balance input and comments area */
 .cash-modal-mid-blank {
@@ -6290,19 +6295,22 @@ table td.live-price-cell.negative-change {
 /* Place the add icon inside the mid-blank spacer on the left, vertically centered */
 .cash-modal-mid-blank { position: relative; }
 .cash-modal-mid-blank #addCashAssetCommentBtn {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 6px;
-    color: var(--accent-color, #a49393);
+    position: absolute !important;
+    /* Align to modal content left inset (modal padding is 25px); moved further left by 4px */
+    left: 1px !important;
+    /* Move slightly closer to the top of the comments title container (moved up 2px) */
+    top: 2px !important; /* nudged up 2px from previous */
+    transform: translateY(0) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 6px !important;
+    color: var(--accent-color, #a49393) !important;
+    z-index: 30 !important;
 }
-.cash-modal-mid-blank #addCashAssetCommentBtn i { font-size: 1.05em; }
+.cash-modal-mid-blank #addCashAssetCommentBtn i { font-size: 0.84em !important; /* reduced 20% from 1.05em */ }
 
 /* ASX Code  prominence and alignment */
 #modalShareName, #modalCashAssetName, #formTitle, #cashFormTitle { /* Apply to all modal titles */
@@ -7544,6 +7552,17 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
     position: relative; /* positioning context for comments-action-row */
     /* Reserve space at the top so the add icon can sit above the first comment title */
     padding-top: 44px !important;
+}
+.cash-modal-mid-blank {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+}
+.cash-modal-mid-container {
+    width: 100% !important;
+    height: 18px !important; /* small spacer height between Balance and add icon */
+    margin-bottom: 6px !important; /* slight gap between spacer and icon */
 }
 .comments-form-container .comments-action-row {
     position: absolute;
