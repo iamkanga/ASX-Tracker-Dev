@@ -9300,6 +9300,19 @@ body.dark-theme .alert-item {
         font-size: 1.1em;
         padding: 4px;
     }
+    /* Enlarge icons (trash/save/close) in Cash & Assets modals on mobile to match other modals */
+    #cashAssetFormModal .modal-action-icon,
+    #cashAssetFormModal .modal-header-with-icon .close-button,
+    #cashAssetDetailModal .modal-action-icon,
+    #cashAssetDetailModal .modal-header-with-icon .close-button {
+        font-size: 2.3rem !important;
+        width: 64px !important;
+        height: 64px !important;
+        padding: 6px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
 
     .calculator-display {
         padding: 10px;
