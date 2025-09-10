@@ -240,19 +240,48 @@
         modalElement.style.setProperty('display', 'none', 'important');
     }
 
+    // Core padding adjuster (non-scrolling) retained for backwards compatibility.
     function adjustMainContentPadding() {
         const appHeader = $id('appHeader') || document.querySelector('#appHeader') || document.querySelector('.app-header');
         const mainContainer = document.querySelector('main.container') || $id('main') || document.querySelector('main') || document.querySelector('.main-container');
-        if (appHeader && mainContainer) {
-            // Use offsetHeight which reflects rendered height including padding and border
-            const headerHeight = appHeader.offsetHeight || 0;
-            // Only update if different to avoid layout thrash
-            const current = parseInt(window.getComputedStyle(mainContainer).paddingTop, 10) || 0;
-            if (current !== headerHeight) {
-                mainContainer.style.paddingTop = headerHeight + 'px';
-            }
+        if (!appHeader || !mainContainer) return;
+        let headerHeight = 0;
+        try { headerHeight = Math.ceil(appHeader.getBoundingClientRect().height); } catch(_) { headerHeight = appHeader.offsetHeight || 0; }
+        if (!Number.isFinite(headerHeight)) headerHeight = 0;
+        const current = parseInt(window.getComputedStyle(mainContainer).paddingTop, 10) || 0;
+        if (current !== headerHeight) {
+            mainContainer.style.paddingTop = headerHeight + 'px';
         }
+        return headerHeight;
     }
+
+    // New universal reposition helper: always recalculates header height THEN scrolls main content to sit directly beneath it.
+    function repositionMainContentUnderHeader(opts = {}) {
+        const changedHeight = adjustMainContentPadding();
+        // Always scroll to top when invoked for explicit UI events (spec requirement)
+        // To avoid interrupting user scroll during passive resize, caller can pass { suppressScroll:true }.
+        if (!opts.suppressScroll) {
+            try { if (window.scrollMainToTop) window.scrollMainToTop(true); else window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch(_) {}
+        }
+        return changedHeight;
+    }
+
+    try { window.repositionMainContentUnderHeader = repositionMainContentUnderHeader; } catch(_) {}
+
+    // Observe header size changes (e.g., ASX code buttons expand/collapse, banner shows) and adjust padding automatically.
+    (function installHeaderResizeObserver(){
+        try {
+            if (window.__headerResizeObserverInstalled) return; // guard
+            const appHeader = $id('appHeader') || document.querySelector('#appHeader') || document.querySelector('.app-header');
+            if (!appHeader || typeof ResizeObserver === 'undefined') return;
+            const ro = new ResizeObserver(()=>{
+                // Passive adjust only (no scroll) so user isn't yanked mid-scroll; scroll happens on explicit events.
+                try { repositionMainContentUnderHeader({ suppressScroll: true }); } catch(_) {}
+            });
+            ro.observe(appHeader);
+            window.__headerResizeObserverInstalled = true;
+        } catch(_) {}
+    })();
 
     // Ensure padding is set early and on resize to avoid header overlap
     try {

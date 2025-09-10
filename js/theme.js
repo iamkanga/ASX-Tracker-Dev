@@ -96,8 +96,11 @@ function applyTheme(themeName) {
         logDebug('Theme: Applied custom theme: ' + themeName);
     }
 
-    // Save preference
-    localStorage.setItem('theme', themeName);
+    // Save preference under both legacy and current keys for robustness
+    try {
+        localStorage.setItem('theme', themeName);
+        localStorage.setItem('selectedTheme', themeName);
+    } catch(_) {}
 
     // Save to Firestore if user is logged in
     if (currentUserId && db && firestore) {

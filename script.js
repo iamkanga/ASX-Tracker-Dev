@@ -298,6 +298,8 @@ function onLivePricesUpdated() {
                 renderPortfolioList();
             }
         }
+    // After dynamic content changes (which can slightly shift header height due to wrapping), reposition & scroll to top.
+    try { if (window.repositionMainContentUnderHeader) window.repositionMainContentUnderHeader(); else if (window.adjustMainContentPadding) { window.adjustMainContentPadding(); if (window.scrollMainToTop) window.scrollMainToTop(true); } } catch(_) {}
     } catch (e) {
         console.error('Live Price: onLivePricesUpdated error:', e);
     }
@@ -366,7 +368,15 @@ document.addEventListener('DOMContentLoaded', function () {
             try { if (typeof pushAppState === 'function') pushAppState({ watchlist: watchlistSelect.value }, '', '#watchlist'); } catch(_) {}
             updateMainButtonsState(true);
             // Ensure main content scrolls to the top after a view change for consistent UX
-            try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
+            try {
+                if (window.repositionMainContentUnderHeader) {
+                    window.repositionMainContentUnderHeader();
+                } else if (window.scrollMainToTop) {
+                    window.scrollMainToTop();
+                } else {
+                    scrollMainToTop();
+                }
+            } catch(_) {}
         });
     }
 
@@ -8297,17 +8307,22 @@ async function loadUserWatchlistsAndSettings() {
             setTimeout(() => updateSortPickerButtonText(), 100); 
         } catch(e) {}
 
-        // Apply saved theme or default
+        // Apply saved theme or default. Backfill user profile if missing.
         if (savedTheme) {
             applyTheme(savedTheme);
         } else {
-            const localStorageSelectedTheme = localStorage.getItem('selectedTheme');
-            const localStorageTheme = localStorage.getItem('theme');
-
-            if (localStorageSelectedTheme) {
-                applyTheme(localStorageSelectedTheme);
-            } else if (localStorageTheme) {
-                applyTheme(localStorageTheme);
+            const localStorageSelectedTheme = (()=>{ try { return localStorage.getItem('selectedTheme'); } catch(_) { return null; } })();
+            const localStorageTheme = (()=>{ try { return localStorage.getItem('theme'); } catch(_) { return null; } })();
+            const candidateLocal = localStorageSelectedTheme || localStorageTheme;
+            if (candidateLocal) {
+                // Apply local theme and backfill Firestore async (do not block UI)
+                applyTheme(candidateLocal);
+                try {
+                    if (!savedTheme && currentUserId && firestore && db) {
+                        const profRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+                        firestore.setDoc(profRef, { lastTheme: candidateLocal }, { merge: true }).catch(()=>{});
+                    }
+                } catch(_) {}
             } else {
                 applyTheme('system-default');
             }

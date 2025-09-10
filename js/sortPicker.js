@@ -332,6 +332,9 @@ export function openSortPicker() {
             try { if (typeof window.renderPortfolioList === 'function') window.renderPortfolioList(); } catch(_) {}
             try { if (typeof window.renderCashCategories === 'function') window.renderCashCategories(); } catch(_) {}
 
+            // Ensure main content sits directly below any changed header layout after sort (universal fix requirement)
+            try { if (window.repositionMainContentUnderHeader) window.repositionMainContentUnderHeader(); else if (window.adjustMainContentPadding) window.adjustMainContentPadding(); } catch(_) {}
+
             // Hide modal and return focus to button
             try {
                 const modalEl = document.getElementById('sortPickerModal');

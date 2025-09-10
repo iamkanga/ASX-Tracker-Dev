@@ -130,7 +130,14 @@ export function applyAsxButtonsState() {
 	const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
 	if (chevronIcon) chevronIcon.classList.toggle('expanded', shouldShow);
 
-	try { if (window.adjustMainContentPadding) requestAnimationFrame(window.adjustMainContentPadding); } catch(_) {}
+    // Universal layout fix: after ASX buttons visibility changes, immediately recalc and reposition main content.
+    try {
+        if (window.repositionMainContentUnderHeader) {
+            requestAnimationFrame(()=> window.repositionMainContentUnderHeader());
+        } else if (window.adjustMainContentPadding) {
+            requestAnimationFrame(window.adjustMainContentPadding);
+        }
+    } catch(_) {}
 }
 
 export function toggleCodeButtonsArrow() {
