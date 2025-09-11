@@ -7599,6 +7599,44 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
 #cashAssetFormModal .cash-modal-mid-container {
     transform: translateX(30px) !important;
 }
+
+/* TEMP: Tidy spacing on default mobile cards only (do not affect compact view) */
+@media (max-width: 640px) {
+    /* Scope to default mobile cards container (not compact) */
+    #mobileShareCards:not(.compact-view) .mobile-card {
+        /* make card slightly more compact vertically */
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    /* Reduce horizontal gap between alert target label and the value */
+    #mobileShareCards:not(.compact-view) .mobile-card .alert-target-row .alert-target-inline {
+        gap: 0.15rem; /* tighten inline gap */
+    }
+
+    /* Bring the alert-target row and the bottom-info-row closer together */
+    #mobileShareCards:not(.compact-view) .mobile-card .alert-target-row {
+        margin-bottom: 0.15rem; /* reduce space below the row */
+        padding-bottom: 0; 
+    }
+
+    /* Reduce vertical space between data rows and the comments/star row */
+    #mobileShareCards:not(.compact-view) .mobile-card .bottom-info-row {
+        margin-top: 0.15rem; /* closer to alert target row */
+        padding-top: 0; 
+        display:flex;
+        align-items:center;
+        gap:0.35rem; /* ensure comments and star sit tighter */
+    }
+
+    /* Make comment title and star rating sit on the same line tighter */
+    #mobileShareCards:not(.compact-view) .mobile-card .bottom-info-row .comments-title {
+        margin:0; padding:0; flex:1 1 auto; font-size:0.92rem;
+    }
+    #mobileShareCards:not(.compact-view) .mobile-card .bottom-info-row .star-rating {
+        margin:0; padding:0; flex:0 0 auto;
+    }
+}
 .comments-form-container .comments-action-row {
     position: absolute;
     left: 25px !important; /* align with modal content left padding */

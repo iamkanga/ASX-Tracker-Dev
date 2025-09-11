@@ -858,5 +858,18 @@
         }
     </script>
     <!-- Copilot update: 2025-07-29 - change for sync test -->
+    <!-- TEMP: runtime style injection to force 50% larger key mobile-card elements (remove after verification) -->
+    <script>
+        (function(){
+            try {
+                var css = '\n#mobileShareCards:not(.compact-view) .mobile-card .card-code,\n#mobileShareCards:not(.compact-view) .mobile-card .card-chevron,\n#mobileShareCards:not(.compact-view) .mobile-card .change-chevron {\n    font-size: 1.5em !important;\n}\n\n#mobileShareCards:not(.compact-view) .mobile-card .card-live-price,\n#mobileShareCards:not(.compact-view) .mobile-card .live-price-large,\n#mobileShareCards:not(.compact-view) .mobile-card .card-price-change,\n#mobileShareCards:not(.compact-view) .mobile-card .price-change-large {\n    font-size: 1.2em !important;\n}\n';
+                var style = document.createElement('style');
+                style.setAttribute('data-temp','mobile-size-inject');
+                style.appendChild(document.createTextNode(css));
+                (document.head || document.documentElement).appendChild(style);
+                console.log('Temp mobile-size-inject applied');
+            } catch(e) { console.warn('Temp style injection failed', e); }
+        })();
+    </script>
 </body>
 </html>
