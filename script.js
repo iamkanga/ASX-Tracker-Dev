@@ -668,10 +668,18 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (filtered.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'summary-empty';
-                empty.textContent = type === 'gain' ? 'No gainers found' : type === 'loss' ? 'No losses found' : 'No data available';
-                listNode.appendChild(empty);
+                // Defensive: do not open an empty modal. Show a brief toast instead.
+                try {
+                    const msg = type === 'gain' ? 'No gainers found' : type === 'loss' ? 'No losses found' : 'No data available';
+                    if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+                        window.ToastManager.info(msg, { duration: 1400 });
+                    } else if (typeof window.showCustomAlert === 'function') {
+                        window.showCustomAlert(msg, 1400);
+                    } else {
+                        console.log(msg);
+                    }
+                } catch (e) { console.warn('Summary: failed to show empty toast', e); }
+                return;
             }
 
             filtered.forEach((it) => {

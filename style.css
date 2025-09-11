@@ -1816,9 +1816,8 @@ function makeFilesAvailableToSourceControlCSS() {
     color: var(--negative-color, #c42131);
 }
 /* Fix: Ensure portfolio summary modal centers like other modals.
-   This overrides runtime inline/flex differences and neutralises absolute offsets
-   only for the portfolio summary modal so other modals are unaffected. */
-#portfolio-summary-modal.modal {
+   Only apply when the modal is shown so it doesn't appear on page load. */
+#portfolio-summary-modal.modal.show {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
