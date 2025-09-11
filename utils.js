@@ -54,6 +54,17 @@ export function formatAdaptivePercent(pct) {
     return n.toFixed(decimals);
 }
 
+// Format daily change as: "<dollar change> (<percentage>%)"
+// Dollar change: no currency symbol, no leading + for positive values. Negative signs preserved.
+export function formatDailyChange(dol, pct) {
+    if (dol === null || dol === undefined || isNaN(dol)) return 'N/A';
+    const d = Number(dol);
+    const p = (pct === null || pct === undefined || isNaN(pct)) ? null : Number(pct);
+    const dollarStr = formatAdaptivePrice(d); // returns sign if negative, plain digits otherwise
+    if (p === null) return dollarStr;
+    return `${dollarStr} (${formatAdaptivePercent(p)}%)`;
+}
+
 export function formatDate(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -99,4 +110,11 @@ export function escapeCsvValue(value) {
     }
     return stringValue;
 }
-  
+
+// Expose formatDailyChange globally as a safe fallback for non-module consumers
+try {
+    if (typeof window !== 'undefined' && typeof formatDailyChange === 'function') {
+        window.formatDailyChange = formatDailyChange;
+    }
+} catch (_) {}
+

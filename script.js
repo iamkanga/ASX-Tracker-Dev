@@ -90,14 +90,24 @@ let backPressTimeout = null;
 
 // Prevent back button from closing the app when at main screen (PWA UX patch)
 function preventPwaExitOnMainScreen() {
-    // Push a dummy state if at the main screen
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-        history.replaceState({pwaRoot:true}, '', location.href);
-        history.pushState({pwaDummy:true}, '', location.href);
+    // Push a dummy state if at the main screen.
+    // Historically we only did this for installed PWAs (display-mode: standalone),
+    // but mobile browsers' hardware Back button should also show the "press back again to exit" toast.
+    try {
+        const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
+        const isMobileTouch = (typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || (window.innerWidth && window.innerWidth <= 800);
+        if (isStandalone || isMobileTouch) {
+            history.replaceState({pwaRoot:true}, '', location.href);
+            try { history.pushState({pwaDummy:true}, '', location.href); } catch(_) {}
+        }
+    } catch(_) {
+        // best-effort - don't block app if history APIs throw
     }
 }
 
 window.addEventListener('DOMContentLoaded', preventPwaExitOnMainScreen);
+// Also invoke immediately as a best-effort so timing differences (module/defer) don't miss the push
+try { preventPwaExitOnMainScreen(); } catch(_) {}
 
 // Unified popstate handler: first try in-app reversal, then handle PWA exit toast at root.
 window.addEventListener('popstate', function(event) {
@@ -655,6 +665,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Summary Bar ---
         const summaryBar = `<div class="portfolio-summary-bar">
+            <div class="summary-card ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">
+                <div class="summary-label">Day Change</div>
+                <div class="summary-value ${todayNet >= 0 ? 'positive' : 'negative'}">${fmtMoney(todayNet)} <span class="summary-pct">${fmtPct(todayNetPct)}</span></div>
+            </div>
             <div class="summary-card ${daysGain > 0 ? 'positive' : daysGain < 0 ? 'negative' : 'neutral'}">
                 <div class="summary-label">Day's Gain</div>
                 <div class="summary-value positive">${fmtMoney(daysGain)} <span class="summary-pct positive">${fmtPct(totalValue > 0 ? (daysGain / totalValue) * 100 : 0)}</span></div>
@@ -662,10 +676,6 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="summary-card ${daysLoss > 0 ? 'negative' : daysLoss < 0 ? 'positive' : 'neutral'}">
                 <div class="summary-label">Day's Loss</div>
                 <div class="summary-value negative">${fmtMoney(-daysLoss)} <span class="summary-pct negative">${fmtPct(totalValue > 0 ? (daysLoss / totalValue) * 100 : 0)}</span></div>
-            </div>
-            <div class="summary-card ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">
-                <div class="summary-label">Day Change</div>
-                <div class="summary-value ${todayNet >= 0 ? 'positive' : 'negative'}">${fmtMoney(todayNet)} <span class="summary-pct">${fmtPct(todayNetPct)}</span></div>
             </div>
             <div class="summary-card ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : 'neutral'}">
                 <div class="summary-label">Total Return</div>
@@ -2289,7 +2299,7 @@ async function updateAddFormLiveSnapshot(code) {
             </div>
             <div class="live-price-main-row">
                 <span class="live-price-large ${priceClass}">${!isNaN(live) ? formatMoney(live) : 'N/A'}</span>
-                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(pct)}%` : 'N/A'}</span>
+                <span class="price-change-large ${priceClass}">${(change !== null && pct !== null) ? formatDailyChange(change, pct) : 'N/A'}</span>
             </div>
             <div class="pe-ratio-row">
                 <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? formatAdaptivePrice(pe) : 'N/A'}</span>
@@ -2905,6 +2915,80 @@ function pushAppStateEntry(type, ref) {
 function popAppStateEntry() { const e = appBackStack.pop(); logBackDebug('POP', e && e.type, e && e.ref && (e.ref.id||e.ref), 'stack=', appBackStack.map(x=>x.type+':'+(x.ref && (x.ref.id||x.ref))).join(' | ')); return e; }
 // Expose a safe, minimal hook so other modules (e.g., ui.js) can push into the back stack
 try { window.__appBackStackPush = function(type, ref){ pushAppStateEntry(type, ref); }; } catch(_) {}
+
+// Back/Modal Diagnostics & Auto-History for modals (helps in mobile/devtools where some open paths skip push)
+try {
+    if (!window.__backHistoryObserverInstalled) {
+        window.__backDiag = window.__backDiag || false; // enable manually to get verbose logs
+        window.__backAutoPushModal = true; // auto-push history entries for visible modals when they open
+        window.__backHistoryObserverInstalled = true;
+
+        const modalVisibilityCheck = (m) => {
+            try {
+                if (!m) return false;
+                if (m.classList && m.classList.contains('show')) return true;
+                const ds = (m.style && m.style.display) || '';
+                if (ds === 'flex' || ds === 'block') return true;
+                if (window.getComputedStyle) {
+                    const cs = window.getComputedStyle(m);
+                    if (cs && (cs.display === 'flex' || cs.display === 'block')) return true;
+                }
+            } catch(_){}
+            return false;
+        };
+
+        const modalObserver = new MutationObserver((mutationsList) => {
+            for (const mut of mutationsList) {
+                try {
+                    if (mut.type === 'attributes' && mut.target && mut.target.classList && mut.target.classList.contains('modal')) {
+                        const modal = mut.target;
+                        const nowVisible = modalVisibilityCheck(modal);
+                        if (nowVisible) {
+                            // Only push if not already tracked
+                            try {
+                                if (window.__backAutoPushModal && !stackHasModal(modal)) {
+                                    pushAppStateEntry('modal', modal);
+                                    try { if (typeof pushAppState === 'function') pushAppState({ modalId: modal.id || true }, '', '#modal'); } catch(_) {}
+                                    if (window.__backDiag) logBackDebug('Auto-pushed modal history for', modal.id || modal);
+                                }
+                            } catch(e) { if (window.__backDiag) console.warn('Auto-push modal failed', e); }
+                        }
+                    }
+                    if (mut.type === 'childList' && mut.addedNodes && mut.addedNodes.length) {
+                        for (const n of Array.from(mut.addedNodes)) {
+                            try {
+                                if (n && n.classList && n.classList.contains && n.classList.contains('modal')) {
+                                    const modal = n;
+                                    if (modalVisibilityCheck(modal) && window.__backAutoPushModal && !stackHasModal(modal)) {
+                                        pushAppStateEntry('modal', modal);
+                                        try { if (typeof pushAppState === 'function') pushAppState({ modalId: modal.id || true }, '', '#modal'); } catch(_) {}
+                                        if (window.__backDiag) logBackDebug('Auto-pushed modal history for (added node)', modal.id || modal);
+                                    }
+                                }
+                            } catch(_){}
+                        }
+                    }
+                } catch(_){}
+            }
+        });
+
+        try {
+            modalObserver.observe(document.body, { attributes: true, subtree: true, childList: true });
+        } catch(e) { if (window.__backDiag) console.warn('Modal history observer failed to start', e); }
+
+        // Optional runtime popstate logging when enabled
+        const originalPop = window.onpopstate;
+        window.__backPopLogger = function(ev){
+            try {
+                if (window.__backDiag) {
+                    console.log('[BackDiag] popstate', ev && ev.state, 'appBackStack=', appBackStack.map(x=>x.type+':' + (x.ref && (x.ref.id||x.ref))).join('|'));
+                }
+            } catch(_){}
+            try { if (typeof originalPop === 'function') originalPop(ev); } catch(_){}
+        };
+        try { window.addEventListener('popstate', window.__backPopLogger); } catch(_){}
+    }
+} catch(_) {}
 
 // Helpers: modal stack maintenance
 function stackHasModal(modalEl){
@@ -3795,13 +3879,13 @@ function getShareDisplayData(share) {
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 let change = currentLivePrice - previousClosePrice;
                 let percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                displayPriceChange = formatDailyChange(change, percentageChange);
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 let change = lastFetchedLive - lastFetchedPrevClose;
                 let percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                displayPriceChange = formatDailyChange(change, percentageChange);
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
             }
@@ -3830,7 +3914,7 @@ function getShareDisplayData(share) {
 
                 // Use full change values (removed legacy 50% reduction)
 
-                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                displayPriceChange = formatDailyChange(change, percentageChange);
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
                 priceChangeCalculated = true;
@@ -3849,7 +3933,7 @@ function getShareDisplayData(share) {
 
                     // Use full change values (removed legacy 50% reduction)
 
-                    displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                    displayPriceChange = formatDailyChange(change, percentageChange);
                     priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                     cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
                     priceChangeCalculated = true;
@@ -3916,7 +4000,7 @@ function getShareDisplayData(share) {
 
                 // Use full change values (removed legacy 50% reduction)
 
-                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                displayPriceChange = formatDailyChange(change, percentageChange);
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                 cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
                 priceChangeCalculated = true;
@@ -3935,7 +4019,7 @@ function getShareDisplayData(share) {
 
                     // Use full change values (removed legacy 50% reduction)
 
-                    displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                    displayPriceChange = formatDailyChange(change, percentageChange);
                     priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                     cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
                     priceChangeCalculated = true;
@@ -4590,12 +4674,12 @@ function updateOrCreateShareTableRow(share) {
             if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                 const change = currentLivePrice - previousClosePrice;
                 const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                displayPriceChange = formatDailyChange(change, percentageChange);
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                 const change = lastFetchedLive - lastFetchedPrevClose;
                 const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                displayPriceChange = formatDailyChange(change, percentageChange);
                 priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
             }
         } else {
@@ -4711,13 +4795,13 @@ function updateOrCreateShareMobileCard(share) {
                 if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
                     const change = currentLivePrice - previousClosePrice;
                     const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                    displayPriceChange = formatDailyChange(change, percentageChange);
                     priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                     cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
                 } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                     const change = lastFetchedLive - lastFetchedPrevClose;
                     const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                    displayPriceChange = formatDailyChange(change, percentageChange);
                     priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                     cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
                 }
@@ -4726,7 +4810,7 @@ function updateOrCreateShareMobileCard(share) {
                 if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
                     const change = lastFetchedLive - lastFetchedPrevClose;
                     const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                    displayPriceChange = `${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                    displayPriceChange = formatDailyChange(change, percentageChange);
                     priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
                     cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
                 } else {
@@ -5987,13 +6071,8 @@ function showShareDetails() {
             prevClosePrice !== undefined && prevClosePrice !== null && !isNaN(prevClosePrice)) {
             const change = livePrice - prevClosePrice;
             const percentageChange = (prevClosePrice !== 0 && !isNaN(prevClosePrice)) ? (change / prevClosePrice) * 100 : 0;
-            if (change > 0) {
-                currentModalPriceChangeLarge.textContent = '(+$' + formatAdaptivePrice(change) + ' / +' + formatAdaptivePercent(percentageChange) + '%)';
-            } else if (change < 0) {
-                currentModalPriceChangeLarge.textContent = '(-$' + formatAdaptivePrice(Math.abs(change)) + ' / ' + formatAdaptivePercent(percentageChange) + '%)';
-            } else {
-                currentModalPriceChangeLarge.textContent = '($0.00 / 0.00%)';
-            }
+            // Use centralized formatter to produce: "<dollar> (<percent>%)" (no $ on dollar delta, no leading +)
+            currentModalPriceChangeLarge.textContent = formatDailyChange(change, percentageChange);
             currentModalPriceChangeLarge.style.display = 'inline';
         } else {
             currentModalPriceChangeLarge.textContent = '';
@@ -11485,7 +11564,7 @@ function exportWatchlistToCSV() {
             prevClosePrice !== undefined && prevClosePrice !== null && !isNaN(prevClosePrice)) {
             const change = livePrice - prevClosePrice;
             const percentageChange = (prevClosePrice !== 0 && !isNaN(prevClosePrice)) ? (change / prevClosePrice) * 100 : 0;
-            priceChange = formatAdaptivePrice(change) + ' (' + formatAdaptivePercent(percentageChange) + '%)'; // Include percentage in CSV
+            priceChange = formatDailyChange(change, percentageChange); // Use centralized format for CSV too
         }
 
         const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
