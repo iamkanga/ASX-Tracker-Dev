@@ -99,57 +99,55 @@ function preventPwaExitOnMainScreen() {
 
 window.addEventListener('DOMContentLoaded', preventPwaExitOnMainScreen);
 
+// Unified popstate handler: first try in-app reversal, then handle PWA exit toast at root.
 window.addEventListener('popstate', function(event) {
-    // If there is no modal, sidebar, or other in-app state to go back to, stay in app
-    const modalOpen = document.querySelector('.modal.show');
-    const sidebarOpen = document.querySelector('.sidebar.show');
-    // If at root and nothing is open, immediately push dummy state back to prevent app exit
-    if ((event.state && event.state.pwaDummy) && !modalOpen && !sidebarOpen) {
-        // Clear any existing timeout
-        if (backPressTimeout) {
-            clearTimeout(backPressTimeout);
-        }
+    try {
+        const modalOpen = document.querySelector('.modal.show');
+        const sidebarOpen = document.querySelector('.sidebar.show');
 
-        consecutiveBackPresses++;
-
-        if (consecutiveBackPresses === 1) {
-            // First back press - show warning toast and push state back
-            if (window.ToastManager && window.ToastManager.info) {
-                window.ToastManager.info('Press back again to exit the app', 3000);
-            } else {
-                // Fallback if ToastManager not available
-                console.log('Press back again to exit the app');
-            }
-
-            // Push another dummy state to keep the history stack populated
-            history.pushState({pwaDummy:true}, '', location.href);
-
-            // Reset counter after 3 seconds if no second press
-            backPressTimeout = setTimeout(() => {
+        // 1) Let the app try to consume the back action (close modals, sidebar, revert view)
+        try {
+            const consumed = (typeof handleGlobalBack === 'function') ? handleGlobalBack() : false;
+            if (consumed) {
+                // Reset exit-toast counters because we handled an in-app action
                 consecutiveBackPresses = 0;
-            }, 3000);
-
-            // Prevent default back navigation to keep user in app
-            return;
-        } else if (consecutiveBackPresses >= 2) {
-            // Second back press - allow app exit
-            consecutiveBackPresses = 0;
-            if (backPressTimeout) {
-                clearTimeout(backPressTimeout);
-                backPressTimeout = null;
+                if (backPressTimeout) { clearTimeout(backPressTimeout); backPressTimeout = null; }
+                return;
             }
-            // Allow normal back navigation (app will exit)
-            return;
+        } catch (e) {
+            // Non-fatal - continue to exit-toast logic
+            console.warn('Back: handleGlobalBack threw:', e);
         }
-    } else {
-        // Reset counter when navigating within app
-        consecutiveBackPresses = 0;
-        if (backPressTimeout) {
-            clearTimeout(backPressTimeout);
-            backPressTimeout = null;
+
+        // 2) If nothing consumed and we're at the PWA root, show exit confirmation toast
+        if ((event.state && event.state.pwaDummy) && !modalOpen && !sidebarOpen) {
+            if (backPressTimeout) { clearTimeout(backPressTimeout); }
+            consecutiveBackPresses++;
+            if (consecutiveBackPresses === 1) {
+                if (window.ToastManager && window.ToastManager.info) {
+                    window.ToastManager.info('Press back again to exit the app', 3000);
+                } else {
+                    console.log('Press back again to exit the app');
+                }
+                // Keep the history populated so another back press triggers popstate again
+                try { history.pushState({pwaDummy:true}, '', location.href); } catch(_) {}
+                backPressTimeout = setTimeout(() => { consecutiveBackPresses = 0; backPressTimeout = null; }, 3000);
+                return;
+            } else if (consecutiveBackPresses >= 2) {
+                // Allow the app to exit; reset counters
+                consecutiveBackPresses = 0;
+                if (backPressTimeout) { clearTimeout(backPressTimeout); backPressTimeout = null; }
+                // Let browser perform default behavior (exit)
+                return;
+            }
+        } else {
+            // Any other navigation within app resets exit counter
+            consecutiveBackPresses = 0;
+            if (backPressTimeout) { clearTimeout(backPressTimeout); backPressTimeout = null; }
         }
+    } catch (err) {
+        console.warn('Unified popstate handler failed:', err);
     }
-    // Otherwise, allow normal back navigation (e.g., close modal/sidebar)
 });
 // Keep main content padding in sync with header height changes (e.g., viewport resize)
 window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
@@ -3027,15 +3025,7 @@ function handleGlobalBack(){
     return false;
 }
 
-// Hook browser back to our handler; if nothing to handle, let it fall through
-window.addEventListener('popstate', (ev)=>{
-    const consumed = handleGlobalBack();
-    logBackDebug('POPSTATE handled?', consumed, 'stack=', appBackStack.map(e=>e.type+':'+(e.ref && (e.ref.id||e.ref))).join(' | '));
-    if (consumed) {
-        // Consumed by UI reversal; prevent further handling
-        return;
-    }
-});
+// NOTE: popstate handled by unified handler installed earlier to centralize logic.
 
 // Hardware / browser back key mapping (mobile)
 window.addEventListener('keydown', e=>{
