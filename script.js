@@ -22,18 +22,7 @@ const dividendCalcBtn = document.getElementById('dividendCalcBtn');
 const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
 // Ensure scroll class applied (id container present in DOM from HTML)
 if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
-    asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll');
-}
-try {
-    // Standard hide: remove from stack, then hide visually
-    window.hideModal = function(m){
-        if (typeof window.UI !== 'undefined' && window.UI.hideModal) { removeModalFromStack(m); return window.UI.hideModal(m); }
-        try { if (m) { removeModalFromStack(m); m.style.setProperty('display','none','important'); m.classList.remove('show'); } } catch(_){}
-    };
-    // Visual-only hide that preserves the modal entry on the appBackStack (used for modal-to-modal transitions)
-    // (Back handling is installed later after handleGlobalBack is defined.)
-} catch (err) {
-    console.warn('Unified popstate setup failed:', err);
+    try { asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll'); } catch(_) {}
 }
 // Keep main content padding in sync with header height changes (e.g., viewport resize)
 window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
@@ -299,9 +288,8 @@ document.addEventListener('DOMContentLoaded', function () {
             // Prefer the global smart implementation defined by UI module if present
             if (typeof window !== 'undefined' && window.scrollMainToTop && window.scrollMainToTop !== scrollMainToTop) {
                 console.log('[SCROLL DEBUG] Using global scrollMainToTop');
-                try { window.scrollMainToTop(instant, targetPosition); return; } catch(error) { console.error('Error with global scrollMainToTop:', error); }
+                try { window.scrollMainToTop(instant, targetPosition); return; } catch (err) { console.warn('[SCROLL DEBUG] global scrollMainToTop failed', err); }
             }
-
             const el = document.querySelector('main.container');
             console.log('[SCROLL DEBUG] main.container element found:', !!el);
             if (el) {
@@ -542,6 +530,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Compute overall today percentage from aggregated totalValue (excluding hidden shares)
     todayNetPct = (totalValue > 0) ? ((todayNet / totalValue) * 100) : 0;
 
+    // Compute explicit total capital gain (sum of per-card rowPL used in cards)
+    const totalCapitalGain = totalPL; // totalPL is already aggregated for non-hidden shares above
+
     // --- Summary Bar ---
         const summaryBar = `<div class="portfolio-summary-bar">
             <div class="summary-card ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">
@@ -556,9 +547,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="summary-label">Day's Loss</div>
                 <div class="summary-value negative">${fmtMoney(-daysLoss)} <span class="summary-pct negative">${fmtPct(totalValue > 0 ? (daysLoss / totalValue) * 100 : 0)}</span></div>
             </div>
-            <div class="summary-card ${totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : 'neutral'}">
+            <div class="summary-card ${totalCapitalGain > 0 ? 'positive' : totalCapitalGain < 0 ? 'negative' : 'neutral'}">
                 <div class="summary-label">Total Return</div>
-                <div class="summary-value ${totalPL >= 0 ? 'positive' : 'negative'}">${fmtMoney(totalPL)} <span class="summary-pct">${fmtPct(overallPLPct)}</span></div>
+                <div class="summary-value ${totalCapitalGain >= 0 ? 'positive' : 'negative'}">${fmtMoney(totalCapitalGain)} <span class="summary-pct">${fmtPct(overallPLPct)}</span></div>
             </div>
             <div class="summary-card neutral">
                 <div class="summary-label">Total Portfolio Value</div>
@@ -608,7 +599,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const showSummaryModal = (type) => {
             const listNode = portfolioSummaryModal.querySelector('.summary-list');
             listNode.innerHTML = '';
-            // type = 'gain' | 'loss' | 'daychange'
+            // type = 'gain' | 'loss' | 'daychange' | 'capitalGain' | 'currentValueBreakdown'
 
             // We'll recalculate today's change per share using the same logic as renderPortfolioList
             const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
@@ -653,7 +644,62 @@ document.addEventListener('DOMContentLoaded', function () {
                 items.push({ share: s, priceNow, prevClose, sharesCount, dolChange, pctChange, hasNumericChange });
             });
 
-            // Filter according to type
+            // Special handling for the two new summary types
+            if (type === 'capitalGain') {
+                // Show list of each share with code and its current capital gain (per holding)
+                // Compute using portfolio average price so it matches the per-card 'Capital Gain' display
+                const rows = items.map(it => {
+                    const s = it.share;
+                    const sharesCount = it.sharesCount || 0;
+                    const avgPrice = (s.portfolioAvgPrice !== null && s.portfolioAvgPrice !== undefined && !isNaN(Number(s.portfolioAvgPrice))) ? Number(s.portfolioAvgPrice) : null;
+                    const gain = (it.priceNow !== null && avgPrice !== null && sharesCount) ? ((it.priceNow - avgPrice) * sharesCount) : 0;
+                    return { code: (s.shareName||'').toUpperCase(), gain };
+                }).filter(r => r.code);
+                if (rows.length === 0) {
+                    const msg = 'No shares available for capital gain summary';
+                    try { if (window.ToastManager && typeof window.ToastManager.info === 'function') window.ToastManager.info(msg, { duration: 1400 }); else if (typeof showCustomAlert === 'function') showCustomAlert(msg,1400); else console.log(msg); } catch(_){}
+                    return;
+                }
+                rows.sort((a,b) => b.gain - a.gain);
+                rows.forEach(r => {
+                    const item = document.createElement('div');
+                    const cls = (r.gain > 0) ? 'positive' : (r.gain < 0 ? 'negative' : 'neutral');
+                    item.className = `summary-list-item ${cls}`;
+                    item.innerHTML = `<div class="summary-item-left"><span class="summary-item-code">${r.code}</span></div><div class="summary-item-right"><span class="summary-item-dollar-change">${fmtMoney(r.gain)}</span></div>`;
+                    listNode.appendChild(item);
+                });
+                try { pushAppStateEntry && pushAppStateEntry('summaryModal', type); } catch(_){}
+                showModal(portfolioSummaryModal);
+                return;
+            }
+
+            if (type === 'currentValueBreakdown') {
+                // Show total current value per share held in portfolio (shareCode + current total value)
+                const rows = items.map(it => {
+                    const s = it.share;
+                    const sharesCount = it.sharesCount || 0;
+                    const priceNow = (it.priceNow !== null && !isNaN(it.priceNow)) ? it.priceNow : (s.currentPrice || s.lastPrice || 0);
+                    const totalValueForShare = (priceNow || 0) * sharesCount;
+                    return { code: (s.shareName||'').toUpperCase(), total: totalValueForShare };
+                }).filter(r => r.code);
+                if (rows.length === 0) {
+                    const msg = 'No shares available for current value summary';
+                    try { if (window.ToastManager && typeof window.ToastManager.info === 'function') window.ToastManager.info(msg, { duration: 1400 }); else if (typeof showCustomAlert === 'function') showCustomAlert(msg,1400); else console.log(msg); } catch(_){}
+                    return;
+                }
+                rows.sort((a,b) => b.total - a.total);
+                rows.forEach(r => {
+                    const item = document.createElement('div');
+                    item.className = 'summary-list-item';
+                    item.innerHTML = `<div class="summary-item-left"><span class="summary-item-code">${r.code}</span></div><div class="summary-item-right"><span class="summary-item-dollar-change">${fmtMoney(r.total)}</span></div>`;
+                    listNode.appendChild(item);
+                });
+                try { pushAppStateEntry && pushAppStateEntry('summaryModal', type); } catch(_){}
+                showModal(portfolioSummaryModal);
+                return;
+            }
+
+            // Filter according to type (existing behavior)
             let filtered = items.filter(it => it.hasNumericChange);
             if (type === 'gain') filtered = filtered.filter(it => it.dolChange > 0);
             else if (type === 'loss') filtered = filtered.filter(it => it.dolChange < 0);
@@ -827,9 +873,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 sc.style.cursor = 'pointer';
                 sc.addEventListener('click', (e) => {
                     e.stopPropagation();
+                    // idx mapping: 0 -> Day Change, 1 -> Day's Gain, 2 -> Day's Loss, 3 -> Total Return, 4 -> Total Portfolio Value
                     if (idx === 1) showSummaryModal('gain');
                     else if (idx === 2) showSummaryModal('loss');
+                    else if (idx === 3) showSummaryModal('capitalGain');
+                    else if (idx === 4) showSummaryModal('currentValueBreakdown');
                     else showSummaryModal('daychange');
+                });
+            });
+        }
+
+        // Attach per-card 'Current Value' heading clicks to open capital gain summary
+        // Select all elements that display current value inside each portfolio card
+        const perCardValueEls = portfolioListContainer.querySelectorAll('.portfolio-card .portfolio-current-value');
+        if (perCardValueEls && perCardValueEls.length) {
+            perCardValueEls.forEach(el => {
+                el.style.cursor = 'pointer';
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showSummaryModal('capitalGain');
                 });
             });
         }
