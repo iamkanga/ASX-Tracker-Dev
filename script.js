@@ -1118,6 +1118,10 @@ function persistHiddenFromTotals() {
     try { localStorage.setItem('hiddenFromTotalsShareIds', JSON.stringify(Array.from(hiddenFromTotalsShareIds))); } catch(_) {}
 }
 
+// Double-back exit toast state (used when there is nothing left to go back to in-app)
+let __lastBackPressAt = 0;
+const EXIT_BACK_TOAST_TIMEOUT_MS = 1500; // ms window for second back to confirm exit
+
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
     // Splash version display
@@ -3144,8 +3148,34 @@ function handleGlobalBack(){
             return true;
         }
     }
-    // 3) No UI to reverse, allow browser to navigate back if possible
-    return false;
+    // 3) No UI to reverse: implement double-back-to-exit on mobile/phones
+    // If the user presses back once, show a toast warning they will exit. If they press back again within
+    // EXIT_BACK_TOAST_TIMEOUT_MS, allow the browser to navigate back (exit). This mirrors native app UX.
+    try {
+        const now = Date.now();
+        if (now - (__lastBackPressAt || 0) <= EXIT_BACK_TOAST_TIMEOUT_MS) {
+            // Second back within window -> allow exit
+            __lastBackPressAt = 0;
+            return false;
+        }
+        // First back: show toast and consume the back action
+        __lastBackPressAt = now;
+        try {
+            // Prefer centralized ToastManager if available
+            if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+                window.ToastManager.info('Press back again to exit the app', { duration: EXIT_BACK_TOAST_TIMEOUT_MS });
+            } else if (typeof window.showCustomAlert === 'function') {
+                window.showCustomAlert('Press back again to exit the app', EXIT_BACK_TOAST_TIMEOUT_MS);
+            } else {
+                // Fallback: console and simple alert (non-ideal on mobile but safe)
+                console.log('Press back again to exit the app');
+            }
+        } catch (e) { console.warn('Exit toast failed', e); }
+        return true;
+    } catch (e) {
+        // On any unexpected failure, fall back to allowing browser back so user isn't trapped
+        return false;
+    }
 }
 
 // NOTE: popstate handled by unified handler installed earlier to centralize logic.
