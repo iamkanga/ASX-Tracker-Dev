@@ -13805,6 +13805,26 @@ function showTargetHitDetailsModal(options={}) {
             card.style.cursor = 'pointer';
             card.onclick = function(e) {
                 if (e.target.closest('.low52-mute-btn')) return;
+                // Try to open the Share Details modal for this ASX code by resolving the share id
+                try {
+                    const code = (item.code || '').toUpperCase();
+                    let share = null;
+                    // Prefer canonical in-memory list `allSharesData` if available
+                    if (Array.isArray(allSharesData)) {
+                        share = allSharesData.find(s => s && s.shareName && s.shareName.toUpperCase() === code);
+                    }
+                    // Fallback to window-scoped copy if present
+                    if (!share && Array.isArray(window.allSharesData)) {
+                        share = window.allSharesData.find(s => s && s.shareName && s.shareName.toUpperCase() === code);
+                    }
+                    if (share && share.id) {
+                        wasShareDetailOpenedFromTargetAlerts = true;
+                        try { hideModal(targetHitDetailsModal); } catch(_) {}
+                        try { selectShare(share.id); showShareDetails(); } catch(err) { console.warn('Open share details failed for', code, err); }
+                        return;
+                    }
+                } catch(err) { console.warn('52W card click lookup failed', err); }
+                // Fallback: open stock search modal if no matching share document found
                 if (typeof showStockSearchModal === 'function') {
                     showStockSearchModal(item.code);
                 }
