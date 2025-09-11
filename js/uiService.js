@@ -378,8 +378,9 @@ export function renderCashCategories() {
                         hideBtn.title = 'Hide asset';
                         hideBtn.innerHTML = '<i class="fas fa-eye"></i>';
                     }
-                    // Recalculate total immediately
+                    // Recalculate total immediately and re-render cash categories so hidden items reposition
                     try { if (typeof calculateTotalCash === 'function') calculateTotalCash(); } catch(_) {}
+                    try { if (typeof renderCashCategories === 'function') renderCashCategories(); } catch(_) {}
                 } catch(_) {}
 
                 // Persist change via AppService if available
@@ -412,6 +413,7 @@ export function renderCashCategories() {
                             hideBtn.innerHTML = '<i class="fas fa-eye"></i>';
                         }
                         try { if (typeof calculateTotalCash === 'function') calculateTotalCash(); } catch(_) {}
+                        try { if (typeof renderCashCategories === 'function') renderCashCategories(); } catch(_) {}
                     } catch(_) {}
                     try { window.showCustomAlert && window.showCustomAlert('Error saving visibility change'); } catch(_) {}
                 }

@@ -23,6 +23,7 @@ const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer
 // Ensure scroll class applied (id container present in DOM from HTML)
 if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
     asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll');
+}
 try {
     // Standard hide: remove from stack, then hide visually
     window.hideModal = function(m){
@@ -30,135 +31,10 @@ try {
         try { if (m) { removeModalFromStack(m); m.style.setProperty('display','none','important'); m.classList.remove('show'); } } catch(_){}
     };
     // Visual-only hide that preserves the modal entry on the appBackStack (used for modal-to-modal transitions)
-    window.hideModalKeepStack = function(m){
-        try {
-            // Set a short-lived guard to avoid global click handlers closing everything mid-transition
-            window.__modalTransitioning = Date.now();
-            if (m) {
-                m.style.setProperty('display','none','important');
-                m.classList.remove('show');
-            }
-            setTimeout(()=>{ try { if (window.__modalTransitioning) window.__modalTransitioning = 0; } catch(_){} }, 250);
-        } catch(_){}
-    };
-} catch(_) {}
-const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn'); // NEW: Toggle button for ASX codes
-const asxCodeButtonsToggle = document.getElementById('asxCodeButtonsToggle'); // New header two-line text toggle
-const shareFormSection = document.getElementById('shareFormSection');
-const formCloseButton = document.querySelector('.form-close-button');
-const formTitle = document.getElementById('formTitle');
-const formCompanyName = document.getElementById('formCompanyName'); // NEW: Company name in add/edit form
-const saveShareBtn = document.getElementById('saveShareBtn');
-const deleteShareBtn = document.getElementById('deleteShareBtn');
-const addShareLivePriceDisplay = document.getElementById('addShareLivePriceDisplay'); // NEW: Live price display in add form
-const currentPriceInput = document.getElementById('currentPrice'); // Reference (reinstated) to Reference Price input
-const watchlistSelect = document.getElementById('watchlistSelect');
-
-// --- Watchlist Title Click: Open Watchlist Picker Modal ---
-// (Moved below DOM references to avoid ReferenceError)
-
-// --- Close Watchlist Picker Modal ---
-// (Moved below DOM references to avoid ReferenceError)
-// Global function to open the ASX search modal and populate the code
-window.showStockSearchModal = function(asxCode) {
-    if (!stockSearchModal || !asxSearchInput) return;
-    // Avoid duplicate modal stack entries
-    try { if (!stackHasModal(stockSearchModal)) showModal(stockSearchModal); else { UI && UI.showModalNoHistory ? UI.showModalNoHistory(stockSearchModal) : showModalNoHistory(stockSearchModal); } } catch(_) { showModal(stockSearchModal); }
-    try { scrollMainToTop(); } catch(_) {}
-    asxSearchInput.value = asxCode || '';
-    asxSearchInput.focus();
-    if (asxCode && typeof displayStockDetailsInSearchModal === 'function') {
-        displayStockDetailsInSearchModal(asxCode);
-    }
-    // Optionally close sidebar if open
-    if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false);
-};
-// Build Marker: 2025-08-17T00:00Z v2.0.0 (Modal architecture reset: external Global  movers heading, singleton overlay)
-// Deploy bump marker: 2025-08-18T12:00Z (no functional change)
-// If you do NOT see this line in DevTools Sources, you're viewing a stale cached script.
-// Copilot update: 2025-07-29 - change for sync test
-// Note: Helpers are defined locally in this file. Import removed to avoid duplicate identifier collisions.
-// --- IN-APP BACK BUTTON HANDLING FOR MOBILE PWAs ---
-// Push a new state when opening a modal or navigating to a new in-app view
-function pushAppState(stateObj = {}, title = '', url = '') {
-    history.pushState(stateObj, title, url);
+    // (Back handling is installed later after handleGlobalBack is defined.)
+} catch (err) {
+    console.warn('Unified popstate setup failed:', err);
 }
-
-// Track consecutive back button presses to warn user before app exit
-let consecutiveBackPresses = 0;
-let backPressTimeout = null;
-
-// Prevent back button from closing the app when at main screen (PWA UX patch)
-function preventPwaExitOnMainScreen() {
-    // Push a dummy state if at the main screen.
-    // Historically we only did this for installed PWAs (display-mode: standalone),
-    // but mobile browsers' hardware Back button should also show the "press back again to exit" toast.
-    try {
-        const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
-        const isMobileTouch = (typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) || (window.innerWidth && window.innerWidth <= 800);
-        if (isStandalone || isMobileTouch) {
-            history.replaceState({pwaRoot:true}, '', location.href);
-            try { history.pushState({pwaDummy:true}, '', location.href); } catch(_) {}
-        }
-    } catch(_) {
-        // best-effort - don't block app if history APIs throw
-    }
-}
-
-window.addEventListener('DOMContentLoaded', preventPwaExitOnMainScreen);
-// Also invoke immediately as a best-effort so timing differences (module/defer) don't miss the push
-try { preventPwaExitOnMainScreen(); } catch(_) {}
-
-// Unified popstate handler: first try in-app reversal, then handle PWA exit toast at root.
-window.addEventListener('popstate', function(event) {
-    try {
-        const modalOpen = document.querySelector('.modal.show');
-        const sidebarOpen = document.querySelector('.sidebar.show');
-
-        // 1) Let the app try to consume the back action (close modals, sidebar, revert view)
-        try {
-            const consumed = (typeof handleGlobalBack === 'function') ? handleGlobalBack() : false;
-            if (consumed) {
-                // Reset exit-toast counters because we handled an in-app action
-                consecutiveBackPresses = 0;
-                if (backPressTimeout) { clearTimeout(backPressTimeout); backPressTimeout = null; }
-                return;
-            }
-        } catch (e) {
-            // Non-fatal - continue to exit-toast logic
-            console.warn('Back: handleGlobalBack threw:', e);
-        }
-
-        // 2) If nothing consumed and we're at the PWA root, show exit confirmation toast
-        if ((event.state && event.state.pwaDummy) && !modalOpen && !sidebarOpen) {
-            if (backPressTimeout) { clearTimeout(backPressTimeout); }
-            consecutiveBackPresses++;
-            if (consecutiveBackPresses === 1) {
-                if (window.ToastManager && window.ToastManager.info) {
-                    window.ToastManager.info('Press back again to exit the app', 3000);
-                } else {
-                    console.log('Press back again to exit the app');
-                }
-                // Keep the history populated so another back press triggers popstate again
-                try { history.pushState({pwaDummy:true}, '', location.href); } catch(_) {}
-                backPressTimeout = setTimeout(() => { consecutiveBackPresses = 0; backPressTimeout = null; }, 3000);
-                return;
-            } else if (consecutiveBackPresses >= 2) {
-                // Allow the app to exit; reset counters
-                consecutiveBackPresses = 0;
-                if (backPressTimeout) { clearTimeout(backPressTimeout); backPressTimeout = null; }
-                // Let browser perform default behavior (exit)
-                return;
-            }
-        } else {
-            // Any other navigation within app resets exit counter
-            consecutiveBackPresses = 0;
-            if (backPressTimeout) { clearTimeout(backPressTimeout); backPressTimeout = null; }
-        }
-    } catch (err) {
-        console.warn('Unified popstate handler failed:', err);
-    }
-});
 // Keep main content padding in sync with header height changes (e.g., viewport resize)
 window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
 document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
@@ -617,7 +493,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="portfolio-top-row">
                     <div class="portfolio-code">${share.shareName || ''}</div>
                     <div class="portfolio-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
-                    <div class="portfolio-day-change ${todayClass}">${todayChange !== null ? fmtMoney(todayChange) : ''} / ${todayChange !== null ? fmtPct(todayChangePct) : ''}</div>
+                    <div class="portfolio-day-change ${todayClass}">
+                        <div class="pc-day-dollar">${todayChange !== null ? fmtMoney(todayChange) : ''}</div>
+                        <div class="pc-day-pct">${todayChange !== null ? fmtPct(todayChangePct) : ''}</div>
+                    </div>
                 </div>
 
                 <!-- Current Value row with centered eye icon -->
@@ -690,6 +569,145 @@ document.addEventListener('DOMContentLoaded', function () {
         // --- Cards Grid ---
         const cardsGrid = `<div class="portfolio-cards-grid">${cards.join('')}</div>`;
         portfolioListContainer.innerHTML = summaryBar + cardsGrid;
+
+        // Ensure summary modal exists (reuse or create)
+        let portfolioSummaryModal = document.getElementById('portfolio-summary-modal');
+        if (!portfolioSummaryModal) {
+            portfolioSummaryModal = document.createElement('div');
+            portfolioSummaryModal.id = 'portfolio-summary-modal';
+            portfolioSummaryModal.className = 'modal';
+            portfolioSummaryModal.innerHTML = `
+                <div class="modal-backdrop"></div>
+                <div class="modal-content">
+                    <div class="modal-header-with-icon">
+                        <div class="modal-title-container">
+                            <h3 class="modal-title">Summary</h3>
+                        </div>
+                        <div class="modal-header-action-group">
+                            <button class="close-button" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-body"><div class="summary-list"></div></div>
+                </div>`;
+            document.body.appendChild(portfolioSummaryModal);
+
+            // Close handlers
+            // Close via backdrop only (back button or overlay click)
+            portfolioSummaryModal.querySelector('.modal-backdrop').addEventListener('click', () => {
+                hideModal(portfolioSummaryModal);
+            });
+            // Close via close button (X)
+            portfolioSummaryModal.querySelector('.close-button').addEventListener('click', () => {
+                hideModal(portfolioSummaryModal);
+            });
+        }
+
+        // Helper to populate and show summary modal for 'gain' or 'loss'
+        const showSummaryModal = (type) => {
+            const listNode = portfolioSummaryModal.querySelector('.summary-list');
+            listNode.innerHTML = '';
+            // type = 'gain' | 'loss' | 'daychange'
+
+            // We'll recalculate today's change per share using the same logic as renderPortfolioList
+            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+            const items = [];
+
+            portfolioShares.forEach((s) => {
+                if (hiddenFromTotalsShareIds.has(s.id)) return; // respect hidden-from-totals
+
+                const sharesCount = (s.portfolioShares !== null && s.portfolioShares !== undefined && !isNaN(Number(s.portfolioShares))) ? Math.trunc(Number(s.portfolioShares)) : 0;
+                const code = (s.shareName || '').toUpperCase();
+                const lpObj = (typeof livePrices !== 'undefined' && livePrices) ? livePrices[code] : undefined;
+                let priceNow = null;
+                let prevClose = null;
+                if (lpObj) {
+                    if (marketOpen && lpObj.live !== null && !isNaN(lpObj.live)) priceNow = Number(lpObj.live);
+                    else if (!marketOpen && lpObj.lastLivePrice !== null && !isNaN(lpObj.lastLivePrice)) priceNow = Number(lpObj.lastLivePrice);
+                    if (lpObj.prevClose !== null && !isNaN(lpObj.prevClose)) prevClose = Number(lpObj.prevClose);
+                    if (prevClose === null && lpObj.lastPrevClose !== null && !isNaN(lpObj.lastPrevClose)) prevClose = Number(lpObj.lastPrevClose);
+                }
+                if ((priceNow === null || isNaN(priceNow)) && s.currentPrice !== null && s.currentPrice !== undefined && !isNaN(Number(s.currentPrice))) {
+                    priceNow = Number(s.currentPrice);
+                }
+                if ((priceNow === null || isNaN(priceNow)) && s.lastPrice !== null && s.lastPrice !== undefined && !isNaN(Number(s.lastPrice))) {
+                    priceNow = Number(s.lastPrice);
+                }
+
+                // Compute dollar and percent change for this holding
+                let dolChange = 0;
+                let pctChange = null;
+                let hasNumericChange = false;
+                if (typeof priceNow === 'number' && typeof prevClose === 'number' && sharesCount > 0) {
+                    dolChange = (priceNow - prevClose) * sharesCount;
+                    pctChange = prevClose > 0 ? ((priceNow - prevClose) / prevClose) * 100 : 0;
+                    hasNumericChange = true;
+                } else if (typeof priceNow === 'number' && typeof prevClose === 'number') {
+                    // Even without a shares count, compute per-share percent change (dollars will be zero if sharesCount == 0)
+                    dolChange = (priceNow - prevClose) * (sharesCount || 0);
+                    pctChange = prevClose > 0 ? ((priceNow - prevClose) / prevClose) * 100 : 0;
+                    hasNumericChange = true;
+                }
+
+                items.push({ share: s, priceNow, prevClose, sharesCount, dolChange, pctChange, hasNumericChange });
+            });
+
+            // Filter according to type
+            let filtered = items.filter(it => it.hasNumericChange);
+            if (type === 'gain') filtered = filtered.filter(it => it.dolChange > 0);
+            else if (type === 'loss') filtered = filtered.filter(it => it.dolChange < 0);
+
+            // Sort: for the full Day Change view, sort by signed dollar change (largest gains first,
+            // then smaller gains, then losses). For the gain/loss filtered views keep sorting by
+            // absolute contribution so the biggest contributors appear first regardless of sign.
+            if (type === 'daychange') {
+                filtered.sort((a, b) => (b.dolChange || 0) - (a.dolChange || 0));
+            } else {
+                filtered.sort((a, b) => Math.abs(b.dolChange) - Math.abs(a.dolChange));
+            }
+
+            if (filtered.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'summary-empty';
+                empty.textContent = type === 'gain' ? 'No gainers found' : type === 'loss' ? 'No losses found' : 'No data available';
+                listNode.appendChild(empty);
+            }
+
+            filtered.forEach((it) => {
+                const s = it.share;
+                const price = (it.priceNow !== null && !isNaN(it.priceNow)) ? formatMoney(it.priceNow) : (s.lastPrice !== undefined ? formatMoney(s.lastPrice) : '');
+                const dolChange = it.dolChange || 0;
+                const pctChange = (it.pctChange !== null && it.pctChange !== undefined) ? fmtPct(it.pctChange) : '';
+                const cls = (dolChange > 0) ? 'positive' : (dolChange < 0 ? 'negative' : 'neutral');
+                const item = document.createElement('div');
+                // Use the exact class names requested for styling and click targets
+                item.className = `summary-list-item ${cls}`;
+                // Left: code and live price. Right: total dollar change and pct
+                item.innerHTML = `
+                    <div class="summary-item-left">
+                        <span class="summary-item-code">${s.shareName || ''}</span>
+                        <span class="summary-item-price">${price}</span>
+                    </div>
+                    <div class="summary-item-right">
+                        <span class="summary-item-dollar-change">${fmtMoney(dolChange)}</span>
+                        <span class="summary-item-pct-change">${pctChange}</span>
+                    </div>`;
+                // Make the entire row clickable
+                item.addEventListener('click', () => {
+                    try {
+                        selectShare(s.id);
+                        showShareDetails();
+                    } catch (err) { console.warn('Failed to open share details from summary modal', err); }
+                    hideModal(portfolioSummaryModal);
+                });
+                listNode.appendChild(item);
+            });
+
+            // push app state so back button will close modal
+            try { pushAppStateEntry('summaryModal', type); } catch (e) { /* ignore */ }
+            showModal(portfolioSummaryModal);
+        };
 
         // --- Expand/Collapse Logic (Accordion) & Eye Button ---
         const cardNodes = portfolioListContainer.querySelectorAll('.portfolio-card');
@@ -769,7 +787,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         card.classList.add('hidden-from-totals');
                     }
                     persistHiddenFromTotals();
-                    // Re-render totals and summary immediately
+                    // Ensure authoritative sort is applied so hidden items move to the bottom
+                    try { if (typeof sortShares === 'function') sortShares(); } catch(_) {}
+                    // Re-render totals and summary immediately (after sorting)
                     try { renderPortfolioList(); } catch(_) {}
                 });
             }
@@ -789,6 +809,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 card.__clickThroughAttached = true;
             }
         });
+
+        // Wire click handlers for summary cards (Day's Gain / Day's Loss / Day Change)
+        const summaryCards = portfolioListContainer.querySelectorAll('.portfolio-summary-bar .summary-card');
+        if (summaryCards && summaryCards.length) {
+            // Day Change (index 0), Day's Gain (1), Day's Loss (2)
+            const scArr = Array.from(summaryCards);
+            scArr.forEach((sc, idx) => {
+                sc.style.cursor = 'pointer';
+                sc.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (idx === 1) showSummaryModal('gain');
+                    else if (idx === 2) showSummaryModal('loss');
+                    else showSummaryModal('daychange');
+                });
+            });
+        }
     };
 });
 
@@ -2323,6 +2359,9 @@ const frankingCreditsInput = document.getElementById('frankingCredits');
 const shareRatingSelect = document.getElementById('shareRating');
 const commentsFormContainer = document.getElementById('dynamicCommentsArea');
 const modalStarRating = document.getElementById('modalStarRating');
+
+// Ensure currentPriceInput exists in this scope before building helper arrays
+const currentPriceInput = document.getElementById('currentPrice');
 
 // UX improvement: clear default 0 / 0.0 values on focus for numeric inputs (behave like true placeholders)
 const zeroClearInputs = [currentPriceInput, targetPriceInput, dividendAmountInput, frankingCreditsInput].filter(Boolean);
@@ -6404,6 +6443,18 @@ function sortShares() {
     const [field, order] = sortValue.split('-');
     logDebug('AGGRESSIVE DEBUG: Sorting by field: ' + field + ', order: ' + order);
     allSharesData.sort((a, b) => {
+        // If either item has been hidden-from-totals (eye icon), push hidden items to the end
+        // EXCEPT when sorting by name (shareName asc/desc) where the A-Z behaviour should remain intact.
+        try {
+            const __sortField = field;
+            const aHidden = (typeof hiddenFromTotalsShareIds !== 'undefined' && hiddenFromTotalsShareIds && a && a.id) ? hiddenFromTotalsShareIds.has(a.id) : false;
+            const bHidden = (typeof hiddenFromTotalsShareIds !== 'undefined' && hiddenFromTotalsShareIds && b && b.id) ? hiddenFromTotalsShareIds.has(b.id) : false;
+            if (__sortField !== 'shareName' && aHidden !== bHidden) {
+                // Hidden items always go to the bottom regardless of asc/desc
+                return aHidden ? 1 : -1;
+            }
+        } catch (_) { /* defensive: if hidden set not available, continue normally */ }
+
         // Handle sorting by percentage change
         if (field === 'percentageChange') {
             logDebug('AGGRESSIVE DEBUG: Percentage change sorting detected');
@@ -6631,6 +6682,15 @@ function sortCashCategories(categoriesParam) {
     }
 
     const sortedCategories = [...categories].sort((a, b) => {
+        // Push hidden cash categories to the end for all sorts except name-based sorts
+        try {
+            const aHidden = Boolean(a && a.isHidden);
+            const bHidden = Boolean(b && b.isHidden);
+            if (field !== 'name' && aHidden !== bHidden) {
+                return aHidden ? 1 : -1;
+            }
+        } catch(_) {}
+
         let valA = a[sortField];
         let valB = b[sortField];
 
@@ -13959,12 +14019,12 @@ function showTargetHitDetailsModal(options={}) {
         container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
     const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> <span class=\"arrow-count\">${inc}</span></span><span class=\"down\"><span class=\"arrow\">&#9660;</span> <span class=\"arrow-count\">${dec}</span></span></div>`;
-        container.innerHTML = `
+    container.innerHTML = `
             <div class="global-summary-inner">
                 ${arrowsRow}
-                <div class="global-summary-detail total-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}${isComprehensive && data.totalSharesScanned ? ` (scanned ${data.totalSharesScanned} total)` : ''}</div>
+        <div class="global-summary-detail total-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}${isComprehensive && data.totalSharesScanned ? (' (scanned ' + data.totalSharesScanned + ' total)') : ''}</div>
                 <div class="global-summary-detail portfolio-line">${portfolioCount} from your portfolio</div>
-                ${minText?`<div class=\"global-summary-detail ignoring-line\">${minText}</div>`:''}
+        ${minText ? ('<div class=\"global-summary-detail ignoring-line\">' + minText + '</div>') : ''}
             </div>
             <div class=\"global-summary-actions\">
                 <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverCount?`Global (${discoverCount})`:'View All'}</button>
@@ -15359,4 +15419,3 @@ try {
 })();
 // --- End Super Debug Always-Install ---
 
-}
