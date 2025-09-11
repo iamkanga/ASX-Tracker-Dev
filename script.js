@@ -8267,6 +8267,20 @@ async function loadUserWatchlistsAndSettings() {
             logDebug('User Settings: User profile settings not found. Will determine default watchlist selection.');
         }
 
+        // If a pending theme save exists locally (from earlier when Firestore/Auth wasn't available), flush it now.
+        try {
+            const pending = (() => { try { return localStorage.getItem('pendingThemeSave'); } catch(_) { return null; } })();
+            if (pending && currentUserId && firestore && db) {
+                try {
+                    const profRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
+                    firestore.setDoc(profRef, { lastTheme: pending }, { merge: true }).then(() => {
+                        try { localStorage.removeItem('pendingThemeSave'); } catch(_) {}
+                        console.log('[Theme Flush] Flushed pendingThemeSave to Firestore:', pending);
+                    }).catch(err => console.warn('[Theme Flush] Failed to flush pending theme to Firestore:', err));
+                } catch (err) { console.warn('[Theme Flush] Error constructing Firestore doc ref:', err); }
+            }
+        } catch(_) {}
+
         // Prefer local device's last selected view if available and valid
         try {
             const lsView = localStorage.getItem('lastSelectedView');

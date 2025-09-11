@@ -102,15 +102,38 @@ function applyTheme(themeName) {
         localStorage.setItem('selectedTheme', themeName);
     } catch(_) {}
 
-    // Save to Firestore if user is logged in
-    if (currentUserId && db && firestore) {
-        const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-        try {
-            firestore.setDoc(userProfileDocRef, { lastTheme: themeName }, { merge: true });
-            logDebug('Theme: Saved theme preference to Firestore: ' + themeName);
-        } catch (error) {
-            console.error('Theme: Error saving theme preference to Firestore:', error);
+    // Save to Firestore if user is logged in.
+    // Read current values from window to ensure we pick up late-initialized auth/db references.
+    try {
+        const uid = (typeof window !== 'undefined' && (window.currentUserId || window.uid)) || currentUserId;
+        const dbRef = (typeof window !== 'undefined' && (window.db || window.hubDb)) || db;
+        const fsRef = (typeof window !== 'undefined' && (window.firestore || window.hubFs)) || firestore;
+        const appIdRef = (typeof window !== 'undefined' && (window.currentAppId || window.hubAppId)) || currentAppId;
+        if (uid && dbRef && fsRef && appIdRef) {
+            const userProfileDocRef = fsRef.doc(dbRef, 'artifacts/' + appIdRef + '/users/' + uid + '/profile/settings');
+            // Fire-and-forget save; handle success/failure via promise
+            try {
+                fsRef.setDoc(userProfileDocRef, { lastTheme: themeName }, { merge: true })
+                    .then(() => {
+                        logDebug('Theme: Saved theme preference to Firestore: ' + themeName);
+                        try { localStorage.removeItem('pendingThemeSave'); } catch(_) {}
+                    })
+                    .catch(err => {
+                        console.warn('Theme: Failed to save theme to Firestore:', err);
+                        try { localStorage.setItem('pendingThemeSave', themeName); } catch(_) {}
+                    });
+            } catch (err) {
+                console.warn('Theme: Error invoking Firestore setDoc for theme:', err);
+                try { localStorage.setItem('pendingThemeSave', themeName); } catch(_) {}
+            }
+        } else {
+            // Firestore not available now; record pending save locally for flush later
+            try { localStorage.setItem('pendingThemeSave', themeName); logDebug('Theme: Saved pendingThemeSave locally for later flush: ' + themeName); } catch(_) {}
         }
+    } catch (err) {
+        // Non-fatal - just log
+        console.warn('Theme: Firestore save skipped due to missing runtime references or error:', err);
+        try { localStorage.setItem('pendingThemeSave', themeName); } catch(_) {}
     }
 
     // Update UI controls
