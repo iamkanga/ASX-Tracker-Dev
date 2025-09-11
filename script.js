@@ -157,6 +157,33 @@ document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjust
 // Ensure UI refs are initialized before any listeners that use them
 // (moved UI const declarations to top after imports)
 // Diagnostic: overlay listener singleton self-check
+// Global delegated handlers for inputs with class `smart-ph`.
+// Use focusin/input/focusout so dynamic elements are handled and mobile browsers react correctly.
+try {
+    document.addEventListener('focusin', (e) => {
+        const t = e.target;
+        if (t && t.matches && t.matches('input.smart-ph')) {
+            if (!t.dataset._ph) t.dataset._ph = t.getAttribute('placeholder') || '';
+            t.setAttribute('placeholder', '');
+        }
+    });
+    document.addEventListener('input', (e) => {
+        const t = e.target;
+        if (t && t.matches && t.matches('input.smart-ph')) {
+            if (t.value && t.value.length > 0) t.setAttribute('placeholder', '');
+        }
+    });
+    document.addEventListener('focusout', (e) => {
+        const t = e.target;
+        if (t && t.matches && t.matches('input.smart-ph')) {
+            if (!t.value || t.value.length === 0) {
+                const original = t.dataset._ph || '';
+                if (original) t.setAttribute('placeholder', original);
+                else t.removeAttribute('placeholder');
+            }
+        }
+    });
+} catch (_) {}
 document.addEventListener('DOMContentLoaded', () => {
     try {
         const ov = document.getElementById('sidebarOverlay') || document.querySelector('.sidebar-overlay');
@@ -14638,8 +14665,32 @@ function initializeApp() {
                     logDebug('Auth: User preferences loaded successfully');
                 } catch (error) {
                     console.warn('Auth: Failed to load user preferences:', error);
-                    // Continue with fallback preferences
                 }
+
+                // UI nicety: ensure placeholder text in numeric inputs clears on focus/input (mobile + desktop)
+                try {
+                    const smartInputs = Array.from(document.querySelectorAll('input.smart-ph'));
+                    smartInputs.forEach(inp => {
+                        // On focus, clear placeholder so it doesn't stay visible while typing on some mobile browsers
+                        inp.addEventListener('focus', () => {
+                            inp.dataset._ph = inp.getAttribute('placeholder') || '';
+                            inp.setAttribute('placeholder', '');
+                        });
+                        // If user types, ensure placeholder stays cleared
+                        inp.addEventListener('input', () => {
+                            if (inp.value && inp.value.length > 0) inp.setAttribute('placeholder', '');
+                        });
+                        // On blur, if input is empty, restore original placeholder
+                        inp.addEventListener('blur', () => {
+                            if (!inp.value || inp.value.length === 0) {
+                                const original = inp.dataset._ph || '';
+                                if (original) inp.setAttribute('placeholder', original);
+                                else inp.removeAttribute('placeholder');
+                            }
+                        });
+                    });
+                } catch(_) {}
+                    // Continue with fallback preferences
 
                 try {
                     // Step 3: Restore view and mode with error recovery
