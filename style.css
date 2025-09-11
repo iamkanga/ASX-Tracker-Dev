@@ -5877,7 +5877,7 @@ table td.live-price-cell.negative-change {
 
 @media (min-width: 769px) {
     .mobile-share-cards.compact-view {
-        grid-template-columns: repeat(4, 1fr); /* 4 columns for desktop */
+        grid-template-columns: repeat(5, 1fr); /* 5 columns for desktop */
     }
 }
 
@@ -8494,12 +8494,12 @@ body.dark-theme .alert-item {
     }
 }
 
-/* On desktop, for compact view, force exactly four columns */
+/* On desktop, for compact view, force exactly five columns */
 @media (min-width: 769px) {
     .mobile-share-cards.compact-view {
         display: grid !important;
-        /* Use calc to subtract gap from each 1fr for 4 columns */
-        grid-template-columns: repeat(auto-fit, minmax(calc(25% - 11.25px), 1fr)) !important; /* 4 columns, accounting for gap */
+        /* Use calc to subtract gap from each 1fr for 5 columns */
+        grid-template-columns: repeat(auto-fit, minmax(calc(20% - 9px), 1fr)) !important; /* 5 columns, accounting for gap */
         gap: 15px !important;
         padding: 15px !important;
         max-width: none !important;
@@ -8592,6 +8592,32 @@ body.dark-theme .alert-item {
 .mobile-share-cards.compact-view .mobile-card::after { content:''; position:absolute; top:0; bottom:0; width:4px; pointer-events:none; }
 .mobile-share-cards.compact-view .mobile-card::before { left:0; }
 .mobile-share-cards.compact-view .mobile-card::after { right:0; }
+
+/* COMPACT-ONLY: Force live price to center of the card and stack change underneath.
+   Keep chevron pinned top-right and ASX code top-left. These rules are narrowly
+   scoped to the compact-view container to avoid affecting other layouts. */
+.mobile-share-cards.compact-view .mobile-card {
+    /* keep the three-column internal grid but make the live row span full width */
+    grid-template-columns: 1fr 1fr auto !important;
+    grid-template-areas:
+        "code . chevron"
+        "live live live"
+        "change change change";
+}
+.mobile-share-cards.compact-view .mobile-card .card-code { grid-area: code; justify-self: start; align-self: start; }
+.mobile-share-cards.compact-view .mobile-card .card-chevron { grid-area: chevron; justify-self: end; align-self: start; }
+.mobile-share-cards.compact-view .mobile-card .live-price-display-section {
+    grid-area: live !important;
+    justify-self: center !important;
+    align-self: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.mobile-share-cards.compact-view .mobile-card .card-live-price { text-align: center !important; grid-area: live !important; justify-self: center !important; }
+.mobile-share-cards.compact-view .mobile-card .card-price-change { grid-area: change !important; justify-self: center !important; align-self: start !important; margin-top: 6px !important; }
+
 .mobile-share-cards.compact-view .mobile-card.positive-change-card::before,
 .mobile-share-cards.compact-view .mobile-card.positive-change-card::after { background: var(--brand-green); }
 .mobile-share-cards.compact-view .mobile-card.negative-change-card::before,
@@ -8643,6 +8669,11 @@ body.dark-theme .alert-item {
 /* Ensure text centering for middle and bottom */
 .mobile-share-cards.compact-view .mobile-card .card-live-price,
 .mobile-share-cards.compact-view .mobile-card .card-price-change { text-align: center; width: 100%; }
+/* Make top row wrappers disappear in compact grid so their inner elements become grid items */
+.mobile-share-cards.compact-view .mobile-card .card-top-row,
+.mobile-share-cards.compact-view .mobile-card .live-price-main-row {
+    display: contents !important;
+}
 /* Preserve movement side borders & target-hit visuals already defined elsewhere */
 
 /* Adjustment: enlarge ASX code ~20% and pin firmly to top-left */
