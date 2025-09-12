@@ -1318,8 +1318,8 @@ let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
-// Release: 2025-09-12 - Portfolio arrow and minor UI fixes
-const APP_VERSION = '2.15.2';
+// Release: 2025-09-12 - Back navigation reliability + splash version bump
+const APP_VERSION = '2.15.3';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)
@@ -11154,7 +11154,7 @@ function hideSplashScreen() {
         // Set version text just before hiding
         const versionEl = document.getElementById('splashAppVersion');
         if (versionEl) {
-            versionEl.textContent = APP_VERSION;
+            versionEl.textContent = 'v' + APP_VERSION;
         }
 
         console.log('[Debug] splashScreen element found. Adding "hidden" class.');
@@ -15484,7 +15484,7 @@ function initializeApp() {
             versionEl.className = 'app-version-splash';
             splashScreenEl.prepend(versionEl);
         }
-        versionEl.textContent = APP_VERSION;
+    versionEl.textContent = 'v' + APP_VERSION;
     }
     // Splash flags are managed by auth/data/price flows and Firebase hub; do not reset here
 
