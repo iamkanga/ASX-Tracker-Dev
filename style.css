@@ -1062,6 +1062,29 @@ function makeFilesAvailableToSourceControlCSS() {
     display: block;
 }
 
+/* Prevent mobile long-press / tap highlight changing the portfolio card background in dark mode.
+   We scope this to narrow viewports and dark-theme only to avoid interfering with desktop hover
+   and selection behaviors. This keeps the red/green numeric colors readable when long-pressing. */
+@media (max-width: 640px) {
+    body.dark-theme .portfolio-card,
+    body.dark-theme .portfolio-card * {
+        -webkit-tap-highlight-color: transparent !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
+        touch-action: manipulation !important;
+    }
+
+    /* Ensure any :active state doesn't override the background color used for cards */
+    body.dark-theme .portfolio-card:active,
+    body.dark-theme .portfolio-card:focus,
+    body.dark-theme .portfolio-card:focus-visible {
+        background-color: var(--card-bg) !important;
+    }
+
+    /* Defensive: buttons/controls inside card should still be interactive, so avoid blocking pointer-events.
+       We only prevent visual tap highlight and selection. */
+}
+
 .portfolio-card:hover .portfolio-centered-arrow {
     color: var(--accent-color);
 }
