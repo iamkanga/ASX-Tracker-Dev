@@ -601,6 +601,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Helper to populate and show summary modal for 'gain' or 'loss'
         const showSummaryModal = (type) => {
+            // Update modal title based on the summary type so the modal is descriptive.
+            try {
+                const titleMap = {
+                    daychange: 'Summary Day Change',
+                    gain: 'Summary Day Change Winners',
+                    loss: 'Summary Day Change Losers',
+                    capitalGain: 'Summary Capital Gain',
+                    currentValueBreakdown: 'Summary Current Value'
+                };
+                const titleEl = portfolioSummaryModal.querySelector('.modal-title');
+                if (titleEl) titleEl.textContent = titleMap[type] || 'Summary';
+            } catch (_) {}
+
             const listNode = portfolioSummaryModal.querySelector('.summary-list');
             listNode.innerHTML = '';
             // type = 'gain' | 'loss' | 'daychange' | 'capitalGain' | 'currentValueBreakdown'
