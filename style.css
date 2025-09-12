@@ -2000,6 +2000,52 @@ function makeFilesAvailableToSourceControlCSS() {
         max-width: calc(50% - 6px);
         text-align:center;
     }
+
+    /* Mobile-only: tighten spacing between Current Value, Capital Gain and Eye icon
+       Keep distance between top row and current value unchanged. Place at end of file
+       so it overrides earlier rules. */
+    @media (max-width: 640px) {
+        /* reduce vertical margins/padding for the value lines */
+        .portfolio-card .portfolio-current-value,
+        .portfolio-card .portfolio-capital-gain {
+            margin-bottom: 2px !important;
+            padding: 2px 0 !important;
+        }
+
+        /* make sure portfolio-val spacing is tight */
+        .portfolio-card .portfolio-val {
+            margin-left: 0.5em !important;
+            margin-right: 4px !important;
+        }
+
+        /* eye container sits adjacent to the value rows; reduce its top margin */
+        .portfolio-card .pc-eye-container {
+            margin-top: 3px !important;
+            margin-bottom: 0 !important;
+            padding: 0 !important;
+            line-height: 1 !important;
+        }
+
+        /* reduce gap inside the card so the three elements are tighter but top row stays the same */
+        .portfolio-card {
+            gap: 8px !important;
+            padding-bottom: 12px !important;
+        }
+    }
+
+    @media (max-width: 420px) {
+        /* further tighten on very small screens */
+        .portfolio-card .portfolio-current-value,
+        .portfolio-card .portfolio-capital-gain {
+            margin-bottom: 1px !important;
+            padding: 1px 0 !important;
+            font-size: 0.95em !important; /* keep legible */
+        }
+
+        .portfolio-card .pc-eye-container {
+            margin-top: 2px !important;
+        }
+    }
     .dropdown-large { font-size:0.95rem; padding:6px 8px; }
     .toggle-asx-buttons-group { order:3; flex:0 0 100%; display:flex; justify-content:center; margin:2px 0 0 0; }
 }

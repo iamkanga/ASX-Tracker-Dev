@@ -500,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
 
                 <!-- Eye icon placed under ASX code for easier reach on mobile -->
-                <div class="pc-eye-container" style="margin-top:6px;">
+                <div class="pc-eye-container">
                     <button class="pc-eye-btn" aria-label="Hide or show from totals"><span class="fa fa-eye"></span></button>
                 </div>
 
