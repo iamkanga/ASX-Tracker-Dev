@@ -470,10 +470,8 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             // Card HTML (collapsed/expandable)
-            // Border color logic: use today's change (todayClass) to reflect recent movement
+            // Border color is handled purely by CSS classes using brand variables
             let borderColor = '';
-            if (todayClass === 'positive') borderColor = 'border: 4px solid #008000;';
-            else if (todayClass === 'negative') borderColor = 'border: 4px solid #c42131;';
             // For neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
             return `<div class="portfolio-card ${todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>

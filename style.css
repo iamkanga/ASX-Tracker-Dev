@@ -448,8 +448,8 @@
 /* 52-Week High: Green theme (dynamic) */
 .low52-alert-card.low52-high {
     background-color: var(--card-bg);
-    border-color: var(--high52-color, #1a6e1a); /* Themed border color */
-    color: var(--high52-color, #1a6e1a);
+    border-color: var(--high52-color); /* Themed border color */
+    color: var(--high52-color);
 }
 
 /* Card heading and value color overrides for contrast (dynamic) */
@@ -457,7 +457,7 @@
     color: var(--brand-red) !important;
 }
 .low52-alert-card.low52-high .low52-heading, .low52-alert-card.low52-high .low52-code {
-    color: var(--high52-color, #1a6e1a) !important;
+    color: var(--high52-color) !important;
 }
 
 /* Horizontal layout for 52 week low alert cards */
@@ -556,7 +556,7 @@
     outline: none;
 }
 .low52-price {
-    color: #1a6e1a;
+    color: var(--high52-color);
     font-weight: 600;
     min-width: 70px;
 }
@@ -655,7 +655,7 @@
 .watchlist-toggle input { opacity:0; width:0; height:0; position:absolute; }
 .watchlist-toggle-track { position:absolute; top:0; left:0; right:0; bottom:0; background:#c94b4b; border-radius:22px; transition:background .25s; box-shadow:inset 0 0 0 1px var(--border-color); }
 .watchlist-toggle-thumb { position:absolute; top:2px; left:3px; width:18px; height:18px; background:#fff; border-radius:50%; transition: transform .25s; box-shadow:0 1px 2px rgba(0,0,0,0.35); }
-.watchlist-toggle input:checked + .watchlist-toggle-track { background:#2e7d32; }
+.watchlist-toggle input:checked + .watchlist-toggle-track { background: var(--brand-green); }
 .watchlist-toggle input:checked + .watchlist-toggle-track .watchlist-toggle-thumb { transform: translateX(20px); }
 .watchlist-enhanced-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
 .watchlist-enhanced-actions button { padding:6px 12px; font-size:0.8rem; border-radius:6px; cursor:pointer; border:1px solid var(--border-color); background:var(--button-bg); color:var(--button-text); }
@@ -668,10 +668,10 @@
 .segmented-toggle .toggle-segment { padding:8px 14px; border:none; background:transparent; color:var(--text-color,#222); font-weight:600; cursor:pointer; transition: background .18s, color .18s, box-shadow .18s; }
 .segmented-toggle .toggle-segment + .toggle-segment { border-left:1px solid var(--border-color, #d0d0d0); }
 .segmented-toggle .toggle-segment.is-active { background:var(--accent-color,#a49393); color:#fff; box-shadow: inset 0 0 0 999px rgba(255,255,255,0.05); }
-.intent-toggle .toggle-segment.buy.is-active { background: var(--green-color, #2e7d32); }
-.intent-toggle .toggle-segment.sell.is-active { background: var(--red-color, #c62828); }
-.direction-toggle .toggle-segment.above.is-active { background: var(--green-color, #2e7d32); }
-.direction-toggle .toggle-segment.below.is-active { background: var(--red-color, #c62828); }
+.intent-toggle .toggle-segment.buy.is-active { background: var(--green-color, var(--brand-green)); }
+.intent-toggle .toggle-segment.sell.is-active { background: var(--red-color, var(--brand-red)); }
+.direction-toggle .toggle-segment.above.is-active { background: var(--green-color, var(--brand-green)); }
+.direction-toggle .toggle-segment.below.is-active { background: var(--red-color, var(--brand-red)); }
 @media (hover:hover) {
     .segmented-toggle .toggle-segment:hover { background: var(--hover-bg,#f5f7fa); }
 }
@@ -871,8 +871,8 @@ function makeFilesAvailableToSourceControlCSS() {
 .alert-target-cell, .alert-target-line { white-space: nowrap; font-weight:600; font-size:0.9rem; }
 .alert-target-intent { display:inline-block; min-width:1ch; text-align:center; }
 .alert-target-arrow { font-size:0.85rem; font-weight:700; }
-.alert-target-arrow.up { color: var(--brand-green,#008000); }
-.alert-target-arrow.down { color: var(--brand-red,#c42131); }
+.alert-target-arrow.up { color: var(--brand-green); }
+.alert-target-arrow.down { color: var(--brand-red); }
 
 /* Enhanced styling for Alert Target on mobile cards */
 .mobile-card .alert-target-row {
@@ -897,8 +897,8 @@ function makeFilesAvailableToSourceControlCSS() {
     font-size: 0.9em;
     margin-right: 0.2em;
 }
-.mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green,#008000) !important; }
-.mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red,#c42131) !important; }
+.mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green) !important; }
+.mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red) !important; }
 .alert-target-price { font-weight:600; }
 .asx-code-buttons-scroll { max-height:220px; overflow-y:auto; position:relative; }
 .asx-code-buttons-scroll::-webkit-scrollbar { width:6px; }
@@ -1607,14 +1607,14 @@ function makeFilesAvailableToSourceControlCSS() {
     transition: border-color 0.18s;
 }
 .portfolio-cards-grid .portfolio-card.positive {
-    border-color: #008000 !important; /* TEST: hardcoded brand green */
+    border-color: var(--brand-green) !important;
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
 }
 
 .portfolio-cards-grid .portfolio-card.negative {
-    border-color: #c42131 !important; /* TEST: hardcoded brand red */
+    border-color: var(--brand-red) !important;
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
@@ -1927,13 +1927,13 @@ function makeFilesAvailableToSourceControlCSS() {
 /* Positive change styling */
 #portfolio-summary-modal .summary-list-item.positive .summary-item-dollar-change,
 #portfolio-summary-modal .summary-list-item.positive .summary-item-pct-change {
-    color: var(--positive-color, #008000);
+    color: var(--positive-color, var(--brand-green));
 }
 
 /* Negative change styling */
 #portfolio-summary-modal .summary-list-item.negative .summary-item-dollar-change,
 #portfolio-summary-modal .summary-list-item.negative .summary-item-pct-change {
-    color: var(--negative-color, #c42131);
+    color: var(--negative-color, var(--brand-red));
 }
 /* Fix: Ensure portfolio summary modal centers like other modals.
    Only apply when the modal is shown so it doesn't appear on page load. */
@@ -2210,6 +2210,9 @@ function makeFilesAvailableToSourceControlCSS() {
     --accent-color: #a49393;
     --success-color: var(--brand-green);
     --danger-color: var(--brand-red);
+    /* Aliases used in legacy selectors */
+    --positive-color: var(--brand-green);
+    --negative-color: var(--brand-red);
     --warning-color: #ffc107;
     --info-color: #17a2b8;
     --link-color: #a49393;
@@ -2645,8 +2648,8 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .discover-criteria-bar .criteria-title { font-size: 1.2rem; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-color); }
 .criteria-badges { display: flex; flex-wrap: wrap; gap: 8px; }
 .criteria-badge { font-size: 1rem; padding: 6px 16px 7px; border-radius: 16px; letter-spacing: 0.7px; font-weight: 700; background: var(--chip-bg,#222); border: 2px solid var(--border-color,#333); color: var(--text-color); }
-.criteria-badge.up { border-color: var(--price-up-color,#2e7d32); color: var(--price-up-color,#2e7d32); }
-.criteria-badge.down { border-color: var(--price-down-color,#c62828); color: var(--price-down-color,#c62828); }
+.criteria-badge.up { border-color: var(--price-up-color, var(--brand-green)); color: var(--price-up-color, var(--brand-green)); }
+.criteria-badge.down { border-color: var(--price-down-color, var(--brand-red)); color: var(--price-down-color, var(--brand-red)); }
 .criteria-badge.min { border-color: var(--accent-color,#a49393); color: var(--accent-color,#a49393); }
 .criteria-badge.none { opacity: 0.5; }
 .criteria-timestamp { margin-left: auto; font-size: 1rem; opacity: 0.6; letter-spacing: 0.7px; font-weight: 600; padding: 4px 0; }
