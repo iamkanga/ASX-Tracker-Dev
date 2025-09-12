@@ -470,8 +470,10 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             // Card HTML (collapsed/expandable)
-            // Border color is handled purely by CSS classes using brand variables
+            // Border color logic: use today's change (todayClass) to reflect recent movement
             let borderColor = '';
+            if (todayClass === 'positive') borderColor = 'border: 4px solid #008000;';
+            else if (todayClass === 'negative') borderColor = 'border: 4px solid #c42131;';
             // For neutral cards, do NOT set any inline border/background; let CSS handle it
             // ...existing code...
             return `<div class="portfolio-card ${todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}"${borderColor ? ` style="${borderColor}"` : ''}>
@@ -8331,11 +8333,9 @@ async function displayStockDetailsInSearchModal(asxCode) {
                     <span class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? formatMoney(high52Week) : 'N/A'}</span>
                 </div>
                 <div class="live-price-main-row">
-                    <h2 class="modal-share-name neutral-code-text">${displayPrice}</h2>
-                </div>
-                <div class="day-change-row">
-                    <span class="price-change-large ${priceClass}">${priceChangeText}</span>
-                </div>
+                        <h2 class="modal-share-name neutral-code-text">${displayPrice}</h2>
+                        <span class="price-change-large ${priceClass}">${priceChangeText}</span>
+                    </div>
                 <div class="pe-ratio-row">
                     <span class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A'}</span>
                 </div>
@@ -8410,9 +8410,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
         actionButton.classList.add('button', 'primary-button'); // Apply base button styles
 
         if (existingShare) {
-            // UX copy update: keep action consistent — label as "Add to Share Tracker"
-            // even when the share exists; clicking will open the edit flow for that share.
-            actionButton.textContent = 'Add to Share Tracker';
+            actionButton.textContent = 'Edit Share in Tracker';
             actionButton.addEventListener('click', () => {
                 hideModal(stockSearchModal); // Close search modal
                 // If the user clicks "Edit Share in Tracker" for an existing share,
@@ -8420,8 +8418,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 showEditFormForSelectedShare(existingShare.id);
             });
         } else {
-            // UX copy update: requested phrasing
-            actionButton.textContent = 'Add to Share Tracker';
+            actionButton.textContent = 'Add Share to ASX Tracker'; // Changed text to be consistent for new shares
             actionButton.addEventListener('click', () => {
                 hideModal(stockSearchModal); // Close search modal
                 clearForm(); // Start clean add flow

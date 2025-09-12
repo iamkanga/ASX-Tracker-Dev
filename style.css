@@ -196,13 +196,8 @@
         bottom: 0 !important;
         max-width: calc(100% - 90px) !important;
     }
-    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label,
-    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp {
-        font-size: 0.72rem !important;
-        display: inline-block !important;
-        vertical-align: baseline !important;
-    }
-    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { margin-right: 6px !important; }
+    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { font-size: 0.72rem !important; }
+    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.72rem !important; }
 }
 
 @media (max-width: 420px) {
@@ -213,15 +208,12 @@
         top: auto !important;
         bottom: 0 !important;
     }
-    /* Keep the label visible and inline with the time, just slightly smaller */
-    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label,
+    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label {
+        display: none !important;
+    } /* hide label to save space */
     #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp {
-        display: inline-block !important;
-        font-size: 0.68rem !important;
-        line-height: 1.1 !important;
-        vertical-align: baseline !important;
+        font-size: 0.369rem !important;
     }
-    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { margin-right: 4px !important; }
 }
 
 /* New: left-aligned inside-header timestamp (under hamburger, centered in left column) */
@@ -448,8 +440,8 @@
 /* 52-Week High: Green theme (dynamic) */
 .low52-alert-card.low52-high {
     background-color: var(--card-bg);
-    border-color: var(--high52-color); /* Themed border color */
-    color: var(--high52-color);
+    border-color: var(--high52-color, #1a6e1a); /* Themed border color */
+    color: var(--high52-color, #1a6e1a);
 }
 
 /* Card heading and value color overrides for contrast (dynamic) */
@@ -457,7 +449,7 @@
     color: var(--brand-red) !important;
 }
 .low52-alert-card.low52-high .low52-heading, .low52-alert-card.low52-high .low52-code {
-    color: var(--high52-color) !important;
+    color: var(--high52-color, #1a6e1a) !important;
 }
 
 /* Horizontal layout for 52 week low alert cards */
@@ -556,7 +548,7 @@
     outline: none;
 }
 .low52-price {
-    color: var(--high52-color);
+    color: #1a6e1a;
     font-weight: 600;
     min-width: 70px;
 }
@@ -655,7 +647,7 @@
 .watchlist-toggle input { opacity:0; width:0; height:0; position:absolute; }
 .watchlist-toggle-track { position:absolute; top:0; left:0; right:0; bottom:0; background:#c94b4b; border-radius:22px; transition:background .25s; box-shadow:inset 0 0 0 1px var(--border-color); }
 .watchlist-toggle-thumb { position:absolute; top:2px; left:3px; width:18px; height:18px; background:#fff; border-radius:50%; transition: transform .25s; box-shadow:0 1px 2px rgba(0,0,0,0.35); }
-.watchlist-toggle input:checked + .watchlist-toggle-track { background: var(--brand-green); }
+.watchlist-toggle input:checked + .watchlist-toggle-track { background:#2e7d32; }
 .watchlist-toggle input:checked + .watchlist-toggle-track .watchlist-toggle-thumb { transform: translateX(20px); }
 .watchlist-enhanced-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
 .watchlist-enhanced-actions button { padding:6px 12px; font-size:0.8rem; border-radius:6px; cursor:pointer; border:1px solid var(--border-color); background:var(--button-bg); color:var(--button-text); }
@@ -668,10 +660,10 @@
 .segmented-toggle .toggle-segment { padding:8px 14px; border:none; background:transparent; color:var(--text-color,#222); font-weight:600; cursor:pointer; transition: background .18s, color .18s, box-shadow .18s; }
 .segmented-toggle .toggle-segment + .toggle-segment { border-left:1px solid var(--border-color, #d0d0d0); }
 .segmented-toggle .toggle-segment.is-active { background:var(--accent-color,#a49393); color:#fff; box-shadow: inset 0 0 0 999px rgba(255,255,255,0.05); }
-.intent-toggle .toggle-segment.buy.is-active { background: var(--green-color, var(--brand-green)); }
-.intent-toggle .toggle-segment.sell.is-active { background: var(--red-color, var(--brand-red)); }
-.direction-toggle .toggle-segment.above.is-active { background: var(--green-color, var(--brand-green)); }
-.direction-toggle .toggle-segment.below.is-active { background: var(--red-color, var(--brand-red)); }
+.intent-toggle .toggle-segment.buy.is-active { background: var(--green-color, #2e7d32); }
+.intent-toggle .toggle-segment.sell.is-active { background: var(--red-color, #c62828); }
+.direction-toggle .toggle-segment.above.is-active { background: var(--green-color, #2e7d32); }
+.direction-toggle .toggle-segment.below.is-active { background: var(--red-color, #c62828); }
 @media (hover:hover) {
     .segmented-toggle .toggle-segment:hover { background: var(--hover-bg,#f5f7fa); }
 }
@@ -871,8 +863,8 @@ function makeFilesAvailableToSourceControlCSS() {
 .alert-target-cell, .alert-target-line { white-space: nowrap; font-weight:600; font-size:0.9rem; }
 .alert-target-intent { display:inline-block; min-width:1ch; text-align:center; }
 .alert-target-arrow { font-size:0.85rem; font-weight:700; }
-.alert-target-arrow.up { color: var(--brand-green); }
-.alert-target-arrow.down { color: var(--brand-red); }
+.alert-target-arrow.up { color: var(--brand-green,#008000); }
+.alert-target-arrow.down { color: var(--brand-red,#c42131); }
 
 /* Enhanced styling for Alert Target on mobile cards */
 .mobile-card .alert-target-row {
@@ -897,8 +889,8 @@ function makeFilesAvailableToSourceControlCSS() {
     font-size: 0.9em;
     margin-right: 0.2em;
 }
-.mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green) !important; }
-.mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red) !important; }
+.mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green,#008000) !important; }
+.mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red,#c42131) !important; }
 .alert-target-price { font-weight:600; }
 .asx-code-buttons-scroll { max-height:220px; overflow-y:auto; position:relative; }
 .asx-code-buttons-scroll::-webkit-scrollbar { width:6px; }
@@ -1607,14 +1599,14 @@ function makeFilesAvailableToSourceControlCSS() {
     transition: border-color 0.18s;
 }
 .portfolio-cards-grid .portfolio-card.positive {
-    border-color: var(--brand-green) !important;
+    border-color: #008000 !important; /* TEST: hardcoded brand green */
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
 }
 
 .portfolio-cards-grid .portfolio-card.negative {
-    border-color: var(--brand-red) !important;
+    border-color: #c42131 !important; /* TEST: hardcoded brand red */
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
@@ -1927,13 +1919,13 @@ function makeFilesAvailableToSourceControlCSS() {
 /* Positive change styling */
 #portfolio-summary-modal .summary-list-item.positive .summary-item-dollar-change,
 #portfolio-summary-modal .summary-list-item.positive .summary-item-pct-change {
-    color: var(--positive-color, var(--brand-green));
+    color: var(--positive-color, #008000);
 }
 
 /* Negative change styling */
 #portfolio-summary-modal .summary-list-item.negative .summary-item-dollar-change,
 #portfolio-summary-modal .summary-list-item.negative .summary-item-pct-change {
-    color: var(--negative-color, var(--brand-red));
+    color: var(--negative-color, #c42131);
 }
 /* Fix: Ensure portfolio summary modal centers like other modals.
    Only apply when the modal is shown so it doesn't appear on page load. */
@@ -2206,13 +2198,10 @@ function makeFilesAvailableToSourceControlCSS() {
     --asx-button-active-text: #fff;
     /* Brand palette and mappings */
     --brand-green: #06FF4F; /* Updated primary green for positive changes */
-    --brand-red: #FF3131;   /* Updated primary red for negative changes & alerts */
+    --brand-red: #FF0000;   /* Updated primary red for negative changes & alerts */
     --accent-color: #a49393;
     --success-color: var(--brand-green);
     --danger-color: var(--brand-red);
-    /* Aliases used in legacy selectors */
-    --positive-color: var(--brand-green);
-    --negative-color: var(--brand-red);
     --warning-color: #ffc107;
     --info-color: #17a2b8;
     --link-color: #a49393;
@@ -2648,8 +2637,8 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .discover-criteria-bar .criteria-title { font-size: 1.2rem; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-color); }
 .criteria-badges { display: flex; flex-wrap: wrap; gap: 8px; }
 .criteria-badge { font-size: 1rem; padding: 6px 16px 7px; border-radius: 16px; letter-spacing: 0.7px; font-weight: 700; background: var(--chip-bg,#222); border: 2px solid var(--border-color,#333); color: var(--text-color); }
-.criteria-badge.up { border-color: var(--price-up-color, var(--brand-green)); color: var(--price-up-color, var(--brand-green)); }
-.criteria-badge.down { border-color: var(--price-down-color, var(--brand-red)); color: var(--price-down-color, var(--brand-red)); }
+.criteria-badge.up { border-color: var(--price-up-color,#2e7d32); color: var(--price-up-color,#2e7d32); }
+.criteria-badge.down { border-color: var(--price-down-color,#c62828); color: var(--price-down-color,#c62828); }
 .criteria-badge.min { border-color: var(--accent-color,#a49393); color: var(--accent-color,#a49393); }
 .criteria-badge.none { opacity: 0.5; }
 .criteria-timestamp { margin-left: auto; font-size: 1rem; opacity: 0.6; letter-spacing: 0.7px; font-weight: 600; padding: 4px 0; }
@@ -5341,15 +5330,15 @@ h1#dynamicWatchlistTitle {
 }
 
 /* Toast notifications */
-.toast-container { position: fixed; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 10px; z-index: 2000; pointer-events: none; }
-.toast { min-width: 240px; max-width: 360px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.12); padding: 10px 12px; display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(-8px); transition: opacity .2s ease, transform .2s ease; pointer-events: auto; }
+.toast-container { position: fixed; left: 12px; right: 12px; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 10px; z-index: 99999; pointer-events: none; }
+.toast { width: auto; max-width: 520px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.22); padding: 12px 14px; display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(12px); transition: opacity .18s ease, transform .18s ease; pointer-events: auto; }
 .toast.show { opacity: 1; transform: translateY(0); }
 .toast .icon { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; flex: 0 0 22px; }
 .toast.success .icon { background: var(--accent-color); }
 .toast.error .icon { background: var(--brand-red); }
 .toast.info .icon { background: var(--accent-color); }
 .toast.warning .icon { background: var(--accent-color); }
-.toast .message { flex: 1 1 auto; font-size: 0.95rem; line-height: 1.3; }
+.toast .message { flex: 1 1 auto; font-size: 0.98rem; line-height: 1.35; }
 .toast .close { background: transparent; border: none; color: inherit; cursor: pointer; font-size: 1rem; padding: 4px; }
 .toast .actions { display:flex; gap:8px; }
 .toast .btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-color); padding: 4px 8px; border-radius: 6px; font-size: 0.9rem; cursor: pointer; }
@@ -5986,9 +5975,9 @@ table tbody tr:not(.selected):hover {
 @media (max-width: 420px) {
     #portfolioSection .portfolio-table thead th:nth-child(3) { min-width: 70px; }
     #portfolioSection .portfolio-table thead th:nth-child(4) { min-width: 64px; }
-    /* Very narrow screens: keep both label and time readable and consistent */
-    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { font-size: 0.68rem !important; }
-    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.68rem !important; }
+    /* Make timestamp even smaller on very narrow screens */
+    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { font-size: 0.55rem !important; }
+    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.55rem !important; }
     /* Ensure plus icon is positioned correctly on very narrow screens */
     #addShareHeaderBtn { margin-right: -15px !important; }
 }
@@ -6355,7 +6344,7 @@ table td.live-price-cell.negative-change {
 #addShareLivePriceDisplay { --live-price-size:1.9em; }
 @media (max-width:640px){ #addShareLivePriceDisplay { --live-price-size:1.85em; } }
 /* Search modal live display: align primary size with detail modal but slightly smaller */
-#stockSearchModal .live-price-display-section { --live-price-size: 2.2em; }
+#stockSearchModal .live-price-display-section { --live-price-size: 2.4em; }
 
 /* Secondary metrics sizing (contract): value elements only (avoid inflating container rows) */
 #modalLivePriceDisplaySection .price-change-large,
@@ -10398,20 +10387,6 @@ body.dark-theme .alert-item {
 #stockSearchModal .modal-footer {
     padding: 16px 0 !important;
     background: var(--modal-content-bg, #fff) !important;
-}
-
-/* Search modal: stack day change under live price and size as secondary metric */
-#stockSearchModal .day-change-row {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 0;
-    margin-bottom: 4px;
-}
-#stockSearchModal .day-change-row .price-change-large {
-    margin-left: 0 !important; /* no inline gap when on its own row */
-    font-size: calc(var(--live-price-size) * var(--secondary-scale)) !important; /* same as Low/High and P/E */
 }
 
 /* Ensure modal body scrolls within the restored modal content */
