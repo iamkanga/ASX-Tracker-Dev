@@ -3096,10 +3096,59 @@ try {
                 if (window.__backDiag) {
                     console.log('[BackDiag] popstate', ev && ev.state, 'appBackStack=', appBackStack.map(x=>x.type+':' + (x.ref && (x.ref.id||x.ref))).join('|'));
                 }
-            } catch(_){}
-            try { if (typeof originalPop === 'function') originalPop(ev); } catch(_){}
+            } catch(_){ }
+            try { if (typeof originalPop === 'function') originalPop(ev); } catch(_){ }
         };
-        try { window.addEventListener('popstate', window.__backPopLogger); } catch(_){}
+        try { window.addEventListener('popstate', window.__backPopLogger); } catch(_){ }
+
+        // Ensure a toast container exists early so exit-toast can render even if UI module
+        // hasn't initialized yet. This prevents race conditions where ToastManager is present
+        // but has no container to render into (causing missing exit warning).
+        try {
+            if (!document.getElementById('toastContainer')) {
+                const tc = document.createElement('div');
+                tc.id = 'toastContainer';
+                tc.className = 'toast-container';
+                // Keep minimal inline styles so it's visible on mobile in most themes
+                tc.style.position = 'fixed';
+                tc.style.zIndex = '9999';
+                tc.style.left = '12px';
+                tc.style.right = '12px';
+                tc.style.bottom = '24px';
+                tc.style.pointerEvents = 'auto';
+                document.body.appendChild(tc);
+            }
+        } catch(_) {}
+
+        // Unified popstate handler: call handleGlobalBack and, if the action is consumed,
+        // push a history state to prevent the browser from exiting the PWA on first back.
+        try {
+            window.__globalPopHandler = function(ev) {
+                try {
+                    if (window.logBackDebug) window.logBackDebug('[Back] popstate fired', ev && ev.state);
+                    if (typeof handleGlobalBack === 'function') {
+                        const consumed = handleGlobalBack();
+                        if (consumed) {
+                            // Keep the user in-app by restoring a history entry immediately.
+                            try { history.pushState({ asx_back_preserve: true }, '', location.href); } catch(_) {}
+                        } else {
+                            // Not consumed -> allow default navigation (exit) to proceed.
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Global popstate handler failed', e);
+                }
+            };
+            window.addEventListener('popstate', window.__globalPopHandler);
+        } catch(_) {}
+
+        // Push an initial history entry so there is always a state to return to. This makes
+        // the double-back-to-exit pattern reliable across browsers and PWA containers.
+        try {
+            // Do this on DOMContentLoaded to avoid interfering with other early scripts.
+            const pushInitial = () => { try { history.replaceState({ asx_initial: true }, '', location.href); history.pushState({ asx_back_preserve: true }, '', location.href); } catch(_) {} };
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pushInitial, { once: true }); else pushInitial();
+        } catch(_) {}
     }
 } catch(_) {}
 
