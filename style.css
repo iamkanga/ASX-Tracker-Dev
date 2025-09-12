@@ -196,8 +196,13 @@
         bottom: 0 !important;
         max-width: calc(100% - 90px) !important;
     }
-    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { font-size: 0.72rem !important; }
-    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.72rem !important; }
+    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label,
+    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp {
+        font-size: 0.72rem !important;
+        display: inline-block !important;
+        vertical-align: baseline !important;
+    }
+    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { margin-right: 6px !important; }
 }
 
 @media (max-width: 420px) {
@@ -208,12 +213,15 @@
         top: auto !important;
         bottom: 0 !important;
     }
-    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label {
-        display: none !important;
-    } /* hide label to save space */
+    /* Keep the label visible and inline with the time, just slightly smaller */
+    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label,
     #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp {
-        font-size: 0.369rem !important;
+        display: inline-block !important;
+        font-size: 0.68rem !important;
+        line-height: 1.1 !important;
+        vertical-align: baseline !important;
     }
+    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { margin-right: 4px !important; }
 }
 
 /* New: left-aligned inside-header timestamp (under hamburger, centered in left column) */
@@ -5975,9 +5983,9 @@ table tbody tr:not(.selected):hover {
 @media (max-width: 420px) {
     #portfolioSection .portfolio-table thead th:nth-child(3) { min-width: 70px; }
     #portfolioSection .portfolio-table thead th:nth-child(4) { min-width: 64px; }
-    /* Make timestamp even smaller on very narrow screens */
-    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { font-size: 0.55rem !important; }
-    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.55rem !important; }
+    /* Very narrow screens: keep both label and time readable and consistent */
+    #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { font-size: 0.68rem !important; }
+    #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp { font-size: 0.68rem !important; }
     /* Ensure plus icon is positioned correctly on very narrow screens */
     #addShareHeaderBtn { margin-right: -15px !important; }
 }
