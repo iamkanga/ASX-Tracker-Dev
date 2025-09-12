@@ -72,9 +72,37 @@ function buildRow(opt, currentValue) {
 }
 
 // Local helper to update the header button text to reflect current sort
-function updateSortPickerButtonText(retryCount = 0) {
+async function updateSortPickerButtonText(retryCount = 0) {
     try {
         console.log('[DEBUG] updateSortPickerButtonText called (retry:', retryCount, ')');
+        // Wait for the startup sort handshake if present (bounded to avoid blocking forever)
+        try {
+            if (window && window.__userSortReady) {
+                console.log('[DEBUG] updateSortPickerButtonText: awaiting __userSortReady (bounded 1000ms)');
+                // Wait bounded, but if it times out schedule a follow-up refresh when the handshake resolves
+                const raced = await Promise.race([window.__userSortReady.then(() => 'resolved'), new Promise(res => setTimeout(() => res('timeout'), 1000))]);
+                console.log('[DEBUG] updateSortPickerButtonText: after awaiting __userSortReady, outcome=', raced, 'currentSortOrder=', (typeof getCurrentSortOrder === 'function' ? getCurrentSortOrder() : window.currentSortOrder));
+                // If our bounded wait timed out but the handshake exists and hasn't resolved yet,
+                // attach a one-time listener to refresh header when it does resolve.
+                try {
+                    if (raced === 'timeout' && !window.__userSortReadyResolved) {
+                        // Attach a one-shot resolver that updates header once the handshake resolves.
+                        (async function attachFollowUp(){
+                            try {
+                                await window.__userSortReady;
+                                // Small delay to allow DOM updates that renderSortSelect may perform
+                                setTimeout(() => {
+                                    try { updateSortPickerButtonText(); } catch(_) {}
+                                }, 40);
+                            } catch(_) {}
+                        })();
+                    }
+                } catch(_) {}
+            }
+        } catch (err) {
+            console.log('[DEBUG] updateSortPickerButtonText: __userSortReady await failed or timed out', err);
+        }
+
         const current = getCurrentSortOrder();
         console.log('[DEBUG] Current sort order:', current);
 
@@ -312,7 +340,11 @@ export function openSortPicker() {
     optionsToShow.forEach(opt => {
         const row = buildRow(opt, current);
         row.onclick = () => {
-            try { setCurrentSortOrder(opt.value); } catch(_) {}
+            try {
+                // Mark this as a user-initiated change so the startup lock doesn't ignore it.
+                try { window.__userInitiatedSortChange = true; setTimeout(()=>{ try{ window.__userInitiatedSortChange = false; }catch(_){} }, 400); } catch(_) {}
+                setCurrentSortOrder(opt.value);
+            } catch(_) {}
 
             // Try to update native select to keep canonical state; don't fail the flow if this errors
             try {

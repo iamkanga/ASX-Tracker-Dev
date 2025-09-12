@@ -34,8 +34,73 @@ export function setAllSharesData(data) {
 }
 
 export function setLivePrices(data) {
+    // Detect whether we already had live price data; if not, this is the first arrival
+    const prevHadData = livePrices && Object.keys(livePrices).length > 0;
     livePrices = data && typeof data === 'object' ? data : {};
     if (typeof window !== 'undefined') window.livePrices = livePrices;
+
+    // Robust re-apply strategy for percentage-based sorts:
+    // - Wait for a reasonable fraction of shares to have live prices (coverage threshold)
+    // - Retry a few times with increasing delays to handle slow fetches
+    // - Once threshold met (or retries exhausted), explicitly call window.sortShares()
+    try {
+        const nowHasData = livePrices && Object.keys(livePrices).length > 0;
+        if (!prevHadData && nowHasData) {
+                const sortIsPercentage = typeof currentSortOrder === 'string' && (
+                    currentSortOrder.includes('percentage') || currentSortOrder.includes('percentageChange')
+                );
+                if (!sortIsPercentage) return;
+
+                try { if (typeof window !== 'undefined' && window.__VERBOSE_DIAG) console.log('[DIAG] livePrices first arrival - attempting robust reapply for ->', currentSortOrder); } catch(_) {}
+
+            // Compute coverage helper: fraction of shares in allSharesData that have livePrices entries
+            const computeCoverage = () => {
+                try {
+                    const all = Array.isArray(allSharesData) && allSharesData.length > 0 ? allSharesData.length : 0;
+                    if (all === 0) return 0;
+                    let have = 0;
+                    for (let i = 0; i < allSharesData.length; i++) {
+                        const s = allSharesData[i];
+                        const code = (s && s.shareName) ? String(s.shareName).trim().toUpperCase() : '';
+                        if (code && livePrices && typeof livePrices === 'object' && livePrices[code] && (livePrices[code].live !== undefined || livePrices[code].lastLivePrice !== undefined)) have++;
+                    }
+                    return have / all;
+                } catch (_) { return 0; }
+            };
+
+            const COVERAGE_THRESHOLD = 0.60; // require 60% coverage before treating data as representative
+            const attempts = [60, 160, 360, 760]; // ms delays
+
+            const tryApply = (idx) => {
+                try {
+                    const cov = computeCoverage();
+                    try { if (typeof window !== 'undefined' && window.__VERBOSE_DIAG) console.log('[DIAG] livePrices coverage check:', cov, 'attempt:', idx + 1); } catch(_) {}
+                    const enough = cov >= COVERAGE_THRESHOLD || idx >= attempts.length - 1;
+                    if (enough) {
+                        // If we have an authoritative sort lock, prefer calling sortShares directly to avoid being ignored
+                        try {
+                            if (typeof window !== 'undefined' && typeof window.sortShares === 'function') {
+                                if (typeof window !== 'undefined' && window.__VERBOSE_DIAG) console.log('[DIAG] livePrices reapply: invoking sortShares() (coverage:', cov, ')');
+                                try { window.sortShares(); } catch (sErr) { console.warn('livePrices reapply: sortShares failed', sErr); }
+                            } else {
+                                // Fallback: setCurrentSortOrder to trigger existing pathways
+                                try { setCurrentSortOrder(currentSortOrder); } catch (e) { console.warn('Failed to reapply sort on livePrices arrival', e); }
+                            }
+                        } catch (callErr) { if (typeof window !== 'undefined' && window.__VERBOSE_DIAG) console.warn('livePrices reapply: unexpected error', callErr); }
+                    } else {
+                        // Retry after delay
+                        setTimeout(() => tryApply(idx + 1), attempts[idx]);
+                    }
+                } catch (err) {
+                    // On any error, perform a best-effort single reapply
+                    try { if (typeof window !== 'undefined' && window.__VERBOSE_DIAG) console.warn('livePrices reapply: coverage check failed, performing best-effort reapply', err); if (typeof window !== 'undefined' && typeof window.sortShares === 'function') window.sortShares(); else setCurrentSortOrder(currentSortOrder); } catch (_) {}
+                }
+            };
+
+            // Start attempts
+            tryApply(0);
+        }
+    } catch (outerErr) { console.warn('setLivePrices: diagnostics failure', outerErr); }
 }
 
 export function setUserWatchlists(data) {
@@ -59,8 +124,64 @@ export function setSharesAtTargetPrice(items) {
 }
 
 export function setCurrentSortOrder(value) {
-    currentSortOrder = typeof value === 'string' && value ? value : 'entryDate-desc';
+    // Normalize and set
+    const normalized = (typeof value === 'string' && value) ? value : 'entryDate-desc';
+
+    // If an initial authoritative sort lock is active, ignore incoming
+    // calls that try to change the sort away from the authoritative value
+    // unless they are user-initiated. This prevents race conditions during
+    // startup where different modules briefly stomp the saved sort.
+    try {
+        if (typeof window !== 'undefined' && window.__initialSortLocked) {
+            const authoritative = window.__initialAuthoritativeSort;
+            const userInitiated = !!window.__userInitiatedSortChange;
+            if (authoritative && normalized !== authoritative && !userInitiated) {
+                // Record the attempted overwrite for diagnostics and ignore it
+                try {
+                    if (window.__LOG_SORT_SET_CALLS) {
+                        if (!Array.isArray(window.__sortSetTrace)) window.__sortSetTrace = [];
+                        window.__sortSetTrace.push({ ts: Date.now(), sort: normalized, ignored: true, note: 'initial-lock' });
+                    }
+                } catch (_) {}
+                console.log('[DIAG] Ignored setCurrentSortOrder ->', normalized, 'because initial authoritative sort is locked ->', authoritative);
+                return;
+            }
+        }
+    } catch (_) {}
+
+    currentSortOrder = normalized;
     if (typeof window !== 'undefined') window.currentSortOrder = currentSortOrder;
+
+    // Temporary diagnostic hook: when enabled, log every call and a short stack to trace unexpected overwrites
+    try {
+        if (typeof window !== 'undefined' && window.__VERBOSE_DIAG) {
+            try {
+                // Lightweight stack capture without throwing an error
+                const stack = (new Error()).stack || '';
+                const shortStack = stack.split('\n').slice(2, 7).join('\n');
+                // Only create the global trace array when verbose diagnostics are enabled
+                try {
+                    if (!Array.isArray(window.__sortSetTrace)) window.__sortSetTrace = [];
+                    window.__sortSetTrace.push({ ts: Date.now(), sort: currentSortOrder, stack: shortStack });
+                } catch (_) {}
+                console.log('[DIAG] setCurrentSortOrder called ->', currentSortOrder, '\nStack (top frames):\n' + shortStack);
+            } catch (sErr) {
+                try { if (!Array.isArray(window.__sortSetTrace)) window.__sortSetTrace = []; window.__sortSetTrace.push({ ts: Date.now(), sort: currentSortOrder }); } catch(_) {}
+                console.log('[DIAG] setCurrentSortOrder called ->', currentSortOrder);
+            }
+        }
+    } catch(_) {}
+}
+
+// Expose simple helpers to access trace data from the Console for diagnostics
+if (typeof window !== 'undefined') {
+    try {
+        // Safe helpers: return empty arrays if diagnostics were never enabled
+        window.getSortSetTrace = function() { return Array.isArray(window.__sortSetTrace) ? window.__sortSetTrace.slice() : []; };
+        window.clearSortSetTrace = function() { if (Array.isArray(window.__sortSetTrace)) { window.__sortSetTrace.length = 0; } };
+        // Ensure a simple toggle exists for verbose diagnostics without changing other flags
+        if (typeof window.__VERBOSE_DIAG === 'undefined') window.__VERBOSE_DIAG = false;
+    } catch(_) {}
 }
 
 export function setAllAsxCodes(codes) {

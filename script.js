@@ -1001,31 +1001,15 @@ function logDebug(message, ...optionalParams) {
 }
 // Expose core helpers to other modules
 try { window.logDebug = logDebug; } catch(_) {}
-// Lightweight console noise filter for routine UI logs (keeps [Back] and errors)
-(function(){
+// NOTE: console monkey-patching removed to avoid surprising global behavior.
+// Use `logDebug(...)` or `window.filteredLog(...)` for controlled debug output.
+window.filteredLog = function(...args) {
     try {
-        const noisyPrefixes = [
-            '[PADDING DEBUG]', '[BANNER-DEBUG]', '[ASX Debug]', '[Diag]', '[MOVERS DEBUG]', 'Portfolio Card Debug', '[DEBUG] ',
-            'UI TRACE', '[TRANSITION DEBUG]', '[SCROLL DEBUG]', '[SingleScroll]', '[TOGGLE DEBUG]', '[EVENT DEBUG]', '[CLICK DEBUG]'
-        ];
-        const origLog = console.log.bind(console);
-        console.__origLog = origLog;
-        console.log = function(...args){
-            try {
-                const first = args && args[0];
-                if (typeof first === 'string') {
-                    // Never filter [Back] logs
-                    if (first.startsWith('[Back]')) return origLog(...args);
-                    // Filter known-noise prefixes
-                    if (noisyPrefixes.some(p => first.startsWith(p))) return;
-                }
-            } catch(_) {}
-            return origLog(...args);
-        };
-        // Expose a toggle to disable filtering if needed
-        window.__disableConsoleFilter = function(){ try { console.log = console.__origLog || console.log; } catch(_) {} };
+        if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
+            console.log(...args);
+        }
     } catch(_) {}
-})();
+};
 try {
     window.showModal = function(m){
         // Prefer UI module which also pushes history/stack
@@ -1043,15 +1027,15 @@ try {
 try {
     if (!window.scrollMainToTop) {
         window.scrollMainToTop = function(instant, targetPosition = 0){
-            console.log('[ASX Debug] window.scrollMainToTop called with instant:', instant, 'targetPosition:', targetPosition);
+            logDebug('[ASX Debug] window.scrollMainToTop called with instant:', instant, 'targetPosition:', targetPosition);
             try {
                 const el = document.querySelector('main.container');
-                console.log('[ASX Debug] window.scrollMainToTop - main.container found:', !!el);
+                logDebug('[ASX Debug] window.scrollMainToTop - main.container found:', !!el);
                 if (el) {
-                    console.log('[ASX Debug] window.scrollMainToTop - scrolling main.container to position:', targetPosition);
+                    logDebug('[ASX Debug] window.scrollMainToTop - scrolling main.container to position:', targetPosition);
                     el.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
                 } else {
-                    console.log('[ASX Debug] window.scrollMainToTop - scrolling window to position:', targetPosition);
+                    logDebug('[ASX Debug] window.scrollMainToTop - scrolling window to position:', targetPosition);
                     window.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
                 }
             } catch(error) {
@@ -6768,7 +6752,18 @@ function sortShares() {
             if (percentageChangeB === null) return -1; 
 
             // Now perform numerical comparison for non-null values
-            return order === 'asc' ? percentageChangeA - percentageChangeB : percentageChangeB - percentageChangeA;
+            // Use a small epsilon to treat near-equal floating values as equal, then fall back
+            // to a stable secondary sort (shareName) so ordering is deterministic.
+            const diff = (order === 'asc') ? (percentageChangeA - percentageChangeB) : (percentageChangeB - percentageChangeA);
+            if (Math.abs(diff) > Number.EPSILON) return diff;
+            // Tie-breaker: deterministic by shareName (A-Z). This keeps behavior stable when
+            // percentage changes are effectively equal (including both 0).
+            const nameA = (a.shareName || '').toUpperCase().trim();
+            const nameB = (b.shareName || '').toUpperCase().trim();
+            if (nameA === '' && nameB === '') return 0;
+            if (nameA === '') return 1;
+            if (nameB === '') return -1;
+            return nameA.localeCompare(nameB);
         } else if (field === 'dayDollar' || field === 'totalDollar' || field === 'capitalGain') {
             const safeNum = (v) => {
                 const n = Number(v);
@@ -6928,6 +6923,8 @@ function sortShares() {
     logDebug('Sort: Shares sorted. Rendering watchlist.');
     try { if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[SORT DEBUG] sample AFTER sort:', Array.isArray(allSharesData) ? allSharesData.slice(0,6).map(s => (s && (s.shareName || s.id)) || s) : []); } catch(_) {}
     renderWatchlist();
+    // Completion trace for diagnostics: indicate which sortValue was applied when sorting finished.
+    try { console.log('[SORT COMPLETE] Applied sort:', sortValue); } catch(_) {}
 }
 
 // Expose sortShares to window for use by other modules
@@ -7209,19 +7206,24 @@ function renderSortSelect() {
     });
     logDebug(`Sort Select: Populated with ${logMessage}.`);
 
-    // Prefer an explicitly set currentSortOrder if it's valid for this view
+    // Prefer an explicitly set current sort from the centralized state if available.
+    // Use the state getter to avoid stale globals. Only update the centralized
+    // state when there is no authoritative value already present. This prevents
+    // UI rebuilds from overwriting a saved sort and avoids render->sort->render recursion.
     const optionValues = Array.from(sortSelect.options).map(o => o.value);
-    if (currentSortOrder && optionValues.includes(currentSortOrder)) {
-        sortSelect.value = currentSortOrder;
-        logDebug('Sort: Applied currentSortOrder: ' + currentSortOrder);
+    const activeSort = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : (window.currentSortOrder || '');
+    if (activeSort && optionValues.includes(activeSort)) {
+        sortSelect.value = activeSort;
+        logDebug('Sort: Applied currentSortOrder from state: ' + activeSort);
     } else if (currentSelectedSortValue && optionValues.includes(currentSelectedSortValue)) {
         sortSelect.value = currentSelectedSortValue;
-        setCurrentSortOrder(currentSelectedSortValue);
-        logDebug('Sort: Applied previously selected sort order: ' + currentSortOrder);
+        // Only set centralized state if none exists yet (avoid stomping a saved value)
+        if (!activeSort) try { setCurrentSortOrder(currentSelectedSortValue); } catch(_) {}
+        logDebug('Sort: Applied previously selected sort order to UI: ' + currentSelectedSortValue);
     } else {
         // If not valid or no previous, apply the default for the current view type
         sortSelect.value = defaultSortValue;
-        setCurrentSortOrder(defaultSortValue);
+        if (!activeSort) try { setCurrentSortOrder(defaultSortValue); } catch(_) {}
         logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
     }
 
@@ -8590,6 +8592,28 @@ async function saveSortOrderPreference(sortOrder) {
 }
 
 async function loadUserWatchlistsAndSettings() {
+    // Expose a promise that other modules (e.g., dataService) can await to ensure
+    // the user's saved sort preference is applied before initial data fetch/render.
+    // This promise is resolved after we determine and set the authoritative sort.
+    try {
+        if (!window.__userSortReady) {
+            let _resolve;
+            window.__userSortReady = new Promise((res) => { _resolve = res; });
+            window.__userSortReadyResolve = _resolve;
+            // Public flag to indicate whether the handshake has been fully resolved.
+            // Other modules can use this to decide whether to attach follow-up updates
+            // instead of relying on a bounded timeout.
+            window.__userSortReadyResolved = false;
+            // Enable detailed startup tracing of sort-set calls so we can capture
+            // any late overwrites during initial boot (can be removed after debug).
+            try {
+                if (typeof window.__LOG_SORT_SET_CALLS === 'undefined') {
+                    window.__LOG_SORT_SET_CALLS = true;
+                    console.log('[Diag] __LOG_SORT_SET_CALLS enabled for startup tracing');
+                }
+            } catch(_) {}
+        }
+    } catch (_) {}
     logDebug('loadUserWatchlistsAndSettings called.'); // Added log for function entry
 
     if (!db || !currentUserId) {
@@ -8739,6 +8763,8 @@ async function loadUserWatchlistsAndSettings() {
 
         if (candidateSort) {
             setCurrentSortOrder(candidateSort);
+            // Diagnostic trace: record when we apply the candidate sort during startup
+            try { console.log('[SORT HANDSHAKE] setCurrentSortOrder ->', candidateSort); } catch(_) {}
             logDebug('Sort: Using saved sort order: ' + currentSortOrder);
         } else {
             // Set to new default sort order: 'percentageChange-desc' for share watchlists, 'name-asc' for cash
@@ -8747,6 +8773,22 @@ async function loadUserWatchlistsAndSettings() {
             logDebug('Sort: No saved sort order found, defaulting to: ' + currentSortOrder);
         }
         renderSortSelect(); // Build options, then apply currentSortOrder
+    // Diagnostic: report authoritative sort just before resolving the handshake
+        try {
+        try { console.log('[SORT HANDSHAKE] resolving __userSortReady (currentSortOrder):', (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder); } catch(_) {}
+        // Mark resolved so other modules know the authoritative sort has been applied
+        try { 
+            window.__userSortReadyResolved = true;
+            // Set an initial authoritative lock so other non-user callers won't overwrite
+            try {
+                window.__initialSortLocked = true;
+                window.__initialAuthoritativeSort = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
+                // Auto-clear the lock after a short grace period to allow normal updates
+                setTimeout(() => { try { window.__initialSortLocked = false; delete window.__initialAuthoritativeSort; } catch(_) {} }, 500);
+            } catch(_) {}
+        } catch(_) {}
+        if (window.__userSortReadyResolve) { window.__userSortReadyResolve(); delete window.__userSortReadyResolve; }
+    } catch(_) {}
         try { 
             // Defer the initial update to ensure DOM elements are ready
             setTimeout(() => updateSortPickerButtonText(), 100); 
@@ -13315,7 +13357,18 @@ if (sortSelect) {
 
     // Robust sort order persistence with error recovery - save the authoritative value
     const __toPersistSort = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
-    robustSaveSortOrder(__toPersistSort);
+    try {
+        // Avoid redundant persist calls if we've already persisted this exact sort recently
+        if (window.__lastPersistedSort && window.__lastPersistedSort === __toPersistSort) {
+            logDebug('Sort: Persist skipped (no change): ' + __toPersistSort);
+        } else {
+            robustSaveSortOrder(__toPersistSort);
+            // Record the last persisted value so subsequent identical changes are skipped
+            try { window.__lastPersistedSort = __toPersistSort; } catch(_) {}
+        }
+    } catch (persistErr) {
+        console.warn('Sort: Error while attempting to persist sort order (non-fatal):', persistErr);
+    }
 
     // NEW: Scroll to the top of the main content after sorting/rendering
     try { scrollMainToTop(); } catch(_) {}

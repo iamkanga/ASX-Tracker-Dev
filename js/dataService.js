@@ -63,8 +63,23 @@ export async function loadShares(dbArg, firestoreArg, currentUserId, currentAppI
         const sharesCol = fsLocal.collection(dbLocal, 'artifacts/' + appIdLocal + '/users/' + currentUserId + '/shares');
         let q = fsLocal.query(sharesCol);
 
+        // Wait briefly for the app to restore saved user settings (notably sort order)
+        try {
+            if (window.__userSortReady && typeof window.__userSortReady.then === 'function') {
+                // Race: wait up to 1000ms for the sort to be applied, then continue
+                console.log('[dataService] Waiting for __userSortReady before attaching shares listener...');
+                await Promise.race([
+                    window.__userSortReady,
+                    new Promise(res => setTimeout(res, 1000))
+                ]);
+                window.logDebug && window.logDebug('dataService: Waited for __userSortReady before attaching shares listener');
+                try { console.log('[dataService] After wait, currentSortOrder=', (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder); } catch(_) {}
+            }
+        } catch(_) {}
+
         window.unsubscribeShares = fsLocal.onSnapshot(q, async (querySnapshot) => {
             window.logDebug && window.logDebug('Firestore Listener: Shares snapshot received. Processing changes.');
+            try { console.log('[SHARES SNAPSHOT] snapshot handler start. currentSortOrder=', (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder); } catch(_) {}
             let fetchedShares = [];
             querySnapshot.forEach((doc) => {
                 const share = { id: doc.id, ...doc.data() };
@@ -103,6 +118,25 @@ export async function loadShares(dbArg, firestoreArg, currentUserId, currentAppI
 
             try { window.forceApplyCurrentSort && window.forceApplyCurrentSort(); } catch(_) {}
             try { window.sortShares && window.sortShares(); } catch(_) {}
+
+            // Ensure the authoritative saved sort is applied after the first data snapshot
+            // Some environments may restore persisted sort order slightly after initial
+            // bootstrap; defer a guarded, one-shot re-apply to guarantee the UI reflects
+            // the saved sort when data has finished arriving. Use a small timeout so
+            // we do not re-enter the current synchronous render stack and avoid recursion.
+            try {
+                if (!window.__firstSharesSnapshotSortApplied) {
+                    window.__firstSharesSnapshotSortApplied = true;
+                    setTimeout(() => {
+                        try {
+                            window.logDebug && window.logDebug('[dataService] One-shot deferred sort re-apply running');
+                            if (typeof window.sortShares === 'function') {
+                                window.sortShares();
+                            }
+                        } catch (e) { console.warn('[dataService] Deferred sort re-apply failed', e); }
+                    }, 40);
+                }
+            } catch (e) { /* noop */ }
             try { window.renderAsxCodeButtons && window.renderAsxCodeButtons(); } catch(_) {}
 
             if (window.loadingIndicator) window.loadingIndicator.style.display = 'none';
