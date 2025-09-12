@@ -3399,6 +3399,9 @@ function handleGlobalBack(){
                 // Fallback: console and simple alert (non-ideal on mobile but safe)
                 console.log('Press back again to exit the app');
             }
+            // Mark that the last back action showed the exit-toast so the global popstate
+            // handler knows to push a preservation history state and avoid exiting the PWA
+            try { window.__lastBackAction = 'exitToast'; } catch(_) {}
         } catch (e) { console.warn('Exit toast failed', e); }
         return true;
     } catch (e) {
