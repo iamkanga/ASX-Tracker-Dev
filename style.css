@@ -645,9 +645,9 @@
 .watchlist-enhanced-name { font-size:0.92rem; font-weight:500; color:var(--text-color); flex:1; }
 .watchlist-toggle { position:relative; width:44px; height:22px; cursor:pointer; }
 .watchlist-toggle input { opacity:0; width:0; height:0; position:absolute; }
-.watchlist-toggle-track { position:absolute; top:0; left:0; right:0; bottom:0; background:#c94b4b; border-radius:22px; transition:background .25s; box-shadow:inset 0 0 0 1px var(--border-color); }
+.watchlist-toggle-track { position:absolute; top:0; left:0; right:0; bottom:0; background:var(--brand-red); border-radius:22px; transition:background .25s; box-shadow:inset 0 0 0 1px var(--border-color); }
 .watchlist-toggle-thumb { position:absolute; top:2px; left:3px; width:18px; height:18px; background:#fff; border-radius:50%; transition: transform .25s; box-shadow:0 1px 2px rgba(0,0,0,0.35); }
-.watchlist-toggle input:checked + .watchlist-toggle-track { background:#2e7d32; }
+.watchlist-toggle input:checked + .watchlist-toggle-track { background:var(--brand-green); }
 .watchlist-toggle input:checked + .watchlist-toggle-track .watchlist-toggle-thumb { transform: translateX(20px); }
 .watchlist-enhanced-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
 .watchlist-enhanced-actions button { padding:6px 12px; font-size:0.8rem; border-radius:6px; cursor:pointer; border:1px solid var(--border-color); background:var(--button-bg); color:var(--button-text); }
@@ -828,8 +828,8 @@
     .grid-header .header-sort-btn #sortPickerLabel { text-align: center; }
 }
 .sort-picker-direction { width:36px; text-align:right; font-weight:700; }
-.sort-picker-direction.up { color: var(--positive, #2ea44f); }
-.sort-picker-direction.down { color: var(--negative, #d73a49); }
+.sort-picker-direction.up { color: var(--positive, var(--brand-green)); }
+.sort-picker-direction.down { color: var(--negative, var(--brand-red)); }
 
 
 .header-sort-btn { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; background:var(--surface, #fff); border:1px solid var(--divider, #e6e6e6); cursor:pointer; white-space: nowrap; }
@@ -863,8 +863,8 @@ function makeFilesAvailableToSourceControlCSS() {
 .alert-target-cell, .alert-target-line { white-space: nowrap; font-weight:600; font-size:0.9rem; }
 .alert-target-intent { display:inline-block; min-width:1ch; text-align:center; }
 .alert-target-arrow { font-size:0.85rem; font-weight:700; }
-.alert-target-arrow.up { color: var(--brand-green,#008000); }
-.alert-target-arrow.down { color: var(--brand-red,#c42131); }
+.alert-target-arrow.up { color: var(--brand-green); }
+.alert-target-arrow.down { color: var(--brand-red); }
 
 /* Enhanced styling for Alert Target on mobile cards */
 .mobile-card .alert-target-row {
@@ -889,8 +889,8 @@ function makeFilesAvailableToSourceControlCSS() {
     font-size: 0.9em;
     margin-right: 0.2em;
 }
-.mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green,#008000) !important; }
-.mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red,#c42131) !important; }
+.mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green) !important; }
+.mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red) !important; }
 .alert-target-price { font-weight:600; }
 .asx-code-buttons-scroll { max-height:220px; overflow-y:auto; position:relative; }
 .asx-code-buttons-scroll::-webkit-scrollbar { width:6px; }
@@ -1599,14 +1599,14 @@ function makeFilesAvailableToSourceControlCSS() {
     transition: border-color 0.18s;
 }
 .portfolio-cards-grid .portfolio-card.positive {
-    border-color: #008000 !important; /* TEST: hardcoded brand green */
+    border-color: var(--brand-green) !important;
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
 }
 
 .portfolio-cards-grid .portfolio-card.negative {
-    border-color: #c42131 !important; /* TEST: hardcoded brand red */
+    border-color: var(--brand-red) !important;
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
@@ -1919,13 +1919,13 @@ function makeFilesAvailableToSourceControlCSS() {
 /* Positive change styling */
 #portfolio-summary-modal .summary-list-item.positive .summary-item-dollar-change,
 #portfolio-summary-modal .summary-list-item.positive .summary-item-pct-change {
-    color: var(--positive-color, #008000);
+    color: var(--positive-color, var(--brand-green));
 }
 
 /* Negative change styling */
 #portfolio-summary-modal .summary-list-item.negative .summary-item-dollar-change,
 #portfolio-summary-modal .summary-list-item.negative .summary-item-pct-change {
-    color: var(--negative-color, #c42131);
+    color: var(--negative-color, var(--brand-red));
 }
 /* Fix: Ensure portfolio summary modal centers like other modals.
    Only apply when the modal is shown so it doesn't appear on page load. */
@@ -2198,7 +2198,7 @@ function makeFilesAvailableToSourceControlCSS() {
     --asx-button-active-text: #fff;
     /* Brand palette and mappings */
     --brand-green: #06FF4F; /* Updated primary green for positive changes */
-    --brand-red: #FF0000;   /* Updated primary red for negative changes & alerts */
+    --brand-red: #FF3131;   /* Updated primary red for negative changes & alerts */
     --accent-color: #a49393;
     --success-color: var(--brand-green);
     --danger-color: var(--brand-red);
@@ -2236,6 +2236,9 @@ function makeFilesAvailableToSourceControlCSS() {
     --calc-num-btn-hover-bg: #e0e0e0;
     --price-up-color: var(--brand-green);
     --price-down-color: var(--brand-red);
+    /* Legacy aliases to ensure older selectors pick up new palette */
+    --positive-color: var(--brand-green);
+    --negative-color: var(--brand-red);
     --price-neutral-color: #6c757d;
     --live-price-section-bg: transparent; /* Removed blue tint */
     --live-price-positive-bg: rgba(46, 204, 113, 0.12); /* Restored subtle green */
@@ -2878,12 +2881,12 @@ body.theme-bold-1 { /* Ocean Blue */
     --menu-button-hover-bg: #0a475a;
     --placeholder-text: #8ecae6;
     --ghosted-text: #a8dadc;
-    --danger-button-bg: #FF0000;
-    --danger-button-hover-bg: #FF0000;
+    --danger-button-bg: var(--brand-red);
+    --danger-button-hover-bg: var(--brand-red);
     --icon-action-color: var(--accent-color);
     --icon-action-hover-color: #8a7f7f;
-    --icon-danger-color: #FF0000;
-    --icon-danger-hover-color: #FF0000;
+    --icon-danger-color: var(--brand-red);
+    --icon-danger-hover-color: var(--brand-red);
     --calc-num-btn-bg: #007f8c;
     --calc-num-btn-text: #e0f2f7;
     --calc-num-btn-hover-bg: #0096c7;
@@ -2947,12 +2950,12 @@ body.theme-bold-2 { /* Forest Green */
     --menu-button-hover-bg: #4a754a;
     --placeholder-text: #c0d8b6;
     --ghosted-text: #d4e3c9;
-    --danger-button-bg: #FF0000;
-    --danger-button-hover-bg: #FF0000;
+    --danger-button-bg: var(--brand-red);
+    --danger-button-hover-bg: var(--brand-red);
     --icon-action-color: var(--accent-color);
     --icon-action-hover-color: #8a7f7f;
-    --icon-danger-color: #FF0000;
-    --icon-danger-hover-color: #FF0000;
+    --icon-danger-color: var(--brand-red);
+    --icon-danger-hover-color: var(--brand-red);
     --calc-num-btn-bg: #5a855a;
     --calc-num-btn-text: #e6ffe6;
     --calc-num-btn-hover-bg: #6a9955;
@@ -3016,8 +3019,8 @@ body.theme-bold-3 { /* Sunset Orange */
     --menu-button-hover-bg: #f4a261;
     --placeholder-text: #ffe5b4;
     --ghosted-text: #ffd790;
-    --danger-button-bg: #FF0000;
-    --danger-button-hover-bg: #FF0000;
+    --danger-button-bg: var(--brand-red);
+    --danger-button-hover-bg: var(--brand-red);
     --icon-action-color: var(--accent-color);
     --icon-action-hover-color: #8a7f7f;
     --icon-danger-color: #e63946;
