@@ -2197,8 +2197,8 @@ function makeFilesAvailableToSourceControlCSS() {
     --asx-button-active-bg: #a49393;
     --asx-button-active-text: #fff;
     /* Brand palette and mappings */
-    --brand-green: #008000;
-    --brand-red: #c42131;
+    --brand-green: #06FF4F; /* Updated primary green for positive changes */
+    --brand-red: #FF0000;   /* Updated primary red for negative changes & alerts */
     --accent-color: #a49393;
     --success-color: var(--brand-green);
     --danger-color: var(--brand-red);
@@ -2837,8 +2837,8 @@ body.dark-theme {
     --low52-thresh-color: #fff;
     --low52-bg: rgba(178, 34, 34, 0.25);
     --high52-bg: rgba(26, 110, 26, 0.25);
-    --low52-color: #ff8a8a;
-    --high52-color: #8aff8a;
+    --low52-color: var(--brand-red);
+    --high52-color: var(--brand-green);
     /* UPDATED: Cash & Assets Section Colors (Dark Theme) */
     --cash-section-bg: #282828;
     --cash-card-bg: #333333;
