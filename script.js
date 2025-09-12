@@ -8333,9 +8333,11 @@ async function displayStockDetailsInSearchModal(asxCode) {
                     <span class="fifty-two-week-value high">High: ${!isNaN(high52Week) ? formatMoney(high52Week) : 'N/A'}</span>
                 </div>
                 <div class="live-price-main-row">
-                        <h2 class="modal-share-name neutral-code-text">${displayPrice}</h2>
-                        <span class="price-change-large ${priceClass}">${priceChangeText}</span>
-                    </div>
+                    <h2 class="modal-share-name neutral-code-text">${displayPrice}</h2>
+                </div>
+                <div class="day-change-row">
+                    <span class="price-change-large ${priceClass}">${priceChangeText}</span>
+                </div>
                 <div class="pe-ratio-row">
                     <span class="pe-ratio-value">P/E: ${!isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A'}</span>
                 </div>
@@ -8410,7 +8412,9 @@ async function displayStockDetailsInSearchModal(asxCode) {
         actionButton.classList.add('button', 'primary-button'); // Apply base button styles
 
         if (existingShare) {
-            actionButton.textContent = 'Edit Share in Tracker';
+            // UX copy update: keep action consistent — label as "Add to Share Tracker"
+            // even when the share exists; clicking will open the edit flow for that share.
+            actionButton.textContent = 'Add to Share Tracker';
             actionButton.addEventListener('click', () => {
                 hideModal(stockSearchModal); // Close search modal
                 // If the user clicks "Edit Share in Tracker" for an existing share,
@@ -8418,7 +8422,8 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 showEditFormForSelectedShare(existingShare.id);
             });
         } else {
-            actionButton.textContent = 'Add Share to ASX Tracker'; // Changed text to be consistent for new shares
+            // UX copy update: requested phrasing
+            actionButton.textContent = 'Add to Share Tracker';
             actionButton.addEventListener('click', () => {
                 hideModal(stockSearchModal); // Close search modal
                 clearForm(); // Start clean add flow

@@ -6344,7 +6344,7 @@ table td.live-price-cell.negative-change {
 #addShareLivePriceDisplay { --live-price-size:1.9em; }
 @media (max-width:640px){ #addShareLivePriceDisplay { --live-price-size:1.85em; } }
 /* Search modal live display: align primary size with detail modal but slightly smaller */
-#stockSearchModal .live-price-display-section { --live-price-size: 2.4em; }
+#stockSearchModal .live-price-display-section { --live-price-size: 2.2em; }
 
 /* Secondary metrics sizing (contract): value elements only (avoid inflating container rows) */
 #modalLivePriceDisplaySection .price-change-large,
@@ -10387,6 +10387,20 @@ body.dark-theme .alert-item {
 #stockSearchModal .modal-footer {
     padding: 16px 0 !important;
     background: var(--modal-content-bg, #fff) !important;
+}
+
+/* Search modal: stack day change under live price and size as secondary metric */
+#stockSearchModal .day-change-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0;
+    margin-bottom: 4px;
+}
+#stockSearchModal .day-change-row .price-change-large {
+    margin-left: 0 !important; /* no inline gap when on its own row */
+    font-size: calc(var(--live-price-size) * var(--secondary-scale)) !important; /* same as Low/High and P/E */
 }
 
 /* Ensure modal body scrolls within the restored modal content */
