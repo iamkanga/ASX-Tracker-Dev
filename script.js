@@ -3275,6 +3275,21 @@ try {
         };
         try { window.addEventListener('popstate', window.__backPopLogger); } catch(_){ }
 
+        // Provide a safe global wrapper for history.pushState used across the app.
+        // This was missing in some builds, causing no history entries to be created
+        // for modals/watchlists/view toggles and breaking Back semantics.
+        try {
+            if (typeof window.pushAppState !== 'function') {
+                window.pushAppState = function(state, title, url){
+                    try { history.pushState(state || {}, title || '', url || location.href); } catch(_) {}
+                };
+            }
+        } catch(_) {}
+
+        // Default: never exit the PWA/app via Back. You can override at runtime by setting
+        // window.__preventAppExit = false to restore double-back-to-exit.
+        try { if (typeof window.__preventAppExit === 'undefined') window.__preventAppExit = true; } catch(_) {}
+
         // Ensure a toast container exists early so exit-toast can render even if UI module
         // hasn't initialized yet. This prevents race conditions where ToastManager is present
         // but has no container to render into (causing missing exit warning).
@@ -3309,17 +3324,10 @@ try {
                         Promise.resolve(result).then((consumed) => {
                             try {
                                 if (consumed) {
-                                    // Only push a history state to preserve the app when the last
-                                    // back action recorded was the exit-toast. Other consumed
-                                    // actions should not cause an artificial history push.
-                                    try {
-                                        const lastAction = window.__lastBackAction || null;
-                                        if (lastAction === 'exitToast') {
-                                            try { history.pushState({ asx_back_preserve: true }, '', location.href); } catch(_) {}
-                                        } else {
-                                            if (window.logBackDebug) window.logBackDebug('[Back] consumed by', lastAction || '(unknown)');
-                                        }
-                                    } catch(_) {}
+                                    // Always preserve a history entry when Back was consumed by the app,
+                                    // so the next Back press is also routed to our handler instead of
+                                    // dismissing the PWA. This keeps in-app navigation consistent.
+                                    try { history.pushState({ asx_back_preserve: true }, '', location.href); } catch(_) {}
                                 } else {
                                     // Not consumed -> allow default navigation (exit) to proceed.
                                     if (window.logBackDebug) window.logBackDebug('[Back] not consumed, allowing default navigation');
@@ -3464,33 +3472,42 @@ function handleGlobalBack(){
             return true;
         }
     }
-    // 3) No UI to reverse: implement double-back-to-exit on mobile/phones
-    // If the user presses back once, show a toast warning they will exit. If they press back again within
-    // EXIT_BACK_TOAST_TIMEOUT_MS, allow the browser to navigate back (exit). This mirrors native app UX.
+    // 3) No UI to reverse: default to preventing app exit, with an informative toast.
+    // You can opt back into double-back-to-exit by setting window.__preventAppExit = false.
     try {
-        const now = Date.now();
-        if (now - (__lastBackPressAt || 0) <= EXIT_BACK_TOAST_TIMEOUT_MS) {
-            // Second back within window -> allow exit
-            __lastBackPressAt = 0;
-            return false;
-        }
-        // First back: show toast and consume the back action
-        __lastBackPressAt = now;
-        try {
-            // Prefer centralized ToastManager if available
-            if (window.ToastManager && typeof window.ToastManager.info === 'function') {
-                window.ToastManager.info('Press back again to exit the app', { duration: EXIT_BACK_TOAST_TIMEOUT_MS });
-            } else if (typeof window.showCustomAlert === 'function') {
-                window.showCustomAlert('Press back again to exit the app', EXIT_BACK_TOAST_TIMEOUT_MS);
-            } else {
-                // Fallback: console and simple alert (non-ideal on mobile but safe)
-                console.log('Press back again to exit the app');
+        const preventExit = (typeof window.__preventAppExit === 'boolean') ? window.__preventAppExit : true;
+        if (preventExit) {
+            try {
+                if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+                    window.ToastManager.info('Back prevented: staying in the app', 1500);
+                } else if (typeof window.showCustomAlert === 'function') {
+                    window.showCustomAlert('Back prevented: staying in the app', 1500);
+                } else {
+                    console.log('Back prevented: staying in the app');
+                }
+                try { window.__lastBackAction = 'preventExit'; } catch(_) {}
+            } catch(_) {}
+            return true; // consume
+        } else {
+            // Double-back-to-exit mode
+            const now = Date.now();
+            if (now - (__lastBackPressAt || 0) <= EXIT_BACK_TOAST_TIMEOUT_MS) {
+                __lastBackPressAt = 0;
+                return false; // allow exit on second press
             }
-            // Mark that the last back action showed the exit-toast so the global popstate
-            // handler knows to push a preservation history state and avoid exiting the PWA
-            try { window.__lastBackAction = 'exitToast'; } catch(_) {}
-        } catch (e) { console.warn('Exit toast failed', e); }
-        return true;
+            __lastBackPressAt = now;
+            try {
+                if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+                    window.ToastManager.info('Press back again to exit the app', { duration: EXIT_BACK_TOAST_TIMEOUT_MS });
+                } else if (typeof window.showCustomAlert === 'function') {
+                    window.showCustomAlert('Press back again to exit the app', EXIT_BACK_TOAST_TIMEOUT_MS);
+                } else {
+                    console.log('Press back again to exit the app');
+                }
+                try { window.__lastBackAction = 'exitToast'; } catch(_) {}
+            } catch (e) { console.warn('Exit toast failed', e); }
+            return true;
+        }
     } catch (e) {
         // On any unexpected failure, fall back to allowing browser back so user isn't trapped
         return false;
