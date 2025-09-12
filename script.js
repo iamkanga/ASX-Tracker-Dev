@@ -3350,6 +3350,12 @@ try {
             // Do this on DOMContentLoaded to avoid interfering with other early scripts.
             const pushInitial = () => { try { history.replaceState({ asx_initial: true }, '', location.href); history.pushState({ asx_back_preserve: true }, '', location.href); } catch(_) {} };
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pushInitial, { once: true }); else pushInitial();
+            // Keepalive: when the app becomes visible or gains focus, ensure there's a preserve state
+            // so the next Back press routes through our handler.
+            const keepAlive = () => { try { history.pushState({ asx_back_preserve: true }, '', location.href); } catch(_) {} };
+            try { window.addEventListener('pageshow', keepAlive); } catch(_) {}
+            try { window.addEventListener('focus', keepAlive); } catch(_) {}
+            try { document.addEventListener('visibilitychange', () => { if (!document.hidden) keepAlive(); }); } catch(_) {}
         } catch(_) {}
     }
 } catch(_) {}
