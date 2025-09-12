@@ -947,6 +947,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 el.style.cursor = 'pointer';
                 el.addEventListener('click', (e) => {
                     e.stopPropagation();
+                    try {
+                        // If this card has been hidden-from-totals, prefer opening the
+                        // share viewing/details modal for that share instead of
+                        // opening the capital-gain summary which intentionally
+                        // excludes hidden shares.
+                        const card = el.closest && el.closest('.portfolio-card');
+                        const shareId = card && card.dataset && card.dataset.docId;
+                        const isHiddenCard = (card && card.classList && card.classList.contains('hidden-from-totals')) || (shareId && hiddenFromTotalsShareIds.has(shareId));
+                        if (isHiddenCard) {
+                            if (shareId && typeof selectShare === 'function') {
+                                try { selectShare(shareId); } catch(_) {}
+                            }
+                            try { showShareDetails(); } catch(_) {}
+                            return;
+                        }
+                    } catch (err) {
+                        console.warn('perCardValue click handler check failed', err);
+                    }
                     showSummaryModal('capitalGain');
                 });
             });
