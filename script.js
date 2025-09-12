@@ -853,6 +853,19 @@ document.addEventListener('DOMContentLoaded', function () {
                             card.classList.remove('hidden-from-totals');
                         }
                         persistHiddenFromTotals();
+                        // Also optimistically update the local cached share object so renders
+                        // that consult `share.isHiddenInPortfolio` reflect the user's action immediately.
+                        try {
+                            const currentShares = (typeof getAllSharesData === 'function') ? getAllSharesData() : (window.allSharesData || []);
+                            if (Array.isArray(currentShares)) {
+                                const idx = currentShares.findIndex(s => s && s.id === share.id);
+                                if (idx !== -1) {
+                                    const next = currentShares.slice();
+                                    next[idx] = { ...next[idx], isHiddenInPortfolio: !!nextHidden };
+                                    try { setAllSharesData(next); } catch(_) { window.allSharesData = next; }
+                                }
+                            }
+                        } catch (e) { console.warn('Optimistic local share update failed', e); }
                         try { if (typeof sortShares === 'function') sortShares(); } catch(_) {}
                         try { renderPortfolioList(); } catch(_) {}
                     } catch(err) {
@@ -1207,17 +1220,45 @@ let suppressShareFormReopen = false;
 const APP_VERSION = '2.15.1';
 
 // Persisted set of share IDs to hide from totals (Option A)
+// Persisted set of share IDs to hide from totals (Option A)
 let hiddenFromTotalsShareIds = new Set();
 try {
-    const stored = localStorage.getItem('hiddenFromTotalsShareIds');
-    if (stored) {
-        JSON.parse(stored).forEach(id => hiddenFromTotalsShareIds.add(id));
+    // If a shared authoritative Set was injected on window by the data loader, use it
+    if (window.hiddenFromTotalsShareIds && window.hiddenFromTotalsShareIds instanceof Set) {
+        hiddenFromTotalsShareIds = window.hiddenFromTotalsShareIds;
+    } else {
+        const stored = localStorage.getItem('hiddenFromTotalsShareIds');
+        if (stored) {
+            JSON.parse(stored).forEach(id => hiddenFromTotalsShareIds.add(id));
+        }
+        // Mirror to window for other modules
+        try { window.hiddenFromTotalsShareIds = hiddenFromTotalsShareIds; } catch(_) {}
     }
-} catch (e) { /* ignore parse errors */ }
+} catch (e) {
+    hiddenFromTotalsShareIds = new Set();
+}
 
 function persistHiddenFromTotals() {
     try { localStorage.setItem('hiddenFromTotalsShareIds', JSON.stringify(Array.from(hiddenFromTotalsShareIds))); } catch(_) {}
+    try { window.hiddenFromTotalsShareIds = hiddenFromTotalsShareIds; } catch(_) {}
 }
+
+// External API: allow other modules (e.g., dataService) to apply an authoritative list of hidden IDs
+try {
+    window.applyHiddenFromTotalsIds = function(arr) {
+        try {
+            if (!Array.isArray(arr)) return;
+            hiddenFromTotalsShareIds = new Set(arr.filter(Boolean));
+            // Persist locally and mirror
+            persistHiddenFromTotals();
+            // Trigger re-render of portfolio/UI if available
+            try { if (typeof renderPortfolioList === 'function') renderPortfolioList(); } catch(_) {}
+            try { if (typeof sortShares === 'function') sortShares(); } catch(_) {}
+        } catch (e) {
+            console.warn('applyHiddenFromTotalsIds failed', e);
+        }
+    };
+} catch (_) {}
 
 // Double-back exit toast state (used when there is nothing left to go back to in-app)
 let __lastBackPressAt = 0;

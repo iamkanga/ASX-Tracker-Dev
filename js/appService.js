@@ -1171,7 +1171,7 @@ export async function updateShareHiddenInPortfolio(shareId, isHidden) {
     }
 }
 
-try { window.AppService = { saveShareData, deleteShare, saveWatchlistChanges, deleteWatchlist, saveCashAsset, deleteCashCategory, deleteAllUserData, updateCashCategoryVisibility }; } catch(_) {}
+try { window.AppService = { saveShareData, deleteShare, saveWatchlistChanges, deleteWatchlist, saveCashAsset, deleteCashCategory, deleteAllUserData, updateCashCategoryVisibility, updateShareHiddenInPortfolio }; } catch(_) {}
 
 
 

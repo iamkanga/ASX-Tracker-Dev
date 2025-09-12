@@ -71,6 +71,21 @@ export async function loadShares(dbArg, firestoreArg, currentUserId, currentAppI
                 fetchedShares.push(share);
             });
 
+            // Initialize the hide-from-totals set from persisted share docs.
+            try {
+                const hiddenIds = (Array.isArray(fetchedShares) ? fetchedShares.filter(s => s && s.isHiddenInPortfolio).map(s => s.id) : []);
+                // Prefer to call the module-level API so the local Set instance is updated in script.js
+                if (typeof window.applyHiddenFromTotalsIds === 'function') {
+                    try { window.applyHiddenFromTotalsIds(hiddenIds); } catch(_) { }
+                } else {
+                    // Fallback: set on window and persist locally
+                    try { window.hiddenFromTotalsShareIds = new Set(hiddenIds || []); } catch(_) {}
+                    try { localStorage.setItem('hiddenFromTotalsShareIds', JSON.stringify(Array.from(window.hiddenFromTotalsShareIds || []))); } catch(_) {}
+                }
+            } catch (e) {
+                console.warn('Failed to initialize hiddenFromTotalsShareIds from Firestore', e);
+            }
+
             setAllSharesData((Array.isArray(fetchedShares) ? fetchedShares : []).filter(Boolean));
             window.logDebug && window.logDebug('Shares: Shares data updated from snapshot. Total shares: ' + (Array.isArray(allSharesData)? allSharesData.length : 0));
             try { window.renderWatchlist && window.renderWatchlist(); } catch(_) {}
