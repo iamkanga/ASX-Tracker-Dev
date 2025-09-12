@@ -487,10 +487,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 </div>
 
-                <!-- Current Value row with centered eye icon -->
+                <!-- Current Value row (eye moved to under ASX code for better discoverability) -->
                 <div class="portfolio-current-value">
                     <span class="portfolio-label">Current Value</span>
-                    <button class="pc-eye-btn" aria-label="Hide or show from totals"><span class="fa fa-eye"></span></button>
                     <span class="portfolio-val">${rowValue !== null ? fmtMoney(rowValue) : ''}</span>
                 </div>
 
@@ -498,6 +497,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="portfolio-capital-gain">
                     <span class="portfolio-label">Capital Gain</span>
                     <span class="portfolio-val ${plClass}">${rowPL !== null ? fmtMoney(rowPL) : ''}</span>
+                </div>
+
+                <!-- Eye icon placed under ASX code for easier reach on mobile -->
+                <div class="pc-eye-container" style="margin-top:6px;">
+                    <button class="pc-eye-btn" aria-label="Hide or show from totals"><span class="fa fa-eye"></span></button>
                 </div>
 
                 <!-- Centered arrow at bottom of card -->
@@ -818,11 +822,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const eyeBtn = card.querySelector('.pc-eye-btn');
             if (eyeBtn) {
                 // Set initial visual state on eye button and card
-                if (hiddenFromTotalsShareIds.has(share.id)) {
+                const isHiddenPersisted = (share.isHiddenInPortfolio === true) || hiddenFromTotalsShareIds.has(share.id);
+                if (isHiddenPersisted) {
                     eyeBtn.classList.add('hidden-from-totals');
                     card.classList.add('hidden-from-totals');
+                    hiddenFromTotalsShareIds.add(share.id);
                 }
-                eyeBtn.addEventListener('click', function(e) {
+
+                eyeBtn.addEventListener('click', async function(e) {
                     e.stopPropagation();
                     // If user held Ctrl/Meta or Shift while clicking, treat as 'open details' to preserve previous flow
                     if (e.ctrlKey || e.metaKey || e.shiftKey) {
@@ -830,21 +837,44 @@ document.addEventListener('DOMContentLoaded', function () {
                         showShareDetails();
                         return;
                     }
+
                     const wasHidden = hiddenFromTotalsShareIds.has(share.id);
-                    if (wasHidden) {
-                        hiddenFromTotalsShareIds.delete(share.id);
-                        eyeBtn.classList.remove('hidden-from-totals');
-                        card.classList.remove('hidden-from-totals');
-                    } else {
-                        hiddenFromTotalsShareIds.add(share.id);
-                        eyeBtn.classList.add('hidden-from-totals');
-                        card.classList.add('hidden-from-totals');
+                    const nextHidden = !wasHidden;
+
+                    // Optimistic UI update
+                    try {
+                        if (nextHidden) {
+                            hiddenFromTotalsShareIds.add(share.id);
+                            eyeBtn.classList.add('hidden-from-totals');
+                            card.classList.add('hidden-from-totals');
+                        } else {
+                            hiddenFromTotalsShareIds.delete(share.id);
+                            eyeBtn.classList.remove('hidden-from-totals');
+                            card.classList.remove('hidden-from-totals');
+                        }
+                        persistHiddenFromTotals();
+                        try { if (typeof sortShares === 'function') sortShares(); } catch(_) {}
+                        try { renderPortfolioList(); } catch(_) {}
+                    } catch(err) {
+                        console.warn('Optimistic UI update failed for eye toggle', err);
                     }
-                    persistHiddenFromTotals();
-                    // Ensure authoritative sort is applied so hidden items move to the bottom
-                    try { if (typeof sortShares === 'function') sortShares(); } catch(_) {}
-                    // Re-render totals and summary immediately (after sorting)
-                    try { renderPortfolioList(); } catch(_) {}
+
+                    // Persist to Firestore via AppService if available; otherwise rely on local storage
+                    try {
+                        if (window.AppService && typeof window.AppService.updateShareHiddenInPortfolio === 'function') {
+                            await window.AppService.updateShareHiddenInPortfolio(share.id, nextHidden);
+                        } else if (typeof updateShareHiddenInPortfolio === 'function') {
+                            // Some modules import AppService functions directly
+                            await updateShareHiddenInPortfolio(share.id, nextHidden);
+                        } else {
+                            // Firestore helper not available; already persisted locally via persistHiddenFromTotals
+                            console.info('Share visibility persisted locally only (no AppService available)');
+                        }
+                    } catch (err) {
+                        console.error('Failed to persist share hidden state to Firestore:', err);
+                        // On failure, keep optimistic UI but notify user
+                        try { if (window.ToastManager && typeof window.ToastManager.error === 'function') window.ToastManager.error('Failed to save visibility change'); else if (window.showCustomAlert) window.showCustomAlert('Failed to save visibility change', 1800); } catch(_) {}
+                    }
                 });
             }
             // (Removed deprecated shortcut button — click-to-open is handled by card click-through)
@@ -1079,8 +1109,9 @@ function ensureMoversPlaceholder() {
             td.style.textAlign='center';
             tr.appendChild(td);
             tbody.appendChild(tr);
-        }
-        return true;
+    }
+    try { window.__lastBackAction = 'modal'; } catch(_) {}
+    return true;
     } catch(_) { return false; }
 }
 
@@ -3123,17 +3154,37 @@ try {
         // Unified popstate handler: call handleGlobalBack and, if the action is consumed,
         // push a history state to prevent the browser from exiting the PWA on first back.
         try {
+            // Global popstate handler: call handleGlobalBack (sync or async). Only push a
+            // preservation history entry when the action was the exit-toast. This avoids
+            // trapping normal back flows (modals, sidebar, watchlist) while restoring the
+            // double-back-to-exit behaviour reliably.
             window.__globalPopHandler = function(ev) {
                 try {
                     if (window.logBackDebug) window.logBackDebug('[Back] popstate fired', ev && ev.state);
                     if (typeof handleGlobalBack === 'function') {
-                        const consumed = handleGlobalBack();
-                        if (consumed) {
-                            // Keep the user in-app by restoring a history entry immediately.
-                            try { history.pushState({ asx_back_preserve: true }, '', location.href); } catch(_) {}
-                        } else {
-                            // Not consumed -> allow default navigation (exit) to proceed.
-                        }
+                        const result = handleGlobalBack();
+                        Promise.resolve(result).then((consumed) => {
+                            try {
+                                if (consumed) {
+                                    // Only push a history state to preserve the app when the last
+                                    // back action recorded was the exit-toast. Other consumed
+                                    // actions should not cause an artificial history push.
+                                    try {
+                                        const lastAction = window.__lastBackAction || null;
+                                        if (lastAction === 'exitToast') {
+                                            try { history.pushState({ asx_back_preserve: true }, '', location.href); } catch(_) {}
+                                        } else {
+                                            if (window.logBackDebug) window.logBackDebug('[Back] consumed by', lastAction || '(unknown)');
+                                        }
+                                    } catch(_) {}
+                                } else {
+                                    // Not consumed -> allow default navigation (exit) to proceed.
+                                    if (window.logBackDebug) window.logBackDebug('[Back] not consumed, allowing default navigation');
+                                }
+                            } catch (e) { if (window.logBackDebug) console.warn('Global pop handler inner failure', e); }
+                        }).catch((err) => {
+                            console.warn('Global pop handler: handleGlobalBack promise failed', err);
+                        });
                     }
                 } catch (e) {
                     console.warn('Global popstate handler failed', e);
@@ -3204,6 +3255,7 @@ function handleGlobalBack(){
             const prevModal = prev.ref && prev.ref.nodeType === 1 ? prev.ref : (prev.ref ? document.getElementById(prev.ref.id || prev.ref) : null);
             if (prevModal) { try { showModalNoHistory(prevModal); } catch(e){ console.warn('Restore modal failed', e); } }
         }
+        try { window.__lastBackAction = 'sidebar'; } catch(_) {}
         return true;
     }
     // 1a) If any modal is visible but not on stack (legacy open path), close it to avoid coupling to watchlist
@@ -3215,7 +3267,7 @@ function handleGlobalBack(){
             const cs = window.getComputedStyle ? window.getComputedStyle(m).display : '';
             return ds === 'flex' || hasShow || cs === 'flex';
         });
-        if (openModal && (!last || last.type !== 'modal')) { logBackDebug('Closing visible modal (no stack)', openModal && openModal.id); hideModal(openModal); return true; }
+    if (openModal && (!last || last.type !== 'modal')) { logBackDebug('Closing visible modal (no stack)', openModal && openModal.id); hideModal(openModal); try { window.__lastBackAction = 'modal'; } catch(_) {} ; return true; }
     } catch(_) {}
     // 2) Close the sidebar if open
     if (window.appSidebar && window.appSidebar.classList.contains('open')) {
@@ -3228,6 +3280,7 @@ function handleGlobalBack(){
                 if (sidebarOverlay){ sidebarOverlay.classList.remove('open'); sidebarOverlay.style.pointerEvents='none'; }
             } catch(_){}
         }
+        try { window.__lastBackAction = 'watchlist'; } catch(_) {}
         return true;
     }
     // 2b) Revert a watchlist change: restore the previous selection directly (no picker)
@@ -3264,6 +3317,7 @@ function handleGlobalBack(){
         if (prevMode === 'compact' || prevMode === 'default') {
             try { setMobileViewMode(prevMode, 'back_restore'); } catch(e){ console.warn('Back: view mode restore failed', e); }
             try { showCustomAlert(prevMode === 'compact' ? 'Compact View' : 'Default View', 700); } catch(_) {}
+            try { window.__lastBackAction = 'viewMode'; } catch(_) {}
             return true;
         }
     }

@@ -1050,7 +1050,7 @@ function makeFilesAvailableToSourceControlCSS() {
     bottom: 2px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 1.0em;
+    font-size: 1.35em; /* increased for better tap target */
     font-weight: normal;
     color: var(--text-muted);
     cursor: pointer;
@@ -1851,7 +1851,7 @@ function makeFilesAvailableToSourceControlCSS() {
     padding: 0;
     margin: 0;
     color: var(--icon-action-color);
-    font-size: 1.45rem;
+    font-size: 1.9rem; /* larger chevron for easier tapping */
     font-weight: 700;
     cursor: pointer;
     display: flex;
@@ -1865,7 +1865,7 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-card .pc-chevron-btn.neutral { color: #fff; }
 .portfolio-card .pc-chevron-btn:hover { filter: brightness(1.2); }
 .portfolio-card .chevron {
-    font-size: 1.45rem;
+    font-size: 1.9rem;
     transition: transform 0.18s;
     display: inline-block;
 }

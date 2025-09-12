@@ -1143,6 +1143,34 @@ export async function deleteAllUserData() {
     return await (async()=>{ return window.deleteAllUserData(); })();
 }
 
+// Update a single share's visibility in portfolio totals (isHiddenInPortfolio)
+export async function updateShareHiddenInPortfolio(shareId, isHidden) {
+    if (!shareId) throw new Error('Missing shareId');
+    try {
+        const currentUserId = (function(){ try { return window.currentUserId || (auth && auth.currentUser && auth.currentUser.uid) || null; } catch(_) { return null; } })();
+        if (!currentUserId) { throw new Error('User not authenticated'); }
+        const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', shareId);
+        await firestore.updateDoc(shareDocRef, { isHiddenInPortfolio: !!isHidden, lastUpdated: new Date().toISOString() });
+
+        // Update local cached state if present
+        try {
+            const current = getAllSharesData() || [];
+            const idx = current.findIndex(s => s && s.id === shareId);
+            if (idx !== -1) {
+                const next = current.slice();
+                next[idx] = { ...next[idx], isHiddenInPortfolio: !!isHidden };
+                setAllSharesData(next);
+            }
+        } catch(_) {}
+
+        try { window.logDebug && window.logDebug('Firestore: Share visibility updated for ' + shareId + ' -> ' + isHidden); } catch(_) {}
+        return true;
+    } catch (error) {
+        console.error('Error updating share visibility:', error);
+        throw error;
+    }
+}
+
 try { window.AppService = { saveShareData, deleteShare, saveWatchlistChanges, deleteWatchlist, saveCashAsset, deleteCashCategory, deleteAllUserData, updateCashCategoryVisibility }; } catch(_) {}
 
 
