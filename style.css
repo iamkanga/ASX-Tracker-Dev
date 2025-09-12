@@ -932,14 +932,59 @@ function makeFilesAvailableToSourceControlCSS() {
     min-height: 60px; /* Ensure minimum height for proper positioning */
 }
 
-.portfolio-card:hover {
-    background-color: var(--table-row-hover-bg);
+/* Keep hover effect for desktop/fine pointers only */
+@media (hover: hover) and (pointer: fine) {
+    .portfolio-card:hover {
+        background-color: var(--table-row-hover-bg);
+    }
+}
+
+/* On touch/coarse pointers, do not change background on hover/long-press for collapsed cards */
+@media (hover: none), (pointer: coarse) {
+    .portfolio-card:not(.expanded):hover,
+    .portfolio-card:not(.expanded):active {
+        background-color: var(--card-bg) !important;
+    }
+    /* Keep expanded cards visually stable during long-press */
+    .portfolio-card.expanded:hover,
+    .portfolio-card.expanded:active {
+        background-color: var(--table-row-hover-bg) !important;
+    }
+    /* Remove focus outlines and shadows that can appear on touch */
+    .portfolio-card:focus,
+    .portfolio-card:focus-visible,
+    .portfolio-card *:focus,
+    .portfolio-card *:focus-visible {
+        outline: none !important;
+        box-shadow: none !important;
+    }
+    /* Disable text selection to avoid blue selection highlight */
+    .portfolio-card,
+    .portfolio-card * {
+        -webkit-user-select: none !important;
+        user-select: none !important;
+    }
+    /* Also cover the portfolio list container to ensure no residual highlight */
+    #portfolioListContainer,
+    #portfolioListContainer * {
+        -webkit-tap-highlight-color: transparent !important;
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
+    }
 }
 
 .portfolio-card.expanded {
     background-color: var(--table-row-hover-bg);
     border-color: var(--accent-color);
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Globally suppress tap highlight callout on portfolio cards */
+.portfolio-card,
+.portfolio-card * {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
 }
 
 /* Compact horizontal top row */
@@ -1044,31 +1089,35 @@ function makeFilesAvailableToSourceControlCSS() {
     color: var(--price-down-color);
 }
 
-/* Arrow positioned at the bottom center of the card */
+/* Arrow positioned at the bottom center of the card.
+   Implemented with pseudo-elements so we can control line thickness,
+   overall size, and the openness (spacing between end points).
+   This replaces the old text caret so the shape can be tuned precisely. */
 .portfolio-centered-arrow {
     position: absolute;
-    bottom: 2px;
+    bottom: 6px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 1.35em; /* increased for better tap target */
-    font-weight: normal;
-    color: var(--text-muted);
+    display: block;
     cursor: pointer;
-    transition: transform 0.2s ease, color 0.2s ease;
+    color: var(--text-muted);
     user-select: none;
     z-index: 10;
-    line-height: 1;
-    opacity: 0.6;
-    display: block;
+    opacity: 0.95;
+    /* hide textual fallback glyph while keeping element accessible for screen readers */
+    text-indent: -9999px;
+    overflow: visible; /* pseudo-element draws outside the element box */
+    width: 1em;
+    height: 1em;
 }
 
 /* Prevent mobile long-press / tap highlight changing the portfolio card background in dark mode.
-   We scope this to narrow viewports and dark-theme only to avoid interfering with desktop hover
-   and selection behaviors. This keeps the red/green numeric colors readable when long-pressing. */
+   Apply additional touch-callout and stronger rules to cover Android & iOS behaviors. */
 @media (max-width: 640px) {
     body.dark-theme .portfolio-card,
     body.dark-theme .portfolio-card * {
         -webkit-tap-highlight-color: transparent !important;
+        -webkit-touch-callout: none !important;
         -webkit-user-select: none !important;
         user-select: none !important;
         touch-action: manipulation !important;
@@ -1077,16 +1126,56 @@ function makeFilesAvailableToSourceControlCSS() {
     /* Ensure any :active state doesn't override the background color used for cards */
     body.dark-theme .portfolio-card:active,
     body.dark-theme .portfolio-card:focus,
-    body.dark-theme .portfolio-card:focus-visible {
+    body.dark-theme .portfolio-card:focus-visible,
+    body.dark-theme .portfolio-card *:active,
+    body.dark-theme .portfolio-card::after {
         background-color: var(--card-bg) !important;
+        color: inherit !important;
     }
 
     /* Defensive: buttons/controls inside card should still be interactive, so avoid blocking pointer-events.
        We only prevent visual tap highlight and selection. */
 }
 
-.portfolio-card:hover .portfolio-centered-arrow {
+/* Single triangular caret implemented with border trick. This produces a solid, broad caret
+   that is easy to rotate (180deg) when the card is expanded. */
+.portfolio-centered-arrow::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    /* Start rotated so it visually points DOWN when collapsed */
+    transform: translate(-50%, -45%) rotate(180deg);
+    transform-origin: 50% 50%;
+    display: block;
+    width: 0;
+    height: 0;
+    /* Broad, less-pointed caret: increase side widths and reduce height for a squat look */
+    border-left: 0.9em solid transparent;
+    border-right: 0.9em solid transparent;
+    border-bottom: 0.6em solid currentColor; /* triangle shape; we'll flip via rotation */
+    transition: transform 220ms ease, opacity 120ms ease;
+}
+
+/* Rotate the caret to point UP when the card has the expanded state */
+.portfolio-card.expanded .portfolio-centered-arrow::before {
+    transform: translate(-50%, -45%) rotate(0deg);
+}
+
+/* Hover/focus color change preserved by using currentColor */
+.portfolio-card:hover .portfolio-centered-arrow,
+.portfolio-centered-arrow:focus,
+.portfolio-centered-arrow:active {
     color: var(--accent-color);
+    outline: none;
+}
+
+/* Strong override class applied during touch to defeat native long-press visuals */
+.portfolio-card.no-tap-highlight,
+.portfolio-card.no-tap-highlight * {
+    background-color: var(--card-bg) !important;
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none !important;
 }
 
 /* Capital Gain and Current Value on separate lines */

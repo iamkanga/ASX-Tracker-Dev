@@ -782,7 +782,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // --- Expand/Collapse Logic (Accordion) & Eye Button ---
         const cardNodes = portfolioListContainer.querySelectorAll('.portfolio-card');
-        cardNodes.forEach((card, idx) => {
+    cardNodes.forEach((card, idx) => {
             // Get the share object for this card
             const share = portfolioShares[idx];
             const arrow = card.querySelector('.portfolio-centered-arrow');
@@ -795,18 +795,19 @@ document.addEventListener('DOMContentLoaded', function () {
                         otherCard.classList.remove('expanded');
                         const otherArrow = otherCard.querySelector('.portfolio-centered-arrow');
                         const otherContent = otherCard.querySelector('.portfolio-expanded-content');
-                        if (otherArrow) otherArrow.textContent = '⌄';
+                        // rely on CSS for caret appearance; ensure no leftover expanded class
+                        if (otherArrow) { /* no-op: appearance handled by CSS triangle */ }
                         if (otherContent) otherContent.style.display = 'none';
                     }
                 });
                 card.classList.add('expanded');
-                arrow.textContent = '⌃';
+                // CSS will rotate the caret when .expanded is present
                 content.style.display = 'block';
             };
 
             const collapseCard = () => {
                 card.classList.remove('expanded');
-                arrow.textContent = '⌄';
+                // CSS will show collapsed caret automatically
                 content.style.display = 'none';
             };
 
@@ -824,6 +825,92 @@ document.addEventListener('DOMContentLoaded', function () {
                 e.stopPropagation();
                 toggleExpanded();
             });
+
+            // Pointer/touch handlers to suppress native long-press visual effects on mobile.
+            // We add a short-lived class during the interaction which forces the card
+            // background to remain stable via CSS. This covers browsers that ignore
+            // -webkit-tap-highlight-color on certain elements.
+            const addNoTap = (ev) => {
+                try {
+                    // Force inline styles to override any native pressed overlay.
+                    const cs = window.getComputedStyle(card);
+                    const resolvedBG = cs && cs.backgroundColor ? cs.backgroundColor : 'transparent';
+                    // Mark that we've applied overrides so removeNoTap can clean up
+                    card.__noTapApplied = true;
+                    // Also toggle an ephemeral class so a single high-specificity stylesheet
+                    // can override UA pressed overlays which sometimes ignore inline styles.
+                    card.classList.add('no-tap-ephemeral');
+                    // Ensure the global ephemeral style exists
+                    try {
+                        if (!document.getElementById('no-tap-ephemeral-style')) {
+                            const s = document.createElement('style');
+                            s.id = 'no-tap-ephemeral-style';
+                            s.textContent = `html body .portfolio-card.no-tap-ephemeral, html body .portfolio-card.no-tap-ephemeral * { -webkit-tap-highlight-color: transparent !important; -webkit-touch-callout: none !important; -webkit-user-select: none !important; user-select: none !important; background-color: var(--card-bg) !important; }
+html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-tap-ephemeral *:active, html body .portfolio-card.no-tap-ephemeral::before, html body .portfolio-card.no-tap-ephemeral::after { background-color: var(--card-bg) !important; color: inherit !important; }
+`;
+                            (document.head || document.documentElement).appendChild(s);
+                        }
+                    } catch(_) {}
+                    // Apply important inline properties
+                    try { card.style.setProperty('background-color', resolvedBG, 'important'); } catch(_) {}
+                    try { card.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important'); } catch(_) {}
+                    try { card.style.setProperty('-webkit-touch-callout', 'none', 'important'); } catch(_) {}
+                    try { card.style.setProperty('user-select', 'none', 'important'); } catch(_) {}
+                    // Also apply tap-highlight / touch-callout suppression to children for extra coverage
+                    try {
+                        const children = card.querySelectorAll('*');
+                        for (let i = 0; i < children.length; i++) {
+                            const el = children[i];
+                            try { el.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important'); } catch(_) {}
+                            try { el.style.setProperty('-webkit-touch-callout', 'none', 'important'); } catch(_) {}
+                            try { el.style.setProperty('user-select', 'none', 'important'); } catch(_) {}
+                        }
+                    } catch(_) {}
+                } catch(_) {}
+            };
+
+            const removeNoTap = (ev) => {
+                try {
+                    if (!card.__noTapApplied) return;
+                    // Remove the inline overrides we added
+                    try { card.style.removeProperty('background-color'); } catch(_) {}
+                    try { card.style.removeProperty('-webkit-tap-highlight-color'); } catch(_) {}
+                    try { card.style.removeProperty('-webkit-touch-callout'); } catch(_) {}
+                    try { card.style.removeProperty('user-select'); } catch(_) {}
+                    try {
+                        const children = card.querySelectorAll('*');
+                        for (let i = 0; i < children.length; i++) {
+                            const el = children[i];
+                            try { el.style.removeProperty('-webkit-tap-highlight-color'); } catch(_) {}
+                            try { el.style.removeProperty('-webkit-touch-callout'); } catch(_) {}
+                            try { el.style.removeProperty('user-select'); } catch(_) {}
+                        }
+                    } catch(_) {}
+                    card.__noTapApplied = false;
+                    try { card.classList.remove('no-tap-ephemeral'); } catch(_) {}
+                } catch(_) {}
+            };
+
+            if (window.PointerEvent) {
+                card.addEventListener('pointerdown', addNoTap, { passive: true });
+                card.addEventListener('pointerup', removeNoTap);
+                card.addEventListener('pointercancel', removeNoTap);
+                card.addEventListener('pointerleave', removeNoTap);
+            } else {
+                // Fallback for older browsers: touch events
+                card.addEventListener('touchstart', addNoTap, { passive: true });
+                card.addEventListener('touchend', removeNoTap);
+                card.addEventListener('touchcancel', removeNoTap);
+            }
+
+            // Additional suppression on touch devices: prevent context menu and selection start
+            try {
+                const isCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+                if (isCoarsePointer) {
+                    card.addEventListener('contextmenu', (e) => { e.preventDefault(); }, { passive: false });
+                    card.addEventListener('selectstart', (e) => { e.preventDefault(); }, { passive: false });
+                }
+            } catch(_) {}
 
             // Click on card to toggle (but not on eye button)
             card.addEventListener('click', (e) => {
@@ -1231,8 +1318,8 @@ let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
-// Release: 2025-08-26 - Portfolio card redesign (updated)
-const APP_VERSION = '2.15.1';
+// Release: 2025-09-12 - Portfolio arrow and minor UI fixes
+const APP_VERSION = '2.15.2';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)
