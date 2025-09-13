@@ -871,8 +871,8 @@ function makeFilesAvailableToSourceControlCSS() {
 .alert-target-cell, .alert-target-line { white-space: nowrap; font-weight:600; font-size:0.9rem; }
 .alert-target-intent { display:inline-block; min-width:1ch; text-align:center; }
 .alert-target-arrow { font-size:0.85rem; font-weight:700; }
-.alert-target-arrow.up { color: var(--brand-green,#008000); }
-.alert-target-arrow.down { color: var(--brand-red,#c42131); }
+.alert-target-arrow.up { color: var(--brand-green); }
+.alert-target-arrow.down { color: var(--brand-red); }
 
 /* Enhanced styling for Alert Target on mobile cards */
 .mobile-card .alert-target-row {
@@ -897,8 +897,8 @@ function makeFilesAvailableToSourceControlCSS() {
     font-size: 0.9em;
     margin-right: 0.2em;
 }
-.mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green,#008000) !important; }
-.mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red,#c42131) !important; }
+.mobile-share-cards .mobile-card .alert-target-arrow.up { color: var(--brand-green) !important; }
+.mobile-share-cards .mobile-card .alert-target-arrow.down { color: var(--brand-red) !important; }
 .alert-target-price { font-weight:600; }
 .asx-code-buttons-scroll { max-height:220px; overflow-y:auto; position:relative; }
 .asx-code-buttons-scroll::-webkit-scrollbar { width:6px; }
@@ -1639,14 +1639,14 @@ function makeFilesAvailableToSourceControlCSS() {
     transition: border-color 0.18s;
 }
 .portfolio-cards-grid .portfolio-card.positive {
-    border-color: #008000 !important; /* TEST: hardcoded brand green */
+    border-color: var(--brand-green) !important; /* use canonical brand green */
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
 }
 
 .portfolio-cards-grid .portfolio-card.negative {
-    border-color: #c42131 !important; /* TEST: hardcoded brand red */
+    border-color: var(--brand-red) !important; /* use canonical brand red */
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
@@ -1956,16 +1956,16 @@ function makeFilesAvailableToSourceControlCSS() {
     color: var(--muted-color, #666);
 }
 
-/* Positive change styling */
+/* Positive change styling - use canonical theme variables (safe fallback to brand-green) */
 #portfolio-summary-modal .summary-list-item.positive .summary-item-dollar-change,
 #portfolio-summary-modal .summary-list-item.positive .summary-item-pct-change {
-    color: var(--positive-color, #008000);
+    color: var(--price-up-color, var(--brand-green, #06FF4F));
 }
 
-/* Negative change styling */
+/* Negative change styling - use canonical theme variables (safe fallback to brand-red) */
 #portfolio-summary-modal .summary-list-item.negative .summary-item-dollar-change,
 #portfolio-summary-modal .summary-list-item.negative .summary-item-pct-change {
-    color: var(--negative-color, #c42131);
+    color: var(--price-down-color, var(--brand-red, #FF3131));
 }
 /* Fix: Ensure portfolio summary modal centers like other modals.
    Only apply when the modal is shown so it doesn't appear on page load. */
@@ -5899,9 +5899,9 @@ table tbody tr:not(.selected):hover {
 #portfolioSection .portfolio-table td.negative { color: var(--price-down-color) !important; font-weight: 700; }
 /* Row-level color cue */
 #portfolioSection .portfolio-table tr.positive td.code-cell { color: var(--price-up-color) !important; font-weight:700; }
-#portfolioSection .portfolio-table tr.negative td.code-cell { color:#FF4D4D !important; font-weight:700; }
+#portfolioSection .portfolio-table tr.negative td.code-cell { color: var(--brand-red) !important; font-weight:700; }
 #portfolioSection .portfolio-table tr.portfolio-total-row.positive td { color: var(--price-up-color); }
-#portfolioSection .portfolio-table tr.portfolio-total-row.negative td { color:#FF4D4D; }
+#portfolioSection .portfolio-table tr.portfolio-total-row.negative td { color: var(--brand-red); }
 
 /* Specific alignment tweaks: value column left aligned for readability */
 #portfolioSection .portfolio-table td.value-cell { text-align:left; padding-left:14px; }
@@ -5921,26 +5921,26 @@ table tbody tr:not(.selected):hover {
 }
 .portfolio-summary-bar .ps-card { flex:1 1 140px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:10px; padding:12px 14px; position:relative; overflow:hidden; }
 .portfolio-summary-bar .ps-card.highlight { border-width:2px; }
-.portfolio-summary-bar .ps-card.profit.highlight { border-color:#00FF8C; }
-.portfolio-summary-bar .ps-card.loss.highlight { border-color:#FF2F2F; }
-.portfolio-summary-bar .ps-card.net.positive.highlight { border-color:#00FF8C; }
-.portfolio-summary-bar .ps-card.net.negative.highlight { border-color:#FF2F2F; }
+.portfolio-summary-bar .ps-card.profit.highlight { border-color: var(--brand-green); }
+.portfolio-summary-bar .ps-card.loss.highlight { border-color: var(--brand-red); }
+.portfolio-summary-bar .ps-card.net.positive.highlight { border-color: var(--brand-green); }
+.portfolio-summary-bar .ps-card.net.negative.highlight { border-color: var(--brand-red); }
 .portfolio-summary-bar .ps-card::after { content:""; position:absolute; inset:0; opacity:0.15; pointer-events:none; }
-.portfolio-summary-bar .ps-card.profit::after { background:linear-gradient(135deg,#00c878,#004d2f); }
-.portfolio-summary-bar .ps-card.loss::after { background:linear-gradient(135deg,#ff4d4d,#5c0b0b); }
-.portfolio-summary-bar .ps-card.net.positive::after { background:linear-gradient(135deg,#00c878,#004d2f); }
-.portfolio-summary-bar .ps-card.net.negative::after { background:linear-gradient(135deg,#ff4d4d,#5c0b0b); }
+.portfolio-summary-bar .ps-card.profit::after { background: linear-gradient(135deg, rgba(6,255,79,0.25), rgba(0,77,47,0.14)); }
+.portfolio-summary-bar .ps-card.loss::after { background: linear-gradient(135deg, rgba(255,49,49,0.25), rgba(92,11,11,0.14)); }
+.portfolio-summary-bar .ps-card.net.positive::after { background: linear-gradient(135deg, rgba(6,255,79,0.25), rgba(0,77,47,0.14)); }
+.portfolio-summary-bar .ps-card.net.negative::after { background: linear-gradient(135deg, rgba(255,49,49,0.25), rgba(92,11,11,0.14)); }
 .portfolio-summary-bar .ps-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.6px; opacity:0.75; margin-bottom:2px; }
 .portfolio-summary-bar .ps-value { font-size:1.15rem; font-weight:700; position:relative; z-index:1; }
-.portfolio-summary-bar .ps-card.profit .ps-value { color:#00FF9C; }
-.portfolio-summary-bar .ps-card.loss .ps-value { color:#FF7A7A; }
-.portfolio-summary-bar .ps-card.loss { border-color:#FF2F2F; }
-.portfolio-summary-bar .ps-card.loss .ps-value { color:#FF2F2F; }
-.portfolio-summary-bar .ps-card.net.positive .ps-value { color:#00FF9C; }
-.portfolio-summary-bar .ps-card.net.negative .ps-value { color:#FF7A7A; }
+.portfolio-summary-bar .ps-card.profit .ps-value { color: var(--brand-green); }
+.portfolio-summary-bar .ps-card.loss .ps-value { color: var(--brand-red); }
+.portfolio-summary-bar .ps-card.loss { border-color: var(--brand-red); }
+.portfolio-summary-bar .ps-card.loss .ps-value { color: var(--brand-red); }
+.portfolio-summary-bar .ps-card.net.positive .ps-value { color: var(--brand-green); }
+.portfolio-summary-bar .ps-card.net.negative .ps-value { color: var(--brand-red); }
 .portfolio-summary-bar .ps-card.net .ps-percent { margin-top:4px; font-size:0.7rem; font-weight:600; letter-spacing:0.5px; opacity:0.85; }
-.portfolio-summary-bar .ps-card.net.positive .ps-percent { color:#00FF9C; }
-.portfolio-summary-bar .ps-card.net.negative .ps-percent { color:#FF2F2F; }
+.portfolio-summary-bar .ps-card.net.positive .ps-percent { color: var(--brand-green); }
+.portfolio-summary-bar .ps-card.net.negative .ps-percent { color: var(--brand-red); }
 @media (max-width:640px){
     .portfolio-summary-bar { gap:6px; }
     .portfolio-summary-bar .ps-card { padding:10px 12px; flex:1 1 100px; }
@@ -6047,8 +6047,8 @@ table tbody tr.target-hit-alert td,
 
 
 /* Stronger portfolio context button coloring */
-.asx-code-btn.portfolio-context.positive { background:rgba(0,255,140,0.15); border-color:#00FF8C; color:#00FF8C; }
-.asx-code-btn.portfolio-context.negative { background:rgba(255,70,70,0.18); border-color:#FF3B3B; color:#FF3B3B; }
+.asx-code-btn.portfolio-context.positive { background: rgba(6,255,79,0.12); border-color: var(--brand-green); color: var(--brand-green); }
+.asx-code-btn.portfolio-context.negative { background: rgba(255,49,49,0.12); border-color: var(--brand-red); color: var(--brand-red); }
 .asx-code-btn.portfolio-context.neutral { background:rgba(255,255,255,0.05); }
 .portfolio-card .pc-live { display:flex; align-items:center; gap:4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; }
 .portfolio-card .pc-live.live { color:var(--green-color); }
@@ -6591,8 +6591,8 @@ table td.live-price-cell.negative-change {
 .sort-picker-label { flex: 1 1 auto; }
 .sort-picker-direction { flex: 0 0 28px; display:flex; align-items:center; justify-content:center; }
 .sort-picker-triangle { font-size: 1.05rem; line-height: 1; }
-.sort-picker-triangle.desc { color: var(--brand-green, #00C878); }
-.sort-picker-triangle.asc { color: var(--brand-red, #FF4D4D); }
+.sort-picker-triangle.desc { color: var(--brand-green); }
+.sort-picker-triangle.asc { color: var(--brand-red); }
 
 #shareDetailModal .modal-content { width:94%; max-width:540px; }
 #shareDetailModal { overscroll-behavior:contain; }
@@ -7340,12 +7340,12 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
 /* Selectors updated to reflect that the labels are direct siblings of the <label class="switch"> element */
 #targetDirectionToggle:checked + .slider + .toggle-label.right {
     font-weight: bold;
-    color: var(--positive-color); /* Emphasize active 'Above' */
+    color: var(--price-up-color, var(--brand-green)); /* Emphasize active 'Above' */
 }
 
 #targetDirectionToggle:not(:checked) + .slider + .toggle-label.left {
     font-weight: bold;
-    color: var(--negative-color); /* Emphasize active 'Below' */
+    color: var(--price-down-color, var(--brand-red)); /* Emphasize active 'Below' */
 }
 
 
@@ -10748,3 +10748,78 @@ body.dark-theme .discover-global-modal .discover-mover {
     margin: 20px 0;
     border: 1px solid var(--border-color, #ddd);
 }
+
+/* -------------------------------------------------------------------------
+   Minimal, safe header/ASX visual harmonization override
+   - Keeps changes focused: only color/size/weight for title, timestamp,
+     ASX buttons, and header icons so they visually match the coffee theme.
+   - Uses --accent-color so it follows the selected app theme.
+   - Placed at the end to reduce risk of being unintentionally overridden.
+   ------------------------------------------------------------------------- */
+
+/* ASX buttons: coffee color, slightly larger and bolder to match header */
+.asx-code-btn {
+    color: var(--accent-color, #a49393) !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+}
+
+/* Title text (clickable span) and H1: match ASX buttons in size/weight/color.
+   Reducing the H1 size here intentionally so it matches the ASX buttons as requested. */
+#dynamicWatchlistTitle,
+#dynamicWatchlistTitleText {
+    color: var(--accent-color, #a49393) !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+}
+
+/* Live timestamp in header: match color/weight/size (media queries that
+   intentionally shrink it on very small screens remain in place). */
+#livePriceTimestampContainer .live-price-label,
+#livePriceTimestampContainer #livePriceTimestamp {
+    color: var(--accent-color, #a49393) !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+}
+
+/* Ensure header icons (hamburger & add) use the same coffee accent color. */
+#appHeader #hamburgerBtn i, #appHeader #hamburgerBtn svg,
+#appHeader #addShareHeaderBtn i, #appHeader #addShareHeaderBtn svg {
+    color: var(--accent-color, #a49393) !important;
+}
+
+/* Small company name used in renders (no inline style) */
+.company-name-small {
+    font-size: 0.8em;
+    color: var(--ghosted-text);
+    font-weight: 400;
+}
+
+/* End of header/ASX harmonization override */
+
+
+/* Desktop parity override: force desktop live price and header title to match ASX buttons
+   This keeps desktop and mobile identical per user's request. Scoped to min-width:641px
+   to avoid disturbing small-screen tweaks defined earlier. */
+@media (min-width: 641px) {
+    /* Make the portfolio card prominent live price use same size/weight as ASX buttons */
+    .portfolio-card .pc-live-price,
+    .portfolio-card .pc-main-row .pc-live-price {
+        font-size: 1rem !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+
+    /* Also ensure the main watchlist title and timestamp use the same metrics */
+    #dynamicWatchlistTitle, #dynamicWatchlistTitleText,
+    #livePriceTimestampContainer .live-price-label, #livePriceTimestampContainer #livePriceTimestamp {
+        font-size: 1rem !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+
+    /* Keep ASX buttons as the visual baseline */
+    .asx-code-btn { font-size: 1rem !important; font-weight: 700 !important; }
+}
+

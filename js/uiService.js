@@ -595,39 +595,23 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
         if (cashFormTitle) {
             cashFormTitle.textContent = 'Edit Cash Asset';
 
-            // Force styles with inline styles that can't be overridden - PLAIN TEXT
+            // Apply only minimal, non-typography inline styles so CSS can control font sizing and color
+            // Keep layout-related properties if needed but avoid forcing font-size/weight/color.
             cashFormTitle.setAttribute('style',
-                'display: block !important; ' +
-                'font-size: 2.2em !important; ' +
-                'font-weight: 800 !important; ' +
-                'margin: 0 !important; ' +
-                'padding: 0 !important; ' +
-                'color: var(--text-color) !important; ' +
-                'background: transparent !important; ' +
-                'background-color: transparent !important; ' +
-                'border: none !important; ' +
-                'border-radius: 0 !important; ' +
-                'box-shadow: none !important; ' +
-                'text-shadow: none !important; ' +
-                'line-height: 1.1 !important; ' +
-                'text-align: left !important; ' +
-                'width: auto !important; ' +
-                'visibility: visible !important; ' +
-                'opacity: 1 !important; ' +
-                'transition: none !important;'
+                'display: block; ' +
+                'margin: 0; ' +
+                'padding: 0; ' +
+                'background: transparent; ' +
+                'border: none; ' +
+                'border-radius: 0; ' +
+                'box-shadow: none; ' +
+                'text-shadow: none; ' +
+                'line-height: 1.1; ' +
+                'text-align: left; ' +
+                'width: auto; ' +
+                'visibility: visible; ' +
+                'opacity: 1; '
             );
-
-            // Debug the applied styles
-            setTimeout(() => {
-                console.log('Main title styles after JS:', window.getComputedStyle(cashFormTitle));
-                console.log('Main title display:', window.getComputedStyle(cashFormTitle).display);
-                console.log('Main title background:', window.getComputedStyle(cashFormTitle).backgroundColor);
-                console.log('Main title color:', window.getComputedStyle(cashFormTitle).color);
-                console.log('Main title border:', window.getComputedStyle(cashFormTitle).border);
-                console.log('Main title padding:', window.getComputedStyle(cashFormTitle).padding);
-                console.log('Main title font-size:', window.getComputedStyle(cashFormTitle).fontSize);
-                console.log('Main title font-weight:', window.getComputedStyle(cashFormTitle).fontWeight);
-            }, 100);
         }
 
 
@@ -648,30 +632,17 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
                 if (commentsHeaderRow) {
                     // Force styles with JavaScript - using inline styles that can't be overridden
                     // Force styles on the header row
+                    // Apply minimal layout-related inline styles only; avoid forcing typography or theme colors
                     commentsHeaderRow.setAttribute('style',
-                        'display: flex !important; ' +
-                        'justify-content: space-between !important; ' +
-                        'align-items: center !important; ' +
-                        'flex-direction: row !important; ' +
-                        'margin: 0 0 12px 0 !important; ' +
-                        'font-size: 1rem !important; ' +
-                        'font-weight: 600 !important; ' +
-                        'color: var(--text-color) !important; ' +
-                        'background-color: var(--input-bg) !important; ' +
-                        'background: var(--input-bg) !important; ' +
-                        'border: 1px solid var(--input-border) !important; ' +
-                        'border-radius: 6px !important; ' +
-                        'box-shadow: none !important; ' +
-                        'text-shadow: none !important; ' +
-                        'padding: 12px 14px !important; ' +
-                        'width: 100% !important; ' +
-                        'min-height: 30px !important; ' +
-                        'line-height: 1.4 !important; ' +
-                        'box-sizing: border-box !important; ' +
-                        'visibility: visible !important; ' +
-                        'opacity: 1 !important; ' +
-                        'transition: border-color 0.2s ease !important; ' +
-                        'cursor: default !important;'
+                        'display: flex; ' +
+                        'justify-content: space-between; ' +
+                        'align-items: center; ' +
+                        'flex-direction: row; ' +
+                        'margin: 0 0 12px 0; ' +
+                        'padding: 12px 14px; ' +
+                        'width: 100%; ' +
+                        'min-height: 30px; ' +
+                        'line-height: 1.4; '
                     );
 
                     // Force styles on the add button using inline styles
@@ -681,32 +652,31 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
                         addButton.classList.remove('hidden');
                         addButton.classList.remove('is-disabled-icon');
 
+                        // Keep structural styles; avoid hardcoded color so theme variables control color
                         addButton.setAttribute('style',
-                            'flex-shrink: 0 !important; ' +
-                            'margin-left: auto !important; ' +
-                            'display: inline-flex !important; ' +
-                            'align-items: center !important; ' +
-                            'justify-content: center !important; ' +
-                            'visibility: visible !important; ' +
-                            'opacity: 1 !important; ' +
-                            'background: transparent !important; ' +
-                            'border: none !important; ' +
-                            'color: #007bff !important; ' +
-                            'cursor: pointer !important; ' +
-                            'width: 30px !important; ' +
-                            'height: 30px !important; ' +
-                            'border-radius: 50% !important; ' +
-                            'position: static !important;'
+                            'flex-shrink: 0; ' +
+                            'margin-left: auto; ' +
+                            'display: inline-flex; ' +
+                            'align-items: center; ' +
+                            'justify-content: center; ' +
+                            'visibility: visible; ' +
+                            'opacity: 1; ' +
+                            'background: transparent; ' +
+                            'border: none; ' +
+                            'cursor: pointer; ' +
+                            'width: 30px; ' +
+                            'height: 30px; ' +
+                            'border-radius: 50%; ' +
+                            'position: static;'
                         );
 
                         const icon = addButton.querySelector('i');
                         if (icon) {
                             icon.setAttribute('style',
-                                'display: inline-block !important; ' +
-                                'visibility: visible !important; ' +
-                                'opacity: 1 !important; ' +
-                                'font-size: 1.2em !important; ' +
-                                'position: static !important;'
+                                'display: inline-block; ' +
+                                'visibility: visible; ' +
+                                'opacity: 1; ' +
+                                'position: static;'
                             );
                         }
                     } else {
@@ -775,26 +745,21 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
     } else {
         if (cashFormTitle) {
             cashFormTitle.textContent = 'Add New Cash Asset';
-            // Force styles with inline styles that can't be overridden - PLAIN TEXT
+            // Apply minimal, non-typography inline styles so CSS can control font sizing and color
             cashFormTitle.setAttribute('style',
-                'display: block !important; ' +
-                'font-size: 2.2em !important; ' +
-                'font-weight: 800 !important; ' +
-                'margin: 0 !important; ' +
-                'padding: 0 !important; ' +
-                'color: var(--text-color) !important; ' +
-                'background: transparent !important; ' +
-                'background-color: transparent !important; ' +
-                'border: none !important; ' +
-                'border-radius: 0 !important; ' +
-                'box-shadow: none !important; ' +
-                'text-shadow: none !important; ' +
-                'line-height: 1.1 !important; ' +
-                'text-align: left !important; ' +
-                'width: auto !important; ' +
-                'visibility: visible !important; ' +
-                'opacity: 1 !important; ' +
-                'transition: none !important;'
+                'display: block; ' +
+                'margin: 0; ' +
+                'padding: 0; ' +
+                'background: transparent; ' +
+                'border: none; ' +
+                'border-radius: 0; ' +
+                'box-shadow: none; ' +
+                'text-shadow: none; ' +
+                'line-height: 1.1; ' +
+                'text-align: left; ' +
+                'width: auto; ' +
+                'visibility: visible; ' +
+                'opacity: 1; '
             );
         }
         if (cashAssetNameInput) cashAssetNameInput.value = '';
@@ -807,30 +772,17 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
             setTimeout(() => {
                 const commentsHeaderRow = document.querySelector('#cashAssetFormModal .comments-form-container .comments-header-row');
                 if (commentsHeaderRow) {
+                    // Apply minimal layout-related inline styles only; avoid forcing typography or theme colors
                     commentsHeaderRow.setAttribute('style',
-                        'display: flex !important; ' +
-                        'justify-content: space-between !important; ' +
-                        'align-items: center !important; ' +
-                        'flex-direction: row !important; ' +
-                        'margin: 0 0 12px 0 !important; ' +
-                        'font-size: 1rem !important; ' +
-                        'font-weight: 600 !important; ' +
-                        'color: var(--text-color) !important; ' +
-                        'background-color: var(--input-bg) !important; ' +
-                        'background: var(--input-bg) !important; ' +
-                        'border: 1px solid var(--input-border) !important; ' +
-                        'border-radius: 6px !important; ' +
-                        'box-shadow: none !important; ' +
-                        'text-shadow: none !important; ' +
-                        'padding: 12px 14px !important; ' +
-                        'width: 100% !important; ' +
-                        'min-height: 30px !important; ' +
-                        'line-height: 1.4 !important; ' +
-                        'box-sizing: border-box !important; ' +
-                        'visibility: visible !important; ' +
-                        'opacity: 1 !important; ' +
-                        'transition: border-color 0.2s ease !important; ' +
-                        'cursor: default !important;'
+                        'display: flex; ' +
+                        'justify-content: space-between; ' +
+                        'align-items: center; ' +
+                        'flex-direction: row; ' +
+                        'margin: 0 0 12px 0; ' +
+                        'padding: 12px 14px; ' +
+                        'width: 100%; ' +
+                        'min-height: 30px; ' +
+                        'line-height: 1.4; '
                     );
 
                     const addButton = commentsHeaderRow.querySelector('.add-section-icon');
@@ -839,32 +791,31 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
                         addButton.classList.remove('hidden');
                         addButton.classList.remove('is-disabled-icon');
 
+                        // Keep structural styles; avoid hardcoded color so theme variables control color
                         addButton.setAttribute('style',
-                            'flex-shrink: 0 !important; ' +
-                            'margin-left: auto !important; ' +
-                            'display: inline-flex !important; ' +
-                            'align-items: center !important; ' +
-                            'justify-content: center !important; ' +
-                            'visibility: visible !important; ' +
-                            'opacity: 1 !important; ' +
-                            'background: transparent !important; ' +
-                            'border: none !important; ' +
-                            'color: #007bff !important; ' +
-                            'cursor: pointer !important; ' +
-                            'width: 30px !important; ' +
-                            'height: 30px !important; ' +
-                            'border-radius: 50% !important; ' +
-                            'position: static !important;'
+                            'flex-shrink: 0; ' +
+                            'margin-left: auto; ' +
+                            'display: inline-flex; ' +
+                            'align-items: center; ' +
+                            'justify-content: center; ' +
+                            'visibility: visible; ' +
+                            'opacity: 1; ' +
+                            'background: transparent; ' +
+                            'border: none; ' +
+                            'cursor: pointer; ' +
+                            'width: 30px; ' +
+                            'height: 30px; ' +
+                            'border-radius: 50%; ' +
+                            'position: static;'
                         );
 
                         const icon = addButton.querySelector('i');
                         if (icon) {
                             icon.setAttribute('style',
-                                'display: inline-block !important; ' +
-                                'visibility: visible !important; ' +
-                                'opacity: 1 !important; ' +
-                                'font-size: 1.2em !important; ' +
-                                'position: static !important;'
+                                'display: inline-block; ' +
+                                'visibility: visible; ' +
+                                'opacity: 1; ' +
+                                'position: static;'
                             );
                         }
                     } else {

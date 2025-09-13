@@ -36,7 +36,7 @@
         row.innerHTML = `
             <td>
                 ${desktopTargetDot}<span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>
-                ${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}
+                ${companyName ? `<br><small class="company-name-small">${companyName}</small>` : ''}
             </td>
             <td class="live-price-cell">
                 <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
