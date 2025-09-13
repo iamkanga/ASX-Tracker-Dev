@@ -10434,7 +10434,7 @@ body.dark-theme .alert-item {
     display: block !important; /* force its own line to avoid flex baseline alignment */
     width: 100% !important;
     text-align: center !important; /* center the content under the price */
-    margin-top: 2px !important; /* small UX gap between live price and day-change */
+    margin-top: 1px !important; /* ultra-tight gap under the live price */
     margin-bottom: 6px !important; /* small gap to keep P/E visually separated */
 }
 
@@ -10446,6 +10446,10 @@ body.dark-theme .alert-item {
     line-height: 1.05 !important;
     font-weight: 700 !important; /* slightly bolder to improve legibility */
 }
+
+/* Remove any extra vertical gap coming from container gap or default heading margins */
+#stockSearchModal .live-price-display-section { gap: 0 !important; }
+#stockSearchModal .live-price-display-section .modal-share-name { margin: 0 !important; }
 
 /* Ensure modal body scrolls within the restored modal content */
 #stockSearchModal .modal-body {
