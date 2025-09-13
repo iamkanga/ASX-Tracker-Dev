@@ -1288,7 +1288,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-09-12 - Back navigation reliability + splash version bump
-const APP_VERSION = '2.15.3';
+const APP_VERSION = '2.15.4';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)
@@ -3267,16 +3267,30 @@ try {
                 const tc = document.createElement('div');
                 tc.id = 'toastContainer';
                 tc.className = 'toast-container';
-                // Keep minimal inline styles so it's visible on mobile in most themes
+                // Keep minimal inline styles so it's visible on mobile in most themes (bottom-center)
                 tc.style.position = 'fixed';
                 tc.style.zIndex = '9999';
                 tc.style.left = '12px';
                 tc.style.right = '12px';
                 tc.style.bottom = '24px';
-                tc.style.pointerEvents = 'auto';
+                tc.style.display = 'flex';
+                tc.style.flexDirection = 'column';
+                tc.style.gap = '10px';
+                tc.style.alignItems = 'center';
+                tc.style.pointerEvents = 'none';
                 document.body.appendChild(tc);
             }
         } catch(_) {}
+
+        // Helper to push a preserve entry with a unique URL hash ("jitter") so hostile webviews
+        // create a distinct history entry every time. This keeps Back routed to our handler.
+        function pushPreserveHistoryEntry(){
+            try {
+                const base = location.href.split('#')[0];
+                const jitter = 'bk-' + Date.now().toString(36) + '-' + Math.floor(Math.random()*1e4).toString(36);
+                history.pushState({ asx_back_preserve: true, jitter }, '', base + '#'+ jitter);
+            } catch(_) {}
+        }
 
         // Unified popstate handler: call handleGlobalBack and, if the action is consumed,
         // push a history state to prevent the browser from exiting the PWA on first back.
@@ -3293,10 +3307,8 @@ try {
                         Promise.resolve(result).then((consumed) => {
                             try {
                                 if (consumed) {
-                                    // Always preserve a history entry when Back was consumed by the app,
-                                    // so the next Back press is also routed to our handler instead of
-                                    // dismissing the PWA. This keeps in-app navigation consistent.
-                                    try { history.pushState({ asx_back_preserve: true }, '', location.href); } catch(_) {}
+                                    // Always preserve a history entry when Back was consumed by the app.
+                                    pushPreserveHistoryEntry();
                                 } else {
                                     // Not consumed -> allow default navigation (exit) to proceed.
                                     if (window.logBackDebug) window.logBackDebug('[Back] not consumed, allowing default navigation');
@@ -3317,11 +3329,11 @@ try {
         // the double-back-to-exit pattern reliable across browsers and PWA containers.
         try {
             // Do this on DOMContentLoaded to avoid interfering with other early scripts.
-            const pushInitial = () => { try { history.replaceState({ asx_initial: true }, '', location.href); history.pushState({ asx_back_preserve: true }, '', location.href); } catch(_) {} };
+            const pushInitial = () => { try { history.replaceState({ asx_initial: true }, '', location.href.split('#')[0]); pushPreserveHistoryEntry(); } catch(_) {} };
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pushInitial, { once: true }); else pushInitial();
             // Keepalive: when the app becomes visible or gains focus, ensure there's a preserve state
             // so the next Back press routes through our handler.
-            const keepAlive = () => { try { history.pushState({ asx_back_preserve: true }, '', location.href); } catch(_) {} };
+            const keepAlive = () => { pushPreserveHistoryEntry(); };
             try { window.addEventListener('pageshow', keepAlive); } catch(_) {}
             try { window.addEventListener('focus', keepAlive); } catch(_) {}
             try { document.addEventListener('visibilitychange', () => { if (!document.hidden) keepAlive(); }); } catch(_) {}
