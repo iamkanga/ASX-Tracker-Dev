@@ -1224,7 +1224,10 @@ try {
     if (lsLastWatch) {
         const parsed = JSON.parse(lsLastWatch);
         if (Array.isArray(parsed) && parsed.length) {
-            try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev.join(',') !== parsed.join(',')) pushAppStateEntry('watchlist', prev); } catch(_) {}
+            try {
+                const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : [];
+                if (prev.join(',') !== parsed.join(',')) pushAppStateEntry('watchlist', prev);
+            } catch(_) {}
             setCurrentSelectedWatchlistIds(parsed);
         }
     }
@@ -1265,7 +1268,10 @@ try {
     try { ensureTitleStructure(); } catch(e) {}
     try { updateTargetHitBanner(); } catch(e) {}
     } else if (lastView && lastView !== 'portfolio') {
-    try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== lastView) pushAppStateEntry('watchlist', prev); } catch(_) {}
+    try {
+        const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : [];
+        if (prev.join(',') !== [lastView].join(',')) pushAppStateEntry('watchlist', prev);
+    } catch(_) {}
     setCurrentSelectedWatchlistIds([lastView]);
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = lastView; }
         try { updateMainTitle(); } catch(e) {}
@@ -1334,6 +1340,9 @@ try {
 // Double-back exit toast state (used when there is nothing left to go back to in-app)
 let __lastBackPressAt = 0;
 const EXIT_BACK_TOAST_TIMEOUT_MS = 1500; // ms window for second back to confirm exit
+// De-dup guards for back handling and toast flooding
+let __lastBackHandleAt = 0; // timestamp of last handleGlobalBack entry
+let __lastBackToastAt = 0;  // timestamp of last back toast shown
 
 // Wire splash version display and Force Update helper
 document.addEventListener('DOMContentLoaded', function () {
@@ -3301,13 +3310,21 @@ try {
             // trapping normal back flows (modals, sidebar, watchlist) while restoring the
             // double-back-to-exit behaviour reliably.
             let __backBounceInProgress = false;
+            let __backSkipCount = 0;
             window.__globalPopHandler = function(ev) {
                 try {
-                    if (window.logBackDebug) window.logBackDebug('[Back] popstate fired', ev && ev.state);
+                    if (window.logBackDebug) window.logBackDebug('[Back] popstate fired', ev && ev.state, 'skipCount=', __backSkipCount);
+                    // If this popstate was induced by our forward bounce, ignore it.
+                    if (__backSkipCount > 0) { __backSkipCount--; return; }
                     // Bounce forward to the latest guard entry if possible.
                     if (!__backBounceInProgress) {
                         __backBounceInProgress = true;
-                        try { setTimeout(() => { try { history.go(1); } finally { __backBounceInProgress = false; } }, 0); } catch(_) { __backBounceInProgress = false; }
+                        try {
+                            __backSkipCount += 1;
+                            setTimeout(() => { try { history.go(1); } finally { __backBounceInProgress = false; } }, 0);
+                            // Extra safety: clear skip if forward didn't fire
+                            setTimeout(() => { __backSkipCount = 0; }, 400);
+                        } catch(_) { __backBounceInProgress = false; __backSkipCount = 0; }
                     }
                     if (typeof handleGlobalBack === 'function') {
                         const result = handleGlobalBack();
@@ -3368,6 +3385,15 @@ function removeModalFromStack(modalEl){
 // Remove legacy wrapper that caused duplicate pushes; use central window.UI.showModal path only
 
 function handleGlobalBack(){
+    // Prevent duplicate handling from closely-spaced popstate events (bounce, quirky webviews)
+    try {
+        const now = Date.now();
+    if (now - (__lastBackHandleAt || 0) < 240) {
+            if (window.logBackDebug) window.logBackDebug('Back: deduped handleGlobalBack');
+            return true; // consume silently to avoid double-pop and duplicate toasts
+        }
+        __lastBackHandleAt = now;
+    } catch(_) {}
     // 1) Close the currently active/top modal if any tracked in our stack
     const last = appBackStack[appBackStack.length - 1];
     if (last && last.type === 'modal') {
@@ -3468,12 +3494,18 @@ function handleGlobalBack(){
         const preventExit = (typeof window.__preventAppExit === 'boolean') ? window.__preventAppExit : true;
         if (preventExit) {
             try {
-                if (window.ToastManager && typeof window.ToastManager.info === 'function') {
-                    window.ToastManager.info('Press back again to exit the app', 1500);
-                } else if (typeof window.showCustomAlert === 'function') {
-                    window.showCustomAlert('Press back again to exit the app', 1500);
+                const now = Date.now();
+                if (now - (__lastBackToastAt || 0) > 250) {
+                    __lastBackToastAt = now;
+                    if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+                        window.ToastManager.info('Press back again to exit the app', 1500);
+                    } else if (typeof window.showCustomAlert === 'function') {
+                        window.showCustomAlert('Press back again to exit the app', 1500);
+                    } else {
+                        console.log('Press back again to exit the app');
+                    }
                 } else {
-                    console.log('Press back again to exit the app');
+                    if (window.logBackDebug) window.logBackDebug('Back toast deduped');
                 }
                 try { window.__lastBackAction = 'preventExit'; } catch(_) {}
             } catch(_) {}

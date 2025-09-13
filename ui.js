@@ -232,6 +232,14 @@
         if (scrollableContent) scrollableContent.scrollTop = 0;
     }
 
+    // Hide a modal visually but keep it on the in-app back stack so it can be restored on Back
+    function hideModalKeepStack(modalElement) {
+        if (!modalElement) return;
+        try { modalElement.classList.remove('show'); } catch(_){}
+        modalElement.style.setProperty('display','none','important');
+        // Note: do NOT call removeModalFromStack here, so the previous modal remains just beneath top
+    }
+
     function hideModal(modalElement) {
         if (!modalElement) return;
         try { if (typeof window.removeModalFromStack === 'function') window.removeModalFromStack(modalElement); } catch(_) {}
@@ -320,6 +328,7 @@
         // Use the locally defined showModal to enforce history+stack push
         showModal: (el)=> showModal(el),
         showModalNoHistory,
+        hideModalKeepStack,
         hideModal,
         closeModals,
         showCustomAlert,
