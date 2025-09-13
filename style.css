@@ -5369,9 +5369,8 @@ h1#dynamicWatchlistTitle {
     pointer-events: auto;
 }
 
-/* Toast notifications */
-/* Position at bottom-center for mobile visibility (respect safe-area) */
-.toast-container { position: fixed; left: 12px; right: 12px; bottom: max(env(safe-area-inset-bottom, 0px), 24px); display: flex; flex-direction: column; gap: 10px; z-index: 2000; pointer-events: none; align-items: center; }
+/* Toast notifications (top-right default) */
+.toast-container { position: fixed; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 10px; z-index: 2000; pointer-events: none; }
 .toast { min-width: 240px; max-width: 360px; background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.12); padding: 10px 12px; display: flex; align-items: center; gap: 10px; opacity: 0; transform: translateY(-8px); transition: opacity .2s ease, transform .2s ease; pointer-events: auto; }
 .toast.show { opacity: 1; transform: translateY(0); }
 .toast .icon { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; flex: 0 0 22px; }

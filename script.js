@@ -3469,11 +3469,11 @@ function handleGlobalBack(){
         if (preventExit) {
             try {
                 if (window.ToastManager && typeof window.ToastManager.info === 'function') {
-                    window.ToastManager.info('Back prevented: staying in the app', 1500);
+                    window.ToastManager.info('Press back again to exit the app', 1500);
                 } else if (typeof window.showCustomAlert === 'function') {
-                    window.showCustomAlert('Back prevented: staying in the app', 1500);
+                    window.showCustomAlert('Press back again to exit the app', 1500);
                 } else {
-                    console.log('Back prevented: staying in the app');
+                    console.log('Press back again to exit the app');
                 }
                 try { window.__lastBackAction = 'preventExit'; } catch(_) {}
             } catch(_) {}
