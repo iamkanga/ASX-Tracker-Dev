@@ -907,12 +907,10 @@ html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-
                 }
             } catch(_) {}
 
-            // Click on card to toggle (but not on eye button)
-            card.addEventListener('click', (e) => {
-                if (!e.target.closest('.pc-eye-btn')) {
-                    toggleExpanded();
-                }
-            });
+            // NOTE: card-level tap should open share details. The expand/collapse
+            // behavior is handled only by the dedicated arrow control below. We
+            // therefore remove the previous behavior that toggled the card when
+            // tapping anywhere on the card to ensure a single consistent action.
             // Eye icon logic: toggle hide-from-totals (Option A). Click still opens details when CTRL/Meta is held.
             const eyeBtn = card.querySelector('.pc-eye-btn');
             if (eyeBtn) {
@@ -987,11 +985,13 @@ html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-
             }
             // (Removed deprecated shortcut button — click-to-open is handled by card click-through)
 
-            // Click-through: clicking a portfolio card (except interactive controls) opens the viewing modal
+            // Click-through: clicking a portfolio card (except interactive controls)
+            // opens the viewing modal. Explicitly exclude the eye button and the
+            // expand arrow so those retain their own behavior.
             if (!card.__clickThroughAttached) {
                 card.addEventListener('click', function(e) {
                     // Ignore clicks on buttons, links, inputs or elements that handle their own click
-                    const interactive = e.target.closest('button, a, input, .pc-eye-btn, .pc-chevron-btn');
+                    const interactive = e.target.closest('button, a, input, .pc-eye-btn, .pc-chevron-btn, .portfolio-centered-arrow');
                     if (interactive) return;
                     try {
                         selectShare(share.id);
@@ -1021,36 +1021,10 @@ html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-
             });
         }
 
-        // Attach per-card 'Current Value' heading clicks to open capital gain summary
-        // Select all elements that display current value inside each portfolio card
-        const perCardValueEls = portfolioListContainer.querySelectorAll('.portfolio-card .portfolio-current-value');
-        if (perCardValueEls && perCardValueEls.length) {
-            perCardValueEls.forEach(el => {
-                el.style.cursor = 'pointer';
-                el.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    try {
-                        // If this card has been hidden-from-totals, prefer opening the
-                        // share viewing/details modal for that share instead of
-                        // opening the capital-gain summary which intentionally
-                        // excludes hidden shares.
-                        const card = el.closest && el.closest('.portfolio-card');
-                        const shareId = card && card.dataset && card.dataset.docId;
-                        const isHiddenCard = (card && card.classList && card.classList.contains('hidden-from-totals')) || (shareId && hiddenFromTotalsShareIds.has(shareId));
-                        if (isHiddenCard) {
-                            if (shareId && typeof selectShare === 'function') {
-                                try { selectShare(shareId); } catch(_) {}
-                            }
-                            try { showShareDetails(); } catch(_) {}
-                            return;
-                        }
-                    } catch (err) {
-                        console.warn('perCardValue click handler check failed', err);
-                    }
-                    showSummaryModal('capitalGain');
-                });
-            });
-        }
+        // NOTE: Per-card 'Current Value' clicks no longer open summary modals.
+        // Summary modals are only accessible via the summary cards at the top
+        // of the portfolio view. This avoids confusion on mobile where the
+        // current value area was unintentionally opening the summary modal.
     };
 });
 

@@ -1119,6 +1119,38 @@ function makeFilesAvailableToSourceControlCSS() {
     height: 1em;
 }
 
+/* Increase the effective tap/click target for the caret without changing its visual size.
+   We add an invisible pseudo-element that expands the hit area while keeping the visual
+   triangle the same. This improves mobile tappability without visual changes. */
+.portfolio-centered-arrow::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px; /* recommended 44px minimum touch target */
+    height: 44px; /* keep square target for easy tapping */
+    background: transparent;
+    pointer-events: auto; /* ensure this element receives touches/clicks for the arrow */
+    /* make it invisible but present for hit-testing */
+}
+
+/* Mirror the larger hit area for the simpler .expand-arrow used in older rendering code */
+.expand-arrow {
+    position: relative; /* ensure pseudo-element is positioned correctly */
+}
+.expand-arrow::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    background: transparent;
+    pointer-events: auto;
+}
+
 /* Prevent mobile long-press / tap highlight changing the portfolio card background in dark mode.
    Apply additional touch-callout and stronger rules to cover Android & iOS behaviors. */
 @media (max-width: 640px) {
