@@ -10563,7 +10563,8 @@ body.dark-theme .alert-item {
         align-items: baseline !important;
         gap: 6px !important;
         white-space: nowrap !important; /* ensure each link label stays on one line */
-        font-size: 1.25rem !important; /* ~25% larger for mobile readability */
+    font-size: 1.2rem !important; /* reduced by 20% for mobile readability */
+        line-height: 1.15 !important;
         font-weight: 700 !important;
         padding: 0 !important; /* no visible container */
         margin: 0 !important;
@@ -10625,6 +10626,50 @@ body.dark-theme .alert-item {
     #stockSearchModal .modal-body {
         -webkit-overflow-scrolling: touch !important;
         scroll-behavior: smooth !important;
+    }
+}
+
+/* === Search Modal: Final overrides for action button & external links (placed after ultra-compact rules) === */
+/* Make the primary action a clear, prominent button */
+#stockSearchModal #searchModalActionButton {
+    display: block !important;
+    width: 100% !important;
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    padding: 12px 16px !important;
+    line-height: 1.2 !important;
+    border-radius: 10px !important;
+}
+
+/* External links: ensure large, single-line inline links on mobile and small tablets */
+@media (max-width: 640px) {
+    #stockSearchModal .external-links-section {
+        white-space: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    #stockSearchModal .external-links-section .external-link-item {
+        display: inline-block !important;
+        vertical-align: middle !important;
+        margin-right: 12px !important;
+    }
+    #stockSearchModal .external-links-section .external-link-item:last-child { margin-right: 0 !important; }
+    /* Override ultra-compact tiny link styles */
+    #stockSearchModal .external-links-section a,
+    #stockSearchModal .external-links-section .external-link {
+        display: inline-flex !important;
+        align-items: baseline !important;
+        white-space: nowrap !important;
+    font-size: 1.2rem !important; /* reduced by 20% for readability */
+        line-height: 1.15 !important;
+        font-weight: 700 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-decoration: none !important;
+        color: inherit !important;
     }
 }
 
