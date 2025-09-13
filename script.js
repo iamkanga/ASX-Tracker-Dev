@@ -13113,6 +13113,16 @@ if (targetPriceInput) {
                     return;
                 }
                 try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
+                // Ensure persistence is set to local before performing the sign-in so the session remains after app restarts.
+                try {
+                    if (authFunctions.setPersistence && authFunctions.browserLocalPersistence) {
+                        await authFunctions.setPersistence(currentAuth, authFunctions.browserLocalPersistence);
+                        logDebug('Auth: Persistence force-set to browserLocalPersistence prior to sign-in.');
+                    }
+                } catch (pErr) {
+                    console.warn('Auth: Failed to force-set browserLocalPersistence prior to sign-in. Proceeding with sign-in anyway.', pErr);
+                }
+
                 // Popup only
                 const resolver = authFunctions.browserPopupRedirectResolver;
                 if (resolver) {
@@ -15161,12 +15171,10 @@ function initializeApp() {
 
         // Ensure persistence is set once
         try {
+            // Force persistent local storage for auth so the user remains signed in across app restarts.
+            // Prefer browserLocalPersistence; fall back to browserSessionPersistence only if local is unavailable.
             if (authFunctions.setPersistence) {
-                const ua = navigator.userAgent || navigator.vendor || '';
-                const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-                const targetPersistence = isMobile && authFunctions.browserSessionPersistence
-                    ? authFunctions.browserSessionPersistence
-                    : authFunctions.browserLocalPersistence;
+                const targetPersistence = authFunctions.browserLocalPersistence || authFunctions.browserSessionPersistence;
                 if (targetPersistence) {
                     authFunctions
                         .setPersistence(auth, targetPersistence)
@@ -15521,12 +15529,10 @@ function initializeApp() {
 
         // Ensure persistence is set once
         try {
+            // Force persistent local storage for auth so the user remains signed in across app restarts.
+            // Prefer browserLocalPersistence; fall back to browserSessionPersistence only if local is unavailable.
             if (authFunctions.setPersistence) {
-                const ua = navigator.userAgent || navigator.vendor || '';
-                const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
-                const targetPersistence = isMobile && authFunctions.browserSessionPersistence
-                    ? authFunctions.browserSessionPersistence
-                    : authFunctions.browserLocalPersistence;
+                const targetPersistence = authFunctions.browserLocalPersistence || authFunctions.browserSessionPersistence;
                 if (targetPersistence) {
                     authFunctions
                         .setPersistence(auth, targetPersistence)
