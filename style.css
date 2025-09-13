@@ -10646,11 +10646,25 @@ body.dark-theme .alert-item {
     border-radius: 10px !important;
 }
 
-/* Unify External Links title and link text sizes across the search modal */
-#stockSearchModal .external-links-section h3,
+/* External Links sizing: make title 20% larger than URLs */
+#stockSearchModal .external-links-section h3 {
+    font-size: 1.26rem !important; /* 20% larger than 1.05rem links */
+}
 #stockSearchModal .external-links-section a,
 #stockSearchModal .external-links-section .external-link {
-    font-size: 1.05rem !important; /* same size for title and URLs */
+    font-size: 1.05rem !important; /* base size for URLs */
+}
+
+/* Strong override: External Links title should be 30% larger than URL text */
+#stockSearchModal #searchResultDisplay .external-links-section h3 {
+    font-size: 1.365rem !important; /* 30% larger than 1.05rem links */
+    margin-bottom: 6px !important; /* double the previous 3px gap on desktop */
+}
+
+@media (max-width: 640px) {
+    #stockSearchModal #searchResultDisplay .external-links-section h3 {
+        margin-bottom: 16px !important; /* double the previous 8px gap on mobile */
+    }
 }
 
 /* External links: ensure large, single-line inline links on mobile and small tablets */
