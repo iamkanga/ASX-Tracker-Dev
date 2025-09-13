@@ -10513,8 +10513,8 @@ body.dark-theme .alert-item {
     height: auto !important; /* Let content determine height */
 }
 
-/* Additional ultra-compact optimizations for mobile/small screens */
-@media (max-width: 480px) {
+/* Additional optimizations for mobile/small screens */
+@media (max-width: 640px) {
     #stockSearchModal {
         max-width: 95vw !important; /* Use more screen width on mobile */
         max-height: 90vh !important; /* Use more screen height on mobile */
@@ -10534,9 +10534,48 @@ body.dark-theme .alert-item {
         font-size: 0.75rem !important; /* Even smaller on mobile for ultra-compact */
     }
 
-    /* Ultra-compact mobile header */
+    /* Compact mobile header */
     #stockSearchModal .modal-header-with-icon {
         padding: 6px 10px !important; /* Much smaller padding on mobile */
+    }
+
+    /* Search modal: External links as a single horizontal row with larger tap targets */
+    #stockSearchModal .external-links-section {
+        margin-top: 10px !important;
+        padding-bottom: 8px !important; /* breathing room for horizontal scroll bar */
+        white-space: nowrap !important; /* keep items on one line */
+        overflow-x: auto !important; /* allow scrolling instead of wrapping/truncating */
+        -webkit-overflow-scrolling: touch !important; /* smooth iOS scroll */
+    }
+    #stockSearchModal .external-links-section h3 {
+        white-space: normal !important; /* keep the heading as a normal block above row */
+        margin-bottom: 8px !important;
+        font-size: 1.05rem !important; /* readable heading size on small screens */
+    }
+    #stockSearchModal .external-links-section .external-link-item {
+        display: inline-block !important; /* inline so they sit side-by-side */
+        vertical-align: middle !important;
+        margin-right: 12px !important; /* spacing between links */
+    }
+    #stockSearchModal .external-links-section .external-link-item:last-child { margin-right: 0 !important; }
+    #stockSearchModal .external-links-section .external-link {
+        display: inline-flex !important;
+        align-items: baseline !important;
+        gap: 6px !important;
+        white-space: nowrap !important; /* ensure each link label stays on one line */
+        font-size: 1.25rem !important; /* ~25% larger for mobile readability */
+        font-weight: 700 !important;
+        padding: 0 !important; /* no visible container */
+        margin: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-decoration: none !important; /* plain link (no underline) */
+        color: inherit !important; /* use theme link/text color */
+    }
+    #stockSearchModal .external-links-section .external-link i {
+        font-size: 1em !important; /* keep icon in proportion */
+        opacity: 0.9 !important;
     }
 
     #stockSearchModal .modal-header-with-icon .modal-title {
