@@ -3292,27 +3292,28 @@ try {
             } catch(_) {}
         }
 
-        // Unified popstate handler: call handleGlobalBack and, if the action is consumed,
-        // push a history state to prevent the browser from exiting the PWA on first back.
+        // Unified popstate handler with "bounce": immediately go forward to keep the user
+        // on our top guard state, then perform in-app back handling. This prevents exiting
+        // even on platforms that don't allow adding history during back.
         try {
             // Global popstate handler: call handleGlobalBack (sync or async). Only push a
             // preservation history entry when the action was the exit-toast. This avoids
             // trapping normal back flows (modals, sidebar, watchlist) while restoring the
             // double-back-to-exit behaviour reliably.
+            let __backBounceInProgress = false;
             window.__globalPopHandler = function(ev) {
                 try {
                     if (window.logBackDebug) window.logBackDebug('[Back] popstate fired', ev && ev.state);
+                    // Bounce forward to the latest guard entry if possible.
+                    if (!__backBounceInProgress) {
+                        __backBounceInProgress = true;
+                        try { setTimeout(() => { try { history.go(1); } finally { __backBounceInProgress = false; } }, 0); } catch(_) { __backBounceInProgress = false; }
+                    }
                     if (typeof handleGlobalBack === 'function') {
                         const result = handleGlobalBack();
                         Promise.resolve(result).then((consumed) => {
                             try {
-                                if (consumed) {
-                                    // Always preserve a history entry when Back was consumed by the app.
-                                    pushPreserveHistoryEntry();
-                                } else {
-                                    // Not consumed -> allow default navigation (exit) to proceed.
-                                    if (window.logBackDebug) window.logBackDebug('[Back] not consumed, allowing default navigation');
-                                }
+                                // We always bounce and handle in-app; no further history mutation needed here.
                             } catch (e) { if (window.logBackDebug) console.warn('Global pop handler inner failure', e); }
                         }).catch((err) => {
                             console.warn('Global pop handler: handleGlobalBack promise failed', err);
@@ -3325,18 +3326,20 @@ try {
             window.addEventListener('popstate', window.__globalPopHandler);
         } catch(_) {}
 
-        // Push an initial history entry so there is always a state to return to. This makes
-        // the double-back-to-exit pattern reliable across browsers and PWA containers.
+        // Install a two-entry guard ring so back always lands on one of our guards rather than
+        // exiting the app. We use stable hashes so the URL bar (if present) isn't spammed.
         try {
             // Do this on DOMContentLoaded to avoid interfering with other early scripts.
-            const pushInitial = () => { try { history.replaceState({ asx_initial: true }, '', location.href.split('#')[0]); pushPreserveHistoryEntry(); } catch(_) {} };
+            const pushInitial = () => {
+                try {
+                    const base = location.href.split('#')[0];
+                    history.replaceState({ asx_guard: true, idx: 0 }, '', base + '#g0');
+                    history.pushState({ asx_guard: true, idx: 1 }, '', base + '#g1');
+                    history.pushState({ asx_guard: true, idx: 2 }, '', base + '#g2');
+                } catch(_) {}
+            };
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pushInitial, { once: true }); else pushInitial();
-            // Keepalive: when the app becomes visible or gains focus, ensure there's a preserve state
-            // so the next Back press routes through our handler.
-            const keepAlive = () => { pushPreserveHistoryEntry(); };
-            try { window.addEventListener('pageshow', keepAlive); } catch(_) {}
-            try { window.addEventListener('focus', keepAlive); } catch(_) {}
-            try { document.addEventListener('visibilitychange', () => { if (!document.hidden) keepAlive(); }); } catch(_) {}
+            // No keepalive required with bounce; the ring keeps us safe.
         } catch(_) {}
     }
 } catch(_) {}
