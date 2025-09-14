@@ -1860,14 +1860,14 @@ function updateLivePriceTimestamp(ts) {
     }
 }
 
-// Ensure fetchLivePrices is available on window
-if (typeof fetchLivePrices === 'function' && !window.fetchLivePrices) {
-    window.fetchLivePrices = async function(...args) {
-        const result = await fetchLivePrices.apply(this, args);
-        updateLivePriceTimestamp(Date.now());
-        return result;
-    };
-}
+// Expose timestamp updater for other modules (e.g., priceService)
+try { window.updateLivePriceTimestamp = updateLivePriceTimestamp; } catch(_) {}
+// Ensure a global fetchLivePrices reference exists for legacy callers (no extra side-effects here)
+try {
+    if (typeof fetchLivePrices === 'function' && !window.fetchLivePrices) {
+        window.fetchLivePrices = (...args) => fetchLivePrices.apply(null, args);
+    }
+} catch(_) {}
 
 // Also update timestamp on DOMContentLoaded (in case prices are preloaded)
 document.addEventListener('DOMContentLoaded', function() {
@@ -1882,6 +1882,38 @@ document.addEventListener('DOMContentLoaded', function() {
     // The timestamp is positioned in the top-right of the header via HTML structure and CSS
     // The following JavaScript positioning code has been disabled to prevent conflicts
 
+});
+
+// Click-to-Refresh on Timestamp Container
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        const tsContainer = document.getElementById('livePriceTimestampContainer');
+        if (tsContainer) {
+            tsContainer.style.cursor = 'pointer';
+            tsContainer.title = 'Click to refresh live prices';
+            tsContainer.addEventListener('click', async (e) => {
+                e.preventDefault();
+                try { window.logDebug && window.logDebug('UI: Timestamp clicked — refreshing live prices.'); } catch(_) {}
+                // Mirror sidebar behavior: show toast notification
+                try { if (typeof window.showCustomAlert === 'function') window.showCustomAlert('Refreshing live prices...', 1000); } catch(_) {}
+                // Provide quick visual feedback
+                const tsEl = document.getElementById('livePriceTimestamp');
+                if (tsEl) { tsEl.style.opacity = '0.6'; setTimeout(()=>{ tsEl.style.opacity = '1'; }, 250); }
+                try {
+                    if (typeof fetchLivePricesAndUpdateUI === 'function') {
+                        await fetchLivePricesAndUpdateUI();
+                    } else if (typeof fetchLivePrices === 'function') {
+                        await fetchLivePrices({ cacheBust: true });
+                    } else if (typeof window.fetchLivePrices === 'function') {
+                        await window.fetchLivePrices({ cacheBust: true });
+                    }
+                    // Timestamp will be updated by priceService on success
+                } catch (err) {
+                    console.warn('Timestamp click refresh failed', err);
+                }
+            });
+        }
+    } catch (e) { console.warn('Failed to attach timestamp click-to-refresh', e); }
 });
 
 // Theme related variables

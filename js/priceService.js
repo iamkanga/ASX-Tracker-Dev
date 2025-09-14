@@ -157,6 +157,13 @@ export async function fetchLivePrices(opts = {}) {
         try { if (typeof window.hideSplashScreenIfReady === 'function') window.hideSplashScreenIfReady(); } catch(_) {}
         try { if (typeof window.recomputeTriggeredAlerts === 'function') window.recomputeTriggeredAlerts(); } catch(_) {}
         try { if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner(); } catch(_) {}
+
+        // Update the live price timestamp in the header on successful fetch
+        try {
+            if (typeof window.updateLivePriceTimestamp === 'function') {
+                window.updateLivePriceTimestamp(Date.now());
+            }
+        } catch(_) {}
     } catch (e) {
         console.error('Live Price: Fetch error', e);
         window._livePricesLoaded = true;
