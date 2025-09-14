@@ -5,6 +5,61 @@
     filter: grayscale(80%);
     transition: opacity 0.3s ease, filter 0.3s ease;
 }
+
+/* =================================================================== */
+/* Final overrides: ensure header toggle and timestamp visually match icons */
+/* Place at file end so these rules win against earlier declarations */
+/* =================================================================== */
+#appHeader #asxCodeButtonsToggle,
+#appHeader .asx-header-toggle,
+#appHeader #asxCodeButtonsToggle * {
+    color: var(--accent-color, #a49393) !important;
+    opacity: 1 !important;
+    font-family: var(--app-font, 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial) !important;
+    font-size: 1rem !important; /* slightly larger to match icon presence */
+    font-weight: 700 !important; /* stronger weight to match icons */
+    letter-spacing: 0.2px !important;
+    mix-blend-mode: normal !important;
+}
+
+/* Timestamp overrides */
+#appHeader #livePriceTimestampContainer.live-price-inside-sort-left,
+#appHeader #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label,
+#appHeader #livePriceTimestampContainer.live-price-inside-sort-left #livePriceTimestamp {
+    color: var(--accent-color, #a49393) !important;
+    opacity: 1 !important;
+    font-family: var(--app-font, 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial) !important;
+    font-size: 1rem !important; /* strengthen to match header */
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    text-align: right !important;
+    display: inline-block !important;
+    visibility: visible !important;
+}
+
+/* Ensure label and time are inline and not shrunk by other rules */
+#appHeader #livePriceTimestampContainer.live-price-inside-sort-left .live-price-label { margin-right: 6px !important; }
+
+
+/* Highest-specificity ID overrides (direct) to ensure immediate visual parity */
+#asxCodeButtonsToggle,
+#asxCodeButtonsToggle * {
+    color: var(--accent-color, #a49393) !important;
+    opacity: 1 !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    font-family: var(--app-font, 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial) !important;
+}
+
+#livePriceTimestamp,
+.live-price-label {
+    color: var(--accent-color, #a49393) !important;
+    opacity: 1 !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    font-family: var(--app-font, 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial) !important;
+}
+
 /* Target hit notification container inside 52-week alert: match global movers width */
 .low52-alert-card .target-hit-item.global-summary-alert {
     min-width: 320px;
@@ -5078,6 +5133,36 @@ body.sidebar-active {
 /* Force vivid plus icon */
 #appHeader #addShareHeaderBtn i, #appHeader #addShareHeaderBtn svg { opacity:1 !important; color:var(--accent-color,#a49393) !important; mix-blend-mode:normal; }
 
+/* Ensure ASX header toggle and live timestamp match header icons visually */
+/* Use the same specificity as the icon rules and !important to override other rules */
+#appHeader #asxCodeButtonsToggle,
+#appHeader .asx-header-toggle {
+    color: var(--accent-color, #a49393) !important;
+    opacity: 1 !important;
+    font-family: var(--app-font, 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial) !important;
+    font-size: 0.98rem !important; /* match header icon visual scale */
+    font-weight: 600 !important;
+    mix-blend-mode: normal !important;
+    display: inline-flex !important;
+    align-items: flex-end !important; /* keep bottom-aligned */
+}
+
+/* Timestamp: apply same strong styling and ensure it overrides small-screen size rules */
+#appHeader #livePriceTimestampContainer,
+#appHeader #livePriceTimestampContainer .live-price-label,
+#appHeader #livePriceTimestampContainer #livePriceTimestamp {
+    color: var(--accent-color, #a49393) !important;
+    opacity: 1 !important;
+    font-family: var(--app-font, 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial) !important;
+    font-size: 0.98rem !important;
+    font-weight: 600 !important;
+    mix-blend-mode: normal !important;
+    line-height: 1.05 !important;
+}
+
+/* Ensure right-aligned timestamp keeps its positioning and doesn't get shrunk by other layout rules */
+#appHeader #livePriceTimestampContainer { justify-self: end !important; align-self: end !important; display: inline-flex !important; flex-direction: column; align-items: flex-end; }
+
 /**/
 
 /* Optional subtle style for neutral price change badge inside cards */
@@ -9937,8 +10022,11 @@ body.dark-theme .alert-item {
     justify-self: start;
     display: inline-block;
     line-height: 1.05;
+    /* Match header icon typography and colour for visual consistency */
+    font-family: var(--app-font, 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial);
+    font-size: 0.92rem; /* match visual scale of header icons/text */
     font-weight: 600;
-    color: var(--ghosted-text, #888);
+    color: var(--accent-color, #a49393);
     cursor: pointer;
     user-select: none;
     padding: 0; /* text only, no container padding */
@@ -9946,7 +10034,7 @@ body.dark-theme .alert-item {
     border: none !important; /* ensure no border */
     background: transparent !important; /* ensure no background */
     box-shadow: none !important; /* ensure no shadow */
-    align-self: flex-end; /* sit at bottom of header row */
+    align-self: end; /* sit at bottom of header row */
 }
 #asxCodeButtonsToggle:hover,
 #asxCodeButtonsToggle:focus {
@@ -9974,6 +10062,14 @@ body.dark-theme .alert-item {
     grid-column: 3;
     justify-self: end;
 }
+
+/* Ensure container variant for left placement has explicit left alignment (used by verification scripts) */
+.live-price-inside-sort-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* left/top alignment for label in this variant */
+    text-align: left;
+}
 /* In grid context, allow full width and prevent truncation */
 .sort-line-row #livePriceTimestampContainer {
     max-width: none !important;
@@ -9986,11 +10082,19 @@ body.dark-theme .alert-item {
     text-overflow: clip !important;
     white-space: nowrap !important;
 }
-/* Coffee color for both label and time to match app accent and ASX toggle text */
+/* Timestamp: match typography, color and bottom alignment to the ASX toggle */
+#livePriceTimestampContainer,
 #livePriceTimestampContainer .live-price-label,
 #livePriceTimestampContainer #livePriceTimestamp {
+    font-family: var(--app-font, 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial);
+    font-size: 0.92rem; /* same as toggle */
+    font-weight: 600;
     color: var(--accent-color, #a49393) !important;
+    line-height: 1.05;
 }
+
+/* Ensure the timestamp container aligns to the bottom of the header row */
+#livePriceTimestampContainer { align-self: end; display: inline-flex; flex-direction: column; align-items: flex-end; }
 
 /* === CSS Fixes: Complete visual cleanup and layout fixes === */
 
