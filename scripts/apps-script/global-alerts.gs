@@ -32,7 +32,8 @@ const FIRESTORE_BASE = 'https://firestore.googleapis.com/v1';
 // TEMPORARY TEST OVERRIDES
 // Set to true to disable market hours guards for manual after-hours testing.
 // Remember to set back to false (or remove) before committing to production.
-const TEMP_DISABLE_MARKET_HOURS_GUARD = true; // <<< TEMPORARY
+// Production: ensure guards are active. Set to true ONLY for controlled after-hours testing.
+const TEMP_DISABLE_MARKET_HOURS_GUARD = false; // production default
 
 // ===============================================================
 // ============= GENERIC FIRESTORE COMMIT UTILITIES ==============
