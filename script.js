@@ -4741,6 +4741,97 @@ function renderAlertTargetInline(share, opts = {}) {
     return core;
 }
 
+// --- Helper: Check if ASX code exists in any user watchlist ---
+function isCodeInAnyWatchlist(code) {
+    if (!code) return false;
+    try {
+        const target = code.toUpperCase();
+        // Prefer authoritative in-memory list
+        const shares = (typeof getAllSharesData === 'function') ? getAllSharesData() : (window.allSharesData || []);
+        if (Array.isArray(shares)) {
+            for (const s of shares) {
+                if (s && s.shareName && s.shareName.toUpperCase() === target) return true;
+            }
+        }
+    } catch(_) {}
+    return false;
+}
+try { window.isCodeInAnyWatchlist = isCodeInAnyWatchlist; } catch(_) {}
+
+// Unified click-through for research vs existing share detail
+function openShareOrSearch(code) {
+    if (!code) return;
+    const upper = code.toUpperCase();
+    try {
+        const shares = (typeof getAllSharesData === 'function') ? getAllSharesData() : (window.allSharesData || []);
+        const match = Array.isArray(shares) ? shares.find(s => s && s.shareName && s.shareName.toUpperCase() === upper) : null;
+        if (match && match.id) {
+            try { selectShare(match.id); showShareDetails(); } catch(e){ console.warn('Open share details failed', e); }
+            return;
+        }
+    } catch(e) { /* ignore */ }
+    // Fallback to search
+    try { if (typeof showStockSearchModal === 'function') showStockSearchModal(upper); } catch(_) {}
+}
+try { window.openShareOrSearch = openShareOrSearch; } catch(_) {}
+
+// Force open Search ASX Stocks modal with a prefilled code (always research path)
+function openStockSearchForCode(code){
+    if(!code) return;
+    const upper = code.toUpperCase();
+    try {
+        if (typeof stockSearchModal !== 'undefined' && stockSearchModal) {
+            showModal(stockSearchModal);
+        } else if (typeof searchStockBtn !== 'undefined' && searchStockBtn && searchStockBtn.click) {
+            searchStockBtn.click();
+        }
+    } catch(_) {}
+    try {
+        if (typeof asxSearchInput !== 'undefined' && asxSearchInput) {
+            asxSearchInput.value = upper;
+            if (typeof displayStockDetailsInSearchModal === 'function') {
+                displayStockDetailsInSearchModal(upper);
+            }
+            try { asxSearchInput.focus(); asxSearchInput.setSelectionRange(upper.length, upper.length); } catch(_) {}
+        }
+    } catch(_) {}
+}
+try { window.openStockSearchForCode = openStockSearchForCode; } catch(_) {}
+
+// --- Notifications Accordion Init (Target Hit / Global) ---
+function initNotificationsAccordion() {
+    const root = document.getElementById('notificationsAccordion');
+    if (!root || root.dataset.accordionInit) return;
+    const sections = root.querySelectorAll('.accordion-section');
+    sections.forEach(sec => {
+        const isDefaultOpen = sec.classList.contains('open');
+        const btn = sec.querySelector('.accordion-toggle');
+        if (btn) btn.setAttribute('aria-expanded', String(isDefaultOpen));
+    });
+    root.addEventListener('click', (e) => {
+        const header = e.target.closest('.accordion-toggle');
+        if (!header || !root.contains(header)) return;
+        e.preventDefault();
+        const section = header.closest('.accordion-section');
+        if (!section) return;
+        const opening = !section.classList.contains('open');
+        // Single-open accordion behavior: close others
+        if (opening) {
+            root.querySelectorAll('.accordion-section.open').forEach(other => {
+                if (other !== section) {
+                    other.classList.remove('open');
+                    const ob = other.querySelector('.accordion-toggle');
+                    if (ob) ob.setAttribute('aria-expanded','false');
+                }
+            });
+        }
+        section.classList.toggle('open');
+        header.setAttribute('aria-expanded', String(opening));
+    });
+    root.dataset.accordionInit = 'true';
+}
+document.addEventListener('DOMContentLoaded', () => { try { initNotificationsAccordion(); } catch(_) {} });
+
 /**
  * Adds a single share to the desktop table view.
  * @param {object} share The share object to add.
@@ -14555,7 +14646,13 @@ function showTargetHitDetailsModal(options={}) {
             return;
         }
     } catch(_err) { /* ignore */ }
-    targetHitSharesList.innerHTML = ''; // Clear previous content
+    targetHitSharesList.innerHTML = ''; // Clear previous content (target hit section only)
+    // Clear new global containers if present
+    try {
+        const gm = document.getElementById('globalMoversContainer'); if (gm) gm.innerHTML='';
+        const gh = document.getElementById('globalHigh52Container'); if (gh) gh.innerHTML='';
+        const gl = document.getElementById('globalLow52Container'); if (gl) gl.innerHTML='';
+    } catch(_) {}
 
     // --- 52 week high/low Section (horizontal, smart UI) ---
     // Use window.sharesAt52WeekLow to ensure we're looking at the global variable
@@ -14686,7 +14783,8 @@ function showTargetHitDetailsModal(options={}) {
             console.log(`[52W-MODAL] Container now has ${alertsContainer.children.length} cards`);
         });
 
-        targetHitSharesList.appendChild(alertsContainer);
+    // Append legacy (user specific) 52-week alerts under Target Hit section still (requirement only alters global sections design parity)
+    targetHitSharesList.appendChild(alertsContainer);
         console.log(`[52W-MODAL] Added alerts container with ${sharesAt52WeekLow.length} alerts to modal`);
     }
 
@@ -14695,16 +14793,7 @@ function showTargetHitDetailsModal(options={}) {
         const hiLo = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts : null;
         const lows = hiLo ? hiLo.lows : [];
         if (lows && lows.length) {
-            const sectionHeader = document.createElement('div');
-            sectionHeader.className = 'low52-section-header global-low52';
-            const titleEl = document.createElement('h3');
-            titleEl.className = 'target-hit-section-title low52-heading';
-            titleEl.textContent = 'Global 52-Week Lows';
-            sectionHeader.appendChild(titleEl);
-            targetHitSharesList.appendChild(sectionHeader);
-
-            const list = document.createElement('div');
-            list.className = 'low52-alerts-container';
+            const list = document.getElementById('globalLow52Container') || (function(){ const el=document.createElement('div'); el.id='globalLow52Container'; return el; })();
             lows.forEach(entry => {
                 const card = document.createElement('div');
                 card.className = 'low52-alert-card low52-low';
@@ -14713,13 +14802,11 @@ function showTargetHitDetailsModal(options={}) {
                 const live = (entry.live!=null? Number(entry.live) : (livePrices && livePrices[code] ? Number(livePrices[code].live) : null));
                 const hi = (entry.high52!=null? Number(entry.high52) : (entry.High52!=null? Number(entry.High52) : null));
                 const lo = (entry.low52!=null? Number(entry.low52) : (entry.Low52!=null? Number(entry.Low52) : null));
-                let pctText = '';
-                try { if (lo && live) { const p=((live-lo)/lo)*100; pctText = ` (${p>0?'+':''}${p.toFixed(2)}%)`; } } catch(_) {}
                 card.innerHTML = `
                     <div class="low52-card-row low52-header-row">
                         <span class="low52-code">${code}</span>
                         <span class="low52-name">${name}</span>
-                        <span class="low52-price">${live!=null?('$'+formatAdaptivePrice(live)):'<span class="low52-price-na">N/A</span>'}${pctText}</span>
+                        <span class="low52-price">${live!=null?('$'+formatAdaptivePrice(live)):'<span class="low52-price-na">N/A</span>'}</span>
                     </div>
                     <div class="low52-thresh-row">
                         <span class="low52-thresh">52W Range: ${lo!=null?'$'+formatAdaptivePrice(lo):'?'} → ${hi!=null?'$'+formatAdaptivePrice(hi):'?'} </span>
@@ -14727,25 +14814,15 @@ function showTargetHitDetailsModal(options={}) {
                 // Click opens search modal for the code
                 card.addEventListener('click', ()=>{
                     try { hideModal(targetHitDetailsModal); } catch(_) {}
-                    try { if (typeof showStockSearchModal === 'function') showStockSearchModal(code); } catch(_) {}
+                    openStockSearchForCode(code);
                 });
                 list.appendChild(card);
             });
-            targetHitSharesList.appendChild(list);
         }
         // Add Global 52-Week Highs section (centralized)
         const highs = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.highs)) ? window.globalHiLo52Alerts.highs : [];
         if (highs && highs.length) {
-            const sectionHeader2 = document.createElement('div');
-            sectionHeader2.className = 'low52-section-header global-high52';
-            const titleEl2 = document.createElement('h3');
-            titleEl2.className = 'target-hit-section-title low52-heading';
-            titleEl2.textContent = 'Global 52-Week Highs';
-            sectionHeader2.appendChild(titleEl2);
-            targetHitSharesList.appendChild(sectionHeader2);
-
-            const list2 = document.createElement('div');
-            list2.className = 'low52-alerts-container';
+            const list2 = document.getElementById('globalHigh52Container') || (function(){ const el=document.createElement('div'); el.id='globalHigh52Container'; return el; })();
             highs.forEach(entry => {
                 const card = document.createElement('div');
                 card.className = 'low52-alert-card low52-high';
@@ -14766,11 +14843,10 @@ function showTargetHitDetailsModal(options={}) {
                 // Click opens search modal for the code
                 card.addEventListener('click', ()=>{
                     try { hideModal(targetHitDetailsModal); } catch(_) {}
-                    try { if (typeof showStockSearchModal === 'function') showStockSearchModal(code); } catch(_) {}
+                    openStockSearchForCode(code);
                 });
                 list2.appendChild(card);
             });
-            targetHitSharesList.appendChild(list2);
         }
     } catch(e) { console.warn('[HiLo52] Failed to render global section', e); }
 
@@ -14806,13 +14882,9 @@ function showTargetHitDetailsModal(options={}) {
         const portfolioCount = data.portfolioCount || 0;
         const discoverCount = Array.isArray(data.nonPortfolioCodes) ? data.nonPortfolioCodes.length : 0;
         const enabled = (data.enabled !== false);
-        const heading = document.createElement('h3');
-        heading.className = 'target-hit-section-title global-movers-heading';
-        heading.id = 'globalMoversTitle';
-        heading.textContent = isComprehensive ? 'Global Movers (All ASX)' : 'Global Movers';
-        targetHitSharesList.appendChild(heading);
-        const container = document.createElement('div');
-        container.classList.add('target-hit-item','global-summary-alert');
+    const containerHost = document.getElementById('globalMoversContainer') || targetHitSharesList; // fallback
+    const container = document.createElement('div');
+    container.classList.add('target-hit-item','global-summary-alert');
         const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
     const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> <span class=\"arrow-count\">${inc}</span></span><span class=\"down\"><span class=\"arrow\">&#9660;</span> <span class=\"arrow-count\">${dec}</span></span></div>`;
     container.innerHTML = `
@@ -14851,7 +14923,7 @@ function showTargetHitDetailsModal(options={}) {
                 }
             });
         }
-        targetHitSharesList.appendChild(container);
+        containerHost.appendChild(container);
     }
 
     async function openDiscoverModal(summaryData) {
@@ -15167,24 +15239,7 @@ function showTargetHitDetailsModal(options={}) {
                     }
                     li.addEventListener('click',()=>{
                         try { hideModal(modal); } catch(_) {}
-                        // Open Stock Search & Research modal instead of Add Share form
-                        try {
-                            if (typeof stockSearchModal !== 'undefined' && stockSearchModal) {
-                                showModal(stockSearchModal);
-                            } else if (typeof searchStockBtn !== 'undefined' && searchStockBtn && searchStockBtn.click) {
-                                searchStockBtn.click();
-                            }
-                        } catch(err) { if (DEBUG_MODE) console.warn('Open stock search modal failed', err); }
-                        // Populate search input and fetch details for research URLs
-                        try {
-                            if (typeof asxSearchInput !== 'undefined' && asxSearchInput) {
-                                asxSearchInput.value = code;
-                                if (typeof displayStockDetailsInSearchModal === 'function') {
-                                    displayStockDetailsInSearchModal(code);
-                                }
-                                try { asxSearchInput.focus(); asxSearchInput.setSelectionRange(code.length, code.length); } catch(_) {}
-                            }
-                        } catch(err2) { if (DEBUG_MODE) console.warn('Populate search modal failed', err2); }
+                        openShareOrSearch(code);
                     });
                     ul.appendChild(li);
                 });
