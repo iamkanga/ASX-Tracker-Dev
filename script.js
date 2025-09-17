@@ -4532,7 +4532,8 @@ function getShareDisplayData(share) {
 function initShareFormAccordion(force = false) {
     const root = document.getElementById('shareFormAccordion');
     if (!root) return;
-    if (root.dataset.accordionInit && !force) return; // idempotent
+    // If already initialized and not forced, but the handler was removed (e.g., element replaced), allow rebind
+    if (root.dataset.accordionInit && !force && root._accordionClickHandler) return; // idempotent guard
     const sections = root.querySelectorAll('.accordion-section');
     sections.forEach(sec => {
         const isCore = sec.getAttribute('data-section') === 'core';
@@ -4541,14 +4542,22 @@ function initShareFormAccordion(force = false) {
         if (toggleBtn) toggleBtn.setAttribute('aria-expanded', String(isCore));
     });
     // Event delegation for reliability
-    root.addEventListener('click', (e) => {
+    // Remove any previous handler if present to avoid duplicate bindings when the DOM is re-rendered
+    try {
+        if (root._accordionClickHandler) root.removeEventListener('click', root._accordionClickHandler);
+    } catch(_) {}
+
+    const accordionClickHandler = function(e) {
         const header = e.target.closest('.accordion-toggle');
         if (!header || !root.contains(header)) return;
         e.preventDefault();
         const section = header.closest('.accordion-section');
         if (!section) return;
         toggleAccordionSection(section);
-    });
+    };
+    root.addEventListener('click', accordionClickHandler);
+    // Store the handler reference so future inits can remove it if needed
+    try { root._accordionClickHandler = accordionClickHandler; } catch(_) {}
     root.dataset.accordionInit = 'true';
 }
 
@@ -6452,7 +6461,16 @@ async function saveShareData(isSilent = false) {
             }
             deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
             // NEW: Trigger a fresh fetch of live prices and re-render to reflect new target hit status
-            await fetchLivePrices(); // This will also trigger renderWatchlist and updateTargetHitBanner
+            await fetchLivePrices(); // fetch and merge live price data
+            // Explicitly re-render to ensure newly-added/updated rows receive movement/target-hit classes immediately
+            try {
+                if (typeof renderWatchlist === 'function') renderWatchlist();
+                if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling();
+                // Small deferred second pass to cover async reapply logic elsewhere
+                setTimeout(() => {
+                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch(_) {}
+                }, 120);
+            } catch(_) {}
             // Removed secondary toast; single confirmation already shown earlier.
         } catch (error) {
             console.error('Firestore: Error updating share:', error);
@@ -6480,19 +6498,75 @@ async function saveShareData(isSilent = false) {
             try {
                 console.log('[SAVE DEBUG][script] Preparing to add share. shareName=', shareName, 'formCurrentPrice=', (currentPriceInput ? currentPriceInput.value : undefined), 'livePriceObj=', livePrices && livePrices[shareName.toUpperCase()] ? livePrices[shareName.toUpperCase()] : undefined, 'shareData.entryPrice=', shareData.entryPrice, 'shareData.enteredPriceRaw=', shareData.enteredPriceRaw);
             } catch(_) {}
+
+            // OPTIMISTIC UI: Insert a provisional share into in-memory list so user sees it immediately
+            const provisionalId = '__pending:' + Date.now();
+            try {
+                const provisionalShare = Object.assign({}, shareData, { id: provisionalId, __provisional: true });
+                if (!Array.isArray(allSharesData)) allSharesData = [];
+                // Ensure we don't duplicate an existing provisional with same code
+                const exists = allSharesData.some(s => s && s.id === provisionalId);
+                if (!exists) {
+                    allSharesData.push(provisionalShare);
+                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); } catch(_) {}
+                }
+
+                // Also merge a provisional livePrices entry so the watchlist shows the entry price while real prices arrive
+                try {
+                    const code = (shareName || '').toUpperCase();
+                    if (code) {
+                        // If no live price exists yet for this code, create a provisional one based on entryPrice
+                        const existingLP = (typeof livePrices !== 'undefined' && livePrices && livePrices[code]) ? livePrices[code] : null;
+                        if (!existingLP || !existingLP.live) {
+                            const provisionalLP = {
+                                live: (shareData.entryPrice !== null && shareData.entryPrice !== undefined) ? Number(shareData.entryPrice) : null,
+                                prevClose: existingLP && existingLP.prevClose ? existingLP.prevClose : null,
+                                lastLivePrice: existingLP && existingLP.lastLivePrice ? existingLP.lastLivePrice : null,
+                                __provisional: true
+                            };
+                            try { window.livePrices = Object.assign({}, (window.livePrices || {}), { [code]: provisionalLP }); } catch(_) {}
+                            try { livePrices = window.livePrices; } catch(_) {}
+                        }
+                    }
+                } catch(_) {}
+            } catch(e) { console.warn('Optimistic UI provisional insertion failed', e); }
+
             const newDocRef = await firestore.addDoc(sharesColRef, shareData);
             selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
-            // Ensure the in-memory allSharesData is updated immediately so UI can render the new share
+            // Ensure the in-memory allSharesData is updated: replace provisional entry if present
             try {
                 const created = Object.assign({}, shareData, { id: newDocRef.id });
                 if (!Array.isArray(allSharesData)) allSharesData = [];
-                // Avoid duplicate if listener also adds it later
-                const exists = allSharesData.some(s => s && s.id === newDocRef.id);
-                if (!exists) {
-                    allSharesData.push(created);
-                    logDebug('In-memory: appended newly created share to allSharesData (id=' + newDocRef.id + ')');
+
+                // Replace provisional entry if it exists (match by shareName and __provisional flag)
+                let replaced = false;
+                for (let i = 0; i < allSharesData.length; i++) {
+                    const s = allSharesData[i];
+                    if (s && s.__provisional && s.shareName === created.shareName) {
+                        allSharesData[i] = created;
+                        replaced = true;
+                        break;
+                    }
                 }
-            } catch(e) { console.warn('In-memory append of new share failed', e); }
+
+                // If no provisional found, append the created share (listener might not add it)
+                if (!replaced) {
+                    const exists = allSharesData.some(s => s && s.id === newDocRef.id);
+                    if (!exists) allSharesData.push(created);
+                }
+
+                // Cleanup provisional markers from livePrices for this code
+                try {
+                    const code = (created.shareName || '').toUpperCase();
+                    if (code && window.livePrices && window.livePrices[code] && window.livePrices[code].__provisional) {
+                        // Remove the provisional flag but keep the value (apps will update when real prices arrive)
+                        try { delete window.livePrices[code].__provisional; } catch(_) {}
+                        try { livePrices = window.livePrices; } catch(_) {}
+                    }
+                } catch(_) {}
+
+                logDebug('In-memory: inserted/updated newly created share to allSharesData (id=' + newDocRef.id + ')');
+            } catch(e) { console.warn('In-memory append/replace of new share failed', e); }
             // Phase 2: Create alert document for this new share (intent + direction)
             try {
                 await upsertAlertForShare(selectedShareDocId, shareName, shareData, true);
@@ -6518,7 +6592,16 @@ async function saveShareData(isSilent = false) {
             }
             deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
             // NEW: Trigger a fresh fetch of live prices and re-render to reflect new target hit status
-            await fetchLivePrices(); // This will also trigger renderWatchlist and updateTargetHitBanner
+            await fetchLivePrices(); // fetch and merge live price data
+            // Explicitly re-render to ensure newly-added/updated rows receive movement/target-hit classes immediately
+            try {
+                if (typeof renderWatchlist === 'function') renderWatchlist();
+                if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling();
+                // Small deferred second pass to cover async reapply logic elsewhere
+                setTimeout(() => {
+                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch(_) {}
+                }, 120);
+            } catch(_) {}
             // Removed secondary toast; single confirmation already shown earlier.
         } catch (error) {
             console.error('Firestore: Error adding share:', error);
@@ -13972,13 +14055,36 @@ if (sortSelect) {
 
             try {
                 // Await the AppService save so modal close behavior and state is consistent
+                // Capture the visible modal current price at click-time. Use a tiny retry/backoff
+                // if the element is populated asynchronously to reduce the race window.
+                let capturedPriceBeforeSave = '';
+                try {
+                    const readCurrentPrice = () => {
+                        const cpEl = document.getElementById('currentPrice');
+                        return (cpEl && typeof cpEl.value === 'string') ? cpEl.value.trim() : '';
+                    };
+
+                    // Try immediate read, then short backoffs if empty (conservative: 3 attempts)
+                    capturedPriceBeforeSave = readCurrentPrice();
+                    if (!capturedPriceBeforeSave) {
+                        // small delay/polling values chosen to be short but helpful (ms)
+                        const backoffs = [120, 300];
+                        for (let i = 0; i < backoffs.length && !capturedPriceBeforeSave; i++) {
+                            // eslint-disable-next-line no-await-in-loop
+                            await new Promise(res => setTimeout(res, backoffs[i]));
+                            capturedPriceBeforeSave = readCurrentPrice();
+                        }
+                    }
+                } catch (_) { capturedPriceBeforeSave = ''; }
+
+                // Pass the captured price explicitly to the AppService save method so it doesn't rely on a window-global
                 if (typeof saveShareDataSvc === 'function') {
-                    await saveShareDataSvc(false);
+                    await saveShareDataSvc(false, capturedPriceBeforeSave);
                 } else if (window.AppService && typeof window.AppService.saveShareData === 'function') {
-                    await window.AppService.saveShareData(false);
+                    await window.AppService.saveShareData(false, capturedPriceBeforeSave);
                 } else {
                     // Fallback to old call if function reference not available
-                    saveShareDataSvc(false);
+                    saveShareDataSvc(false, capturedPriceBeforeSave);
                 }
             } catch (err) {
                 console.error('Share Form: Error saving share via service:', err);

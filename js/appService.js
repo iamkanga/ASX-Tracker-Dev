@@ -14,7 +14,7 @@ function callOrWarn(fnName, args) {
     }
 }
 
-export async function saveShareData(isSilent = false) {
+export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
     try { window.logDebug && window.logDebug('Share Form: saveShareData called.'); } catch(_) {}
     const saveShareBtn = window.saveShareBtn;
     if (saveShareBtn && saveShareBtn.classList && saveShareBtn.classList.contains('is-disabled-icon') && isSilent) { try { window.logDebug && window.logDebug('Auto-Save: Save button is disabled (no changes or no valid name). Skipping silent save.'); } catch(_) {} return; }
@@ -154,8 +154,11 @@ export async function saveShareData(isSilent = false) {
         // Creating new share: set entryPrice from current price only
         try {
             // Prefer the visible modal input value (currentPrice) where possible to preserve exact user-visible formatting
+            // First prefer any value passed explicitly from the UI layer (captured at click-time).
+            // This avoids a race where updateAddFormLiveSnapshot populates the DOM slightly after the click.
+            const capturedAtClick = (typeof capturedPriceRaw === 'string' && capturedPriceRaw.length) ? capturedPriceRaw : ((typeof window !== 'undefined' && typeof window.__capturedCurrentPriceBeforeSave === 'string' && window.__capturedCurrentPriceBeforeSave.length) ? window.__capturedCurrentPriceBeforeSave : null);
             const currentPriceInput = (typeof document !== 'undefined') ? document.getElementById('currentPrice') : null;
-            const rawEnteredFromDom = currentPriceInput && typeof currentPriceInput.value === 'string' ? currentPriceInput.value.trim() : '';
+            const rawEnteredFromDom = (capturedAtClick !== null) ? capturedAtClick : (currentPriceInput && typeof currentPriceInput.value === 'string' ? currentPriceInput.value.trim() : '');
             const parsedFromDom = parseFloat(rawEnteredFromDom);
             const livePrices = window.livePrices || {};
             const shareCode = shareData.shareName?.toUpperCase();
@@ -198,6 +201,8 @@ export async function saveShareData(isSilent = false) {
                     shareData.previousFetchedPrice = null;
                 }
             }
+            // Clear the captured click-time global (if present) so it does not incorrectly affect future saves
+            try { if (typeof window !== 'undefined' && window.__capturedCurrentPriceBeforeSave) delete window.__capturedCurrentPriceBeforeSave; } catch(_) {}
         } catch (e) {
             console.warn('[ENTRY PRICE] Error determining entry price for new share:', e);
         }
