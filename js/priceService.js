@@ -15,9 +15,54 @@ export async function fetchLivePrices(opts = {}) {
         if (opts && opts.cacheBust) qs.set('_ts', Date.now().toString());
         if (opts && opts.stockCode) qs.set('stockCode', String(opts.stockCode).toUpperCase());
         const url = qs.toString() ? (baseUrl + (baseUrl.includes('?') ? '&' : '?') + qs.toString()) : baseUrl;
-        const response = await fetch(url, { cache: 'no-store' });
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        const data = await response.json();
+        // Attempt direct fetch first
+        let data;
+        const tryFetchJson = async (requestUrl) => {
+            const resp = await fetch(requestUrl, { cache: 'no-store' });
+            if (!resp || !resp.ok) throw new Error('HTTP ' + (resp ? resp.status : 'N/A'));
+            return resp.json();
+        };
+
+        const buildProxyUrl = (proxyBase, targetUrl) => {
+            if (!proxyBase) return null;
+            // Two common proxy styles:
+            // 1) https://corsproxy.io/?<encoded-url>
+            // 2) https://cors.isomorphic-git.org/<raw-url>
+            if (proxyBase.includes('?')) return proxyBase + encodeURIComponent(targetUrl);
+            if (proxyBase.endsWith('/')) return proxyBase + targetUrl;
+            return proxyBase + '/' + targetUrl;
+        };
+
+        const isLocalDev = (() => {
+            try {
+                const o = (typeof location !== 'undefined') ? location.origin : '';
+                return o.startsWith('http://localhost') || o.startsWith('http://127.0.0.1') || o.startsWith('file://');
+            } catch(_) { return false; }
+        })();
+
+        try {
+            data = await tryFetchJson(url);
+        } catch (directErr) {
+            // If CORS blocks in dev, try an optional proxy fallback
+            const proxyBase = (typeof window.LIVE_PRICE_CORS_PROXY !== 'undefined' && window.LIVE_PRICE_CORS_PROXY)
+                || (typeof window.CORS_PROXY !== 'undefined' && window.CORS_PROXY)
+                || (typeof window.appsScriptCorsProxy !== 'undefined' && window.appsScriptCorsProxy) || '';
+            const proxyUrl = buildProxyUrl(proxyBase, url);
+            if (isLocalDev && proxyUrl) {
+                console.warn('Live Price: Direct fetch failed, retrying via CORS proxy…', directErr && (directErr.message || directErr));
+                try {
+                    data = await tryFetchJson(proxyUrl);
+                } catch (proxyErr) {
+                    // Re-throw original context with proxy attempt details
+                    const err = new Error('Live Price fetch failed (direct and via proxy). Direct=' + (directErr && directErr.message) + ' Proxy=' + (proxyErr && proxyErr.message));
+                    err.directError = directErr; err.proxyError = proxyErr; throw err;
+                }
+            } else {
+                // No proxy configured or not local dev—surface the original error
+                throw directErr;
+            }
+        }
+        
         if (!Array.isArray(data)) {
             console.warn('Live Price: Response not an array, got:', data);
             window._livePricesLoaded = true; if (typeof window.hideSplashScreenIfReady === 'function') window.hideSplashScreenIfReady(); return;

@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Utility predicates
+    function isSignedIn() { return request.auth != null; }
+    function isCentralAlertDoc(docId) { return docId in ['HI_LO_52W', 'GLOBAL_MOVERS']; }
+
+    /*
+     * Centralized global alert documents
+     * Path examples:
+     *  /artifacts/asx-watchlist-app/alerts/HI_LO_52W
+     *  /artifacts/asx-watchlist-app/alerts/GLOBAL_MOVERS
+     * Read-only to authenticated users. We purposely ALLOW get but DENY list / query to:
+     *  - reduce surface area
+     *  - prevent accidental enumeration / future sensitive docs being exposed
+     */
+    match /artifacts/{appId}/alerts/{docId} {
+      allow get: if isSignedIn() && isCentralAlertDoc(docId);
+      allow list: if false;           // disallow collection enumeration
+      allow create, update, delete: if false; // only backend (admin context) should write
+    }
+
+    // User-specific documents: strictly private to their owner
+    match /artifacts/{appId}/users/{userId}/{document=**} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Explicit deny-all fallback for any other paths not covered above
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

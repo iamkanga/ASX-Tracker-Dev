@@ -30,3 +30,43 @@ Update the firebaseConfig in index.html with your project values. Without valid 
 ## Notes
 - To deploy, upload the folder contents to any static host (HTTPS recommended).
 - If you change cached files, bump CACHE_NAME in service-worker.js (or unregister via browser devtools) to force-refresh.
+
+## Global 52‑Week Alerts: quick setup (permissions)
+If you see "FirebaseError: Missing or insufficient permissions" when the app tries to read global alerts, grant clients read access to the central alerts docs and ensure the backend can write.
+
+1) Firestore Rules (copy/paste)
+
+Use the Firebase Console (Build → Firestore Database → Rules) and paste this minimal ruleset, then Publish:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+
+    // Allow authenticated users to read global alert summaries
+    match /artifacts/{appId}/alerts/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false; // writes come from the backend only
+    }
+
+    // Typical user profile protection (adjust if you already have rules)
+    match /artifacts/{appId}/users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+
+2) Backend write permission (Apps Script → Firestore)
+
+The scheduled Google Apps Script writes the global docs via the Firestore API. Ensure it can write:
+- Enable the "Firestore API" on the script's GCP project (Apps Script Editor → Settings → Cloud Platform (GCP) Project → Open in Cloud Console → APIs & Services → Enable APIs → Firestore API).
+- Grant write permission via IAM:
+  - In the Firebase project's Google Cloud Console → IAM, add the Apps Script execution identity with role "Cloud Datastore User" (or Firestore User/Editor/Owner). Common identities:
+    - If using ScriptApp.getOAuthToken() (default), your Google account executes triggers: your user must have write access to Firestore for this project.
+    - If using the script's default service account, it typically ends with `@appspot.gserviceaccount.com` for the project. Grant it "Cloud Datastore User".
+
+3) Verify
+- Reload the app while signed in. The global alerts listener should attach without errors.
+- Optional: run the Apps Script function `runGlobal52WeekScan` once to populate `artifacts/{APP_ID}/alerts/HI_LO_52W` and related summary docs, then refresh the app to see counts in the Notifications modal/banner.
+
+More detail lives in `docs/global-alerts-setup.md`.

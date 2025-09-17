@@ -1933,6 +1933,10 @@ let globalDollarIncrease = null;
 let globalPercentDecrease = null;
 let globalDollarDecrease = null;
 let globalMinimumPrice = null; // New minimum live price filter
+// 52-Week Hi/Low global filters and email toggle
+let hiLoMinimumPrice = null;
+let hiLoMinimumMarketCap = null;
+let emailAlertsEnabled = false;
 let lastGlobalAlertsSessionId = null; // to avoid duplicating alerts within same fetch cycle if needed
 // GLOBAL: References to Global Alerts modal elements (initialized on DOMContentLoaded)
 let globalAlertsBtn = null;
@@ -1944,6 +1948,9 @@ let globalDollarIncreaseInput = null;
 let globalPercentDecreaseInput = null;
 let globalDollarDecreaseInput = null;
 let globalMinimumPriceInput = null;
+let hiLoMinimumPriceInput = null;
+let hiLoMinimumMarketCapInput = null;
+let emailAlertsEnabledInput = null;
 let globalAlertsSettingsSummaryEl = null; // displays current settings under sidebar button
 
 // Early preload: if user recently cleared thresholds and we saved a local snapshot, apply it immediately
@@ -9054,11 +9061,13 @@ function updateTargetHitBanner() {
     }
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
-    const low52Count = Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.filter(item => !item.muted).length : 0;
+    const low52LocalCount = Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.filter(item => !item.muted).length : 0;
+    // Global 52-week alerts are centralized highs/lows; for the banner, we surface lows count in addition
+    const globalLows = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts.lows.length : 0;
     
     // Debug logging for 52-week low count
     console.log('[BANNER-DEBUG] sharesAt52WeekLow:', window.sharesAt52WeekLow);
-    console.log('[BANNER-DEBUG] low52Count:', low52Count);
+    console.log('[BANNER-DEBUG] low52LocalCount:', low52LocalCount, 'globalLows:', globalLows);
     console.log('[BANNER-DEBUG] enabledCount:', enabledCount);
     // Treat global summary counts as zero if directional thresholds are fully inactive (prevents stale badge after clearing)
     const directionalActive = isDirectionalThresholdsActive ? isDirectionalThresholdsActive() : (
@@ -9067,11 +9076,14 @@ function updateTargetHitBanner() {
         (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ||
         (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0)
     );
-    const globalSummaryCount = (directionalActive && globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0;
-    const displayCount = enabledCount + globalSummaryCount + low52Count;
+    const centralMoversCount = (window.globalMovers && window.globalMovers.totalCount) ? window.globalMovers.totalCount : 0;
+    const legacySummaryCount = (directionalActive && globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0;
+    // Prefer centralized movers when available to avoid double counting vs legacy GA_SUMMARY
+    const effectiveMoversCount = centralMoversCount > 0 ? centralMoversCount : legacySummaryCount;
+    const displayCount = enabledCount + effectiveMoversCount + low52LocalCount + globalLows;
     
     // Debug logging for final count
-    console.log('[BANNER-DEBUG] globalSummaryCount:', globalSummaryCount);
+    console.log('[BANNER-DEBUG] centralMoversCount:', centralMoversCount, 'legacySummaryCount:', legacySummaryCount, 'effectiveMoversCount:', effectiveMoversCount);
     console.log('[BANNER-DEBUG] displayCount:', displayCount);
     const snapshot = window.__lastTargetBannerSnapshot;
     const snapshotUnchanged = snapshot.enabledCount === enabledCount && snapshot.displayCount === displayCount && snapshot.dismissed === !!targetHitIconDismissed;
@@ -9191,6 +9203,14 @@ try {
 // Real-time listener for global summary alert documents (both regular and comprehensive)
 let unsubscribeGlobalSummary = null;
 let unsubscribeGlobalSummaryComprehensive = null;
+let unsubscribeGlobalHiLo = null;
+let unsubscribeGlobalMovers = null; // NEW: centralized movers listener handle
+// In-memory cache of global 52-week alerts (central, cross-user)
+let globalHiLo52Alerts = { updatedAt: null, highs: [], lows: [] };
+window.globalHiLo52Alerts = globalHiLo52Alerts;
+// In-memory cache of centralized movers document
+let globalMovers = { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
+window.globalMovers = globalMovers;
 
 function startGlobalSummaryListener() {
     if (unsubscribeGlobalSummary) { try { unsubscribeGlobalSummary(); } catch(_){} unsubscribeGlobalSummary = null; }
@@ -9256,10 +9276,146 @@ function startGlobalSummaryListener() {
     } catch(e) { console.error('Global Alerts: failed to start summary listeners', e); }
 }
 
+// Listener for centralized global 52-week highs/lows list stored in a shared collection
+function startGlobalHiLoListener() {
+    if (unsubscribeGlobalHiLo) { try { unsubscribeGlobalHiLo(); } catch(_){} unsubscribeGlobalHiLo = null; }
+    // Auth / env gating: ensure user and app are established
+    if (!db || !firestore || !currentAppId) { console.log('[HiLo52][defer] DB/firestore/appId not ready'); return; }
+    const uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
+    if (!uid) { console.log('[HiLo52][defer] auth UID not ready'); return; }
+    try { verifyCentralAlertsAccess && verifyCentralAlertsAccess(); } catch(_) {}
+    const path = 'artifacts/' + currentAppId + '/alerts/HI_LO_52W';
+    if (!window.__centralRetry) window.__centralRetry = { hiLo: 0, movers: 0 };
+    console.log('[HiLo52][attach] path=' + path + ' appId=' + currentAppId + ' uid=' + uid + ' attempt=' + (window.__centralRetry.hiLo+1));
+    try {
+        const docRef = firestore.doc(db, path);
+        unsubscribeGlobalHiLo = firestore.onSnapshot(docRef, (snap) => {
+            if (snap.exists()) {
+                const data = snap.data() || {};
+                globalHiLo52Alerts = {
+                    updatedAt: data.updatedAt || null,
+                    highs: Array.isArray(data.highs) ? data.highs : [],
+                    lows: Array.isArray(data.lows) ? data.lows : []
+                };
+                window.globalHiLo52Alerts = globalHiLo52Alerts;
+                try { window.__hiLoListenerError = false; } catch(_) {}
+                if (window.__centralRetry) window.__centralRetry.hiLo = 0; // reset on success
+            } else {
+                globalHiLo52Alerts = { updatedAt: null, highs: [], lows: [] };
+                window.globalHiLo52Alerts = globalHiLo52Alerts;
+            }
+            try { updateTargetHitBanner(); } catch(_) {}
+        }, (err) => {
+            console.warn('[HiLo52] Listener error', err);
+            try { window.__hiLoListenerError = true; window.__hiLoListenerErrorMessage = (err && (err.message || err.code)) || 'Listener error'; } catch(_) {}
+            // Retry only on permission/auth related issues and only a few times
+            const code = err && (err.code || err.message || '');
+            if (/permission|auth|insufficient/i.test(code) && window.__centralRetry.hiLo < 5) {
+                const attempt = ++window.__centralRetry.hiLo;
+                const delay = Math.min(8000, 500 * Math.pow(2, attempt-1));
+                console.log('[HiLo52][retry] Scheduling reattach attempt ' + attempt + ' in ' + delay + 'ms');
+                setTimeout(() => { try { startGlobalHiLoListener(); } catch(e2){ console.warn('[HiLo52][retry] failed reattach', e2);} }, delay);
+            }
+            try { updateTargetHitBanner(); } catch(_) {}
+        });
+    } catch (e) { console.warn('[HiLo52] Failed to attach listener', e); }
+}
+
+function stopGlobalHiLoListener() {
+    if (unsubscribeGlobalHiLo) { try { unsubscribeGlobalHiLo(); } catch(_) {} unsubscribeGlobalHiLo = null; }
+}
+
+// Listener for centralized global movers document (percent / dollar movers, cross-user)
+function startGlobalMoversListener() {
+    if (unsubscribeGlobalMovers) { try { unsubscribeGlobalMovers(); } catch(_){} unsubscribeGlobalMovers = null; }
+    if (!db || !firestore || !currentAppId) { console.log('[Movers][defer] DB/firestore/appId not ready'); return; }
+    const uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
+    if (!uid) { console.log('[Movers][defer] auth UID not ready'); return; }
+    try { verifyCentralAlertsAccess && verifyCentralAlertsAccess(); } catch(_) {}
+    if (!window.__centralRetry) window.__centralRetry = { hiLo: 0, movers: 0 };
+    const path = 'artifacts/' + currentAppId + '/alerts/GLOBAL_MOVERS';
+    console.log('[Movers][attach] path=' + path + ' appId=' + currentAppId + ' uid=' + uid + ' attempt=' + (window.__centralRetry.movers+1));
+    try {
+        const docRef = firestore.doc(db, path);
+        unsubscribeGlobalMovers = firestore.onSnapshot(docRef, (snap) => {
+            if (snap && snap.exists()) {
+                const data = snap.data() || {};
+                globalMovers = {
+                    updatedAt: data.updatedAt || null,
+                    up: Array.isArray(data.up) ? data.up : [],
+                    down: Array.isArray(data.down) ? data.down : [],
+                    upCount: typeof data.upCount === 'number' ? data.upCount : (Array.isArray(data.up)?data.up.length:0),
+                    downCount: typeof data.downCount === 'number' ? data.downCount : (Array.isArray(data.down)?data.down.length:0),
+                    totalCount: typeof data.totalCount === 'number' ? data.totalCount : ((Array.isArray(data.up)?data.up.length:0)+(Array.isArray(data.down)?data.down.length:0)),
+                    thresholds: data.thresholds || null
+                };
+                window.globalMovers = globalMovers;
+                if (window.__centralRetry) window.__centralRetry.movers = 0; // reset on success
+            } else {
+                globalMovers = { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
+                window.globalMovers = globalMovers;
+            }
+            try { updateTargetHitBanner(); } catch(_) {}
+        }, (err) => {
+            console.warn('[GlobalMovers] Listener error', err);
+            try { window.__globalMoversListenerError = true; window.__globalMoversListenerErrorMessage = (err && (err.message||err.code)) || 'Listener error'; } catch(_) {}
+            const code = err && (err.code || err.message || '');
+            if (/permission|auth|insufficient/i.test(code) && window.__centralRetry.movers < 5) {
+                const attempt = ++window.__centralRetry.movers;
+                const delay = Math.min(8000, 500 * Math.pow(2, attempt-1));
+                console.log('[Movers][retry] Scheduling reattach attempt ' + attempt + ' in ' + delay + 'ms');
+                setTimeout(() => { try { startGlobalMoversListener(); } catch(e2){ console.warn('[Movers][retry] failed reattach', e2);} }, delay);
+            }
+            try { updateTargetHitBanner(); } catch(_) {}
+        });
+    } catch(e) { console.warn('[GlobalMovers] Failed to attach listener', e); }
+}
+
+function stopGlobalMoversListener() {
+    if (unsubscribeGlobalMovers) { try { unsubscribeGlobalMovers(); } catch(_){} unsubscribeGlobalMovers = null; }
+}
+
 function stopGlobalSummaryListener() {
     if (unsubscribeGlobalSummary) { try { unsubscribeGlobalSummary(); } catch(_){} unsubscribeGlobalSummary = null; }
     if (unsubscribeGlobalSummaryComprehensive) { try { unsubscribeGlobalSummaryComprehensive(); } catch(_){} unsubscribeGlobalSummaryComprehensive = null; }
 }
+
+// Lightweight verification helper to differentiate between:
+//  (a) Security rules denial (true permission issue)
+//  (b) Missing central document (backend hasn't produced it yet)
+//  (c) Project / path mismatch (wrong appId)
+//  (d) Auth not yet established at probe time
+// Exposes diagnostic flags on window for quick console inspection.
+window.verifyCentralAlertsAccess = async function verifyCentralAlertsAccess() {
+    if (!db || !firestore) { console.log('[CentralVerify] Firestore not ready'); return; }
+    const appId = currentAppId;
+    const uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
+    if (!uid) { console.log('[CentralVerify] Skipped (no auth user yet)'); return; }
+    const targets = [
+        { key: 'HI_LO_52W', path: 'artifacts/' + appId + '/alerts/HI_LO_52W' },
+        { key: 'GLOBAL_MOVERS', path: 'artifacts/' + appId + '/alerts/GLOBAL_MOVERS' }
+    ];
+    if (!window.__centralDiag) window.__centralDiag = {};
+    for (const t of targets) {
+        try {
+            const ref = firestore.doc(db, t.path);
+            const snap = await firestore.getDoc(ref);
+            if (snap.exists()) {
+                window.__centralDiag[t.key] = { exists: true, lastUpdated: snap.data().updatedAt || null, status: 'ok' };
+                console.log('[CentralVerify] ' + t.key + ' OK (exists)');
+            } else {
+                window.__centralDiag[t.key] = { exists: false, status: 'missing' };
+                console.warn('[CentralVerify] ' + t.key + ' document missing (not necessarily a permission issue)');
+            }
+        } catch(e) {
+            const msg = (e && (e.code || e.message)) || String(e);
+            const perm = /permission|denied|insufficient|auth/i.test(msg);
+            window.__centralDiag[t.key] = { error: msg, permissionLike: perm, status: 'error' };
+            console.error('[CentralVerify] ' + t.key + ' error:', msg);
+        }
+    }
+    try { window.__centralDiag.lastProbe = new Date().toISOString(); } catch(_) {}
+};
 
 // Apply a temporary filter to main watchlist showing only shares that match the last summary counts
 function applyGlobalSummaryFilter(options = {}) {
@@ -9828,6 +9984,10 @@ async function saveGlobalAlertSettingsDirectional(settings) {
         globalPercentDecrease: (typeof settings.globalPercentDecrease === 'number' && settings.globalPercentDecrease > 0) ? settings.globalPercentDecrease : del,
         globalDollarDecrease: (typeof settings.globalDollarDecrease === 'number' && settings.globalDollarDecrease > 0) ? settings.globalDollarDecrease : del,
         globalMinimumPrice: (typeof settings.globalMinimumPrice === 'number' && settings.globalMinimumPrice > 0) ? settings.globalMinimumPrice : del,
+        // 52-week filters + email toggle
+        hiLoMinimumPrice: (typeof settings.hiLoMinimumPrice === 'number' && settings.hiLoMinimumPrice > 0) ? settings.hiLoMinimumPrice : del,
+        hiLoMinimumMarketCap: (typeof settings.hiLoMinimumMarketCap === 'number' && settings.hiLoMinimumMarketCap > 0) ? settings.hiLoMinimumMarketCap : del,
+        emailAlertsEnabled: (typeof settings.emailAlertsEnabled === 'boolean') ? settings.emailAlertsEnabled : del,
         // Always remove legacy single-threshold fields so they can never repopulate new directional fields after a clear
         globalPercentAlert: del,
         globalDollarAlert: del,
@@ -9844,6 +10004,9 @@ async function saveGlobalAlertSettingsDirectional(settings) {
                 pDec: settings.globalPercentDecrease ?? null,
                 dDec: settings.globalDollarDecrease ?? null,
                 minP: settings.globalMinimumPrice ?? null,
+                hiLoMinP: settings.hiLoMinimumPrice ?? null,
+                hiLoMinCap: settings.hiLoMinimumMarketCap ?? null,
+                emailOn: !!settings.emailAlertsEnabled,
                 at: toSave.globalDirectionalVersion
             };
             localStorage.setItem('globalDirectionalSnapshot', JSON.stringify(snapshotCache));
@@ -9872,12 +10035,18 @@ function applyLoadedGlobalAlertSettings(settings) {
         globalDollarIncrease = (typeof settings.globalDollarIncrease === 'number' && settings.globalDollarIncrease > 0) ? settings.globalDollarIncrease : null;
         globalPercentDecrease = (typeof settings.globalPercentDecrease === 'number' && settings.globalPercentDecrease > 0) ? settings.globalPercentDecrease : null;
         globalDollarDecrease = (typeof settings.globalDollarDecrease === 'number' && settings.globalDollarDecrease > 0) ? settings.globalDollarDecrease : null;
-    globalMinimumPrice = (typeof settings.globalMinimumPrice === 'number' && settings.globalMinimumPrice > 0) ? settings.globalMinimumPrice : null;
+        globalMinimumPrice = (typeof settings.globalMinimumPrice === 'number' && settings.globalMinimumPrice > 0) ? settings.globalMinimumPrice : null;
+        hiLoMinimumPrice = (typeof settings.hiLoMinimumPrice === 'number' && settings.hiLoMinimumPrice > 0) ? settings.hiLoMinimumPrice : null;
+        hiLoMinimumMarketCap = (typeof settings.hiLoMinimumMarketCap === 'number' && settings.hiLoMinimumMarketCap > 0) ? settings.hiLoMinimumMarketCap : null;
+        emailAlertsEnabled = (typeof settings.emailAlertsEnabled === 'boolean') ? settings.emailAlertsEnabled : false;
         if (globalPercentIncreaseInput) globalPercentIncreaseInput.value = globalPercentIncrease ?? '';
         if (globalDollarIncreaseInput) globalDollarIncreaseInput.value = globalDollarIncrease ?? '';
         if (globalPercentDecreaseInput) globalPercentDecreaseInput.value = globalPercentDecrease ?? '';
         if (globalDollarDecreaseInput) globalDollarDecreaseInput.value = globalDollarDecrease ?? '';
-    if (globalMinimumPriceInput) globalMinimumPriceInput.value = globalMinimumPrice ?? '';
+        if (globalMinimumPriceInput) globalMinimumPriceInput.value = globalMinimumPrice ?? '';
+        if (hiLoMinimumPriceInput) hiLoMinimumPriceInput.value = hiLoMinimumPrice ?? '';
+        if (hiLoMinimumMarketCapInput) hiLoMinimumMarketCapInput.value = hiLoMinimumMarketCap ?? '';
+        if (emailAlertsEnabledInput) emailAlertsEnabledInput.checked = !!emailAlertsEnabled;
         updateGlobalAlertsSettingsSummary();
     } catch(e){ console.warn('Global Alerts: apply directional settings failed', e); }
 }
@@ -10495,6 +10664,9 @@ function initGlobalAlertsUI(force) {
     globalPercentDecreaseInput = document.getElementById('globalPercentDecrease');
     globalDollarDecreaseInput = document.getElementById('globalDollarDecrease');
     globalMinimumPriceInput = document.getElementById('globalMinimumPrice');
+    hiLoMinimumPriceInput = document.getElementById('hiLoMinimumPrice');
+    hiLoMinimumMarketCapInput = document.getElementById('hiLoMinimumMarketCap');
+    emailAlertsEnabledInput = document.getElementById('emailAlertsEnabled');
     if (globalAlertsBtn && globalAlertsModal) {
         globalAlertsBtn.addEventListener('click', () => {
             try { showModal(globalAlertsModal); try { scrollMainToTop(); } catch(_) {} if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(e){ console.error('Global Alerts: failed to open modal', e);} });
@@ -10510,6 +10682,9 @@ function initGlobalAlertsUI(force) {
             const pctDecRaw = parseFloat(globalPercentDecreaseInput?.value || '');
             const dolDecRaw = parseFloat(globalDollarDecreaseInput?.value || '');
             const minPriceRaw = parseFloat(globalMinimumPriceInput?.value || '');
+            const hiLoMinPriceRaw = parseFloat(hiLoMinimumPriceInput?.value || '');
+            const hiLoMinCapRaw = parseFloat(hiLoMinimumMarketCapInput?.value || '');
+            const emailToggle = !!(emailAlertsEnabledInput && emailAlertsEnabledInput.checked);
             // Validation: disallow negative inputs; clamp to null
             function norm(v){ return (!isNaN(v) && v > 0) ? v : null; }
             const before = { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease };
@@ -10518,12 +10693,18 @@ function initGlobalAlertsUI(force) {
             globalPercentDecrease = (!isNaN(pctDecRaw) && pctDecRaw > 0) ? pctDecRaw : null;
             globalDollarDecrease = (!isNaN(dolDecRaw) && dolDecRaw > 0) ? dolDecRaw : null;
             globalMinimumPrice = (!isNaN(minPriceRaw) && minPriceRaw > 0) ? minPriceRaw : null;
+            hiLoMinimumPrice = (!isNaN(hiLoMinPriceRaw) && hiLoMinPriceRaw > 0) ? hiLoMinPriceRaw : null;
+            hiLoMinimumMarketCap = (!isNaN(hiLoMinCapRaw) && hiLoMinCapRaw > 0) ? hiLoMinCapRaw : null;
+            emailAlertsEnabled = !!emailToggle;
             // Reflect cleared values back into inputs so user sees reset immediately
             if (globalPercentIncreaseInput && globalPercentIncrease === null) globalPercentIncreaseInput.value = '';
             if (globalDollarIncreaseInput && globalDollarIncrease === null) globalDollarIncreaseInput.value = '';
             if (globalPercentDecreaseInput && globalPercentDecrease === null) globalPercentDecreaseInput.value = '';
             if (globalDollarDecreaseInput && globalDollarDecrease === null) globalDollarDecreaseInput.value = '';
             if (globalMinimumPriceInput && globalMinimumPrice === null) globalMinimumPriceInput.value = '';
+            if (hiLoMinimumPriceInput && hiLoMinimumPrice === null) hiLoMinimumPriceInput.value = '';
+            if (hiLoMinimumMarketCapInput && hiLoMinimumMarketCap === null) hiLoMinimumMarketCapInput.value = '';
+            if (emailAlertsEnabledInput) emailAlertsEnabledInput.checked = !!emailAlertsEnabled;
             const after = { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease };
             try { console.log('[GlobalAlerts][save] thresholds changed', { before, after, min: globalMinimumPrice }); } catch(_) {}
             // Edge case assist: If only decrease thresholds now exist, ensure increase ones are null (stale UI race)
@@ -10531,7 +10712,7 @@ function initGlobalAlertsUI(force) {
                 // Forcefully null (already) but log for clarity
                 try { console.log('[GlobalAlerts][save] Increase side cleared; operating in DECREASE-ONLY mode.'); } catch(_) {}
             }
-            await saveGlobalAlertSettingsDirectional({ globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease, globalMinimumPrice });
+            await saveGlobalAlertSettingsDirectional({ globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease, globalMinimumPrice, hiLoMinimumPrice, hiLoMinimumMarketCap, emailAlertsEnabled });
             showCustomAlert('Global alert settings saved', 1200);
             try { hideModal(globalAlertsModal); } catch(e){}
             updateGlobalAlertsSettingsSummary();
@@ -11245,6 +11426,12 @@ function hideSplashScreenIfReady() {
     const authGraceOk = (function(){
         try { return window.__authReadyAt && (Date.now() - window.__authReadyAt) > 9000; } catch(_) { return false; }
     })();
+    // New ultra-conservative failsafe: if the user has been authenticated for a while
+    // but some flag hasn’t flipped yet (e.g., a Firestore listener hiccup), force-hide
+    // the splash after a longer grace. Normal behavior remains unchanged when flags are fine.
+    const extendedAuthGraceOk = (function(){
+        try { return window.__authReadyAt && (Date.now() - window.__authReadyAt) > 12000; } catch(_) { return false; }
+    })();
     if (window._firebaseInitialized && window._userAuthenticated && window._appDataLoaded && (window._livePricesLoaded || authGraceOk)) {
         if (splashScreenReady) { // Ensure splash screen itself is ready to be hidden
             logDebug('Splash Screen: All data loaded and ready. Hiding splash screen.');
@@ -11265,6 +11452,18 @@ function hideSplashScreenIfReady() {
             ', User Auth: ' + window._userAuthenticated +
             ', App Data: ' + window._appDataLoaded +
             ', Live Prices: ' + window._livePricesLoaded);
+
+        // Force-unblock UI if user is authenticated and we’ve waited long enough.
+        // This avoids indefinite splash in rare error paths while allowing the app to continue.
+        if (window._firebaseInitialized && window._userAuthenticated && extendedAuthGraceOk) {
+            console.warn('[Splash Failsafe] Forcing splash hide after extended auth grace. Flags:', {
+                firebase: window._firebaseInitialized,
+                auth: window._userAuthenticated,
+                appData: window._appDataLoaded,
+                livePrices: window._livePricesLoaded
+            });
+            if (splashScreenReady) hideSplashScreen();
+        }
     }
 }
 
@@ -14414,11 +14613,22 @@ function showTargetHitDetailsModal(options={}) {
 
             console.log(`[52W-MODAL] Alert ${item.code} - liveVal: ${liveVal}, liveDisplay: ${liveDisplay}`);
 
+            // Compute % distance to the threshold for clarity
+            let pctText = '';
+            try {
+                if (item.type === 'low' && item.low52 && liveVal) {
+                    const pct = ((liveVal - Number(item.low52)) / Number(item.low52)) * 100;
+                    pctText = ` (${pct>0?'+':''}${pct.toFixed(2)}%)`;
+                } else if (item.type === 'high' && item.high52 && liveVal) {
+                    const pct = ((liveVal - Number(item.high52)) / Number(item.high52)) * 100;
+                    pctText = ` (${pct>0?'+':''}${pct.toFixed(2)}%)`;
+                }
+            } catch(_) {}
             card.innerHTML = `
                 <div class="low52-card-row low52-header-row">
                     <span class="low52-code">${item.code}</span>
                     <span class="low52-name">${item.name}</span>
-                    <span class="low52-price">${liveDisplay}</span>
+                    <span class="low52-price">${liveDisplay}${pctText}</span>
                 </div>
                 <div class="low52-card-row low52-action-row">
                     <button class="low52-mute-btn" data-idx="${idx}">${isMuted ? 'Unmute' : 'Mute'}</button>
@@ -14479,6 +14689,90 @@ function showTargetHitDetailsModal(options={}) {
         targetHitSharesList.appendChild(alertsContainer);
         console.log(`[52W-MODAL] Added alerts container with ${sharesAt52WeekLow.length} alerts to modal`);
     }
+
+    // Add Global 52-Week Lows section (centralized)
+    try {
+        const hiLo = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts : null;
+        const lows = hiLo ? hiLo.lows : [];
+        if (lows && lows.length) {
+            const sectionHeader = document.createElement('div');
+            sectionHeader.className = 'low52-section-header global-low52';
+            const titleEl = document.createElement('h3');
+            titleEl.className = 'target-hit-section-title low52-heading';
+            titleEl.textContent = 'Global 52-Week Lows';
+            sectionHeader.appendChild(titleEl);
+            targetHitSharesList.appendChild(sectionHeader);
+
+            const list = document.createElement('div');
+            list.className = 'low52-alerts-container';
+            lows.forEach(entry => {
+                const card = document.createElement('div');
+                card.className = 'low52-alert-card low52-low';
+                const code = String(entry.code || entry.shareCode || '').toUpperCase();
+                const name = entry.name || entry.companyName || code;
+                const live = (entry.live!=null? Number(entry.live) : (livePrices && livePrices[code] ? Number(livePrices[code].live) : null));
+                const hi = (entry.high52!=null? Number(entry.high52) : (entry.High52!=null? Number(entry.High52) : null));
+                const lo = (entry.low52!=null? Number(entry.low52) : (entry.Low52!=null? Number(entry.Low52) : null));
+                let pctText = '';
+                try { if (lo && live) { const p=((live-lo)/lo)*100; pctText = ` (${p>0?'+':''}${p.toFixed(2)}%)`; } } catch(_) {}
+                card.innerHTML = `
+                    <div class="low52-card-row low52-header-row">
+                        <span class="low52-code">${code}</span>
+                        <span class="low52-name">${name}</span>
+                        <span class="low52-price">${live!=null?('$'+formatAdaptivePrice(live)):'<span class="low52-price-na">N/A</span>'}${pctText}</span>
+                    </div>
+                    <div class="low52-thresh-row">
+                        <span class="low52-thresh">52W Range: ${lo!=null?'$'+formatAdaptivePrice(lo):'?'} → ${hi!=null?'$'+formatAdaptivePrice(hi):'?'} </span>
+                    </div>`;
+                // Click opens search modal for the code
+                card.addEventListener('click', ()=>{
+                    try { hideModal(targetHitDetailsModal); } catch(_) {}
+                    try { if (typeof showStockSearchModal === 'function') showStockSearchModal(code); } catch(_) {}
+                });
+                list.appendChild(card);
+            });
+            targetHitSharesList.appendChild(list);
+        }
+        // Add Global 52-Week Highs section (centralized)
+        const highs = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.highs)) ? window.globalHiLo52Alerts.highs : [];
+        if (highs && highs.length) {
+            const sectionHeader2 = document.createElement('div');
+            sectionHeader2.className = 'low52-section-header global-high52';
+            const titleEl2 = document.createElement('h3');
+            titleEl2.className = 'target-hit-section-title low52-heading';
+            titleEl2.textContent = 'Global 52-Week Highs';
+            sectionHeader2.appendChild(titleEl2);
+            targetHitSharesList.appendChild(sectionHeader2);
+
+            const list2 = document.createElement('div');
+            list2.className = 'low52-alerts-container';
+            highs.forEach(entry => {
+                const card = document.createElement('div');
+                card.className = 'low52-alert-card low52-high';
+                const code = String(entry.code || entry.shareCode || '').toUpperCase();
+                const name = entry.name || entry.companyName || code;
+                const live = (entry.live!=null? Number(entry.live) : (livePrices && livePrices[code] ? Number(livePrices[code].live) : null));
+                const hi = (entry.high52!=null? Number(entry.high52) : (entry.High52!=null? Number(entry.High52) : null));
+                const lo = (entry.low52!=null? Number(entry.low52) : (entry.Low52!=null? Number(entry.Low52) : null));
+                card.innerHTML = `
+                    <div class="low52-card-row low52-header-row">
+                        <span class="low52-code">${code}</span>
+                        <span class="low52-name">${name}</span>
+                        <span class="low52-price">${live!=null?('$'+formatAdaptivePrice(live)):'<span class="low52-price-na">N/A</span>'}</span>
+                    </div>
+                    <div class="low52-thresh-row">
+                        <span class="low52-thresh">52W Range: ${lo!=null?'$'+formatAdaptivePrice(lo):'?'} → ${hi!=null?'$'+formatAdaptivePrice(hi):'?'} </span>
+                    </div>`;
+                // Click opens search modal for the code
+                card.addEventListener('click', ()=>{
+                    try { hideModal(targetHitDetailsModal); } catch(_) {}
+                    try { if (typeof showStockSearchModal === 'function') showStockSearchModal(code); } catch(_) {}
+                });
+                list2.appendChild(card);
+            });
+            targetHitSharesList.appendChild(list2);
+        }
+    } catch(e) { console.warn('[HiLo52] Failed to render global section', e); }
 
     // Inject headings + global summary card (Global movers heading ABOVE card)
     // Only show global summary if thresholds still active to avoid displaying stale counts after clear
@@ -14712,7 +15006,6 @@ function showTargetHitDetailsModal(options={}) {
             criteriaBar.appendChild(badgeContainer);
 
             // Make the Global Movers criteria bar clickable to open Global Alerts settings
-            criteriaBar.style.cursor = 'pointer';
             criteriaBar.title = 'Click to configure Global Alerts settings';
             criteriaBar.addEventListener('click', () => {
                 // Close the Discover Moving Shares modal
@@ -14823,9 +15116,9 @@ function showTargetHitDetailsModal(options={}) {
                     li.dataset.code = code;
                     let comboLine = 'No movement data yet';
                     if (ch != null && pct != null) {
-                        comboLine = `${ch>0?'+':''}${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%`;
+                        comboLine = `${ch>0?'+':''}$${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%`;
                     } else if (ch != null) {
-                        comboLine = `${ch>0?'+':''}${ch.toFixed(2)}`;
+                        comboLine = `${ch>0?'+':''}$${ch.toFixed(2)}`;
                     } else if (pct != null) {
                         comboLine = `${pct>0?'+':''}${pct.toFixed(2)}%`;
                     } else {
@@ -15378,6 +15671,8 @@ function initializeApp() {
                 // Start alerts listener (enabled alerts only; muted excluded from notifications)
                 await loadTriggeredAlertsListener(db, firestore, currentUserId, currentAppId);
                 startGlobalSummaryListener();
+                startGlobalHiLoListener();
+                startGlobalMoversListener(); // NEW centralized movers listener
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
                 // Unblock UI immediately; prices can finish in background
@@ -15436,6 +15731,7 @@ function initializeApp() {
                     logDebug('Firestore Listener: Unsubscribed from alerts listener on logout.');
                 }
                 stopGlobalSummaryListener();
+                stopGlobalHiLoListener();
                 stopLivePriceUpdates();
 
                 window._userAuthenticated = false; // Mark user as not authenticated

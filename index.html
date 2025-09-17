@@ -117,41 +117,70 @@
                     </div>
                 </div>
 
-                    <!-- Sort Picker Modal: moved out of nested modals to be a top-level sibling to avoid ancestor hiding conflicts -->
-                    <!-- Sort Picker will be shown as a top-level modal so it isn't blocked by other modal containers. -->
+                <!-- Sort Picker Modal: moved out of nested modals to be a top-level sibling to avoid ancestor hiding conflicts -->
+                <!-- Sort Picker will be shown as a top-level modal so it isn't blocked by other modal containers. -->
                 <form id="globalAlertsForm" class="global-alerts-form" novalidate>
-                    <fieldset class="ga-section">
-                        <legend>Minimum Price Filter</legend>
-                        <div class="form-row">
-                            <label for="globalMinimumPrice">Ignore Shares Priced Below ($):</label>
-                            <input type="number" step="0.01" min="0" id="globalMinimumPrice" placeholder="e.g. 0.20" />
-                        </div>
-                    </fieldset>
-                    <fieldset class="ga-section">
-                        <legend>Notify on Price Increase</legend>
-                        <div class="form-row">
-                            <label for="globalPercentIncrease">Percentage Increase (%):</label>
-                            <input type="number" step="0.01" min="0" id="globalPercentIncrease" placeholder="e.g. 8" />
-                        </div>
-                        <div class="form-row">
-                            <label for="globalDollarIncrease">Dollar Increase ($):</label>
-                            <input type="number" step="0.01" min="0" id="globalDollarIncrease" placeholder="e.g. 0.40" />
-                        </div>
-                    </fieldset>
-                    <fieldset class="ga-section">
-                        <legend>Notify on Price Decrease</legend>
-                        <div class="form-row">
-                            <label for="globalPercentDecrease">Percentage Decrease (%):</label>
-                            <input type="number" step="0.01" min="0" id="globalPercentDecrease" placeholder="e.g. 6" />
-                        </div>
-                        <div class="form-row">
-                            <label for="globalDollarDecrease">Dollar Decrease ($):</label>
-                            <input type="number" step="0.01" min="0" id="globalDollarDecrease" placeholder="e.g. 0.30" />
-                        </div>
-                    </fieldset>
-                    <!-- Action buttons removed; using header icons for consistency -->
+                    <!-- Section A: Price Movement (existing) -->
+                    <div class="ga-block">
+                        <h3 class="ga-block-title"><span class="ga-block-icon">📈</span> Price Movement</h3>
+                        <fieldset class="ga-section">
+                            <legend>Minimum Price Filter</legend>
+                            <div class="form-row">
+                                <label for="globalMinimumPrice">Ignore Shares Priced Below ($):</label>
+                                <input type="number" step="0.01" min="0" id="globalMinimumPrice" placeholder="e.g. 0.20" />
+                            </div>
+                        </fieldset>
+                        <fieldset class="ga-section">
+                            <legend>Notify on Price Increase</legend>
+                            <div class="form-row">
+                                <label for="globalPercentIncrease">Percentage Increase (%):</label>
+                                <input type="number" step="0.01" min="0" id="globalPercentIncrease" placeholder="e.g. 8" />
+                            </div>
+                            <div class="form-row">
+                                <label for="globalDollarIncrease">Dollar Increase ($):</label>
+                                <input type="number" step="0.01" min="0" id="globalDollarIncrease" placeholder="e.g. 0.40" />
+                            </div>
+                        </fieldset>
+                        <fieldset class="ga-section">
+                            <legend>Notify on Price Decrease</legend>
+                            <div class="form-row">
+                                <label for="globalPercentDecrease">Percentage Decrease (%):</label>
+                                <input type="number" step="0.01" min="0" id="globalPercentDecrease" placeholder="e.g. 6" />
+                            </div>
+                            <div class="form-row">
+                                <label for="globalDollarDecrease">Dollar Decrease ($):</label>
+                                <input type="number" step="0.01" min="0" id="globalDollarDecrease" placeholder="e.g. 0.30" />
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <!-- Section B: Global 52-Week High/Low Alerts (new) -->
+                    <div class="ga-block">
+                        <h3 class="ga-block-title"><span class="ga-block-icon">📅</span> Global 52-Week High/Low Alerts</h3>
+                        <fieldset class="ga-section">
+                            <legend>Filters</legend>
+                            <div class="form-row">
+                                <label for="hiLoMinimumPrice">Minimum Price ($):</label>
+                                <input type="number" step="0.01" min="0" id="hiLoMinimumPrice" placeholder="e.g. 0.20" />
+                            </div>
+                            <div class="form-row">
+                                <label for="hiLoMinimumMarketCap">Minimum Market Capitalization ($):</label>
+                                <input type="number" step="1000000" min="0" id="hiLoMinimumMarketCap" placeholder="e.g. 100000000 (100M)" />
+                            </div>
+                        </fieldset>
+                        <fieldset class="ga-section">
+                            <legend>Notifications</legend>
+                            <div class="form-row toggle-row">
+                                <label for="emailAlertsEnabled" class="switch-label">Enable Email Alerts</label>
+                                <label class="switch">
+                                    <input type="checkbox" id="emailAlertsEnabled">
+                                    <span class="slider round" aria-hidden="true"></span>
+                                </label>
+                            </div>
+                        </fieldset>
+                    </div>
                 </form>
-                    <p class="modal-helper-text" style="margin-top:18px;">Create automatic alerts when ANY ASX share moves beyond these thresholds since previous close. Configure increases and decreases separately. Leave a field blank (or 0) to disable that trigger.</p>
+                <p class="modal-helper-text" style="margin-top:18px;">Create automatic alerts when ANY ASX share moves beyond these thresholds since previous close. Configure increases and decreases separately. Leave a field blank (or 0) to disable that trigger. Use the 52-week section to control high/low scans and email notifications.</p>
             </div>
         </div>
 
@@ -821,6 +850,24 @@
     <script type="module" src="js/theme.js"></script>
     <script src="rendering.js" defer></script>
     <script type="module" src="js/sortPicker.js"></script>
+    <script>
+        // Runtime helper: set GOOGLE_APPS_SCRIPT_URL from localStorage or prompt when ?setGas=1
+        (function(){
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('setGas') === '1') {
+                    const entered = window.prompt('Enter Google Apps Script Web App URL:', localStorage.getItem('GOOGLE_APPS_SCRIPT_URL') || '');
+                    if (entered && /^https?:\/\//i.test(entered)) {
+                        localStorage.setItem('GOOGLE_APPS_SCRIPT_URL', entered);
+                    }
+                }
+                const saved = localStorage.getItem('GOOGLE_APPS_SCRIPT_URL');
+                if (saved && /^https?:\/\//i.test(saved)) {
+                    window.GOOGLE_APPS_SCRIPT_URL = saved;
+                }
+            } catch(e) { /* ignore */ }
+        })();
+    </script>
     <script type="module">
         // Explicitly import and init the Sort Picker to ensure the header button is wired
         import SortPicker from './js/sortPicker.js';
