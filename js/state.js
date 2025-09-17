@@ -34,10 +34,31 @@ export function setAllSharesData(data) {
 }
 
 export function setLivePrices(data) {
-    // Detect whether we already had live price data; if not, this is the first arrival
-    const prevHadData = livePrices && Object.keys(livePrices).length > 0;
-    livePrices = data && typeof data === 'object' ? data : {};
-    if (typeof window !== 'undefined') window.livePrices = livePrices;
+    // Merge incoming live price updates into the existing livePrices map
+    // This avoids wiping previously-known prices when the fetch returns a partial set
+    // prevHadData needs to be visible to the diagnostics block below, so
+    // declare it in this outer scope and set it inside the merge try.
+    let prevHadData = false;
+    try {
+        const incomingIsObject = data && typeof data === 'object';
+        const incomingKeys = incomingIsObject ? Object.keys(data) : [];
+        prevHadData = livePrices && Object.keys(livePrices).length > 0;
+
+        if (!incomingIsObject || incomingKeys.length === 0) {
+            // Nothing useful returned — do not wipe existing livePrices (prevents transient Loading... states)
+            if (typeof window !== 'undefined') window.livePrices = livePrices;
+        } else {
+            // Merge so we preserve older entries that weren't part of this fetch
+            livePrices = Object.assign({}, (livePrices || {}), data);
+            if (typeof window !== 'undefined') window.livePrices = livePrices;
+        }
+        // Recompute whether we now have any data after merge
+        // (keep original prevHadData variable semantics for downstream logic)
+    } catch (mergeErr) {
+        console.warn('setLivePrices: merge failed, falling back to replace', mergeErr);
+        livePrices = data && typeof data === 'object' ? data : {};
+        if (typeof window !== 'undefined') window.livePrices = livePrices;
+    }
 
     // Robust re-apply strategy for percentage-based sorts:
     // - Wait for a reasonable fraction of shares to have live prices (coverage threshold)

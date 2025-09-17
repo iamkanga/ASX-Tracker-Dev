@@ -2794,6 +2794,37 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 .global-alerts-summary-text:empty { display:none; }
 .global-alerts-form .subtle-info-text { color: var(--ghosted-text); }
 
+/* ========================= */
+/* Global Alerts - compact UX */
+/* Scoped to .global-alerts-modal to prevent wider layout changes */
+.global-alerts-modal .global-alerts-form .form-row { display:flex; flex-direction:row; align-items:center; gap:8px; margin-bottom:10px; }
+.global-alerts-modal .global-alerts-form .form-row label { flex: 0 0 auto; margin:0; font-size:0.92rem; }
+.global-alerts-modal .global-alerts-form .form-row input[type="number"],
+.global-alerts-modal .global-alerts-form .form-row input[type="text"] {
+    flex: 0 0 120px; max-width: 140px; height: 30px; line-height: 28px; padding: 4px 8px; font-size:0.92rem; border-radius:6px;
+}
+.global-alerts-modal .global-alerts-form fieldset.ga-section { padding: 8px 10px; }
+
+/* Single-color block icons: use currentColor for SVGs or font icons */
+.global-alerts-modal .ga-block-title .ga-block-icon { color: var(--accent-color, #2d6cdf); opacity:0.95; }
+.global-alerts-modal .ga-block-title .ga-block-icon svg { fill: currentColor !important; stroke: none !important; }
+
+/* Improve toggle visibility: show green when checked, muted when unchecked */
+.global-alerts-modal .switch { width:50px; height:28px; }
+.global-alerts-modal .switch .slider { border-radius: 28px; background-color: var(--muted-toggle-bg, #bdbdbd); }
+.global-alerts-modal .switch .slider:before { height:22px; width:22px; left:3px; bottom:3px; }
+.global-alerts-modal .switch input:checked + .slider { background-color: var(--positive, #2ecc71); }
+.global-alerts-modal .switch input:checked + .slider:before { transform: translateX(22px); }
+.global-alerts-modal .switch-label { font-weight:600; font-size:0.92rem; margin-right:10px; }
+
+/* Place helper text directly under the fieldset legend for compactness */
+.global-alerts-modal fieldset.ga-section { position: relative; }
+.global-alerts-modal fieldset.ga-section .subtle-info-text { position: absolute; right: 8px; top: 6px; font-size:0.7rem; color:var(--text-secondary,#9aa); }
+
+/* Tighten the overall modal padding for denser presentation */
+.global-alerts-modal .modal-content { padding: 12px 14px; }
+
+
 /* Global modal visibility rule: ensure any .modal that receives the .show class
    becomes visible and on-top, overriding other hiding rules. Placed here
    to be near other modal rules for maintainability. */

@@ -6303,6 +6303,14 @@ async function saveShareData(isSilent = false) {
         });
     }
 
+    // Determine the entry price value based on the modal's displayed/reference price.
+    // Prefer the currentPriceInput value (this is populated by updateAddFormLiveSnapshot),
+    // fall back to the auto-captured live price. Only set entryPrice for new shares to
+    // preserve original entryPrice on edits.
+    const _rawEnteredPrice = (currentPriceInput && typeof currentPriceInput.value === 'string') ? currentPriceInput.value.trim() : '';
+    const _parsedEnteredPrice = parseFloat(_rawEnteredPrice);
+    const _entryPriceCandidate = (!isNaN(_parsedEnteredPrice)) ? _parsedEnteredPrice : (isNaN(currentPrice) ? null : currentPrice);
+
     const shareData = {
         shareName: shareName,
         currentPrice: isNaN(currentPrice) ? null : currentPrice, // auto derived above
@@ -6332,6 +6340,15 @@ async function saveShareData(isSilent = false) {
         lastPriceUpdateTime: new Date().toISOString(),
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0 // Ensure rating is saved as a number
     };
+
+    // Only set entryPrice/enteredPriceRaw when creating a new share. For updates, preserve
+    // the existing entryPrice unless an explicit UX path to change it is implemented.
+    try {
+        if (!selectedShareDocId) {
+            shareData.entryPrice = (_entryPriceCandidate === null) ? null : Number(_entryPriceCandidate);
+            shareData.enteredPriceRaw = _rawEnteredPrice || '';
+        }
+    } catch(_) {}
 
     if (selectedShareDocId) {
         const existingShare = allSharesData.find(s => s.id === selectedShareDocId);
@@ -6459,8 +6476,23 @@ async function saveShareData(isSilent = false) {
 
         try {
             const sharesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
+            // DEBUG: capture save-time entry price sources to diagnose Adshare modal issue
+            try {
+                console.log('[SAVE DEBUG][script] Preparing to add share. shareName=', shareName, 'formCurrentPrice=', (currentPriceInput ? currentPriceInput.value : undefined), 'livePriceObj=', livePrices && livePrices[shareName.toUpperCase()] ? livePrices[shareName.toUpperCase()] : undefined, 'shareData.entryPrice=', shareData.entryPrice, 'shareData.enteredPriceRaw=', shareData.enteredPriceRaw);
+            } catch(_) {}
             const newDocRef = await firestore.addDoc(sharesColRef, shareData);
             selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
+            // Ensure the in-memory allSharesData is updated immediately so UI can render the new share
+            try {
+                const created = Object.assign({}, shareData, { id: newDocRef.id });
+                if (!Array.isArray(allSharesData)) allSharesData = [];
+                // Avoid duplicate if listener also adds it later
+                const exists = allSharesData.some(s => s && s.id === newDocRef.id);
+                if (!exists) {
+                    allSharesData.push(created);
+                    logDebug('In-memory: appended newly created share to allSharesData (id=' + newDocRef.id + ')');
+                }
+            } catch(e) { console.warn('In-memory append of new share failed', e); }
             // Phase 2: Create alert document for this new share (intent + direction)
             try {
                 await upsertAlertForShare(selectedShareDocId, shareName, shareData, true);
@@ -6709,6 +6741,53 @@ function showShareDetails() {
             starRatingRow.style.display = (share.starRating > 0) ? '' : 'none';
         }
     } catch(e) { console.warn('Hide Empty Sections: issue applying visibility', e); }
+
+    // If many sections are hidden (or on narrow screens), make Investment section span full width for clarity
+    try {
+        const investmentSection = shareDetailModal.querySelector('.detail-card[data-section="investment"]');
+        if (investmentSection) {
+            // Use computed style & layout checks to reliably detect visibility (handles CSS rules, inline styles, and ancestor hiding)
+            const adjustInvestmentSpan = () => {
+                try {
+                    const siblingSections = Array.from(shareDetailModal.querySelectorAll('.detail-card')).filter(el => el !== investmentSection);
+                    // Count only visible siblings that are NOT already full-span (these share the same row)
+                    const visibleNonFullSpanSiblings = siblingSections.filter(s => {
+                        try {
+                            if (s.classList && s.classList.contains('full-span')) return false; // ignore full-span siblings
+                            const cs = window.getComputedStyle(s);
+                            return !!(cs && cs.display !== 'none' && cs.visibility !== 'hidden' && s.offsetParent !== null);
+                        } catch(_) { return false; }
+                    }).length;
+
+                    // Diagnostic: log visible sibling count to help debug cases where the investment card remains a small square
+                    try { logDebug && typeof logDebug === 'function' && logDebug('Detail modal: visibleNonFullSpanSiblings=' + visibleNonFullSpanSiblings + ', viewport=' + window.innerWidth); } catch(_) {}
+                    // If there are one or fewer visible non-full-span siblings OR on narrow viewport, promote investment to full-span
+                    if (visibleNonFullSpanSiblings <= 1 || window.innerWidth < 680) {
+                        investmentSection.classList.add('full-span');
+                    } else {
+                        investmentSection.classList.remove('full-span');
+                    }
+                } catch(e) { console.warn('Detail modal: adjustInvestmentSpan failed', e); }
+            };
+
+            // Run adjustment immediately
+            adjustInvestmentSpan();
+
+            // Install a single resize handler per modal instance (avoid duplicates)
+            try { if (shareDetailModal.__investmentResizeHandler) window.removeEventListener('resize', shareDetailModal.__investmentResizeHandler); } catch(_) {}
+            const resizeHandler = () => adjustInvestmentSpan();
+            shareDetailModal.__investmentResizeHandler = resizeHandler;
+            window.addEventListener('resize', resizeHandler);
+
+            // Also observe mutations inside the modal so when sections are shown/hidden we recompute
+            try { if (shareDetailModal.__investmentObserver) shareDetailModal.__investmentObserver.disconnect(); } catch(_) {}
+            let __invTimer = null;
+            const debouncedAdjust = () => { if (__invTimer) clearTimeout(__invTimer); __invTimer = setTimeout(() => { try { adjustInvestmentSpan(); } catch(_){}; __invTimer = null; }, 80); };
+            const mo = new MutationObserver((mutations) => { debouncedAdjust(); });
+            mo.observe(shareDetailModal, { attributes: true, childList: true, subtree: true, attributeFilter: ['style', 'class'] });
+            shareDetailModal.__investmentObserver = mo;
+        }
+    } catch(e) { console.warn('Detail modal: failed to adjust investment section span', e); }
 
     modalTargetPrice.innerHTML = renderAlertTargetInline(share, { emptyReturn: '' });
 
@@ -10863,6 +10942,18 @@ function initGlobalAlertsUI(force) {
             }
         });
     }
+    // Reflect visual state for email toggle on modal and keep class in sync
+    try {
+        if (emailAlertsEnabledInput && globalAlertsModal) {
+            const updateEmailClass = () => {
+                if (emailAlertsEnabledInput.checked) globalAlertsModal.classList.add('ga-email-on');
+                else globalAlertsModal.classList.remove('ga-email-on');
+            };
+            // set initial
+            updateEmailClass();
+            emailAlertsEnabledInput.addEventListener('change', updateEmailClass);
+        }
+    } catch(e) { console.warn('GlobalAlerts: failed to bind email toggle class', e); }
 
 // Diagnostics: Inspect each live price vs current directional thresholds to detect incorrect triggering
 function runDirectionalThresholdDiagnostics(options={}) {

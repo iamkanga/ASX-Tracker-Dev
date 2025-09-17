@@ -152,26 +152,54 @@ export async function saveShareData(isSilent = false) {
         }
     } else {
         // Creating new share: set entryPrice from current price only
-        if (form && form.currentPrice !== null && form.currentPrice !== undefined && !isNaN(form.currentPrice)) {
-            shareData.entryPrice = parseFloat(form.currentPrice);
-            shareData.lastFetchedPrice = parseFloat(form.currentPrice);
-            // Get previous close price for proper change calculation
+        try {
+            // Prefer the visible modal input value (currentPrice) where possible to preserve exact user-visible formatting
+            const currentPriceInput = (typeof document !== 'undefined') ? document.getElementById('currentPrice') : null;
+            const rawEnteredFromDom = currentPriceInput && typeof currentPriceInput.value === 'string' ? currentPriceInput.value.trim() : '';
+            const parsedFromDom = parseFloat(rawEnteredFromDom);
             const livePrices = window.livePrices || {};
             const shareCode = shareData.shareName?.toUpperCase();
-            if (livePrices[shareCode] && livePrices[shareCode].prevClose !== null && !isNaN(livePrices[shareCode].prevClose)) {
-                shareData.previousFetchedPrice = parseFloat(livePrices[shareCode].prevClose);
-                console.log('[PRICE DATA] Using live prevClose for', shareCode, ':', shareData.previousFetchedPrice);
+
+            if (rawEnteredFromDom && !isNaN(parsedFromDom)) {
+                shareData.entryPrice = parsedFromDom;
+                shareData.enteredPriceRaw = rawEnteredFromDom;
+                shareData.lastFetchedPrice = parsedFromDom;
+                if (livePrices[shareCode] && livePrices[shareCode].prevClose !== null && !isNaN(livePrices[shareCode].prevClose)) {
+                    shareData.previousFetchedPrice = parseFloat(livePrices[shareCode].prevClose);
+                } else {
+                    shareData.previousFetchedPrice = parsedFromDom * 0.995;
+                }
+                console.log('[ENTRY PRICE] Using DOM currentPrice as entry price for new share:', shareData.entryPrice, 'raw=', shareData.enteredPriceRaw);
+            } else if (form && form.currentPrice !== null && form.currentPrice !== undefined && !isNaN(form.currentPrice)) {
+                const v = parseFloat(form.currentPrice);
+                shareData.entryPrice = v;
+                shareData.enteredPriceRaw = (form.currentPrice !== null && form.currentPrice !== undefined) ? String(form.currentPrice) : '';
+                shareData.lastFetchedPrice = v;
+                if (livePrices[shareCode] && livePrices[shareCode].prevClose !== null && !isNaN(livePrices[shareCode].prevClose)) {
+                    shareData.previousFetchedPrice = parseFloat(livePrices[shareCode].prevClose);
+                } else {
+                    shareData.previousFetchedPrice = v * 0.995;
+                }
+                console.log('[ENTRY PRICE] Using form.currentPrice as entry price for new share:', shareData.entryPrice, 'raw=', shareData.enteredPriceRaw);
             } else {
-                const currentPrice = parseFloat(form.currentPrice);
-                shareData.previousFetchedPrice = currentPrice * 0.995;
-                console.log('[PRICE DATA] No prevClose available, using calculated previous price for', shareCode, ':', shareData.previousFetchedPrice);
+                // Fallback: try livePrices if available
+                if (livePrices[shareCode] && typeof livePrices[shareCode].live === 'number' && !isNaN(livePrices[shareCode].live)) {
+                    const lp = parseFloat(livePrices[shareCode].live);
+                    shareData.entryPrice = lp;
+                    shareData.enteredPriceRaw = String(lp);
+                    shareData.lastFetchedPrice = lp;
+                    shareData.previousFetchedPrice = (livePrices[shareCode].prevClose && !isNaN(livePrices[shareCode].prevClose)) ? parseFloat(livePrices[shareCode].prevClose) : lp * 0.995;
+                    console.log('[ENTRY PRICE] Using livePrices.live as entry price for new share:', shareData.entryPrice);
+                } else {
+                    console.log('[ENTRY PRICE] No entry price available from DOM/form/livePrices for new share');
+                    shareData.entryPrice = null;
+                    shareData.enteredPriceRaw = '';
+                    shareData.lastFetchedPrice = null;
+                    shareData.previousFetchedPrice = null;
+                }
             }
-            console.log('[ENTRY PRICE] Using current price as entry price:', shareData.entryPrice, 'with price change data:', {
-                lastFetchedPrice: shareData.lastFetchedPrice,
-                previousFetchedPrice: shareData.previousFetchedPrice
-            });
-        } else {
-            console.log('[ENTRY PRICE] No entry price available from form or current price');
+        } catch (e) {
+            console.warn('[ENTRY PRICE] Error determining entry price for new share:', e);
         }
     }
 
@@ -443,6 +471,10 @@ export async function saveShareData(isSilent = false) {
         // Create new share
         try {
             const sharesCollection = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
+            // DEBUG: log entry price sources for diagnose
+            try {
+                console.log('[SAVE DEBUG][appService] Creating share:', { shareName: shareName, formCurrentPrice: form ? form.currentPrice : undefined, shareDataEntryPrice: shareData.entryPrice, shareDataEnteredPriceRaw: shareData.enteredPriceRaw, livePricesForCode: (window.livePrices || {})[shareName.toUpperCase()] });
+            } catch(_) {}
             const docRef = await firestore.addDoc(sharesCollection, { ...shareData, userId: currentUserId });
             const newShareId = docRef.id;
 
