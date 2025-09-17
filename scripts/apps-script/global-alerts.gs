@@ -1,13 +1,17 @@
 /**
  * Apps Script for automated alert processing and data management, and for serving data to a web app.
- * Version: 2.3.0 (Central Commit Helper + Movers Market Hours Guard + Secrets Cleanup)
+ * Version: 2.5.1 (Production Final Cleanup)
  *
- * Includes:
+ * Production Features:
  *  - Centralized 52-week high/low scan (global document)
  *  - Centralized global movers scan (directional % / $ change) with market hours guard
  *  - Generic Firestore commit helper (commitCentralDoc_)
- *  - Settings sheet readers & helpers
+ *  - Settings sheet readers & helpers + self-healing Firestore -> Sheet sync
  *  - Legacy per-user alert processing utilities (retained)
+ *
+ * Removed for production cleanliness:
+ *  - All ad-hoc test harness & diagnostic functions
+ *  - Admin Tools custom menu
  */
 
 // ======================== CONFIGURATION ========================
@@ -28,12 +32,9 @@ const APP_ID = 'asx-watchlist-app';
 // Base Firestore REST endpoint
 const FIRESTORE_BASE = 'https://firestore.googleapis.com/v1';
 
-// ===============================================================
-// TEMPORARY TEST OVERRIDES
-// Set to true to disable market hours guards for manual after-hours testing.
-// Remember to set back to false (or remove) before committing to production.
-// Production: ensure guards are active. Set to true ONLY for controlled after-hours testing.
-const TEMP_DISABLE_MARKET_HOURS_GUARD = false; // production default
+// Central Firestore global settings document path segments
+// Full path: /artifacts/{APP_ID}/config/globalSettings
+const GLOBAL_SETTINGS_DOC_SEGMENTS = ['artifacts', APP_ID, 'config', 'globalSettings'];
 
 // ===============================================================
 // ============= GENERIC FIRESTORE COMMIT UTILITIES ==============
@@ -126,8 +127,10 @@ function commitCentralDoc_(docPathSegments, plainData, explicitMask) {
 function runGlobal52WeekScan() {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const settings = getSettingsFromSheet_(ss, { sheetName: GLOBAL_SETTINGS_SHEET_NAME });
-    if (!settings) { Logger.log('[HiLo] Settings not found'); return; }
+    const settingsRes = fetchGlobalSettingsFromFirestore();
+    if (!settingsRes.ok) { Logger.log('[HiLo] Failed to load global settings from Firestore: ' + settingsRes.error); return; }
+    const settings = settingsRes.data;
+    if (!settings) { Logger.log('[HiLo] No settings data returned'); return; }
     const allAsxData = fetchAllAsxData_(ss);
 
     const minPrice = Number(settings.hiLoMinimumPrice || 0) || 0;
@@ -219,10 +222,7 @@ function writeGlobalHiLoDoc_(highsArr, lowsArr) {
   return commitCentralDoc_(['artifacts', APP_ID, 'alerts', 'HI_LO_52W'], data, mask);
 }
 
-function test_writeGlobalHiLoDoc_() {
-  const r = writeGlobalHiLoDoc_(['ABC','BHP','CBA'], ['XYZ','QQQ']);
-  Logger.log('HiLo test commit: %s', JSON.stringify(r));
-}
+// (Test harness removed for production)
 
 function sendHiLoEmailIfAny_(results, settings) {
   const recipient = settings.alertEmailRecipients || ALERT_RECIPIENT;
@@ -246,17 +246,15 @@ function runGlobalMoversScan() {
     // Market hours guard (Sydney ~10:00 to 16:59) – adjust if needed
     const now = new Date();
     const hourSydney = Number(Utilities.formatDate(now, ASX_TIME_ZONE, 'HH'));
-    if (!TEMP_DISABLE_MARKET_HOURS_GUARD) {
-      if (hourSydney < 10 || hourSydney >= 17) {
-        console.log('[MoversScan] Outside market hours (' + hourSydney + 'h). Skipping.');
-        return;
-      }
-    } else {
-      console.log('[MoversScan][TEMP] Market hours guard disabled for manual test (hour=' + hourSydney + ').');
+    if (hourSydney < 10 || hourSydney >= 17) {
+      console.log('[MoversScan] Outside market hours (' + hourSydney + 'h). Skipping.');
+      return;
     }
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const settings = getSettingsFromSheet_(spreadsheet, { sheetName: GLOBAL_SETTINGS_SHEET_NAME });
-    if (!settings) { console.log('[MoversScan] Settings not found; aborting.'); return; }
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const settingsRes = fetchGlobalSettingsFromFirestore();
+  if (!settingsRes.ok) { console.log('[MoversScan] Failed to load global settings: ' + settingsRes.error); return; }
+  const settings = settingsRes.data;
+  if (!settings) { console.log('[MoversScan] No settings data; aborting.'); return; }
     const thresholds = normalizeDirectionalThresholds_(settings);
     if (!thresholds.anyActive) {
       console.log('[MoversScan] No directional thresholds configured; clearing doc.');
@@ -386,7 +384,7 @@ function writeGlobalMoversDoc_(upMovers, downMovers, thresholds) {
   return commitCentralDoc_(['artifacts', APP_ID, 'alerts', 'GLOBAL_MOVERS'], data, mask);
 }
 
-function test_runGlobalMoversScan() { runGlobalMoversScan(); }
+// (Test harness removed for production)
 
 // ===============================================================
 // ================= SETTINGS / SHARED HELPERS ==================
@@ -490,11 +488,207 @@ function getSettingsFromSheet_(spreadsheet, options) {
 // ========== LEGACY PER-USER ALERT PROCESSING (UNCHANGED) ======
 // ===============================================================
 
+// ===============================================================
+// ========== SETTINGS SYNC (Firestore -> Sheet) =================
+// ===============================================================
+/**
+ * Fetch a single Firestore document (native REST) and return plain object of fields.
+ * @param {string[]} pathSegments e.g. ['artifacts', APP_ID, 'users', userId, 'settings']
+ */
+function _fetchFirestoreDocument_(pathSegments) {
+  const token = ScriptApp.getOAuthToken();
+  const docPath = pathSegments.map(encodeURIComponent).join('/');
+  const url = FIRESTORE_BASE + '/projects/' + FIREBASE_PROJECT_ID + '/databases/(default)/documents/' + docPath;
+  try {
+    const resp = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
+      muteHttpExceptions: true
+    });
+    const status = resp.getResponseCode();
+    const text = resp.getContentText();
+    if (status === 404) return { ok: false, status, notFound: true };
+    let parsed = null; try { parsed = text ? JSON.parse(text) : null; } catch(_) {}
+    if (status >= 200 && status < 300 && parsed) {
+      return { ok: true, status, data: _fromFsFields_(parsed.fields || {}) };
+    }
+    return { ok: false, status, error: text };
+  } catch (err) {
+    return { ok: false, status: 0, error: String(err) };
+  }
+}
+
+/** Convert Firestore Value map to plain JS object. */
+function _fromFsFields_(fields) {
+  const out = {};
+  Object.keys(fields || {}).forEach(k => out[k] = _fromFsValue_(fields[k]));
+  return out;
+}
+
+function _fromFsValue_(v) {
+  if (!v || typeof v !== 'object') return null;
+  if ('stringValue' in v) return v.stringValue;
+  if ('integerValue' in v) return Number(v.integerValue);
+  if ('doubleValue' in v) return Number(v.doubleValue);
+  if ('booleanValue' in v) return !!v.booleanValue;
+  if ('nullValue' in v) return null;
+  if ('timestampValue' in v) return new Date(v.timestampValue);
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(_fromFsValue_);
+  if ('mapValue' in v) return _fromFsFields_(v.mapValue.fields || {});
+  return null;
+}
+
+// ===============================================================
+// ======= FIRESTORE GLOBAL SETTINGS (SOURCE OF TRUTH) ===========
+// ===============================================================
+/**
+ * Fetch global settings from Firestore central document.
+ * Path: /artifacts/{APP_ID}/config/globalSettings
+ * Expects a flat map of keys compatible with previous sheet-based names, e.g.:
+ *  {
+ *    globalPercentIncrease: 5,
+ *    globalDollarIncrease: 0.15,
+ *    globalPercentDecrease: 5,
+ *    globalDollarDecrease: 0.15,
+ *    globalMinimumPrice: 0.05,
+ *    hiLoMinimumPrice: 0.05,
+ *    hiLoMinimumMarketCap: 10000000,
+ *    emailAlertsEnabled: true,
+ *    alertEmailRecipients: "user@example.com"
+ *  }
+ * @return {{ok:boolean,data?:Object,error?:string,status?:number}}
+ */
+function fetchGlobalSettingsFromFirestore() {
+  try {
+    const res = _fetchFirestoreDocument_(GLOBAL_SETTINGS_DOC_SEGMENTS);
+    if (!res.ok) {
+      if (res.notFound) return { ok:false, error:'Global settings doc not found', status:404 };
+      return { ok:false, error: res.error || ('status=' + res.status), status: res.status };
+    }
+    return { ok:true, data: res.data, status: res.status };
+  } catch (e) {
+    return { ok:false, error:String(e) };
+  }
+}
+
+/**
+ * Synchronize a user's settings from Firestore into the legacy Settings sheet (SELF-HEALING).
+ *
+ * Behavior:
+ *  - Firestore is treated as the source of truth for user settings.
+ *  - Existing rows are matched by camelCasing column A labels (same normalization
+ *    logic as getSettingsFromSheet_). When a key exists, column B is overwritten
+ *    with the Firestore value (unless dryRun=true).
+ *  - NEW (self-healing): If a Firestore key does NOT exist as a row, the function
+ *    will append a new row at the bottom with Column A = the exact key (camelCase)
+ *    and Column B = its value. In dryRun mode we do not write, but we report what
+ *    would have been created.
+ *  - Keys beginning with '_' are treated as metadata and skipped.
+ *
+ * Returned fields:
+ *  ok: success boolean
+ *  userId: the resolved user id
+ *  dryRun: whether the operation skipped writes
+ *  updatedKeys: keys whose existing rows were updated
+ *  createdKeys: keys for which new rows were appended (only when dryRun=false)
+ *  wouldCreateKeys: keys that would have been created in dryRun mode
+ *  skippedKeys: metadata keys ignored (prefix '_')
+ *  missingRows: (deprecated) retained for backward compatibility; should be [] now because we self-heal
+ *  pathUsed/pathTried: Firestore document path involved
+ *  error: present only if ok=false
+ *
+ * @param {Object=} options { userId: override user id, dryRun: boolean }
+ * @return {{ok:boolean,userId?:string,dryRun?:boolean,updatedKeys?:string[],createdKeys?:string[],wouldCreateKeys?:string[],skippedKeys?:string[],missingRows?:string[],pathUsed?:string,pathTried?:string,error?:string}}
+ */
+function syncUserSettingsFromFirestore(options) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const settingsSheet = spreadsheet.getSheetByName(SETTINGS_SHEET_NAME);
+  if (!settingsSheet) return { ok:false, error:'Settings sheet not found' };
+
+  const values = settingsSheet.getDataRange().getValues();
+  if (!values.length) return { ok:false, error:'Settings sheet empty' };
+
+  // Infer userId: Look for header row containing 'UserID' or first data row value under that header.
+  const header = values[0];
+  let userIdCol = -1;
+  header.forEach((h,i)=> { if (String(h).trim().toLowerCase() === 'userid') userIdCol = i; });
+  let inferredUserId = null;
+  if (userIdCol >= 0 && values.length > 1) {
+    // pick first non-empty user id in data rows
+    for (let r=1;r<values.length;r++){ const v = values[r][userIdCol]; if (v) { inferredUserId = String(v).trim(); break; } }
+  }
+  const userId = (options && options.userId) ? options.userId : inferredUserId;
+  if (!userId) return { ok:false, error:'Cannot infer userId (none supplied and none found in sheet).'};
+
+  // Firestore document path (UPDATED): artifacts/{APP_ID}/users/{userId}/profile/settings
+  // Legacy (fallback) path previously assumed: artifacts/{APP_ID}/users/{userId}/settings/general
+  const primaryDocSegments = ['artifacts', APP_ID, 'users', userId, 'profile', 'settings'];
+  let fetchRes = _fetchFirestoreDocument_(primaryDocSegments);
+  let pathUsed = primaryDocSegments.join('/');
+  if (!fetchRes.ok && fetchRes.notFound) {
+    // Attempt legacy fallback for backward compatibility
+    const legacyDocSegments = ['artifacts', APP_ID, 'users', userId, 'settings', 'general'];
+    const legacyRes = _fetchFirestoreDocument_(legacyDocSegments);
+    if (legacyRes.ok) {
+      fetchRes = legacyRes;
+      pathUsed = legacyDocSegments.join('/');
+    }
+  }
+  if (!fetchRes.ok) {
+    if (fetchRes.notFound) return { ok:false, error:'Firestore settings document not found', userId, pathTried: pathUsed };
+    return { ok:false, error:'Fetch failed status=' + fetchRes.status + ' ' + (fetchRes.error||''), userId, pathTried: pathUsed };
+  }
+  const fsData = fetchRes.data || {};
+
+  // Build row map: camelCase(label) -> rowIndex
+  function normalizeKey_(k) {
+    if (k == null) return '';
+    const trimmed = String(k).trim(); if (!trimmed) return '';
+    const parts = trimmed.replace(/[^A-Za-z0-9]+/g,' ').split(' ').filter(Boolean);
+    if (!parts.length) return '';
+    return parts.map((p,i)=> i===0 ? p.charAt(0).toLowerCase()+p.slice(1) : p.charAt(0).toUpperCase()+p.slice(1).toLowerCase()).join('');
+  }
+  const rowMap = {}; // normKey -> { rowIndex, rawKey }
+  for (let r=0; r<values.length; r++) {
+    const label = values[r][0];
+    if (r===0) continue; // assume first row is header or first label row – still allow if user uses vertical layout
+    if (label == null || label === '') continue;
+    const norm = normalizeKey_(label);
+    if (norm) rowMap[norm] = { rowIndex: r, rawKey: label };
+  }
+
+  const dryRun = !!(options && options.dryRun);
+  const updatedKeys = []; const skippedKeys = []; const missingRows = []; // missingRows kept for backward compat (will stay empty after self-heal)
+  const createdKeys = []; const wouldCreateKeys = [];
+
+  Object.keys(fsData).forEach(k => {
+    if (k.startsWith('_')) { skippedKeys.push(k); return; } // skip metadata
+    const rowInfo = rowMap[k];
+    if (!rowInfo) {
+      // Self-healing: append a new row for this key
+      if (dryRun) {
+        wouldCreateKeys.push(k);
+      } else {
+        settingsSheet.appendRow([k, fsData[k]]);
+        createdKeys.push(k);
+      }
+      return; // not an update of existing row
+    }
+    const rowIdx = rowInfo.rowIndex;
+    if (!dryRun) settingsSheet.getRange(rowIdx+1, 2).setValue(fsData[k]);
+    updatedKeys.push(k);
+  });
+
+  return { ok:true, userId, dryRun, updatedKeys, createdKeys, wouldCreateKeys, skippedKeys, missingRows, pathUsed };
+}
+
+// (All temporary sync test harnesses & menu removed for production)
+
+
 function checkMarketAlerts() {
   const now = new Date();
   const asxTime = Utilities.formatDate(now, ASX_TIME_ZONE, 'HH');
-  // TEMP: Disable market hours guard if override flag enabled
-  if (TEMP_DISABLE_MARKET_HOURS_GUARD || (asxTime >= 10 && asxTime < 16)) {
+  if (asxTime >= 10 && asxTime < 16) {
     console.log(`[${now}] Checking market alerts...`);
     try {
       const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -506,7 +700,7 @@ function checkMarketAlerts() {
       processAlerts(priceData, alertRules, suppressionLog, spreadsheet);
     } catch (e) { console.error(`Error in checkMarketAlerts: ${e.message}`); }
   } else {
-    console.log(`[${now}] Market is closed. Skipping alert check (override OFF).`);
+    console.log(`[${now}] Market is closed. Skipping alert check.`);
   }
 }
 
