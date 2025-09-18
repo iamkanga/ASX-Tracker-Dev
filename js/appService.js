@@ -29,8 +29,8 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             const currentPriceInput = document.getElementById('currentPrice');
 
             // If we don't have live price data and the modal input is empty, wait briefly for live price
-            if (!livePriceData && (!currentPriceInput || !currentPriceInput.value || parseFloat(currentPriceInput.value) <= 0)) {
-                console.log('[SAVE DEBUG] Waiting for live price data for new share: ' + shareName);
+                if (!livePriceData && (!currentPriceInput || !currentPriceInput.value || parseFloat(currentPriceInput.value) <= 0)) {
+                    console.log('[SAVE DEBUG] Waiting for live price data for new share: ' + shareName);
 
                 // Wait up to 2 seconds for live price to become available
                 let attempts = 0;
@@ -53,6 +53,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 }
 
                 if (attempts >= maxAttempts) {
+                    // If we timed out waiting for live price, proceed with save (best-effort)
                     console.log('[SAVE DEBUG] Timeout waiting for live price, proceeding with save anyway');
                 }
             }
@@ -156,8 +157,31 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             // Prefer the visible modal input value (currentPrice) where possible to preserve exact user-visible formatting
             // First prefer any value passed explicitly from the UI layer (captured at click-time).
             // This avoids a race where updateAddFormLiveSnapshot populates the DOM slightly after the click.
-            const capturedAtClick = (typeof capturedPriceRaw === 'string' && capturedPriceRaw.length) ? capturedPriceRaw : ((typeof window !== 'undefined' && typeof window.__capturedCurrentPriceBeforeSave === 'string' && window.__capturedCurrentPriceBeforeSave.length) ? window.__capturedCurrentPriceBeforeSave : null);
+            // Prefer explicit capturedPriceRaw passed from UI. Fall back to DOM input value.
+            // Prefer the explicit captured price passed from the UI (captured at click-time).
+            // If not provided, do a short micro-retry against the DOM input (#currentPrice)
+            // to handle very small races between live snapshot population and the Save click.
+            let capturedAtClick = (typeof capturedPriceRaw === 'string' && capturedPriceRaw.length) ? capturedPriceRaw : null;
             const currentPriceInput = (typeof document !== 'undefined') ? document.getElementById('currentPrice') : null;
+
+            if (!capturedAtClick) {
+                try {
+                    // Try immediate read, then small backoffs (120ms, 300ms)
+                    const backoffs = [0, 120, 300];
+                    for (const ms of backoffs) {
+                        if (ms > 0) await new Promise(r => setTimeout(r, ms));
+                        const node = (typeof document !== 'undefined') ? document.getElementById('currentPrice') : null;
+                        const v = node && typeof node.value === 'string' ? node.value.trim() : '';
+                        if (v && v.length > 0 && !isNaN(parseFloat(v))) {
+                            capturedAtClick = v;
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    // Ignore timing/read errors; we'll fall back below
+                }
+            }
+
             const rawEnteredFromDom = (capturedAtClick !== null) ? capturedAtClick : (currentPriceInput && typeof currentPriceInput.value === 'string' ? currentPriceInput.value.trim() : '');
             const parsedFromDom = parseFloat(rawEnteredFromDom);
             const livePrices = window.livePrices || {};
@@ -201,8 +225,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                     shareData.previousFetchedPrice = null;
                 }
             }
-            // Clear the captured click-time global (if present) so it does not incorrectly affect future saves
-            try { if (typeof window !== 'undefined' && window.__capturedCurrentPriceBeforeSave) delete window.__capturedCurrentPriceBeforeSave; } catch(_) {}
+            // No legacy globals to clear; rely on explicit capturedPriceRaw or DOM input
         } catch (e) {
             console.warn('[ENTRY PRICE] Error determining entry price for new share:', e);
         }
@@ -477,9 +500,10 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
         try {
             const sharesCollection = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             // DEBUG: log entry price sources for diagnose
-            try {
-                console.log('[SAVE DEBUG][appService] Creating share:', { shareName: shareName, formCurrentPrice: form ? form.currentPrice : undefined, shareDataEntryPrice: shareData.entryPrice, shareDataEnteredPriceRaw: shareData.enteredPriceRaw, livePricesForCode: (window.livePrices || {})[shareName.toUpperCase()] });
-            } catch(_) {}
+                // log entry price sources (trimmed)
+                try {
+                    console.log('[SAVE DEBUG][appService] Creating share:', { shareName: shareName, formCurrentPrice: form ? form.currentPrice : undefined, shareDataEntryPrice: shareData.entryPrice, shareDataEnteredPriceRaw: shareData.enteredPriceRaw, livePricesForCode: (window.livePrices || {})[shareName.toUpperCase()] });
+                } catch(_) {}
             const docRef = await firestore.addDoc(sharesCollection, { ...shareData, userId: currentUserId });
             const newShareId = docRef.id;
 

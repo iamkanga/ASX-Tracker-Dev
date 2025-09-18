@@ -6496,7 +6496,8 @@ async function saveShareData(isSilent = false) {
             const sharesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             // DEBUG: capture save-time entry price sources to diagnose Adshare modal issue
             try {
-                console.log('[SAVE DEBUG][script] Preparing to add share. shareName=', shareName, 'formCurrentPrice=', (currentPriceInput ? currentPriceInput.value : undefined), 'livePriceObj=', livePrices && livePrices[shareName.toUpperCase()] ? livePrices[shareName.toUpperCase()] : undefined, 'shareData.entryPrice=', shareData.entryPrice, 'shareData.enteredPriceRaw=', shareData.enteredPriceRaw);
+                // Conditional debug log (only when DEBUG_MODE enabled)
+                try { if (DEBUG_MODE) console.log('Preparing to add share. shareName=', shareName, 'formCurrentPrice=', (currentPriceInput ? currentPriceInput.value : undefined), 'livePriceObj=', livePrices && livePrices[shareName.toUpperCase()] ? livePrices[shareName.toUpperCase()] : undefined, 'shareData.entryPrice=', shareData.entryPrice, 'shareData.enteredPriceRaw=', shareData.enteredPriceRaw); } catch(_) {}
             } catch(_) {}
 
             // OPTIMISTIC UI: Insert a provisional share into in-memory list so user sees it immediately
