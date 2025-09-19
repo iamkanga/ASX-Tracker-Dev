@@ -72,6 +72,19 @@ export function formatDate(dateString) {
     return date.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+export function formatCompactNumber(value, opts = {}) {
+    // opts: { maximumFractionDigits: number }
+    if (value === null || value === undefined || isNaN(Number(value))) return '';
+    const n = Number(value);
+    try {
+        const fmt = new Intl.NumberFormat('en-AU', { notation: 'compact', maximumFractionDigits: (typeof opts.maximumFractionDigits === 'number' ? opts.maximumFractionDigits : 1) });
+        return fmt.format(n);
+    } catch (e) {
+        // Fallback to locale string with thousands separators
+        try { return n.toLocaleString(); } catch(_) { return String(n); }
+    }
+}
+
 export function calculateUnfrankedYield(dividendAmount, currentPrice) {
     if (typeof dividendAmount !== 'number' || isNaN(dividendAmount) || dividendAmount < 0) { return 0; }
     if (typeof currentPrice !== 'number' || isNaN(currentPrice) || currentPrice <= 0) { return 0; }

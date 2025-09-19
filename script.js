@@ -4,7 +4,7 @@ import { setupAuthListener } from './js/auth.js';
 import { loadShares, loadCashCategories, loadTriggeredAlertsListener, saveWatchlistSortOrder, loadWatchlistSortOrders, getSortOrderForWatchlist, saveViewModePreference, loadViewModePreference } from './js/dataService.js';
 import { fetchLivePrices } from './js/priceService.js';
 import { saveShareData as saveShareDataSvc, deleteShare as deleteShareSvc, saveWatchlistChanges as saveWatchlistChangesSvc, deleteWatchlist as deleteWatchlistSvc, saveCashAsset as saveCashAssetSvc, deleteCashCategory as deleteCashCategorySvc, deleteAllUserData as deleteAllUserDataSvc } from './js/appService.js';
-import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas } from './utils.js';
+import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent, formatDate, calculateUnfrankedYield, calculateFrankedYield, isAsxMarketOpen, escapeCsvValue, formatWithCommas, formatCompactNumber } from './utils.js';
 import { getAllSharesData, getLivePrices, getUserWatchlists, getUserCashCategories, getCurrentSelectedWatchlistIds, getSharesAtTargetPrice, getCurrentSortOrder, getAllAsxCodes, setAllSharesData, setLivePrices, setUserWatchlists, setCurrentSelectedWatchlistIds, setSharesAtTargetPrice, setCurrentSortOrder, setAllAsxCodes, setWatchlistSortOrder } from './js/state.js';
 import { applyAsxButtonsState, setAsxButtonsExpanded, getAsxButtonsExpanded, toggleCodeButtonsArrow, renderCashCategories as uiRenderCashCategories, calculateTotalCash as uiCalculateTotalCash, updateAddHeaderButton as uiUpdateAddHeaderButton, updateSidebarAddButtonContext as uiUpdateSidebarAddButtonContext, handleAddShareClick as uiHandleAddShareClick, handleAddCashAssetClick as uiHandleAddCashAssetClick } from './js/uiService.js';
 // Import the centralized theme apply function and helpers so script.js delegates theme changes to a single source of truth
@@ -421,7 +421,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             const explHighBits = [];
             try {
                 if (typeof hiLoMinimumPrice === 'number' && hiLoMinimumPrice > 0) explHighBits.push('Min Price $' + Number(hiLoMinimumPrice).toFixed(2));
-                if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) explHighBits.push('Min Mkt Cap $' + Number(hiLoMinimumMarketCap).toLocaleString());
+                if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) explHighBits.push('Min Mkt Cap ' + formatCompactNumber(Number(hiLoMinimumMarketCap)));
             } catch(_) {}
             hiExpl.textContent = explHighBits.join(' | ');
             hiloHighContainer.insertBefore(hiExpl, hiloHighContainer.firstChild);
@@ -438,7 +438,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             const explLowBits = [];
             try {
                 if (typeof hiLoMinimumPrice === 'number' && hiLoMinimumPrice > 0) explLowBits.push('Min Price $' + Number(hiLoMinimumPrice).toFixed(2));
-                if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) explLowBits.push('Min Mkt Cap $' + Number(hiLoMinimumMarketCap).toLocaleString());
+                if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) explLowBits.push('Min Mkt Cap ' + formatCompactNumber(Number(hiLoMinimumMarketCap)));
             } catch(_) {}
             loExpl.textContent = explLowBits.join(' | ');
             hiloLowContainer.insertBefore(loExpl, hiloLowContainer.firstChild);
@@ -16190,10 +16190,12 @@ function showTargetHitDetailsModal(options={}) {
             // Build global criteria badges (percent / dollar up+down thresholds + min price)
             function buildCriteriaBadges() {
                 const badges = [];
-                const upPct = (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ? globalPercentIncrease : null;
-                const upDol = (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ? globalDollarIncrease : null;
-                const dnPct = (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ? globalPercentDecrease : null;
-                const dnDol = (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0) ? globalDollarDecrease : null;
+                // Prefer server thresholds when client-side values are absent so the UI still shows what's applied
+                const serverThresholds = (gm && gm.__serverThresholds) ? gm.__serverThresholds : null;
+                const upPct = (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ? globalPercentIncrease : (serverThresholds && serverThresholds.upPercent) ? serverThresholds.upPercent : null;
+                const upDol = (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ? globalDollarIncrease : (serverThresholds && serverThresholds.upDollar) ? serverThresholds.upDollar : null;
+                const dnPct = (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ? globalPercentDecrease : (serverThresholds && serverThresholds.downPercent) ? serverThresholds.downPercent : null;
+                const dnDol = (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0) ? globalDollarDecrease : (serverThresholds && serverThresholds.downDollar) ? serverThresholds.downDollar : null;
                 if (upPct) badges.push({ cls:'up', text:'▲ ≥ '+upPct+'%' });
                 if (upDol) badges.push({ cls:'up', text:'▲ ≥ $'+upDol });
                 if (dnPct) badges.push({ cls:'down', text:'▼ ≥ '+dnPct+'%' });
@@ -16283,8 +16285,12 @@ function showTargetHitDetailsModal(options={}) {
             function buildGlobalAlertsSummaryInline(){
                 try {
                     // Reuse formatting helper if present
-                    const incPart = (typeof formatGlobalAlertPart === 'function') ? formatGlobalAlertPart(globalPercentIncrease, globalDollarIncrease) : '';
-                    const decPart = (typeof formatGlobalAlertPart === 'function') ? formatGlobalAlertPart(globalPercentDecrease, globalDollarDecrease) : '';
+                    const incPartLocal = (typeof formatGlobalAlertPart === 'function') ? formatGlobalAlertPart(globalPercentIncrease, globalDollarIncrease) : '';
+                    const decPartLocal = (typeof formatGlobalAlertPart === 'function') ? formatGlobalAlertPart(globalPercentDecrease, globalDollarDecrease) : '';
+                    // Prefer server-provided thresholds if available
+                    const server = (window.globalMovers && window.globalMovers.__serverThresholds) ? window.globalMovers.__serverThresholds : null;
+                    const incPart = (incPartLocal && incPartLocal !== 'Off') ? incPartLocal : (server ? (formatGlobalAlertPart(server.upPercent, server.upDollar) || '') : incPartLocal);
+                    const decPart = (decPartLocal && decPartLocal !== 'Off') ? decPartLocal : (server ? (formatGlobalAlertPart(server.downPercent, server.downDollar) || '') : decPartLocal);
                     const anyActive = (incPart && incPart !== 'Off') || (decPart && decPart !== 'Off') || (typeof globalMinimumPrice === 'number' && globalMinimumPrice>0);
                     if (!anyActive) return '';
                     const minPart = (typeof globalMinimumPrice === 'number' && globalMinimumPrice>0) ? ('Min: $' + Number(globalMinimumPrice).toFixed(2) + ' | ') : '';
@@ -16642,6 +16648,13 @@ function showTargetHitDetailsModal(options={}) {
         }
         const item = document.createElement('div');
         item.classList.add('target-hit-item');
+        // If this share is currently a target hit according to livePrices, add accent class for left-border styling
+        try {
+            const code = (share.shareName || '').toUpperCase();
+            const lp = (window.livePrices && window.livePrices[code]) ? window.livePrices[code] : null;
+            const isHit = lp && lp.targetHit;
+            if (isHit) item.classList.add('target-hit-accent');
+        } catch(_) {}
         if (isMuted) item.classList.add('muted');
         item.dataset.shareId = share.id;
         if (share.shareName) item.dataset.asxCode = share.shareName.toUpperCase();

@@ -2619,6 +2619,21 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* Preserve combined line-height rule (legacy) */
 .target-hit-section-title, .global-movers-heading { line-height:1.25; }
 
+/* Left-border-only accent for target-hit items (desktop) */
+.target-hit-accent, .global-summary-alert.target-hit-item.target-hit-accent {
+    border-left: var(--target-hit-border-width, 4px) solid var(--target-hit-border-color, var(--accent-color));
+    border-top: 1px solid var(--border-color, #333); /* keep subtle card border for top/right/bottom */
+    border-right: 1px solid var(--border-color, #333);
+    border-bottom: 1px solid var(--border-color, #333);
+    border-radius: var(--target-hit-border-radius, 8px) ;
+    padding-left: calc(12px - var(--target-hit-border-width, 4px)); /* visually compensate for left border */
+}
+
+/* Mobile: keep full pulsing border for mobile-card.target-hit-alert (existing) */
+@media (max-width: 768px) {
+    .target-hit-accent { border-left: none; }
+}
+
 /* Discover modal movement layout */
 .discover-code-list .discover-mover { display:flex; justify-content:space-between; gap:12px; }
 
@@ -10356,6 +10371,20 @@ body.dark-theme .alert-item {
 .notifications-summary .summary-chip.losers-chip { border-left: 4px solid var(--negative, #d9534f); }
 .notifications-summary .summary-chip.high52-chip { border-left: 4px solid var(--positive, #0a8a00); }
 .notifications-summary .summary-chip.low52-chip { border-left: 4px solid var(--negative, #d9534f); }
+/* Summary chips: side border only; interior remains neutral, text is standard. */
+/* Also tint the fine outer border to match the category color */
+.notifications-summary .summary-chip.target-chip { border-color: var(--accent-color, #a49393); }
+.notifications-summary .summary-chip.gainers-chip,
+.notifications-summary .summary-chip.high52-chip { border-color: var(--positive, #0a8a00); }
+.notifications-summary .summary-chip.losers-chip,
+.notifications-summary .summary-chip.low52-chip { border-color: var(--negative, #d9534f); }
+
+/* Dark theme: preserve neutral interior but keep colored border */
+body.dark-theme .notifications-summary .summary-chip.target-chip { border-color: var(--accent-color, #a49393); }
+body.dark-theme .notifications-summary .summary-chip.gainers-chip,
+body.dark-theme .notifications-summary .summary-chip.high52-chip { border-color: var(--positive, #0a8a00); }
+body.dark-theme .notifications-summary .summary-chip.losers-chip,
+body.dark-theme .notifications-summary .summary-chip.low52-chip { border-color: var(--negative, #d9534f); }
 
 @media (max-width: 640px) {
     .notifications-summary { margin: 6px 2px 10px 2px; padding: 6px 4px; }

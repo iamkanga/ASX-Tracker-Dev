@@ -35,6 +35,11 @@ const FIRESTORE_BASE = 'https://firestore.googleapis.com/v1';
 // Central Firestore global settings document path segments
 // Full path: /artifacts/{APP_ID}/config/globalSettings
 const GLOBAL_SETTINGS_DOC_SEGMENTS = ['artifacts', APP_ID, 'config', 'globalSettings'];
+// Central Firestore GLOBAL_MOVERS document path
+const GLOBAL_MOVERS_DOC_SEGMENTS = ['artifacts', APP_ID, 'alerts', 'GLOBAL_MOVERS'];
+// Central Firestore daily 52-week hit history document
+// Full path: /artifacts/{APP_ID}/alerts/HI_LO_52W_HITS
+const DAILY_HILO_HITS_DOC_SEGMENTS = ['artifacts', APP_ID, 'alerts', 'HI_LO_52W_HITS'];
 
 // ===============================================================
 // ============= GENERIC FIRESTORE COMMIT UTILITIES ==============
@@ -213,6 +218,13 @@ function runGlobal52WeekScan() {
     // Persist filtered arrays only
     writeGlobalHiLoDoc_(filteredHighs, filteredLows, { minPrice: appliedMinPrice, minMarketCap: appliedMinMarketCap });
 
+    // Append persistent daily hit history so intra-scan hits are not lost
+    try {
+      appendDailyHiLoHits_(filteredHighs, filteredLows);
+    } catch (persistErr) {
+      Logger.log('[HiLo][DailyHits] Persist error: %s', persistErr && persistErr.message || persistErr);
+    }
+
     // Backward-compatible email expects arrays of codes only
     const highsCodes = highObjs.map(o=>o.code);
     const lowsCodes  = lowObjs.map(o=>o.code);
@@ -282,6 +294,83 @@ function writeGlobalHiLoDoc_(highsArr, lowsArr, filtersMeta) {
   return commitCentralDoc_(['artifacts', APP_ID, 'alerts', 'HI_LO_52W'], data, mask);
 }
 
+// ================== DAILY 52W HITS PERSISTENCE ==================
+/** Format a YYYY-MM-DD key in ASX timezone for daily partitioning. */
+function getSydneyDayKey_(dateOpt) {
+  const d = dateOpt || new Date();
+  return Utilities.formatDate(d, ASX_TIME_ZONE, 'yyyy-MM-dd');
+}
+
+/** Fetch current daily 52-week hit history document from Firestore. */
+function fetchDailyHiLoHits_() {
+  const res = _fetchFirestoreDocument_(DAILY_HILO_HITS_DOC_SEGMENTS);
+  if (!res.ok) {
+    if (res.notFound) return { ok: true, data: { dayKey: getSydneyDayKey_(), highHits: [], lowHits: [] }, updateTime: null };
+    return { ok: false, error: res.error || ('status=' + res.status) };
+  }
+  const data = res.data || {};
+  return { ok: true, data: { dayKey: data.dayKey || getSydneyDayKey_(), highHits: data.highHits || [], lowHits: data.lowHits || [] }, updateTime: res.updateTime || null };
+}
+
+/** Commit full daily hits payload (overwrites arrays intentionally). */
+function writeDailyHiLoHits_(payload) {
+  const now = new Date();
+  const body = {
+    dayKey: payload.dayKey || getSydneyDayKey_(),
+    highHits: Array.isArray(payload.highHits) ? payload.highHits : [],
+    lowHits: Array.isArray(payload.lowHits) ? payload.lowHits : [],
+    updatedAt: now
+  };
+  const mask = ['dayKey','highHits','lowHits','updatedAt'];
+  return commitCentralDoc_(DAILY_HILO_HITS_DOC_SEGMENTS, body, mask);
+}
+
+/** Append today's 52W High/Low hits to the daily history document with de-duplication. */
+function appendDailyHiLoHits_(highsArr, lowsArr) {
+  const todayKey = getSydneyDayKey_();
+  const current = fetchDailyHiLoHits_();
+  if (!current.ok) { Logger.log('[HiLo][DailyHits] fetch failed: %s', current.error); return; }
+  let highHits = current.data.highHits || [];
+  let lowHits = current.data.lowHits || [];
+  let dayKey = current.data.dayKey || todayKey;
+  if (dayKey !== todayKey) {
+    // New day: reset lists for clean slate
+    highHits = [];
+    lowHits = [];
+    dayKey = todayKey;
+  }
+  const nowIso = new Date().toISOString();
+  const seenHigh = new Set(highHits.map(h => h && h.code));
+  const seenLow = new Set(lowHits.map(h => h && h.code));
+
+  function normHiLoItem(e) {
+    if (!e) return null;
+    const code = (e.code || e.shareCode || '').toString().trim().toUpperCase();
+    if (!code) return null;
+    return {
+      code,
+      name: e.name || e.companyName || null,
+      live: (e.live!=null && !isNaN(e.live)) ? Number(e.live) : (e.livePrice!=null && !isNaN(e.livePrice)? Number(e.livePrice): null),
+      high52: (e.high52!=null && !isNaN(e.high52)) ? Number(e.high52) : (e.High52!=null && !isNaN(e.High52)? Number(e.High52): null),
+      low52: (e.low52!=null && !isNaN(e.low52)) ? Number(e.low52) : (e.Low52!=null && !isNaN(e.Low52)? Number(e.Low52): null),
+      t: nowIso
+    };
+  }
+
+  (Array.isArray(highsArr) ? highsArr : []).forEach(e => {
+    const item = normHiLoItem(e);
+    if (!item) return;
+    if (!seenHigh.has(item.code)) { highHits.push(item); seenHigh.add(item.code); }
+  });
+  (Array.isArray(lowsArr) ? lowsArr : []).forEach(e => {
+    const item = normHiLoItem(e);
+    if (!item) return;
+    if (!seenLow.has(item.code)) { lowHits.push(item); seenLow.add(item.code); }
+  });
+
+  writeDailyHiLoHits_({ dayKey, highHits, lowHits });
+}
+
 // (Test harness removed for production)
 
 function sendHiLoEmailIfAny_(results, settings) {
@@ -294,6 +383,32 @@ function sendHiLoEmailIfAny_(results, settings) {
   if (highsCount) { body += `--- 52-WEEK HIGHS (${highsCount}) ---\n` + results.highs.join('\n') + '\n\n'; }
   if (lowsCount) { body += `--- 52-WEEK LOWS (${lowsCount}) ---\n` + results.lows.join('\n') + '\n\n'; }
   body += `Filters Applied:\n- Minimum Price: $${settings.hiLoMinimumPrice || 'N/A'}\n- Minimum Market Cap: $${(settings.hiLoMinimumMarketCap||0).toLocaleString()}\n`;
+  MailApp.sendEmail(recipient, subject, body);
+}
+
+function sendMoversEmailIfAny_(results, settings) {
+  const recipient = settings.alertEmailRecipients || ALERT_RECIPIENT;
+  if (!recipient) return;
+  const up = Array.isArray(results.up) ? results.up : [];
+  const down = Array.isArray(results.down) ? results.down : [];
+  if (!up.length && !down.length) return;
+  const fmt = n => (n!=null && isFinite(n)) ? Number(n) : null;
+  const linesUp = up.map(o => {
+    const pct = fmt(o.pct); const chg = fmt(o.change);
+    const pctStr = (pct!=null) ? (pct>=0? '+' : '') + pct.toFixed(2) + '%' : '';
+    const chgStr = (chg!=null) ? ((chg>=0? '+' : '') + '$' + Math.abs(chg).toFixed(4)) : '';
+    return `${o.code}${pctStr? '  ' + pctStr : ''}${chgStr? '  (' + chgStr + ')' : ''}`;
+  });
+  const linesDown = down.map(o => {
+    const pct = fmt(o.pct); const chg = fmt(o.change);
+    const pctStr = (pct!=null) ? (pct>=0? '+' : '') + pct.toFixed(2) + '%' : '';
+    const chgStr = (chg!=null) ? ((chg>=0? '+' : '') + '$' + Math.abs(chg).toFixed(4)) : '';
+    return `${o.code}${pctStr? '  ' + pctStr : ''}${chgStr? '  (' + chgStr + ')' : ''}`;
+  });
+  let subject = 'ASX Global Movers Summary';
+  let body = 'Directional movers detected in the latest scan.\n\n';
+  if (linesUp.length) { body += `--- UP MOVERS (${linesUp.length}) ---\n` + linesUp.join('\n') + '\n\n'; }
+  if (linesDown.length) { body += `--- DOWN MOVERS (${linesDown.length}) ---\n` + linesDown.join('\n') + '\n\n'; }
   MailApp.sendEmail(recipient, subject, body);
 }
 
@@ -333,6 +448,16 @@ function runGlobalMoversScan() {
     console.log('[MoversScan] Evaluation complete', { up: upMovers.length, down: downMovers.length, total: upMovers.length + downMovers.length, thresholds, inHours, settingsUpdateTime: microFinal.updateTime || guaranteed.updateTime });
 
   writeGlobalMoversDoc_(upMovers, downMovers, thresholds, { source: 'scan', inHours, settingsSnapshot: settings, settingsUpdateTime: microFinal.updateTime || guaranteed.updateTime || null, settingsFetchAttempts: guaranteed.attempts, fetchStrategy: 'guaranteed-loop+micro-final' + (guaranteed.fallback ? '+fallback' : '') });
+
+    // Email summary for movers (parallels 52-week email)
+    const emailEnabled = !!settings.emailAlertsEnabled;
+    if (emailEnabled && (upMovers.length || downMovers.length)) {
+      try {
+        sendMoversEmailIfAny_({ up: upMovers, down: downMovers }, settings);
+      } catch (emailErr) {
+        console.log('[MoversScan][Email] Failed to send email: ' + (emailErr && emailErr.message || emailErr));
+      }
+    }
   } catch (err) {
     console.error('[MoversScan] ERROR:', err && err.stack || err);
   }
@@ -1079,6 +1204,84 @@ function dailyResetTrigger() {
   } else {
     console.error(`Suppression log sheet "${SUPPRESSION_LOG_SHEET_NAME}" not found.`);
   }
+  // Also reset daily 52-week hit history in Firestore
+  try {
+    const dayKey = getSydneyDayKey_();
+    writeDailyHiLoHits_({ dayKey, highHits: [], lowHits: [] });
+    console.log(`[${now}] Daily 52-week hit history reset for ${dayKey}.`);
+  } catch (e) {
+    console.error('Failed to reset daily 52-week hit history:', e);
+  }
+}
+
+// ================== DAILY COMBINED EMAIL DIGEST ==================
+function sendCombinedDailyDigest_() {
+  // Check settings and email recipient
+  const settingsRes = fetchGlobalSettingsFromFirestore({ noCache: true });
+  if (!settingsRes.ok || !settingsRes.data) { console.log('[DailyDigest] Settings fetch failed or empty'); return; }
+  const settings = settingsRes.data;
+  if (!settings.emailAlertsEnabled) { console.log('[DailyDigest] Email alerts disabled; skipping.'); return; }
+  const recipient = settings.alertEmailRecipients || ALERT_RECIPIENT;
+  if (!recipient) { console.log('[DailyDigest] No recipient configured; skipping.'); return; }
+
+  // Fetch GLOBAL_MOVERS snapshot
+  const moversRes = _fetchFirestoreDocument_(GLOBAL_MOVERS_DOC_SEGMENTS, { noCache: true });
+  const movers = (moversRes && moversRes.ok && moversRes.data) ? moversRes.data : { up: [], down: [] };
+
+  // Fetch HI_LO_52W_HITS daily history
+  const hitsRes = _fetchFirestoreDocument_(DAILY_HILO_HITS_DOC_SEGMENTS, { noCache: true });
+  const hits = (hitsRes && hitsRes.ok && hitsRes.data) ? hitsRes.data : { highHits: [], lowHits: [], dayKey: getSydneyDayKey_() };
+
+  // Build email content
+  const sydneyDateStr = Utilities.formatDate(new Date(), ASX_TIME_ZONE, 'dd-MM-yyyy');
+  const fmt = n => (n!=null && isFinite(n)) ? Number(n) : null;
+
+  const upArr = Array.isArray(movers.up) ? movers.up : [];
+  const downArr = Array.isArray(movers.down) ? movers.down : [];
+  const upCount = upArr.length;
+  const downCount = downArr.length;
+  const linesUp = upArr.map(o => {
+    const pct = fmt(o.pct); const chg = fmt(o.change);
+    const pctStr = (pct!=null) ? (pct>=0? '+' : '') + pct.toFixed(2) + '%' : '';
+    const chgStr = (chg!=null) ? ((chg>=0? '+' : '') + '$' + Math.abs(chg).toFixed(4)) : '';
+    return `${o.code}${pctStr? '  ' + pctStr : ''}${chgStr? '  (' + chgStr + ')' : ''}`;
+  });
+  const linesDown = downArr.map(o => {
+    const pct = fmt(o.pct); const chg = fmt(o.change);
+    const pctStr = (pct!=null) ? (pct>=0? '+' : '') + pct.toFixed(2) + '%' : '';
+    const chgStr = (chg!=null) ? ((chg>=0? '+' : '') + '$' + Math.abs(chg).toFixed(4)) : '';
+    return `${o.code}${pctStr? '  ' + pctStr : ''}${chgStr? '  (' + chgStr + ')' : ''}`;
+  });
+
+  const highsArr = Array.isArray(hits.highHits) ? hits.highHits : [];
+  const lowsArr = Array.isArray(hits.lowHits) ? hits.lowHits : [];
+  const highsCount = highsArr.length;
+  const lowsCount = lowsArr.length;
+  const highLines = highsArr.map(h => `${h.code}${h.high52!=null? '  H:' + Number(h.high52) : ''}${h.live!=null? '  Lp:' + Number(h.live) : ''}`);
+  const lowLines  = lowsArr.map(l => `${l.code}${l.low52!=null?  '  L:' + Number(l.low52)  : ''}${l.live!=null? '  Lp:' + Number(l.live) : ''}`);
+
+  const subject = `ASX Daily Briefing — ${sydneyDateStr} (Movers: ${upCount} up, ${downCount} down | 52-Week: ${highsCount} high, ${lowsCount} low)`;
+
+  let body = 'Daily summary for Global Movers and 52-Week alerts.\n\n';
+  // Movers section
+  body += `=== GLOBAL MOVERS ===\n`;
+  if (linesUp.length) { body += `-- UP (${linesUp.length}) --\n` + linesUp.join('\n') + '\n'; }
+  if (linesDown.length) { body += `-- DOWN (${linesDown.length}) --\n` + linesDown.join('\n') + '\n'; }
+  if (!linesUp.length && !linesDown.length) { body += 'No movers detected today.\n'; }
+  body += '\n';
+  // 52W section
+  body += `=== 52-WEEK ALERTS (Daily Hits) ===\n`;
+  if (highLines.length) { body += `-- HIGHS (${highLines.length}) --\n` + highLines.join('\n') + '\n'; }
+  if (lowLines.length)  { body += `-- LOWS (${lowLines.length}) --\n`  + lowLines.join('\n')  + '\n'; }
+  if (!highLines.length && !lowLines.length) { body += 'No 52-week highs/lows logged today.\n'; }
+
+  MailApp.sendEmail(recipient, subject, body);
+}
+
+// Public wrapper for trigger safety: Apps Script triggers call global functions.
+function sendCombinedDailyDigest() {
+  try { sendCombinedDailyDigest_(); }
+  catch (e) { console.error('sendCombinedDailyDigest wrapper failed:', e); }
 }
 
 function fetchAllPriceData(spreadsheet, sheetName) {
@@ -1173,12 +1376,53 @@ function sendAlertEmail(recipient, subject, body) {
 // ===============================================================
 
 function createTriggers() {
-  ScriptApp.newTrigger('checkMarketAlerts').timeBased().everyMinutes(5).atHour(10).create();
+  // --- Helper: find triggers by handler name ---
+  function _getTriggersByHandler_(handlerName) {
+    return ScriptApp.getProjectTriggers().filter(t => {
+      try { return t.getHandlerFunction && t.getHandlerFunction() === handlerName; } catch (_) { return false; }
+    });
+  }
+
+  // --- Helper: ensure a time-based trigger exists for a handler (idempotent) ---
+  function _ensureTimeTrigger_(handlerName, scheduleFn) {
+    const existing = _getTriggersByHandler_(handlerName);
+    if (existing && existing.length > 0) {
+      console.log('[Triggers] Existing trigger(s) found for ' + handlerName + ': ' + existing.length);
+      return;
+    }
+    // Always enforce Sydney timezone on the builder so project-level timezone is irrelevant.
+    let builder = ScriptApp.newTrigger(handlerName).timeBased().inTimezone(ASX_TIME_ZONE);
+    builder = scheduleFn && typeof scheduleFn === 'function' ? scheduleFn(builder) || builder : builder;
+    builder.create();
+    console.log('[Triggers] Created time-based trigger for ' + handlerName);
+  }
+
+  // --- 1) Preserve existing triggers as-is (to avoid behavior changes) ---
+  // Note: These may create duplicates if run repeatedly, but we keep them
+  // unchanged per existing behavior. Only movers/52w are made idempotent below.
+  // Minute-based triggers cannot be combined with atHour/nearMinute; use one or the other.
+  ScriptApp.newTrigger('checkMarketAlerts').timeBased().everyMinutes(5).create();
   ScriptApp.newTrigger('checkMarketAlerts').timeBased().everyMinutes(30).create();
-  ScriptApp.newTrigger('captureDailyClosePrice').timeBased().atHour(16).nearMinute(5).create();
-  ScriptApp.newTrigger('dailyResetTrigger').timeBased().atHour(3).nearMinute(0).create();
-  ScriptApp.newTrigger('runGlobalMoversScan').timeBased().everyMinutes(10).create();
-  console.log('Triggers created (market alerts, close capture, daily reset, movers scan).');
+  // Daily triggers must specify a recurrence interval before atHour/nearMinute.
+  // Explicitly set timezone to Australia/Sydney so project-level timezone is not required.
+  ScriptApp.newTrigger('captureDailyClosePrice').timeBased().inTimezone(ASX_TIME_ZONE).everyDays(1).atHour(16).nearMinute(5).create();
+  ScriptApp.newTrigger('dailyResetTrigger').timeBased().inTimezone(ASX_TIME_ZONE).everyDays(1).atHour(3).nearMinute(0).create();
+
+  // --- 2) Fix Issue #2: Ensure Global Movers recurring trigger is active (idempotent) ---
+  _ensureTimeTrigger_('runGlobalMoversScan', b => b.everyMinutes(10));
+
+  // --- 3) Fix Issue #1: Replace failing misnamed 52-week trigger and ensure correct one ---
+  // Remove any stale triggers pointing to a non-existent function name
+  const stale52w = _getTriggersByHandler_('runGlobal52WeekScanScheduled');
+  stale52w.forEach(t => { try { ScriptApp.deleteTrigger(t); console.log('[Triggers] Deleted stale 52W trigger (runGlobal52WeekScanScheduled).'); } catch(_){} });
+  // Ensure a recurring trigger exists for the correct function name
+  _ensureTimeTrigger_('runGlobal52WeekScan', b => b.everyMinutes(30));
+
+  // --- 4) Ensure a separate daily digest trigger at ~16:15 Sydney time (idempotent) ---
+  // Force timezone to Australia/Sydney so this fires correctly regardless of project settings.
+  _ensureTimeTrigger_('sendCombinedDailyDigest', b => b.inTimezone(ASX_TIME_ZONE).everyDays(1).atHour(16).nearMinute(15));
+
+  console.log('Triggers ensured (market alerts unchanged; movers ensured; 52W ensured + stale removed).');
 }
 
 function deleteTriggers() {

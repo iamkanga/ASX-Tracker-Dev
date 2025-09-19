@@ -60,6 +60,25 @@ location.reload();
 - In Firestore, confirm documents exist at `artifacts/{APP_ID}/alerts/HI_LO_52W`.
 - In the app, open the Global Alerts modal: highs/lows should render when data exists.
 
+## 4.1) Create/repair time‑driven triggers (Apps Script)
+To automate the scans, ensure time‑based triggers are installed for both scans.
+
+1) Open your Apps Script project (Extensions → Apps Script in Google Sheets, or script.google.com).
+2) In the code editor, locate the function `createTriggers()` in `global-alerts.gs`.
+3) Click Run ▶ on `createTriggers` once. Approve any permission prompts.
+  - This will:
+    - Ensure a recurring trigger for `runGlobalMoversScan` (every 10 minutes).
+    - Remove any stale trigger targeting `runGlobal52WeekScanScheduled` (misnamed function).
+    - Ensure a recurring trigger for `runGlobal52WeekScan` (every 30 minutes).
+4) Open Triggers (left sidebar clock icon → Triggers) and verify:
+  - “runGlobalMoversScan” → Time‑driven, Every 10 minutes.
+  - “runGlobal52WeekScan” → Time‑driven, Every 30 minutes.
+  - No entries for “runGlobal52WeekScanScheduled”. If one exists, delete it.
+
+Notes:
+- The `createTriggers` function is idempotent for the movers and 52‑week triggers; it won’t create duplicates if you run it again.
+- Other existing triggers (market alerts, close capture, daily reset) are left unchanged.
+
 ## 5) Troubleshooting
 - "Missing or insufficient permissions": Recheck Firestore Rules and that you're signed in; verify IAM role for the writer identity.
 - "INVALID_ARGUMENT" on writes: Verify the document path segments exactly match `artifacts/{APP_ID}/alerts/HI_LO_52W`.
