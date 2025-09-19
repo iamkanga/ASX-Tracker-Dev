@@ -24,6 +24,555 @@ const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer
 if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
     try { asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll'); } catch(_) {}
 }
+
+// Frontend helper: call the Apps Script web app to trigger a privileged sync
+// Replace DEPLOYED_WEBAPP_URL with your actual deployed Apps Script Web App URL
+window.triggerServerSideGlobalSettingsSync = async function triggerServerSideGlobalSettingsSync(userId) {
+    const DEPLOYED_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
+    if (!userId) {
+        console.warn('[SyncTrigger] userId required to trigger server-side sync');
+        return { ok: false, error: 'userId required' };
+    }
+    // Resolve userId if not supplied
+    if (!userId) {
+        // Try several auth sources to find the current user's uid
+        userId = currentUserId || (window.firebase && window.firebase.auth && window.firebase.auth().currentUser && window.firebase.auth().currentUser.uid) || (hubAuth && hubAuth.currentUser && hubAuth.currentUser.uid) || null;
+    }
+    if (!userId) {
+        console.warn('[SyncTrigger] No userId available for server-side sync');
+        return { ok: false, error: 'userId required' };
+    }
+
+    // Try a minimal, non-preflight POST first (application/x-www-form-urlencoded)
+    const payload = 'userId=' + encodeURIComponent(userId);
+    try {
+        const res = await fetch(DEPLOYED_WEBAPP_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' // avoids preflight
+            },
+            body: payload
+        });
+        // If server responded with JSON, parse it. If not, fall through to json parse try/catch.
+        let json = null;
+        try { json = await res.json(); } catch (_) { json = { ok: false, error: 'non-json-response', status: res.status }; }
+        if (!json || !json.ok) {
+            console.warn('[SyncTrigger] Server-side sync returned error', json);
+        } else {
+            logDebug('[SyncTrigger] Server-side sync succeeded', json);
+        }
+        return json;
+    } catch (err) {
+        // If fetch failed (CORS/TypeError), attempt JSONP fallback by injecting a <script> tag to call doGet with callback
+        console.warn('[SyncTrigger] Primary call failed (will attempt JSONP fallback)', err);
+        return new Promise((resolve) => {
+            const callbackName = '__asx_sync_cb_' + Math.random().toString(36).slice(2);
+            window[callbackName] = function(result) {
+                try { delete window[callbackName]; } catch(_) {}
+                resolve(result || { ok: false, error: 'jsonp-no-result' });
+            };
+            const script = document.createElement('script');
+            script.src = DEPLOYED_WEBAPP_URL + '?userId=' + encodeURIComponent(userId) + '&callback=' + callbackName;
+            script.onerror = function(e) {
+                try { delete window[callbackName]; } catch(_) {}
+                resolve({ ok: false, error: 'jsonp-load-failed' });
+            };
+            document.head.appendChild(script);
+            // Cleanup script tag after a short timeout
+            setTimeout(() => { try { script.remove(); } catch(_) {} }, 15_000);
+        });
+    }
+};
+
+// Render the Global Alerts modal (#targetHitDetailsModal). This will populate two containers:
+// - #targetHitDetailsModal .movers-accordion  (for GLOBAL_MOVERS up/down)
+// - #targetHitDetailsModal .hilo-accordion    (for HI_LO_52W highs/lows)
+// Shim: expose enforceTargetHitStyling in module scope by delegating to Rendering
+// This avoids ReferenceError in this module when the function lives under window.Rendering
+function enforceTargetHitStyling() {
+    try {
+        if (window.Rendering && typeof window.Rendering.enforceTargetHitStyling === 'function') {
+            return window.Rendering.enforceTargetHitStyling();
+        }
+    } catch (e) {
+        console.warn('[Shim] enforceTargetHitStyling delegation failed', e);
+    }
+    return undefined;
+}
+
+window.__renderTargetHitDetailsModalImpl = function(options={}) {
+    try {
+        const modal = document.getElementById('targetHitDetailsModal');
+        if (!modal) { console.warn('[GlobalAlerts] targetHitDetailsModal not found'); return; }
+    // Locate the real containers used in the HTML
+    const gainersContainer = modal.querySelector('#globalGainersContainer');
+    const losersContainer = modal.querySelector('#globalLosersContainer');
+    const hiloHighContainer = modal.querySelector('#globalHigh52Container');
+    const hiloLowContainer = modal.querySelector('#globalLow52Container');
+    if (!gainersContainer && !losersContainer && !hiloHighContainer && !hiloLowContainer) { console.warn('[GlobalAlerts] modal containers missing'); return; }
+
+    // Clear previous contents
+    try { if (gainersContainer) gainersContainer.innerHTML = ''; } catch(_) {}
+    try { if (losersContainer) losersContainer.innerHTML = ''; } catch(_) {}
+    try { if (hiloHighContainer) hiloHighContainer.innerHTML = ''; } catch(_) {}
+    try { if (hiloLowContainer) hiloLowContainer.innerHTML = ''; } catch(_) {}
+
+    // Render GLOBAL_MOVERS (window.globalMovers expected shape: { up: [...], down: [...], upSample, downSample })
+        // If central doc is missing or empty, fall back to the last local snapshot computed by applyGlobalSummaryFilter
+        let gm = (window.globalMovers && (Array.isArray(window.globalMovers.up) || Array.isArray(window.globalMovers.down))) ? window.globalMovers : null;
+        if (!gm || (!Array.isArray(gm.up) && !Array.isArray(gm.down))) {
+            try {
+                const snap = window.__lastMoversSnapshot || null;
+                if (snap && Array.isArray(snap.entries)) {
+                    // Build a gm-shaped object from the snapshot entries
+                    const ups = snap.entries.filter(e=> e.direction === 'up').map(e=>({ code: e.code, name: e.name||null, live: e.live, prevClose: e.prev, pct: e.pct, change: e.change, direction: 'up' }));
+                    const downs = snap.entries.filter(e=> e.direction === 'down').map(e=>({ code: e.code, name: e.name||null, live: e.live, prevClose: e.prev, pct: e.pct, change: e.change, direction: 'down' }));
+                    gm = { updatedAt: (new Date()).toISOString(), up: ups, down: downs, upCount: ups.length, downCount: downs.length, totalCount: ups.length + downs.length, thresholds: null };
+                    window.globalMovers = gm; // expose for debugging
+                } else {
+                    gm = window.globalMovers || { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
+                }
+            } catch (e) {
+                gm = window.globalMovers || { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
+            }
+        }
+        // --- Filtering refinement (frontend safeguard) ---
+        // Some environments have reported an excessively large movers list (hundreds of entries)
+        // when the centralized GLOBAL_MOVERS doc either (a) lacks thresholds metadata or (b) was
+        // populated before stricter server filtering was deployed. To keep the UI concise and
+        // useful, derive a filtered projection of the movers using (in priority order):
+        //   1. gm.thresholds (authoritative server thresholds)
+        //   2. User's locally configured directional thresholds (globalPercentIncrease, etc)
+        //   3. A conservative default (1% move) if neither is present and raw count is large
+        // The filtered projection is used for summary counts and list rendering; the raw arrays
+        // remain available (gm.__rawUp / gm.__rawDown) for diagnostics.
+        try {
+            if (gm && (Array.isArray(gm.up) || Array.isArray(gm.down))) {
+                const rawUp = Array.isArray(gm.up) ? gm.up.slice() : [];
+                const rawDown = Array.isArray(gm.down) ? gm.down.slice() : [];
+                const rawTotal = rawUp.length + rawDown.length;
+                // Build server thresholds (coerced to numbers when present)
+                let server = null;
+                if (gm.thresholds) {
+                    server = {
+                        upPercent: gm.thresholds.upPercent != null ? Number(gm.thresholds.upPercent) : null,
+                        upDollar: gm.thresholds.upDollar != null ? Number(gm.thresholds.upDollar) : null,
+                        downPercent: gm.thresholds.downPercent != null ? Number(gm.thresholds.downPercent) : null,
+                        downDollar: gm.thresholds.downDollar != null ? Number(gm.thresholds.downDollar) : null,
+                        minimumPrice: gm.thresholds.minimumPrice != null ? Number(gm.thresholds.minimumPrice) : null
+                    };
+                }
+                // Read CURRENT local settings every modal open (no caching) – they may have changed without reload
+                function numPos(v){ return (typeof v === 'number' && isFinite(v) && v>0) ? v : null; }
+                const local = {
+                    upPercent: numPos(window.globalPercentIncrease),
+                    upDollar: numPos(window.globalDollarIncrease),
+                    downPercent: numPos(window.globalPercentDecrease),
+                    downDollar: numPos(window.globalDollarDecrease),
+                    minimumPrice: numPos(window.globalMinimumPrice)
+                };
+                // Decide effective thresholds: choose the STRICTER (higher absolute requirement) for each dimension when both exist.
+                // For percent & dollar increases we pick the larger number; same for decreases; minimumPrice pick larger.
+                function pickStricter(a,b){ if (a==null) return b; if (b==null) return a; return Math.max(a,b); }
+                const effective = {
+                    upPercent: pickStricter(local.upPercent, server && server.upPercent),
+                    upDollar: pickStricter(local.upDollar, server && server.upDollar),
+                    downPercent: pickStricter(local.downPercent, server && server.downPercent),
+                    downDollar: pickStricter(local.downDollar, server && server.downDollar),
+                    minimumPrice: pickStricter(local.minimumPrice, server && server.minimumPrice)
+                };
+                // If ALL thresholds null and list huge, apply conservative 1% default
+                const allNull = [effective.upPercent,effective.upDollar,effective.downPercent,effective.downDollar].every(v=> v==null);
+                if (allNull && rawTotal > 120) { effective.upPercent = 1; effective.downPercent = 1; }
+                const filterFn = (item) => {
+                    const live = (item.live != null && !isNaN(item.live)) ? Number(item.live) : null;
+                    const prev = (item.prevClose != null && !isNaN(item.prevClose)) ? Number(item.prevClose) : null;
+                    if (live == null || prev == null || prev === 0) return false;
+                    const ch = live - prev; if (!ch) return false;
+                    const pct = (ch / prev) * 100;
+                    if (effective.minimumPrice && live < effective.minimumPrice) return false;
+                    if (ch > 0) {
+                        const pctOk = (effective.upPercent != null) ? pct >= effective.upPercent : false;
+                        const dolOk = (effective.upDollar != null) ? Math.abs(ch) >= effective.upDollar : false;
+                        if (!(pctOk || dolOk)) return false;
+                    } else {
+                        const pctOk = (effective.downPercent != null) ? Math.abs(pct) >= effective.downPercent : false;
+                        const dolOk = (effective.downDollar != null) ? Math.abs(ch) >= effective.downDollar : false;
+                        if (!(pctOk || dolOk)) return false;
+                    }
+                    return true;
+                };
+                const upFiltered = rawUp.filter(filterFn);
+                const downFiltered = rawDown.filter(filterFn);
+                gm.__rawUp = rawUp; gm.__rawDown = rawDown; gm.__rawTotal = rawTotal;
+                gm.__serverThresholds = server; gm.__localThresholds = local; gm.__effectiveThresholds = effective;
+                gm.upFiltered = upFiltered; gm.downFiltered = downFiltered; gm.filteredTotal = upFiltered.length + downFiltered.length;
+                if (window.DEBUG_MODE) {
+                    try { console.log('[GlobalMovers][filter]', { rawTotal, filteredTotal: gm.filteredTotal, effective, server, local }); } catch(_){}
+                }
+            }
+        } catch (fErr) { console.warn('[GlobalMovers][filter] frontend filtering failed', fErr); }
+
+        function renderMoverCard(o, kind) {
+            const code = (o.code || o.shareCode || '').toUpperCase();
+            const nameRaw = o.name || (o.companyName || '') || '';
+            const name = sanitizeCompanyName(nameRaw, code);
+            const liveNum = (o.live != null && !isNaN(Number(o.live))) ? Number(o.live) : null;
+            const live = liveNum != null ? '$' + formatAdaptivePrice(liveNum) : '<span class="na">N/A</span>';
+            const pct = (o.pct != null && !isNaN(Number(o.pct))) ? formatAdaptivePercent(Number(o.pct)) : '';
+            const dirClass = (o.direction || '').toLowerCase() === 'up' ? 'up' : (o.direction || '').toLowerCase() === 'down' ? 'down' : '';
+            const arrow = dirClass === 'up' ? '&#9650;' : dirClass === 'down' ? '&#9660;' : '';
+
+            const card = document.createElement('div');
+            card.className = 'notification-card mover-card ' + dirClass;
+            card.setAttribute('data-code', code);
+            card.innerHTML = `
+                <div class="notification-card-row">
+                    <div class="notification-card-left">
+                        <div class="notification-code">${code}</div>
+                        <div class="notification-name small">${name}</div>
+                    </div>
+                    <div class="notification-card-right">
+                        <div class="notification-live">${live}</div>
+                    </div>
+                </div>
+                <div class="notification-card-bottom mover-bottom-row">
+                    <div class="mover-change ${dirClass}">${arrow} ${pct}</div>
+                </div>`;
+            // click behavior: open search/detail
+            card.addEventListener('click', (e)=>{
+                try { hideModal(targetHitDetailsModal); } catch(_){}
+                try { openStockSearchForCode(code); } catch(_){}
+            });
+            return card;
+        }
+
+        // Add a scroll wrapper to ensure long lists are scrollable
+        function ensureScrollHost(container){
+            if (!container) return null;
+            let inner = container.querySelector('.notification-list-inner');
+            if (!inner) {
+                inner = document.createElement('div'); inner.className = 'notification-list-inner';
+                while (container.firstChild) inner.appendChild(container.firstChild);
+                container.appendChild(inner);
+                container.classList.add('notification-list-host');
+            }
+            return inner;
+        }
+        const gainersInner = ensureScrollHost(gainersContainer);
+        const losersInner = ensureScrollHost(losersContainer);
+        function renderMoversInto(containerInner, items, dir) {
+                try {
+                    const fragment = document.createDocumentFragment();
+                        let arr = Array.isArray(items) ? items.slice() : [];
+                        arr = arr.filter(it => {
+                        const live = (it.live != null && !isNaN(it.live)) ? Number(it.live) : null;
+                        const prev = (it.prevClose != null && !isNaN(it.prevClose)) ? Number(it.prevClose) : null;
+                        if (live == null || prev == null || prev === 0) return false;
+                        const ch = live - prev;
+                        if (!ch) return false; // exclude flat movers
+                        return true;
+                    });
+                        const innerFrag = document.createDocumentFragment();
+                        arr.forEach(it => {
+                            try {
+                                if ((it.live == null || it.prevClose == null) && window.livePrices && it && it.code) {
+                                    const lp = window.livePrices[it.code];
+                                    if (lp) {
+                                        it.live = it.live == null ? lp.live : it.live;
+                                        it.prevClose = it.prevClose == null ? lp.prevClose : it.prevClose;
+                                        if (it.pct == null && it.prevClose && it.live!=null) {
+                                            const ch2 = it.live - it.prevClose; it.pct = (it.prevClose !== 0) ? Math.abs((ch2 / it.prevClose) * 100) : null;
+                                        }
+                                    }
+                                }
+                            } catch(_) {}
+                            innerFrag.appendChild(renderMoverCardWithMovement(it));
+                        });
+                        containerInner.appendChild(innerFrag);
+                } catch (err) { console.warn('renderMoversIntoHost failed', err); }
+        }
+
+                // Extended mover card showing dollar and percent changes
+            function renderMoverCardWithMovement(o) {
+                const code = (o.code || o.shareCode || '').toUpperCase();
+                const name = sanitizeCompanyName(o.name || o.companyName || '', code);
+                const liveNum = (o.live != null && !isNaN(Number(o.live))) ? Number(o.live) : null;
+                const prev = (o.prevClose != null && !isNaN(Number(o.prevClose))) ? Number(o.prevClose) : (o.prevClosePrice != null ? Number(o.prevClosePrice) : null);
+                const ch = (liveNum != null && prev != null) ? Number((liveNum - prev).toFixed(2)) : (o.ch != null ? Number(o.ch) : null);
+                const pct = (ch != null && prev != null && prev !== 0) ? Number(((ch / prev) * 100).toFixed(2)) : (o.pct != null ? Number(o.pct) : null);
+                const dirClass = (ch === null || ch === 0) ? 'flat' : (ch > 0 ? 'up' : 'down');
+                const arrow = dirClass === 'up' ? '▲' : (dirClass === 'down' ? '▼' : '');
+
+                const card = document.createElement('div');
+                card.className = 'notification-card mover-card ' + dirClass;
+                card.setAttribute('data-code', code);
+                const pctText = (pct!=null) ? `${pct>0?'+':''}${pct}%` : '';
+                const chText = (ch!=null) ? `${ch>0?'+':''}$${Number(ch).toFixed(2)}` : '-';
+                card.innerHTML = `
+                    <div class="notification-card-row">
+                        <div class="notification-card-left">
+                            <div class="notification-code">${code}</div>
+                            <div class="notification-name small">${name}</div>
+                        </div>
+                        <div class="notification-card-right">
+                            <div class="notification-live">${liveNum!=null?('$'+formatAdaptivePrice(liveNum)):'<span class="na">N/A</span>'}</div>
+                        </div>
+                    </div>
+                    <div class="notification-card-bottom mover-bottom-row">
+                        <div class="mover-change ${dirClass}">${arrow} ${chText}${pctText?` (${pctText})`:''}</div>
+                    </div>`;
+                card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openStockSearchForCode(code); });
+                return card;
+            }
+
+            // Build sections from filtered arrays
+            const upArr = (gm && Array.isArray(gm.upFiltered)) ? gm.upFiltered : (Array.isArray(gm.up) ? gm.up : []);
+            const downArr = (gm && Array.isArray(gm.downFiltered)) ? gm.downFiltered : (Array.isArray(gm.down) ? gm.down : []);
+            // Add thresholds hint to headers via title attribute
+            const eff = gm && gm.__effectiveThresholds ? gm.__effectiveThresholds : (gm && gm.thresholds ? gm.thresholds : null);
+            function thresholdsLabel(eff){
+                if (!eff) return '';
+                const parts = [];
+                if (eff.upPercent || eff.upDollar) parts.push(`Up ≥ ${eff.upPercent?eff.upPercent+'%':''}${(eff.upPercent&&eff.upDollar)?' or ':''}${eff.upDollar?('$'+eff.upDollar):''}`.trim());
+                if (eff.downPercent || eff.downDollar) parts.push(`Down ≥ ${eff.downPercent?eff.downPercent+'%':''}${(eff.downPercent&&eff.downDollar)?' or ':''}${eff.downDollar?('$'+eff.downDollar):''}`.trim());
+                if (eff.minimumPrice) parts.push(`Min Price $${eff.minimumPrice}`);
+                return parts.join(' | ');
+            }
+            // Insert contextual explainers for each section
+            function insertExplainer(host, text){
+                try {
+                    if (!host) return;
+                    const existing = host.querySelector('.section-explainer');
+                    if (existing) existing.remove();
+                    const el = document.createElement('div');
+                    el.className = 'section-explainer';
+                    el.textContent = text || '';
+                    host.insertBefore(el, host.firstChild);
+                } catch(_) {}
+            }
+            const upLabel = (function(){
+                if (!eff) return 'Gainers — no active thresholds';
+                const bits = [];
+                if (eff.upPercent || eff.upDollar) bits.push(`Gainers ≥ ${eff.upPercent?eff.upPercent+'%':''}${(eff.upPercent&&eff.upDollar)?' or ':''}${eff.upDollar?('$'+eff.upDollar):''}`.trim());
+                if (eff.minimumPrice) bits.push(`Min Price $${eff.minimumPrice}`);
+                return bits.join(' | ') || 'Gainers — no active thresholds';
+            })();
+            const downLabel = (function(){
+                if (!eff) return 'Losers — no active thresholds';
+                const bits = [];
+                if (eff.downPercent || eff.downDollar) bits.push(`Losers ≥ ${eff.downPercent?eff.downPercent+'%':''}${(eff.downPercent&&eff.downDollar)?' or ':''}${eff.downDollar?('$'+eff.downDollar):''}`.trim());
+                if (eff.minimumPrice) bits.push(`Min Price $${eff.minimumPrice}`);
+                return bits.join(' | ') || 'Losers — no active thresholds';
+            })();
+
+            if (gainersContainer) insertExplainer(gainersContainer, upLabel);
+            if (losersContainer) insertExplainer(losersContainer, downLabel);
+
+            if (gainersInner) {
+                const items = upArr.filter(x => (x.direction||'').toLowerCase()==='up');
+                renderMoversInto(gainersInner, items, 'up');
+            }
+            if (losersInner) {
+                const items = downArr.filter(x => (x.direction||'').toLowerCase()==='down');
+                renderMoversInto(losersInner, items, 'down');
+            }
+        
+
+        // Render HI_LO_52W
+        const hilo = window.globalHiLo52Alerts || {};
+    function renderHiLoEntry(e, kind) {
+        const code = String(e.code || e.shareCode || '').toUpperCase();
+        // Clean up embedded code fragments from company names (e.g., "(ASX:ABC)", "(ABC)", "- ABC")
+        const name = sanitizeCompanyName(e.name || e.companyName || code, code);
+            const liveVal = (e.live!=null && !isNaN(Number(e.live))) ? Number(e.live) : null;
+            const liveDisplay = (liveVal!=null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
+            // Pull both 52W High and Low from entry or livePrices fallback
+            let lp = null; try { lp = (window.livePrices && window.livePrices[code]) ? window.livePrices[code] : null; } catch(_) {}
+            const hiRaw = (e.high52 ?? e.High52 ?? e.hi52 ?? e.high ?? (lp ? (lp.high52 ?? lp.High52 ?? lp.hi52 ?? lp.high) : null) ?? null);
+            const loRaw = (e.low52 ?? e.Low52 ?? e.lo52 ?? e.low ?? (lp ? (lp.low52 ?? lp.Low52 ?? lp.lo52 ?? lp.low) : null) ?? null);
+            const hiDisplay = (hiRaw!=null && !isNaN(Number(hiRaw))) ? ('$' + formatAdaptivePrice(Number(hiRaw))) : '?';
+            const loDisplay = (loRaw!=null && !isNaN(Number(loRaw))) ? ('$' + formatAdaptivePrice(Number(loRaw))) : '?';
+            const card = document.createElement('div');
+            card.className = 'notification-card hilo-card ' + kind;
+            card.innerHTML = `
+                <div class="notification-card-row">
+                    <div class="notification-card-left">
+                        <div class="notification-code">${code}</div>
+                        <div class="notification-name small">${name}</div>
+                    </div>
+                    <div class="notification-card-right">
+                            <div class="notification-live">${liveDisplay}</div>
+                    </div>
+                </div>
+                <div class="notification-card-bottom hilo-bottom-row">
+                    <div class="hilo-low"><span class="label">Low:</span> ${loDisplay}</div>
+                    <div class="hilo-high"><span class="label">High:</span> ${hiDisplay}</div>
+                </div>`;
+            card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openStockSearchForCode(code); });
+            return card;
+        }
+
+        // Ensure scroll wrappers exist for hi/lo containers
+        if (hiloHighContainer) {
+            try { const existing = hiloHighContainer.querySelector('.section-explainer'); if (existing) existing.remove(); } catch(_) {}
+            const hiExpl = document.createElement('div'); hiExpl.className='section-explainer';
+            // Build explainer with active thresholds (Min Price, Min Market Cap) — list thresholds only
+            const explHighBits = [];
+            try {
+                if (typeof hiLoMinimumPrice === 'number' && hiLoMinimumPrice > 0) explHighBits.push('Min Price $' + Number(hiLoMinimumPrice).toFixed(2));
+                if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) explHighBits.push('Min Mkt Cap $' + Number(hiLoMinimumMarketCap).toLocaleString());
+            } catch(_) {}
+            hiExpl.textContent = explHighBits.join(' | ');
+            hiloHighContainer.insertBefore(hiExpl, hiloHighContainer.firstChild);
+            let innerH = hiloHighContainer.querySelector('.notification-list-inner');
+            if (!innerH) { innerH = document.createElement('div'); innerH.className='notification-list-inner'; while (hiloHighContainer.firstChild) innerH.appendChild(hiloHighContainer.firstChild); hiloHighContainer.appendChild(innerH); hiloHighContainer.classList.add('notification-list-host'); }
+            const fragH = document.createDocumentFragment();
+            (hilo.highs || []).forEach(e => { fragH.appendChild(renderHiLoEntry(e, 'high')); });
+            innerH.appendChild(fragH);
+        }
+        if (hiloLowContainer) {
+            try { const existing = hiloLowContainer.querySelector('.section-explainer'); if (existing) existing.remove(); } catch(_) {}
+            const loExpl = document.createElement('div'); loExpl.className='section-explainer';
+            // Build explainer with active thresholds (Min Price, Min Market Cap) — list thresholds only
+            const explLowBits = [];
+            try {
+                if (typeof hiLoMinimumPrice === 'number' && hiLoMinimumPrice > 0) explLowBits.push('Min Price $' + Number(hiLoMinimumPrice).toFixed(2));
+                if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) explLowBits.push('Min Mkt Cap $' + Number(hiLoMinimumMarketCap).toLocaleString());
+            } catch(_) {}
+            loExpl.textContent = explLowBits.join(' | ');
+            hiloLowContainer.insertBefore(loExpl, hiloLowContainer.firstChild);
+            let innerL = hiloLowContainer.querySelector('.notification-list-inner');
+            if (!innerL) { innerL = document.createElement('div'); innerL.className='notification-list-inner'; while (hiloLowContainer.firstChild) innerL.appendChild(hiloLowContainer.firstChild); hiloLowContainer.appendChild(innerL); hiloLowContainer.classList.add('notification-list-host'); }
+            const fragL = document.createDocumentFragment();
+            (hilo.lows || []).forEach(e => { fragL.appendChild(renderHiLoEntry(e, 'low')); });
+            innerL.appendChild(fragL);
+        }
+
+        // Mark this modal as rendered via the modern global sections path so legacy fallbacks can skip duplicating UI
+        try { modal.__newGlobalRendered = true; } catch(_) {}
+
+        // Show modal via existing helper if present
+            try { if (typeof window.showModal === 'function') { showModal(modal); } else { modal.style.display = 'flex'; modal.classList.add('show'); } } catch(_) { modal.style.display = 'flex'; modal.classList.add('show'); }
+            // Minimal reliability guard: if both movers and hilo sections are still empty shortly after open, retry once.
+            try {
+                setTimeout(() => {
+                    try {
+                        const isEmpty = (host) => {
+                            if (!host) return true;
+                            const inner = host.querySelector('.notification-list-inner');
+                            return !inner || inner.children.length === 0;
+                        };
+                        const moversEmpty = isEmpty(gainersContainer) && isEmpty(losersContainer);
+                        const stillEmpty = moversEmpty && isEmpty(hiloHighContainer) && isEmpty(hiloLowContainer);
+                        if (stillEmpty && typeof window.__renderTargetHitDetailsModalImpl === 'function' && !modal.__retryOnce) {
+                            modal.__retryOnce = true;
+                            window.__renderTargetHitDetailsModalImpl({ retry: true });
+                        }
+                    } catch(_) {}
+                }, 150);
+            } catch(_) {}
+    } catch (err) {
+        console.warn('[GlobalAlerts] showTargetHitDetailsModal (impl) failed', err);
+    }
+};
+
+// Debug mode toggle - set to true locally for verbose debugging output
+// You can flip this in the console via: DEBUG_MODE = true/false
+window.DEBUG_MODE = (typeof window.DEBUG_MODE !== 'undefined') ? window.DEBUG_MODE : false;
+
+function debugLog() {
+    if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
+           try { console.log.apply(console, arguments); } catch(_) {}
+    }
+}
+
+function debugDebug() {
+    if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
+           try { console.debug.apply(console, arguments); } catch(_) {}
+    }
+}
+
+// Remove duplicate code fragments from company names since the code is already displayed separately.
+// Examples removed: " (ASX:ABC)", " - ABC", " (ABC)", leading code prefixes like "ABC - ".
+function sanitizeCompanyName(name, code) {
+    try {
+        if (!name) return '';
+        const c = (code || '').toUpperCase();
+        let n = String(name);
+        // Patterns to strip
+        const patterns = [
+            new RegExp(`\\s*\\(ASX:${c}\\)`, 'i'),
+            new RegExp(`\\s*\\(${c}\\)`, 'i'),
+            new RegExp(`^${c}\\s*[-–:/\\|]\\s*`, 'i'),
+            new RegExp(`\\s*[-–:/\\|]\\s*${c}$`, 'i')
+        ];
+        patterns.forEach(rx => { n = n.replace(rx, ''); });
+        return n.trim();
+    } catch(_) { return name || ''; }
+}
+
+// Lightweight console filter: when DEBUG_MODE is false, suppress noisy diagnostic logs
+// that begin with known diagnostic tags. This keeps regular console output intact.
+(function installConsoleFilter(){
+    try {
+            // Aggressive tag list: any console message whose first argument string begins with
+            // one of these tags will be suppressed when DEBUG_MODE is false.
+            const tags = [
+                // existing diagnostics
+                '[BANNER-DEBUG]','[Diag]','[TEST]','[DiagnosticsDump]','[MOVERS DEBUG]','[ASX Debug]','[NotifDiag]','[GlobalAlerts] Listener',
+                // expanded suppression list (from user QA)
+                '[DISPLAY]','[PADDING DEBUG]','[SORT HANDSHAKE]','[SCROLL DEBUG]','[SingleScroll]','[TypographyDiagnostics]','[SCROLL DEBUG]',
+                '[SYNC]','[SyncTrigger]','[Movers init]','[Movers fallback]','[DEBUG]','[ELEMENT CHECK]','[TOGGLE DEBUG]','[GlobalAlerts]','[DiagDirectional]'
+            ];
+        const rawLog = console.log.bind(console);
+        const rawDebug = console.debug ? console.debug.bind(console) : rawLog;
+    const rawInfo = console.info ? console.info.bind(console) : rawLog;
+        console.log = function(...args){
+            try {
+                if (!window.DEBUG_MODE && args && args.length && typeof args[0] === 'string') {
+                    const a0 = args[0];
+                    for (let t of tags) { if (a0.indexOf(t) === 0) return; }
+                }
+            } catch(_){}
+            return rawLog.apply(console, args);
+        };
+        console.debug = function(...args){
+            try {
+                if (!window.DEBUG_MODE && args && args.length && typeof args[0] === 'string') {
+                    const a0 = args[0];
+                    for (let t of tags) { if (a0.indexOf(t) === 0) return; }
+                }
+            } catch(_){}
+            return rawDebug.apply(console, args);
+        };
+        console.info = function(...args){
+            try {
+                if (!window.DEBUG_MODE && args && args.length && typeof args[0] === 'string') {
+                    const a0 = args[0];
+                    for (let t of tags) { if (a0.indexOf(t) === 0) return; }
+                }
+            } catch(_){ }
+            return rawInfo.apply(console, args);
+        };
+    } catch(_){}
+})();
+
+// Patch wrapper: after saving settings, also trigger the server-side sync (fire-and-forget)
+(function patchSaveGlobalAlertSettingsToTriggerServerSync(){
+    const original = saveGlobalAlertSettingsDirectional;
+    saveGlobalAlertSettingsDirectional = async function(settings) {
+        try { await original(settings); } catch(e){ console.warn('[GlobalAlerts] original save failed', e); }
+        try {
+            const uid = currentUserId || (window.firebase && window.firebase.auth && window.firebase.auth().currentUser && window.firebase.auth().currentUser.uid);
+            if (uid) {
+                window.triggerServerSideGlobalSettingsSync(uid).catch(()=>{});
+            } else {
+                console.warn('[SyncTrigger] No user id available for server-side sync');
+            }
+        } catch (err) { console.warn('[SyncTrigger] Trigger failed', err); }
+    };
+})();
 // Keep main content padding in sync with header height changes (e.g., viewport resize)
 window.addEventListener('resize', () => requestAnimationFrame(adjustMainContentPadding));
 document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(adjustMainContentPadding));
@@ -69,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ov.dispatchEvent(evt);
             // fired should be 1 because our once listener ran; actual sidebar close listener also runs silently
             // Provide console confirmation marker for QA
-            console.log('[Diag] Overlay singleton check executed. Build marker present.');
+            debugLog('[Diag] Overlay singleton check executed. Build marker present.');
         } else {
             console.warn('[Diag] Overlay element not found during singleton check.');
         }
@@ -84,14 +633,11 @@ function fixLow52MuteButton(card) {
     if (!card) return;
     const muteBtn = card.querySelector('.low52-mute-btn');
     if (muteBtn) {
-        // A simple click listener is now sufficient
-        muteBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            // Custom mute logic (toggle hidden/minimized)
-            card.classList.add('low52-card-hidden');
-            // Optionally: persist mute state if needed
-        });
+            muteBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                card.classList.toggle('low52-card-hidden');
+            });
     }
 }
 
@@ -4823,23 +5369,23 @@ function initNotificationsAccordion() {
         e.preventDefault();
         const section = header.closest('.accordion-section');
         if (!section) return;
-        const opening = !section.classList.contains('open');
-        // Single-open accordion behavior: close others
-        if (opening) {
-            root.querySelectorAll('.accordion-section.open').forEach(other => {
-                if (other !== section) {
-                    other.classList.remove('open');
-                    const ob = other.querySelector('.accordion-toggle');
-                    if (ob) ob.setAttribute('aria-expanded','false');
-                }
-            });
-        }
+        const willOpen = !section.classList.contains('open');
         section.classList.toggle('open');
-        header.setAttribute('aria-expanded', String(opening));
+        header.setAttribute('aria-expanded', String(willOpen));
     });
     root.dataset.accordionInit = 'true';
 }
 document.addEventListener('DOMContentLoaded', () => { try { initNotificationsAccordion(); } catch(_) {} });
+// Safety net: if modal content is rebuilt dynamically, re-initialize notifications accordion
+try {
+    const notifObserver = new MutationObserver(() => {
+        const root = document.getElementById('notificationsAccordion');
+        if (root && !root.dataset.accordionInit) {
+            try { initNotificationsAccordion(); } catch(_) {}
+        }
+    });
+    notifObserver.observe(document.body, { childList: true, subtree: true });
+} catch(_) {}
 
 /**
  * Adds a single share to the desktop table view.
@@ -6066,6 +6612,23 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     logDebug('Form: Opened edit form for share: ' + shareToEdit.shareName + ' (ID: ' + selectedShareDocId + ')');
 }
 
+// Helper: select a share in-memory and open the edit form for it
+function selectAndOpenShareForEdit(shareId) {
+    try {
+        if (!shareId) return;
+        const found = allSharesData && allSharesData.find(s => s && s.id === shareId);
+        if (!found) {
+            showCustomAlert('Could not find the existing share to edit.');
+            return;
+        }
+        selectedShareDocId = shareId;
+        // ensure UI selection reflects this (some listeners read selectedShareDocId)
+        try { if (typeof highlightSelectedRow === 'function') highlightSelectedRow(shareId); } catch(_) {}
+        // Open the edit modal
+        try { showEditFormForSelectedShare(shareId); } catch(e) { console.warn('selectAndOpenShareForEdit: showEditFormForSelectedShare failed', e); }
+    } catch(e) { console.warn('selectAndOpenShareForEdit failed', e); }
+}
+
 /**
  * Gathers all current data from the share form inputs.
  * @returns {object} An object representing the current state of the form.
@@ -6492,6 +7055,36 @@ async function saveShareData(isSilent = false) {
         shareData.lastFetchedPrice = shareData.currentPrice;
         shareData.previousFetchedPrice = shareData.currentPrice;
 
+        // DEDUPLICATION: prevent creating a duplicate share if one already exists with same ASX code
+        try {
+            const existingByCode = Array.isArray(allSharesData) ? allSharesData.find(s => s && (s.shareName || '').toUpperCase() === shareName) : null;
+            if (existingByCode && existingByCode.id) {
+                console.warn('Save Share: Duplicate code detected. Switching to update for id:', existingByCode.id);
+                // Update existing share instead of creating a new one
+                try {
+                    const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', existingByCode.id);
+                    await firestore.updateDoc(shareDocRef, Object.assign({}, shareData, { lastModifiedFromDupSave: new Date().toISOString() }));
+                    // Update local cache
+                    const idx = allSharesData.findIndex(s => s && s.id === existingByCode.id);
+                    if (idx !== -1) {
+                        allSharesData[idx] = Object.assign({}, allSharesData[idx], shareData);
+                    }
+                    selectedShareDocId = existingByCode.id;
+                    // Phase 2: upsert alert for this share
+                    try { await upsertAlertForShare(selectedShareDocId, shareName, shareData, true); } catch(e) { console.error('Alerts: Failed to upsert after dedupe save:', e); }
+                    if (!isSilent) showCustomAlert('Updated existing share instead of creating duplicate', 1500);
+                    // Refresh prices and UI
+                    await fetchLivePrices();
+                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch(_) {}
+                } catch (e) {
+                    console.error('Firestore: Error updating existing share during dedupe save:', e);
+                    if (!isSilent) showCustomAlert('Error updating existing share: ' + (e && e.message ? e.message : e));
+                }
+                if (!isSilent) closeModals();
+                return;
+            }
+        } catch(e) { console.warn('Dedupe check failed', e); }
+
         try {
             const sharesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             // DEBUG: capture save-time entry price sources to diagnose Adshare modal issue
@@ -6753,14 +7346,13 @@ function showShareDetails() {
         }
 
     // P/E Ratio
-    const peRow = document.createElement('div');
+        const peRow = document.createElement('div');
     peRow.classList.add('pe-ratio-row');
     const peSpan = document.createElement('span');
     peSpan.classList.add('pe-ratio-value');
     peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A');
     peRow.appendChild(peSpan);
     modalLivePriceDisplaySection.appendChild(peRow);
-    // Typography diagnostics for detail modal
     setTimeout(()=>{ try { logTypographyRatios('detail-modal'); } catch(_) {} },0);
     }
 
@@ -8251,40 +8843,7 @@ function renderWatchlist() {
 // Expose renderWatchlist to window for use by other modules
 window.renderWatchlist = renderWatchlist;
 
-// Safety net: ensure any share whose livePrices indicates targetHit gets the .target-hit-alert class (unless globally dismissed)
-function enforceTargetHitStyling() {
-    if (targetHitIconDismissed) return; // user dismissed icon
-    const enabledList = (sharesAtTargetPrice||[]).map(s=>s.id).sort();
-    const signature = enabledList.join(',');
-    // Cheap existing highlight count (rows + cards)
-    const mobileContainer = getMobileShareCardsContainer();
-    const existingHighlights = (
-        (shareTableBody? shareTableBody.querySelectorAll('tr.target-hit-alert').length : 0) +
-        (mobileContainer? mobileContainer.querySelectorAll('.mobile-card.target-hit-alert').length : 0)
-    );
-    if (enforceTargetHitStyling.__lastSig === signature && existingHighlights === enabledList.length) {
-        // No change; skip verbose DOM walk/log
-        return;
-    }
-    enforceTargetHitStyling.__lastSig = signature;
-    const enabledIds = new Set(enabledList);
-    const rows = shareTableBody ? Array.from(shareTableBody.querySelectorAll('tr[data-doc-id]')) : [];
-    const cards = mobileContainer ? Array.from(mobileContainer.querySelectorAll('.mobile-card[data-doc-id]')) : [];
-    let applied = 0, removed = 0;
-    rows.forEach(r => {
-        const id = r.dataset.docId;
-        if (enabledIds.has(id)) {
-            if (!r.classList.contains('target-hit-alert')) { r.classList.add('target-hit-alert'); applied++; }
-        } else if (r.classList.contains('target-hit-alert')) { r.classList.remove('target-hit-alert'); removed++; }
-    });
-    cards.forEach(c => {
-        const id = c.dataset.docId;
-        if (enabledIds.has(id)) {
-            if (!c.classList.contains('target-hit-alert')) { c.classList.add('target-hit-alert'); applied++; }
-        } else if (c.classList.contains('target-hit-alert')) { c.classList.remove('target-hit-alert'); removed++; }
-    });
-    try { console.log('[Diag][enforceTargetHitStyling] applied:', applied, 'removed:', removed, 'enabledIdsCount:', enabledIds.size); } catch(_){ }
-}
+// Safety net function definition is provided later in the file; duplicate removed to resolve syntax error.
 function renderAsxCodeButtons() {
     if (!asxCodeButtonsContainer) { console.error('renderAsxCodeButtons: asxCodeButtonsContainer element not found.'); return; }
     asxCodeButtonsContainer.innerHTML = '';
@@ -9034,7 +9593,7 @@ async function loadUserWatchlistsAndSettings() {
             try {
                 if (typeof window.__LOG_SORT_SET_CALLS === 'undefined') {
                     window.__LOG_SORT_SET_CALLS = true;
-                    console.log('[Diag] __LOG_SORT_SET_CALLS enabled for startup tracing');
+                    debugLog('[Diag] __LOG_SORT_SET_CALLS enabled for startup tracing');
                 }
             } catch(_) {}
         }
@@ -9315,13 +9874,12 @@ function updateTargetHitBanner() {
     }
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
     const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
-    const low52LocalCount = Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.filter(item => !item.muted).length : 0;
-    // Global 52-week alerts are centralized highs/lows; for the banner, we surface lows count in addition
+    // Global 52-week alerts are centralized highs/lows; align banner with modal sections (both highs and lows)
+    const globalHighs = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.highs)) ? window.globalHiLo52Alerts.highs.length : 0;
     const globalLows = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts.lows.length : 0;
     
     // Debug logging for 52-week low count
-    console.log('[BANNER-DEBUG] sharesAt52WeekLow:', window.sharesAt52WeekLow);
-    console.log('[BANNER-DEBUG] low52LocalCount:', low52LocalCount, 'globalLows:', globalLows);
+    console.log('[BANNER-DEBUG] global highs/lows:', { globalHighs, globalLows });
     console.log('[BANNER-DEBUG] enabledCount:', enabledCount);
     // Treat global summary counts as zero if directional thresholds are fully inactive (prevents stale badge after clearing)
     const directionalActive = isDirectionalThresholdsActive ? isDirectionalThresholdsActive() : (
@@ -9330,11 +9888,16 @@ function updateTargetHitBanner() {
         (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ||
         (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0)
     );
-    const centralMoversCount = (window.globalMovers && window.globalMovers.totalCount) ? window.globalMovers.totalCount : 0;
+    const centralMoversCount = (window.globalMovers && (typeof window.globalMovers.filteredTotal === 'number'
+        ? window.globalMovers.filteredTotal
+        : (typeof window.globalMovers.totalCount === 'number' ? window.globalMovers.totalCount : 0)));
     const legacySummaryCount = (directionalActive && globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0;
+    // If central doc is unavailable or zero, fall back to the last locally-computed movers snapshot
+    const lastSnapshotCount = (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) ? window.__lastMoversSnapshot.entries.length : 0;
+    if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.debug('[BANNER-DEBUG] lastSnapshotCount:', lastSnapshotCount);
     // Prefer centralized movers when available to avoid double counting vs legacy GA_SUMMARY
-    const effectiveMoversCount = centralMoversCount > 0 ? centralMoversCount : legacySummaryCount;
-    const displayCount = enabledCount + effectiveMoversCount + low52LocalCount + globalLows;
+    const effectiveMoversCount = centralMoversCount > 0 ? centralMoversCount : (legacySummaryCount > 0 ? legacySummaryCount : (directionalActive ? lastSnapshotCount : 0));
+    const displayCount = enabledCount + effectiveMoversCount + globalHighs + globalLows;
     
     // Debug logging for final count
     console.log('[BANNER-DEBUG] centralMoversCount:', centralMoversCount, 'legacySummaryCount:', legacySummaryCount, 'effectiveMoversCount:', effectiveMoversCount);
@@ -9445,7 +10008,7 @@ try {
                     }
                 });
             } catch(_) {}
-            try { console.log('[Diag][loadTriggeredAlertsListener] map size:', alertsEnabledMap.size); } catch(_){ }
+            try { debugLog('[Diag][loadTriggeredAlertsListener] map size:', alertsEnabledMap.size); } catch(_){ }
             recomputeTriggeredAlerts();
             // Re-render watchlist to show newly available intent letters
             try { renderWatchlist(); } catch(_) {}
@@ -9465,6 +10028,189 @@ window.globalHiLo52Alerts = globalHiLo52Alerts;
 // In-memory cache of centralized movers document
 let globalMovers = { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
 window.globalMovers = globalMovers;
+
+// Recompute filtered movers outside the modal so diagnostic properties are always present
+window.recomputeGlobalMoversFiltered = function recomputeGlobalMoversFiltered(options={}) {
+    try {
+        const gm = window.globalMovers;
+        if (!gm || (!Array.isArray(gm.up) && !Array.isArray(gm.down))) return;
+        const rawUp = Array.isArray(gm.up) ? gm.up.slice() : [];
+        const rawDown = Array.isArray(gm.down) ? gm.down.slice() : [];
+        const rawTotal = rawUp.length + rawDown.length;
+        // Build server thresholds (coerce to numbers)
+        let server = null;
+        if (gm.thresholds) {
+            server = {
+                upPercent: gm.thresholds.upPercent != null ? Number(gm.thresholds.upPercent) : null,
+                upDollar: gm.thresholds.upDollar != null ? Number(gm.thresholds.upDollar) : null,
+                downPercent: gm.thresholds.downPercent != null ? Number(gm.thresholds.downPercent) : null,
+                downDollar: gm.thresholds.downDollar != null ? Number(gm.thresholds.downDollar) : null,
+                minimumPrice: gm.thresholds.minimumPrice != null ? Number(gm.thresholds.minimumPrice) : null
+            };
+        }
+        // Unified local threshold sourcing (globals, localStorage fallback, form inputs) for reliability
+        const local = getCurrentDirectionalThresholds();
+        function stricter(a,b){ if (a==null) return b; if (b==null) return a; return Math.max(a,b); }
+        const effective = {
+            upPercent: stricter(local.upPercent, server && server.upPercent),
+            upDollar: stricter(local.upDollar, server && server.upDollar),
+            downPercent: stricter(local.downPercent, server && server.downPercent),
+            downDollar: stricter(local.downDollar, server && server.downDollar),
+            minimumPrice: stricter(local.minimumPrice, server && server.minimumPrice)
+        };
+        const noDir = [effective.upPercent,effective.upDollar,effective.downPercent,effective.downDollar].every(v=>v==null);
+        if (noDir && rawTotal>120) { effective.upPercent = 1; effective.downPercent = 1; }
+        const filterFn = (item)=>{
+            const live = (item.live!=null && !isNaN(item.live)) ? Number(item.live) : null;
+            const prev = (item.prevClose!=null && !isNaN(item.prevClose)) ? Number(item.prevClose) : null;
+            if (live==null || prev==null || prev===0) return false;
+            const ch = live - prev; if (!ch) return false;
+            const pct = (ch/prev)*100;
+            if (effective.minimumPrice && live < effective.minimumPrice) return false;
+            if (ch>0) {
+                const pctOk = effective.upPercent!=null ? pct >= effective.upPercent : false;
+                const dolOk = effective.upDollar!=null ? Math.abs(ch) >= effective.upDollar : false;
+                if (!(pctOk || dolOk)) return false;
+            } else {
+                const pctOk = effective.downPercent!=null ? Math.abs(pct) >= effective.downPercent : false;
+                const dolOk = effective.downDollar!=null ? Math.abs(ch) >= effective.downDollar : false;
+                if (!(pctOk || dolOk)) return false;
+            }
+            return true;
+        };
+        const upFiltered = rawUp.filter(filterFn);
+        const downFiltered = rawDown.filter(filterFn);
+        gm.__rawUp = rawUp; gm.__rawDown = rawDown; gm.__rawTotal = rawTotal;
+        gm.__serverThresholds = server; gm.__localThresholds = local; gm.__effectiveThresholds = effective;
+        gm.upFiltered = upFiltered; gm.downFiltered = downFiltered; gm.filteredTotal = upFiltered.length + downFiltered.length;
+        // Discrepancy logging: identify when local stricter than server so QA can confirm backend alignment
+        if (window.DEBUG_MODE) {
+            try {
+                const disc = {};
+                if (server) {
+                    ['upPercent','upDollar','downPercent','downDollar','minimumPrice'].forEach(k=>{
+                        if (local[k]!=null && server[k]!=null && local[k] > server[k]) disc[k] = { local: local[k], server: server[k] };
+                    });
+                }
+                if (Object.keys(disc).length) console.log('[GlobalMovers][threshold-discrepancy]', disc);
+            } catch(_){ }
+        }
+        if (options.log || window.DEBUG_MODE) {
+            try { console.log('[GlobalMovers][recompute]', { rawTotal, filteredTotal: gm.filteredTotal, effective, server, local }); } catch(_){}
+        }
+    } catch (e) { console.warn('[GlobalMovers][recompute] failed', e); }
+};
+
+// Helper returns current directional thresholds from multiple potential sources
+window.getCurrentDirectionalThresholds = function getCurrentDirectionalThresholds(){
+    function numPos(v){ return (typeof v === 'number' && isFinite(v) && v>0) ? v : null; }
+    // Start with globals
+    let upPercent = numPos(window.globalPercentIncrease);
+    let upDollar = numPos(window.globalDollarIncrease);
+    let downPercent = numPos(window.globalPercentDecrease);
+    let downDollar = numPos(window.globalDollarDecrease);
+    let minimumPrice = numPos(window.globalMinimumPrice);
+    // LocalStorage fallbacks (string -> number)
+    try {
+        if (upPercent==null) { const v = localStorage.getItem('globalPercentIncrease'); if (v!=null) upPercent = numPos(Number(v)); }
+        if (upDollar==null) { const v = localStorage.getItem('globalDollarIncrease'); if (v!=null) upDollar = numPos(Number(v)); }
+        if (downPercent==null) { const v = localStorage.getItem('globalPercentDecrease'); if (v!=null) downPercent = numPos(Number(v)); }
+        if (downDollar==null) { const v = localStorage.getItem('globalDollarDecrease'); if (v!=null) downDollar = numPos(Number(v)); }
+        if (minimumPrice==null) { const v = localStorage.getItem('globalMinimumPrice'); if (v!=null) minimumPrice = numPos(Number(v)); }
+    } catch(_){ }
+    // Form input overrides if user is on settings UI (ensure latest typed values apply before save)
+    try {
+        const form = document.getElementById('globalAlertSettingsForm');
+        if (form) {
+            const gpI = form.querySelector('[name="globalPercentIncrease"]'); if (gpI && gpI.value) upPercent = numPos(Number(gpI.value));
+            const gdI = form.querySelector('[name="globalDollarIncrease"]'); if (gdI && gdI.value) upDollar = numPos(Number(gdI.value));
+            const gpD = form.querySelector('[name="globalPercentDecrease"]'); if (gpD && gpD.value) downPercent = numPos(Number(gpD.value));
+            const gdD = form.querySelector('[name="globalDollarDecrease"]'); if (gdD && gdD.value) downDollar = numPos(Number(gdD.value));
+            const gMin = form.querySelector('[name="globalMinimumPrice"]'); if (gMin && gMin.value) minimumPrice = numPos(Number(gMin.value));
+        }
+    } catch(_){ }
+    return { upPercent, upDollar, downPercent, downDollar, minimumPrice };
+};
+
+// Reliability guard: run a few delayed recompute attempts early in the session so that
+// diagnostic properties (e.g., __effectiveThresholds) are present even if the user
+// inspects window.globalMovers before manually opening the modal. This covers races
+// where the Firestore snapshot attaches slightly before local threshold vars are
+// hydrated or before the user triggers showGlobalAlertsModal(). Safe + idempotent.
+(function ensureEarlyGlobalMoversDiagnostics(){
+    try {
+        let attempts = 0;
+        const maxAttempts = 6; // ~6 * 800ms = <5s worst case
+        function tick(){
+            try {
+                const gm = window.globalMovers;
+                if (gm && (Array.isArray(gm.up) || Array.isArray(gm.down))) {
+                    if (!gm.__effectiveThresholds) {
+                        try { window.recomputeGlobalMoversFiltered({ log:false }); } catch(_) {}
+                    }
+                    if (gm.__effectiveThresholds) return; // success, stop retries
+                }
+            } catch(_) {}
+            if (++attempts < maxAttempts) setTimeout(tick, 800);
+        }
+        // Slight initial delay to allow threshold globals to load
+        setTimeout(tick, 400);
+    } catch(_) {}
+})();
+
+// Convenience function to open the global alerts modal with defensive recompute
+window.showGlobalAlertsModal = function showGlobalAlertsModal() {
+    try { if (typeof hideModal==='function' && targetHitDetailsModal) hideModal(targetHitDetailsModal); } catch(_) {}
+    try { window.recomputeGlobalMoversFiltered({ log: window.DEBUG_MODE }); } catch(_){ }
+    try {
+        if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+        if (typeof showModal === 'function' && globalAlertsModal) {
+            showModal(globalAlertsModal);
+            try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(_) {}
+            return true;
+        }
+    } catch(e){ console.warn('[GlobalAlerts][open] failed to open modal', e); }
+    console.warn('[GlobalAlerts][open] modal not available.');
+    return false;
+};
+
+// Lightweight diagnostic: compare badge count vs modal section counts for quick parity checks
+// Returns an object with the computed parts and overall totals. Safe to call anytime.
+window.debugGlobalAlertsParity = function debugGlobalAlertsParity() {
+    try {
+        // Local target hits (user-specific alerts enabled)
+        const targets = Array.isArray(window.sharesAtTargetPrice) ? window.sharesAtTargetPrice.length : 0;
+        // Central movers (prefer filtered to match modal lists)
+        const gm = window.globalMovers || {};
+        const ups = Array.isArray(gm.upFiltered) ? gm.upFiltered.length : (Array.isArray(gm.up) ? gm.up.length : 0);
+        const downs = Array.isArray(gm.downFiltered) ? gm.downFiltered.length : (Array.isArray(gm.down) ? gm.down.length : 0);
+        // Central hi/lo 52-week sections
+        const highs = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.highs)) ? window.globalHiLo52Alerts.highs.length : 0;
+        const lows = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts.lows.length : 0;
+        // Badge computation mirrors updateTargetHitBanner
+        const centralMoversCount = (typeof gm.filteredTotal === 'number') ? gm.filteredTotal
+            : (typeof gm.totalCount === 'number' ? gm.totalCount : (ups + downs));
+        const legacySummaryCount = (window.globalAlertSummary && window.globalAlertSummary.totalCount && (window.globalAlertSummary.enabled !== false))
+            ? window.globalAlertSummary.totalCount : 0;
+        const directionalActive = (typeof window.isDirectionalThresholdsActive === 'function')
+            ? window.isDirectionalThresholdsActive()
+            : ((typeof window.globalPercentIncrease === 'number' && window.globalPercentIncrease>0) ||
+               (typeof window.globalDollarIncrease === 'number' && window.globalDollarIncrease>0) ||
+               (typeof window.globalPercentDecrease === 'number' && window.globalPercentDecrease>0) ||
+               (typeof window.globalDollarDecrease === 'number' && window.globalDollarDecrease>0));
+        const lastSnapshotCount = (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) ? window.__lastMoversSnapshot.entries.length : 0;
+        const effectiveMoversCount = centralMoversCount > 0 ? centralMoversCount : (legacySummaryCount > 0 ? legacySummaryCount : (directionalActive ? lastSnapshotCount : 0));
+        const badgeCount = targets + effectiveMoversCount + highs + lows;
+        const modalCount = targets + ups + downs + highs + lows;
+        const result = { parts: { targets, movers: { ups, downs, filteredTotal: ups+downs, effectiveMoversCount }, highs, lows },
+            sums: { badgeCount, modalCount }, meta: { centralMoversCount, legacySummaryCount, lastSnapshotCount } };
+        try { console.log('[Parity]', result); } catch(_) {}
+        return result;
+    } catch (e) {
+        console.warn('[Parity] Failed to compute parity', e);
+        return null;
+    }
+};
 
 function startGlobalSummaryListener() {
     if (unsubscribeGlobalSummary) { try { unsubscribeGlobalSummary(); } catch(_){} unsubscribeGlobalSummary = null; }
@@ -9604,10 +10350,12 @@ function startGlobalMoversListener() {
                     thresholds: data.thresholds || null
                 };
                 window.globalMovers = globalMovers;
+                try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log:false }); } catch(_){}
                 if (window.__centralRetry) window.__centralRetry.movers = 0; // reset on success
             } else {
                 globalMovers = { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
                 window.globalMovers = globalMovers;
+                try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log:false }); } catch(_){}
             }
             try { updateTargetHitBanner(); } catch(_) {}
         }, (err) => {
@@ -9669,6 +10417,23 @@ window.verifyCentralAlertsAccess = async function verifyCentralAlertsAccess() {
         }
     }
     try { window.__centralDiag.lastProbe = new Date().toISOString(); } catch(_) {}
+};
+
+// Diagnostic helper: dumps movers listener diagnostic info and last local snapshot
+window.dumpCentralMoversDiag = function dumpCentralMoversDiag() {
+    try {
+        const diag = {
+            appId: currentAppId || null,
+            userId: currentUserId || null,
+            globalMovers: window.globalMovers || null,
+            lastMoversSnapshot: window.__lastMoversSnapshot || null,
+            centralDiag: window.__centralDiag || null,
+            listenerError: window.__globalMoversListenerError || false,
+            listenerErrorMessage: window.__globalMoversListenerErrorMessage || null
+        };
+        console.log('[MoversDiag]', diag);
+        return diag;
+    } catch (e) { console.error('[MoversDiag] dump failed', e); return null; }
 };
 
 // Apply a temporary filter to main watchlist showing only shares that match the last summary counts
@@ -10267,6 +11032,29 @@ async function saveGlobalAlertSettingsDirectional(settings) {
         } catch(e){}
     }
     catch(e){ console.error('Global Alerts: save directional failed', e); }
+
+    // Persist central settings via server-side sync only. Client-side direct writes to the
+    // central document are intentionally removed because Firestore security rules prevent
+    // direct client writes and produce confusing permission errors in normal operation.
+    // The server-side Apps Script webapp will perform the privileged commit; trigger it now
+    // and keep any failures quiet unless DEBUG_MODE is enabled.
+    try {
+        const uid = currentUserId || (window.firebase && window.firebase.auth && window.firebase.auth().currentUser && window.firebase.auth().currentUser.uid);
+        if (uid) {
+            window.triggerServerSideGlobalSettingsSync(uid).then((res)=>{
+                if (!res || !res.ok) {
+                    // Keep non-actionable errors out of the regular console; surface only in debug mode
+                    try { debugLog && debugLog('[SyncTrigger] server-side sync response', res); } catch(_) {}
+                } else {
+                    try { debugLog && debugLog('[SyncTrigger] server-side sync succeeded', res); } catch(_) {}
+                }
+            }).catch((err)=>{
+                try { debugLog && debugLog('[SyncTrigger] server-side sync failed', err); } catch(_) {}
+            });
+        } else {
+            try { debugLog && debugLog('[SyncTrigger] No user id available for server-side sync'); } catch(_) {}
+        }
+    } catch(e) { /* intentionally quiet */ }
 }
 
 function applyLoadedGlobalAlertSettings(settings) {
@@ -13610,7 +14398,7 @@ if (targetPriceInput) {
     // Google Auth Button (Sign In/Out) - This button is removed from index.html.
     // Its functionality is now handled by splashSignInBtn.
 
-    // NEW: Simplified Splash Sign-In: popup-only with in-progress guard
+    // NEW: Splash Sign-In with popup-first and redirect fallback (handles COOP/COEP popup issues)
 
     // Early environment safety check: mobile + file:// cannot perform Google auth
     try {
@@ -13667,14 +14455,40 @@ if (targetPriceInput) {
                     console.warn('Auth: Failed to force-set browserLocalPersistence prior to sign-in. Proceeding with sign-in anyway.', pErr);
                 }
 
-                // Popup only
-                const resolver = authFunctions.browserPopupRedirectResolver;
-                if (resolver) {
-                    await authFunctions.signInWithPopup(currentAuth, provider, resolver);
-                } else {
-                    await authFunctions.signInWithPopup(currentAuth, provider);
+                // Prefer redirect when cross-origin isolation may block popup window.close
+                const preferRedirect = (typeof window !== 'undefined' && !!window.crossOriginIsolated);
+                if (preferRedirect) {
+                    logDebug('Auth: crossOriginIsolated detected. Using signInWithRedirect.');
+                    if (btnSpan) { btnSpan.textContent = 'Redirecting to Google…'; }
+                    await authFunctions.signInWithRedirect(currentAuth, provider);
+                    return; // navigation begins
                 }
-                logDebug('Auth: Google Sign-In successful from splash screen.');
+
+                // Attempt popup first
+                try {
+                    const resolver = authFunctions.browserPopupRedirectResolver;
+                    if (resolver) await authFunctions.signInWithPopup(currentAuth, provider, resolver);
+                    else await authFunctions.signInWithPopup(currentAuth, provider);
+                    logDebug('Auth: Google Sign-In successful from splash screen (popup).');
+                } catch (popupErr) {
+                    const code = popupErr && popupErr.code ? String(popupErr.code) : '';
+                    const msg = popupErr && popupErr.message ? String(popupErr.message) : '';
+                    const coopHint = /Cross-Origin-Opener-Policy/i.test(msg);
+                    const shouldFallback = coopHint || code === 'auth/operation-not-supported-in-this-environment' || code === 'auth/popup-blocked' || code === 'auth/unauthorized-domain';
+                    if (shouldFallback) {
+                        logDebug('Auth: Popup sign-in blocked or unsupported. Falling back to redirect.', { code, coopHint });
+                        if (btnSpan) { btnSpan.textContent = 'Redirecting to Google…'; }
+                        try {
+                            await authFunctions.signInWithRedirect(currentAuth, provider);
+                            return; // navigation begins
+                        } catch (redirErr) {
+                            console.error('Auth: signInWithRedirect also failed.', redirErr);
+                            throw redirErr; // surface to outer catch for UI reset
+                        }
+                    } else {
+                        throw popupErr; // non-recoverable popup error
+                    }
+                }
                 // onAuthStateChanged will transition UI; keep button disabled briefly to avoid double-click
             }
             catch (error) {
@@ -13690,7 +14504,12 @@ if (targetPriceInput) {
         });
     }
 
-    // Removed redirect handling entirely: popup-only auth
+    // Optionally resolve pending redirect results (no-op when not applicable)
+    try {
+        if (auth && authFunctions && typeof authFunctions.getRedirectResult === 'function') {
+            authFunctions.getRedirectResult(auth).catch(()=>{});
+        }
+    } catch(_) {}
 
     // NEW: Event listener for the top 'X' close button in the Target Hit Details Modal
     if (targetHitModalCloseTopBtn) {
@@ -14033,8 +14852,64 @@ if (sortSelect) {
 
     // Event listener for shareNameInput to toggle saveShareBtn
     if (shareNameInput && saveShareBtn) {
+        // UX: Prevent attempting to add a duplicate ASX code. Disable Save and surface a message.
+        let __isDuplicateCode = false;
+        const duplicateHintElId = 'duplicateCodeHint';
+        function setDuplicateState(isDup) {
+            // New UX: when duplicate detected, simply disable save and rely on a toast at save-time.
+            __isDuplicateCode = !!isDup;
+            try {
+                if (__isDuplicateCode) {
+                    setIconDisabled(saveShareBtn, true);
+                    // Keep DOM minimal: remove any previous inline hint to avoid encouraging open-edit flow
+                    const h = document.getElementById(duplicateHintElId); if (h) h.remove();
+                    // Optionally set aria-describedby for accessibility (not visible text)
+                    try { shareNameInput.setAttribute('aria-describedby', duplicateHintElId); } catch(_) {}
+                } else {
+                    setIconDisabled(saveShareBtn, false);
+                    const h = document.getElementById(duplicateHintElId); if (h) h.remove();
+                    try { shareNameInput.removeAttribute('aria-describedby'); } catch(_) {}
+                }
+            } catch(_) {}
+        }
+
         shareNameInput.addEventListener('input', () => {
-            checkFormDirtyState(); 
+            checkFormDirtyState();
+            try {
+                const val = (shareNameInput.value || '').trim().toUpperCase();
+                if (val) {
+                    const exists = Array.isArray(allSharesData) && allSharesData.some(s => s && (s.shareName||'').toUpperCase() === val);
+                    setDuplicateState(exists && (!selectedShareDocId || (selectedShareDocId && allSharesData.findIndex(s=>s.id===selectedShareDocId && (s.shareName||'').toUpperCase()===val)===-1)));
+                } else {
+                    setDuplicateState(false);
+                }
+            } catch(e) { console.warn('Duplicate code check failed', e); }
+        });
+
+        // Intercept Save click to show friendly message if duplicate flag present
+        const _origSaveHandler = saveShareBtn.onclick || null;
+        saveShareBtn.addEventListener('click', async (ev) => {
+            try {
+                if (__isDuplicateCode) {
+                    // New behavior: block save and show a toast informing the user.
+                    const code = (shareNameInput.value||'').trim().toUpperCase();
+                    try {
+                        if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+                            window.ToastManager.info('A share with this code already exists. Save blocked.', 3000);
+                        } else if (typeof window.showCustomAlert === 'function') {
+                            window.showCustomAlert('A share with this code already exists. Save blocked.', 2500);
+                        } else {
+                            alert('A share with this code already exists. Save blocked.');
+                        }
+                    } catch(_) {
+                        try { alert('A share with this code already exists. Save blocked.'); } catch(_){}
+                    }
+                    ev && ev.stopPropagation();
+                    return; // prevent original save path
+                }
+            } catch(e) { console.warn('Duplicate intercept failed', e); }
+            // otherwise proceed with original click handlers (if any were wired via onclick)
+            if (_origSaveHandler) try { _origSaveHandler.call(saveShareBtn, ev); } catch(_) {}
         });
     }
 
@@ -14821,6 +15696,44 @@ if (sortSelect) {
 // Also expose as a runtime variable for lightweight diagnostics
 window.BUILD_MARKER = 'v0.1.13';
 
+// Global helper: render a unified 52-week high/low notification card
+// Safe to call from both the modern modal renderer and legacy/local paths.
+// If later overridden, keep signature stable: (entry, kind) where kind is 'high' | 'low'
+if (typeof window.renderHiLoEntry !== 'function') {
+    function renderHiLoEntry(e, kind) {
+        const code = String(e.code || e.shareCode || '').toUpperCase();
+    const name = sanitizeCompanyName(e.name || e.companyName || code, code);
+        const liveVal = (e.live!=null && !isNaN(Number(e.live))) ? Number(e.live) : null;
+        const liveDisplay = (liveVal!=null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
+        // Pull both 52W High and Low from entry or livePrices fallback
+        let lp = null; try { lp = (window.livePrices && window.livePrices[code]) ? window.livePrices[code] : null; } catch(_) {}
+        const hiRaw = (e.high52 ?? e.High52 ?? e.hi52 ?? e.high ?? (lp ? (lp.high52 ?? lp.High52 ?? lp.hi52 ?? lp.high) : null) ?? null);
+        const loRaw = (e.low52 ?? e.Low52 ?? e.lo52 ?? e.low ?? (lp ? (lp.low52 ?? lp.Low52 ?? lp.lo52 ?? lp.low) : null) ?? null);
+        const hiDisplay = (hiRaw!=null && !isNaN(Number(hiRaw))) ? ('$' + formatAdaptivePrice(Number(hiRaw))) : '?';
+        const loDisplay = (loRaw!=null && !isNaN(Number(loRaw))) ? ('$' + formatAdaptivePrice(Number(loRaw))) : '?';
+        const card = document.createElement('div');
+        card.className = 'notification-card hilo-card ' + kind;
+        card.innerHTML = `
+            <div class="notification-card-row">
+                <div class="notification-card-left">
+                    <div class="notification-code">${code}</div>
+                    <div class="notification-name small">${name}</div>
+                </div>
+                <div class="notification-card-right">
+                    <div class="notification-live">${liveDisplay}</div>
+                </div>
+            </div>
+            <div class="notification-card-bottom hilo-bottom-row">
+                <div class="hilo-low"><span class="label">Low:</span> ${loDisplay}</div>
+                <div class="hilo-high"><span class="label">High:</span> ${hiDisplay}</div>
+            </div>`;
+        card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openStockSearchForCode(code); });
+        return card;
+    }
+    // Expose on window for explicit usage as well
+    try { window.renderHiLoEntry = renderHiLoEntry; } catch(_) {}
+}
+
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal(options={}) {
     const explicit = !!options.explicit;
@@ -14828,7 +15741,7 @@ function showTargetHitDetailsModal(options={}) {
         if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[TargetHitModal] Suppressed auto-open during initial load phase');
         return;
     }
-    if (!targetHitDetailsModal || !targetHitSharesList || !sharesAtTargetPrice) {
+    if (!targetHitDetailsModal || !targetHitSharesList) {
         console.error('Target Hit Modal: Required elements or data not found.');
         showCustomAlert('Error displaying target hit details. Please try again.', 2000);
         return;
@@ -14852,277 +15765,385 @@ function showTargetHitDetailsModal(options={}) {
         const gl = document.getElementById('globalLow52Container'); if (gl) gl.innerHTML='';
     } catch(_) {}
 
-    // --- 52 week high/low Section (horizontal, smart UI) ---
-    // Use window.sharesAt52WeekLow to ensure we're looking at the global variable
-    const sharesAt52WeekLow = window.sharesAt52WeekLow;
-    console.log(`[52W-MODAL] Checking 52-week low alerts: ${sharesAt52WeekLow ? sharesAt52WeekLow.length : 0} alerts available`);
-    console.log(`[52W-MODAL] sharesAt52WeekLow type: ${typeof sharesAt52WeekLow}, isArray: ${Array.isArray(sharesAt52WeekLow)}`);
-    console.log(`[52W-MODAL] Testing flag status: __isTesting52WeekLowAlerts = ${window.__isTesting52WeekLowAlerts}`);
-    console.log(`[52W-MODAL] Full sharesAt52WeekLow array:`, sharesAt52WeekLow);
-    console.log(`[52W-MODAL] window.sharesAt52WeekLow:`, window.sharesAt52WeekLow);
-    console.log(`[52W-MODAL] Are they the same?`, sharesAt52WeekLow === window.sharesAt52WeekLow);
-    if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
-        console.log(`[52W-MODAL] Creating 52-week low section with ${sharesAt52WeekLow.length} alerts`);
-        console.log(`[52W-MODAL] Alert details:`, sharesAt52WeekLow.map(item => ({ code: item.code, name: item.name, muted: item.muted, isTestCard: item.isTestCard })));
-    // Section title styled like global movers, with dynamic arrow icon
-    const sectionHeader = document.createElement('div');
-    sectionHeader.className = 'low52-section-header';
-    const low52Title = document.createElement('h3');
-    low52Title.className = 'target-hit-section-title low52-heading';
-    // Determine if there is a high or low in the unmuted list for icon
-    let firstType = null;
-    if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
-        for (const item of sharesAt52WeekLow) {
-            if (item && item.type) { firstType = item.type; break; }
-        }
-    }
-    let arrowIcon = '';
-    if (firstType === 'high') {
-        sectionHeader.classList.add('low52-high');
-    } else if (firstType === 'low') {
-        sectionHeader.classList.add('low52-low');
-    }
-    // Refactored to use a themeable SVG arrow icon
-    const arrowSVG = `<svg class="low52-arrow-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5H7z"/></svg>`;
-    low52Title.innerHTML = `<span class="low52-title-text">52 Week Low</span>${arrowSVG}`;
-    sectionHeader.appendChild(low52Title);
-    targetHitSharesList.appendChild(sectionHeader);
-        const alertsContainer = document.createElement('div');
-        alertsContainer.className = 'low52-alerts-container';
+    // Delegate rendering of centralized global sections to the impl (populates movers/highs/lows)
+    try { if (typeof window.__renderTargetHitDetailsModalImpl === 'function') { window.__renderTargetHitDetailsModalImpl(options); } } catch(_) {}
 
-        sharesAt52WeekLow.forEach((item, idx) => {
-            console.log(`[52W-MODAL] Processing alert ${idx + 1}: ${item.code} - muted: ${!!item.muted}, isTestCard: ${item.isTestCard}`);
-            console.log(`[52W-MODAL] Alert ${item.code} full data:`, item);
-
-            const card = document.createElement('div');
-            const isMuted = !!item.muted;
-            // Apply basic styling for 52-week low alerts
-            card.className = 'low52-alert-card low52-low';
-            if (isMuted) {
-                card.classList.add('low52-card-muted');
-                console.log(`[52W-MODAL] Alert ${item.code} is muted, adding muted class`);
-            }
-
-            let liveVal = (item.live !== undefined && item.live !== null && !isNaN(item.live)) ? Number(item.live) : (livePrices && livePrices[item.code] && !isNaN(livePrices[item.code].live) ? Number(livePrices[item.code].live) : null);
-            let liveDisplay = (liveVal !== null) ? ('$' + liveVal.toFixed(2)) : '<span class="low52-price-na">N/A</span>';
-
-            console.log(`[52W-MODAL] Alert ${item.code} - liveVal: ${liveVal}, liveDisplay: ${liveDisplay}`);
-
-            // Compute % distance to the threshold for clarity
-            let pctText = '';
+    // Update Notifications Summary counts and clicks
+    try {
+        const summaryHost = document.getElementById('notificationsSummary');
+        if (summaryHost) {
+            // Counts
+            const targetCount = Array.isArray(window.sharesAtTargetPrice) ? window.sharesAtTargetPrice.length : 0;
+            // Prefer centralized filtered movers, then raw, then snapshot fallback
+            let gainersCount = 0, losersCount = 0;
             try {
-                if (item.type === 'low' && item.low52 && liveVal) {
-                    const pct = ((liveVal - Number(item.low52)) / Number(item.low52)) * 100;
-                    pctText = ` (${pct>0?'+':''}${pct.toFixed(2)}%)`;
-                } else if (item.type === 'high' && item.high52 && liveVal) {
-                    const pct = ((liveVal - Number(item.high52)) / Number(item.high52)) * 100;
-                    pctText = ` (${pct>0?'+':''}${pct.toFixed(2)}%)`;
+                const gm = window.globalMovers || {};
+                if (Array.isArray(gm.upFiltered) || Array.isArray(gm.downFiltered) || Array.isArray(gm.up) || Array.isArray(gm.down)) {
+                    gainersCount = Array.isArray(gm.upFiltered) ? gm.upFiltered.length : (Array.isArray(gm.up) ? gm.up.length : 0);
+                    losersCount = Array.isArray(gm.downFiltered) ? gm.downFiltered.length : (Array.isArray(gm.down) ? gm.down.length : 0);
+                } else if (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
+                    const entries = window.__lastMoversSnapshot.entries;
+                    gainersCount = entries.filter(e => (e.direction||'').toLowerCase() === 'up').length;
+                    losersCount = entries.filter(e => (e.direction||'').toLowerCase() === 'down').length;
+                } else if (window.__lastMoversComputed && typeof window.__lastMoversComputed === 'object') {
+                    gainersCount = Array.isArray(window.__lastMoversComputed.ups) ? window.__lastMoversComputed.ups.length : 0;
+                    losersCount = Array.isArray(window.__lastMoversComputed.downs) ? window.__lastMoversComputed.downs.length : 0;
                 }
             } catch(_) {}
-            card.innerHTML = `
-                <div class="low52-card-row low52-header-row">
-                    <span class="low52-code">${item.code}</span>
-                    <span class="low52-name">${item.name}</span>
-                    <span class="low52-price">${liveDisplay}${pctText}</span>
-                </div>
-                <div class="low52-card-row low52-action-row">
-                    <button class="low52-mute-btn" data-idx="${idx}">${isMuted ? 'Unmute' : 'Mute'}</button>
-                </div>
-                <div class="low52-thresh-row">
-                    <span class="low52-thresh">${item.type === 'high' ? '52W High' : '52W Low'}: $${Number(item.type === 'high' ? item.high52 : item.low52).toFixed(2)}</span>
-                </div>
-            `;
-
-            const muteBtn = card.querySelector('.low52-mute-btn');
-            muteBtn.onclick = function(e) {
-                e.stopPropagation();
-                const shareToUpdate = sharesAt52WeekLow.find(s => s.code === item.code && s.type === item.type);
-                if (shareToUpdate) {
-                    shareToUpdate.muted = !isMuted; // Toggle muted state
-                    const toastMessage = `${shareToUpdate.code} alerts ${shareToUpdate.muted ? 'muted' : 'enabled'}.`;
-                    showCustomAlert(toastMessage, 2000, 'info');
-                    window.__low52MutedMap[item.code + '_' + item.type] = shareToUpdate.muted;
-                    try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
-                    updateTargetHitBanner();
-                    showTargetHitDetailsModal(); // Re-render the modal
+            // 52-week highs/lows counts from centralized alerts if present
+            let high52Count = 0, low52Count = 0;
+            try {
+                const hiLo = window.globalHiLo52Alerts || null;
+                if (hiLo) {
+                    high52Count = Array.isArray(hiLo.highs) ? hiLo.highs.length : 0;
+                    low52Count = Array.isArray(hiLo.lows) ? hiLo.lows.length : 0;
                 }
-            };
+            } catch(_) {}
 
-            card.style.cursor = 'pointer';
-            card.onclick = function(e) {
-                if (e.target.closest('.low52-mute-btn')) return;
-                // Try to open the Share Details modal for this ASX code by resolving the share id
-                try {
-                    const code = (item.code || '').toUpperCase();
-                    let share = null;
-                    // Prefer canonical in-memory list `allSharesData` if available
-                    if (Array.isArray(allSharesData)) {
-                        share = allSharesData.find(s => s && s.shareName && s.shareName.toUpperCase() === code);
-                    }
-                    // Fallback to window-scoped copy if present
-                    if (!share && Array.isArray(window.allSharesData)) {
-                        share = window.allSharesData.find(s => s && s.shareName && s.shareName.toUpperCase() === code);
-                    }
-                    if (share && share.id) {
-                        wasShareDetailOpenedFromTargetAlerts = true;
-                        try { hideModal(targetHitDetailsModal); } catch(_) {}
-                        try { selectShare(share.id); showShareDetails(); } catch(err) { console.warn('Open share details failed for', code, err); }
-                        return;
-                    }
-                } catch(err) { console.warn('52W card click lookup failed', err); }
-                // Fallback: open stock search modal if no matching share document found
-                if (typeof showStockSearchModal === 'function') {
-                    showStockSearchModal(item.code);
-                }
-            };
+            const setText = (id, val) => { const el=document.getElementById(id); if (el) el.textContent = String(val||0); };
+            setText('summaryTargetCount', targetCount);
+            setText('summaryGainersCount', gainersCount);
+            setText('summaryLosersCount', losersCount);
+            setText('summaryHigh52Count', high52Count);
+            setText('summaryLow52Count', low52Count);
 
-            alertsContainer.appendChild(card);
-            console.log(`[52W-MODAL] Added card for ${item.code} to container`);
-            console.log(`[52W-MODAL] Container now has ${alertsContainer.children.length} cards`);
-        });
+            // Click behavior: toggle respective accordion section; clicking again closes; clicking other switches
+            if (!summaryHost.__chipsBound) {
+                summaryHost.addEventListener('click', (ev) => {
+                    const chip = ev.target.closest('.summary-chip');
+                    if (!chip) return;
+                    const sectionKey = chip.getAttribute('data-section');
+                    if (!sectionKey) return;
+                    const acc = document.querySelector('.notifications-accordion');
+                    if (!acc) return;
+                    const targetSection = acc.querySelector(`.accordion-section[data-section="${sectionKey}"]`);
+                    if (!targetSection) return;
 
-    // Append legacy (user specific) 52-week alerts under Target Hit section still (requirement only alters global sections design parity)
-    targetHitSharesList.appendChild(alertsContainer);
-        console.log(`[52W-MODAL] Added alerts container with ${sharesAt52WeekLow.length} alerts to modal`);
+                    const isOpen = targetSection.classList.contains('open');
+                    const header = targetSection.querySelector('.accordion-toggle');
+                    if (!header) return;
+
+                    if (isOpen) {
+                        // Close the currently open section
+                        targetSection.classList.remove('open');
+                        header.setAttribute('aria-expanded', 'false');
+                    } else {
+                        // Close any other open section first
+                        acc.querySelectorAll('.accordion-section.open').forEach(sec => {
+                            if (sec !== targetSection) {
+                                sec.classList.remove('open');
+                                const h = sec.querySelector('.accordion-toggle');
+                                if (h) h.setAttribute('aria-expanded', 'false');
+                            }
+                        });
+                        // Open target section
+                        targetSection.classList.add('open');
+                        header.setAttribute('aria-expanded', 'true');
+                        try { header.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(_) {}
+                    }
+                });
+                summaryHost.__chipsBound = true;
+            }
+        }
+    } catch(err) { console.warn('[NotificationsSummary] Failed to update summary', err); }
+
+    // --- 52 week high/low Section (horizontal, smart UI) ---
+    // Use window.sharesAt52WeekLow to ensure we're looking at the global variable
+    const sharesAt52WeekLow = Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.slice() : [];
+    if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
+        // Build a uniform 52-week Low section for user-specific alerts using the same card style
+        const sectionHeader = document.createElement('div');
+        sectionHeader.className = 'low52-section-header';
+        const low52Title = document.createElement('h3');
+        low52Title.className = 'target-hit-section-title low52-heading';
+        low52Title.textContent = '52 Week Low (Your Portfolio)';
+        sectionHeader.appendChild(low52Title);
+        targetHitSharesList.appendChild(sectionHeader);
+
+        const alertsContainer = document.createElement('div');
+        alertsContainer.className = 'notification-list-host';
+        const inner = document.createElement('div');
+        inner.className = 'notification-list-inner';
+
+        sharesAt52WeekLow
+          .filter(item => !item.isTestCard) // ensure no test cards
+          .forEach((item) => {
+            const entry = { code: item.code, name: item.name, shareCode: item.code, live: item.live, low52: item.low52 };
+            inner.appendChild(renderHiLoEntry(entry, 'low'));
+          });
+
+        alertsContainer.appendChild(inner);
+        targetHitSharesList.appendChild(alertsContainer);
     }
 
-    // Add Global 52-Week Lows section (centralized)
+    // Inject explainer headers for each notifications section
     try {
-        const hiLo = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts : null;
-        const lows = hiLo ? hiLo.lows : [];
-        if (lows && lows.length) {
-            const list = document.getElementById('globalLow52Container') || (function(){ const el=document.createElement('div'); el.id='globalLow52Container'; return el; })();
-            lows.forEach(entry => {
-                const card = document.createElement('div');
-                card.className = 'low52-alert-card low52-low';
-                const code = String(entry.code || entry.shareCode || '').toUpperCase();
-                const name = entry.name || entry.companyName || code;
-                const live = (entry.live!=null? Number(entry.live) : (livePrices && livePrices[code] ? Number(livePrices[code].live) : null));
-                const hi = (entry.high52!=null? Number(entry.high52) : (entry.High52!=null? Number(entry.High52) : null));
-                const lo = (entry.low52!=null? Number(entry.low52) : (entry.Low52!=null? Number(entry.Low52) : null));
-                card.innerHTML = `
-                    <div class="low52-card-row low52-header-row">
-                        <span class="low52-code">${code}</span>
-                        <span class="low52-name">${name}</span>
-                        <span class="low52-price">${live!=null?('$'+formatAdaptivePrice(live)):'<span class="low52-price-na">N/A</span>'}</span>
-                    </div>
-                    <div class="low52-thresh-row">
-                        <span class="low52-thresh">52W Range: ${lo!=null?'$'+formatAdaptivePrice(lo):'?'} → ${hi!=null?'$'+formatAdaptivePrice(hi):'?'} </span>
-                    </div>`;
-                // Click opens search modal for the code
-                card.addEventListener('click', ()=>{
-                    try { hideModal(targetHitDetailsModal); } catch(_) {}
-                    openStockSearchForCode(code);
-                });
-                list.appendChild(card);
+        const accordion = document.getElementById('notificationsAccordion');
+        if (accordion) {
+            function ensureExplainer(sectionKey, textBuilder, onClick) {
+                const sec = accordion.querySelector(`.accordion-section[data-section="${sectionKey}"]`);
+                if (!sec) return;
+                const panel = sec.querySelector('.accordion-panel'); if (!panel) return;
+                let expl = panel.querySelector('.section-explainer');
+                if (!expl) {
+                    expl = document.createElement('div');
+                    expl.className = 'section-explainer';
+                    expl.setAttribute('role', 'button');
+                    expl.tabIndex = 0;
+                    panel.prepend(expl);
+                }
+                expl.textContent = textBuilder();
+                expl.title = 'Click to configure related settings';
+                if (!expl.__bound) {
+                    expl.addEventListener('click', (e)=>{ try { if (typeof onClick === 'function') onClick(e); } catch(_) {} });
+                    expl.addEventListener('keydown', (e)=>{
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            try { if (typeof onClick === 'function') onClick(e); } catch(_) {}
+                        }
+                    });
+                    expl.__bound = true;
+                }
+            }
+            const fmtMoney = (n)=>{
+                const v = Number(n); if (!isFinite(v) || v<=0) return 'Off';
+                if (v>=1e9) return '$'+(v/1e9).toFixed(1)+'B';
+                if (v>=1e6) return '$'+(v/1e6).toFixed(1)+'M';
+                if (v>=1e3) return '$'+(v/1e3).toFixed(1)+'K';
+                return '$'+v.toFixed(2);
+            };
+            const pctPart = (v)=> (typeof v==='number' && v>0) ? (v.toFixed(0)+'%') : 'Off';
+            const dolPart = (v)=> (typeof v==='number' && v>0) ? ('$'+v.toFixed(2)) : 'Off';
+            const minPricePart = (v)=> (typeof v==='number' && v>0) ? ('$'+v.toFixed(2)) : 'Off';
+
+            // Target Hits (local alerts use user per-share targets)
+            ensureExplainer('target-hits', ()=>'Your per-share alert targets (Buy/Sell, Above/Below).', ()=>{
+                try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
+                // Open the Global Alerts modal directly
+                try {
+                    if (typeof showModal === 'function') {
+                        if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+                        if (globalAlertsModal) {
+                            showModal(globalAlertsModal);
+                            try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(_) {}
+                        }
+                    }
+                } catch(_){ }
+            });
+
+            // Global gainers/losers based on directional thresholds
+            ensureExplainer('global-gainers', ()=>{
+                const t = (typeof window.getCurrentDirectionalThresholds==='function') ? window.getCurrentDirectionalThresholds() : {
+                    upPercent: window.globalPercentIncrease, upDollar: window.globalDollarIncrease, minimumPrice: window.globalMinimumPrice
+                };
+                return `Increase ≥ ${pctPart(t.upPercent)} or ${dolPart(t.upDollar)} | Min Price: ${minPricePart(t.minimumPrice)}`;
+            }, ()=>{
+                try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
+                try {
+                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+                    if (typeof showModal === 'function' && globalAlertsModal) {
+                        showModal(globalAlertsModal);
+                        try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(_) {}
+                    }
+                } catch(_){ }
+            });
+            ensureExplainer('global-losers', ()=>{
+                const t = (typeof window.getCurrentDirectionalThresholds==='function') ? window.getCurrentDirectionalThresholds() : {
+                    downPercent: window.globalPercentDecrease, downDollar: window.globalDollarDecrease, minimumPrice: window.globalMinimumPrice
+                };
+                return `Decrease ≥ ${pctPart(t.downPercent)} or ${dolPart(t.downDollar)} | Min Price: ${minPricePart(t.minimumPrice)}`;
+            }, ()=>{
+                try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
+                try {
+                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+                    if (typeof showModal === 'function' && globalAlertsModal) {
+                        showModal(globalAlertsModal);
+                        try { const el = document.getElementById('globalPercentDecrease'); if (el) el.focus(); } catch(_) {}
+                    }
+                } catch(_){ }
+            });
+
+            // 52W High/Low: include Min Price and Min Market Cap
+            ensureExplainer('high52', ()=>{
+                const mp = window.hiLoMinimumPrice; const mc = window.hiLoMinimumMarketCap;
+                // List thresholds only; remove any 'Scope All ASX' wording
+                const parts = [];
+                parts.push(`Min Price: ${minPricePart(mp)}`);
+                parts.push(`Min Mkt Cap: ${fmtMoney(mc)}`);
+                return parts.join(' | ');
+            }, ()=>{ 
+                try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
+                try {
+                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+                    if (typeof showModal === 'function' && globalAlertsModal) {
+                        showModal(globalAlertsModal);
+                        try { const el = document.getElementById('hiLoMinimumPrice'); if (el) el.focus(); } catch(_) {}
+                    }
+                } catch(_){ }
+            });
+            ensureExplainer('low52', ()=>{
+                const mp = window.hiLoMinimumPrice; const mc = window.hiLoMinimumMarketCap;
+                const parts = [];
+                parts.push(`Min Price: ${minPricePart(mp)}`);
+                parts.push(`Min Mkt Cap: ${fmtMoney(mc)}`);
+                return parts.join(' | ');
+            }, ()=>{ 
+                try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
+                try {
+                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+                    if (typeof showModal === 'function' && globalAlertsModal) {
+                        showModal(globalAlertsModal);
+                        try { const el = document.getElementById('hiLoMinimumPrice'); if (el) el.focus(); } catch(_) {}
+                    }
+                } catch(_){ }
             });
         }
-        // Add Global 52-Week Highs section (centralized)
-        const highs = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.highs)) ? window.globalHiLo52Alerts.highs : [];
-        if (highs && highs.length) {
-            const list2 = document.getElementById('globalHigh52Container') || (function(){ const el=document.createElement('div'); el.id='globalHigh52Container'; return el; })();
-            highs.forEach(entry => {
-                const card = document.createElement('div');
-                card.className = 'low52-alert-card low52-high';
-                const code = String(entry.code || entry.shareCode || '').toUpperCase();
-                const name = entry.name || entry.companyName || code;
-                const live = (entry.live!=null? Number(entry.live) : (livePrices && livePrices[code] ? Number(livePrices[code].live) : null));
-                const hi = (entry.high52!=null? Number(entry.high52) : (entry.High52!=null? Number(entry.High52) : null));
-                const lo = (entry.low52!=null? Number(entry.low52) : (entry.Low52!=null? Number(entry.Low52) : null));
-                card.innerHTML = `
-                    <div class="low52-card-row low52-header-row">
-                        <span class="low52-code">${code}</span>
-                        <span class="low52-name">${name}</span>
-                        <span class="low52-price">${live!=null?('$'+formatAdaptivePrice(live)):'<span class="low52-price-na">N/A</span>'}</span>
-                    </div>
-                    <div class="low52-thresh-row">
-                        <span class="low52-thresh">52W Range: ${lo!=null?'$'+formatAdaptivePrice(lo):'?'} → ${hi!=null?'$'+formatAdaptivePrice(hi):'?'} </span>
-                    </div>`;
-                // Click opens search modal for the code
-                card.addEventListener('click', ()=>{
-                    try { hideModal(targetHitDetailsModal); } catch(_) {}
-                    openStockSearchForCode(code);
+    } catch(e) { console.warn('[Notifications] Failed to add explainer headers', e); }
+
+    // Add Global 52-Week sections (legacy fallback) — SKIPPED when modern renderer already populated containers
+    try {
+        const skipLegacyGlobalHiLo = !!(targetHitDetailsModal && targetHitDetailsModal.__newGlobalRendered);
+        if (!skipLegacyGlobalHiLo) {
+            const hiLo = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts : null;
+            const lows = hiLo ? hiLo.lows : [];
+            if (lows && lows.length) {
+                const list = document.getElementById('globalLow52Container') || (function(){ const el=document.createElement('div'); el.id='globalLow52Container'; return el; })();
+                lows.forEach(entry => {
+                    const card = document.createElement('div');
+                    card.className = 'low52-alert-card low52-low';
+                    const code = String(entry.code || entry.shareCode || '').toUpperCase();
+                    const name = entry.name || entry.companyName || code;
+                    const live = (entry.live!=null? Number(entry.live) : (livePrices && livePrices[code] ? Number(livePrices[code].live) : null));
+                    const hi = (entry.high52!=null? Number(entry.high52) : (entry.High52!=null? Number(entry.High52) : null));
+                    const lo = (entry.low52!=null? Number(entry.low52) : (entry.Low52!=null? Number(entry.Low52) : null));
+                    card.innerHTML = `
+                        <div class="low52-card-row low52-header-row">
+                            <span class="low52-code">${code}</span>
+                            <span class="low52-name">${sanitizeCompanyName(name, code)}</span>
+                            <span class="low52-price">${live!=null?('$'+formatAdaptivePrice(live)):'<span class="low52-price-na">N/A</span>'}</span>
+                        </div>
+                        <div class="low52-thresh-row">
+                            <span class="low52-thresh"><strong>52W Low:</strong> ${lo!=null?'$'+formatAdaptivePrice(lo):'?'} &nbsp; <strong>High:</strong> ${hi!=null?'$'+formatAdaptivePrice(hi):'?'} </span>
+                        </div>`;
+                    // Click opens search modal for the code
+                    card.addEventListener('click', ()=>{
+                        try { hideModal(targetHitDetailsModal); } catch(_) {}
+                        openStockSearchForCode(code);
+                    });
+                    list.appendChild(card);
                 });
-                list2.appendChild(card);
-            });
+            }
+            // Add Global 52-Week Highs section (centralized)
+            const highs = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.highs)) ? window.globalHiLo52Alerts.highs : [];
+            if (highs && highs.length) {
+                const list2 = document.getElementById('globalHigh52Container') || (function(){ const el=document.createElement('div'); el.id='globalHigh52Container'; return el; })();
+                highs.forEach(entry => {
+                    const card = document.createElement('div');
+                    card.className = 'low52-alert-card low52-high';
+                    const code = String(entry.code || entry.shareCode || '').toUpperCase();
+                    const name = entry.name || entry.companyName || code;
+                    const live = (entry.live!=null? Number(entry.live) : (livePrices && livePrices[code] ? Number(livePrices[code].live) : null));
+                    const hi = (entry.high52!=null? Number(entry.high52) : (entry.High52!=null? Number(entry.High52) : null));
+                    const lo = (entry.low52!=null? Number(entry.low52) : (entry.Low52!=null? Number(entry.Low52) : null));
+                    card.innerHTML = `
+                        <div class="low52-card-row low52-header-row">
+                            <span class="low52-code">${code}</span>
+                            <span class="low52-name">${sanitizeCompanyName(name, code)}</span>
+                            <span class="low52-price">${live!=null?('$'+formatAdaptivePrice(live)):'<span class="low52-price-na">N/A</span>'}</span>
+                        </div>
+                        <div class="low52-thresh-row">
+                            <span class="low52-thresh"><strong>52W Low:</strong> ${lo!=null?'$'+formatAdaptivePrice(lo):'?'} &nbsp; <strong>High:</strong> ${hi!=null?'$'+formatAdaptivePrice(hi):'?'} </span>
+                        </div>`;
+                    // Click opens search modal for the code
+                    card.addEventListener('click', ()=>{
+                        try { hideModal(targetHitDetailsModal); } catch(_) {}
+                        openStockSearchForCode(code);
+                    });
+                    list2.appendChild(card);
+                });
+            }
         }
     } catch(e) { console.warn('[HiLo52] Failed to render global section', e); }
 
-    // Inject headings + global summary card (Global movers heading ABOVE card)
-    // Only show global summary if thresholds still active to avoid displaying stale counts after clear
-    // Priority: Check for comprehensive scan results first, then fall back to regular scan
-    let data = null;
-    let isComprehensive = false;
+    // Inject headings + global summary card (legacy fallback) — SKIPPED when modern renderer already populated movers UI
+    (function(){
+        const skipLegacyGlobalSummary = !!(targetHitDetailsModal && targetHitDetailsModal.__newGlobalRendered);
+        if (skipLegacyGlobalSummary) return;
+        // Only show global summary if thresholds still active to avoid displaying stale counts after clear
+        // Priority: Check for comprehensive scan results first, then fall back to regular scan
+        let data = null;
+        let isComprehensive = false;
 
-    if (isDirectionalThresholdsActive()) {
-        // First check for comprehensive scan results (GA_SUMMARY_COMPREHENSIVE)
-        if (globalAlertSummary && globalAlertSummary.comprehensiveScan === true && globalAlertSummary.totalCount > 0) {
-            data = globalAlertSummary;
-            isComprehensive = true;
-            console.log('[GlobalAlerts] Using COMPREHENSIVE scan results:', data);
+        if (isDirectionalThresholdsActive()) {
+            // First check for comprehensive scan results (GA_SUMMARY_COMPREHENSIVE)
+            if (globalAlertSummary && globalAlertSummary.comprehensiveScan === true && globalAlertSummary.totalCount > 0) {
+                data = globalAlertSummary;
+                isComprehensive = true;
+                console.log('[GlobalAlerts] Using COMPREHENSIVE scan results:', data);
+            }
+            // Fall back to regular scan results (GA_SUMMARY)
+            else if (globalAlertSummary && globalAlertSummary.totalCount > 0) {
+                data = globalAlertSummary;
+                isComprehensive = false;
+                console.log('[GlobalAlerts] Using REGULAR scan results:', data);
+            }
         }
-        // Fall back to regular scan results (GA_SUMMARY)
-        else if (globalAlertSummary && globalAlertSummary.totalCount > 0) {
-            data = globalAlertSummary;
-            isComprehensive = false;
-            console.log('[GlobalAlerts] Using REGULAR scan results:', data);
-        }
-    }
 
-    const hasGlobalSummary = !!data;
-    console.log('[GlobalAlerts] Modal render - hasGlobalSummary:', hasGlobalSummary, 'isComprehensive:', isComprehensive, 'isDirectionalThresholdsActive:', isDirectionalThresholdsActive(), 'globalAlertSummary:', globalAlertSummary);
+        const hasGlobalSummary = !!data;
+        console.log('[GlobalAlerts] Modal render - hasGlobalSummary:', hasGlobalSummary, 'isComprehensive:', isComprehensive, 'isDirectionalThresholdsActive:', isDirectionalThresholdsActive(), 'globalAlertSummary:', globalAlertSummary);
 
-    if (hasGlobalSummary) {
-        const total = data.totalCount || 0;
-        const inc = data.increaseCount || 0;
-        const dec = data.decreaseCount || 0;
-        const threshold = data.threshold || '';
-        const portfolioCount = data.portfolioCount || 0;
-        const discoverCount = Array.isArray(data.nonPortfolioCodes) ? data.nonPortfolioCodes.length : 0;
-        const enabled = (data.enabled !== false);
-    const containerHost = document.getElementById('globalMoversContainer') || targetHitSharesList; // fallback
-    const container = document.createElement('div');
-    container.classList.add('target-hit-item','global-summary-alert');
-        const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
-    const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> <span class=\"arrow-count\">${inc}</span></span><span class=\"down\"><span class=\"arrow\">&#9660;</span> <span class=\"arrow-count\">${dec}</span></span></div>`;
-    container.innerHTML = `
-            <div class="global-summary-inner">
-                ${arrowsRow}
-        <div class="global-summary-detail total-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}${isComprehensive && data.totalSharesScanned ? (' (scanned ' + data.totalSharesScanned + ' total)') : ''}</div>
-                <div class="global-summary-detail portfolio-line">${portfolioCount} from your portfolio</div>
-        ${minText ? ('<div class=\"global-summary-detail ignoring-line\">' + minText + '</div>') : ''}
-            </div>
-            <div class=\"global-summary-actions\">
-                <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverCount?`Global (${discoverCount})`:'View All'}</button>
-                <button data-action=\"view-portfolio\" ${portfolioCount?'':'disabled'}>${portfolioCount?`Local (${portfolioCount})`:'Local'}</button>
-                <button data-action=\"mute-global\" title=\"${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}\">${enabled ? 'Mute' : 'Unmute'}</button>
-            </div>`;
-        const actions = container.querySelector('.global-summary-actions');
-        if (actions) {
-            actions.addEventListener('click', (e)=>{
-                const btn = e.target.closest('button'); if (!btn) return;
-                const act = btn.getAttribute('data-action');
-                if (act === 'view-portfolio') {
-                    try {
-                        // Show local/portfolio shares that met global criteria
-                        openLocalSharesModal(data);
-                    } catch(e){ console.warn('Local shares modal open failed', e); }
-                } else if (act === 'discover') {
-                    try {
-                        // Ensure we have the latest movers data before opening the modal
-                        applyGlobalSummaryFilter({ silent: true, computeOnly: true });
-                        setTimeout(() => {
-                            openDiscoverModal(data);
-                        }, 100); // Small delay to allow snapshot to be created
-                    } catch(e){ console.warn('Discover modal open failed', e); }
-                } else if (act === 'mute-global') {
-                    e.preventDefault();
-                    toggleGlobalSummaryEnabled();
-                }
-            });
+        if (hasGlobalSummary) {
+            const total = data.totalCount || 0;
+            const inc = data.increaseCount || 0;
+            const dec = data.decreaseCount || 0;
+            const threshold = data.threshold || '';
+            const portfolioCount = data.portfolioCount || 0;
+            const discoverCount = Array.isArray(data.nonPortfolioCodes) ? data.nonPortfolioCodes.length : 0;
+            const enabled = (data.enabled !== false);
+            const containerHost = document.getElementById('globalMoversContainer') || targetHitSharesList; // fallback
+            const container = document.createElement('div');
+            container.classList.add('target-hit-item','global-summary-alert');
+            const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
+            const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> <span class=\"arrow-count\">${inc}</span></span><span class=\"down\"><span class=\"arrow\">&#9660;</span> <span class=\"arrow-count\">${dec}</span></span></div>`;
+            container.innerHTML = `
+                <div class="global-summary-inner">
+                    ${arrowsRow}
+                    <div class="global-summary-detail total-line">${total} shares moved ${threshold ? ('≥ ' + threshold) : ''}${isComprehensive && data.totalSharesScanned ? (' (scanned ' + data.totalSharesScanned + ' total)') : ''}</div>
+                    <div class="global-summary-detail portfolio-line">${portfolioCount} from your portfolio</div>
+                    ${minText ? ('<div class=\"global-summary-detail ignoring-line\">' + minText + '</div>') : ''}
+                </div>
+                <div class=\"global-summary-actions\">
+                    <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverCount?`Global (${discoverCount})`:'View All'}</button>
+                    <button data-action=\"view-portfolio\" ${portfolioCount?'':'disabled'}>${portfolioCount?`Local (${portfolioCount})`:'Local'}</button>
+                    <button data-action=\"mute-global\" title=\"${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}\">${enabled ? 'Mute' : 'Unmute'}</button>
+                </div>`;
+            const actions = container.querySelector('.global-summary-actions');
+            if (actions) {
+                actions.addEventListener('click', (e)=>{
+                    const btn = e.target.closest('button'); if (!btn) return;
+                    const act = btn.getAttribute('data-action');
+                    if (act === 'view-portfolio') {
+                        try {
+                            // Show local/portfolio shares that met global criteria
+                            openLocalSharesModal(data);
+                        } catch(e){ console.warn('Local shares modal open failed', e); }
+                    } else if (act === 'discover') {
+                        try {
+                            // Ensure we have the latest movers data before opening the modal
+                            applyGlobalSummaryFilter({ silent: true, computeOnly: true });
+                            setTimeout(() => {
+                                openDiscoverModal(data);
+                            }, 100); // Small delay to allow snapshot to be created
+                        } catch(e){ console.warn('Discover modal open failed', e); }
+                    } else if (act === 'mute-global') {
+                        e.preventDefault();
+                        toggleGlobalSummaryEnabled();
+                    }
+                });
+            }
+            containerHost.appendChild(container);
         }
-        containerHost.appendChild(container);
-    }
+    })();
 
     async function openDiscoverModal(summaryData) {
         let modal = document.getElementById('discoverGlobalModal');
@@ -15478,6 +16499,8 @@ function showTargetHitDetailsModal(options={}) {
         }
         showModal(modal);
     }
+    // Expose openDiscoverModal globally so other click handlers can call it safely
+    try { window.openDiscoverModal = openDiscoverModal; } catch(_) {}
 
     // Function to show local/portfolio shares that met global criteria
     function openLocalSharesModal(summaryData) {

@@ -132,22 +132,54 @@ function runGlobal52WeekScan() {
     const settings = settingsRes.data;
     if (!settings) { Logger.log('[HiLo] No settings data returned'); return; }
     const allAsxData = fetchAllAsxData_(ss);
-
-    const minPrice = Number(settings.hiLoMinimumPrice || 0) || 0;
-    const minMarketCap = Number(settings.hiLoMinimumMarketCap || 0) || 0;
+    // Sanitize numeric filters (strip currency symbols, commas, trailing text like 'c', 'cents')
+    function sanitizeNumber_(v) {
+      if (v === null || v === undefined) return null;
+      if (typeof v === 'number') return isFinite(v) ? v : null;
+      let s = String(v).trim();
+      if (!s) return null;
+      // Common user formats: '0.50', '$0.50', '0.50c', '50c', '0.50 cents'
+      s = s.replace(/\$/g,'');
+      // If value ends with 'c' and no dollar sign & no decimal, treat as cents
+      const centsMatch = /^([0-9]+)c$/i.exec(s);
+      if (centsMatch) {
+        const centsVal = Number(centsMatch[1]);
+        return isFinite(centsVal) ? (centsVal / 100) : null;
+      }
+      s = s.replace(/cents?/i,'');
+      s = s.replace(/,/g,'');
+      s = s.replace(/[^0-9.+-]/g,'');
+      if (!s) return null;
+      const n = Number(s);
+      return isFinite(n) ? n : null;
+    }
+    const rawMinPrice = sanitizeNumber_(settings.hiLoMinimumPrice);
+    const rawMinMcap  = sanitizeNumber_(settings.hiLoMinimumMarketCap);
+    const appliedMinPrice = (rawMinPrice != null && rawMinPrice > 0) ? rawMinPrice : 0;
+    const appliedMinMarketCap = (rawMinMcap != null && rawMinMcap > 0) ? rawMinMcap : 0;
     const emailEnabled = !!settings.emailAlertsEnabled;
+    Logger.log('[HiLo] Filters -> minPrice=%s minMcap=%s (raw values price=%s mcap=%s)', appliedMinPrice, appliedMinMarketCap, settings.hiLoMinimumPrice, settings.hiLoMinimumMarketCap);
 
     const highObjs = []; const lowObjs = [];
+    let scanned = 0, afterFilter = 0;
+    let skippedBelowPrice = 0, skippedBelowMcap = 0, skippedInvalid = 0;
     allAsxData.forEach(stock => {
-      if (!stock.code || isNaN(stock.livePrice) || stock.livePrice < minPrice || (stock.marketCap!=null && stock.marketCap < minMarketCap)) return;
-      const reachedLow = (!isNaN(stock.low52) && stock.livePrice <= stock.low52);
-      const reachedHigh = (!isNaN(stock.high52) && stock.livePrice >= stock.high52);
+      scanned++;
+      // Normalize numeric fields from sheet parsing which can produce NaN/null
+      const live = (stock.livePrice != null && !isNaN(stock.livePrice)) ? Number(stock.livePrice) : null;
+      const mcap = (stock.marketCap != null && !isNaN(stock.marketCap)) ? Number(stock.marketCap) : null;
+      if (!stock.code || live == null || live <= 0) { skippedInvalid++; return; }
+      if (appliedMinPrice && live < appliedMinPrice) { skippedBelowPrice++; return; }
+      if (appliedMinMarketCap && mcap != null && mcap < appliedMinMarketCap) { skippedBelowMcap++; return; }
+      afterFilter++;
+      const reachedLow = (!isNaN(stock.low52) && stock.low52 != null && live <= stock.low52);
+      const reachedHigh = (!isNaN(stock.high52) && stock.high52 != null && live >= stock.high52);
       if (reachedLow || reachedHigh) {
         // Normalize object shape for frontend cards
         const o = {
           code: stock.code,
           name: stock.name || stock.companyName || null,
-            live: isNaN(stock.livePrice)? null : stock.livePrice,
+            live: live,
           high52: isNaN(stock.high52)? null : stock.high52,
           low52: isNaN(stock.low52)? null : stock.low52,
           marketCap: (stock.marketCap!=null && !isNaN(stock.marketCap)) ? stock.marketCap : null,
@@ -157,8 +189,29 @@ function runGlobal52WeekScan() {
         if (reachedHigh) highObjs.push(o);
       }
     });
-
-    writeGlobalHiLoDoc_(highObjs, lowObjs); // Persist rich objects
+    Logger.log('[HiLo] Scan rows -> scanned=%s passedFilters=%s highs=%s lows=%s', scanned, afterFilter, highObjs.length, lowObjs.length);
+    if (appliedMinPrice) {
+      Logger.log('[HiLo] Skip reasons -> belowPrice=%s belowMcap=%s invalidRows=%s', skippedBelowPrice, skippedBelowMcap, skippedInvalid);
+    }
+    // Final defensive pass: remove any entries that somehow violate filters (belt & braces)
+    function enforcePostFilters(arr) {
+      return arr.filter(o => {
+        if (!o) return false;
+        if (appliedMinPrice && (o.live == null || o.live < appliedMinPrice)) return false;
+        if (appliedMinMarketCap && o.marketCap != null && o.marketCap < appliedMinMarketCap) return false;
+        if (o.live == null || o.live <= 0) return false;
+        return true;
+      });
+    }
+    const filteredHighs = enforcePostFilters(highObjs);
+    const filteredLows  = enforcePostFilters(lowObjs);
+    const removedHighs = highObjs.length - filteredHighs.length;
+    const removedLows  = lowObjs.length - filteredLows.length;
+    if (removedHighs || removedLows) {
+      Logger.log('[HiLo][PostFilter] Removed highs=%s lows=%s due to late filter enforcement', removedHighs, removedLows);
+    }
+    // Persist filtered arrays only
+    writeGlobalHiLoDoc_(filteredHighs, filteredLows, { minPrice: appliedMinPrice, minMarketCap: appliedMinMarketCap });
 
     // Backward-compatible email expects arrays of codes only
     const highsCodes = highObjs.map(o=>o.code);
@@ -180,10 +233,16 @@ function fetchAllAsxData_(spreadsheet) {
   const map = headers.reduce((acc,h,i)=>{acc[h]=i;return acc;},{});
   const nameKey = ['Company Name','CompanyName','Name'].find(k=> map[k]!=null);
   const prevKey = map['PrevDayClose']!=null ? 'PrevDayClose' : (map['PrevClose']!=null ? 'PrevClose' : null);
+  // Expand live price detection to handle alternative column headers used in some sheets
+  const liveKey = (function(){
+    const candidates = ['LivePrice','Last','LastPrice','Last Trade','LastTrade','Last trade'];
+    for (let k of candidates) { if (map[k] != null) return k; }
+    return 'LivePrice';
+  })();
   return values.map(r => ({
     code: r[map['ASX Code']],
     name: nameKey ? r[map[nameKey]] : null,
-    livePrice: parseFloat(r[map['LivePrice']]),
+    livePrice: (map[liveKey] != null) ? parseFloat(r[map[liveKey]]) : parseFloat(r[map['LivePrice']]),
     high52: parseFloat(r[map['High52']]),
     low52: parseFloat(r[map['Low52']]),
     marketCap: parseFloat(r[map['MarketCap']]),
@@ -191,7 +250,7 @@ function fetchAllAsxData_(spreadsheet) {
   }));
 }
 
-function writeGlobalHiLoDoc_(highsArr, lowsArr) {
+function writeGlobalHiLoDoc_(highsArr, lowsArr, filtersMeta) {
   // Accept either arrays of codes (string) or rich objects
   function normalizeEntry(e) {
     if (e == null) return null;
@@ -215,10 +274,11 @@ function writeGlobalHiLoDoc_(highsArr, lowsArr) {
     highs: highsObjs,
     lows: lowsObjs,
     highCodes: highsObjs.map(o=>o.code), // backward-compatible simple arrays
-    lowCodes: lowsObjs.map(o=>o.code)
+    lowCodes: lowsObjs.map(o=>o.code),
+    filters: filtersMeta ? { minPrice: filtersMeta.minPrice ?? null, minMarketCap: filtersMeta.minMarketCap ?? null } : null
   };
   // Provide explicit mask so we don't accumulate stale fields
-  const mask = ['updatedAt','highs','lows','highCodes','lowCodes'];
+  const mask = ['updatedAt','highs','lows','highCodes','lowCodes','filters.minPrice','filters.minMarketCap'];
   return commitCentralDoc_(['artifacts', APP_ID, 'alerts', 'HI_LO_52W'], data, mask);
 }
 
@@ -243,29 +303,36 @@ function sendHiLoEmailIfAny_(results, settings) {
 
 function runGlobalMoversScan() {
   try {
-    // Market hours guard (Sydney ~10:00 to 16:59) – adjust if needed
     const now = new Date();
     const hourSydney = Number(Utilities.formatDate(now, ASX_TIME_ZONE, 'HH'));
-    if (hourSydney < 10 || hourSydney >= 17) {
-      console.log('[MoversScan] Outside market hours (' + hourSydney + 'h). Skipping.');
-      return;
-    }
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const settingsRes = fetchGlobalSettingsFromFirestore();
-  if (!settingsRes.ok) { console.log('[MoversScan] Failed to load global settings: ' + settingsRes.error); return; }
-  const settings = settingsRes.data;
-  if (!settings) { console.log('[MoversScan] No settings data; aborting.'); return; }
-    const thresholds = normalizeDirectionalThresholds_(settings);
+    const inHours = (hourSydney >= 10 && hourSydney < 17);
+    if (!inHours) console.log('[MoversScan] Outside market hours (' + hourSydney + 'h) – still executing for freshness.');
+
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    // Guaranteed latest settings via multi-attempt loop
+    const guaranteed = fetchGlobalSettingsGuaranteedLatest_(3, 200);
+    if (!guaranteed.ok || !guaranteed.data) { console.log('[MoversScan] FAILED settings fetch: ' + (guaranteed.error || 'unknown')); return; }
+    const settings = guaranteed.data;
+    let thresholds = normalizeDirectionalThresholds_(settings);
     if (!thresholds.anyActive) {
       console.log('[MoversScan] No directional thresholds configured; clearing doc.');
-      writeGlobalMoversDoc_([], [], thresholds);
-      return;
-    }
+      writeGlobalMoversDoc_([], [], thresholds, { source: 'scan', reason: 'no-thresholds', inHours, settingsSnapshot: settings, settingsUpdateTime: guaranteed.updateTime || null, settingsFetchAttempts: guaranteed.attempts, fetchStrategy: 'guaranteed-loop' + (guaranteed.fallback ? '+fallback' : '') });
+      return; }
+
     const priceRows = fetchPriceRowsForMovers_(spreadsheet);
     if (!priceRows.length) { console.log('[MoversScan] No price data rows; aborting.'); return; }
+
+    // Micro-final read to catch last-millisecond updates
+    const microFinal = fetchGlobalSettingsFromFirestore({ noCache: true });
+    if (microFinal.ok && microFinal.data && microFinal.updateTime && guaranteed.updateTime && microFinal.updateTime > guaranteed.updateTime) {
+      console.log('[MoversScan] Micro-final settings newer: ' + guaranteed.updateTime + ' -> ' + microFinal.updateTime);
+      thresholds = normalizeDirectionalThresholds_(microFinal.data);
+    }
+
     const { upMovers, downMovers } = evaluateMovers_(priceRows, thresholds);
-    console.log('[MoversScan] Evaluation complete', { up: upMovers.length, down: downMovers.length, total: upMovers.length + downMovers.length, thresholds });
-    writeGlobalMoversDoc_(upMovers, downMovers, thresholds);
+    console.log('[MoversScan] Evaluation complete', { up: upMovers.length, down: downMovers.length, total: upMovers.length + downMovers.length, thresholds, inHours, settingsUpdateTime: microFinal.updateTime || guaranteed.updateTime });
+
+  writeGlobalMoversDoc_(upMovers, downMovers, thresholds, { source: 'scan', inHours, settingsSnapshot: settings, settingsUpdateTime: microFinal.updateTime || guaranteed.updateTime || null, settingsFetchAttempts: guaranteed.attempts, fetchStrategy: 'guaranteed-loop+micro-final' + (guaranteed.fallback ? '+fallback' : '') });
   } catch (err) {
     console.error('[MoversScan] ERROR:', err && err.stack || err);
   }
@@ -289,9 +356,24 @@ function fetchPriceRowsForMovers_(spreadsheet) {
   if (values.length < 2) return [];
   const headers = values.shift();
   const map = {}; headers.forEach((h,i)=> map[h]=i);
-  const codeIdx = map['ASX Code'];
-  const liveIdx = map['LivePrice'];
-  const prevIdx = map['PrevDayClose'] != null ? map['PrevDayClose'] : map['PrevClose'];
+  // Resolve code column (tolerate slight header variants)
+  const codeIdx = (function(){
+    const candidates = ['ASX Code','ASXCode','Code'];
+    for (let k of candidates) { if (map[k] != null) return map[k]; }
+    return map['ASX Code'];
+  })();
+  // Resolve live price column (support alternative headings)
+  const liveIdx = (function(){
+    const candidates = ['LivePrice','Last','LastPrice','Last Trade','LastTrade','Last trade','Price','Current'];
+    for (let k of candidates) { if (map[k] != null) return map[k]; }
+    return map['LivePrice'];
+  })();
+  // Resolve previous close column (support multiple spellings)
+  const prevIdx = (function(){
+    const candidates = ['PrevDayClose','PrevClose','Previous Close','PreviousClose','Prev'];
+    for (let k of candidates) { if (map[k] != null) return map[k]; }
+    return map['PrevDayClose'] != null ? map['PrevDayClose'] : map['PrevClose'];
+  })();
   const nameIdx = (map['Company Name']!=null) ? map['Company Name'] : (map['CompanyName']!=null ? map['CompanyName'] : (map['Name']!=null ? map['Name'] : null));
   if (codeIdx == null || liveIdx == null || prevIdx == null) return [];
   const rows = [];
@@ -339,7 +421,7 @@ function evaluateMovers_(rows, thresholds) {
   return { upMovers: upObjs, downMovers: downObjs };
 }
 
-function writeGlobalMoversDoc_(upMovers, downMovers, thresholds) {
+function writeGlobalMoversDoc_(upMovers, downMovers, thresholds, meta) {
   // upMovers / downMovers expected as arrays of rich objects from evaluateMovers_
   function norm(o){
     if (!o) return null;
@@ -377,11 +459,32 @@ function writeGlobalMoversDoc_(upMovers, downMovers, thresholds) {
       downPercent: thresholds.downPercent ?? null,
       downDollar: thresholds.downDollar ?? null,
       minimumPrice: thresholds.minimumPrice ?? null
-    }
+    },
+    appliedMeta: meta ? {
+      source: meta.source || 'scan',
+      inHours: meta.inHours === true,
+      settingsSnapshot: meta.settingsSnapshot ? sanitizeSettingsSnapshotForMeta_(meta.settingsSnapshot) : null,
+      settingsUpdateTime: meta.settingsUpdateTime || null,
+      settingsFetchAttempts: meta.settingsFetchAttempts != null ? meta.settingsFetchAttempts : null,
+      fetchStrategy: meta.fetchStrategy || null
+    } : null
   };
   const mask = [ 'updatedAt','upCount','downCount','totalCount','up','down','upCodes','downCodes','upSample','downSample',
-    'thresholds.upPercent','thresholds.upDollar','thresholds.downPercent','thresholds.downDollar','thresholds.minimumPrice' ];
+    'thresholds.upPercent','thresholds.upDollar','thresholds.downPercent','thresholds.downDollar','thresholds.minimumPrice',
+    'appliedMeta.source','appliedMeta.inHours','appliedMeta.settingsSnapshot.globalPercentIncrease','appliedMeta.settingsSnapshot.globalDollarIncrease','appliedMeta.settingsSnapshot.globalPercentDecrease','appliedMeta.settingsSnapshot.globalDollarDecrease','appliedMeta.settingsSnapshot.globalMinimumPrice','appliedMeta.settingsUpdateTime','appliedMeta.settingsFetchAttempts','appliedMeta.fetchStrategy' ];
   return commitCentralDoc_(['artifacts', APP_ID, 'alerts', 'GLOBAL_MOVERS'], data, mask);
+}
+
+// Strip volatile or large fields from settings snapshot to keep doc lean
+function sanitizeSettingsSnapshotForMeta_(s){
+  if (!s) return null;
+  return {
+    globalPercentIncrease: s.globalPercentIncrease != null ? Number(s.globalPercentIncrease) : null,
+    globalDollarIncrease: s.globalDollarIncrease != null ? Number(s.globalDollarIncrease) : null,
+    globalPercentDecrease: s.globalPercentDecrease != null ? Number(s.globalPercentDecrease) : null,
+    globalDollarDecrease: s.globalDollarDecrease != null ? Number(s.globalDollarDecrease) : null,
+    globalMinimumPrice: s.globalMinimumPrice != null ? Number(s.globalMinimumPrice) : null
+  };
 }
 
 // (Test harness removed for production)
@@ -495,22 +598,23 @@ function getSettingsFromSheet_(spreadsheet, options) {
  * Fetch a single Firestore document (native REST) and return plain object of fields.
  * @param {string[]} pathSegments e.g. ['artifacts', APP_ID, 'users', userId, 'settings']
  */
-function _fetchFirestoreDocument_(pathSegments) {
+function _fetchFirestoreDocument_(pathSegments, options) {
   const token = ScriptApp.getOAuthToken();
   const docPath = pathSegments.map(encodeURIComponent).join('/');
   const url = FIRESTORE_BASE + '/projects/' + FIREBASE_PROJECT_ID + '/databases/(default)/documents/' + docPath;
   try {
-    const resp = UrlFetchApp.fetch(url, {
-      method: 'get',
-      headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
-      muteHttpExceptions: true
-    });
+    const headers = { Authorization: 'Bearer ' + token, Accept: 'application/json' };
+    if (options && options.noCache) {
+      headers['Cache-Control'] = 'no-cache';
+      headers['Pragma'] = 'no-cache';
+    }
+    const resp = UrlFetchApp.fetch(url, { method: 'get', headers, muteHttpExceptions: true });
     const status = resp.getResponseCode();
     const text = resp.getContentText();
     if (status === 404) return { ok: false, status, notFound: true };
     let parsed = null; try { parsed = text ? JSON.parse(text) : null; } catch(_) {}
     if (status >= 200 && status < 300 && parsed) {
-      return { ok: true, status, data: _fromFsFields_(parsed.fields || {}) };
+      return { ok: true, status, data: _fromFsFields_(parsed.fields || {}), updateTime: parsed.updateTime || null };
     }
     return { ok: false, status, error: text };
   } catch (err) {
@@ -558,18 +662,256 @@ function _fromFsValue_(v) {
  *  }
  * @return {{ok:boolean,data?:Object,error?:string,status?:number}}
  */
-function fetchGlobalSettingsFromFirestore() {
+function fetchGlobalSettingsFromFirestore(options) {
   try {
-    const res = _fetchFirestoreDocument_(GLOBAL_SETTINGS_DOC_SEGMENTS);
+    const res = _fetchFirestoreDocument_(GLOBAL_SETTINGS_DOC_SEGMENTS, options || {});
     if (!res.ok) {
       if (res.notFound) return { ok:false, error:'Global settings doc not found', status:404 };
       return { ok:false, error: res.error || ('status=' + res.status), status: res.status };
     }
-    return { ok:true, data: res.data, status: res.status };
+    return { ok:true, data: res.data, status: res.status, updateTime: res.updateTime || null };
   } catch (e) {
     return { ok:false, error:String(e) };
   }
 }
+
+function fetchGlobalSettingsGuaranteedLatest_(attempts, delayMs) {
+  const maxAttempts = Math.max(1, attempts || 3);
+  const sleepMs = Math.min(1000, delayMs == null ? 250 : delayMs);
+  let best = null;
+  for (let i=0;i<maxAttempts;i++) {
+    // First attempt: normal fetch (no cache bust) to avoid any unforeseen param-based routing issues; subsequent attempts use noCache.
+    const useNoCache = (i > 0);
+    const r = fetchGlobalSettingsFromFirestore(useNoCache ? { noCache: true } : {});
+    if (r.ok && r.data) {
+      if (!best || !best.updateTime || (r.updateTime && r.updateTime > best.updateTime)) {
+        best = { attempt: i+1, updateTime: r.updateTime || null, data: r.data, status: r.status };
+      }
+    } else {
+      console.log('[MoversScan][settings-fetch] attempt=' + (i+1) + ' failed status=' + (r && r.status) + ' err=' + (r && r.error));
+    }
+    if (i < maxAttempts - 1) Utilities.sleep(sleepMs);
+  }
+  if (!best) {
+    // Final fallback: single direct fetch without cache bust in case earlier failures were due to timing or transient network.
+    const fallback = fetchGlobalSettingsFromFirestore();
+    if (fallback.ok && fallback.data) {
+      console.log('[MoversScan][settings-fetch] fallback single fetch succeeded after primary attempts failed.');
+      return { ok:true, data: fallback.data, updateTime: fallback.updateTime || null, attempts: maxAttempts + 1, fallback: true };
+    }
+    return { ok:false, error:'Failed to fetch settings after attempts=' + maxAttempts + ' + fallback', attempts: maxAttempts, fallbackTried: true };
+  }
+  return { ok:true, data: best.data, updateTime: best.updateTime, attempts: maxAttempts };
+}
+
+/**
+ * Sync a user's profile settings document into the central globalSettings document.
+ * This is intended to be called by the Apps Script server (privileged) when a user
+ * updates their per-user profile settings and client-side writes are blocked by rules.
+ *
+ * Usage: either call syncUserProfileToCentralGlobalSettings(userId) from other
+ * Apps Script code, or expose via doPost/doGet (careful with auth) or a time-based
+ * trigger that periodically reconciles changes.
+ *
+ * Behavior:
+ *  - Reads /artifacts/{APP_ID}/users/{userId}/profile/settings via REST helper
+ *  - Normalizes the canonical keys used by the backend scans (directional & hi/lo)
+ *  - Writes an object to /artifacts/{APP_ID}/config/globalSettings using commitCentralDoc_
+ *  - Adds updatedAt and updatedByUserId metadata
+ *
+ * @param {string} userId Firestore user id to read profile settings from
+ * @return {{ok:boolean,status?:number,error?:string,written?:object}}
+ */
+function syncUserProfileToCentralGlobalSettings(userId) {
+  if (!userId) return { ok: false, error: 'userId required' };
+  try {
+    // Prefer the canonical profile/settings path but fall back to legacy location for compatibility.
+    const primaryDocPath = ['artifacts', APP_ID, 'users', userId, 'profile', 'settings'];
+    let res = _fetchFirestoreDocument_(primaryDocPath);
+    let pathUsed = primaryDocPath.join('/');
+    if (!res.ok) {
+      if (res.notFound) {
+        // Try legacy fallback path used by older clients
+        const legacyDocPath = ['artifacts', APP_ID, 'users', userId, 'settings', 'general'];
+        const legacyRes = _fetchFirestoreDocument_(legacyDocPath);
+        if (legacyRes.ok) {
+          res = legacyRes;
+          pathUsed = legacyDocPath.join('/');
+        }
+      }
+    }
+    if (!res.ok) {
+      if (res.notFound) return { ok: false, status: 404, error: 'User profile settings not found', pathTried: pathUsed };
+      return { ok: false, status: res.status, error: res.error || 'Failed to fetch user profile settings', pathTried: pathUsed };
+    }
+    const data = res.data || {};
+    // Only copy the expected global keys to avoid crowding central config with user-specific metadata
+    const centralPayload = {
+      globalPercentIncrease: data.globalPercentIncrease != null ? Number(data.globalPercentIncrease) : null,
+      globalDollarIncrease: data.globalDollarIncrease != null ? Number(data.globalDollarIncrease) : null,
+      globalPercentDecrease: data.globalPercentDecrease != null ? Number(data.globalPercentDecrease) : null,
+      globalDollarDecrease: data.globalDollarDecrease != null ? Number(data.globalDollarDecrease) : null,
+      globalMinimumPrice: data.globalMinimumPrice != null ? Number(data.globalMinimumPrice) : null,
+      hiLoMinimumPrice: data.hiLoMinimumPrice != null ? Number(data.hiLoMinimumPrice) : null,
+      hiLoMinimumMarketCap: data.hiLoMinimumMarketCap != null ? Number(data.hiLoMinimumMarketCap) : null,
+      emailAlertsEnabled: (typeof data.emailAlertsEnabled === 'boolean') ? data.emailAlertsEnabled : (data.emailAlertsEnabled != null ? !!data.emailAlertsEnabled : null),
+      alertEmailRecipients: data.alertEmailRecipients != null ? String(data.alertEmailRecipients) : null,
+      // metadata
+      updatedByUserId: userId,
+      updatedAt: new Date()
+    };
+
+    // Remove nulls from payload - commitCentralDoc_ will accept nulls but we prefer explicit nulls for masking
+    // Build an explicit mask covering only the keys we are writing
+    const mask = [
+      'globalPercentIncrease','globalDollarIncrease','globalPercentDecrease','globalDollarDecrease','globalMinimumPrice',
+      'hiLoMinimumPrice','hiLoMinimumMarketCap','emailAlertsEnabled','alertEmailRecipients','updatedByUserId','updatedAt'
+    ];
+
+    const commitRes = commitCentralDoc_(GLOBAL_SETTINGS_DOC_SEGMENTS, centralPayload, mask);
+    if (!commitRes.ok) {
+      // Provide useful diagnostic output for troubleshooting in the execution log
+      Logger.log('[SyncUser->Central] commit failed for user=%s path=%s status=%s error=%s', userId, pathUsed, commitRes.status, commitRes.error);
+      return { ok: false, status: commitRes.status, error: commitRes.error || 'Failed to commit central settings', written: centralPayload };
+    }
+    Logger.log('[SyncUser->Central] commit succeeded for user=%s path=%s status=%s', userId, pathUsed, commitRes.status);
+    return { ok: true, status: commitRes.status, written: centralPayload, pathUsed };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+/**
+ * Convenience wrapper to reconcile the calling user's settings into central globalSettings.
+ * This function inspects the active user's email address from Session.getActiveUser().getEmail()
+ * or may be called directly with a userId. When run as a triggered Apps Script (or via
+ * the web app with appropriate auth), it will write the profile settings into central config.
+ *
+ * @param {{userId?:string}} options
+ * @return {{ok:boolean,error?:string,status?:number}}
+ */
+function reconcileCurrentUserSettings(options) {
+  const userId = (options && options.userId) ? options.userId : null;
+  try {
+    if (!userId) return { ok: false, error: 'userId required' };
+    const res = syncUserProfileToCentralGlobalSettings(userId);
+    if (!res.ok) return { ok: false, error: res.error || 'sync failed', status: res.status };
+    return { ok: true, status: res.status };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+// ------------------------------------------------------------------
+// Web endpoint: secure on-save trigger
+// ------------------------------------------------------------------
+/**
+ * doPost entrypoint for Apps Script Web App.
+ * Expects calls from authenticated users (OAuth) and will attempt to
+ * sync that user's profile settings into the central globalSettings doc.
+ *
+ * Security notes (see deployment section below):
+ *  - Deploy the Web App with "Execute as: Me (script owner)" so the script
+ *    has privileges to write central documents. Restrict access to only
+ *    "Only myself" or to your domain, or use OAuth with ID token checks.
+ *  - The function will attempt to resolve a userId either from the request
+ *    body (options.userId) or from an authenticated mapping supplied by you.
+ *
+ * For ease of use, the client should call this endpoint after successfully
+ * saving the per-user profile settings document. The client must include
+ * its OAuth token in the Authorization header if calling directly via fetch.
+ *
+ * @param {Object} e Apps Script event object
+ * @returns {ContentService.TextOutput} JSON response
+ */
+function doPost(e) {
+  try {
+    // Best-effort body parse (support both form and raw JSON)
+    // Support payloads from fetch() with JSON body and from form-encoded submits.
+    let payload = {};
+    try {
+      if (e && e.postData && e.postData.contents) {
+        // postData.contents is raw text; try JSON.parse first
+        try {
+          payload = JSON.parse(e.postData.contents);
+        } catch (jsonErr) {
+          // not JSON - try to parse as URL-encoded form body (userId=...&foo=...)
+          try {
+            const raw = String(e.postData.contents || '');
+            const parts = raw.split('&').map(p => p.split('='));
+            payload = {};
+            parts.forEach(pair => {
+              if (!pair || !pair.length) return;
+              const k = decodeURIComponent((pair[0] || '').replace(/\+/g, ' '));
+              const v = decodeURIComponent((pair[1] || '').replace(/\+/g, ' '));
+              payload[k] = v;
+            });
+          } catch (_) {
+            // fallback to parameters
+            payload = e.parameter || {};
+          }
+        }
+      } else if (e && e.parameter && Object.keys(e.parameter).length) {
+        payload = e.parameter;
+      } else {
+        payload = {};
+      }
+    } catch (err) {
+      payload = {};
+    }
+
+    // Accept either { userId } or { userId: '...', settings: {...} }
+    const userId = (payload && payload.userId) ? String(payload.userId) : null;
+    if (!userId) {
+      // If client sent an ID token or auth info we could resolve it here - but for now require userId
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'userId required in payload' })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // If settings were provided inline, attempt to write them directly to the central doc
+    // otherwise, sync from the user's profile document in Firestore.
+    let result;
+    if (payload && payload.settings && typeof payload.settings === 'object') {
+      // Normalize and write settings directly
+      try {
+        // Build central payload similar to syncUserProfileToCentralGlobalSettings
+        const s = payload.settings;
+        const centralPayload = {
+          globalPercentIncrease: s.globalPercentIncrease != null ? Number(s.globalPercentIncrease) : null,
+          globalDollarIncrease: s.globalDollarIncrease != null ? Number(s.globalDollarIncrease) : null,
+          globalPercentDecrease: s.globalPercentDecrease != null ? Number(s.globalPercentDecrease) : null,
+          globalDollarDecrease: s.globalDollarDecrease != null ? Number(s.globalDollarDecrease) : null,
+          globalMinimumPrice: s.globalMinimumPrice != null ? Number(s.globalMinimumPrice) : null,
+          hiLoMinimumPrice: s.hiLoMinimumPrice != null ? Number(s.hiLoMinimumPrice) : null,
+          hiLoMinimumMarketCap: s.hiLoMinimumMarketCap != null ? Number(s.hiLoMinimumMarketCap) : null,
+          emailAlertsEnabled: (typeof s.emailAlertsEnabled === 'boolean') ? s.emailAlertsEnabled : (s.emailAlertsEnabled != null ? !!s.emailAlertsEnabled : null),
+          alertEmailRecipients: s.alertEmailRecipients != null ? String(s.alertEmailRecipients) : null,
+          updatedByUserId: userId,
+          updatedAt: new Date()
+        };
+        const mask = [
+          'globalPercentIncrease','globalDollarIncrease','globalPercentDecrease','globalDollarDecrease','globalMinimumPrice',
+          'hiLoMinimumPrice','hiLoMinimumMarketCap','emailAlertsEnabled','alertEmailRecipients','updatedByUserId','updatedAt'
+        ];
+        const commitRes = commitCentralDoc_(GLOBAL_SETTINGS_DOC_SEGMENTS, centralPayload, mask);
+        if (!commitRes.ok) {
+          result = { ok: false, status: commitRes.status, error: commitRes.error || 'Failed to commit provided settings', written: centralPayload };
+        } else {
+          result = { ok: true, status: commitRes.status, written: centralPayload };
+        }
+      } catch (err) {
+        result = { ok: false, error: String(err) };
+      }
+    } else {
+      // No inline settings: read the user's profile settings doc and sync
+      result = syncUserProfileToCentralGlobalSettings(userId);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 
 /**
  * Synchronize a user's settings from Firestore into the legacy Settings sheet (SELF-HEALING).
@@ -871,15 +1213,28 @@ function deleteTriggers() {
 
 function doGet(e) {
   try {
+    // Support JSONP callbacks to allow browser clients to bypass strict CORS
+    // preflight issues by using a <script> tag insertion as a fallback.
+    // Usage: /exec?userId=...&callback=__myCallback
     const params = e && e.parameter ? e.parameter : {};
-    const requestedCode = params.stockCode ? String(params.stockCode).trim().toUpperCase() : '';
-    const compact = params.compact === 'true' || params.compact === '1';
     const callback = params.callback ? String(params.callback).trim() : '';
+    // If callback provided and a userId is present, attempt a synchronous sync and return JSONP.
+    if (callback && params.userId) {
+      const uid = String(params.userId);
+      const res = syncUserProfileToCentralGlobalSettings(uid);
+      const json = JSON.stringify(res || { ok: false, error: 'no-result' });
+      const wrapped = callback + '(' + json + ');';
+      return ContentService.createTextOutput(wrapped).setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+  // Otherwise behave as a price feed endpoint as before (non-JSONP GET)
+  // reuse `params` and `callback` parsed above
+  const requestedCode = params.stockCode ? String(params.stockCode).trim().toUpperCase() : '';
+  const compact = params.compact === 'true' || params.compact === '1';
 
     const data = buildPriceFeedArray_(requestedCode, { compact });
     const json = JSON.stringify(data);
 
-    // JSONP fallback if callback specified
+    // JSONP fallback if callback specified (callback variable parsed earlier)
     if (callback) {
       const wrapped = `${callback}(${json});`;
       return ContentService.createTextOutput(wrapped).setMimeType(ContentService.MimeType.JAVASCRIPT);

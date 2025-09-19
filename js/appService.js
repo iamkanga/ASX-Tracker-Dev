@@ -30,7 +30,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
 
             // If we don't have live price data and the modal input is empty, wait briefly for live price
                 if (!livePriceData && (!currentPriceInput || !currentPriceInput.value || parseFloat(currentPriceInput.value) <= 0)) {
-                    console.log('[SAVE DEBUG] Waiting for live price data for new share: ' + shareName);
+                    try { window.logDebug && window.logDebug('[SAVE DEBUG] Waiting for live price data for new share: ' + shareName); } catch(_) {}
 
                 // Wait up to 2 seconds for live price to become available
                 let attempts = 0;
@@ -45,7 +45,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                                    (updatedCurrentPriceInput && updatedCurrentPriceInput.value && parseFloat(updatedCurrentPriceInput.value) > 0);
 
                     if (hasPrice) {
-                        console.log('[SAVE DEBUG] Live price now available for: ' + shareName);
+                        try { window.logDebug && window.logDebug('[SAVE DEBUG] Live price now available for: ' + shareName); } catch(_) {}
                         break;
                     }
 
@@ -54,7 +54,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
 
                 if (attempts >= maxAttempts) {
                     // If we timed out waiting for live price, proceed with save (best-effort)
-                    console.log('[SAVE DEBUG] Timeout waiting for live price, proceeding with save anyway');
+                    try { window.logDebug && window.logDebug('[SAVE DEBUG] Timeout waiting for live price, proceeding with save anyway'); } catch(_) {}
                 }
             }
         }
@@ -137,6 +137,31 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
         lastPriceUpdateTime: new Date().toISOString(),
         starRating: form ? form.starRating : (window.shareRatingSelect ? parseInt(window.shareRatingSelect.value) : 0)
     };
+
+    // Duplicate check: when creating a new share (no selectedShareDocId), block save if a share with
+    // the same ASX code already exists. This must run at save time so it also handles selections made
+    // via autocomplete.
+    if (!window.selectedShareDocId) {
+        try {
+            const existing = getAllSharesData() || [];
+            const codeUpper = (shareData.shareName || '').toUpperCase();
+            if (existing.some(s => (s && (s.shareName || '').toUpperCase()) === codeUpper)) {
+                // Show clear toast and abort save
+                try {
+                    if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+                        window.ToastManager.info('A share with this code already exists. Save blocked.', 3000);
+                    } else if (typeof window.showCustomAlert === 'function') {
+                        window.showCustomAlert('A share with this code already exists. Save blocked.', 2500);
+                    } else {
+                        console.warn('Save blocked: duplicate share', codeUpper);
+                    }
+                } catch(_) {}
+                return; // Abort save to prevent duplicates and data loss
+            }
+        } catch (e) {
+            console.warn('[SaveShare] Duplicate detection failed, proceeding with save. err=', e && e.message ? e.message : e);
+        }
+    }
 
     // Set entry price logic
     if (window.selectedShareDocId) {
@@ -501,9 +526,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             const sharesCollection = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             // DEBUG: log entry price sources for diagnose
                 // log entry price sources (trimmed)
-                try {
-                    console.log('[SAVE DEBUG][appService] Creating share:', { shareName: shareName, formCurrentPrice: form ? form.currentPrice : undefined, shareDataEntryPrice: shareData.entryPrice, shareDataEnteredPriceRaw: shareData.enteredPriceRaw, livePricesForCode: (window.livePrices || {})[shareName.toUpperCase()] });
-                } catch(_) {}
+                try { window.logDebug && window.logDebug('[SAVE DEBUG][appService] Creating share:', { shareName: shareName, formCurrentPrice: form ? form.currentPrice : undefined, shareDataEntryPrice: shareData.entryPrice, shareDataEnteredPriceRaw: shareData.enteredPriceRaw, livePricesForCode: (window.livePrices || {})[shareName.toUpperCase()] }); } catch(_) {}
             const docRef = await firestore.addDoc(sharesCollection, { ...shareData, userId: currentUserId });
             const newShareId = docRef.id;
 

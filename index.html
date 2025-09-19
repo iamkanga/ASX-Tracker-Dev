@@ -705,6 +705,31 @@
             <div class="modal-header-with-icon">
                 <h2 id="targetHitModalTitle">Notifications</h2>
             </div>
+            <!-- Notifications Summary (top, non-accordion) -->
+            <div id="notificationsSummary" class="notifications-summary" aria-live="polite">
+                <div class="summary-row">
+                    <div class="summary-chip target-chip" data-section="target-hits" title="Target alerts in your portfolio">
+                        <span class="chip-label">Targets</span>
+                        <span class="chip-count" id="summaryTargetCount">0</span>
+                    </div>
+                    <div class="summary-chip gainers-chip" data-section="global-gainers" title="Global gainers meeting thresholds">
+                        <span class="chip-label">Gainers</span>
+                        <span class="chip-count" id="summaryGainersCount">0</span>
+                    </div>
+                    <div class="summary-chip losers-chip" data-section="global-losers" title="Global losers meeting thresholds">
+                        <span class="chip-label">Losers</span>
+                        <span class="chip-count" id="summaryLosersCount">0</span>
+                    </div>
+                    <div class="summary-chip high52-chip" data-section="high52" title="52-week highs">
+                        <span class="chip-label">52W High</span>
+                        <span class="chip-count" id="summaryHigh52Count">0</span>
+                    </div>
+                    <div class="summary-chip low52-chip" data-section="low52" title="52-week lows">
+                        <span class="chip-label">52W Low</span>
+                        <span class="chip-count" id="summaryLow52Count">0</span>
+                    </div>
+                </div>
+            </div>
             <!-- Notifications Accordion -->
             <div id="notificationsAccordion" class="accordion notifications-accordion">
                 <!-- Target Hit Alert Section -->
@@ -719,14 +744,25 @@
                         </div>
                     </div>
                 </div>
-                <!-- Global Market Movers Section -->
-                <div class="accordion-section" data-section="global-movers">
-                    <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="notif-panel-movers" id="notif-header-movers">
-                        <span class="accordion-title">Global Market Movers</span>
+                <!-- Global Gainers Section -->
+                <div class="accordion-section" data-section="global-gainers">
+                    <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="notif-panel-gainers" id="notif-header-gainers">
+                        <span class="accordion-title">Global Gainers</span>
                         <span class="accordion-caret" aria-hidden="true"></span>
                     </button>
-                    <div id="notif-panel-movers" class="accordion-panel" role="region" aria-labelledby="notif-header-movers">
-                        <div id="globalMoversContainer" class="notifications-sublist"></div>
+                    <div id="notif-panel-gainers" class="accordion-panel" role="region" aria-labelledby="notif-header-gainers">
+                        <div id="globalGainersContainer" class="notifications-sublist"></div>
+                    </div>
+                </div>
+
+                <!-- Global Losers Section -->
+                <div class="accordion-section" data-section="global-losers">
+                    <button type="button" class="accordion-toggle" aria-expanded="false" aria-controls="notif-panel-losers" id="notif-header-losers">
+                        <span class="accordion-title">Global Losers</span>
+                        <span class="accordion-caret" aria-hidden="true"></span>
+                    </button>
+                    <div id="notif-panel-losers" class="accordion-panel" role="region" aria-labelledby="notif-header-losers">
+                        <div id="globalLosersContainer" class="notifications-sublist"></div>
                     </div>
                 </div>
                 <!-- 52-Week Highs Section -->

@@ -6,6 +6,19 @@
     transition: opacity 0.3s ease, filter 0.3s ease;
 }
 
+/*
+    Theme color variables (Global)
+    Unify positive/negative colors across movers, 52-week cards, chips, and accents.
+    Values provided by design: Green #06FF4F, Red #FF3131
+*/
+:root {
+    --positive: #06FF4F;
+    --negative: #FF3131;
+    /* Aliases used by segmented toggles and other legacy rules */
+    --green-color: var(--positive);
+    --red-color: var(--negative);
+}
+
 /* =================================================================== */
 /* Final overrides: ensure header toggle and timestamp visually match icons */
 /* Place at file end so these rules win against earlier declarations */
@@ -399,6 +412,59 @@
     opacity: 0.45;
     filter: grayscale(0.7);
 }
+
+/* Minimal card styles for Global Alerts renderer */
+.notification-list-host { max-height: 48vh; overflow: hidden; position: relative; }
+.notification-list-host .notification-list-inner { overflow-y: auto; max-height: 48vh; padding: 8px 6px; display: flex; flex-direction: column; gap: 8px; }
+.notification-card { background: var(--card-bg, #fff); border: 1px solid var(--border-color, rgba(0,0,0,0.1)); border-radius: 8px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: block; cursor: pointer; color: var(--text-color, #222); }
+.notification-card .notification-card-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.notification-card .notification-card-left { display:flex; flex-direction:column; gap:2px; }
+.notification-card .notification-code { font-weight:700; font-size:0.98rem; }
+.notification-card .notification-name { font-size:0.85rem; color:var(--ghosted-text,#666); }
+.notification-card .notification-card-right { display:flex; flex-direction:column; align-items:flex-end; gap:2px; min-width:110px; }
+.notification-card .notification-card-right > * { text-align: right; }
+.notification-card .notification-live { font-weight:700; }
+.notification-card .notification-change, .notification-card .notification-live, .notification-card .notification-thresh { text-align: right; }
+.notification-card .notification-thresh .label { color: var(--ghosted-text,#666); margin-right: 4px; }
+.notification-card .notification-pct.up { color:var(--positive,#0a8a00); }
+.notification-card .notification-pct.down { color:var(--negative,#d9534f); }
+.notification-card .notification-name.small { font-size: 0.78rem; opacity: 0.9; }
+/* Trigger chip badges */
+.notification-chip {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    border-radius: 999px;
+    line-height: 1.2;
+    background: var(--chip-bg, #eef1f5);
+    color: var(--text-color, #333);
+    border: 1px solid var(--chip-border, rgba(0,0,0,0.08));
+}
+.notification-chip.up, .notification-chip.high {
+    background: color-mix(in srgb, var(--positive, #0a8a00) 12%, transparent);
+    background-color: rgba(10,138,0,0.08); /* fallback */
+    color: var(--positive, #0a8a00);
+}
+.notification-chip.down, .notification-chip.low {
+    background: color-mix(in srgb, var(--negative, #d9534f) 12%, transparent);
+    background-color: rgba(217,83,79,0.08); /* fallback */
+    color: var(--negative, #d9534f);
+}
+.global-summary-card { background: linear-gradient(90deg, rgba(255,255,255,0.98), rgba(250,250,250,0.98)); border:1px solid var(--border-color, rgba(0,0,0,0.08)); }
+.mover-card.up .notification-change, .mover-card.up .notification-pct { color: var(--positive,#0a8a00); }
+.mover-card.down .notification-change, .mover-card.down .notification-pct { color: var(--negative,#d9534f); }
+.hilo-card.high { border-left: 4px solid var(--positive,#0a8a00); }
+.hilo-card.low { border-left: 4px solid var(--negative,#d9534f); }
+/* Make mover cards visually consistent with 52W cards */
+.mover-card.up { border-left: 4px solid var(--positive,#0a8a00); }
+.mover-card.down { border-left: 4px solid var(--negative,#d9534f); }
+.notification-list-host { border: 1px solid var(--border-color); border-radius: 8px; }
+.global-summary-card .global-summary-inner { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap: wrap; }
+.global-summary-card .global-summary-actions { display:flex; gap:6px; align-items: center; flex-wrap: wrap; }
+.global-summary-card .global-summary-actions .btn { padding:6px 10px; border-radius:6px; border:1px solid rgba(0,0,0,0.06); background:var(--btn-bg,#f6f6f6); cursor:pointer; display: inline-flex; align-items: center; justify-content: center; line-height: 1.2; white-space: nowrap; font-weight: 700; }
+.global-summary-card .global-summary-count { font-size:1.2rem; font-weight:800; }
+
 /* --- 52-Week Low Alerts Section (Refined) --- */
 .low52-section-header {
     display: flex;
@@ -407,6 +473,17 @@
     margin-top: 18px;
     margin-bottom: 6px;
 }
+    /* Notifications: section explainer header */
+    .section-explainer {
+        font-size: 0.85rem;
+        color: var(--muted-text, #888);
+        margin-bottom: 8px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .section-explainer:hover {
+        color: var(--text, #ddd);
+    }
 
 /* Themed arrow icon for 52-week alert title */
 .low52-arrow-icon {
@@ -828,8 +905,9 @@
 
 /* Ensure internal accordions don't create independent scroll zones */
 .single-scroll-modal .accordion { max-height: none; }
-.single-scroll-modal .accordion-panel { max-height: none; padding: 0; }
-.single-scroll-modal .accordion-toggle { padding: 12px 8px; }
+/* Restrict this override to the Add/Edit Share form so other accordions (e.g., Notifications) still collapse properly */
+#shareFormSection .single-scroll-modal .accordion-panel { max-height: none; padding: 0; }
+#shareFormSection .single-scroll-modal .accordion-toggle { padding: 12px 8px; }
 
 /* Small viewport tweak: reduce modal top margin and padding to fit mobile screens */
 @media (max-width: 640px) {
@@ -4261,7 +4339,7 @@ body.theme-muted-grey {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
     text-align: left;
     font-variant-numeric: tabular-nums;
     position: absolute;
@@ -6935,6 +7013,9 @@ table td.live-price-cell.negative-change {
 .accordion-toggle { all:unset; cursor:pointer; display:flex; align-items:center; justify-content:space-between; width:100%; padding:14px 16px; box-sizing:border-box; font-size:0.98rem; font-weight:600; color:var(--text-color); position:relative; }
 .accordion-toggle:focus-visible { outline:2px solid var(--accent-color,#a49393); outline-offset:2px; border-radius:4px; }
 .accordion-title { pointer-events:none; }
+/* Allow clicks on Global Movers subsection headers (they reuse accordion-title for typography) */
+.movers-section-title.accordion-title { pointer-events:auto; cursor:pointer; }
+.movers-section-title { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; font-weight:600; }
 .accordion-caret { width:16px; height:16px; position:relative; display:inline-block; }
 .accordion-caret::before { content:""; position:absolute; inset:0; margin:auto; width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:9px solid var(--text-color); transition: transform .28s ease; transform-origin:center; }
 .accordion-section.open .accordion-caret::before { transform: rotate(180deg); }
@@ -8701,6 +8782,99 @@ body.dark-theme .target-hit-details-modal .modal-content {
     background-color: var(--background-color); /* Match overall background for list */
 }
 
+/* Ensure notifications sublists (movers and 52-week) scroll within modal */
+.notifications-accordion .accordion-section.open > .accordion-panel {
+    max-height: 50vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.notifications-sublist {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Section color accents for Notifications accordion */
+.notifications-accordion .accordion-section[data-section="global-gainers"] {
+    --section-accent: var(--positive, #0a8a00);
+}
+.notifications-accordion .accordion-section[data-section="global-losers"] {
+    --section-accent: var(--negative, #d9534f);
+}
+.notifications-accordion .accordion-section[data-section="high52"] {
+    --section-accent: var(--positive, #0a8a00);
+}
+.notifications-accordion .accordion-section[data-section="low52"] {
+    --section-accent: var(--negative, #d9534f);
+}
+.notifications-accordion .accordion-section[data-section] {
+    /* Stronger accent using theme colors */
+    border-left: 4px solid var(--section-accent, var(--accent-color, #888));
+}
+.notifications-accordion .accordion-section.open[data-section] {
+    border-color: color-mix(in srgb, var(--section-accent, var(--accent-color, #888)) 60%, transparent);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08), inset 0 0 0 1px color-mix(in srgb, var(--section-accent, #888) 25%, transparent);
+}
+
+/* Section explainer text injected by JS */
+.notifications-accordion .section-explainer {
+    font-size: 12px;
+    color: var(--ghosted-text, #666);
+    margin: 4px 0 8px;
+}
+
+/* Simplified 52W cards: hide chips and change rows inside hilo cards */
+.hilo-card .notification-chip,
+.hilo-card .notification-change { display: none !important; }
+.hilo-card .notification-thresh .label { opacity: 0.85; margin-right: 4px; }
+
+/* Bottom row for 52W Low/High with smaller font */
+.notification-card.hilo-card .notification-card-bottom.hilo-bottom-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 0.74rem;
+    line-height: 1.15;
+    color: var(--text-color);
+}
+.notification-card.hilo-card .notification-card-bottom .label {
+    opacity: 0.8;
+    margin-right: 4px;
+}
+.notification-card.hilo-card .hilo-low { text-align: left; }
+.notification-card.hilo-card .hilo-high { text-align: right; margin-left: auto; }
+
+/* Mover bottom row: compact change display (dollar and percent) */
+.notification-card.mover-card .notification-card-bottom.mover-bottom-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 0.78rem;
+    line-height: 1.15;
+    color: var(--ghosted-text, #666);
+}
+.notification-card.mover-card .mover-change.up { color: var(--positive, #06FF4F); }
+.notification-card.mover-card .mover-change.down { color: var(--negative, #FF3131); }
+
+/* Hide legacy inline elements when using bottom row */
+.notification-card.mover-card .notification-pct,
+.notification-card.mover-card .notification-change,
+.notification-card.mover-card .notification-chip { display: none !important; }
+
+/* Dark-theme readability */
+body.dark-theme .notification-card.mover-card .notification-card-bottom.mover-bottom-row {
+    color: var(--ghosted-text, #aaaaaa);
+}
+
+/* Dark-theme solid color for 52W bottom row for better readability */
+body.dark-theme .notification-card.hilo-card .notification-card-bottom.hilo-bottom-row {
+    color: var(--text-color);
+}
+
 .target-hit-shares-list .no-alerts-message {
     padding: 20px;
     font-style: italic;
@@ -10144,6 +10318,87 @@ body.dark-theme .alert-item {
 #livePriceTimestampContainer { align-self: end; display: inline-flex; flex-direction: column; align-items: flex-end; }
 
 /* === CSS Fixes: Complete visual cleanup and layout fixes === */
+
+/* Notifications Summary (top chips above accordion) */
+.notifications-summary {
+    margin: 8px 4px 12px 4px;
+    padding: 8px 6px;
+    border-radius: 8px;
+    background: var(--card-bg, #f8f8f8);
+    border: 1px solid var(--border-color, #ddd);
+}
+.notifications-summary .summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.notifications-summary .summary-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    background: var(--button-bg-muted, #eee);
+    color: var(--text-color, #333);
+    border: 1px solid var(--border-color, #ddd);
+    cursor: pointer;
+    user-select: none;
+}
+.notifications-summary .summary-chip .chip-count {
+    min-width: 1.5em;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.notifications-summary .summary-chip.target-chip { border-left: 4px solid var(--accent-color, #a49393); }
+.notifications-summary .summary-chip.gainers-chip { border-left: 4px solid var(--positive, #0a8a00); }
+.notifications-summary .summary-chip.losers-chip { border-left: 4px solid var(--negative, #d9534f); }
+.notifications-summary .summary-chip.high52-chip { border-left: 4px solid var(--positive, #0a8a00); }
+.notifications-summary .summary-chip.low52-chip { border-left: 4px solid var(--negative, #d9534f); }
+
+@media (max-width: 640px) {
+    .notifications-summary { margin: 6px 2px 10px 2px; padding: 6px 4px; }
+    .notifications-summary .summary-chip { padding: 5px 8px; font-size: 0.86rem; }
+}
+
+/* Dark-theme refinements: summary chips and explainers */
+body.dark-theme .notifications-summary {
+    background: var(--card-bg, #1a1a1a);
+    border-color: var(--border-color, #2a2a2a);
+}
+body.dark-theme .notifications-summary .summary-chip {
+    background: color-mix(in srgb, var(--button-bg-muted, #2a2a2a) 70%, transparent);
+    background-color: rgba(255,255,255,0.03); /* fallback */
+    border-color: var(--border-color, #333);
+    color: var(--text-color, #e6e6e6);
+}
+@media (hover:hover) {
+    .notifications-summary .summary-chip:hover {
+        background: var(--surface-hover, rgba(0,0,0,0.03));
+    }
+    body.dark-theme .notifications-summary .summary-chip:hover {
+        background: rgba(255,255,255,0.06);
+        border-color: color-mix(in srgb, var(--border-color, #333) 70%, transparent);
+    }
+}
+.notifications-summary .summary-chip:focus-visible {
+    outline: 2px solid var(--accent-color, #a49393);
+    outline-offset: 2px;
+}
+body.dark-theme .notifications-summary .summary-chip .chip-count { color: inherit; opacity: 0.95; }
+
+/* Explainer text contrast in dark mode */
+body.dark-theme .section-explainer,
+body.dark-theme .notifications-accordion .section-explainer {
+    color: var(--muted-text, #b7b7b7);
+}
+body.dark-theme .section-explainer:hover { color: var(--text-color, #f0f0f0); }
+
+/* 52W bottom-row readability in dark mode */
+body.dark-theme .notification-card.hilo-card .notification-card-bottom.hilo-bottom-row {
+    color: var(--ghosted-text, #aaaaaa);
+}
 
 /* Fix 1: Remove unwanted border from Add New Share plus icon (comprehensive) */
 #addShareHeaderBtn,

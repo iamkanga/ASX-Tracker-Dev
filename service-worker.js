@@ -89,8 +89,10 @@ self.addEventListener('fetch', (event) => {
         // IMPORTANT: Do NOT cache Firestore API calls (or any dynamic API calls).
         // These are real-time data streams or dynamic queries and should always go to the network.
         if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('script.google.com/macros')) {
-            // console.log(`Service Worker: Bypassing cache for dynamic API request: ${event.request.url}`);
-            event.respondWith(fetch(event.request));
+            // Bypass cache for dynamic API calls but guard network failures to avoid unhandled promise rejections.
+            event.respondWith(
+                fetch(event.request).catch(() => new Response('Service Unavailable', { status: 503, statusText: 'Service Unavailable' }))
+            );
             return; // Exit early, don't try to cache this
         }
 
@@ -167,8 +169,10 @@ self.addEventListener('fetch', (event) => {
         );
     } else {
         // For non-GET requests (e.g., POST, PUT, DELETE), just fetch from network
-        // Do NOT cache these requests as they modify data.
-        event.respondWith(fetch(event.request));
+        // Do NOT cache these requests as they modify data. Guard failures to avoid unhandled rejections.
+        event.respondWith(
+            fetch(event.request).catch(() => new Response('Service Unavailable', { status: 503, statusText: 'Service Unavailable' }))
+        );
     }
 });
 

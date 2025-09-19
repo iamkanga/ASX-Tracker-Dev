@@ -414,8 +414,57 @@
     };
 
     window.Rendering.enforceTargetHitStyling = function enforceTargetHitStyling() {
-        if (targetHitIconDismissed) return; const enabledList = (sharesAtTargetPrice||[]).map(s=>s.id).sort(); const signature = enabledList.join(','); const existingHighlights = ((shareTableBody? shareTableBody.querySelectorAll('tr.target-hit-alert').length : 0) + (mobileShareCardsContainer? mobileShareCardsContainer.querySelectorAll('.mobile-card.target-hit-alert').length : 0)); if (enforceTargetHitStyling.__lastSig === signature && existingHighlights === enabledList.length) return; enforceTargetHitStyling.__lastSig = signature; const enabledIds = new Set(enabledList); const rows = shareTableBody ? Array.from(shareTableBody.querySelectorAll('tr[data-doc-id]')) : []; const cards = mobileShareCardsContainer ? Array.from(mobileShareCardsContainer.querySelectorAll('.mobile-card[data-doc-id]')) : []; let applied=0, removed=0; rows.forEach(r=>{ const id = r.dataset.docId; if (enabledIds.has(id)) { if (!r.classList.contains('target-hit-alert')) { r.classList.add('target-hit-alert'); applied++; } } else if (r.classList.contains('target-hit-alert')) { r.classList.remove('target-hit-alert'); removed++; } }); cards.forEach(c=>{ const id=c.dataset.docId; if (enabledIds.has(id)) { if (!c.classList.contains('target-hit-alert')) { c.classList.add('target-hit-alert'); applied++; } } else if (c.classList.contains('target-hit-alert')) { c.classList.remove('target-hit-alert'); removed++; } }); try{ console.log('[Diag][enforceTargetHitStyling] applied:', applied, 'removed:', removed, 'enabledIdsCount:', enabledIds.size); }catch(_){ }
+        try {
+            const dismissed = !!(typeof window !== 'undefined' && window.targetHitIconDismissed);
+            if (dismissed) return;
+
+            const satp = (typeof window !== 'undefined' && Array.isArray(window.sharesAtTargetPrice)) ? window.sharesAtTargetPrice : [];
+            const enabledList = satp.map(s => s && s.id).filter(Boolean).sort();
+            const signature = enabledList.join(',');
+
+            // Resolve DOM containers safely (avoid bare identifiers that can throw ReferenceError)
+            const tableBody = (typeof window !== 'undefined' && window.shareTableBody) || document.querySelector('#shareTable tbody') || null;
+            const mobileContainer = (typeof window !== 'undefined' && typeof window.getMobileShareCardsContainer === 'function')
+                ? window.getMobileShareCardsContainer()
+                : ((typeof window !== 'undefined' && window.mobileShareCardsContainer) || document.getElementById('mobileShareCards') || null);
+
+            const existingHighlights = ((tableBody ? tableBody.querySelectorAll('tr.target-hit-alert').length : 0)
+                + (mobileContainer ? mobileContainer.querySelectorAll('.mobile-card.target-hit-alert').length : 0));
+
+            if (enforceTargetHitStyling.__lastSig === signature && existingHighlights === enabledList.length) return;
+            enforceTargetHitStyling.__lastSig = signature;
+
+            // If nothing to operate on yet, exit quietly
+            if (!tableBody && !mobileContainer) return;
+
+            const enabledIds = new Set(enabledList);
+            const rows = tableBody ? Array.from(tableBody.querySelectorAll('tr[data-doc-id]')) : [];
+            const cards = mobileContainer ? Array.from(mobileContainer.querySelectorAll('.mobile-card[data-doc-id]')) : [];
+
+            let applied = 0, removed = 0;
+            rows.forEach(r => {
+                const id = r && r.dataset ? r.dataset.docId : null;
+                if (!id) return;
+                if (enabledIds.has(id)) {
+                    if (!r.classList.contains('target-hit-alert')) { r.classList.add('target-hit-alert'); applied++; }
+                } else if (r.classList.contains('target-hit-alert')) { r.classList.remove('target-hit-alert'); removed++; }
+            });
+            cards.forEach(c => {
+                const id = c && c.dataset ? c.dataset.docId : null;
+                if (!id) return;
+                if (enabledIds.has(id)) {
+                    if (!c.classList.contains('target-hit-alert')) { c.classList.add('target-hit-alert'); applied++; }
+                } else if (c.classList.contains('target-hit-alert')) { c.classList.remove('target-hit-alert'); removed++; }
+            });
+
+            try { console.log('[Diag][enforceTargetHitStyling] applied:', applied, 'removed:', removed, 'enabledIdsCount:', enabledIds.size); } catch(_) {}
+        } catch (err) {
+            try { console.warn('enforceTargetHitStyling: guarded failure', err); } catch(_) {}
+        }
     };
+
+    // Provide a global alias so any unqualified calls (e.g., in classic scripts) do not throw ReferenceError
+    try { window.enforceTargetHitStyling = window.Rendering.enforceTargetHitStyling; } catch(_) {}
 
     window.Rendering.renderAsxCodeButtons = function renderAsxCodeButtons() {
         if (!asxCodeButtonsContainer) { console.error('renderAsxCodeButtons: asxCodeButtonsContainer element not found.'); return; }
