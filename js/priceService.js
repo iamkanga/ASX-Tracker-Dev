@@ -199,6 +199,95 @@ export async function fetchLivePrices(opts = {}) {
         }
         try { if (typeof window.onLivePricesUpdated === 'function') window.onLivePricesUpdated(); } catch(_) {}
         window._livePricesLoaded = true;
+        // If this is the first successful live-price application, perform the
+        // unified-loader -> render -> reveal transition so users never see a
+        // partially rendered watchlist.
+        try {
+            if (!window.__firstLivePricesApplied) {
+                // Mark as applied immediately so subsequent callers are no-ops
+                window.__firstLivePricesApplied = true;
+
+                // Perform removal + render in a DOM-safe async tick. This handles
+                // cases where fetchLivePrices runs before the DOM is fully parsed
+                // or before the rendering module has fully initialized.
+                const doFirstLiveTransition = () => {
+                    try {
+                        // Hide/remove unified loader elements (desktop and mobile) if present.
+                        // Always remove the dynamically-injected loader by id first to avoid races
+                        // where the centralized helper isn't yet available.
+                        try {
+                            try {
+                                const dynId = (typeof window !== 'undefined' && window.__dynamicUnifiedLoaderId) ? window.__dynamicUnifiedLoaderId : 'dynamic-unified-loader';
+                                const dynEl = document.getElementById(dynId);
+                                if (dynEl && dynEl.parentNode) dynEl.parentNode.removeChild(dynEl);
+                            } catch(inner) { /* non-fatal */ }
+                            if (typeof window.__removeStaticUnifiedLoader === 'function') {
+                                try { window.__removeStaticUnifiedLoader(); } catch(_) {}
+                            } else {
+                                try {
+                                    const loaderDesktop = document.querySelector('tbody.unified-loader-container');
+                                    if (loaderDesktop && loaderDesktop.parentNode) loaderDesktop.parentNode.removeChild(loaderDesktop);
+                                } catch(inner) { console.warn('First-live: failed to remove desktop loader', inner); }
+                                try {
+                                    const loaderMobile = document.querySelector('.unified-loader-mobile');
+                                    if (loaderMobile && loaderMobile.parentNode) loaderMobile.parentNode.removeChild(loaderMobile);
+                                } catch(inner) { console.warn('First-live: failed to remove mobile loader', inner); }
+                                try {
+                                    const dyn = document.getElementById(window.__dynamicUnifiedLoaderId || 'dynamic-unified-loader');
+                                    if (dyn && dyn.parentNode) dyn.parentNode.removeChild(dyn);
+                                } catch(inner) { console.warn('First-live: failed to remove dynamic loader', inner); }
+                            }
+                        } catch(inner) { console.warn('First-live: loader removal failed', inner); }
+
+                        // Call the canonical render once now that live prices are available.
+                        // Guard in case renderWatchlist isn't yet defined; schedule a retry briefly.
+                        const invokeRender = () => {
+                            try {
+                                if (typeof window.renderWatchlist === 'function') {
+                                    window.renderWatchlist();
+                                } else if (typeof window.Rendering !== 'undefined' && typeof window.Rendering.renderWatchlist === 'function') {
+                                    window.Rendering.renderWatchlist();
+                                } else {
+                                    // If render isn't ready yet, try again shortly (one retry)
+                                    setTimeout(() => {
+                                        try {
+                                            if (typeof window.renderWatchlist === 'function') window.renderWatchlist();
+                                            else if (typeof window.Rendering !== 'undefined' && typeof window.Rendering.renderWatchlist === 'function') window.Rendering.renderWatchlist();
+                                        } catch(e) { console.warn('First-render: retry renderWatchlist failed', e); }
+                                    }, 60);
+                                }
+                            } catch(e) { console.warn('First-render: render invocation failed', e); }
+                        };
+
+                        invokeRender();
+
+                        // Reveal the containers by adding a simple class; CSS will show them
+                        try {
+                            const section = document.getElementById('stockWatchlistSection');
+                            if (section) section.classList.add('watchlist-visible');
+                        } catch(inner) { console.warn('First-live: failed to add watchlist-visible', inner); }
+                    } catch(e) {
+                        console.warn('First-live transition failed', e);
+                    }
+                };
+
+                // If DOM not yet ready, wait for DOMContentLoaded to run the transition.
+                try {
+                    if (typeof document !== 'undefined' && document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', () => setTimeout(doFirstLiveTransition, 20), { once: true });
+                    } else {
+                        // Run on next tick to avoid blocking current flow and to give
+                        // the rendering module a short moment to initialize.
+                        setTimeout(doFirstLiveTransition, 20);
+                    }
+                } catch(e) {
+                    // Fallback: try immediate call
+                    try { setTimeout(doFirstLiveTransition, 50); } catch(_) {}
+                }
+            }
+        } catch(e) {
+            console.warn('First-live handling failed', e);
+        }
         try { if (typeof window.hideSplashScreenIfReady === 'function') window.hideSplashScreenIfReady(); } catch(_) {}
         try { if (typeof window.recomputeTriggeredAlerts === 'function') window.recomputeTriggeredAlerts(); } catch(_) {}
         try { if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner(); } catch(_) {}

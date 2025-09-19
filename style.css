@@ -477,6 +477,34 @@
     .section-explainer {
         font-size: 0.85rem;
         color: var(--muted-text, #888);
+/* =================================================================== */
+/* Unified loader default behavior (visual fix):                        */
+/* - Keep the unified loader elements visible by default (in HTML).     */
+/* - Hide the actual share containers until the first live-price fetch. */
+/* - Reveal containers when #stockWatchlistSection has .watchlist-visible */
+/* =================================================================== */
+
+/* Hide the table container and mobile cards by default so users only see
+   the single unified loader while data is being fetched. */
+#stockWatchlistSection .table-container,
+#stockWatchlistSection #mobileShareCards {
+    display: none;
+}
+
+/* When the watchlist is ready, add .watchlist-visible to the section to
+   show both table and mobile containers. JS will also set inline display
+   values as appropriate after rendering. */
+#stockWatchlistSection.watchlist-visible .table-container {
+    display: block; /* allow the table to appear; the table element will manage row display */
+}
+#stockWatchlistSection.watchlist-visible #mobileShareCards {
+    display: block;
+}
+
+/* Keep the unified loader visible while the containers are hidden. The
+   loader sits outside .table-container and will remain visible until JS
+   explicitly hides/removes it after first render. */
+
         margin-bottom: 8px;
         cursor: pointer;
         user-select: none;
@@ -946,6 +974,12 @@
 .single-scroll-modal .modal-header-with-icon + * {
     margin-top: 8px;
 }
+
+/* Stale-While-Revalidate visual helpers */
+@keyframes asx-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.stale-updating-indicator { color: var(--ghosted-text, #777); font-weight:600; }
+.updating-stale #livePriceTimestamp { opacity: 0.8; }
+
 
 /* Sort Picker Modal Styles */
 .sort-picker-modal { max-width: 640px; width: 100%; padding: 0; }

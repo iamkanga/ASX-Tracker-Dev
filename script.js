@@ -25,6 +25,31 @@ if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-
     try { asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll'); } catch(_) {}
 }
 
+// Dynamic unified loader injection
+try {
+    // Only inject when the HTML doesn't already have a static loader element
+    if (!document.getElementById('dynamic-unified-loader')) {
+        const injectTarget = document.getElementById('stockWatchlistSection') || document.querySelector('main.container') || document.body;
+        if (injectTarget) {
+            const wrapper = document.createElement('div');
+            wrapper.id = 'dynamic-unified-loader';
+            wrapper.className = 'unified-loader-wrapper';
+            wrapper.setAttribute('aria-hidden', 'false');
+            wrapper.style.textAlign = 'center';
+            wrapper.style.padding = '20px';
+            wrapper.innerHTML = '<div class="loader" style="display:inline-block; vertical-align:middle; width:28px; height:28px; margin-right:8px;"></div><span class="unified-loader-text">Loading watchlist…</span>';
+            // Place near top of watchlist section when possible
+            try {
+                const tableContainer = document.querySelector('#stockWatchlistSection .table-container');
+                if (tableContainer && tableContainer.parentNode) tableContainer.parentNode.insertBefore(wrapper, tableContainer.nextSibling);
+                else injectTarget.appendChild(wrapper);
+            } catch(_) { injectTarget.appendChild(wrapper); }
+            // Expose a helper to remove the injected loader
+            window.__dynamicUnifiedLoaderId = 'dynamic-unified-loader';
+        }
+    }
+} catch(_) {}
+
 // Frontend helper: call the Apps Script web app to trigger a privileged sync
 // Replace DEPLOYED_WEBAPP_URL with your actual deployed Apps Script Web App URL
 window.triggerServerSideGlobalSettingsSync = async function triggerServerSideGlobalSettingsSync(userId) {
@@ -208,7 +233,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 gm.__serverThresholds = server; gm.__localThresholds = local; gm.__effectiveThresholds = effective;
                 gm.upFiltered = upFiltered; gm.downFiltered = downFiltered; gm.filteredTotal = upFiltered.length + downFiltered.length;
                 if (window.DEBUG_MODE) {
-                    try { console.log('[GlobalMovers][filter]', { rawTotal, filteredTotal: gm.filteredTotal, effective, server, local }); } catch(_){}
+                    try { /* GlobalMovers filter diagnostics removed */ } catch(_){ }
                 }
             }
         } catch (fErr) { console.warn('[GlobalMovers][filter] frontend filtering failed', fErr); }
@@ -610,17 +635,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         const ov = document.getElementById('sidebarOverlay') || document.querySelector('.sidebar-overlay');
         if (ov) {
-            // Attempt to enumerate known listener types by dispatch test events counter (best-effort)
-            let fired = 0;
-            const testHandler = () => { fired++; };
-            ov.addEventListener('mousedown', testHandler, { once: true });
-            const evt = new Event('mousedown');
-            ov.dispatchEvent(evt);
-            // fired should be 1 because our once listener ran; actual sidebar close listener also runs silently
-            // Provide console confirmation marker for QA
-            debugLog('[Diag] Overlay singleton check executed. Build marker present.');
-        } else {
-            console.warn('[Diag] Overlay element not found during singleton check.');
+            // Lightweight listener probe (no diagnostic logging)
+            try { ov.addEventListener('mousedown', () => {}, { once: true }); ov.dispatchEvent(new Event('mousedown')); } catch(_) {}
         }
     } catch(e) { console.warn('[Diag] Overlay singleton check failed', e); }
 });
@@ -675,11 +691,7 @@ try {
 } catch(_) {}
 
 // ...existing code...
-// --- (Aggressive Enforcement Patch Removed) ---
-// The previous patch has been removed as the root cause of the UI issues,
-// a syntax error in index.html, has been corrected. The standard application
-// logic should now function as intended.
-// --- END REMOVED PATCH ---
+// Historical enforcement patch removed (cleanup)
 
 
 // [Copilot Update] Source control helper
@@ -694,7 +706,7 @@ function makeFilesAvailableToSourceControl() {
     if (window && window.showCustomAlert) {
         window.showCustomAlert('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')', 2000);
     } else {
-        console.log('Files are ready for source control. (Count: ' + sourceControlMakeAvailableCount + ')');
+        // no-op fallback for non-UI environments
     }
     // To actually add to git, run: git init; git add .; git commit -m "Initial commit"
 }
@@ -828,37 +840,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Helper: scroll main content to specified position in a resilient way
     function scrollMainToTop(instant = false, targetPosition = 0) {
-        console.log('[SCROLL DEBUG] scrollMainToTop called, instant:', instant, 'targetPosition:', targetPosition);
-
         try {
             // Prefer the global smart implementation defined by UI module if present
             if (typeof window !== 'undefined' && window.scrollMainToTop && window.scrollMainToTop !== scrollMainToTop) {
-                console.log('[SCROLL DEBUG] Using global scrollMainToTop');
-                try { window.scrollMainToTop(instant, targetPosition); return; } catch (err) { console.warn('[SCROLL DEBUG] global scrollMainToTop failed', err); }
+                try { window.scrollMainToTop(instant, targetPosition); return; } catch (err) { /* ignore */ }
             }
             const el = document.querySelector('main.container');
-            console.log('[SCROLL DEBUG] main.container element found:', !!el);
             if (el) {
-                console.log('[SCROLL DEBUG] Scrolling main.container to position:', targetPosition, 'current scrollTop:', el.scrollTop);
                 try {
                     el.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
-                    console.log('[SCROLL DEBUG] Successfully called el.scrollTo on main.container');
                     return;
-                } catch(error) {
-                    console.error('[SCROLL DEBUG] Error scrolling main.container:', error);
-                }
+                } catch(_) {}
             }
-        } catch (e) {
-            console.error('[SCROLL DEBUG] Error in scrollMainToTop:', e);
-        }
+        } catch (_) {}
 
-        console.log('[SCROLL DEBUG] Falling back to window.scrollTo, targetPosition:', targetPosition, 'current window scrollY:', window.scrollY);
-        try {
-            window.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
-            console.log('[SCROLL DEBUG] Successfully called window.scrollTo');
-        } catch(error) {
-            console.error('[SCROLL DEBUG] Error with window.scrollTo:', error);
-        }
+        try { window.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' }); } catch(_) {}
     }
 
     // Portfolio view logic
@@ -996,24 +992,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
         if (plClass === 'neutral') {
-            console.log('[DEBUG] Neutral card assigned:', {
-                shareId: share.id,
-                shareName: share.shareName,
-                rowPL,
-                avgPrice,
-                priceNow,
-                shares
-            });
+            try { /* neutral card assignment */ } catch(_) {}
         }
             const todayClass = (todayChange > 0) ? 'positive' : (todayChange < 0 ? 'negative' : 'neutral');
 
-            // DEBUG: Log rowPL and plClass for each card
-            console.log('Portfolio Card Debug:', {
-                shareId: share.id,
-                shareName: share.shareName,
-                rowPL,
-                plClass
-            });
+            // per-card debug removed
 
             // Card HTML (collapsed/expandable)
             // Border color is controlled purely by CSS via .portfolio-card.{positive|negative|neutral}
@@ -1592,7 +1575,7 @@ try {
 
 // --- GLOBAL VARIABLES ---
 let DEBUG_MODE = false; // Quiet by default; enable via window.toggleDebug(true)
-window.toggleDebug = (on) => { DEBUG_MODE = !!on; console.log('Debug mode', DEBUG_MODE ? 'ENABLED' : 'DISABLED'); };
+window.toggleDebug = (on) => { DEBUG_MODE = !!on; };
 
 // Custom logging function to control verbosity
 function logDebug(message, ...optionalParams) {
@@ -2400,7 +2383,7 @@ function updateLivePriceTimestamp(ts) {
         labelEl.style.display = 'block';
         labelEl.style.visibility = 'visible';
         labelEl.style.opacity = '1';
-        console.log('Label element found and made visible');
+                // label element initialized
     } else {
         console.error('Label element not found!');
     }
@@ -2419,14 +2402,7 @@ try {
 document.addEventListener('DOMContentLoaded', function() {
     updateLivePriceTimestamp(Date.now());
 
-    // Note: Timestamp debug logging now handled in hideSplashScreen()
-
-
-    // Note: Timestamp positioning and click handler now handled in hideSplashScreen()
-
-    // NOTE: Live price timestamp positioning is now handled manually in HTML and CSS
-    // The timestamp is positioned in the top-right of the header via HTML structure and CSS
-    // The following JavaScript positioning code has been disabled to prevent conflicts
+    // Stale snapshot handshake removed; snapshot restoration happens synchronously on module load.
 
 });
 
@@ -8516,6 +8492,14 @@ function bindHeaderInteractiveElements() {
  */
 function renderWatchlist() {
     logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + currentSelectedWatchlistIds[0]);
+
+    // Allow rendering immediately if we restored stale snapshot data (SWR flow).
+    // Otherwise, prevent partial renders until the first successful live-price fetch
+    // has been applied. This avoids showing partially-populated rows/cards.
+    if (!window.__firstLivePricesApplied && !window.__usedStaleData) {
+        logDebug('Render: Skipping renderWatchlist until first live prices are applied (no stale snapshot).');
+        return;
+    }
 
     // Ensure view mode is correct before rendering - use centralized manager
     try {
@@ -16863,7 +16847,9 @@ function initializeApp() {
 
                 // Restore user's last state from localStorage
                 restorePersistedState();
-                logDebug('AuthState: User email: ' + user.email);
+
+                // Snapshot restore happens synchronously on module load; UI shows unified loader until live data arrives.
+                logDebug && logDebug('AuthState: User email: ' + user.email);
                 try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
                 // Use dynamic update instead of hard-coded label so it reflects current selection
                 updateMainTitle();

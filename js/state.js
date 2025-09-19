@@ -27,10 +27,71 @@ if (typeof window !== 'undefined') {
     window.currentMobileViewMode = currentMobileViewMode;
 }
 
+// LocalStorage keys for stale-while-revalidate snapshots
+const LS_KEY_LIVE_PRICES = 'asx_last_livePrices_v1';
+const LS_KEY_ALL_SHARES = 'asx_last_allSharesData_v1';
+
+// On module load attempt to restore last-known snapshots so the app can render from stale data immediately.
+try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+        const lpRaw = localStorage.getItem(LS_KEY_LIVE_PRICES);
+        if (lpRaw) {
+            try {
+                const parsed = JSON.parse(lpRaw);
+                if (parsed && typeof parsed === 'object') {
+                    livePrices = parsed;
+                    window.livePrices = livePrices;
+                    // Mark that we rendered from stale data until fresh data arrives
+                    window.__usedStaleData = true;
+                }
+            } catch (e) { /* ignore JSON errors */ }
+        }
+        const asRaw = localStorage.getItem(LS_KEY_ALL_SHARES);
+        if (asRaw) {
+            try {
+                const parsed = JSON.parse(asRaw);
+                if (Array.isArray(parsed)) {
+                    allSharesData = parsed;
+                    window.allSharesData = allSharesData;
+                    window.__usedStaleData = true;
+                }
+            } catch (e) { /* ignore JSON errors */ }
+        }
+    }
+} catch (e) {
+    // Do not allow localStorage issues to break the module
+}
+
+// NOTE: Previously this module exported a `staleDataReady` Promise that consumers
+// awaited to ensure snapshot restoration had completed. That handshake proved
+// fragile in practice; instead snapshot restore happens synchronously on module
+// load above and consumers should read `window.allSharesData` / `window.livePrices`
+// directly. The old exported Promise has been removed.
+
+// If no snapshots were present at startup, tell the UI to render a global loading state
+try {
+    if (typeof window !== 'undefined') {
+        // If neither livePrices nor allSharesData have content, request a single unified loading UI
+        const hasLive = livePrices && Object.keys(livePrices).length > 0;
+        const hasShares = Array.isArray(allSharesData) && allSharesData.length > 0;
+        if (!hasLive && !hasShares) {
+            try { window.__showGlobalLoadingState = true; } catch(_) {}
+        } else {
+            try { window.__showGlobalLoadingState = false; } catch(_) {}
+        }
+    }
+} catch(_) {}
+
 // Setter helpers keep window mirrors in sync
 export function setAllSharesData(data) {
     allSharesData = Array.isArray(data) ? data : [];
     if (typeof window !== 'undefined') window.allSharesData = allSharesData;
+    // Persist a snapshot for S-W-R initial render
+    try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            try { localStorage.setItem(LS_KEY_ALL_SHARES, JSON.stringify(allSharesData)); } catch(_) {}
+        }
+    } catch(_) {}
 }
 
 export function setLivePrices(data) {
@@ -59,6 +120,24 @@ export function setLivePrices(data) {
         livePrices = data && typeof data === 'object' ? data : {};
         if (typeof window !== 'undefined') window.livePrices = livePrices;
     }
+
+    // Persist merged livePrices snapshot for stale-while-revalidate on next load
+    try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            try { localStorage.setItem(LS_KEY_LIVE_PRICES, JSON.stringify(livePrices)); } catch (_) { }
+        }
+    } catch (_) { }
+
+    // If we had shown a global unified loading state because no snapshot existed,
+    // remove that now that we have fresh live prices.
+    try {
+        if (typeof window !== 'undefined' && window.__showGlobalLoadingState) {
+            window.__showGlobalLoadingState = false;
+            if (typeof window.__removeGlobalLoadingState === 'function') {
+                try { window.__removeGlobalLoadingState(); } catch (_) { }
+            }
+        }
+    } catch (e) { console.warn('Error clearing global loading state', e); }
 
     // Robust re-apply strategy for percentage-based sorts:
     // - Wait for a reasonable fraction of shares to have live prices (coverage threshold)
@@ -101,7 +180,7 @@ export function setLivePrices(data) {
                         // If we have an authoritative sort lock, prefer calling sortShares directly to avoid being ignored
                         try {
                             if (typeof window !== 'undefined' && typeof window.sortShares === 'function') {
-                                if (typeof window !== 'undefined' && window.__VERBOSE_DIAG) console.log('[DIAG] livePrices reapply: invoking sortShares() (coverage:', cov, ')');
+                                try { if (typeof window !== 'undefined' && window.__VERBOSE_DIAG) console.log('[DIAG] livePrices reapply: invoking sortShares() (coverage:', cov, ')'); } catch(_) {}
                                 try { window.sortShares(); } catch (sErr) { console.warn('livePrices reapply: sortShares failed', sErr); }
                             } else {
                                 // Fallback: setCurrentSortOrder to trigger existing pathways
@@ -122,6 +201,18 @@ export function setLivePrices(data) {
             tryApply(0);
         }
     } catch (outerErr) { console.warn('setLivePrices: diagnostics failure', outerErr); }
+
+    // If we previously loaded stale data on startup, and now have fresh live prices,
+    // instruct the UI to remove the stale indicators (stale opacity, "Updating...").
+    try {
+        const nowHasData = livePrices && Object.keys(livePrices).length > 0;
+        if (nowHasData && typeof window !== 'undefined' && window.__usedStaleData) {
+            window.__usedStaleData = false;
+            if (typeof window.__removeStaleUIIndicators === 'function') {
+                try { window.__removeStaleUIIndicators(); } catch (_) { }
+            }
+        }
+    } catch (_) {}
 }
 
 export function setUserWatchlists(data) {

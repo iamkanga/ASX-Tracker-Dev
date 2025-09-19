@@ -1,0 +1,117 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - paragraph [ref=e3]: v2.15.4
+    - img "Kangaroo App Icon" [ref=e4]
+    - button "Sign in with Google" [ref=e5] [cursor=pointer]:
+      - img [ref=e6] [cursor=pointer]
+      - generic [ref=e12] [cursor=pointer]: Sign in with Google
+  - text:  +    
+  - navigation [ref=e13]:
+    - button "X" [ref=e14] [cursor=pointer]
+    - generic [ref=e15]:
+      - heading "Share Actions" [level=3] [ref=e16]
+      - generic [ref=e17]:
+        - button " Compact View" [ref=e18] [cursor=pointer]:
+          - generic [ref=e19] [cursor=pointer]: 
+          - generic [ref=e20] [cursor=pointer]: Compact View
+        - button " Refresh Live Prices" [disabled]:
+          - generic: 
+          - generic: Refresh Live Prices
+        - button " Add New Share" [disabled]:
+          - generic: 
+          - generic: Add New Share
+        - button " Search & Add Stock" [ref=e21] [cursor=pointer]:
+          - generic [ref=e22] [cursor=pointer]: 
+          - generic [ref=e23] [cursor=pointer]: Search & Add Stock
+    - generic [ref=e24]:
+      - heading "Watchlists" [level=3] [ref=e25]
+      - generic [ref=e26]:
+        - button " Add Watchlist" [disabled]:
+          - generic: 
+          - generic: Add Watchlist
+        - button " Edit Current Watchlist" [disabled]:
+          - generic: 
+          - generic: Edit Current Watchlist
+        - button " Global Alerts" [ref=e27] [cursor=pointer]:
+          - generic [ref=e28] [cursor=pointer]: 
+          - generic [ref=e29] [cursor=pointer]: Global Alerts
+    - generic [ref=e30]:
+      - heading "Calculators" [level=3] [ref=e31]
+      - generic [ref=e32]:
+        - button " Standard" [disabled]:
+          - generic: 
+          - generic: Standard
+        - button " Dividend" [disabled]:
+          - generic: 
+          - generic: Dividend
+    - generic [ref=e33]:
+      - heading "Theme" [level=3] [ref=e34]
+      - generic [ref=e35]:
+        - generic [ref=e36]: "Choose Color Theme:"
+        - combobox "Choose Color Theme:" [disabled]:
+          - option "No Custom Theme" [selected]
+          - option "Bold Ocean"
+          - option "Bold Forest"
+          - option "Bold Sunset"
+          - option "Bold Royal"
+          - option "Bold Grape"
+          - option "Bold Fire"
+          - option "Bold Emerald"
+          - option "Bold Plum"
+          - option "Bold Aqua"
+          - option "Bold Ruby"
+          - option "Subtle Sky"
+          - option "Subtle Earth"
+          - option "Subtle Rose"
+          - option "Subtle Lavender"
+          - option "Subtle Mint"
+          - option "Subtle Sand"
+          - option "Subtle Graphite"
+          - option "Subtle Peach"
+          - option "Subtle Teal"
+          - option "Subtle Stone"
+          - option "Muted Blue"
+          - option "Muted Brown"
+          - option "Muted Pink"
+          - option "Muted Green"
+          - option "Muted Purple"
+          - option "Muted Orange"
+          - option "Muted Cyan"
+          - option "Muted Magenta"
+          - option "Muted Gold"
+          - option "Muted Grey"
+        - button " Theme Toggle" [disabled]:
+          - generic: 
+          - generic: Theme Toggle
+        - button "  Default Theme" [disabled]:
+          - generic: 
+          - generic: 
+          - generic: Default Theme
+    - generic [ref=e37]:
+      - heading "Data Actions" [level=3] [ref=e38]
+      - generic [ref=e39]:
+        - button " Export Watchlist (CSV)" [disabled]:
+          - generic: 
+          - generic: Export Watchlist (CSV)
+        - button " Diagnostics" [ref=e40] [cursor=pointer]:
+          - generic [ref=e41] [cursor=pointer]: 
+          - generic [ref=e42] [cursor=pointer]: Diagnostics
+        - button " Force Update" [ref=e43] [cursor=pointer]:
+          - generic [ref=e44] [cursor=pointer]: 
+          - generic [ref=e45] [cursor=pointer]: Force Update
+    - generic [ref=e46]:
+      - heading "Data Management" [level=3] [ref=e47]
+      - button " Delete All My Data" [ref=e49] [cursor=pointer]:
+        - generic [ref=e50] [cursor=pointer]: 
+        - generic [ref=e51] [cursor=pointer]: Delete All My Data
+    - generic [ref=e52]:
+      - heading "Account" [level=3] [ref=e53]
+      - generic [ref=e54]:
+        - generic:
+          - generic: 
+          - generic: Log Out
+  - text:     ✓ +                +  
+```
