@@ -2150,6 +2150,11 @@ function makeFilesAvailableToSourceControlCSS() {
 #portfolio-summary-modal .summary-list-item.negative .summary-item-pct-change {
     color: var(--price-down-color, var(--brand-red, #FF3131));
 }
+/* Neutral change styling - coffee color */
+#portfolio-summary-modal .summary-list-item.neutral .summary-item-dollar-change,
+#portfolio-summary-modal .summary-list-item.neutral .summary-item-pct-change {
+    color: var(--price-neutral-color, #6c757d);
+}
 /* Fix: Ensure portfolio summary modal centers like other modals.
    Only apply when the modal is shown so it doesn't appear on page load. */
 #portfolio-summary-modal.modal.show {

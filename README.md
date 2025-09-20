@@ -31,6 +31,11 @@ Update the firebaseConfig in index.html with your project values. Without valid 
 - To deploy, upload the folder contents to any static host (HTTPS recommended).
 - If you change cached files, bump CACHE_NAME in service-worker.js (or unregister via browser devtools) to force-refresh.
 
+### Portfolio view: Total Day Change label
+- The "Total Day Change" label refers to the net movement for the day (gains minus losses), with the percent relative to total portfolio value.
+- The Day's Gain and Day's Loss boxes show the positive and negative contributions separately.
+- Hiding a holding from totals removes it from all three boxes.
+
 ## Global 52‑Week Alerts: quick setup (permissions)
 If you see "FirebaseError: Missing or insufficient permissions" when the app tries to read global alerts, grant clients read access to the central alerts docs and ensure the backend can write.
 

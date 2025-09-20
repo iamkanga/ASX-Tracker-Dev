@@ -1058,13 +1058,15 @@ document.addEventListener('DOMContentLoaded', function () {
     // Compute overall today percentage from aggregated totalValue (excluding hidden shares)
     todayNetPct = (totalValue > 0) ? ((todayNet / totalValue) * 100) : 0;
 
+    // Note: Day Change uses net movement (gains minus losses)
+
     // Compute explicit total capital gain (sum of per-card rowPL used in cards)
     const totalCapitalGain = totalPL; // totalPL is already aggregated for non-hidden shares above
 
     // --- Summary Bar ---
         const summaryBar = `<div class="portfolio-summary-bar">
             <div class="summary-card ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">
-                <div class="summary-label">Day Change</div>
+                <div class="summary-label">Total Day Change</div>
                 <div class="summary-value ${todayNet >= 0 ? 'positive' : 'negative'}">${fmtMoney(todayNet)} <span class="summary-pct">${fmtPct(todayNetPct)}</span></div>
             </div>
             <div class="summary-card ${daysGain > 0 ? 'positive' : daysGain < 0 ? 'negative' : 'neutral'}">
@@ -1128,7 +1130,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Update modal title based on the summary type so the modal is descriptive.
             try {
                 const titleMap = {
-                    daychange: 'Summary Day Change',
+                    daychange: 'Summary Total Day Change',
                     gain: 'Summary Day Change Winners',
                     loss: 'Summary Day Change Losers',
                     capitalGain: 'Summary Capital Gain',
@@ -1216,12 +1218,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (type === 'currentValueBreakdown') {
                 // Show total current value per share held in portfolio (shareCode + current total value)
+                // Color the total by comparing current value vs purchase (cost basis)
                 const rows = items.map(it => {
                     const s = it.share;
                     const sharesCount = it.sharesCount || 0;
                     const priceNow = (it.priceNow !== null && !isNaN(it.priceNow)) ? it.priceNow : (s.currentPrice || s.lastPrice || 0);
                     const totalValueForShare = (priceNow || 0) * sharesCount;
-                    return { code: (s.shareName||'').toUpperCase(), total: totalValueForShare };
+                    const avgPrice = (s.portfolioAvgPrice !== null && s.portfolioAvgPrice !== undefined && !isNaN(Number(s.portfolioAvgPrice))) ? Number(s.portfolioAvgPrice) : null;
+                    const costBasis = (avgPrice !== null && sharesCount > 0) ? (avgPrice * sharesCount) : null;
+                    const diff = (costBasis !== null) ? (totalValueForShare - costBasis) : null;
+                    const cls = (diff === null) ? 'neutral' : (diff > 0 ? 'positive' : (diff < 0 ? 'negative' : 'neutral'));
+                    return { code: (s.shareName||'').toUpperCase(), total: totalValueForShare, cls };
                 }).filter(r => r.code);
                 if (rows.length === 0) {
                     const msg = 'No shares available for current value summary';
@@ -1231,7 +1238,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 rows.sort((a,b) => b.total - a.total);
                 rows.forEach(r => {
                     const item = document.createElement('div');
-                    item.className = 'summary-list-item';
+                    item.className = `summary-list-item ${r.cls}`;
                     item.innerHTML = `<div class="summary-item-left"><span class="summary-item-code">${r.code}</span></div><div class="summary-item-right"><span class="summary-item-dollar-change">${fmtMoney(r.total)}</span></div>`;
                     listNode.appendChild(item);
                 });
