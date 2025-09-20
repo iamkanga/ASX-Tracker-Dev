@@ -525,37 +525,90 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
         try {
             const sharesCollection = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             // DEBUG: log entry price sources for diagnose
-                // log entry price sources (trimmed)
-                try { window.logDebug && window.logDebug('[SAVE DEBUG][appService] Creating share:', { shareName: shareName, formCurrentPrice: form ? form.currentPrice : undefined, shareDataEntryPrice: shareData.entryPrice, shareDataEnteredPriceRaw: shareData.enteredPriceRaw, livePricesForCode: (window.livePrices || {})[shareName.toUpperCase()] }); } catch(_) {}
-            const docRef = await firestore.addDoc(sharesCollection, { ...shareData, userId: currentUserId });
+            try { window.logDebug && window.logDebug('[SAVE DEBUG][appService] Creating share:', { shareName: shareName, formCurrentPrice: form ? form.currentPrice : undefined, shareDataEntryPrice: shareData.entryPrice, shareDataEnteredPriceRaw: shareData.enteredPriceRaw, livePricesForCode: (window.livePrices || {})[shareName.toUpperCase()] }); } catch(_) {}
+
+            // Prevent rapid duplicate creates for the same shareName by using a transient guard
+            try {
+                window.__shareAddInProgress = window.__shareAddInProgress || {};
+                const key = (shareName || '').toUpperCase();
+                const now = Date.now();
+                const last = window.__shareAddInProgress[key] || 0;
+                if (now - last < 2000) {
+                    try { window.logDebug && window.logDebug('AppService.saveShareData: Suppressing rapid duplicate add for ' + key); } catch(_) {}
+                    return;
+                }
+                window.__shareAddInProgress[key] = now;
+                setTimeout(() => { try { if (window.__shareAddInProgress) delete window.__shareAddInProgress[key]; } catch(_) {} }, 3500);
+            } catch(_) {}
+
+            // OPTIMISTIC UI: Insert a provisional share into local state so user sees it immediately
+            const provisionalId = '__pending:' + Date.now() + ':' + Math.random().toString(36).slice(2,8);
+            try {
+                const provisionalShare = Object.assign({}, shareData, { id: provisionalId, __provisional: true, userId: currentUserId });
+                const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
+                // Remove any existing provisional for same code to avoid duplicates
+                const filtered = currentShares.filter(s => !(s && s.__provisional && s.shareName === provisionalShare.shareName));
+                setAllSharesData([...filtered, provisionalShare]);
+            } catch (e) {
+                try { window.logDebug && window.logDebug('AppService: provisional insert failed', e); } catch(_) {}
+            }
+
+            // Attempt to create the Firestore document
+            let docRef;
+            try {
+                docRef = await firestore.addDoc(sharesCollection, { ...shareData, userId: currentUserId });
+            } catch (error) {
+                // Remove provisional on failure and notify the user
+                try {
+                    const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
+                    const cleaned = currentShares.filter(s => !(s && s.__provisional && s.shareName === shareName));
+                    setAllSharesData(cleaned);
+                } catch(_) {}
+                console.error('Error creating share:', error);
+                if (!isSilent) {
+                    try {
+                        if (window.ToastManager && typeof window.ToastManager.error === 'function') {
+                            window.ToastManager.error('Failed to save share');
+                        } else if (window.showCustomAlert && typeof window.showCustomAlert === 'function') {
+                            window.showCustomAlert('Failed to save share: ' + (error && error.message ? error.message : 'Unknown error'), 4000);
+                        } else {
+                            alert('Failed to save share: ' + (error && error.message ? error.message : 'Unknown error'));
+                        }
+                    } catch(_) {}
+                }
+                return;
+            }
+
             const newShareId = docRef.id;
 
             try {
                 await window.upsertAlertForShare && window.upsertAlertForShare(newShareId, shareName, shareData, true);
             } catch(_) {}
 
-            // Add to local data
+            // Replace provisional entry (if present) or dedupe and append the created share to local state
             try {
-                const currentShares = getAllSharesData();
-                const updatedShares = [...currentShares, { ...shareData, id: newShareId, userId: currentUserId }];
-                setAllSharesData(updatedShares);
-            } catch(_) {}
+                const created = { ...shareData, id: newShareId, userId: currentUserId };
+                const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
+                // Remove any provisional entries for this shareName and any existing entries with same id
+                const next = currentShares.filter(s => {
+                    if (!s) return false;
+                    if (s.id === newShareId) return false; // remove duplicates
+                    if (s.__provisional && s.shareName === created.shareName) return false; // remove provisional
+                    return true;
+                });
+                next.push(created);
+                setAllSharesData(next);
+            } catch (e) {
+                try { window.logDebug && window.logDebug('AppService: failed to replace provisional with created share', e); } catch(_) {}
+            }
 
             try {
                 if (!isSilent) {
-                    // Show simple success message
-                    const shareName = shareData.shareName || shareName.toUpperCase();
-                    console.log('[SHARE ADDED] Success notification for:', shareName);
-
-                    // Try ToastManager first
+                    const displayName = shareData.shareName || shareName.toUpperCase();
                     if (window.ToastManager && typeof window.ToastManager.success === 'function') {
-                        window.ToastManager.success(`Share ${shareName} added successfully`);
-                        console.log('[SHARE ADDED] Toast notification sent via ToastManager');
+                        window.ToastManager.success(`Share ${displayName} added successfully`);
                     } else if (window.showCustomAlert && typeof window.showCustomAlert === 'function') {
-                        window.showCustomAlert(`Share ${shareName} added successfully`, 2000);
-                        console.log('[SHARE ADDED] Toast notification sent via showCustomAlert');
-                    } else {
-                        console.warn('[SHARE ADDED] No toast system available');
+                        window.showCustomAlert(`Share ${displayName} added successfully`, 2000);
                     }
                 }
             } catch(error) {
@@ -569,43 +622,28 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 console.log('[UI UPDATE] Current shares count:', currentShares.length);
                 console.log('[UI UPDATE] Share codes:', currentShares.map(s => s.shareName).filter(Boolean));
 
-                // Temporarily enable debug mode for live pricing
                 const originalDebugMode = window.DEBUG_MODE;
                 window.DEBUG_MODE = true;
-
                 await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true });
-
-                // Restore original debug mode
                 window.DEBUG_MODE = originalDebugMode;
 
-                // Check if we got prices for the new share
+                // Check if we got prices for the new share; schedule retries if not
                 const newShareCode = shareName.toUpperCase();
                 const livePrices = window.livePrices || {};
                 if (!livePrices[newShareCode] || !livePrices[newShareCode].live) {
                     console.log('[UI UPDATE] No live price found for new share', newShareCode, '- retrying in 2 seconds...');
-
-                    // Try again after a delay for new stocks
                     setTimeout(async () => {
                         try {
-                            console.log('[UI UPDATE] Retrying live price fetch for', newShareCode);
                             const retryDebugMode = window.DEBUG_MODE;
                             window.DEBUG_MODE = true;
-
                             await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true, stockCode: newShareCode });
-
                             window.DEBUG_MODE = retryDebugMode;
-
-                            // Check if we got the price on retry
                             const livePricesAfterRetry = window.livePrices || {};
                             if (livePricesAfterRetry[newShareCode] && livePricesAfterRetry[newShareCode].live) {
                                 console.log('[UI UPDATE] SUCCESS: Live price found for', newShareCode, 'on retry');
                             } else {
                                 console.log('[UI UPDATE] No live price available for', newShareCode, '- this may be normal for completely new shares');
-                                console.log('[UI UPDATE] Apps Script may need time to initialize data for', newShareCode);
-
-                                // Schedule additional retries for completely new shares
                                 setTimeout(async () => {
-                                    console.log('[UI UPDATE] Final attempt for new share', newShareCode);
                                     try {
                                         await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true, stockCode: newShareCode });
                                         const finalPrices = window.livePrices || {};
@@ -614,20 +652,14 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                                             if (window.renderWatchlist) window.renderWatchlist();
                                             if (window.renderAsxCodeButtons) window.renderAsxCodeButtons();
                                         } else {
-                                            console.log('[UI UPDATE] Live price still unavailable for', newShareCode, '- user may need to refresh or try later');
+                                            console.log('[UI UPDATE] Live price still unavailable for', newShareCode);
                                         }
-                                    } catch(error) {
-                                        console.error('[UI UPDATE] Final retry failed for', newShareCode, error);
-                                    }
-                                }, 5000); // 5 second final attempt
+                                    } catch(error) { console.error('[UI UPDATE] Final retry failed for', newShareCode, error); }
+                                }, 5000);
                             }
-
-                            // Force UI update again
                             if (window.renderWatchlist) window.renderWatchlist();
                             if (window.renderAsxCodeButtons) window.renderAsxCodeButtons();
-                        } catch(error) {
-                            console.error('[UI UPDATE] Retry fetch failed:', error);
-                        }
+                        } catch(error) { console.error('[UI UPDATE] Retry fetch failed:', error); }
                     }, 2000);
                 }
 
@@ -639,22 +671,11 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             // Update UI immediately after successful share creation
             try {
                 console.log('[UI UPDATE] Starting UI update after share creation');
-                if (window.sortShares) {
-                    console.log('[UI UPDATE] Calling sortShares()');
-                    window.sortShares();
-                }
-                if (window.renderWatchlist) {
-                    console.log('[UI UPDATE] Calling renderWatchlist()');
-                    window.renderWatchlist();
-                }
-                if (window.renderAsxCodeButtons) {
-                    console.log('[UI UPDATE] Calling renderAsxCodeButtons()');
-                    window.renderAsxCodeButtons();
-                }
+                if (window.sortShares) { console.log('[UI UPDATE] Calling sortShares()'); window.sortShares(); }
+                if (window.renderWatchlist) { console.log('[UI UPDATE] Calling renderWatchlist()'); window.renderWatchlist(); }
+                if (window.renderAsxCodeButtons) { console.log('[UI UPDATE] Calling renderAsxCodeButtons()'); window.renderAsxCodeButtons(); }
                 console.log('[UI UPDATE] UI update completed');
-            } catch(error) {
-                console.error('[UI UPDATE] Error during UI update:', error);
-            }
+            } catch(error) { console.error('[UI UPDATE] Error during UI update:', error); }
 
             window.originalShareData = getCurrentFormData ? getCurrentFormData() : null;
             window.setIconDisabled && window.setIconDisabled(window.saveShareBtn, true);
@@ -669,17 +690,13 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000);
             }
 
-            try {
-                window.deselectCurrentShare && window.deselectCurrentShare();
-            } catch(_) {}
+            try { window.deselectCurrentShare && window.deselectCurrentShare(); } catch(_) {}
 
             return;
         } catch (error) {
-            console.error('Error creating share:', error);
+            console.error('Error creating share (outer):', error);
             if (!isSilent) {
-                try {
-                    window.showCustomAlert && window.showCustomAlert('Error creating share: ' + error.message);
-                } catch(_) {}
+                try { window.showCustomAlert && window.showCustomAlert('Error creating share: ' + (error && error.message ? error.message : error)); } catch(_) {}
             }
             return;
         }
