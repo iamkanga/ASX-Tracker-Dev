@@ -438,7 +438,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             return card;
         }
 
-        // Ensure scroll wrappers exist for hi/lo containers
+        // Ensure flat structure for hi/lo containers (no inner wrappers)
         if (hiloHighContainer) {
             try { const existing = hiloHighContainer.querySelector('.section-explainer'); if (existing) existing.remove(); } catch(_) {}
             const hiExpl = document.createElement('div'); hiExpl.className='section-explainer';
@@ -450,11 +450,18 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             } catch(_) {}
             hiExpl.textContent = explHighBits.join(' | ');
             hiloHighContainer.insertBefore(hiExpl, hiloHighContainer.firstChild);
-            let innerH = hiloHighContainer.querySelector('.notification-list-inner');
-            if (!innerH) { innerH = document.createElement('div'); innerH.className='notification-list-inner'; while (hiloHighContainer.firstChild) innerH.appendChild(hiloHighContainer.firstChild); hiloHighContainer.appendChild(innerH); hiloHighContainer.classList.add('notification-list-host'); }
+            // Flatten any legacy inner wrapper
+            const innerH = hiloHighContainer.querySelector('.notification-list-inner');
+            if (innerH) {
+                // Move children out, then remove wrapper
+                while (innerH.firstChild) hiloHighContainer.appendChild(innerH.firstChild);
+                innerH.remove();
+            }
+            // Remove host styling class if previously added
+            try { hiloHighContainer.classList.remove('notification-list-host'); } catch(_) {}
             const fragH = document.createDocumentFragment();
             (hilo.highs || []).forEach(e => { fragH.appendChild(renderHiLoEntry(e, 'high')); });
-            innerH.appendChild(fragH);
+            hiloHighContainer.appendChild(fragH);
         }
         if (hiloLowContainer) {
             try { const existing = hiloLowContainer.querySelector('.section-explainer'); if (existing) existing.remove(); } catch(_) {}
@@ -467,11 +474,16 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             } catch(_) {}
             loExpl.textContent = explLowBits.join(' | ');
             hiloLowContainer.insertBefore(loExpl, hiloLowContainer.firstChild);
-            let innerL = hiloLowContainer.querySelector('.notification-list-inner');
-            if (!innerL) { innerL = document.createElement('div'); innerL.className='notification-list-inner'; while (hiloLowContainer.firstChild) innerL.appendChild(hiloLowContainer.firstChild); hiloLowContainer.appendChild(innerL); hiloLowContainer.classList.add('notification-list-host'); }
+            // Flatten any legacy inner wrapper
+            const innerL = hiloLowContainer.querySelector('.notification-list-inner');
+            if (innerL) {
+                while (innerL.firstChild) hiloLowContainer.appendChild(innerL.firstChild);
+                innerL.remove();
+            }
+            try { hiloLowContainer.classList.remove('notification-list-host'); } catch(_) {}
             const fragL = document.createDocumentFragment();
             (hilo.lows || []).forEach(e => { fragL.appendChild(renderHiLoEntry(e, 'low')); });
-            innerL.appendChild(fragL);
+            hiloLowContainer.appendChild(fragL);
         }
 
         // Mark this modal as rendered via the modern global sections path so legacy fallbacks can skip duplicating UI
@@ -15841,31 +15853,26 @@ function showTargetHitDetailsModal(options={}) {
     // --- 52 week high/low Section (horizontal, smart UI) ---
     // Use window.sharesAt52WeekLow to ensure we're looking at the global variable
     const sharesAt52WeekLow = Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.slice() : [];
-    if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
-        // Build a uniform 52-week Low section for user-specific alerts using the same card style
-        const sectionHeader = document.createElement('div');
-        sectionHeader.className = 'low52-section-header';
-        const low52Title = document.createElement('h3');
-        low52Title.className = 'target-hit-section-title low52-heading';
-        low52Title.textContent = '52 Week Low (Your Portfolio)';
-        sectionHeader.appendChild(low52Title);
-        targetHitSharesList.appendChild(sectionHeader);
+        if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
+                // Build a uniform 52-week Low section for user-specific alerts using the same card style
+                const sectionHeader = document.createElement('div');
+                sectionHeader.className = 'low52-section-header';
+                const low52Title = document.createElement('h3');
+                low52Title.className = 'target-hit-section-title low52-heading';
+                low52Title.textContent = '52 Week Low (Your Portfolio)';
+                sectionHeader.appendChild(low52Title);
+                targetHitSharesList.appendChild(sectionHeader);
 
-        const alertsContainer = document.createElement('div');
-        alertsContainer.className = 'notification-list-host';
-        const inner = document.createElement('div');
-        inner.className = 'notification-list-inner';
-
-        sharesAt52WeekLow
-          .filter(item => !item.isTestCard) // ensure no test cards
-          .forEach((item) => {
-            const entry = { code: item.code, name: item.name, shareCode: item.code, live: item.live, low52: item.low52 };
-            inner.appendChild(renderHiLoEntry(entry, 'low'));
-          });
-
-        alertsContainer.appendChild(inner);
-        targetHitSharesList.appendChild(alertsContainer);
-    }
+                // Append cards directly to the main list container (no extra wrappers)
+                const frag = document.createDocumentFragment();
+                sharesAt52WeekLow
+                    .filter(item => !item.isTestCard) // ensure no test cards
+                    .forEach((item) => {
+                        const entry = { code: item.code, name: item.name, shareCode: item.code, live: item.live, low52: item.low52 };
+                        frag.appendChild(renderHiLoEntry(entry, 'low'));
+                    });
+                targetHitSharesList.appendChild(frag);
+        }
 
     // Inject explainer headers for each notifications section
     try {

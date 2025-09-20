@@ -8855,6 +8855,10 @@ body.dark-theme .target-hit-details-modal .modal-content {
 .notifications-accordion .accordion-section[data-section="global-losers"] {
     --section-accent: var(--negative, #d9534f);
 }
+.notifications-accordion .accordion-section[data-section="target-hits"] {
+    /* Use neutral/accent color for custom trigger section */
+    --section-accent: var(--accent-color, #a49393);
+}
 .notifications-accordion .accordion-section[data-section="high52"] {
     --section-accent: var(--positive, #0a8a00);
 }
