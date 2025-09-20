@@ -225,12 +225,9 @@ function runGlobal52WeekScan() {
       Logger.log('[HiLo][DailyHits] Persist error: %s', persistErr && persistErr.message || persistErr);
     }
 
-    // Backward-compatible email expects arrays of codes only
-    const highsCodes = highObjs.map(o=>o.code);
-    const lowsCodes  = lowObjs.map(o=>o.code);
-    if (emailEnabled && (highsCodes.length || lowsCodes.length)) {
-      sendHiLoEmailIfAny_({ highs: highsCodes, lows: lowsCodes }, settings);
-    }
+    // Backward-compatible email path removed from frequent scan.
+    // The scan now only updates Firestore documents and daily history.
+    // Email summarization is consolidated into the daily digest only.
   } catch (e) {
     console.error('[HiLo] Scan error', e);
   }
@@ -374,42 +371,24 @@ function appendDailyHiLoHits_(highsArr, lowsArr) {
 // (Test harness removed for production)
 
 function sendHiLoEmailIfAny_(results, settings) {
-  const recipient = settings.alertEmailRecipients || ALERT_RECIPIENT;
-  if (!recipient) return;
-  const highsCount = results.highs.length; const lowsCount = results.lows.length;
-  if (!highsCount && !lowsCount) return;
-  let subject = 'ASX 52-Week Alert Summary';
-  let body = 'The following stocks have hit 52-week price points:\n\n';
-  if (highsCount) { body += `--- 52-WEEK HIGHS (${highsCount}) ---\n` + results.highs.join('\n') + '\n\n'; }
-  if (lowsCount) { body += `--- 52-WEEK LOWS (${lowsCount}) ---\n` + results.lows.join('\n') + '\n\n'; }
-  body += `Filters Applied:\n- Minimum Price: $${settings.hiLoMinimumPrice || 'N/A'}\n- Minimum Market Cap: $${(settings.hiLoMinimumMarketCap||0).toLocaleString()}\n`;
-  MailApp.sendEmail(recipient, subject, body);
+  // Disabled: email sending for hi/lo from frequent scan moved to daily digest only.
+  // Keep a lightweight log for diagnostics.
+  try {
+    const highsCount = (results && Array.isArray(results.highs)) ? results.highs.length : 0;
+    const lowsCount = (results && Array.isArray(results.lows)) ? results.lows.length : 0;
+    if (!highsCount && !lowsCount) return;
+    console.log('[sendHiLoEmailIfAny_] Disabled email send – hi/lo results:', { highs: highsCount, lows: lowsCount });
+  } catch (e) { console.log('[sendHiLoEmailIfAny_] Disabled function error:', e); }
 }
 
 function sendMoversEmailIfAny_(results, settings) {
-  const recipient = settings.alertEmailRecipients || ALERT_RECIPIENT;
-  if (!recipient) return;
-  const up = Array.isArray(results.up) ? results.up : [];
-  const down = Array.isArray(results.down) ? results.down : [];
-  if (!up.length && !down.length) return;
-  const fmt = n => (n!=null && isFinite(n)) ? Number(n) : null;
-  const linesUp = up.map(o => {
-    const pct = fmt(o.pct); const chg = fmt(o.change);
-    const pctStr = (pct!=null) ? (pct>=0? '+' : '') + pct.toFixed(2) + '%' : '';
-    const chgStr = (chg!=null) ? ((chg>=0? '+' : '') + '$' + Math.abs(chg).toFixed(4)) : '';
-    return `${o.code}${pctStr? '  ' + pctStr : ''}${chgStr? '  (' + chgStr + ')' : ''}`;
-  });
-  const linesDown = down.map(o => {
-    const pct = fmt(o.pct); const chg = fmt(o.change);
-    const pctStr = (pct!=null) ? (pct>=0? '+' : '') + pct.toFixed(2) + '%' : '';
-    const chgStr = (chg!=null) ? ((chg>=0? '+' : '') + '$' + Math.abs(chg).toFixed(4)) : '';
-    return `${o.code}${pctStr? '  ' + pctStr : ''}${chgStr? '  (' + chgStr + ')' : ''}`;
-  });
-  let subject = 'ASX Global Movers Summary';
-  let body = 'Directional movers detected in the latest scan.\n\n';
-  if (linesUp.length) { body += `--- UP MOVERS (${linesUp.length}) ---\n` + linesUp.join('\n') + '\n\n'; }
-  if (linesDown.length) { body += `--- DOWN MOVERS (${linesDown.length}) ---\n` + linesDown.join('\n') + '\n\n'; }
-  MailApp.sendEmail(recipient, subject, body);
+  // Disabled: email sending for movers from frequent scan moved to daily digest only.
+  try {
+    const upCount = (results && Array.isArray(results.up)) ? results.up.length : 0;
+    const downCount = (results && Array.isArray(results.down)) ? results.down.length : 0;
+    if (!upCount && !downCount) return;
+    console.log('[sendMoversEmailIfAny_] Disabled email send – movers results:', { up: upCount, down: downCount });
+  } catch (e) { console.log('[sendMoversEmailIfAny_] Disabled function error:', e); }
 }
 
 // ===============================================================
@@ -449,15 +428,8 @@ function runGlobalMoversScan() {
 
   writeGlobalMoversDoc_(upMovers, downMovers, thresholds, { source: 'scan', inHours, settingsSnapshot: settings, settingsUpdateTime: microFinal.updateTime || guaranteed.updateTime || null, settingsFetchAttempts: guaranteed.attempts, fetchStrategy: 'guaranteed-loop+micro-final' + (guaranteed.fallback ? '+fallback' : '') });
 
-    // Email summary for movers (parallels 52-week email)
-    const emailEnabled = !!settings.emailAlertsEnabled;
-    if (emailEnabled && (upMovers.length || downMovers.length)) {
-      try {
-        sendMoversEmailIfAny_({ up: upMovers, down: downMovers }, settings);
-      } catch (emailErr) {
-        console.log('[MoversScan][Email] Failed to send email: ' + (emailErr && emailErr.message || emailErr));
-      }
-    }
+    // Email sending removed from frequent movers scan.
+    // Frequent runs should only persist the movers to Firestore.
   } catch (err) {
     console.error('[MoversScan] ERROR:', err && err.stack || err);
   }
@@ -1216,6 +1188,19 @@ function dailyResetTrigger() {
 
 // ================== DAILY COMBINED EMAIL DIGEST ==================
 function sendCombinedDailyDigest_() {
+  // Only send digest on ASX trading weekdays (Mon-Fri). Abort on Saturday/Sunday in ASX timezone.
+  try {
+    const now = new Date();
+    // 'u' returns ISO day number 1..7 (Mon=1 .. Sun=7)
+    const isoDay = Number(Utilities.formatDate(now, ASX_TIME_ZONE, 'u'));
+    if (isoDay === 6 || isoDay === 7) { // Saturday (6) or Sunday (7)
+      console.log('[DailyDigest] Today is weekend in ASX timezone (isoDay=' + isoDay + '); skipping email send.');
+      return;
+    }
+  } catch (dayErr) {
+    console.log('[DailyDigest] Failed to determine ASX weekday, proceeding cautiously:', dayErr);
+    // If timezone check fails, proceed (safe default) — this is conservative; alternatively could abort.
+  }
   // Check settings and email recipient
   const settingsRes = fetchGlobalSettingsFromFirestore({ noCache: true });
   if (!settingsRes.ok || !settingsRes.data) { console.log('[DailyDigest] Settings fetch failed or empty'); return; }
@@ -1367,8 +1352,9 @@ function processAlerts(priceData, alertRules, suppressionLog, spreadsheet) {
 }
 
 function sendAlertEmail(recipient, subject, body) {
-  try { MailApp.sendEmail(recipient, subject, body); console.log(`Email sent to ${recipient} (${subject})`); }
-  catch (e) { console.error('Failed to send email:', e); }
+  // Route all per-alert emails through a disabled noop to avoid accidental sends.
+  try { console.log('[sendAlertEmail] Disabled send to', recipient, subject); }
+  catch (e) { console.error('[sendAlertEmail] Disabled function error:', e); }
 }
 
 // ===============================================================
