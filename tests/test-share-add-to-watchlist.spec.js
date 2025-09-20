@@ -22,27 +22,22 @@ test.describe('Share Addition to Additional Watchlist', () => {
       }
     });
 
-    // Mock successful share update
-    await page.evaluate(() => {
-      window.mockShareUpdateSuccess = true;
-
-      // Mock the saveShareData function
-      const originalSaveShareData = window.AppService?.saveShareData;
-      if (window.AppService) {
-        window.AppService.saveShareData = async (isSilent = false) => {
-          console.log('saveShareData called with isSilent:', isSilent);
-
-          if (window.mockShareUpdateSuccess) {
-            console.log('Mock: Share updated successfully with merged watchlistIds');
-            // Mock clearing selectedShareDocId
-            window.selectedShareDocId = null;
-            return Promise.resolve();
-          } else {
-            return Promise.reject(new Error('Mock update failed'));
+      // Wait for AppService to be available then mock saveShareData to avoid race conditions
+      await page.waitForFunction(() => !!window.AppService, { timeout: 5000 }).catch(() => {});
+      await page.evaluate(() => {
+        try {
+          window.mockShareUpdateSuccess = true;
+          if (window.AppService) {
+            window.AppService.saveShareData = async (isSilent = false) => {
+              if (window.mockShareUpdateSuccess) {
+                window.selectedShareDocId = null;
+                return Promise.resolve();
+              }
+              return Promise.reject(new Error('Mock update failed'));
+            };
           }
-        };
-      }
-    });
+        } catch (e) { /* ignore */ }
+      });
 
     // Test the saveShareData function
     const saveResult = await page.evaluate(async () => {
