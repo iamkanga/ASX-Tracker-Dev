@@ -886,6 +886,9 @@
 .intent-toggle .toggle-segment.sell.is-active { background: var(--red-color, #c62828); }
 .direction-toggle .toggle-segment.above.is-active { background: var(--green-color, #2e7d32); }
 .direction-toggle .toggle-segment.below.is-active { background: var(--red-color, #c62828); }
+/* Email segmented toggle adopts green/red backgrounds when active */
+.email-toggle .toggle-segment.on.is-active { background: var(--green-color, #2e7d32); color:#fff; }
+.email-toggle .toggle-segment.off.is-active { background: var(--red-color, #c62828); color:#fff; }
 @media (hover:hover) {
     .segmented-toggle .toggle-segment:hover { background: var(--hover-bg,#f5f7fa); }
 }
@@ -1068,6 +1071,27 @@
 .header-sort-btn #sortIcon i { font-size:1.05em; line-height:1; }
 /* Ensure both icons align consistently vertically */
 .header-sort-btn #sortIcon, .header-sort-btn .sort-title-triangle { vertical-align: middle; }
+
+/* --- Global Alerts Summary Card --- */
+.ga-summary-card { border:1px solid var(--border-color, #e0e0e0); background: var(--surface, var(--modal-content-bg, #fff)); border-radius: 12px; padding: 12px; margin: 8px 0 12px; }
+/* Grid for items: responsive columns */
+.ga-summary-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:8px 12px; align-items:stretch; }
+/* Keep to two rows by default; on very small screens fallback to 2 columns */
+@media (max-width: 380px) { .ga-summary-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+/* Each item: internal grid for clean alignment of icon/label/value */
+.ga-summary-item { display:grid; grid-template-columns: 20px 1fr; grid-template-rows: auto auto; grid-template-areas: 'icon label' 'icon value'; align-items:center; column-gap:10px; row-gap:2px; min-width:0; background: var(--surface, transparent); padding: 6px 8px; border-radius: 8px; }
+.ga-summary-item .ga-icon { grid-area: icon; }
+.ga-summary-item .ga-label { grid-area: label; }
+.ga-summary-item .ga-value { grid-area: value; justify-self:start; }
+/* Monocolor icons: theme accent */
+.ga-summary-item .ga-icon { width:20px; height:20px; display:inline-flex; align-items:center; justify-content:center; color: var(--accent-color, #2d6cdf); opacity: 0.95; }
+.ga-summary-item .ga-icon i, .ga-summary-item .ga-icon svg { color: currentColor !important; fill: currentColor !important; stroke: none !important; filter: none !important; font-size: 1rem; line-height: 1; }
+.ga-summary-item .ga-label { color: var(--text-secondary, #667085); font-size: 0.84rem; letter-spacing: 0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ga-summary-item .ga-value { font-weight: 700; color: var(--text-color, #1f2937); font-size: 0.92rem; letter-spacing: 0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (max-width: 420px) {
+    .ga-summary-item .ga-label { font-size: 0.8rem; }
+    .ga-summary-item .ga-value { font-size: 0.88rem; }
+}
 /* Header triangle (direction) that appears at the end of the title should be white */
 .header-sort-btn .sort-title-triangle { color: inherit; margin-left:6px; font-weight:700; font-size:0.98em; display:inline-flex; align-items:center; line-height: 1; }
 
@@ -2967,17 +2991,29 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 /* ========================= */
 /* Global Alerts - compact UX */
 /* Scoped to .global-alerts-modal to prevent wider layout changes */
-.global-alerts-modal .global-alerts-form .form-row { display:flex; flex-direction:row; align-items:center; gap:8px; margin-bottom:10px; }
+.global-alerts-modal .global-alerts-form .form-row { display:flex; flex-direction:column; align-items:flex-start; gap:6px; margin-bottom:10px; }
 .global-alerts-modal .global-alerts-form .form-row label { flex: 0 0 auto; margin:0; font-size:0.92rem; }
 .global-alerts-modal .global-alerts-form .form-row input[type="number"],
 .global-alerts-modal .global-alerts-form .form-row input[type="text"] {
-    flex: 0 0 120px; max-width: 140px; height: 30px; line-height: 28px; padding: 4px 8px; font-size:0.92rem; border-radius:6px;
+    display:block; width: 100%; max-width: 100%; box-sizing: border-box; height: 34px; line-height: 32px; padding: 4px 10px; font-size:0.92rem; border-radius:6px;
+    /* Reset legacy flex sizing that was making inputs ~180px tall due to column flex-basis */
+    flex: 0 0 auto; /* don’t stretch vertically in column flex */
+    flex-basis: auto; /* override earlier 180px basis */
 }
+.global-alerts-modal .global-alerts-form .form-row .input-hint { font-size: 0.72rem; line-height: 1.1; color: var(--text-secondary, #8892a6); }
 .global-alerts-modal .global-alerts-form fieldset.ga-section { padding: 8px 10px; }
 
 /* Single-color block icons: use currentColor for SVGs or font icons */
-.global-alerts-modal .ga-block-title .ga-block-icon { color: var(--accent-color, #2d6cdf); opacity:0.95; }
-.global-alerts-modal .ga-block-title .ga-block-icon svg { fill: currentColor !important; stroke: none !important; }
+.global-alerts-modal .ga-block-title .ga-block-icon { color: var(--accent-color, #2d6cdf); opacity:0.95; display:inline-flex; align-items:center; justify-content:center; }
+.global-alerts-modal .ga-block-title .ga-block-icon i,
+.global-alerts-modal .ga-block-title .ga-block-icon svg { color: currentColor !important; fill: currentColor !important; stroke: none !important; }
+
+/* Reduce placeholder font-size for all inputs in the Global Alerts modal to avoid clipping */
+.global-alerts-modal input::placeholder { font-size: 0.85em; opacity: 0.8; }
+/* Cross-browser placeholder selectors */
+.global-alerts-modal input::-webkit-input-placeholder { font-size: 0.85em; opacity: 0.8; }
+.global-alerts-modal input:-ms-input-placeholder { font-size: 0.85em; opacity: 0.8; }
+.global-alerts-modal input::-ms-input-placeholder { font-size: 0.85em; opacity: 0.8; }
 
 /* Improve toggle visibility: show green when checked, muted when unchecked */
 .global-alerts-modal .switch { width:50px; height:28px; }
@@ -2993,6 +3029,20 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
 
 /* Tighten the overall modal padding for denser presentation */
 .global-alerts-modal .modal-content { padding: 12px 14px; }
+
+/* Color-coding for Increase (green) and Decrease (red) inputs */
+.global-alerts-modal #globalPercentIncrease,
+.global-alerts-modal #globalDollarIncrease { border-color: var(--green-color, #2e7d32); }
+.global-alerts-modal #globalPercentIncrease:focus,
+.global-alerts-modal #globalDollarIncrease:focus { outline-color: var(--green-color, #2e7d32); }
+.global-alerts-modal #globalPercentDecrease,
+.global-alerts-modal #globalDollarDecrease { border-color: var(--red-color, #c62828); }
+.global-alerts-modal #globalPercentDecrease:focus,
+.global-alerts-modal #globalDollarDecrease:focus { outline-color: var(--red-color, #c62828); }
+
+/* Summary value color accents (icons remain monotone) */
+#gaSumIncrease { color: var(--green-color, #2e7d32); }
+#gaSumDecrease { color: var(--red-color, #c62828); }
 
 
 /* Global modal visibility rule: ensure any .modal that receives the .show class

@@ -462,7 +462,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 const mpNum = toNum(hiLoMinimumPrice);
                 const mcNum = toNum(hiLoMinimumMarketCap);
                 const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
-                const mc = (mcNum!=null) ? (formatCompactNumber(mcNum)) : 'Not set';
+                const mc = (mcNum!=null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
                 hiExpl.textContent = `Min Price: ${mp} | Min Mkt Cap: ${mc}`;
             } catch(_) { hiExpl.textContent = 'Min Price: Not set | Min Mkt Cap: Not set'; }
             hiloHighContainer.insertBefore(hiExpl, hiloHighContainer.firstChild);
@@ -488,7 +488,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 const mpNum = toNum(hiLoMinimumPrice);
                 const mcNum = toNum(hiLoMinimumMarketCap);
                 const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
-                const mc = (mcNum!=null) ? (formatCompactNumber(mcNum)) : 'Not set';
+                const mc = (mcNum!=null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
                 loExpl.textContent = `Min Price: ${mp} | Min Mkt Cap: ${mc}`;
             } catch(_) { loExpl.textContent = 'Min Price: Not set | Min Mkt Cap: Not set'; }
             hiloLowContainer.insertBefore(loExpl, hiloLowContainer.firstChild);
@@ -11151,8 +11151,33 @@ function applyLoadedGlobalAlertSettings(settings) {
         if (globalDollarDecreaseInput) globalDollarDecreaseInput.value = globalDollarDecrease ?? '';
         if (globalMinimumPriceInput) globalMinimumPriceInput.value = globalMinimumPrice ?? '';
         if (hiLoMinimumPriceInput) hiLoMinimumPriceInput.value = hiLoMinimumPrice ?? '';
-        if (hiLoMinimumMarketCapInput) hiLoMinimumMarketCapInput.value = hiLoMinimumMarketCap ?? '';
+        if (hiLoMinimumMarketCapInput) {
+            // Display compact currency if value present; otherwise clear
+            try {
+                if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) {
+                    hiLoMinimumMarketCapInput.value = '$' + formatCompactNumber(hiLoMinimumMarketCap, { maximumFractionDigits: 1 });
+                } else {
+                    hiLoMinimumMarketCapInput.value = '';
+                }
+            } catch(_) { hiLoMinimumMarketCapInput.value = hiLoMinimumMarketCap ?? ''; }
+            // Also seed the live hint
+            try {
+                const hint = document.getElementById('hiLoMinCapHint');
+                if (hint) hint.textContent = (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) ? ('$' + formatCompactNumber(hiLoMinimumMarketCap, { maximumFractionDigits: 1 })) : '';
+            } catch(_) {}
+        }
         if (emailAlertsEnabledInput) emailAlertsEnabledInput.checked = !!emailAlertsEnabled;
+        // Sync segmented email toggle to loaded value
+        try {
+            const onBtn = document.getElementById('emailOnBtn');
+            const offBtn = document.getElementById('emailOffBtn');
+            if (onBtn && offBtn) {
+                onBtn.classList.toggle('is-active', !!emailAlertsEnabled);
+                offBtn.classList.toggle('is-active', !emailAlertsEnabled);
+                onBtn.setAttribute('aria-pressed', String(!!emailAlertsEnabled));
+                offBtn.setAttribute('aria-pressed', String(!emailAlertsEnabled));
+            }
+        } catch(_) {}
         updateGlobalAlertsSettingsSummary();
     } catch(e){ console.warn('Global Alerts: apply directional settings failed', e); }
 }
@@ -11752,9 +11777,24 @@ function updateGlobalAlertsSettingsSummary() {
     if (incPart === 'Off' && decPart === 'Off') {
         globalAlertsSettingsSummaryEl.textContent = '';
     } else {
-        const minPart = globalMinimumPrice ? ('Min: $' + Number(globalMinimumPrice).toFixed(2) + ' | ') : '';
+    const minPart = globalMinimumPrice ? ('Min: $' + Number(globalMinimumPrice).toFixed(2) + ' | ') : '';
         globalAlertsSettingsSummaryEl.textContent = minPart + 'Increase: ' + incPart + ' | Decrease: ' + decPart;
     }
+    // Also update the in-modal thresholds summary card, if present
+    try {
+        const elInc = document.getElementById('gaSumIncrease');
+        const elDec = document.getElementById('gaSumDecrease');
+        const elMin = document.getElementById('gaSumMinPrice');
+        const elHiLoMinPrice = document.getElementById('gaSumHiLoMinPrice');
+        const elHiLoMinCap = document.getElementById('gaSumHiLoMinCap');
+        const elEmail = document.getElementById('gaSumEmail');
+        if (elInc) elInc.textContent = incPart;
+        if (elDec) elDec.textContent = decPart;
+        if (elMin) elMin.textContent = (typeof globalMinimumPrice === 'number' && globalMinimumPrice > 0) ? ('$' + Number(globalMinimumPrice).toFixed(2)) : 'Off';
+        if (elHiLoMinPrice) elHiLoMinPrice.textContent = (typeof hiLoMinimumPrice === 'number' && hiLoMinimumPrice > 0) ? ('$' + Number(hiLoMinimumPrice).toFixed(2)) : 'Off';
+        if (elHiLoMinCap) elHiLoMinCap.textContent = (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) ? ('$' + formatCompactNumber(hiLoMinimumMarketCap, { maximumFractionDigits: 1 })) : 'Off';
+        if (elEmail) elEmail.textContent = emailAlertsEnabled ? 'On' : 'Off';
+    } catch(_) {}
 }
 
 // Modal wiring after DOMContentLoaded
@@ -11773,6 +11813,81 @@ function initGlobalAlertsUI(force) {
     hiLoMinimumPriceInput = document.getElementById('hiLoMinimumPrice');
     hiLoMinimumMarketCapInput = document.getElementById('hiLoMinimumMarketCap');
     emailAlertsEnabledInput = document.getElementById('emailAlertsEnabled');
+    // Segmented Email On/Off toggle wiring (controls hidden checkbox + live state)
+    const emailOnBtn = document.getElementById('emailOnBtn');
+    const emailOffBtn = document.getElementById('emailOffBtn');
+
+    // Live update for Min Market Cap hint and compact input formatting/parsing
+    function parseCompactCurrency(inputStr) {
+        if (!inputStr) return null;
+        const s = String(inputStr).trim().replace(/[$,\s]/g, '').toUpperCase();
+        if (s === '' || s === '0') return null;
+        const m = s.match(/^([-+]?\d*(?:\.\d+)?)([KMBT])?$/i);
+        if (!m) {
+            const n = Number(s);
+            return (isFinite(n) && n > 0) ? n : null;
+        }
+        const num = parseFloat(m[1]);
+        if (!isFinite(num) || num <= 0) return null;
+        const suf = (m[2] || '').toUpperCase();
+        const mult = suf === 'K' ? 1e3 : suf === 'M' ? 1e6 : suf === 'B' ? 1e9 : suf === 'T' ? 1e12 : 1;
+        return num * mult;
+    }
+    function formatCompactCurrency(num) {
+        if (num == null || !isFinite(Number(num)) || Number(num) <= 0) return '';
+        return '$' + formatCompactNumber(Number(num), { maximumFractionDigits: 1 });
+    }
+    if (hiLoMinimumMarketCapInput) {
+        // Initialize displayed value as compact (if existing)
+        try {
+            if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) {
+                hiLoMinimumMarketCapInput.value = formatCompactCurrency(hiLoMinimumMarketCap);
+            }
+        } catch(_) {}
+        hiLoMinimumMarketCapInput.addEventListener('focus', () => {
+            // Show raw number without formatting for easy editing
+            try {
+                if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) {
+                    hiLoMinimumMarketCapInput.value = String(Math.trunc(hiLoMinimumMarketCap));
+                } else {
+                    const parsed = parseCompactCurrency(hiLoMinimumMarketCapInput.value);
+                    hiLoMinimumMarketCapInput.value = parsed ? String(Math.trunc(parsed)) : '';
+                }
+            } catch(_) {}
+        });
+        hiLoMinimumMarketCapInput.addEventListener('blur', () => {
+            const parsed = parseCompactCurrency(hiLoMinimumMarketCapInput.value);
+            hiLoMinimumMarketCap = parsed;
+            hiLoMinimumMarketCapInput.value = formatCompactCurrency(parsed);
+            try {
+                const hint = document.getElementById('hiLoMinCapHint');
+                if (hint) hint.textContent = parsed ? formatCompactCurrency(parsed) : '';
+            } catch(_) {}
+        });
+        hiLoMinimumMarketCapInput.addEventListener('input', () => {
+            const parsed = parseCompactCurrency(hiLoMinimumMarketCapInput.value);
+            hiLoMinimumMarketCap = parsed;
+            try {
+                const hint = document.getElementById('hiLoMinCapHint');
+                if (hint) hint.textContent = parsed ? formatCompactCurrency(parsed) : '';
+            } catch(_) {}
+        });
+    }
+    function setEmailToggleUI(isOn) {
+        emailAlertsEnabled = !!isOn;
+        if (emailAlertsEnabledInput) emailAlertsEnabledInput.checked = !!isOn;
+        if (emailOnBtn && emailOffBtn) {
+            emailOnBtn.classList.toggle('is-active', !!isOn);
+            emailOffBtn.classList.toggle('is-active', !isOn);
+            emailOnBtn.setAttribute('aria-pressed', String(!!isOn));
+            emailOffBtn.setAttribute('aria-pressed', String(!isOn));
+        }
+        updateGlobalAlertsSettingsSummary();
+    }
+    if (emailOnBtn && emailOffBtn) {
+        emailOnBtn.addEventListener('click', (e) => { e.preventDefault(); setEmailToggleUI(true); });
+        emailOffBtn.addEventListener('click', (e) => { e.preventDefault(); setEmailToggleUI(false); });
+    }
     if (globalAlertsBtn && globalAlertsModal) {
         globalAlertsBtn.addEventListener('click', () => {
             try { showModal(globalAlertsModal); try { scrollMainToTop(); } catch(_) {} if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(e){ console.error('Global Alerts: failed to open modal', e);} });
@@ -11789,7 +11904,7 @@ function initGlobalAlertsUI(force) {
             const dolDecRaw = parseFloat(globalDollarDecreaseInput?.value || '');
             const minPriceRaw = parseFloat(globalMinimumPriceInput?.value || '');
             const hiLoMinPriceRaw = parseFloat(hiLoMinimumPriceInput?.value || '');
-            const hiLoMinCapRaw = parseFloat(hiLoMinimumMarketCapInput?.value || '');
+            const hiLoMinCapRaw = (typeof parseCompactCurrency === 'function') ? parseCompactCurrency(hiLoMinimumMarketCapInput?.value || '') : parseFloat(hiLoMinimumMarketCapInput?.value || '');
             const emailToggle = !!(emailAlertsEnabledInput && emailAlertsEnabledInput.checked);
             // Validation: disallow negative inputs; clamp to null
             function norm(v){ return (!isNaN(v) && v > 0) ? v : null; }
@@ -11800,7 +11915,7 @@ function initGlobalAlertsUI(force) {
             globalDollarDecrease = (!isNaN(dolDecRaw) && dolDecRaw > 0) ? dolDecRaw : null;
             globalMinimumPrice = (!isNaN(minPriceRaw) && minPriceRaw > 0) ? minPriceRaw : null;
             hiLoMinimumPrice = (!isNaN(hiLoMinPriceRaw) && hiLoMinPriceRaw > 0) ? hiLoMinPriceRaw : null;
-            hiLoMinimumMarketCap = (!isNaN(hiLoMinCapRaw) && hiLoMinCapRaw > 0) ? hiLoMinCapRaw : null;
+            hiLoMinimumMarketCap = (hiLoMinCapRaw != null && !isNaN(hiLoMinCapRaw) && hiLoMinCapRaw > 0) ? hiLoMinCapRaw : null;
             emailAlertsEnabled = !!emailToggle;
             // Reflect cleared values back into inputs so user sees reset immediately
             if (globalPercentIncreaseInput && globalPercentIncrease === null) globalPercentIncreaseInput.value = '';
@@ -11811,6 +11926,7 @@ function initGlobalAlertsUI(force) {
             if (hiLoMinimumPriceInput && hiLoMinimumPrice === null) hiLoMinimumPriceInput.value = '';
             if (hiLoMinimumMarketCapInput && hiLoMinimumMarketCap === null) hiLoMinimumMarketCapInput.value = '';
             if (emailAlertsEnabledInput) emailAlertsEnabledInput.checked = !!emailAlertsEnabled;
+            try { setEmailToggleUI(!!emailAlertsEnabled); } catch(_) {}
             const after = { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease };
             try { console.log('[GlobalAlerts][save] thresholds changed', { before, after, min: globalMinimumPrice }); } catch(_) {}
             // Edge case assist: If only decrease thresholds now exist, ensure increase ones are null (stale UI race)
@@ -11885,8 +12001,9 @@ function initGlobalAlertsUI(force) {
                 if (emailAlertsEnabledInput.checked) globalAlertsModal.classList.add('ga-email-on');
                 else globalAlertsModal.classList.remove('ga-email-on');
             };
-            // set initial
+            // set initial and sync segmented buttons with hidden checkbox
             updateEmailClass();
+            try { setEmailToggleUI(!!emailAlertsEnabledInput.checked); } catch(_) {}
             emailAlertsEnabledInput.addEventListener('change', updateEmailClass);
         }
     } catch(e) { console.warn('GlobalAlerts: failed to bind email toggle class', e); }
@@ -14541,8 +14658,8 @@ if (targetPriceInput) {
                     console.warn('Auth: Failed to force-set browserLocalPersistence prior to sign-in. Proceeding with sign-in anyway.', pErr);
                 }
 
-                // Prefer redirect when cross-origin isolation may block popup window.close
-                const preferRedirect = (typeof window !== 'undefined' && !!window.crossOriginIsolated);
+                // Prefer redirect in environments where popup is likely to fail (COOP/COEP or blocked popups)
+                const preferRedirect = (typeof window !== 'undefined' && (!!window.crossOriginIsolated || /Headless|Electron|Steam|OPR\//i.test(navigator.userAgent || '')));
                 if (preferRedirect) {
                     logDebug('Auth: crossOriginIsolated detected. Using signInWithRedirect.');
                     if (btnSpan) { btnSpan.textContent = 'Redirecting to Google…'; }
@@ -14559,7 +14676,7 @@ if (targetPriceInput) {
                 } catch (popupErr) {
                     const code = popupErr && popupErr.code ? String(popupErr.code) : '';
                     const msg = popupErr && popupErr.message ? String(popupErr.message) : '';
-                    const coopHint = /Cross-Origin-Opener-Policy/i.test(msg);
+                    const coopHint = /Cross-Origin-Opener-Policy|Blocked a frame with origin|SecurityError|COOP|COEP/i.test(msg);
                     const shouldFallback = coopHint || code === 'auth/operation-not-supported-in-this-environment' || code === 'auth/popup-blocked' || code === 'auth/unauthorized-domain';
                     if (shouldFallback) {
                         logDebug('Auth: Popup sign-in blocked or unsupported. Falling back to redirect.', { code, coopHint });
@@ -14593,7 +14710,16 @@ if (targetPriceInput) {
     // Optionally resolve pending redirect results (no-op when not applicable)
     try {
         if (auth && authFunctions && typeof authFunctions.getRedirectResult === 'function') {
-            authFunctions.getRedirectResult(auth).catch(()=>{});
+            authFunctions.getRedirectResult(auth).then((res)=>{
+                if (res && res.user) {
+                    logDebug('Auth: Redirect result received; user signed in.');
+                }
+            }).catch((e)=>{
+                const msg = String(e && e.message || '');
+                if (/Cross-Origin-Opener-Policy|COOP|COEP/i.test(msg)) {
+                    console.warn('Auth: COOP/COEP error encountered post-redirect. This is non-fatal; user may already be signed in.');
+                }
+            });
         }
     } catch(_) {}
 

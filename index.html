@@ -117,70 +117,109 @@
                     </div>
                 </div>
 
+                <!-- New: Thresholds Summary Card -->
+                <div id="gaSummaryCard" class="ga-summary-card" aria-live="polite">
+                    <div class="ga-summary-grid">
+                        <div class="ga-summary-item">
+                            <span class="ga-icon"><i class="fas fa-arrow-up" aria-hidden="true"></i></span>
+                            <span class="ga-label">Increase</span>
+                            <span id="gaSumIncrease" class="ga-value">Off</span>
+                        </div>
+                        <div class="ga-summary-item">
+                            <span class="ga-icon"><i class="fas fa-arrow-down" aria-hidden="true"></i></span>
+                            <span class="ga-label">Decrease</span>
+                            <span id="gaSumDecrease" class="ga-value">Off</span>
+                        </div>
+                        <div class="ga-summary-item">
+                            <span class="ga-icon"><i class="fas fa-dollar-sign" aria-hidden="true"></i></span>
+                            <span class="ga-label">Min Price</span>
+                            <span id="gaSumMinPrice" class="ga-value">Off</span>
+                        </div>
+                        <div class="ga-summary-item">
+                            <span class="ga-icon"><i class="fas fa-calendar-alt" aria-hidden="true"></i></span>
+                            <span class="ga-label">52W Min</span>
+                            <span id="gaSumHiLoMinPrice" class="ga-value">Off</span>
+                        </div>
+                        <div class="ga-summary-item">
+                            <span class="ga-icon"><i class="fas fa-building" aria-hidden="true"></i></span>
+                            <span class="ga-label">Min Mkt Cap</span>
+                            <span id="gaSumHiLoMinCap" class="ga-value">Off</span>
+                        </div>
+                        <div class="ga-summary-item">
+                            <span class="ga-icon"><i class="fas fa-envelope" aria-hidden="true"></i></span>
+                            <span class="ga-label">Email</span>
+                            <span id="gaSumEmail" class="ga-value">Off</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Sort Picker Modal: moved out of nested modals to be a top-level sibling to avoid ancestor hiding conflicts -->
                 <!-- Sort Picker will be shown as a top-level modal so it isn't blocked by other modal containers. -->
                 <form id="globalAlertsForm" class="global-alerts-form" novalidate>
                     <!-- Section A: Price Movement (existing) -->
                     <div class="ga-block">
-                        <h3 class="ga-block-title"><span class="ga-block-icon">📈</span> Price Movement</h3>
+                        <h3 class="ga-block-title"><span class="ga-block-icon" aria-hidden="true"><i class="fas fa-chart-line"></i></span> Price Movement</h3>
                         <fieldset class="ga-section">
                             <legend>Minimum Price Filter</legend>
                             <div class="form-row">
                                 <label for="globalMinimumPrice">Ignore Shares Priced Below ($):</label>
-                                <input type="number" step="0.01" min="0" id="globalMinimumPrice" placeholder="e.g. 0.20" />
+                                <input type="number" step="0.01" min="0" id="globalMinimumPrice" placeholder="Leave blank or 0 to disable" />
                             </div>
                         </fieldset>
                         <fieldset class="ga-section">
                             <legend>Notify on Price Increase</legend>
                             <div class="form-row">
                                 <label for="globalPercentIncrease">Percentage Increase (%):</label>
-                                <input type="number" step="0.01" min="0" id="globalPercentIncrease" placeholder="e.g. 8" />
+                                <input type="number" step="0.01" min="0" id="globalPercentIncrease" placeholder="Leave blank or 0 to disable" />
                             </div>
                             <div class="form-row">
                                 <label for="globalDollarIncrease">Dollar Increase ($):</label>
-                                <input type="number" step="0.01" min="0" id="globalDollarIncrease" placeholder="e.g. 0.40" />
+                                <input type="number" step="0.01" min="0" id="globalDollarIncrease" placeholder="Leave blank or 0 to disable" />
                             </div>
                         </fieldset>
                         <fieldset class="ga-section">
                             <legend>Notify on Price Decrease</legend>
                             <div class="form-row">
                                 <label for="globalPercentDecrease">Percentage Decrease (%):</label>
-                                <input type="number" step="0.01" min="0" id="globalPercentDecrease" placeholder="e.g. 6" />
+                                <input type="number" step="0.01" min="0" id="globalPercentDecrease" placeholder="Leave blank or 0 to disable" />
                             </div>
                             <div class="form-row">
                                 <label for="globalDollarDecrease">Dollar Decrease ($):</label>
-                                <input type="number" step="0.01" min="0" id="globalDollarDecrease" placeholder="e.g. 0.30" />
+                                <input type="number" step="0.01" min="0" id="globalDollarDecrease" placeholder="Leave blank or 0 to disable" />
                             </div>
                         </fieldset>
                     </div>
 
                     <!-- Section B: Global 52-Week High/Low Alerts (new) -->
                     <div class="ga-block">
-                        <h3 class="ga-block-title"><span class="ga-block-icon">📅</span> Global 52-Week High/Low Alerts</h3>
+                        <h3 class="ga-block-title"><span class="ga-block-icon" aria-hidden="true"><i class="fas fa-calendar-alt"></i></span> Global 52-Week High/Low</h3>
                         <fieldset class="ga-section">
                             <legend>Filters</legend>
                             <div class="form-row">
                                 <label for="hiLoMinimumPrice">Minimum Price ($):</label>
-                                <input type="number" step="0.01" min="0" id="hiLoMinimumPrice" placeholder="e.g. 0.20" />
+                                <input type="number" step="0.01" min="0" id="hiLoMinimumPrice" placeholder="Leave blank or 0 to disable" />
                             </div>
                             <div class="form-row">
                                 <label for="hiLoMinimumMarketCap">Minimum Market Capitalization ($):</label>
-                                <input type="number" step="1000000" min="0" id="hiLoMinimumMarketCap" placeholder="e.g. 100000000 (100M)" />
+                                <input type="text" inputmode="numeric" id="hiLoMinimumMarketCap" placeholder="Leave blank or 0 to disable" autocomplete="off" />
                             </div>
+                            <!-- Live compact-format hint for Market Cap (e.g., $100.0M) -->
+                            <div class="subtle-info-text" id="hiLoMinCapHint" aria-live="polite"></div>
                         </fieldset>
                         <fieldset class="ga-section">
                             <legend>Notifications</legend>
                             <div class="form-row toggle-row">
-                                <label for="emailAlertsEnabled" class="switch-label">Enable Email Alerts</label>
-                                <label class="switch">
-                                    <input type="checkbox" id="emailAlertsEnabled">
-                                    <span class="slider round" aria-hidden="true"></span>
-                                </label>
+                                <label for="emailAlertsEnabled" class="switch-label">Email Alerts</label>
+                                <!-- Hidden native input kept for compatibility with existing JS -->
+                                <input type="checkbox" id="emailAlertsEnabled" style="display:none;" aria-hidden="true">
+                                <div class="segmented-toggle email-toggle" role="group" aria-label="Email Alerts">
+                                    <button type="button" id="emailOnBtn" class="toggle-segment on" aria-pressed="false">On</button>
+                                    <button type="button" id="emailOffBtn" class="toggle-segment off is-active" aria-pressed="true">Off</button>
+                                </div>
                             </div>
                         </fieldset>
                     </div>
                 </form>
-                <p class="modal-helper-text" style="margin-top:18px;">Create automatic alerts when ANY ASX share moves beyond these thresholds since previous close. Configure increases and decreases separately. Leave a field blank (or 0) to disable that trigger. Use the 52-week section to control high/low scans and email notifications.</p>
             </div>
         </div>
 
