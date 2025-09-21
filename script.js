@@ -3143,6 +3143,17 @@ async function updateAddFormLiveSnapshot(code) {
         const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
         const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
         const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
+        // Stash snapshot so saveShareData can use prevClose/live immediately for sorting
+        try {
+            window.__addFormSnapshot = {
+                code: upper,
+                live: !isNaN(live) ? live : null,
+                prev: !isNaN(prev) ? prev : null,
+                lastLivePrice: !isNaN(live) ? live : null,
+                lastPrevClose: !isNaN(prev) ? prev : null,
+                ts: Date.now()
+            };
+        } catch(_) {}
         // Guard against user switching code mid-flight
         if (shareNameInput && shareNameInput.value.toUpperCase().trim() !== upper) {
             if (DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: shareNameInput.value });
@@ -7112,7 +7123,11 @@ async function saveShareData(isSilent = false) {
                 const exists = allSharesData.some(s => s && s.id === provisionalId);
                 if (!exists) {
                     allSharesData.push(provisionalShare);
-                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); } catch(_) {}
+                    // Immediately re-apply current sort so the provisional row lands in the correct position
+                    try {
+                        if (typeof sortShares === 'function') sortShares();
+                        else if (typeof renderWatchlist === 'function') renderWatchlist();
+                    } catch(_) {}
                 }
 
                 // Also merge a provisional livePrices entry so the watchlist shows the entry price while real prices arrive
@@ -7122,10 +7137,15 @@ async function saveShareData(isSilent = false) {
                         // If no live price exists yet for this code, create a provisional one based on entryPrice
                         const existingLP = (typeof livePrices !== 'undefined' && livePrices && livePrices[code]) ? livePrices[code] : null;
                         if (!existingLP || !existingLP.live) {
+                            const entry = (shareData.entryPrice !== null && shareData.entryPrice !== undefined) ? Number(shareData.entryPrice) : null;
+                            const prev = (existingLP && (typeof existingLP.prevClose === 'number' && !isNaN(existingLP.prevClose))) ? existingLP.prevClose : entry;
+                            const lastPrev = (existingLP && (typeof existingLP.lastPrevClose === 'number' && !isNaN(existingLP.lastPrevClose))) ? existingLP.lastPrevClose : prev;
+                            const lastLive = (existingLP && (typeof existingLP.lastLivePrice === 'number' && !isNaN(existingLP.lastLivePrice))) ? existingLP.lastLivePrice : entry;
                             const provisionalLP = {
-                                live: (shareData.entryPrice !== null && shareData.entryPrice !== undefined) ? Number(shareData.entryPrice) : null,
-                                prevClose: existingLP && existingLP.prevClose ? existingLP.prevClose : null,
-                                lastLivePrice: existingLP && existingLP.lastLivePrice ? existingLP.lastLivePrice : null,
+                                live: entry,
+                                prevClose: prev,
+                                lastLivePrice: lastLive,
+                                lastPrevClose: lastPrev,
                                 __provisional: true
                             };
                             try { window.livePrices = Object.assign({}, (window.livePrices || {}), { [code]: provisionalLP }); } catch(_) {}
@@ -7710,6 +7730,8 @@ function sortShares() {
     // Read the authoritative sort order from the centralized state module when available.
     // Fallback to window.currentSortOrder for legacy callers.
     const sortValue = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : (window.currentSortOrder || '');
+    // Always work off a fresh snapshot of live prices to avoid stale local copies
+    const prices = (typeof getLivePrices === 'function') ? getLivePrices() : ((typeof livePrices === 'object' && livePrices) ? livePrices : (window.livePrices || {}));
     logDebug('AGGRESSIVE DEBUG: sortShares called with currentSortOrder: ' + sortValue);
     // Lightweight runtime tracing to help QA: show active sort and a small before/after sample only when DEBUG_MODE
     try {
@@ -7741,19 +7763,32 @@ function sortShares() {
         // Handle sorting by percentage change
         if (field === 'percentageChange') {
             logDebug('AGGRESSIVE DEBUG: Percentage change sorting detected');
-            const livePriceDataA = livePrices[a.shareName.toUpperCase()];
+            const livePriceDataA = prices[a.shareName.toUpperCase()];
             const livePriceA = livePriceDataA ? livePriceDataA.live : undefined;
-            const prevCloseA = livePriceDataA ? livePriceDataA.prevClose : undefined;
+            const prevCloseA = livePriceDataA ? (livePriceDataA.prevClose ?? livePriceDataA.lastPrevClose) : undefined;
 
-            const livePriceDataB = livePrices[b.shareName.toUpperCase()];
+            const livePriceDataB = prices[b.shareName.toUpperCase()];
             const livePriceB = livePriceDataB ? livePriceDataB.live : undefined;
-            const prevCloseB = livePriceDataB ? livePriceDataB.prevClose : undefined; // Corrected variable name
+            const prevCloseB = livePriceDataB ? (livePriceDataB.prevClose ?? livePriceDataB.lastPrevClose) : undefined; // Corrected variable name
 
             let percentageChangeA = null;
             // Only calculate if both livePriceA and prevCloseA are valid numbers and prevCloseA is not zero
             if (livePriceA !== undefined && livePriceA !== null && !isNaN(livePriceA) &&
                 prevCloseA !== undefined && prevCloseA !== null && !isNaN(prevCloseA) && prevCloseA !== 0) {
                 percentageChangeA = ((livePriceA - prevCloseA) / prevCloseA) * 100;
+            } else {
+                // Fallback for provisional/new shares without live data: use lastFetchedPrice/previousFetchedPrice/currentPrice
+                try {
+                    const priceNow = (typeof a.lastFetchedPrice === 'number' && !isNaN(a.lastFetchedPrice)) ? a.lastFetchedPrice
+                                  : (typeof a.currentPrice === 'number' && !isNaN(a.currentPrice)) ? a.currentPrice : null;
+                    const prev = (typeof a.previousFetchedPrice === 'number' && !isNaN(a.previousFetchedPrice)) ? a.previousFetchedPrice : null;
+                    if (priceNow !== null && prev !== null && prev !== 0) {
+                        percentageChangeA = ((priceNow - prev) / prev) * 100;
+                    } else if (priceNow !== null && (prev === null || prev === 0)) {
+                        // If we have a current/entry price but no valid previous, treat as 0% to position reasonably
+                        percentageChangeA = 0;
+                    }
+                } catch(_) {}
             }
 
             let percentageChangeB = null;
@@ -7761,6 +7796,17 @@ function sortShares() {
             if (livePriceB !== undefined && livePriceB !== null && !isNaN(livePriceB) &&
                 prevCloseB !== undefined && prevCloseB !== null && !isNaN(prevCloseB) && prevCloseB !== 0) { // Corrected variable name here
                 percentageChangeB = ((livePriceB - prevCloseB) / prevCloseB) * 100;
+            } else {
+                try {
+                    const priceNow = (typeof b.lastFetchedPrice === 'number' && !isNaN(b.lastFetchedPrice)) ? b.lastFetchedPrice
+                                  : (typeof b.currentPrice === 'number' && !isNaN(b.currentPrice)) ? b.currentPrice : null;
+                    const prev = (typeof b.previousFetchedPrice === 'number' && !isNaN(b.previousFetchedPrice)) ? b.previousFetchedPrice : null;
+                    if (priceNow !== null && prev !== null && prev !== 0) {
+                        percentageChangeB = ((priceNow - prev) / prev) * 100;
+                    } else if (priceNow !== null && (prev === null || prev === 0)) {
+                        percentageChangeB = 0;
+                    }
+                } catch(_) {}
             }
 
             // Debugging log for percentage sort
@@ -7795,7 +7841,7 @@ function sortShares() {
             };
             const getPortfolioMetric = (share) => {
                 try {
-                    const lp = livePrices[(share.shareName || '').toUpperCase()];
+                    const lp = prices[(share.shareName || '').toUpperCase()];
                     // Determine priceNow with fallbacks
                     const priceNowRaw = (lp && (safeNum(lp.live) !== null)) ? lp.live : (lp && (safeNum(lp.lastLivePrice) !== null) ? lp.lastLivePrice : share.currentPrice);
                     const priceNow = safeNum(priceNowRaw);
@@ -7849,14 +7895,14 @@ function sortShares() {
             return order === 'asc' ? valA - valB : valB - valA;
         } else if (field === 'dividendAmount') { // Dedicated logic for dividendAmount (yield)
             // Get live price data for share A
-            const livePriceDataA = livePrices[a.shareName.toUpperCase()];
+            const livePriceDataA = prices[a.shareName.toUpperCase()];
             const livePriceA = livePriceDataA ? livePriceDataA.live : undefined;
             // Price for yield calculation: prefer live price, fall back to entered price
             // Default to 0 if price is invalid or zero to avoid division issues in yield functions
             const priceForYieldA = (livePriceA !== undefined && livePriceA !== null && !isNaN(livePriceA) && livePriceA > 0) ? livePriceA : (Number(a.currentPrice) > 0 ? Number(a.currentPrice) : 0);
 
             // Get live price data for share B
-            const livePriceDataB = livePrices[b.shareName.toUpperCase()];
+            const livePriceDataB = prices[b.shareName.toUpperCase()];
             const livePriceB = livePriceDataB ? livePriceDataB.live : undefined;
             // Price for yield calculation: prefer live price, fall back to entered price
             // Default to 0 if price is invalid or zero to avoid division issues in yield functions

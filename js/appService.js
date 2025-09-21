@@ -1,6 +1,6 @@
 // App Service: core CRUD logic extracted from script.js
 // Uses window-bound Firebase services and UI helpers.
-import { getUserWatchlists, setUserWatchlists, setCurrentSelectedWatchlistIds, getCurrentSelectedWatchlistIds, getUserCashCategories, setUserCashCategories, getAllSharesData, setAllSharesData } from './state.js';
+import { getUserWatchlists, setUserWatchlists, setCurrentSelectedWatchlistIds, getCurrentSelectedWatchlistIds, getUserCashCategories, setUserCashCategories, getAllSharesData, setAllSharesData, setLivePrices, getLivePrices, getCurrentSortOrder } from './state.js';
 import { db, firestore, currentAppId, auth } from '../firebase.js';
 import { getCurrentFormData, getCurrentCashAssetFormData } from './uiService.js';
 
@@ -219,7 +219,8 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 if (livePrices[shareCode] && livePrices[shareCode].prevClose !== null && !isNaN(livePrices[shareCode].prevClose)) {
                     shareData.previousFetchedPrice = parseFloat(livePrices[shareCode].prevClose);
                 } else {
-                    shareData.previousFetchedPrice = parsedFromDom * 0.995;
+                    // Use entry/current price as previous to produce a 0% baseline until a real prevClose arrives
+                    shareData.previousFetchedPrice = parsedFromDom;
                 }
                 console.log('[ENTRY PRICE] Using DOM currentPrice as entry price for new share:', shareData.entryPrice, 'raw=', shareData.enteredPriceRaw);
             } else if (form && form.currentPrice !== null && form.currentPrice !== undefined && !isNaN(form.currentPrice)) {
@@ -230,17 +231,28 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 if (livePrices[shareCode] && livePrices[shareCode].prevClose !== null && !isNaN(livePrices[shareCode].prevClose)) {
                     shareData.previousFetchedPrice = parseFloat(livePrices[shareCode].prevClose);
                 } else {
-                    shareData.previousFetchedPrice = v * 0.995;
+                    // Use entry/current price as previous to produce a 0% baseline until a real prevClose arrives
+                    shareData.previousFetchedPrice = v;
                 }
                 console.log('[ENTRY PRICE] Using form.currentPrice as entry price for new share:', shareData.entryPrice, 'raw=', shareData.enteredPriceRaw);
             } else {
-                // Fallback: try livePrices if available
-                if (livePrices[shareCode] && typeof livePrices[shareCode].live === 'number' && !isNaN(livePrices[shareCode].live)) {
+                // Fallback: try add-form snapshot first, then livePrices if available
+                const snap = (typeof window !== 'undefined' && window.__addFormSnapshot && window.__addFormSnapshot.code === shareCode) ? window.__addFormSnapshot : null;
+                if (snap && typeof snap.live === 'number' && !isNaN(snap.live)) {
+                    const lp = parseFloat(snap.live);
+                    const pv = (typeof snap.prev === 'number' && !isNaN(snap.prev)) ? parseFloat(snap.prev) : lp;
+                    shareData.entryPrice = lp;
+                    shareData.enteredPriceRaw = String(lp);
+                    shareData.lastFetchedPrice = lp;
+                    shareData.previousFetchedPrice = pv; // use prev from snapshot or entry for 0% baseline
+                    console.log('[ENTRY PRICE] Using add-form snapshot live/prev for new share:', shareData.entryPrice, pv);
+                } else if (livePrices[shareCode] && typeof livePrices[shareCode].live === 'number' && !isNaN(livePrices[shareCode].live)) {
                     const lp = parseFloat(livePrices[shareCode].live);
                     shareData.entryPrice = lp;
                     shareData.enteredPriceRaw = String(lp);
                     shareData.lastFetchedPrice = lp;
-                    shareData.previousFetchedPrice = (livePrices[shareCode].prevClose && !isNaN(livePrices[shareCode].prevClose)) ? parseFloat(livePrices[shareCode].prevClose) : lp * 0.995;
+                    // If prevClose unavailable, fall back to live/entry price so percentage change is 0% initially
+                    shareData.previousFetchedPrice = (livePrices[shareCode].prevClose && !isNaN(livePrices[shareCode].prevClose)) ? parseFloat(livePrices[shareCode].prevClose) : lp;
                     console.log('[ENTRY PRICE] Using livePrices.live as entry price for new share:', shareData.entryPrice);
                 } else {
                     console.log('[ENTRY PRICE] No entry price available from DOM/form/livePrices for new share');
@@ -254,6 +266,28 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
         } catch (e) {
             console.warn('[ENTRY PRICE] Error determining entry price for new share:', e);
         }
+
+        // Ensure currentPrice has a sensible fallback for immediate sorting/rendering
+        try {
+            const cp = shareData.currentPrice;
+            const ep = shareData.entryPrice;
+            if ((cp === null || cp === undefined || isNaN(cp)) && (typeof ep === 'number' && !isNaN(ep))) {
+                shareData.currentPrice = ep;
+                console.log('[ENTRY PRICE] currentPrice set from entryPrice for initial sort fallback:', shareData.currentPrice);
+            }
+            // Also ensure lastFetchedPrice/previousFetchedPrice are initialized so percentage sort can place provisionals
+            const lfp = shareData.lastFetchedPrice;
+            if ((lfp === null || lfp === undefined || isNaN(lfp)) && (typeof ep === 'number' && !isNaN(ep))) {
+                shareData.lastFetchedPrice = ep;
+                console.log('[ENTRY PRICE] lastFetchedPrice set from entryPrice for initial sort fallback:', shareData.lastFetchedPrice);
+            }
+            const pfp = shareData.previousFetchedPrice;
+            if ((pfp === null || pfp === undefined || isNaN(pfp)) && (typeof ep === 'number' && !isNaN(ep))) {
+                // Default to 0% change until real prevClose arrives
+                shareData.previousFetchedPrice = ep;
+                console.log('[ENTRY PRICE] previousFetchedPrice set from entryPrice for 0% provisional change:', shareData.previousFetchedPrice);
+            }
+        } catch(_) {}
     }
 
     // Set entry date to current date for new shares
@@ -548,7 +582,81 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
                 // Remove any existing provisional for same code to avoid duplicates
                 const filtered = currentShares.filter(s => !(s && s.__provisional && s.shareName === provisionalShare.shareName));
-                setAllSharesData([...filtered, provisionalShare]);
+                // If sorting by percentageChange, insert at the correct position immediately
+                try {
+                    const sortVal = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : (window.getCurrentSortOrder ? window.getCurrentSortOrder() : '');
+                    if (typeof sortVal === 'string' && sortVal.indexOf('percentageChange-') === 0) {
+                        const [, dir] = sortVal.split('-');
+                        const prices = (typeof getLivePrices === 'function') ? getLivePrices() : (window.livePrices || {});
+                        const pct = (share) => {
+                            try {
+                                const code = (share.shareName || '').toUpperCase();
+                                const lp = prices[code];
+                                const live = (lp && typeof lp.live === 'number' && !isNaN(lp.live)) ? lp.live
+                                            : (lp && typeof lp.lastLivePrice === 'number' && !isNaN(lp.lastLivePrice)) ? lp.lastLivePrice
+                                            : (typeof share.lastFetchedPrice === 'number' && !isNaN(share.lastFetchedPrice)) ? share.lastFetchedPrice
+                                            : (typeof share.currentPrice === 'number' && !isNaN(share.currentPrice)) ? share.currentPrice
+                                            : (typeof share.entryPrice === 'number' && !isNaN(share.entryPrice)) ? share.entryPrice
+                                            : null;
+                                const prev = (lp && (typeof lp.prevClose === 'number' || typeof lp.lastPrevClose === 'number'))
+                                             ? (isNaN(lp.prevClose) ? lp.lastPrevClose : lp.prevClose)
+                                             : (typeof share.previousFetchedPrice === 'number' && !isNaN(share.previousFetchedPrice)) ? share.previousFetchedPrice
+                                             : (typeof share.entryPrice === 'number' && !isNaN(share.entryPrice)) ? share.entryPrice
+                                             : null;
+                                if (live !== null && prev !== null && prev !== 0) return ((live - prev) / prev) * 100;
+                                if (live !== null && (prev === null || prev === 0)) return 0; // reasonable default
+                                return null;
+                            } catch (_) { return null; }
+                        };
+                        const cmp = (a, b) => {
+                            // push nulls to end
+                            const pa = pct(a);
+                            const pb = pct(b);
+                            if (pa === null && pb === null) return 0;
+                            if (pa === null) return 1;
+                            if (pb === null) return -1;
+                            const diff = (dir === 'asc') ? (pa - pb) : (pb - pa);
+                            if (Math.abs(diff) > Number.EPSILON) return diff;
+                            // tie-breaker by shareName
+                            const nameA = (a.shareName || '').toUpperCase();
+                            const nameB = (b.shareName || '').toUpperCase();
+                            return nameA.localeCompare(nameB);
+                        };
+                        // Find insertion index via binary search
+                        let lo = 0, hi = filtered.length;
+                        while (lo < hi) {
+                            const mid = (lo + hi) >> 1;
+                            if (cmp(filtered[mid], provisionalShare) <= 0) {
+                                lo = mid + 1;
+                            } else {
+                                hi = mid;
+                            }
+                        }
+                        const nextArr = filtered.slice();
+                        nextArr.splice(lo, 0, provisionalShare);
+                        setAllSharesData(nextArr);
+                    } else {
+                        setAllSharesData([...filtered, provisionalShare]);
+                    }
+                } catch (insErr) {
+                    setAllSharesData([...filtered, provisionalShare]);
+                }
+                // Seed a provisional livePrices entry so percentage/dollar sorts have data immediately
+                try {
+                    const code = (provisionalShare.shareName || '').toUpperCase();
+                    // Prefer add-form snapshot for the active code to ensure correct immediate placement
+                    const snap = (typeof window !== 'undefined' && window.__addFormSnapshot && window.__addFormSnapshot.code === code) ? window.__addFormSnapshot : null;
+                    const live = (snap && typeof snap.live === 'number' && !isNaN(snap.live)) ? snap.live
+                               : (typeof provisionalShare.lastFetchedPrice === 'number' && !isNaN(provisionalShare.lastFetchedPrice)) ? provisionalShare.lastFetchedPrice
+                               : (typeof provisionalShare.currentPrice === 'number' && !isNaN(provisionalShare.currentPrice)) ? provisionalShare.currentPrice : null;
+                    const prev = (snap && typeof snap.prev === 'number' && !isNaN(snap.prev)) ? snap.prev
+                               : (typeof provisionalShare.previousFetchedPrice === 'number' && !isNaN(provisionalShare.previousFetchedPrice)) ? provisionalShare.previousFetchedPrice : null;
+                    if (code && live !== null && prev !== null) {
+                        setLivePrices({ [code]: { live, prevClose: prev, lastLivePrice: live, lastPrevClose: prev } });
+                    }
+                } catch(_) {}
+                // Immediately re-apply sort so the provisional appears in the correct position
+                try { if (typeof window !== 'undefined' && typeof window.sortShares === 'function') window.sortShares(); } catch(_) {}
             } catch (e) {
                 try { window.logDebug && window.logDebug('AppService: provisional insert failed', e); } catch(_) {}
             }
@@ -598,6 +706,8 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 });
                 next.push(created);
                 setAllSharesData(next);
+                // Immediately re-apply current sort so the new share appears in the correct position
+                try { if (typeof window !== 'undefined' && typeof window.sortShares === 'function') window.sortShares(); } catch(_) {}
             } catch (e) {
                 try { window.logDebug && window.logDebug('AppService: failed to replace provisional with created share', e); } catch(_) {}
             }
