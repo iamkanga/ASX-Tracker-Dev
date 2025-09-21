@@ -376,19 +376,33 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                     host.insertBefore(el, host.firstChild);
                 } catch(_) {}
             }
+            // Build always-on explainer labels using current thresholds with 'Not set' placeholders
+            // Merge per-field with effective server thresholds so we don't show 'Not set' due to timing
+            const baseThr = (typeof window.getCurrentDirectionalThresholds === 'function' ? window.getCurrentDirectionalThresholds() : {}) || {};
+            const toNum = (v) => {
+                const n = Number(v);
+                return (v != null && isFinite(n) && n > 0) ? n : null;
+            };
+            const curThr = {
+                upPercent: (toNum(baseThr.upPercent) != null ? toNum(baseThr.upPercent) : (eff ? toNum(eff.upPercent) : null)),
+                upDollar: (toNum(baseThr.upDollar) != null ? toNum(baseThr.upDollar) : (eff ? toNum(eff.upDollar) : null)),
+                downPercent: (toNum(baseThr.downPercent) != null ? toNum(baseThr.downPercent) : (eff ? toNum(eff.downPercent) : null)),
+                downDollar: (toNum(baseThr.downDollar) != null ? toNum(baseThr.downDollar) : (eff ? toNum(eff.downDollar) : null)),
+                minimumPrice: (toNum(baseThr.minimumPrice) != null ? toNum(baseThr.minimumPrice) : (eff ? toNum(eff.minimumPrice) : null))
+            };
             const upLabel = (function(){
-                if (!eff) return 'Gainers — no active thresholds';
-                const bits = [];
-                if (eff.upPercent || eff.upDollar) bits.push(`Gainers ≥ ${eff.upPercent?eff.upPercent+'%':''}${(eff.upPercent&&eff.upDollar)?' or ':''}${eff.upDollar?('$'+eff.upDollar):''}`.trim());
-                if (eff.minimumPrice) bits.push(`Min Price $${eff.minimumPrice}`);
-                return bits.join(' | ') || 'Gainers — no active thresholds';
+                const pct = (curThr.upPercent != null && isFinite(curThr.upPercent) && curThr.upPercent > 0) ? (Number(curThr.upPercent).toFixed(0) + '%') : null;
+                const dol = (curThr.upDollar != null && isFinite(curThr.upDollar) && curThr.upDollar > 0) ? ('$' + Number(curThr.upDollar).toFixed(2)) : null;
+                const move = (pct || dol) ? `Gainers ≥ ${[pct, dol].filter(Boolean).join(' or ')}` : 'Gainers ≥ Not set';
+                const minP = (curThr.minimumPrice != null && isFinite(curThr.minimumPrice) && curThr.minimumPrice > 0) ? ('$' + Number(curThr.minimumPrice).toFixed(2)) : 'Not set';
+                return `${move} | Min Price: ${minP}`;
             })();
             const downLabel = (function(){
-                if (!eff) return 'Losers — no active thresholds';
-                const bits = [];
-                if (eff.downPercent || eff.downDollar) bits.push(`Losers ≥ ${eff.downPercent?eff.downPercent+'%':''}${(eff.downPercent&&eff.downDollar)?' or ':''}${eff.downDollar?('$'+eff.downDollar):''}`.trim());
-                if (eff.minimumPrice) bits.push(`Min Price $${eff.minimumPrice}`);
-                return bits.join(' | ') || 'Losers — no active thresholds';
+                const pct = (curThr.downPercent != null && isFinite(curThr.downPercent) && curThr.downPercent > 0) ? (Number(curThr.downPercent).toFixed(0) + '%') : null;
+                const dol = (curThr.downDollar != null && isFinite(curThr.downDollar) && curThr.downDollar > 0) ? ('$' + Number(curThr.downDollar).toFixed(2)) : null;
+                const move = (pct || dol) ? `Losers ≥ ${[pct, dol].filter(Boolean).join(' or ')}` : 'Losers ≥ Not set';
+                const minP = (curThr.minimumPrice != null && isFinite(curThr.minimumPrice) && curThr.minimumPrice > 0) ? ('$' + Number(curThr.minimumPrice).toFixed(2)) : 'Not set';
+                return `${move} | Min Price: ${minP}`;
             })();
 
             if (gainersContainer) insertExplainer(gainersContainer, upLabel);
@@ -442,13 +456,15 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
         if (hiloHighContainer) {
             try { const existing = hiloHighContainer.querySelector('.section-explainer'); if (existing) existing.remove(); } catch(_) {}
             const hiExpl = document.createElement('div'); hiExpl.className='section-explainer';
-            // Build explainer with active thresholds (Min Price, Min Market Cap) — list thresholds only
-            const explHighBits = [];
+            // Build explainer that always displays thresholds with placeholders
             try {
-                if (typeof hiLoMinimumPrice === 'number' && hiLoMinimumPrice > 0) explHighBits.push('Min Price $' + Number(hiLoMinimumPrice).toFixed(2));
-                if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) explHighBits.push('Min Mkt Cap ' + formatCompactNumber(Number(hiLoMinimumMarketCap)));
-            } catch(_) {}
-            hiExpl.textContent = explHighBits.join(' | ');
+                const toNum = (v)=>{ const n = Number(v); return (v!=null && isFinite(n) && n>0) ? n : null; };
+                const mpNum = toNum(hiLoMinimumPrice);
+                const mcNum = toNum(hiLoMinimumMarketCap);
+                const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
+                const mc = (mcNum!=null) ? (formatCompactNumber(mcNum)) : 'Not set';
+                hiExpl.textContent = `Min Price: ${mp} | Min Mkt Cap: ${mc}`;
+            } catch(_) { hiExpl.textContent = 'Min Price: Not set | Min Mkt Cap: Not set'; }
             hiloHighContainer.insertBefore(hiExpl, hiloHighContainer.firstChild);
             // Flatten any legacy inner wrapper
             const innerH = hiloHighContainer.querySelector('.notification-list-inner');
@@ -466,13 +482,15 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
         if (hiloLowContainer) {
             try { const existing = hiloLowContainer.querySelector('.section-explainer'); if (existing) existing.remove(); } catch(_) {}
             const loExpl = document.createElement('div'); loExpl.className='section-explainer';
-            // Build explainer with active thresholds (Min Price, Min Market Cap) — list thresholds only
-            const explLowBits = [];
+            // Build explainer that always displays thresholds with placeholders
             try {
-                if (typeof hiLoMinimumPrice === 'number' && hiLoMinimumPrice > 0) explLowBits.push('Min Price $' + Number(hiLoMinimumPrice).toFixed(2));
-                if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) explLowBits.push('Min Mkt Cap ' + formatCompactNumber(Number(hiLoMinimumMarketCap)));
-            } catch(_) {}
-            loExpl.textContent = explLowBits.join(' | ');
+                const toNum = (v)=>{ const n = Number(v); return (v!=null && isFinite(n) && n>0) ? n : null; };
+                const mpNum = toNum(hiLoMinimumPrice);
+                const mcNum = toNum(hiLoMinimumMarketCap);
+                const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
+                const mc = (mcNum!=null) ? (formatCompactNumber(mcNum)) : 'Not set';
+                loExpl.textContent = `Min Price: ${mp} | Min Mkt Cap: ${mc}`;
+            } catch(_) { loExpl.textContent = 'Min Price: Not set | Min Mkt Cap: Not set'; }
             hiloLowContainer.insertBefore(loExpl, hiloLowContainer.firstChild);
             // Flatten any legacy inner wrapper
             const innerL = hiloLowContainer.querySelector('.notification-list-inner');
@@ -1841,8 +1859,8 @@ let suppressShareFormReopen = false;
 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
-// Release: 2025-09-12 - Back navigation reliability + splash version bump
-const APP_VERSION = '2.15.4';
+// Release: 2025-09-21 - Global alerts explainers always show thresholds with 'Not set' placeholders
+const APP_VERSION = '2.15.5';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)
@@ -15903,16 +15921,17 @@ function showTargetHitDetailsModal(options={}) {
                     expl.__bound = true;
                 }
             }
+            const toNum = (v)=>{ const n = Number(v); return (v!=null && isFinite(n) && n>0) ? n : null; };
             const fmtMoney = (n)=>{
-                const v = Number(n); if (!isFinite(v) || v<=0) return 'Off';
+                const v = toNum(n); if (v==null) return 'Not set';
                 if (v>=1e9) return '$'+(v/1e9).toFixed(1)+'B';
                 if (v>=1e6) return '$'+(v/1e6).toFixed(1)+'M';
                 if (v>=1e3) return '$'+(v/1e3).toFixed(1)+'K';
                 return '$'+v.toFixed(2);
             };
-            const pctPart = (v)=> (typeof v==='number' && v>0) ? (v.toFixed(0)+'%') : 'Off';
-            const dolPart = (v)=> (typeof v==='number' && v>0) ? ('$'+v.toFixed(2)) : 'Off';
-            const minPricePart = (v)=> (typeof v==='number' && v>0) ? ('$'+v.toFixed(2)) : 'Off';
+            const pctPart = (v)=>{ const n = toNum(v); return (n!=null) ? (n.toFixed(0)+'%') : 'Not set'; };
+            const dolPart = (v)=>{ const n = toNum(v); return (n!=null) ? ('$'+n.toFixed(2)) : 'Not set'; };
+            const minPricePart = (v)=>{ const n = toNum(v); return (n!=null) ? ('$'+n.toFixed(2)) : 'Not set'; };
 
             // Target Hits (local alerts use user per-share targets)
             ensureExplainer('target-hits', ()=>'Your per-share alert targets (Buy/Sell, Above/Below).', ()=>{
@@ -15931,10 +15950,18 @@ function showTargetHitDetailsModal(options={}) {
 
             // Global gainers/losers based on directional thresholds
             ensureExplainer('global-gainers', ()=>{
-                const t = (typeof window.getCurrentDirectionalThresholds==='function') ? window.getCurrentDirectionalThresholds() : {
+                const base = (typeof window.getCurrentDirectionalThresholds==='function') ? window.getCurrentDirectionalThresholds() : {
                     upPercent: window.globalPercentIncrease, upDollar: window.globalDollarIncrease, minimumPrice: window.globalMinimumPrice
                 };
-                return `Increase ≥ ${pctPart(t.upPercent)} or ${dolPart(t.upDollar)} | Min Price: ${minPricePart(t.minimumPrice)}`;
+                const eff = (window.globalMovers && (window.globalMovers.__effectiveThresholds || window.globalMovers.thresholds)) || null;
+                const upPct = (toNum(base.upPercent)!=null) ? toNum(base.upPercent) : (eff ? toNum(eff.upPercent) : null);
+                const upDol = (toNum(base.upDollar)!=null) ? toNum(base.upDollar) : (eff ? toNum(eff.upDollar) : null);
+                const minP = (toNum(base.minimumPrice)!=null) ? toNum(base.minimumPrice) : (eff ? toNum(eff.minimumPrice) : null);
+                const parts = [];
+                if (upPct!=null) parts.push(upPct.toFixed(0) + '%');
+                if (upDol!=null) parts.push('$' + upDol.toFixed(2));
+                const incStr = parts.length ? parts.join(' or ') : 'Not set';
+                return `Increase ≥ ${incStr} | Min Price: ${minPricePart(minP)}`;
             }, ()=>{
                 try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
                 try {
@@ -15946,10 +15973,18 @@ function showTargetHitDetailsModal(options={}) {
                 } catch(_){ }
             });
             ensureExplainer('global-losers', ()=>{
-                const t = (typeof window.getCurrentDirectionalThresholds==='function') ? window.getCurrentDirectionalThresholds() : {
+                const base = (typeof window.getCurrentDirectionalThresholds==='function') ? window.getCurrentDirectionalThresholds() : {
                     downPercent: window.globalPercentDecrease, downDollar: window.globalDollarDecrease, minimumPrice: window.globalMinimumPrice
                 };
-                return `Decrease ≥ ${pctPart(t.downPercent)} or ${dolPart(t.downDollar)} | Min Price: ${minPricePart(t.minimumPrice)}`;
+                const eff = (window.globalMovers && (window.globalMovers.__effectiveThresholds || window.globalMovers.thresholds)) || null;
+                const downPct = (toNum(base.downPercent)!=null) ? toNum(base.downPercent) : (eff ? toNum(eff.downPercent) : null);
+                const downDol = (toNum(base.downDollar)!=null) ? toNum(base.downDollar) : (eff ? toNum(eff.downDollar) : null);
+                const minP = (toNum(base.minimumPrice)!=null) ? toNum(base.minimumPrice) : (eff ? toNum(eff.minimumPrice) : null);
+                const parts = [];
+                if (downPct!=null) parts.push(downPct.toFixed(0) + '%');
+                if (downDol!=null) parts.push('$' + downDol.toFixed(2));
+                const decStr = parts.length ? parts.join(' or ') : 'Not set';
+                return `Decrease ≥ ${decStr} | Min Price: ${minPricePart(minP)}`;
             }, ()=>{
                 try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
                 try {
@@ -15963,7 +15998,7 @@ function showTargetHitDetailsModal(options={}) {
 
             // 52W High/Low: include Min Price and Min Market Cap
             ensureExplainer('high52', ()=>{
-                const mp = window.hiLoMinimumPrice; const mc = window.hiLoMinimumMarketCap;
+                const mp = hiLoMinimumPrice; const mc = hiLoMinimumMarketCap;
                 // List thresholds only; remove any 'Scope All ASX' wording
                 const parts = [];
                 parts.push(`Min Price: ${minPricePart(mp)}`);
@@ -15980,7 +16015,7 @@ function showTargetHitDetailsModal(options={}) {
                 } catch(_){ }
             });
             ensureExplainer('low52', ()=>{
-                const mp = window.hiLoMinimumPrice; const mc = window.hiLoMinimumMarketCap;
+                const mp = hiLoMinimumPrice; const mc = hiLoMinimumMarketCap;
                 const parts = [];
                 parts.push(`Min Price: ${minPricePart(mp)}`);
                 parts.push(`Min Mkt Cap: ${fmtMoney(mc)}`);
