@@ -707,8 +707,8 @@
             <!-- Notifications Summary (top, non-accordion) -->
             <div id="notificationsSummary" class="notifications-summary" aria-live="polite">
                 <div class="summary-row">
-                    <div class="summary-chip target-chip" data-section="target-hits" title="Target alerts in your portfolio">
-                        <span class="chip-label">Targets</span>
+                    <div class="summary-chip target-chip" data-section="target-hits" title="Custom alerts in your portfolio">
+                        <span class="chip-label">Custom Alerts</span>
                         <span class="chip-count" id="summaryTargetCount">0</span>
                     </div>
                     <div class="summary-chip gainers-chip" data-section="global-gainers" title="Global gainers meeting thresholds">
@@ -731,15 +731,15 @@
             </div>
             <!-- Notifications Accordion -->
             <div id="notificationsAccordion" class="accordion notifications-accordion">
-                <!-- Custom Trigger Section (renamed from Target Hit Alert) -->
+                <!-- Custom Alerts Section (renamed from Target Hit Alert) -->
                 <div class="accordion-section open" data-section="target-hits">
                     <button type="button" class="accordion-toggle" aria-expanded="true" aria-controls="notif-panel-target" id="notif-header-target">
-                        <span class="accordion-title">Custom Trigger</span>
+                        <span class="accordion-title">Custom Alerts</span>
                         <span class="accordion-caret" aria-hidden="true"></span>
                     </button>
                     <div id="notif-panel-target" class="accordion-panel" role="region" aria-labelledby="notif-header-target">
                         <div id="targetHitSharesList" class="target-hit-shares-list">
-                            <p class="no-alerts-message">No shares currently at alert target.</p>
+                            <p class="no-alerts-message">No custom alerts currently triggered.</p>
                         </div>
                     </div>
                 </div>

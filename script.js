@@ -15859,7 +15859,7 @@ function showTargetHitDetailsModal(options={}) {
                 sectionHeader.className = 'low52-section-header';
                 const low52Title = document.createElement('h3');
                 low52Title.className = 'target-hit-section-title low52-heading';
-                low52Title.textContent = '52 Week Low (Your Portfolio)';
+                low52Title.textContent = '52 Week Low';
                 sectionHeader.appendChild(low52Title);
                 targetHitSharesList.appendChild(sectionHeader);
 
