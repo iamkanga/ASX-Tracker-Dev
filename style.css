@@ -6,6 +6,44 @@
     transition: opacity 0.3s ease, filter 0.3s ease;
 }
 
+/* === Custom Confirmation Modal === */
+#customConfirmModal.modal {
+    position: fixed;
+    inset: 0;
+    display: none; /* shown via JS */
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.4);
+    z-index: 9999; /* above all other modals */
+}
+#customConfirmModal.show { display: flex !important; }
+#customConfirmModal .modal-content.confirm-modal {
+    max-width: 480px;
+    width: calc(100% - 40px);
+    background: var(--modal-content-bg, #fff);
+    color: var(--text-color, #222);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    padding: 0 0 14px 0;
+}
+#customConfirmModal .confirm-message {
+    padding: 16px 18px 8px 18px;
+    font-size: 1rem;
+}
+#customConfirmModal .confirm-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 8px 18px 12px 18px;
+}
+#customConfirmModal #customConfirmOkBtn.button {
+    background: var(--accent-color, #a49393);
+    color: #fff;
+    border: 1px solid transparent;
+}
+#customConfirmModal #customConfirmOkBtn.button:hover { filter: brightness(1.02); }
+#customConfirmModal #customConfirmCancelBtn.button { background: var(--button-bg, #f3f4f6); color: var(--button-text, #222); }
+
 /*
     Theme color variables (Global)
     Unify positive/negative colors across movers, 52-week cards, chips, and accents.

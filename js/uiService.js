@@ -714,31 +714,32 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
                 deleteCashAssetBtn.onclick = null;
                 deleteCashAssetBtn.onclick = async function() {
                     try {
-                        // Get the asset name for the toast notification
+                        // Get the asset name for the confirm/notification
                         const assets = getUserCashCategories() || [];
                         const assetToDelete = assets.find(a => a && a.id === window.selectedCashAssetDocId);
                         const assetName = assetToDelete ? assetToDelete.name : 'Cash Asset';
 
-                        // Delete immediately without confirmation
-                        if (window.AppService && typeof window.AppService.deleteCashCategory === 'function') {
-                            await window.AppService.deleteCashCategory(window.selectedCashAssetDocId);
-                        }
+                        const confirmFn = (typeof window.showCustomConfirm === 'function') ? window.showCustomConfirm : null;
+                        if (!confirmFn) { try { window.showCustomAlert && window.showCustomAlert('Confirmation UI unavailable, deletion cancelled.'); } catch(_) {} return; }
 
-                        // Show success toast with asset name
-                        try {
-                            window.showCustomAlert && window.showCustomAlert(`"${assetName}" deleted successfully!`, 1500);
-                        } catch(e) {
-                            console.error('Error showing toast:', e);
-                        }
-
-                        // Update UI and close modal
-                        try { if (typeof window.renderCashCategories === 'function') window.renderCashCategories(); } catch(_) {}
-                        try { if (typeof window.calculateTotalCash === 'function') window.calculateTotalCash(); } catch(_) {}
-                        try { if (window.closeModals) window.closeModals(); else if (cashAssetFormModal) cashAssetFormModal.style.display='none'; } catch(_) {}
-                    } catch(e) {
-                        console.error('Delete cash asset failed', e);
-                        try { window.showCustomAlert && window.showCustomAlert('Failed to delete cash asset.', 2000); } catch(_) {}
-                    }
+                        confirmFn(`Delete "${assetName}"? This action cannot be undone.`, async (confirmed) => {
+                            if (!confirmed) return;
+                            try {
+                                if (window.AppService && typeof window.AppService.deleteCashCategory === 'function') {
+                                    await window.AppService.deleteCashCategory(window.selectedCashAssetDocId);
+                                }
+                                // Show success toast with asset name
+                                try { window.showCustomAlert && window.showCustomAlert(`"${assetName}" deleted successfully!`, 1500); } catch(_) {}
+                                // Update UI and close modal
+                                try { if (typeof window.renderCashCategories === 'function') window.renderCashCategories(); } catch(_) {}
+                                try { if (typeof window.calculateTotalCash === 'function') window.calculateTotalCash(); } catch(_) {}
+                                try { if (window.closeModals) window.closeModals(); else if (cashAssetFormModal) cashAssetFormModal.style.display='none'; } catch(_) {}
+                            } catch(e) {
+                                console.error('Delete cash asset failed', e);
+                                try { window.showCustomAlert && window.showCustomAlert('Failed to delete cash asset.', 2000); } catch(_) {}
+                            }
+                        });
+                    } catch(_) {}
                 };
             } catch(_) {}
         }

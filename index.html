@@ -994,5 +994,22 @@
             } catch(e) { console.warn('Temp style injection failed', e); }
         })();
     </script>
+    
+    <!-- Custom Confirmation Modal (reusable) -->
+    <div id="customConfirmModal" class="modal app-hidden" role="dialog" aria-modal="true" aria-labelledby="customConfirmTitle" aria-describedby="customConfirmMessage">
+        <div class="modal-content confirm-modal">
+            <div class="modal-header-with-icon">
+                <h2 id="customConfirmTitle">Please Confirm</h2>
+                <div class="modal-header-action-group">
+                    <span id="customConfirmCloseBtn" class="close-button" title="Close" aria-label="Close">&times;</span>
+                </div>
+            </div>
+            <div class="confirm-message" id="customConfirmMessage">Are you sure?</div>
+            <div class="modal-action-buttons-footer confirm-actions">
+                <button id="customConfirmCancelBtn" class="button secondary-buttons">Cancel</button>
+                <button id="customConfirmOkBtn" class="button">Confirm</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

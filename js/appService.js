@@ -942,35 +942,14 @@ export async function deleteWatchlist(watchlistId) {
                     }
                 );
             } else {
-                // Fallback to native confirm if custom confirm fails
-                if (window.confirm(`Delete "${watchlistName}"? Shares in this watchlist only will be removed.`)) {
-                    performSafeWatchlistDeletion(watchlistId, watchlistName)
-                        .then(() => resolve(true))
-                        .catch((error) => {
-                            console.error('Error in fallback deletion:', error);
-                            try { window.showCustomAlert && window.showCustomAlert('Error deleting watchlist: ' + error.message); } catch(_) {}
-                            reject(error);
-                        });
-                } else {
-                    try { window.showCustomAlert && window.showCustomAlert('Watchlist deletion cancelled.', 1000); } catch(_) {}
-                    resolve(false);
-                }
+                // No confirm UI available; cancel by default to avoid accidental deletion
+                try { window.showCustomAlert && window.showCustomAlert('Unable to confirm deletion at this time.', 1500); } catch(_) {}
+                resolve(false);
             }
         } catch (confirmError) {
             console.warn('Confirmation dialog not available, falling back to native confirm:', confirmError);
-            // Fallback to native confirm if custom confirm fails
-            if (window.confirm(`Delete "${watchlistName}"? Shares in this watchlist only will be removed.`)) {
-                performSafeWatchlistDeletion(watchlistId, watchlistName)
-                    .then(() => resolve(true))
-                    .catch((error) => {
-                        console.error('Error in fallback deletion:', error);
-                        try { window.showCustomAlert && window.showCustomAlert('Error deleting watchlist: ' + error.message); } catch(_) {}
-                        reject(error);
-                    });
-            } else {
-                try { window.showCustomAlert && window.showCustomAlert('Watchlist deletion cancelled.', 1000); } catch(_) {}
-                resolve(false);
-            }
+            try { window.showCustomAlert && window.showCustomAlert('Unable to confirm deletion at this time.', 1500); } catch(_) {}
+            resolve(false);
         }
     });
 }

@@ -173,13 +173,61 @@
 
 
     function showCustomConfirm(message, callback) {
-        const res = ToastManager.confirm(message, {
-            confirmText: 'Yes',
-            cancelText: 'No',
-            onConfirm: () => callback(true),
-            onCancel: () => callback(false)
-        });
-        if (!res) callback(window.confirm(message));
+        try {
+            const modal = document.getElementById('customConfirmModal');
+            const msgEl = document.getElementById('customConfirmMessage');
+            const okBtn = document.getElementById('customConfirmOkBtn');
+            const cancelBtn = document.getElementById('customConfirmCancelBtn');
+            const closeBtn = document.getElementById('customConfirmCloseBtn');
+            if (modal && msgEl && okBtn && cancelBtn) {
+                msgEl.textContent = String(message || '');
+
+                // Guard against multiple bindings: replaceNode technique for one-time listeners
+                function cleanup() {
+                    try { modal.classList.remove('show'); modal.style.setProperty('display','none','important'); } catch(_){}
+                }
+
+                const onOk = () => { cleanup(); try { callback && callback(true); } catch(_){} };
+                const onCancel = () => { cleanup(); try { callback && callback(false); } catch(_){} };
+
+                // Ensure previous listeners are removed by cloning nodes
+                const okClone = okBtn.cloneNode(true); okBtn.parentNode.replaceChild(okClone, okBtn);
+                const cancelClone = cancelBtn.cloneNode(true); cancelBtn.parentNode.replaceChild(cancelClone, cancelBtn);
+                const closeClone = closeBtn ? closeBtn.cloneNode(true) : null; if (closeBtn && closeClone) closeBtn.parentNode.replaceChild(closeClone, closeBtn);
+
+                okClone.addEventListener('click', onOk, { once: true });
+                cancelClone.addEventListener('click', onCancel, { once: true });
+                if (closeClone) closeClone.addEventListener('click', onCancel, { once: true });
+
+                // Dismiss on backdrop click
+                const onBackdrop = (e) => { try { if (e.target === modal) onCancel(); } catch(_){} };
+                modal.addEventListener('click', onBackdrop, { once: true });
+
+                // ESC to cancel
+                const onKey = (e) => { if (e.key === 'Escape') { onCancel(); document.removeEventListener('keydown', onKey); } };
+                document.addEventListener('keydown', onKey, { once: true });
+
+                // Show modal centered above others
+                try { modal.classList.remove('app-hidden'); } catch(_){}
+                modal.style.setProperty('display','flex','important');
+                requestAnimationFrame(()=> modal.classList.add('show'));
+                return;
+            }
+        } catch(e) { console.warn('Custom confirm modal unavailable, falling back to toast confirm.', e); }
+
+        // Fallback to Toast-based confirm if modal not available
+        try {
+            const res = ToastManager && typeof ToastManager.confirm === 'function' && ToastManager.confirm(message, {
+                confirmText: 'Confirm',
+                cancelText: 'Cancel',
+                onConfirm: () => callback && callback(true),
+                onCancel: () => callback && callback(false)
+            });
+            if (res) return;
+        } catch(_) {}
+
+        // Last resort: immediately cancel without blocking native confirm
+        try { callback && callback(false); } catch(_){}
     }
 
     function showModal(modalElement) {

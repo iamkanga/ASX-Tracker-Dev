@@ -4842,22 +4842,19 @@ const ToastManager = (() => {
 // Attach ToastManager to window for use in other modules
 window.ToastManager = ToastManager;
 
-// Migrate confirm dialog to toast confirm (non-blocking UX)
-function showCustomConfirm(message, callback) {
-    const res = ToastManager.confirm(message, {
-        confirmText: 'Yes',
-        cancelText: 'No',
-        onConfirm: () => callback(true),
-        onCancel: () => callback(false)
-    });
-    if (!res) {
-        // Fallback to native confirm if container missing
-        callback(window.confirm(message));
-    }
-}
-
-// Attach to window object for use in other modules
-window.showCustomConfirm = showCustomConfirm;
+// Expose showCustomConfirm globally via UI implementation
+window.showCustomConfirm = function(message, callback){
+    try {
+        if (window.UI && typeof window.UI.showCustomConfirm === 'function') return window.UI.showCustomConfirm(message, callback);
+    } catch(_) {}
+    try {
+        if (window.ToastManager && typeof window.ToastManager.confirm === 'function') {
+            const res = window.ToastManager.confirm(message, { confirmText: 'Confirm', cancelText: 'Cancel', onConfirm: ()=>callback && callback(true), onCancel: ()=>callback && callback(false) });
+            if (res) return;
+        }
+    } catch(_) {}
+    try { callback && callback(false); } catch(_) {}
+};
 // Date Formatting Helper Functions (Australian Style)
 
 /**
@@ -12706,21 +12703,43 @@ async function saveCashCategories() {
  * @param {string} categoryId The ID of the category to delete.
  */
 async function deleteCashCategory(categoryId) {
-    if (!db || !currentUserId || !firestore) {
-        showCustomAlert('Firestore not available. Cannot delete cash category.');
-        return;
-    }
+    if (!categoryId) { showCustomAlert('No cash asset selected for deletion.'); return false; }
 
-    // NEW: Direct deletion without confirmation modal
+    // Try to resolve a friendly name for messaging
+    let assetName = 'this cash asset';
     try {
-        const categoryDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories', categoryId);
-        await firestore.deleteDoc(categoryDocRef);
-        showCustomAlert('Category deleted successfully!', 1500);
-        logDebug('Firestore: Cash category (ID: ' + categoryId + ') deleted.');
-    } catch (error) {
-        console.error('Firestore: Error deleting cash category:', error);
-        showCustomAlert('Error deleting category: ' + error.message);
-    }
+        const list = (typeof getUserCashCategories === 'function') ? (getUserCashCategories() || []) : [];
+        const item = list.find(x => x && (x.id === categoryId || x.docId === categoryId));
+        if (item && item.name) assetName = item.name;
+    } catch (_) {}
+
+    // Show confirmation modal; perform deletion only if confirmed
+    return await new Promise((resolve) => {
+        const confirmFn = (typeof showCustomConfirm === 'function') ? showCustomConfirm : (window.showCustomConfirm || null);
+        if (!confirmFn) { showCustomAlert('Confirmation UI unavailable, deletion cancelled.'); resolve(false); return; }
+        confirmFn(`Delete "${assetName}"? This action cannot be undone.`, async (confirmed) => {
+            if (!confirmed) { resolve(false); return; }
+            try {
+                if (window.AppService && typeof window.AppService.deleteCashCategory === 'function') {
+                    await window.AppService.deleteCashCategory(categoryId);
+                } else if (db && firestore && currentUserId) {
+                    const categoryDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories', categoryId);
+                    await firestore.deleteDoc(categoryDocRef);
+                } else {
+                    showCustomAlert('Firestore not available. Cannot delete cash category.');
+                    resolve(false);
+                    return;
+                }
+                showCustomAlert('Category deleted successfully!', 1500);
+                logDebug('Firestore: Cash category (ID: ' + categoryId + ') deleted.');
+                resolve(true);
+            } catch (error) {
+                console.error('Firestore: Error deleting cash category:', error);
+                showCustomAlert('Error deleting category: ' + error.message);
+                resolve(false);
+            }
+        });
+    });
 }
 
 /**
@@ -14991,22 +15010,27 @@ if (sortSelect) {
         });
     }
 
-    // Delete Share Button
+    // Delete Share Button (with confirmation)
     if (deleteShareBtn) {
         deleteShareBtn.addEventListener('click', async () => {
-            logDebug('Share Form: Delete Share button clicked (Direct Delete).');
+            logDebug('Share Form: Delete Share button clicked.');
             if (deleteShareBtn.classList.contains('is-disabled-icon')) {
                 console.warn('Delete Share: Delete button was disabled, preventing action.');
                 return;
             }
-            if (selectedShareDocId) {
-                try {
-                    await deleteShareSvc(selectedShareDocId);
-                } catch (error) {
-                    console.error('Firestore: Error deleting share:', error);
-                    showCustomAlert('Error deleting share: ' + error.message);
-                }
-            } else { showCustomAlert('No share selected for deletion.'); }
+            if (!selectedShareDocId) { showCustomAlert('No share selected for deletion.'); return; }
+            try {
+                const shares = (typeof getAllSharesData === 'function') ? getAllSharesData() : (window.allSharesData || []);
+                const s = shares.find(x => x && x.id === selectedShareDocId);
+                const code = (s && s.shareName) ? String(s.shareName).toUpperCase() : 'this share';
+                showCustomConfirm(`Delete "${code}"? This action cannot be undone.`, async (confirmed) => {
+                    if (!confirmed) return;
+                    try { await deleteShareSvc(selectedShareDocId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); }
+                });
+            } catch (e) {
+                console.warn('Delete Share: could not resolve share name; proceeding with confirm.', e);
+                showCustomConfirm('Delete this share? This action cannot be undone.', async (confirmed) => { if (!confirmed) return; try { await deleteShareSvc(selectedShareDocId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); } });
+            }
         });
     }
 
@@ -15045,22 +15069,23 @@ if (sortSelect) {
         });
     }
 
-    // Delete Share From Detail Button
+    // Delete Share From Detail Button (with confirmation)
     if (deleteShareFromDetailBtn) {
         deleteShareFromDetailBtn.addEventListener('click', async () => {
-            logDebug('Share Details: Delete Share button clicked (Direct Delete).');
-            if (deleteShareFromDetailBtn.classList.contains('is-disabled-icon')) {
-                console.warn('Delete Share From Detail: Delete button was disabled, preventing action.');
-                return;
+            logDebug('Share Details: Delete Share button clicked.');
+            if (deleteShareFromDetailBtn.classList.contains('is-disabled-icon')) { console.warn('Delete Share From Detail: Delete button was disabled, preventing action.'); return; }
+            if (!selectedShareDocId) { showCustomAlert('No share selected for deletion.'); return; }
+            try {
+                const shares = (typeof getAllSharesData === 'function') ? getAllSharesData() : (window.allSharesData || []);
+                const s = shares.find(x => x && x.id === selectedShareDocId);
+                const code = (s && s.shareName) ? String(s.shareName).toUpperCase() : 'this share';
+                showCustomConfirm(`Delete "${code}"? This action cannot be undone.`, async (confirmed) => {
+                    if (!confirmed) return;
+                    try { await deleteShareSvc(selectedShareDocId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); }
+                });
+            } catch (_) {
+                showCustomConfirm('Delete this share? This action cannot be undone.', async (confirmed) => { if (!confirmed) return; try { await deleteShareSvc(selectedShareDocId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); } });
             }
-            if (selectedShareDocId) {
-                try {
-                    await deleteShareSvc(selectedShareDocId);
-                } catch (error) {
-                    console.error('Firestore: Error deleting share:', error);
-                    showCustomAlert('Error deleting share: ' + error.message);
-                }
-            } else { showCustomAlert('No share selected for deletion.'); }
         });
     }
 
@@ -15078,22 +15103,23 @@ if (sortSelect) {
         });
     }
 
-    // Context Menu Delete Share Button
+    // Context Menu Delete Share Button (with confirmation)
     if (contextDeleteShareBtn) {
         contextDeleteShareBtn.addEventListener('click', async () => {
-            logDebug('Context Menu: Delete Share button clicked (Direct Delete).');
-            if (currentContextMenuShareId) {
-                const shareToDeleteId = currentContextMenuShareId;
-                hideContextMenu();
-                try {
-                    await deleteShareSvc(shareToDeleteId);
-                } catch (error) {
-                    console.error('Firestore: Error deleting share:', error);
-                    showCustomAlert('Error deleting share: ' + error.message);
-                }
-            } else {
-                showCustomAlert('No share selected for deletion from context menu.');
-                console.warn('Context Menu: No share ID found for deletion.');
+            logDebug('Context Menu: Delete Share button clicked.');
+            if (!currentContextMenuShareId) { showCustomAlert('No share selected for deletion from context menu.'); console.warn('Context Menu: No share ID found for deletion.'); return; }
+            const shareToDeleteId = currentContextMenuShareId;
+            hideContextMenu();
+            try {
+                const shares = (typeof getAllSharesData === 'function') ? getAllSharesData() : (window.allSharesData || []);
+                const s = shares.find(x => x && x.id === shareToDeleteId);
+                const code = (s && s.shareName) ? String(s.shareName).toUpperCase() : 'this share';
+                showCustomConfirm(`Delete "${code}"? This action cannot be undone.`, async (confirmed) => {
+                    if (!confirmed) return;
+                    try { await deleteShareSvc(shareToDeleteId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); }
+                });
+            } catch (_) {
+                showCustomConfirm('Delete this share? This action cannot be undone.', async (confirmed) => { if (!confirmed) return; try { await deleteShareSvc(shareToDeleteId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); } });
             }
         });
     }
@@ -15695,8 +15721,8 @@ if (sortSelect) {
         deleteCashAssetFromDetailBtn.addEventListener('click', async () => {
             logDebug('Cash Details: Delete Cash Asset button clicked.');
             if (selectedCashAssetDocId) {
-                await deleteCashCategory(selectedCashAssetDocId);
-                closeModals();
+                const didDelete = await deleteCashCategory(selectedCashAssetDocId);
+                if (didDelete) { try { closeModals(); } catch(_) {} }
             } else {
                 showCustomAlert('No cash asset selected for deletion.');
             }
