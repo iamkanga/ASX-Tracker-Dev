@@ -2644,8 +2644,38 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
     Only mobile cards retain full pulsing border.
     Desktop uses a subtle pulsing dot indicator inserted before the code. */
 /* Desktop pulsing dot indicator */
-.target-hit-dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#a49393; margin-left:6px; position:relative; top:1px; animation: targetHitDotPulse 2s ease-in-out infinite; }
+.target-hit-dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#a49393; margin-left:6px; position:relative; top:1px; animation: targetHitDotPulse 2s ease-in-out infinite; pointer-events:none; will-change: transform, opacity; }
 @keyframes targetHitDotPulse { 0%{ transform:scale(.8); opacity:.55;} 50%{ transform:scale(1.25); opacity:1;} 100%{ transform:scale(.8); opacity:.55;} }
+
+/* Prevent clipping of pulsing dot inside tight headers (mobile cards)
+     Strategy: reserve space on the right and absolutely position the dot
+     so text can still ellipsize without cutting the indicator. */
+.mobile-card .card-code { position: relative; padding-right: 24px; overflow: visible; }
+.mobile-card .card-code .target-hit-dot {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    margin-left: 0; /* no inline gap when absolutely positioned */
+    transform-origin: center;
+    /* Use a centering-aware pulse so vertical alignment stays true */
+    animation-name: targetHitDotPulseCenter;
+}
+@keyframes targetHitDotPulseCenter {
+    0%   { transform: translateY(-50%) scale(.8);  opacity:.55; }
+    50%  { transform: translateY(-50%) scale(1.25); opacity:1; }
+    100% { transform: translateY(-50%) scale(.8);  opacity:.55; }
+}
+
+/* Prevent clipping on portfolio cards as well */
+.portfolio-card .pc-code { position: relative; padding-right: 24px; overflow: visible; }
+.portfolio-card .pc-code .target-hit-dot {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    margin-left: 0;
+    transform-origin: center;
+    animation-name: targetHitDotPulseCenter;
+}
 
 /* Pulsing Notification Icon */
 #targetHitIconBtn.has-alerts {
@@ -5172,6 +5202,9 @@ body.theme-subtle-10 { /* Subtle Stone */
 table td .share-code-display { /* This class exists, just ensure its emphasis */
     font-weight: 700; /* Make it bold */
     font-size: 1.2em; /* Keep existing larger size */
+    display: inline-block; /* allow padding to take effect */
+    padding-right: 18px; /* reserve space for alert dot */
+    overflow: visible; /* ensure pulse not clipped */
 }
 
 /* For Mobile Card Data Rows */
@@ -9547,6 +9580,9 @@ body.dark-theme .alert-item {
 .mobile-share-cards.compact-view .mobile-card .live-price-main-row {
     display: contents !important;
 }
+/* Ensure code+dot and chevron align in compact */
+.mobile-share-cards.compact-view .mobile-card .card-code { display: inline-flex !important; align-items: center !important; line-height: 1.1 !important; }
+.mobile-share-cards.compact-view .mobile-card .card-chevron { align-self: center !important; }
 /* Preserve movement side borders & target-hit visuals already defined elsewhere */
 
 /* Adjustment: enlarge ASX code ~20% and pin firmly to top-left */
@@ -9556,7 +9592,18 @@ body.dark-theme .alert-item {
     width: auto !important; /* Release full-width block so grid start alignment is exact */
     text-align: left !important;
     margin: 0 !important;
-    padding: 0 !important;
+        padding: 0 !important; /* baseline */
+}
+
+/* Compact cards: reserve space for the pulsing dot and anchor it to the right of the code */
+.mobile-share-cards.compact-view .mobile-card .card-code { padding-right: 6px !important; position: relative; overflow: visible !important; }
+/* Compact view: keep the dot inline, right after the code text */
+.mobile-share-cards.compact-view .mobile-card .card-code .target-hit-dot {
+    position: static !important;
+    right: auto !important;
+    top: auto !important;
+    margin-left: 6px !important;
+    animation-name: targetHitDotPulse !important; /* baseline pulse (no translateY) */
 }
 
 
