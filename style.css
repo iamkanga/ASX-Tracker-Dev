@@ -454,6 +454,10 @@
 /* Minimal card styles for Global Alerts renderer */
 .notification-list-host { max-height: 48vh; overflow: hidden; position: relative; }
 .notification-list-host .notification-list-inner { overflow-y: auto; max-height: 48vh; padding: 8px 6px; display: flex; flex-direction: column; gap: 8px; }
+.notification-list-host > .section-explainer + .notification-list-inner {
+    /* subtract approx explainer height to avoid double clipping when headers are fixed */
+    max-height: calc(48vh - 28px);
+}
 .notification-card { background: var(--card-bg, #fff); border: 1px solid var(--border-color, rgba(0,0,0,0.1)); border-radius: 8px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); display: block; cursor: pointer; color: var(--text-color, #222); }
 .notification-card .notification-card-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .notification-card .notification-card-left { display:flex; flex-direction:column; gap:2px; }
@@ -515,6 +519,14 @@
     .section-explainer {
         font-size: 0.85rem;
         color: var(--muted-text, #888);
+        margin-bottom: 8px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .section-explainer:hover {
+        color: var(--text, #ddd);
+    }
+
 /* =================================================================== */
 /* Unified loader default behavior (visual fix):                        */
 /* - Keep the unified loader elements visible by default (in HTML).     */
@@ -543,13 +555,6 @@
    loader sits outside .table-container and will remain visible until JS
    explicitly hides/removes it after first render. */
 
-        margin-bottom: 8px;
-        cursor: pointer;
-        user-select: none;
-    }
-    .section-explainer:hover {
-        color: var(--text, #ddd);
-    }
 
 /* Themed arrow icon for 52-week alert title */
 .low52-arrow-icon {
@@ -2730,9 +2735,12 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
     padding-left: calc(12px - var(--target-hit-border-width, 4px)); /* visually compensate for left border */
 }
 
-/* Mobile: keep full pulsing border for mobile-card.target-hit-alert (existing) */
+/* Mobile: keep left accent for custom alert list items; mobile cards have their own styling */
 @media (max-width: 768px) {
-    .target-hit-accent { border-left: none; }
+    /* Do not remove the left accent for notification list items */
+    .target-hit-item.target-hit-accent {
+        border-left: var(--target-hit-border-width, 4px) solid var(--target-hit-border-color, var(--accent-color));
+    }
 }
 
 /* Discover modal movement layout */
@@ -9040,6 +9048,13 @@ body.dark-theme .notification-card.hilo-card .notification-card-bottom.hilo-bott
 }
 .target-hit-item { cursor:pointer; transition:background-color .15s ease, border-color .15s ease; }
 .target-hit-item:hover { background-color: var(--card-bg-hover, rgba(255,255,255,0.08)); }
+
+/* Ensure the accent is visible even when later rules set a uniform border.
+   This needs to live after the generic .target-hit-item border rule. */
+.target-hit-item.target-hit-accent {
+    border-left: var(--target-hit-border-width, 4px) solid var(--target-hit-border-color, var(--accent-color)) !important;
+    padding-left: calc(12px - var(--target-hit-border-width, 4px));
+}
 
 .target-hit-item-header {
     display:flex;

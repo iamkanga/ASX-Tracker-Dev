@@ -196,36 +196,55 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                     downDollar: numPos(window.globalDollarDecrease),
                     minimumPrice: numPos(window.globalMinimumPrice)
                 };
-                // Decide effective thresholds: choose the STRICTER (higher absolute requirement) for each dimension when both exist.
-                // For percent & dollar increases we pick the larger number; same for decreases; minimumPrice pick larger.
-                function pickStricter(a,b){ if (a==null) return b; if (b==null) return a; return Math.max(a,b); }
+                // Decide effective thresholds: prefer CURRENT local settings; fall back to server when local is unset
+                function preferLocal(loc, srv){ return (loc!=null && isFinite(loc) && loc>0) ? loc : ((srv!=null && isFinite(srv) && srv>0) ? srv : null); }
                 const effective = {
-                    upPercent: pickStricter(local.upPercent, server && server.upPercent),
-                    upDollar: pickStricter(local.upDollar, server && server.upDollar),
-                    downPercent: pickStricter(local.downPercent, server && server.downPercent),
-                    downDollar: pickStricter(local.downDollar, server && server.downDollar),
-                    minimumPrice: pickStricter(local.minimumPrice, server && server.minimumPrice)
+                    upPercent: preferLocal(local.upPercent, server && server.upPercent),
+                    upDollar: preferLocal(local.upDollar, server && server.upDollar),
+                    downPercent: preferLocal(local.downPercent, server && server.downPercent),
+                    downDollar: preferLocal(local.downDollar, server && server.downDollar),
+                    minimumPrice: preferLocal(local.minimumPrice, server && server.minimumPrice)
                 };
-                // If ALL thresholds null and list huge, apply conservative 1% default
-                const allNull = [effective.upPercent,effective.upDollar,effective.downPercent,effective.downDollar].every(v=> v==null);
-                if (allNull && rawTotal > 120) { effective.upPercent = 1; effective.downPercent = 1; }
+                // Tolerant filter: use whatever metrics are available; apply Min Price only when live known
                 const filterFn = (item) => {
                     const live = (item.live != null && !isNaN(item.live)) ? Number(item.live) : null;
-                    const prev = (item.prevClose != null && !isNaN(item.prevClose)) ? Number(item.prevClose) : null;
-                    if (live == null || prev == null || prev === 0) return false;
-                    const ch = live - prev; if (!ch) return false;
-                    const pct = (ch / prev) * 100;
-                    if (effective.minimumPrice && live < effective.minimumPrice) return false;
-                    if (ch > 0) {
-                        const pctOk = (effective.upPercent != null) ? pct >= effective.upPercent : false;
-                        const dolOk = (effective.upDollar != null) ? Math.abs(ch) >= effective.upDollar : false;
-                        if (!(pctOk || dolOk)) return false;
-                    } else {
-                        const pctOk = (effective.downPercent != null) ? Math.abs(pct) >= effective.downPercent : false;
-                        const dolOk = (effective.downDollar != null) ? Math.abs(ch) >= effective.downDollar : false;
-                        if (!(pctOk || dolOk)) return false;
-                    }
-                    return true;
+                    const prev = (item.prevClose != null && !isNaN(item.prevClose)) ? Number(item.prevClose) : (item.prevClosePrice != null && !isNaN(item.prevClosePrice) ? Number(item.prevClosePrice) : null);
+                    const providedPct = (item.pct != null && !isNaN(item.pct)) ? Number(item.pct) : null;
+                    const providedCh = (item.change != null && !isNaN(item.change)) ? Number(item.change) : (item.ch != null && !isNaN(item.ch) ? Number(item.ch) : null);
+                    const computedCh = (live!=null && prev!=null) ? (live - prev) : null;
+                    const computedPct = (computedCh!=null && prev!=null && prev!==0) ? ((computedCh/prev)*100) : null;
+                    const dir = (item.direction||'').toLowerCase() || ((computedCh!=null) ? (computedCh>0?'up':(computedCh<0?'down':'')) : '');
+
+                    if (effective.minimumPrice && live != null && live < effective.minimumPrice) return false;
+
+                    // Evaluate thresholds using OR logic across percent and dollar
+                    const evalUp = () => {
+                        const pctAvail = (computedPct!=null) || (providedPct!=null);
+                        const chAvail = (computedCh!=null) || (providedCh!=null);
+                        const pctVal = (computedPct!=null) ? computedPct : providedPct;
+                        const chVal = (computedCh!=null) ? computedCh : providedCh;
+                        const pctOk = (effective.upPercent!=null && pctAvail) ? (pctVal >= effective.upPercent) : null;
+                        const dolOk = (effective.upDollar!=null && chAvail) ? (Math.abs(chVal) >= effective.upDollar) : null;
+                        // If at least one criterion is measurable, require that measurable one(s) pass (OR)
+                        if (pctOk !== null || dolOk !== null) return (!!pctOk) || (!!dolOk);
+                        // If nothing measurable but item was classified as up, keep it (don’t over-prune)
+                        return true;
+                    };
+                    const evalDown = () => {
+                        const pctAvail = (computedPct!=null) || (providedPct!=null);
+                        const chAvail = (computedCh!=null) || (providedCh!=null);
+                        const pctValAbs = (computedPct!=null) ? Math.abs(computedPct) : (providedPct!=null ? Math.abs(providedPct) : null);
+                        const chValAbs = (computedCh!=null) ? Math.abs(computedCh) : (providedCh!=null ? Math.abs(providedCh) : null);
+                        const pctOk = (effective.downPercent!=null && pctAvail) ? (pctValAbs >= effective.downPercent) : null;
+                        const dolOk = (effective.downDollar!=null && chAvail) ? (chValAbs >= effective.downDollar) : null;
+                        if (pctOk !== null || dolOk !== null) return (!!pctOk) || (!!dolOk);
+                        return true;
+                    };
+
+                    if (dir === 'up') return evalUp();
+                    if (dir === 'down') return evalDown();
+                    // Unknown direction: accept if any measurable threshold passes
+                    return evalUp() || evalDown();
                 };
                 const upFiltered = rawUp.filter(filterFn);
                 const downFiltered = rawDown.filter(filterFn);
@@ -290,13 +309,14 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 try {
                     const fragment = document.createDocumentFragment();
                         let arr = Array.isArray(items) ? items.slice() : [];
+                        // Keep items if we can determine movement via computed values or provided pct/change fields
                         arr = arr.filter(it => {
                         const live = (it.live != null && !isNaN(it.live)) ? Number(it.live) : null;
                         const prev = (it.prevClose != null && !isNaN(it.prevClose)) ? Number(it.prevClose) : null;
-                        if (live == null || prev == null || prev === 0) return false;
-                        const ch = live - prev;
-                        if (!ch) return false; // exclude flat movers
-                        return true;
+                        const ch = (live!=null && prev!=null) ? (live - prev) : null;
+                        const hasComputed = (ch!=null && ch !== 0 && prev !== 0);
+                        const hasProvided = (it.pct!=null && !isNaN(it.pct)) || (it.change!=null && !isNaN(it.change));
+                        return hasComputed || hasProvided;
                     });
                         const innerFrag = document.createDocumentFragment();
                         arr.forEach(it => {
@@ -352,8 +372,11 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             }
 
             // Build sections from filtered arrays
-            const upArr = (gm && Array.isArray(gm.upFiltered)) ? gm.upFiltered : (Array.isArray(gm.up) ? gm.up : []);
-            const downArr = (gm && Array.isArray(gm.downFiltered)) ? gm.downFiltered : (Array.isArray(gm.down) ? gm.down : []);
+            let upArr = (gm && Array.isArray(gm.upFiltered)) ? gm.upFiltered : (Array.isArray(gm.up) ? gm.up : []);
+            let downArr = (gm && Array.isArray(gm.downFiltered)) ? gm.downFiltered : (Array.isArray(gm.down) ? gm.down : []);
+            // Fallback: if filtering produced empty results but raw arrays are populated, use raw arrays to avoid blank UI
+            if (Array.isArray(gm.up) && upArr.length === 0 && gm.up.length > 0) upArr = gm.up;
+            if (Array.isArray(gm.down) && downArr.length === 0 && gm.down.length > 0) downArr = gm.down;
             // Add thresholds hint to headers via title attribute
             const eff = gm && gm.__effectiveThresholds ? gm.__effectiveThresholds : (gm && gm.thresholds ? gm.thresholds : null);
             function thresholdsLabel(eff){
@@ -405,6 +428,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 return `${move} | Min Price: ${minP}`;
             })();
 
+            // Always refresh explainers for consistency with 52-week sections
             if (gainersContainer) insertExplainer(gainersContainer, upLabel);
             if (losersContainer) insertExplainer(losersContainer, downLabel);
 
@@ -419,11 +443,48 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
         
 
         // Render HI_LO_52W
-        const hilo = window.globalHiLo52Alerts || {};
+        // Prefer centralized HI_LO_52W, but don't leave UI blank: if highs/lows are empty, derive a local projection from livePrices
+        const hiloSource = window.globalHiLo52Alerts || {};
+        const hilo = {
+            highs: (hiloSource && Array.isArray(hiloSource.highs)) ? [...hiloSource.highs] : [],
+            lows: (hiloSource && Array.isArray(hiloSource.lows)) ? [...hiloSource.lows] : []
+        };
+
+        // Local fallback: compute 52-week highs/lows from available livePrices if either list is empty
+        try {
+            const needHighs = !Array.isArray(hilo.highs) || hilo.highs.length === 0;
+            const needLows = !Array.isArray(hilo.lows) || hilo.lows.length === 0;
+            if (needHighs || needLows) {
+                const local = (function computeLocalHiLoProjection() {
+                    const result = { highs: [], lows: [] };
+                    try {
+                        const epsilon = 0.01; // small buffer for comparisons
+                        const minPrice = (typeof hiLoMinimumPrice === 'number' && hiLoMinimumPrice > 0) ? hiLoMinimumPrice : null;
+                        const entries = (livePrices && typeof livePrices === 'object') ? Object.entries(livePrices) : [];
+                        for (const [code, lp] of entries) {
+                            if (!lp || lp.live == null || isNaN(lp.live)) continue;
+                            if (minPrice != null && lp.live < minPrice) continue; // respect Min Price if set
+                            const hi = (lp.High52 != null && !isNaN(lp.High52)) ? lp.High52 : null;
+                            const lo = (lp.Low52 != null && !isNaN(lp.Low52)) ? lp.Low52 : null;
+                            const name = lp.companyName || null;
+                            if (needHighs && hi != null && lp.live >= (hi - epsilon)) {
+                                result.highs.push({ code, name, live: lp.live, high52: hi, low52: lo, type: 'high' });
+                            }
+                            if (needLows && lo != null && lp.live <= (lo + epsilon)) {
+                                result.lows.push({ code, name, live: lp.live, high52: hi, low52: lo, type: 'low' });
+                            }
+                        }
+                    } catch (e) { console.warn('[HiLo52][fallback] local projection failed', e); }
+                    return result;
+                })();
+                if (needHighs) hilo.highs = local.highs;
+                if (needLows) hilo.lows = local.lows;
+            }
+        } catch(_) { /* non-fatal */ }
     function renderHiLoEntry(e, kind) {
         const code = String(e.code || e.shareCode || '').toUpperCase();
         // Clean up embedded code fragments from company names (e.g., "(ASX:ABC)", "(ABC)", "- ABC")
-        const name = sanitizeCompanyName(e.name || e.companyName || code, code);
+    const name = sanitizeCompanyName(e.name || e.companyName || code, code);
             const liveVal = (e.live!=null && !isNaN(Number(e.live))) ? Number(e.live) : null;
             const liveDisplay = (liveVal!=null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
             // Pull both 52W High and Low from entry or livePrices fallback
@@ -448,60 +509,65 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                     <div class="hilo-low"><span class="label">Low:</span> ${loDisplay}</div>
                     <div class="hilo-high"><span class="label">High:</span> ${hiDisplay}</div>
                 </div>`;
-            card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openStockSearchForCode(code); });
+            card.addEventListener('click', ()=>{
+                try { hideModal(targetHitDetailsModal); } catch(_) {}
+                try {
+                    const list = (window.allSharesData || []);
+                    const share = list.find(s => s && s.shareName && String(s.shareName).toUpperCase() === code);
+                    if (share && typeof selectShare === 'function') {
+                        try { wasShareDetailOpenedFromTargetAlerts = true; } catch(_) {}
+                        selectShare(share.id);
+                        if (typeof showShareDetails === 'function') showShareDetails();
+                        return;
+                    }
+                } catch(_) {}
+                // Fallback: if share not found locally, open search (should be rare per user flow)
+                try { if (typeof openStockSearchForCode === 'function') openStockSearchForCode(code); } catch(_) {}
+            });
             return card;
         }
 
-        // Ensure flat structure for hi/lo containers (no inner wrappers)
+        // Ensure fixed header (explainer) with inner scroll for hi/lo sections
         if (hiloHighContainer) {
-            try { const existing = hiloHighContainer.querySelector('.section-explainer'); if (existing) existing.remove(); } catch(_) {}
-            const hiExpl = document.createElement('div'); hiExpl.className='section-explainer';
-            // Build explainer that always displays thresholds with placeholders
-            try {
-                const toNum = (v)=>{ const n = Number(v); return (v!=null && isFinite(n) && n>0) ? n : null; };
-                const mpNum = toNum(hiLoMinimumPrice);
-                const mcNum = toNum(hiLoMinimumMarketCap);
-                const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
-                const mc = (mcNum!=null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
-                hiExpl.textContent = `Min Price: ${mp} | Min Mkt Cap: ${mc}`;
-            } catch(_) { hiExpl.textContent = 'Min Price: Not set | Min Mkt Cap: Not set'; }
-            hiloHighContainer.insertBefore(hiExpl, hiloHighContainer.firstChild);
-            // Flatten any legacy inner wrapper
-            const innerH = hiloHighContainer.querySelector('.notification-list-inner');
-            if (innerH) {
-                // Move children out, then remove wrapper
-                while (innerH.firstChild) hiloHighContainer.appendChild(innerH.firstChild);
-                innerH.remove();
+            // Ensure host/inner structure
+            const highInner = ensureScrollHost(hiloHighContainer);
+            // Insert explainer pinned above the inner
+            (function insertHiExplainer(){
+                try {
+                    const toNum = (v)=>{ const n = Number(v); return (v!=null && isFinite(n) && n>0) ? n : null; };
+                    const mpNum = toNum(hiLoMinimumPrice);
+                    const mcNum = toNum(hiLoMinimumMarketCap);
+                    const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
+                    const mc = (mcNum!=null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
+                    insertExplainer(hiloHighContainer, `Min Price: ${mp} | Min Mkt Cap: ${mc}`);
+                } catch(_) { insertExplainer(hiloHighContainer, 'Min Price: Not set | Min Mkt Cap: Not set'); }
+            })();
+            // Render cards into the inner scroller
+            if (highInner) {
+                highInner.innerHTML = '';
+                const fragH = document.createDocumentFragment();
+                (hilo.highs || []).forEach(e => { fragH.appendChild(renderHiLoEntry(e, 'high')); });
+                highInner.appendChild(fragH);
             }
-            // Remove host styling class if previously added
-            try { hiloHighContainer.classList.remove('notification-list-host'); } catch(_) {}
-            const fragH = document.createDocumentFragment();
-            (hilo.highs || []).forEach(e => { fragH.appendChild(renderHiLoEntry(e, 'high')); });
-            hiloHighContainer.appendChild(fragH);
         }
         if (hiloLowContainer) {
-            try { const existing = hiloLowContainer.querySelector('.section-explainer'); if (existing) existing.remove(); } catch(_) {}
-            const loExpl = document.createElement('div'); loExpl.className='section-explainer';
-            // Build explainer that always displays thresholds with placeholders
-            try {
-                const toNum = (v)=>{ const n = Number(v); return (v!=null && isFinite(n) && n>0) ? n : null; };
-                const mpNum = toNum(hiLoMinimumPrice);
-                const mcNum = toNum(hiLoMinimumMarketCap);
-                const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
-                const mc = (mcNum!=null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
-                loExpl.textContent = `Min Price: ${mp} | Min Mkt Cap: ${mc}`;
-            } catch(_) { loExpl.textContent = 'Min Price: Not set | Min Mkt Cap: Not set'; }
-            hiloLowContainer.insertBefore(loExpl, hiloLowContainer.firstChild);
-            // Flatten any legacy inner wrapper
-            const innerL = hiloLowContainer.querySelector('.notification-list-inner');
-            if (innerL) {
-                while (innerL.firstChild) hiloLowContainer.appendChild(innerL.firstChild);
-                innerL.remove();
+            const lowInner = ensureScrollHost(hiloLowContainer);
+            (function insertLoExplainer(){
+                try {
+                    const toNum = (v)=>{ const n = Number(v); return (v!=null && isFinite(n) && n>0) ? n : null; };
+                    const mpNum = toNum(hiLoMinimumPrice);
+                    const mcNum = toNum(hiLoMinimumMarketCap);
+                    const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
+                    const mc = (mcNum!=null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
+                    insertExplainer(hiloLowContainer, `Min Price: ${mp} | Min Mkt Cap: ${mc}`);
+                } catch(_) { insertExplainer(hiloLowContainer, 'Min Price: Not set | Min Mkt Cap: Not set'); }
+            })();
+            if (lowInner) {
+                lowInner.innerHTML = '';
+                const fragL = document.createDocumentFragment();
+                (hilo.lows || []).forEach(e => { fragL.appendChild(renderHiLoEntry(e, 'low')); });
+                lowInner.appendChild(fragL);
             }
-            try { hiloLowContainer.classList.remove('notification-list-host'); } catch(_) {}
-            const fragL = document.createDocumentFragment();
-            (hilo.lows || []).forEach(e => { fragL.appendChild(renderHiLoEntry(e, 'low')); });
-            hiloLowContainer.appendChild(fragL);
         }
 
         // Mark this modal as rendered via the modern global sections path so legacy fallbacks can skip duplicating UI
@@ -1860,7 +1926,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-09-21 - Global alerts explainers always show thresholds with 'Not set' placeholders
-const APP_VERSION = '2.15.5';
+const APP_VERSION = '2.15.6';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)
@@ -10027,6 +10093,20 @@ function updateTargetHitBanner() {
     snapshot.dismissed = !!targetHitIconDismissed;
 }
 
+// Debounced refresh for Notifications modal when it's already open
+function refreshNotificationsModalIfOpen(reason) {
+    try {
+        const open = (typeof targetHitDetailsModal !== 'undefined' && targetHitDetailsModal && targetHitDetailsModal.style && targetHitDetailsModal.style.display !== 'none');
+        if (!open) return;
+        if (window.__notifRefreshScheduled) return;
+        window.__notifRefreshScheduled = true;
+        setTimeout(() => {
+            window.__notifRefreshScheduled = false;
+            try { showTargetHitDetailsModal({ explicit: true }); } catch(_) {}
+        }, 250);
+    } catch(_) {}
+}
+
 // Diagnostic hotkey: Alt+Shift+N dumps notification icon state
 try {
     document.addEventListener('keydown', function(e){
@@ -10125,20 +10205,46 @@ window.recomputeGlobalMoversFiltered = function recomputeGlobalMoversFiltered(op
         const noDir = [effective.upPercent,effective.upDollar,effective.downPercent,effective.downDollar].every(v=>v==null);
         if (noDir && rawTotal>120) { effective.upPercent = 1; effective.downPercent = 1; }
         const filterFn = (item)=>{
+            // Prefer computed values, but fall back to provided pct/change when live/prevClose are missing.
             const live = (item.live!=null && !isNaN(item.live)) ? Number(item.live) : null;
             const prev = (item.prevClose!=null && !isNaN(item.prevClose)) ? Number(item.prevClose) : null;
-            if (live==null || prev==null || prev===0) return false;
-            const ch = live - prev; if (!ch) return false;
-            const pct = (ch/prev)*100;
-            if (effective.minimumPrice && live < effective.minimumPrice) return false;
-            if (ch>0) {
-                const pctOk = effective.upPercent!=null ? pct >= effective.upPercent : false;
-                const dolOk = effective.upDollar!=null ? Math.abs(ch) >= effective.upDollar : false;
+            let ch = null; let pct = null; let dir = null;
+            if (live!=null && prev!=null && prev!==0) {
+                ch = live - prev;
+                pct = (ch/prev)*100;
+                dir = ch>0 ? 'up' : (ch<0 ? 'down' : null);
+            }
+            // Use provided fields as a fallback (central doc often includes pct/change)
+            if (pct==null && item.pct!=null && !isNaN(item.pct)) {
+                const p = Number(item.pct);
+                // Assume magnitude; use direction to sign if available
+                const isDown = (item.direction||'').toLowerCase()==='down';
+                pct = isDown ? -Math.abs(p) : Math.abs(p);
+            }
+            if (ch==null && item.change!=null && !isNaN(item.change)) {
+                ch = Number(item.change);
+            }
+            if (!ch && ch!==0 && pct==null) return false; // cannot evaluate at all
+            // Respect minimum price only when we know live; if unknown, don't exclude solely on min price
+            if (effective.minimumPrice && live!=null && live < effective.minimumPrice) return false;
+            // Determine direction using available signals
+            if (!dir) {
+                if (ch!=null) dir = ch>0?'up':(ch<0?'down':null);
+                if (!dir && typeof item.direction==='string') dir = item.direction.toLowerCase();
+                if (!dir && pct!=null) dir = pct>=0?'up':'down';
+            }
+            const pctVal = (pct!=null) ? Number(pct) : (ch!=null && prev!=null && prev!==0 ? (ch/prev)*100 : null);
+            const absCh = ch!=null ? Math.abs(ch) : (item.change!=null ? Math.abs(Number(item.change)) : null);
+            if (dir==='up') {
+                const pctOk = (effective.upPercent!=null && pctVal!=null) ? pctVal >= effective.upPercent : false;
+                const dolOk = (effective.upDollar!=null && absCh!=null) ? absCh >= effective.upDollar : false;
+                if (!(pctOk || dolOk)) return false;
+            } else if (dir==='down') {
+                const pctOk = (effective.downPercent!=null && pctVal!=null) ? Math.abs(pctVal) >= effective.downPercent : false;
+                const dolOk = (effective.downDollar!=null && absCh!=null) ? absCh >= effective.downDollar : false;
                 if (!(pctOk || dolOk)) return false;
             } else {
-                const pctOk = effective.downPercent!=null ? Math.abs(pct) >= effective.downPercent : false;
-                const dolOk = effective.downDollar!=null ? Math.abs(ch) >= effective.downDollar : false;
-                if (!(pctOk || dolOk)) return false;
+                // Unknown direction: conservatively include (central doc already qualified it)
             }
             return true;
         };
@@ -10184,13 +10290,19 @@ window.getCurrentDirectionalThresholds = function getCurrentDirectionalThreshold
     } catch(_){ }
     // Form input overrides if user is on settings UI (ensure latest typed values apply before save)
     try {
-        const form = document.getElementById('globalAlertSettingsForm');
+        // Match index.html where the form id is 'globalAlertsForm' and inputs have ids (not names)
+        const form = document.getElementById('globalAlertsForm');
         if (form) {
-            const gpI = form.querySelector('[name="globalPercentIncrease"]'); if (gpI && gpI.value) upPercent = numPos(Number(gpI.value));
-            const gdI = form.querySelector('[name="globalDollarIncrease"]'); if (gdI && gdI.value) upDollar = numPos(Number(gdI.value));
-            const gpD = form.querySelector('[name="globalPercentDecrease"]'); if (gpD && gpD.value) downPercent = numPos(Number(gpD.value));
-            const gdD = form.querySelector('[name="globalDollarDecrease"]'); if (gdD && gdD.value) downDollar = numPos(Number(gdD.value));
-            const gMin = form.querySelector('[name="globalMinimumPrice"]'); if (gMin && gMin.value) minimumPrice = numPos(Number(gMin.value));
+            const gpI = form.querySelector('#globalPercentIncrease') || document.getElementById('globalPercentIncrease');
+            if (gpI && gpI.value) upPercent = numPos(Number(gpI.value));
+            const gdI = form.querySelector('#globalDollarIncrease') || document.getElementById('globalDollarIncrease');
+            if (gdI && gdI.value) upDollar = numPos(Number(gdI.value));
+            const gpD = form.querySelector('#globalPercentDecrease') || document.getElementById('globalPercentDecrease');
+            if (gpD && gpD.value) downPercent = numPos(Number(gpD.value));
+            const gdD = form.querySelector('#globalDollarDecrease') || document.getElementById('globalDollarDecrease');
+            if (gdD && gdD.value) downDollar = numPos(Number(gdD.value));
+            const gMin = form.querySelector('#globalMinimumPrice') || document.getElementById('globalMinimumPrice');
+            if (gMin && gMin.value) minimumPrice = numPos(Number(gMin.value));
         }
     } catch(_){ }
     return { upPercent, upDollar, downPercent, downDollar, minimumPrice };
@@ -10309,6 +10421,7 @@ function startGlobalSummaryListener() {
                 }
             }
             try { updateTargetHitBanner(); } catch(e) {}
+            try { refreshNotificationsModalIfOpen('GA_SUMMARY'); } catch(_) {}
         }, err => {
             console.error('[GlobalAlerts] Regular listener error:', err);
             console.error('Global Alerts: summary listener error', err);
@@ -10332,6 +10445,7 @@ function startGlobalSummaryListener() {
                 // Keep existing comprehensive data if available, otherwise fall back to regular data
             }
             try { updateTargetHitBanner(); } catch(e) {}
+            try { refreshNotificationsModalIfOpen('GA_SUMMARY_COMPREHENSIVE'); } catch(_) {}
         }, err => {
             console.error('[GlobalAlerts] Comprehensive listener error:', err);
         });
@@ -10369,6 +10483,7 @@ function startGlobalHiLoListener() {
                 window.globalHiLo52Alerts = globalHiLo52Alerts;
             }
             try { updateTargetHitBanner(); } catch(_) {}
+            try { refreshNotificationsModalIfOpen('HI_LO_52W'); } catch(_) {}
         }, (err) => {
             console.warn('[HiLo52] Listener error', err);
             try { window.__hiLoListenerError = true; window.__hiLoListenerErrorMessage = (err && (err.message || err.code)) || 'Listener error'; } catch(_) {}
@@ -10414,14 +10529,15 @@ function startGlobalMoversListener() {
                     thresholds: data.thresholds || null
                 };
                 window.globalMovers = globalMovers;
-                try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log:false }); } catch(_){}
+                try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log:false }); } catch(_) {}
                 if (window.__centralRetry) window.__centralRetry.movers = 0; // reset on success
             } else {
                 globalMovers = { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
                 window.globalMovers = globalMovers;
-                try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log:false }); } catch(_){}
+                try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log:false }); } catch(_) {}
             }
-            try { updateTargetHitBanner(); } catch(_) {}
+                try { updateTargetHitBanner(); } catch(_) {}
+                try { refreshNotificationsModalIfOpen('GLOBAL_MOVERS'); } catch(_) {}
         }, (err) => {
             console.warn('[GlobalMovers] Listener error', err);
             try { window.__globalMoversListenerError = true; window.__globalMoversListenerErrorMessage = (err && (err.message||err.code)) || 'Listener error'; } catch(_) {}
@@ -10514,14 +10630,16 @@ function applyGlobalSummaryFilter(options = {}) {
     const hasDown = (typeof globalPercentDecrease === 'number' && globalPercentDecrease > 0) || (typeof globalDollarDecrease === 'number' && globalDollarDecrease > 0);
     // If no thresholds configured at all, use default thresholds for movers view
     let usedDefaults = false;
+    // Capture originals so we can restore if we temporarily apply defaults
+    let __origPercentIncrease, __origPercentDecrease, __origDollarIncrease, __origDollarDecrease;
     if (!hasUp && !hasDown) {
         if (options.computeOnly) {
             // For computeOnly mode (used by movers view), use default 1% threshold
             // Store original values to restore later
-            const origPercentIncrease = globalPercentIncrease;
-            const origPercentDecrease = globalPercentDecrease;
-            const origDollarIncrease = globalDollarIncrease;
-            const origDollarDecrease = globalDollarDecrease;
+            __origPercentIncrease = globalPercentIncrease;
+            __origPercentDecrease = globalPercentDecrease;
+            __origDollarIncrease = globalDollarIncrease;
+            __origDollarDecrease = globalDollarDecrease;
 
             globalPercentIncrease = 1.0;
             globalPercentDecrease = 1.0;
@@ -10572,10 +10690,10 @@ function applyGlobalSummaryFilter(options = {}) {
 
     // Restore original threshold values if we used defaults
     if (usedDefaults) {
-        globalPercentIncrease = origPercentIncrease;
-        globalPercentDecrease = origPercentDecrease;
-        globalDollarIncrease = origDollarIncrease;
-        globalDollarDecrease = origDollarDecrease;
+        globalPercentIncrease = __origPercentIncrease;
+        globalPercentDecrease = __origPercentDecrease;
+        globalDollarIncrease = __origDollarIncrease;
+        globalDollarDecrease = __origDollarDecrease;
         console.log('[applyGlobalSummaryFilter] Restored original threshold values after movers computation');
     }
 
@@ -11959,6 +12077,53 @@ function initGlobalAlertsUI(force) {
                 } else if (typeof fetchLivePrices === 'function') {
                     await fetchLivePrices();
                 }
+                // Populate a fresh local movers snapshot for immediate UI fallback and project it into a GLOBAL_MOVERS-shaped object
+                try {
+                    if (typeof applyGlobalSummaryFilter === 'function') {
+                        const freshEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || [];
+                        // Build a local GLOBAL_MOVERS projection so the modal can render immediately without waiting for central doc
+                        try {
+                            const ups = freshEntries.filter(e => (e.direction||'').toLowerCase() === 'up').map(e => ({
+                                code: e.code,
+                                live: e.live,
+                                prevClose: e.prev,
+                                pct: e.pct,
+                                change: e.change,
+                                direction: 'up'
+                            }));
+                            const downs = freshEntries.filter(e => (e.direction||'').toLowerCase() === 'down').map(e => ({
+                                code: e.code,
+                                live: e.live,
+                                prevClose: e.prev,
+                                pct: e.pct,
+                                change: e.change,
+                                direction: 'down'
+                            }));
+                            const gmLocal = {
+                                updatedAt: new Date().toISOString(),
+                                up: ups,
+                                down: downs,
+                                upCount: ups.length,
+                                downCount: downs.length,
+                                totalCount: ups.length + downs.length,
+                                thresholds: null
+                            };
+                            try { window.globalMovers = gmLocal; } catch(_) {}
+                            try { globalMovers = gmLocal; } catch(_) {}
+                        } catch(_) {}
+                    }
+                } catch(_) {}
+                // Immediately recompute centralized movers filtering with the new thresholds
+                try { if (typeof window.recomputeGlobalMoversFiltered === 'function') window.recomputeGlobalMoversFiltered({ log: false }); } catch(_) {}
+                // Refresh banner counts to reflect new effective thresholds right away
+                try { if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner(); } catch(_) {}
+                // If Notifications modal is currently open, re-render it so explainer text and counts update instantly
+                try {
+                    const modalOpen = (typeof targetHitDetailsModal !== 'undefined' && targetHitDetailsModal && targetHitDetailsModal.style && targetHitDetailsModal.style.display !== 'none');
+                    if (modalOpen && typeof showTargetHitDetailsModal === 'function') {
+                        showTargetHitDetailsModal({ explicit: true });
+                    }
+                } catch(_) {}
             } catch(err) { console.warn('Global Alerts: post-save refresh failed', err); }
             // Run directional diagnostics immediately after save for user transparency
             try { runDirectionalThresholdDiagnostics(); } catch(diagErr){ console.warn('Global Alerts: diagnostics failed', diagErr); }
@@ -15946,7 +16111,20 @@ if (typeof window.renderHiLoEntry !== 'function') {
                 <div class="hilo-low"><span class="label">Low:</span> ${loDisplay}</div>
                 <div class="hilo-high"><span class="label">High:</span> ${hiDisplay}</div>
             </div>`;
-        card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openStockSearchForCode(code); });
+        card.addEventListener('click', ()=>{
+            try { hideModal(targetHitDetailsModal); } catch(_) {}
+            try {
+                const list = (window.allSharesData || []);
+                const share = list.find(s => s && s.shareName && String(s.shareName).toUpperCase() === code);
+                if (share && typeof selectShare === 'function') {
+                    try { wasShareDetailOpenedFromTargetAlerts = true; } catch(_) {}
+                    selectShare(share.id);
+                    if (typeof showShareDetails === 'function') showShareDetails();
+                    return;
+                }
+            } catch(_) {}
+            try { if (typeof openStockSearchForCode === 'function') openStockSearchForCode(code); } catch(_) {}
+        });
         return card;
     }
     // Expose on window for explicit usage as well
@@ -15992,7 +16170,10 @@ function showTargetHitDetailsModal(options={}) {
         const summaryHost = document.getElementById('notificationsSummary');
         if (summaryHost) {
             // Counts
-            const targetCount = Array.isArray(window.sharesAtTargetPrice) ? window.sharesAtTargetPrice.length : 0;
+            const enabledTargets = Array.isArray(window.sharesAtTargetPrice) ? window.sharesAtTargetPrice.length : 0;
+            const mutedTargets = Array.isArray(window.sharesAtTargetPriceMuted) ? window.sharesAtTargetPriceMuted.length : 0;
+            const low52Extras = Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.length : 0;
+            const targetCount = enabledTargets + mutedTargets + low52Extras; // include 52W alerts as additional Custom Alerts
             // Prefer centralized filtered movers, then raw, then snapshot fallback
             let gainersCount = 0, losersCount = 0;
             try {
@@ -16867,24 +17048,28 @@ function showTargetHitDetailsModal(options={}) {
         const currentLivePrice = (livePriceData.live !== undefined && livePriceData.live !== null && !isNaN(livePriceData.live)) ? Number(livePriceData.live) : null;
         const prevClose = (livePriceData.prevClose !== undefined && livePriceData.prevClose !== null && !isNaN(livePriceData.prevClose)) ? Number(livePriceData.prevClose) : null;
         const targetPrice = share.targetPrice;
+        // Determine configured direction; default to 'below' if unspecified
+        const direction = (share && typeof share.targetDirection === 'string' && share.targetDirection.toLowerCase() === 'above') ? 'above' : 'below';
         const priceClass = (currentLivePrice !== null && targetPrice != null && !isNaN(targetPrice) && currentLivePrice >= targetPrice) ? 'positive' : 'negative';
         // Movement calculations (dollar + percent) for discover/target list items
         let movementDeltaHtml = '';
+        let movementBorderColor = null; // prefer movement color for the left accent when available
         if (currentLivePrice !== null && prevClose !== null && prevClose !== 0) {
             const ch = currentLivePrice - prevClose;
             const pct = (ch / prevClose) * 100;
             const dirClass = ch === 0 ? 'neutral' : (ch > 0 ? 'positive' : 'negative');
             const combo = `${ch>0?'+':''}${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%`;
-            movementDeltaHtml = `<span class="movement-combo ${dirClass}">${combo}</span>`;
+            movementDeltaHtml = `<span class=\"movement-combo ${dirClass}\">${combo}</span>`;
+            // pick border color by movement
+            if (ch > 0) movementBorderColor = 'var(--brand-green)'; else if (ch < 0) movementBorderColor = 'var(--brand-red)';
         }
         const item = document.createElement('div');
         item.classList.add('target-hit-item');
-        // If this share is currently a target hit according to livePrices, add accent class for left-border styling
+        // This list only contains alerts that are currently hit; always show the accent
+        item.classList.add('target-hit-accent');
         try {
-            const code = (share.shareName || '').toUpperCase();
-            const lp = (window.livePrices && window.livePrices[code]) ? window.livePrices[code] : null;
-            const isHit = lp && lp.targetHit;
-            if (isHit) item.classList.add('target-hit-accent');
+            const color = movementBorderColor || (direction === 'above' ? 'var(--brand-green)' : 'var(--brand-red)');
+            item.style.setProperty('--target-hit-border-color', color);
         } catch(_) {}
         if (isMuted) item.classList.add('muted');
         item.dataset.shareId = share.id;
