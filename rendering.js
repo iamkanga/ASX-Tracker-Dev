@@ -27,20 +27,23 @@
 
         const livePriceData = livePrices[share.shareName.toUpperCase()];
         const isTargetHit = livePriceData ? livePriceData.targetHit : false;
-        if (isTargetHit && !targetHitIconDismissed) {
-            row.classList.add('target-hit-alert');
-        } else {
-            row.classList.remove('target-hit-alert');
-        }
 
         const displayData = getShareDisplayData(share);
         const companyInfo = allAsxCodes.find(c => c.code === (share.shareName || '').toUpperCase());
         const companyName = companyInfo ? companyInfo.name : '';
 
-        const desktopTargetDot = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Alert target hit"></span>' : '';
+        // Build pulsing dot with direction color
+    let desktopTargetDot = '';
+        if (isTargetHit && !targetHitIconDismissed) {
+            let delta = 0; let haveDelta = false;
+            if (livePriceData && livePriceData.live != null && livePriceData.prevClose != null && !isNaN(livePriceData.live) && !isNaN(livePriceData.prevClose)) { delta = Number(livePriceData.live) - Number(livePriceData.prevClose); haveDelta = true; }
+            else if (livePriceData && livePriceData.lastLivePrice != null && livePriceData.lastPrevClose != null && !isNaN(livePriceData.lastLivePrice) && !isNaN(livePriceData.lastPrevClose)) { delta = Number(livePriceData.lastLivePrice) - Number(livePriceData.lastPrevClose); haveDelta = true; }
+            const color = haveDelta ? (delta > 0 ? 'var(--brand-green)' : (delta < 0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
+            desktopTargetDot = `<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
+        }
         row.innerHTML = `
             <td>
-                ${desktopTargetDot}<span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>
+                <span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>${desktopTargetDot}
                 ${companyName ? `<br><small class="company-name-small">${companyName}</small>` : ''}
             </td>
             <td class="live-price-cell">
@@ -74,12 +77,13 @@
 
         try {
             const lp = livePrices[share.shareName.toUpperCase()];
-            let change = null;
-            if (lp && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) change = lp.live - lp.prevClose;
+            let delta = 0; let haveDelta = false;
+            if (lp && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) { delta = Number(lp.live) - Number(lp.prevClose); haveDelta = true; }
+            else if (lp && lp.lastLivePrice != null && lp.lastPrevClose != null && !isNaN(lp.lastLivePrice) && !isNaN(lp.lastPrevClose)) { delta = Number(lp.lastLivePrice) - Number(lp.lastPrevClose); haveDelta = true; }
             row.classList.remove('positive-change-row','negative-change-row','neutral-change-row');
             if (!row.classList.contains('movement-sides')) row.classList.add('movement-sides');
-            if (change > 0) row.classList.add('positive-change-row');
-            else if (change < 0) row.classList.add('negative-change-row');
+            if (haveDelta && delta > 0) row.classList.add('positive-change-row');
+            else if (haveDelta && delta < 0) row.classList.add('negative-change-row');
             else row.classList.add('neutral-change-row');
         } catch(_) {}
 
@@ -96,13 +100,28 @@
         card.dataset.docId = share.id;
         const displayData = getShareDisplayData(share);
         const { displayLivePrice, displayPriceChange, priceClass, peRatio, high52Week, low52Week } = displayData;
-        const livePriceData = livePrices[share.shareName.toUpperCase()];
-        const isTargetHit = livePriceData ? livePriceData.targetHit : false;
-        if (displayData.cardPriceChangeClass) card.classList.add(displayData.cardPriceChangeClass);
-        if (isTargetHit && !targetHitIconDismissed) card.classList.add('target-hit-alert');
+    const livePriceData = livePrices[share.shareName.toUpperCase()];
+    const isTargetHit = livePriceData ? livePriceData.targetHit : false;
+    if (displayData.cardPriceChangeClass) card.classList.add(displayData.cardPriceChangeClass);
+        if (!card.classList.contains('movement-sides')) card.classList.add('movement-sides');
+        // Set dynamic pulse color for target-hit based on delta
+        // nothing: dot will convey alert; we keep movement-sides for daily movement accents
         let arrowSymbol = '';
         if (priceClass === 'positive') arrowSymbol = '▲'; else if (priceClass === 'negative') arrowSymbol = '▼';
-        card.querySelector('.card-code').textContent = share.shareName || '';
+        // Inject pulsing dot next to the code (left)
+        const codeEl = card.querySelector('.card-code');
+        codeEl.textContent = '';
+        // Append text first, then dot on the right if target is hit
+        codeEl.appendChild(document.createTextNode(share.shareName || ''));
+        if (isTargetHit && !targetHitIconDismissed) {
+            // compute color from movement
+            let delta = 0; let haveDelta = false;
+            if (livePriceData && livePriceData.live != null && livePriceData.prevClose != null && !isNaN(livePriceData.live) && !isNaN(livePriceData.prevClose)) { delta = Number(livePriceData.live) - Number(livePriceData.prevClose); haveDelta = true; }
+            else if (livePriceData && livePriceData.lastLivePrice != null && livePriceData.lastPrevClose != null && !isNaN(livePriceData.lastLivePrice) && !isNaN(livePriceData.lastPrevClose)) { delta = Number(livePriceData.lastLivePrice) - Number(livePriceData.lastPrevClose); haveDelta = true; }
+            const color = haveDelta ? (delta > 0 ? 'var(--brand-green)' : (delta < 0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
+            const dot = document.createElement('span'); dot.className = 'target-hit-dot'; dot.setAttribute('aria-label','Alert target hit'); dot.style.background = color; codeEl.appendChild(dot);
+        }
+        // text is already appended above
         card.querySelector('.card-chevron').textContent = arrowSymbol;
         card.querySelector('.card-chevron').className = `change-chevron card-chevron ${priceClass}`;
         card.querySelector('.card-live-price').textContent = displayLivePrice;
@@ -632,8 +651,7 @@
         }
         // Update content
         const livePriceData = livePrices[share.shareName.toUpperCase()];
-        const isTargetHit = livePriceData ? livePriceData.targetHit : false;
-        if (isTargetHit && !targetHitIconDismissed) row.classList.add('target-hit-alert'); else row.classList.remove('target-hit-alert');
+        const isTargetHit = livePriceData ? !!livePriceData.targetHit : false;
         // compute display
         const isMarketOpen = isAsxMarketOpen();
         let displayLivePrice = 'N/A', displayPriceChange = '', priceClass = '';
@@ -645,10 +663,32 @@
                 else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) { const change = lastFetchedLive - lastFetchedPrevClose; const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0); displayPriceChange = formatDailyChange(change, percentageChange); priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'); }
             } else { displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A'; displayPriceChange = '0.00 (0.00%)'; priceClass = 'neutral'; }
         }
+        // Apply movement side borders + class and dynamic pulse color for target hits
+        try {
+            if (!row.classList.contains('movement-sides')) row.classList.add('movement-sides');
+            row.classList.remove('positive-change-row','negative-change-row','neutral-change-row');
+            let delta = 0;
+            if (livePriceData) {
+                const ll = livePriceData.live, pc = livePriceData.prevClose, lll = livePriceData.lastLivePrice, lpc = livePriceData.lastPrevClose;
+                if (isMarketOpen && ll!=null && pc!=null && !isNaN(ll) && !isNaN(pc)) delta = Number(ll) - Number(pc);
+                else if (!isMarketOpen && lll!=null && lpc!=null && !isNaN(lll) && !isNaN(lpc)) delta = Number(lll) - Number(lpc);
+            }
+            if (delta > 0) row.classList.add('positive-change-row');
+            else if (delta < 0) row.classList.add('negative-change-row');
+            else row.classList.add('neutral-change-row');
+            // no border pulse anymore
+        } catch(_) {}
         const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase()); const companyName = companyInfo ? companyInfo.name : '';
-        const desktopTargetDot2 = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Alert target hit"></span>' : ''; 
+            let desktopTargetDot2 = '';
+        if (isTargetHit && !targetHitIconDismissed) {
+            let delta = 0, haveDelta = false;
+            if (livePriceData && livePriceData.live != null && livePriceData.prevClose != null && !isNaN(livePriceData.live) && !isNaN(livePriceData.prevClose)) { delta = Number(livePriceData.live) - Number(livePriceData.prevClose); haveDelta = true; }
+            else if (livePriceData && livePriceData.lastLivePrice != null && livePriceData.lastPrevClose != null && !isNaN(livePriceData.lastLivePrice) && !isNaN(livePriceData.lastPrevClose)) { delta = Number(livePriceData.lastLivePrice) - Number(livePriceData.lastPrevClose); haveDelta = true; }
+            const color = haveDelta ? (delta > 0 ? 'var(--brand-green)' : (delta < 0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
+            desktopTargetDot2 = `<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
+        }
         row.innerHTML = `
-            <td>${desktopTargetDot2}<span class="share-code-display ${priceClass}">${share.shareName || ''}</span>${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}</td>
+            <td><span class="share-code-display ${priceClass}">${share.shareName || ''}</span>${desktopTargetDot2}${companyName ? `<br><small style="font-size: 0.8em; color: var(--ghosted-text); font-weight: 400;">${companyName}</small>` : ''}</td>
             <td class="live-price-cell"><span class="live-price-value ${priceClass}">${displayLivePrice}</span><span class="price-change ${priceClass}">${displayPriceChange}</span></td>
             <td class="numeric-data-cell">${formatMoney(Number(share.targetPrice), { hideZero: true })}</td>
             <td class="numeric-data-cell">${formatMoney(Number(share.currentPrice), { hideZero: true })}</td>
@@ -662,9 +702,65 @@
         const mobileShareCardsLocal = (typeof window !== 'undefined' && window.mobileShareCardsContainer) || document.getElementById('mobileShareCards');
         if (!mobileShareCardsLocal) { console.error('updateOrCreateShareMobileCard: mobileShareCardsContainer element not found.'); return; }
         let card = mobileShareCardsLocal.querySelector(`div[data-doc-id="${share.id}"]`);
-        if (!card) { card = document.createElement('div'); card.classList.add('mobile-card'); card.dataset.docId = share.id; card.addEventListener('click', ()=>{ logDebug('Mobile Card Click: Share ID: '+share.id); selectShare(share.id); showShareDetails(); }); mobileShareCardsContainer.appendChild(card); logDebug('Mobile Cards: Created new card for share ' + share.shareName + '.'); }
-        const livePriceData = livePrices[share.shareName.toUpperCase()]; const isTargetHit = livePriceData ? livePriceData.targetHit : false; if (isTargetHit && !targetHitIconDismissed) card.classList.add('target-hit-alert'); else card.classList.remove('target-hit-alert'); const isMarketOpen = isAsxMarketOpen(); let displayLivePrice='N/A', displayPriceChange='', priceClass=''; if (livePriceData){ const currentLivePrice = livePriceData.live; const previousClosePrice=livePriceData.prevClose; const lastFetchedLive=livePriceData.lastLivePrice; const lastFetchedPrevClose=livePriceData.lastPrevClose; if (isMarketOpen){ if (currentLivePrice!==null && !isNaN(currentLivePrice)) displayLivePrice = '$'+formatAdaptivePrice(currentLivePrice); if (currentLivePrice!==null && previousClosePrice!==null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)){ const change=currentLivePrice-previousClosePrice; const percentageChange=(previousClosePrice!==0?(change/previousClosePrice)*100:0); displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`; priceClass = change>0?'positive':(change<0?'negative':'neutral'); } else if (lastFetchedLive!==null && lastFetchedPrevClose!==null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)){ const change=lastFetchedLive-lastFetchedPrevClose; const percentageChange=(lastFetchedPrevClose!==0?(change/lastFetchedPrevClose)*100:0); displayPriceChange=`${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`; priceClass = change>0?'positive':(change<0?'negative':'neutral'); } } else { displayLivePrice = lastFetchedLive!==null && !isNaN(lastFetchedLive) ? '$'+formatAdaptivePrice(lastFetchedLive) : 'N/A'; displayPriceChange='0.00 (0.00%)'; priceClass='neutral'; } }
-    const displayData = getShareDisplayData(share); const { peRatio, high52Week, low52Week } = displayData; if (displayData.cardPriceChangeClass) card.classList.add(displayData.cardPriceChangeClass); let arrowSymbol=''; if (priceClass==='positive') arrowSymbol='▲'; else if (priceClass==='negative') arrowSymbol='▼'; card.innerHTML = `<div class="live-price-display-section"><div class="card-top-row"><h3 class="neutral-code-text card-code">${share.shareName}</h3><span class="change-chevron card-chevron ${priceClass}">${arrowSymbol}</span></div><div class="live-price-main-row"><span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span></div><span class="price-change-large card-price-change ${priceClass}">${displayPriceChange}</span></div>`;
+        if (!card) {
+            card = document.createElement('div');
+            card.classList.add('mobile-card');
+            card.dataset.docId = share.id;
+            card.addEventListener('click', ()=>{ logDebug('Mobile Card Click: Share ID: '+share.id); selectShare(share.id); showShareDetails(); });
+            mobileShareCardsContainer.appendChild(card);
+            logDebug('Mobile Cards: Created new card for share ' + share.shareName + '.');
+        }
+        const livePriceData = livePrices[share.shareName.toUpperCase()];
+        const isTargetHit = livePriceData ? !!livePriceData.targetHit : false;
+        const isMarketOpen = isAsxMarketOpen();
+        let displayLivePrice='N/A', displayPriceChange='', priceClass='';
+        let delta = 0;
+        if (livePriceData){
+            const currentLivePrice = livePriceData.live; const previousClosePrice=livePriceData.prevClose; const lastFetchedLive=livePriceData.lastLivePrice; const lastFetchedPrevClose=livePriceData.lastPrevClose;
+            if (isMarketOpen){
+                if (currentLivePrice!==null && !isNaN(currentLivePrice)) displayLivePrice = '$'+formatAdaptivePrice(currentLivePrice);
+                if (currentLivePrice!==null && previousClosePrice!==null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)){
+                    const change=currentLivePrice-previousClosePrice; delta = change;
+                    const percentageChange=(previousClosePrice!==0?(change/previousClosePrice)*100:0);
+                    displayPriceChange = `${formatAdaptivePrice(change)} / ${formatAdaptivePercent(percentageChange)}%`;
+                    priceClass = change>0?'positive':(change<0?'negative':'neutral');
+                } else if (lastFetchedLive!==null && lastFetchedPrevClose!==null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)){
+                    const change=lastFetchedLive-lastFetchedPrevClose; delta = change;
+                    const percentageChange=(lastFetchedPrevClose!==0?(change/lastFetchedPrevClose)*100:0);
+                    displayPriceChange=`${formatAdaptivePrice(change)} (${formatAdaptivePercent(percentageChange)}%)`;
+                    priceClass = change>0?'positive':(change<0?'negative':'neutral');
+                }
+            } else {
+                displayLivePrice = lastFetchedLive!==null && !isNaN(lastFetchedLive) ? '$'+formatAdaptivePrice(lastFetchedLive) : 'N/A';
+                displayPriceChange='0.00 (0.00%)';
+                priceClass='neutral';
+                if (lastFetchedLive!=null && lastFetchedPrevClose!=null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) delta = Number(lastFetchedLive) - Number(lastFetchedPrevClose);
+            }
+        }
+        try {
+            if (!card.classList.contains('movement-sides')) card.classList.add('movement-sides');
+            card.classList.remove('positive-change-card','negative-change-card','neutral-change-card');
+            if (delta > 0) card.classList.add('positive-change-card');
+            else if (delta < 0) card.classList.add('negative-change-card');
+            else card.classList.add('neutral-change-card');
+            // no border pulse anymore
+        } catch(_) {}
+        const displayData = getShareDisplayData(share);
+        const { peRatio, high52Week, low52Week } = displayData;
+        if (displayData.cardPriceChangeClass) card.classList.add(displayData.cardPriceChangeClass);
+        let arrowSymbol='';
+        if (priceClass==='positive') arrowSymbol='▲'; else if (priceClass==='negative') arrowSymbol='▼';
+        // Build card top with pulsing dot next to code when target is hit
+        let codeWithDot = '';
+        if (isTargetHit && !targetHitIconDismissed) {
+            let d=0, have=false; if (livePriceData && livePriceData.live!=null && livePriceData.prevClose!=null && !isNaN(livePriceData.live) && !isNaN(livePriceData.prevClose)) { d=Number(livePriceData.live)-Number(livePriceData.prevClose); have=true; }
+            else if (livePriceData && livePriceData.lastLivePrice!=null && livePriceData.lastPrevClose!=null && !isNaN(livePriceData.lastLivePrice) && !isNaN(livePriceData.lastPrevClose)) { d=Number(livePriceData.lastLivePrice)-Number(livePriceData.lastPrevClose); have=true; }
+            const color = have ? (d>0?'var(--brand-green)':(d<0?'var(--brand-red)':'var(--accent-color)')) : 'var(--accent-color)';
+            codeWithDot = `${share.shareName}<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
+        } else {
+            codeWithDot = `${share.shareName}`;
+        }
+        card.innerHTML = `<div class="live-price-display-section"><div class="card-top-row"><h3 class="neutral-code-text card-code">${codeWithDot}</h3><span class="change-chevron card-chevron ${priceClass}">${arrowSymbol}</span></div><div class="live-price-main-row"><span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span></div><span class="price-change-large card-price-change ${priceClass}">${displayPriceChange}</span></div>`;
     };
 
     window.Rendering.enforceTargetHitStyling = function enforceTargetHitStyling() {
@@ -682,8 +778,8 @@
                 ? window.getMobileShareCardsContainer()
                 : ((typeof window !== 'undefined' && window.mobileShareCardsContainer) || document.getElementById('mobileShareCards') || null);
 
-            const existingHighlights = ((tableBody ? tableBody.querySelectorAll('tr.target-hit-alert').length : 0)
-                + (mobileContainer ? mobileContainer.querySelectorAll('.mobile-card.target-hit-alert').length : 0));
+            // We're no longer applying .custom-target-hit; enforcement will just ensure dots exist
+            const existingHighlights = 0;
 
             if (enforceTargetHitStyling.__lastSig === signature && existingHighlights === enabledList.length) return;
             enforceTargetHitStyling.__lastSig = signature;
@@ -700,15 +796,56 @@
                 const id = r && r.dataset ? r.dataset.docId : null;
                 if (!id) return;
                 if (enabledIds.has(id)) {
-                    if (!r.classList.contains('target-hit-alert')) { r.classList.add('target-hit-alert'); applied++; }
-                } else if (r.classList.contains('target-hit-alert')) { r.classList.remove('target-hit-alert'); removed++; }
+                    // ensure a colored dot exists in first cell before the code
+                    try {
+                        const codeCell = r.querySelector('td');
+                        if (codeCell) {
+                            const existingDot = codeCell.querySelector('.target-hit-dot');
+                            if (!existingDot) {
+                                // compute color by delta
+                                const codeText = (r.querySelector('.share-code-display')?.textContent || '').trim().toUpperCase();
+                                const lp = codeText && window.livePrices ? window.livePrices[codeText] : null; let d=0, have=false;
+                                if (lp && lp.live!=null && lp.prevClose!=null && !isNaN(lp.live) && !isNaN(lp.prevClose)) { d=Number(lp.live)-Number(lp.prevClose); have=true; }
+                                else if (lp && lp.lastLivePrice!=null && lp.lastPrevClose!=null && !isNaN(lp.lastLivePrice) && !isNaN(lp.lastPrevClose)) { d=Number(lp.lastLivePrice)-Number(lp.lastPrevClose); have=true; }
+                                const color = have ? (d>0?'var(--brand-green)':(d<0?'var(--brand-red)':'var(--accent-color)')) : 'var(--accent-color)';
+                                const span = document.createElement('span'); span.className = 'target-hit-dot'; span.style.background = color; span.setAttribute('aria-label','Alert target hit');
+                                // Append after the share code text (right side)
+                                codeCell.appendChild(span);
+                            }
+                        }
+                    } catch(_) {}
+                    applied++;
+                } else {
+                    // remove dot if present
+                    try { r.querySelectorAll('.target-hit-dot').forEach(n=>n.remove()); } catch(_) {}
+                    removed++;
+                }
             });
             cards.forEach(c => {
                 const id = c && c.dataset ? c.dataset.docId : null;
                 if (!id) return;
                 if (enabledIds.has(id)) {
-                    if (!c.classList.contains('target-hit-alert')) { c.classList.add('target-hit-alert'); applied++; }
-                } else if (c.classList.contains('target-hit-alert')) { c.classList.remove('target-hit-alert'); removed++; }
+                    try {
+                        const codeEl = c.querySelector('.card-code');
+                        if (codeEl) {
+                            const hasDot = !!codeEl.querySelector('.target-hit-dot');
+                            if (!hasDot) {
+                                const code = (codeEl.textContent || '').trim().toUpperCase();
+                                const lp = code && window.livePrices ? window.livePrices[code] : null; let d=0, have=false;
+                                if (lp && lp.live!=null && lp.prevClose!=null && !isNaN(lp.live) && !isNaN(lp.prevClose)) { d=Number(lp.live)-Number(lp.prevClose); have=true; }
+                                else if (lp && lp.lastLivePrice!=null && lp.lastPrevClose!=null && !isNaN(lp.lastLivePrice) && !isNaN(lp.lastPrevClose)) { d=Number(lp.lastLivePrice)-Number(lp.lastPrevClose); have=true; }
+                                const color = have ? (d>0?'var(--brand-green)':(d<0?'var(--brand-red)':'var(--accent-color)')) : 'var(--accent-color)';
+                                const span = document.createElement('span'); span.className='target-hit-dot'; span.style.background = color; span.setAttribute('aria-label','Alert target hit');
+                                // Append after the code text
+                                codeEl.appendChild(span);
+                            }
+                        }
+                    } catch(_) {}
+                    applied++;
+                } else {
+                    try { c.querySelectorAll('.target-hit-dot').forEach(n=>n.remove()); } catch(_) {}
+                    removed++;
+                }
             });
 
             try { /* enforceTargetHitStyling diagnostics removed */ } catch(_) {}

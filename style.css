@@ -1893,6 +1893,9 @@ function makeFilesAvailableToSourceControlCSS() {
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
+    /* Pulse color mapping for custom target hits */
+    --target-pulse-color: var(--brand-green);
+    --target-pulse-color-rgb: 6, 255, 79;
 }
 
 .portfolio-cards-grid .portfolio-card.negative {
@@ -1900,6 +1903,9 @@ function makeFilesAvailableToSourceControlCSS() {
     border-width: 4px !important;
     border-style: solid !important;
     box-shadow: none !important;
+    /* Pulse color mapping for custom target hits */
+    --target-pulse-color: var(--brand-red);
+    --target-pulse-color-rgb: 255, 49, 49;
 }
 
 /* Only one neutral rule, with correct coffee color and high specificity */
@@ -1909,6 +1915,9 @@ function makeFilesAvailableToSourceControlCSS() {
     border-style: solid !important;
     box-shadow: 0 0 0 2px #b0896833 !important;
     z-index: 2;
+    /* Pulse color mapping for custom target hits */
+    --target-pulse-color: var(--accent-color);
+    --target-pulse-color-rgb: 164, 147, 147;
 }
 .portfolio-card.expanded { box-shadow: none; }
 /* Three-column layout for portfolio card main information */
@@ -2596,10 +2605,28 @@ function makeFilesAvailableToSourceControlCSS() {
 }
 
 /* === Refined Movement & Target-Hit Styling (Corrected) === */
-/* Standard Movement: 4px side borders for all views */
-.positive-change-row, .positive-change-card { border-left: 4px solid var(--brand-green); border-right: 4px solid var(--brand-green); }
-.negative-change-row, .negative-change-card { border-left: 4px solid var(--brand-red); border-right: 4px solid var(--brand-red); }
-.neutral-change-row, .neutral-change-card { border-left: 4px solid var(--accent-color); border-right: 4px solid var(--accent-color); }
+/* Standard Movement: 4px side borders for all views + expose movement variables for downstream effects */
+.positive-change-row, .positive-change-card {
+    --movement-accent: var(--brand-green);
+    --target-pulse-color: var(--brand-green);
+    --target-pulse-color-rgb: 6, 255, 79; /* #06FF4F */
+    border-left: 4px solid var(--brand-green);
+    border-right: 4px solid var(--brand-green);
+}
+.negative-change-row, .negative-change-card {
+    --movement-accent: var(--brand-red);
+    --target-pulse-color: var(--brand-red);
+    --target-pulse-color-rgb: 255, 49, 49; /* #FF3131 */
+    border-left: 4px solid var(--brand-red);
+    border-right: 4px solid var(--brand-red);
+}
+.neutral-change-row, .neutral-change-card {
+    --movement-accent: var(--accent-color);
+    --target-pulse-color: var(--accent-color);
+    --target-pulse-color-rgb: 164, 147, 147; /* #a49393 */
+    border-left: 4px solid var(--accent-color);
+    border-right: 4px solid var(--accent-color);
+}
 
 /* Movement backgrounds (Light mode) - Increased specificity to ensure override */
 body table tbody tr.positive-change-row, #mobileShareCards .mobile-card.positive-change-card { background-color: var(--watch-bg-positive) !important; }
@@ -2617,7 +2644,7 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
     Only mobile cards retain full pulsing border.
     Desktop uses a subtle pulsing dot indicator inserted before the code. */
 /* Desktop pulsing dot indicator */
-.target-hit-dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#a49393; margin-right:6px; position:relative; top:1px; animation: targetHitDotPulse 2s ease-in-out infinite; }
+.target-hit-dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:#a49393; margin-left:6px; position:relative; top:1px; animation: targetHitDotPulse 2s ease-in-out infinite; }
 @keyframes targetHitDotPulse { 0%{ transform:scale(.8); opacity:.55;} 50%{ transform:scale(1.25); opacity:1;} 100%{ transform:scale(.8); opacity:.55;} }
 
 /* Pulsing Notification Icon */
@@ -2634,6 +2661,8 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
     70% { box-shadow:0 0 0 8px rgba(164,147,147,0); }
     100% { box-shadow:0 0 0 0 rgba(164,147,147,0); }
 }
+
+/* Removed legacy border-based custom-target-hit styles; using a small pulsing dot next to codes instead */
 
 /* Global summary alert item styling */
 /* Global summary alert unified card styling */
@@ -9467,8 +9496,11 @@ body.dark-theme .alert-item {
 .mobile-share-cards.compact-view .mobile-card.neutral-change-card::after { background: var(--accent-color); }
 /**/
 
+/* Legacy compact custom-target-hit overrides removed */
+
 /* Target-hit (non-compact) full coffee border ONLY for mobile cards; desktop rows excluded */
-.mobile-card.target-hit-alert { border:4px solid var(--accent-color); border-radius:10px; animation: targetHitPulseBorder 1.5s ease-in-out infinite; }
+/* Legacy rule disabled to adhere to side-only spec for custom alerts on mobile cards */
+/* .mobile-card.target-hit-alert { border:4px solid var(--accent-color); border-radius:10px; animation: targetHitPulseBorder 1.5s ease-in-out infinite; } */
 
 /* Reinforce compact grid item alignment & spacing */
 /* (Removed intermediate alignment overrides – replaced by final unified grid below) */

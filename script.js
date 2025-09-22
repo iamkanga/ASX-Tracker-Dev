@@ -1092,14 +1092,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
             const todayClass = (todayChange > 0) ? 'positive' : (todayChange < 0 ? 'negative' : 'neutral');
 
+            // Custom target-hit indicator: pulsing dot next to code
+            const isTargetHit = (lpObj && typeof lpObj.targetHit !== 'undefined') ? !!lpObj.targetHit : false;
+
             // per-card debug removed
 
             // Card HTML (collapsed/expandable)
             // Border color is controlled purely by CSS via .portfolio-card.{positive|negative|neutral}
+            // Compute today movement direction for dynamic color
+            const dToday = (typeof priceNow === 'number' && typeof prevClose === 'number') ? (priceNow - prevClose) : 0;
+
+            // Build code with optional colored dot
+            const codeWithDot = (() => {
+                if (!(isTargetHit && !targetHitIconDismissed)) return `${share.shareName || ''}`;
+                const color = dToday>0 ? 'var(--brand-green)' : (dToday<0 ? 'var(--brand-red)' : 'var(--accent-color)');
+                return `${share.shareName || ''}<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
+            })();
             return `<div class="portfolio-card ${todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}">
                 <!-- Single line with ASX code, current price, and day change -->
                 <div class="portfolio-top-row">
-                    <div class="portfolio-code">${share.shareName || ''}</div>
+                    <div class="portfolio-code">${codeWithDot}</div>
                     <div class="portfolio-price">${(priceNow !== null && !isNaN(priceNow)) ? formatMoney(priceNow) : ''}</div>
                     <div class="portfolio-day-change ${todayClass}">
                         <div class="pc-day-dollar">${todayChange !== null ? fmtMoney(todayChange) : ''}</div>
@@ -5520,12 +5532,7 @@ function addShareToTable(share) {
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-    // Apply target-hit-alert class if target is hit AND not dismissed
-    if (isTargetHit && !targetHitIconDismissed) {
-        row.classList.add('target-hit-alert');
-    } else {
-        row.classList.remove('target-hit-alert'); // Ensure class is removed if conditions are not met
-    }
+    // No border styling; we'll render a pulsing dot next to the code instead
 
     // Use the new helper function to get all display data
     const displayData = getShareDisplayData(share);
@@ -5534,10 +5541,19 @@ function addShareToTable(share) {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     const companyName = companyInfo ? companyInfo.name : '';
 
-    const desktopTargetDot = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Alert target hit"></span>' : '';
+    let desktopTargetDot = '';
+    if (isTargetHit && !targetHitIconDismissed) {
+        const lp = livePrices[share.shareName.toUpperCase()] || {};
+        const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+        let d = null;
+        if (marketOpen && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) d = lp.live - lp.prevClose;
+        else if (!marketOpen && lp.lastLivePrice != null && lp.lastPrevClose != null && !isNaN(lp.lastLivePrice) && !isNaN(lp.lastPrevClose)) d = lp.lastLivePrice - lp.lastPrevClose;
+        const color = typeof d === 'number' ? (d>0 ? 'var(--brand-green)' : (d<0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
+        desktopTargetDot = `<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
+    }
     row.innerHTML = `
         <td>
-            ${desktopTargetDot}<span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>
+            <span class="share-code-display ${displayData.priceClass}">${share.shareName || ''}</span>${desktopTargetDot}
             ${companyName ? `<br><small class=\"company-name-small\">${companyName}</small>` : ''}
         </td>
         <td class="live-price-cell">
@@ -5653,10 +5669,21 @@ function addShareToMobileCards(share) {
         card.classList.add(displayData.cardPriceChangeClass);
     }
 
-    // Apply target-hit-alert class if target is hit AND not dismissed
+    // Build code with optional colored pulsing dot next to the code (replaces old border-based alert)
+    let codeWithDotForAdd = `${share.shareName || ''}`;
     if (isTargetHit && !targetHitIconDismissed) {
-        card.classList.add('target-hit-alert');
+        try {
+            const lp = livePrices[share.shareName.toUpperCase()] || {};
+            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+            let d = null;
+            if (marketOpen && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) d = lp.live - lp.prevClose;
+            else if (!marketOpen && lp.lastLivePrice != null && lp.lastPrevClose != null && !isNaN(lp.lastLivePrice) && !isNaN(lp.lastPrevClose)) d = lp.lastLivePrice - lp.lastPrevClose;
+            const color = (typeof d === 'number') ? (d > 0 ? 'var(--brand-green)' : (d < 0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
+            codeWithDotForAdd = `${share.shareName || ''}<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
+        } catch(_) { /* fall back to plain code */ }
     }
+    // Ensure unified side border helper
+    if (!card.classList.contains('movement-sides')) card.classList.add('movement-sides');
 
     // Build directional arrow for displayPriceChange
     let arrowSymbol = '';
@@ -5667,7 +5694,9 @@ function addShareToMobileCards(share) {
     }
 
     // Populate the template
-    card.querySelector('.card-code').textContent = share.shareName || '';
+    // Insert the code (with dot if applicable)
+    const codeElAdd = card.querySelector('.card-code');
+    if (codeElAdd) codeElAdd.innerHTML = codeWithDotForAdd;
     card.querySelector('.card-chevron').textContent = arrowSymbol;
     card.querySelector('.card-chevron').className = `change-chevron card-chevron ${priceClass}`;
     const livePriceElement = card.querySelector('.card-live-price');
@@ -5848,13 +5877,6 @@ function updateOrCreateShareTableRow(share) {
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-    // Apply target-hit-alert class if target is hit AND not dismissed
-    if (isTargetHit && !targetHitIconDismissed) {
-        row.classList.add('target-hit-alert');
-    } else {
-        row.classList.remove('target-hit-alert');
-    }
-
     const isMarketOpen = isAsxMarketOpen();
     let displayLivePrice = 'N/A';
     let displayPriceChange = '';
@@ -5911,10 +5933,22 @@ function updateOrCreateShareTableRow(share) {
     const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase());
     const companyName = companyInfo ? companyInfo.name : '';
 
-    const desktopTargetDot2 = (isTargetHit && !targetHitIconDismissed) ? '<span class="target-hit-dot" aria-label="Alert target hit"></span>' : '';
+    // Build optional colored pulsing dot (next to code) for target hits
+    let desktopTargetDot2 = '';
+    if (isTargetHit && !targetHitIconDismissed) {
+        try {
+            const lp = livePrices[share.shareName.toUpperCase()] || {};
+            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+            let d = null;
+            if (marketOpen && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) d = lp.live - lp.prevClose;
+            else if (!marketOpen && lp.lastLivePrice != null && lp.lastPrevClose != null && !isNaN(lp.lastLivePrice) && !isNaN(lp.lastPrevClose)) d = lp.lastLivePrice - lp.lastPrevClose;
+            const color = (typeof d === 'number') ? (d > 0 ? 'var(--brand-green)' : (d < 0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
+            desktopTargetDot2 = `<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
+        } catch(_) { desktopTargetDot2 = '<span class="target-hit-dot" aria-label="Alert target hit"></span>'; }
+    }
     row.innerHTML = `
         <td>
-            ${desktopTargetDot2}<span class="share-code-display ${priceClass}">${share.shareName || ''}</span>
+            <span class="share-code-display ${priceClass}">${share.shareName || ''}</span>${desktopTargetDot2}
             ${companyName ? `<br><small class=\"company-name-small\">${companyName}</small>` : ''}
         </td>
         <td class="live-price-cell">
@@ -5969,12 +6003,7 @@ function updateOrCreateShareMobileCard(share) {
     const livePriceData = livePrices[share.shareName.toUpperCase()];
     const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-    // Apply target-hit-alert class if target is hit AND not dismissed
-    if (isTargetHit && !targetHitIconDismissed) {
-        card.classList.add('target-hit-alert');
-    } else {
-        card.classList.remove('target-hit-alert');
-    }
+    // No border-based class; we'll render a pulsing dot next to the code
     const isMarketOpen = isAsxMarketOpen();
     let displayLivePrice = 'N/A';
     let displayPriceChange = '';
@@ -6061,9 +6090,22 @@ function updateOrCreateShareMobileCard(share) {
     const companyName = companyInfo ? companyInfo.name : '';
 
     const arrowSymbol = priceClass === 'positive' ? '▲' : (priceClass === 'negative' ? '▼' : '');
+    // Build code with optional colored pulsing dot
+    let codeWithDotUpd = `${share.shareName || ''}`;
+    if (isTargetHit && !targetHitIconDismissed) {
+        try {
+            const lp = livePrices[share.shareName.toUpperCase()] || {};
+            const marketOpen = typeof isAsxMarketOpen === 'function' ? isAsxMarketOpen() : true;
+            let d = null;
+            if (marketOpen && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) d = lp.live - lp.prevClose;
+            else if (!marketOpen && lp.lastLivePrice != null && lp.lastPrevClose != null && !isNaN(lp.lastLivePrice) && !isNaN(lp.lastPrevClose)) d = lp.lastLivePrice - lp.lastPrevClose;
+            const color = (typeof d === 'number') ? (d > 0 ? 'var(--brand-green)' : (d < 0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
+            codeWithDotUpd = `${share.shareName || ''}<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
+        } catch(_) { /* leave without dot */ }
+    }
     // Markup: direct grid items without inner container to avoid unwanted box
     card.innerHTML = `
-        <h3 class="neutral-code-text card-code">${share.shareName || ''}</h3>
+        <h3 class="neutral-code-text card-code">${codeWithDotUpd}</h3>
         <span class="change-chevron ${priceClass} card-chevron">${arrowSymbol}</span>
         <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
         <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
