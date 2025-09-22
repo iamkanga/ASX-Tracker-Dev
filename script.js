@@ -1938,7 +1938,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-09-21 - Global alerts explainers always show thresholds with 'Not set' placeholders
-const APP_VERSION = '2.15.6';
+const APP_VERSION = '2.15.7';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)
@@ -4526,6 +4526,12 @@ function adjustMainContentPadding() {
 
 // --- Mobile Keyboard Scroll Fix for Add/Edit Share Modal ---
 function enableShareFormMobileScrollFix() {
+    // If the new global keyboard-aware modal manager is present, defer to it entirely.
+    // This avoids conflicting inline height/padding between two systems.
+    if (window.ModalViewportManager && typeof window.ModalViewportManager.refresh === 'function') {
+        try { window.ModalViewportManager.refresh(); } catch(_) {}
+        return; // unified manager handles sizing and scrolling across all modals
+    }
     if (!shareFormSection) return;
     // Only apply on mobile devices
     const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);

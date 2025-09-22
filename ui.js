@@ -561,7 +561,7 @@
             try {
                 const modal = getActiveModal();
                 const scroller = getScrollable(modal);
-                if (!scroller) return;
+                if (!modal || !scroller) return;
 
                 if (window.visualViewport) {
                     const vv = window.visualViewport;
@@ -571,21 +571,42 @@
                     if (!shouldApply) {
                         // Desktop full-height: don't hard-force height; clear keyboard marker and return
                         setKeyboardVisibleMarker(false);
+                        // Clear inline overlay sizing when not applied
+                        try { modal.style.removeProperty('top'); } catch(_){ }
+                        try { modal.style.removeProperty('height'); } catch(_){ }
+                        try { modal.style.removeProperty('min-height'); } catch(_){ }
+                        try { modal.style.removeProperty('overflow'); } catch(_){ }
+                        try { scroller.style.removeProperty('height'); } catch(_){ }
+                        try { scroller.style.removeProperty('max-height'); } catch(_){ }
+                        try { scroller.style.removeProperty('padding-bottom'); } catch(_){ }
+                        try { scroller.style.removeProperty('scroll-padding-bottom'); } catch(_){ }
+                        try { scroller.style.removeProperty('margin-top'); } catch(_){ }
                         return;
                     }
-                    // Usable height is visual viewport height; constrain scroller to it
-                    const usable = Math.max(240, Math.floor(vv.height));
+                    // Size and position the overlay (modal) to the visible viewport to avoid any black bands
+                    const vvTop = Math.max(0, Math.floor(vv.offsetTop || 0));
+                    const vvHeight = Math.max(240, Math.floor(vv.height));
+                    try { modal.style.setProperty('top', vvTop + 'px'); } catch(_){ }
+                    try { modal.style.setProperty('height', vvHeight + 'px'); } catch(_){ }
+                    try { modal.style.setProperty('min-height', vvHeight + 'px'); } catch(_){ }
+                    try { modal.style.setProperty('overflow', 'hidden'); } catch(_){ }
+
+                    // Constrain the scrollable content to the visible viewport minus a small frame
+                    const framePadding = 8; // should match mobile CSS padding
+                    const usable = Math.max(200, vvHeight - (framePadding * 2));
                     scroller.style.maxHeight = usable + 'px';
                     scroller.style.height = usable + 'px';
 
                     // Estimate keyboard overlap and add extra bottom padding so last inputs clear the keyboard
-                    const kbOverlap = Math.max(0, Math.floor((innerH || usable) - vv.height - (vv.offsetTop || 0)));
+                    const kbOverlap = Math.max(0, Math.floor((innerH || vvHeight) - vv.height - vvTop));
                     const extra = Math.min(400, Math.max(80, kbOverlap + 48));
-                    scroller.style.scrollPaddingBottom = (extra + 40) + 'px';
-                    scroller.style.paddingBottom = `calc(18px + ${extra}px)`;
+                    scroller.style.scrollPaddingBottom = (extra + 32) + 'px';
+                    scroller.style.paddingBottom = `calc(16px + ${extra}px)`;
+                    // Remove any top margin that could create a black gap while keyboard is shown
+                    scroller.style.marginTop = '0px';
 
                     // Mark body to allow CSS-based tweaks
-                    setKeyboardVisibleMarker(kbOverlap > 24);
+                    setKeyboardVisibleMarker(kbOverlap > 12);
                 } else {
                     // Fallback for non-supporting browsers
                     scroller.style.maxHeight = '100vh';
