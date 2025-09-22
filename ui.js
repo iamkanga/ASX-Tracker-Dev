@@ -260,6 +260,11 @@
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
     if (scrollableContent) scrollableContent.scrollTop = 0;
     try { if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') initializeShareNameAutocomplete(true); } catch(_) {}
+    // After showing, trigger keyboard-aware sizing in case a virtual keyboard is present
+    try {
+        const refresh = window.ModalViewportManager && window.ModalViewportManager.refresh;
+        if (typeof refresh === 'function') { requestAnimationFrame(refresh); setTimeout(refresh, 60); }
+    } catch(_) {}
     }
 
     function showModalNoHistory(modalElement) {
@@ -522,3 +527,153 @@
 })();
 
 // showCustomAlert is already exposed inside the IIFE via Object.assign
+
+// Keyboard-aware modal viewport manager: ensures modals remain scrollable with on-screen keyboard
+(function installKeyboardAwareModals(){
+    try {
+        if (window.__keyboardAwareModalsInstalled) return;
+        window.__keyboardAwareModalsInstalled = true;
+
+        const isMobileish = () => {
+            try { return (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch(_) { return true; }
+        };
+
+        function getActiveModal() {
+            try {
+                // Prefer highest/last .modal.show; fallback to any visible flex modal
+                const shown = Array.from(document.querySelectorAll('.modal.show'));
+                const candidates = shown.length ? shown : Array.from(document.querySelectorAll('.modal')).filter(m => m && m.style && m.style.display !== 'none');
+                // Pick the last-in-DOM to approximate top-most
+                return candidates.length ? candidates[candidates.length - 1] : null;
+            } catch(_) { return null; }
+        }
+
+        function getScrollable(modalEl) {
+            if (!modalEl) return null;
+            return modalEl.querySelector('.single-scroll-modal') || modalEl.querySelector('.modal-content') || modalEl;
+        }
+
+        function setKeyboardVisibleMarker(on) {
+            try { document.body.classList.toggle('keyboard-visible', !!on); } catch(_) {}
+        }
+
+        function applyViewportSizing() {
+            try {
+                const modal = getActiveModal();
+                const scroller = getScrollable(modal);
+                if (!scroller) return;
+
+                if (window.visualViewport) {
+                    const vv = window.visualViewport;
+                    const innerH = (window.innerHeight || vv.height || 0);
+                    const keyboardLikely = (innerH && (vv.height < innerH - 40));
+                    const shouldApply = isMobileish() || keyboardLikely;
+                    if (!shouldApply) {
+                        // Desktop full-height: don't hard-force height; clear keyboard marker and return
+                        setKeyboardVisibleMarker(false);
+                        return;
+                    }
+                    // Usable height is visual viewport height; constrain scroller to it
+                    const usable = Math.max(240, Math.floor(vv.height));
+                    scroller.style.maxHeight = usable + 'px';
+                    scroller.style.height = usable + 'px';
+
+                    // Estimate keyboard overlap and add extra bottom padding so last inputs clear the keyboard
+                    const kbOverlap = Math.max(0, Math.floor((innerH || usable) - vv.height - (vv.offsetTop || 0)));
+                    const extra = Math.min(400, Math.max(80, kbOverlap + 48));
+                    scroller.style.scrollPaddingBottom = (extra + 40) + 'px';
+                    scroller.style.paddingBottom = `calc(18px + ${extra}px)`;
+
+                    // Mark body to allow CSS-based tweaks
+                    setKeyboardVisibleMarker(kbOverlap > 24);
+                } else {
+                    // Fallback for non-supporting browsers
+                    scroller.style.maxHeight = '100vh';
+                    scroller.style.height = '100vh';
+                    scroller.style.scrollPaddingBottom = '160px';
+                    scroller.style.paddingBottom = '28px';
+                }
+            } catch(_) {}
+        }
+
+        function clearViewportSizingIfNoModal() {
+            try {
+                const modal = getActiveModal();
+                if (!modal) {
+                    setKeyboardVisibleMarker(false);
+                }
+            } catch(_) {}
+        }
+
+        function scrollFocusedIntoView(target) {
+            try {
+                if (!target) return;
+                const modal = target.closest && target.closest('.modal');
+                const scroller = getScrollable(modal);
+                if (!scroller) return;
+                // Delay slightly so keyboard/viewport settles
+                setTimeout(() => {
+                    try {
+                        // Try native scrollIntoView on nearest scrollable ancestor
+                        if (typeof target.scrollIntoView === 'function') {
+                            target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+                        }
+                        // Ensure within scroller bounds as a fallback
+                        const tRect = target.getBoundingClientRect();
+                        const sRect = scroller.getBoundingClientRect();
+                        if (tRect.bottom > sRect.bottom - 16 || tRect.top < sRect.top + 16) {
+                            const deltaTop = (tRect.top - sRect.top) - 80; // offset so field sits above keyboard
+                            const desired = Math.max(0, scroller.scrollTop + deltaTop);
+                            try { scroller.scrollTo({ top: desired, behavior: 'smooth' }); } catch(_) { scroller.scrollTop = desired; }
+                        }
+                    } catch(_) {}
+                }, 140);
+            } catch(_) {}
+        }
+
+        // Global focus handler for any input/select/textarea inside modals
+        document.addEventListener('focusin', (e) => {
+            try {
+                const t = e.target;
+                if (!isMobileish()) return;
+                if (!t || !t.closest || !t.closest('.modal')) return;
+                if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable) {
+                    scrollFocusedIntoView(t);
+                }
+            } catch(_) {}
+        }, true);
+
+        // Install visualViewport listeners where supported
+        if (window.visualViewport) {
+            try {
+                window.visualViewport.addEventListener('resize', applyViewportSizing);
+                window.visualViewport.addEventListener('scroll', applyViewportSizing);
+            } catch(_) {}
+        } else {
+            // Fallback: window resize
+            window.addEventListener('resize', applyViewportSizing);
+        }
+
+        // When a modal opens, re-apply sizing on next frame
+        try {
+            const origShow = window.showModal;
+            window.showModal = function patchedShowModal(m){
+                try { return (origShow && origShow.call ? origShow.call(window, m) : (origShow ? origShow(m) : null)); }
+                finally { try { requestAnimationFrame(applyViewportSizing); setTimeout(applyViewportSizing, 60); } catch(_) {} }
+            };
+        } catch(_) {}
+
+        // Also observe DOM changes to .modal.show state and adjust
+        try {
+            const mo = new MutationObserver(() => { applyViewportSizing(); clearViewportSizingIfNoModal(); });
+            mo.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class', 'style'] });
+        } catch(_) {}
+
+        // Initial pass
+        document.addEventListener('DOMContentLoaded', () => { setTimeout(applyViewportSizing, 80); });
+        window.addEventListener('load', () => { setTimeout(applyViewportSizing, 120); });
+
+        // Expose for debugging
+        try { window.ModalViewportManager = { refresh: applyViewportSizing }; } catch(_) {}
+    } catch (e) { /* silent */ }
+})();
