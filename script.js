@@ -1938,7 +1938,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-09-21 - Global alerts explainers always show thresholds with 'Not set' placeholders
-const APP_VERSION = '2.15.7';
+const APP_VERSION = '2.15.8';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)
@@ -3191,6 +3191,21 @@ let originalCashAssetData = null; // NEW: To store original cash asset data for 
 // [moved to top after imports]
 // Centralized single-code snapshot handling
 let _latestAddFormSnapshotReq = 0; // monotonic counter to avoid race conditions
+
+// Reusable: force a modal layout refresh after dynamic DOM updates inside an open modal
+function refreshActiveModalLayout(reason) {
+    try {
+        const refresh = window.ModalViewportManager && window.ModalViewportManager.refresh;
+        if (typeof refresh === 'function') {
+            try { if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.debug('[ModalRefresh] Trigger', reason || ''); } catch(_) {}
+            // Run on next frame and once more shortly after to allow reflow/paint to settle
+            try { requestAnimationFrame(refresh); } catch(_) { try { refresh(); } catch(_) {} }
+            try { setTimeout(refresh, 60); } catch(_) {}
+        }
+    } catch(_) { /* no-op */ }
+}
+try { window.refreshActiveModalLayout = refreshActiveModalLayout; } catch(_) {}
+
 async function updateAddFormLiveSnapshot(code) {
     try {
         if (!code || !GOOGLE_APPS_SCRIPT_URL || !addShareLivePriceDisplay) return;
@@ -3255,12 +3270,16 @@ async function updateAddFormLiveSnapshot(code) {
             </div>`;
         addShareLivePriceDisplay.style.display = 'block';
         addShareLivePriceDisplay.removeAttribute('data-loading');
+        // Ensure modal scroll area recalculates after content injection (esp. with keyboard visible)
+        refreshActiveModalLayout('after live snapshot render');
     } catch (e) {
         if (DEBUG_MODE) console.warn('Snapshot: failed for', code, e);
         if (addShareLivePriceDisplay) {
             addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">Price unavailable.</p>';
             addShareLivePriceDisplay.style.display = 'block';
             addShareLivePriceDisplay.removeAttribute('data-loading');
+            // Also refresh layout after error-state content update
+            refreshActiveModalLayout('after live snapshot error render');
         }
     }
 }
