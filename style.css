@@ -7161,9 +7161,11 @@ table td.live-price-cell.negative-change {
     font-size: 2.2em !important;
     font-weight: 800 !important;
     line-height: 1.1 !important;
-    color: var(--text-color, #333) !important;
+    color: var(--text-color, #333) !important; /* ensure not muted */
     text-align: left !important;
     display: block !important;
+    opacity: 1 !important; /* never ghost the title */
+    filter: none !important; /* avoid inherited grayscale */
 }
 
 /* NEW: Container for the modal title (ASX Code + Company Name) */
@@ -8130,7 +8132,8 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
     text-align: left !important;
     width: 100% !important;
     visibility: visible !important;
-    opacity: 1 !important;
+    opacity: 1 !important; /* enforce full opacity */
+    filter: none !important;
 }
 
 /* Force the comments section title to display correctly */
@@ -8199,10 +8202,19 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
     font-weight: 800 !important;
     margin: 0 !important;
     padding: 0 !important;
-    color: #333 !important; /* Fallback color */
+        color: var(--text-color, #333) !important; /* Use theme text color; fallback provided */
     line-height: 1.1 !important;
     text-align: left !important;
     width: 100% !important;
+        opacity: 1 !important;
+        filter: none !important;
+}
+
+/* Tablet/layout safeguard: ensure Holdings & Dividends spans full width even if class omitted */
+@media (min-width: 641px) and (max-width: 1024px) {
+    .share-detail-sections .detail-card[data-section="dividends"] {
+        grid-column: 1 / -1;
+    }
 }
 
 /* Add button for cash asset comments: bottom-left action row */

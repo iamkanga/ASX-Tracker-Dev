@@ -3427,6 +3427,19 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
         // Prevent the click from falling through to the sort select and other handlers
         try { e.stopPropagation(); e.preventDefault(); } catch(_) {}
 
+        // If a modal is open, toggle visibility without forcing page scroll to avoid snap-to-top
+        try {
+            const modalOpen = !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
+            if (modalOpen) {
+                const currentExpanded = getAsxButtonsExpanded();
+                setAsxButtonsExpanded(!currentExpanded);
+                applyAsxButtonsState();
+                // Reposition padding only; suppress scroll
+                try { if (window.repositionMainContentUnderHeader) window.repositionMainContentUnderHeader({ suppressScroll: true }); } catch(_){ }
+                return;
+            }
+        } catch(_){ }
+
         const currentExpanded = getAsxButtonsExpanded();
         console.log('[CLICK DEBUG] Current expanded state:', currentExpanded);
         const newExpanded = !currentExpanded;
