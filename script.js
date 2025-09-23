@@ -1938,7 +1938,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-09-21 - Global alerts explainers always show thresholds with 'Not set' placeholders
-const APP_VERSION = '2.15.9';
+const APP_VERSION = '2.15.10';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)
@@ -4548,6 +4548,12 @@ function adjustMainContentPadding() {
 
 // --- Mobile Keyboard Scroll Fix for Add/Edit Share Modal ---
 function enableShareFormMobileScrollFix() {
+    // Respect global flag to disable focus auto-scroll inside share form modals by default
+    try {
+        if (typeof window.DisableShareFormFocusAutoScroll === 'undefined') {
+            window.DisableShareFormFocusAutoScroll = true; // default: prevent snapping
+        }
+    } catch(_) {}
     // If the new global keyboard-aware modal manager is present, defer to it entirely.
     // This avoids conflicting inline height/padding between two systems.
     if (window.ModalViewportManager && typeof window.ModalViewportManager.refresh === 'function') {
@@ -4560,6 +4566,8 @@ function enableShareFormMobileScrollFix() {
     if (!isMobile) return;
     // Better focus handling: scroll the focused input into the visible area of the modal
     shareFormSection.addEventListener('focusin', function(e) {
+        // If disabled globally, do nothing to avoid snapping to top on focus
+        try { if (window.DisableShareFormFocusAutoScroll) return; } catch(_) {}
         const target = e.target;
         if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
             // Short timeout to allow virtual keyboard to appear and visualViewport to stabilize
@@ -4616,8 +4624,10 @@ function enableShareFormMobileScrollFix() {
     setTimeout(applyViewportSizing, 60);
 }
 
-// Enable the fix on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', enableShareFormMobileScrollFix);
+// Do not auto-enable scrolling behavior on DOMContentLoaded; only wire sizing helpers if needed
+document.addEventListener('DOMContentLoaded', () => {
+    try { enableShareFormMobileScrollFix(); } catch(_) {}
+});
         // For a fixed header, offsetHeight should reflect its full rendered height.
         const headerHeight = appHeader.offsetHeight;
         const oldPadding = mainContainer.style.paddingTop;
@@ -14274,7 +14284,7 @@ async function initializeAppLogic() {
             window.location.reload();
         });
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+            navigator.serviceWorker.register(`./service-worker.js?v=${APP_VERSION}`, { scope: './' })
                 .then(reg => {
                     logDebug('Service Worker: Registered with scope:', reg.scope);
                     // If there is an updated service worker waiting or installing, prompt it to activate
