@@ -923,12 +923,13 @@ document.addEventListener('DOMContentLoaded', function () {
             updateMainButtonsState(true);
             // Ensure main content scrolls to the top after a view change for consistent UX
             try {
+                const modalOpen = !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
                 if (window.repositionMainContentUnderHeader) {
-                    window.repositionMainContentUnderHeader();
-                } else if (window.scrollMainToTop) {
-                    window.scrollMainToTop();
-                } else {
-                    scrollMainToTop();
+                    window.repositionMainContentUnderHeader({ suppressScroll: modalOpen });
+                    if (!modalOpen) return; // done
+                }
+                if (!modalOpen) {
+                    if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop();
                 }
             } catch(_) {}
         });
@@ -1938,7 +1939,7 @@ let suppressShareFormReopen = false;
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-09-21 - Global alerts explainers always show thresholds with 'Not set' placeholders
-const APP_VERSION = '2.15.10';
+const APP_VERSION = '2.15.11';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)

@@ -3,6 +3,12 @@
     // Internal helpers: safe DOM queries
     function $(sel) { return document.querySelector(sel); }
     function $id(id) { return document.getElementById(id); }
+    // Helper: detect if any modal is currently open/visible
+    function isAnyModalOpen() {
+        try {
+            return !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
+        } catch(_) { return false; }
+    }
     // Import calculation helpers from utils if available on window (script.js exposes via imports)
     try {
         if (!window.calculateUnfrankedYield && typeof calculateUnfrankedYield === 'function') window.calculateUnfrankedYield = calculateUnfrankedYield;
@@ -14,8 +20,10 @@
         if (!window.logDebug) window.logDebug = function(){ try { console.log.apply(console, arguments); } catch(_){} };
     if (!window.showModal) window.showModal = function(m){ try { if (m) { m.style.setProperty('display','flex','important'); /* do not force scrollTop here */ } } catch(_){} };
         if (!window.hideModal) window.hideModal = function(m){ try { if (m) m.style.setProperty('display','none','important'); } catch(_){} };
-        if (!window.scrollMainToTop) window.scrollMainToTop = function(instant){
+    if (!window.scrollMainToTop) window.scrollMainToTop = function(instant){
             try {
+        // Do not adjust page scroll if a modal is open; avoid perceived "snap to top" while editing in modals
+        if (isAnyModalOpen()) return;
                 const headerEl = document.getElementById('appHeader') || document.querySelector('.app-header');
                 const asxButtonsEl = document.getElementById('asxCodeButtonsContainer') || document.querySelector('.asx-code-buttons');
                 const mainEl = document.querySelector('main.container') || document.querySelector('main') || document.body;
@@ -320,9 +328,12 @@
         const changedHeight = adjustMainContentPadding();
         // Always scroll to top when invoked for explicit UI events (spec requirement)
         // To avoid interrupting user scroll during passive resize, caller can pass { suppressScroll:true }.
-        if (!opts.suppressScroll) {
-            try { if (window.scrollMainToTop) window.scrollMainToTop(true); else window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch(_) {}
-        }
+        try {
+            const modalOpen = (function(){ try { return !!document.querySelector('.modal.show, .modal[style*="display: flex"]'); } catch(_) { return false; } })();
+            if (!opts.suppressScroll && !modalOpen) {
+                try { if (window.scrollMainToTop) window.scrollMainToTop(true); else window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch(_) {}
+            }
+        } catch(_) {}
         return changedHeight;
     }
 
