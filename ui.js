@@ -185,8 +185,13 @@
             window.safeFocus = function(el){
                 try {
                     if (!el || typeof el.focus !== 'function') return;
-                    try { el.focus({ preventScroll: true }); }
-                    catch(_) { try { el.focus(); } catch(__) {} }
+                    try { el.focus({ preventScroll: true }); return; }
+                    catch(_) {
+                        // If inside a modal, do NOT fall back to plain focus() as it may cause a jump
+                        try { if (el.closest && el.closest('.modal')) return; } catch(__) {}
+                        // Outside modals it's safe to fall back
+                        try { el.focus(); } catch(__) {}
+                    }
                 } catch(_) {}
             };
         }
