@@ -4611,6 +4611,13 @@ body.theme-muted-grey {
 /* Utility class JS can toggle when a virtual keyboard shows on mobile */
 body.keyboard-visible { /* marker class (intentionally minimal) */ --keyboard-visible:1; }
 
+/* Prevent any browser-driven scroll anchoring or smooth scrolling inside modal scroll areas */
+.modal .modal-content,
+.single-scroll-modal {
+    scroll-behavior: auto !important;
+    overflow-anchor: none;
+}
+
 /* Subtle Themes - Adjusted for better visual distinction */
 body.theme-subtle-1 { /* Subtle Sky */
     --background-color: #e0eaf2; /* Lighter blue */
