@@ -9,6 +9,66 @@
             return !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
         } catch(_) { return false; }
     }
+    // Body scroll lock (nested-safe): freeze background page scroll while any modal is open
+    let __bodyScrollLockCount = 0;
+    let __bodyScrollLockRestore = null;
+    function lockBodyScroll() {
+        try {
+            __bodyScrollLockCount++;
+            if (__bodyScrollLockCount > 1) return; // already locked
+            const docEl = document.documentElement;
+            const body = document.body;
+            const scrollY = Math.round(window.pageYOffset || window.scrollY || docEl.scrollTop || 0);
+            const prev = {
+                pos: body.style.position,
+                top: body.style.top,
+                left: body.style.left,
+                right: body.style.right,
+                width: body.style.width,
+                overflow: body.style.overflow,
+                paddingRight: body.style.paddingRight,
+                scrollBehavior: docEl.style.scrollBehavior,
+            };
+            const scrollbarW = Math.max(0, (window.innerWidth || 0) - (docEl.clientWidth || 0));
+            docEl.style.scrollBehavior = 'auto'; // avoid smooth scroll side-effects on restore
+            body.style.position = 'fixed';
+            body.style.top = `-${scrollY}px`;
+            body.style.left = '0';
+            body.style.right = '0';
+            body.style.width = '100%';
+            body.style.overflow = 'hidden';
+            if (scrollbarW > 0) {
+                try {
+                    const pr = parseInt(window.getComputedStyle(body).paddingRight, 10) || 0;
+                    body.style.paddingRight = (pr + scrollbarW) + 'px';
+                } catch(_) {}
+            }
+            try { body.classList.add('modal-open'); } catch(_) {}
+            __bodyScrollLockRestore = function restoreBodyScroll(){
+                try { body.classList.remove('modal-open'); } catch(_) {}
+                body.style.position = prev.pos || '';
+                body.style.top = prev.top || '';
+                body.style.left = prev.left || '';
+                body.style.right = prev.right || '';
+                body.style.width = prev.width || '';
+                body.style.overflow = prev.overflow || '';
+                body.style.paddingRight = prev.paddingRight || '';
+                docEl.style.scrollBehavior = prev.scrollBehavior || '';
+                const y = Math.max(0, scrollY);
+                // Restore after styles are cleared so it takes effect immediately
+                try { window.scrollTo(0, y); } catch(_) {}
+            };
+        } catch(_) {}
+    }
+    function unlockBodyScroll() {
+        try {
+            if (__bodyScrollLockCount > 0) __bodyScrollLockCount--;
+            if (__bodyScrollLockCount === 0 && typeof __bodyScrollLockRestore === 'function') {
+                const restore = __bodyScrollLockRestore; __bodyScrollLockRestore = null;
+                restore();
+            }
+        } catch(_) {}
+    }
     // Import calculation helpers from utils if available on window (script.js exposes via imports)
     try {
         if (!window.calculateUnfrankedYield && typeof calculateUnfrankedYield === 'function') window.calculateUnfrankedYield = calculateUnfrankedYield;
@@ -211,6 +271,8 @@
                 // Guard against multiple bindings: replaceNode technique for one-time listeners
                 function cleanup() {
                     try { modal.classList.remove('show'); modal.style.setProperty('display','none','important'); } catch(_){}
+                    // If no more modals remain, unlock body scroll
+                    try { if (!isAnyModalOpen()) unlockBodyScroll(); } catch(_) {}
                 }
 
                 const onOk = () => { cleanup(); try { callback && callback(true); } catch(_){} };
@@ -219,6 +281,9 @@
                 // Ensure previous listeners are removed by cloning nodes
                 const okClone = okBtn.cloneNode(true); okBtn.parentNode.replaceChild(okClone, okBtn);
                 const cancelClone = cancelBtn.cloneNode(true); cancelBtn.parentNode.replaceChild(cancelClone, cancelBtn);
+
+                // Ensure body scroll is locked while confirm modal is visible (only when opening the first modal)
+                try { if (!isAnyModalOpen()) lockBodyScroll(); } catch(_) {}
                 const closeClone = closeBtn ? closeBtn.cloneNode(true) : null; if (closeBtn && closeClone) closeBtn.parentNode.replaceChild(closeClone, closeBtn);
 
                 okClone.addEventListener('click', onOk, { once: true });
@@ -269,6 +334,8 @@
     } catch(_) {}
     try { if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id || true }, '', '#modal'); } catch(_) {}
     try { if (window.toggleAppSidebar && window.appSidebar && window.appSidebar.classList.contains('open')) window.toggleAppSidebar(false); } catch(_) {}
+        // Lock body scroll if this is the first visible modal
+        try { if (!isAnyModalOpen()) lockBodyScroll(); } catch(_) {}
         // Unhide any hidden ancestor modals so nested modals are not blocked by parent's app-hidden
         try {
             let anc = modalElement.parentElement;
@@ -296,6 +363,8 @@
     function showModalNoHistory(modalElement) {
         if (!modalElement) return;
         // No stack and no browser history push: used when restoring a previous modal on back
+        // Lock body scroll if this is the first visible modal
+        try { if (!isAnyModalOpen()) lockBodyScroll(); } catch(_) {}
         try {
             let anc = modalElement.parentElement;
             while (anc && anc !== document.body) {
@@ -315,6 +384,9 @@
         if (!modalElement) return;
         try { modalElement.classList.remove('show'); } catch(_){}
         modalElement.style.setProperty('display','none','important');
+        // If this was the last modal, unlock body scroll after styles settle
+        const maybeUnlock = () => { try { if (!isAnyModalOpen()) unlockBodyScroll(); } catch(_) {} };
+        try { requestAnimationFrame(maybeUnlock); setTimeout(maybeUnlock, 60); } catch(_) {}
         // Note: do NOT call removeModalFromStack here, so the previous modal remains just beneath top
     }
 
@@ -324,6 +396,9 @@
         try { modalElement.classList.remove('show'); } catch(_){}
         try { modalElement.classList.add('app-hidden'); } catch(_){}
         modalElement.style.setProperty('display', 'none', 'important');
+        // If no other modals remain visible, unlock body scroll
+        const maybeUnlock = () => { try { if (!isAnyModalOpen()) unlockBodyScroll(); } catch(_) {} };
+        try { requestAnimationFrame(maybeUnlock); setTimeout(maybeUnlock, 60); } catch(_) {}
     }
 
     // Core padding adjuster (non-scrolling) retained for backwards compatibility.
@@ -392,6 +467,8 @@
         document.querySelectorAll('.modal').forEach(modal => {
             if (modal) modal.style.setProperty('display', 'none', 'important');
         });
+        try { document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show')); } catch(_) {}
+        try { unlockBodyScroll(); } catch(_) {}
         try { if (typeof resetCalculator === 'function') resetCalculator(); } catch(_) {}
         try { if (typeof deselectCurrentShare === 'function') deselectCurrentShare(); } catch(_) {}
         try { if (typeof deselectCurrentCashAsset === 'function') deselectCurrentCashAsset(); } catch(_) {}
@@ -415,7 +492,10 @@
         showCustomAlert,
         showCustomConfirm,
         adjustMainContentPadding,
-        ToastManager
+        ToastManager,
+        // expose for optional diagnostics
+        lockBodyScroll,
+        unlockBodyScroll
     });
 })();
 
@@ -715,11 +795,18 @@
             window.addEventListener('resize', applyViewportSizing);
         }
 
-        // When a modal opens, re-apply sizing on next frame
+        // When a modal opens, lock body scroll if first modal and re-apply sizing on next frame
         try {
             const origShow = window.showModal;
             window.showModal = function patchedShowModal(m){
-                try { return (origShow && origShow.call ? origShow.call(window, m) : (origShow ? origShow(m) : null)); }
+                try {
+                    // Lock body scroll if no other modals are visible (covers callers using the global window.showModal)
+                    try {
+                        const anyOpen = !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
+                        if (!anyOpen && window.UI && typeof window.UI.lockBodyScroll === 'function') window.UI.lockBodyScroll();
+                    } catch(_) {}
+                    return (origShow && origShow.call ? origShow.call(window, m) : (origShow ? origShow(m) : null));
+                }
                 finally { try { requestAnimationFrame(applyViewportSizing); setTimeout(applyViewportSizing, 60); } catch(_) {} }
             };
         } catch(_) {}
