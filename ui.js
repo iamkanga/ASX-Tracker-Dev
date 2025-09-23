@@ -557,9 +557,11 @@
         if (window.__keyboardAwareModalsInstalled) return;
         window.__keyboardAwareModalsInstalled = true;
 
-        // Feature flag: disable auto-scroll on input focus inside modals by default.
-        // Set window.ModalFocusAutoScroll = true to re-enable the previous behavior.
+        // Hard-disable auto-scroll on input focus inside modals to stop any snapping.
+        // Keep a sticky default of false and actively reset to false if toggled elsewhere.
         if (typeof window.ModalFocusAutoScroll === 'undefined') {
+            window.ModalFocusAutoScroll = false;
+        } else {
             window.ModalFocusAutoScroll = false;
         }
 
@@ -683,14 +685,14 @@
         }
 
         // Global focus handler for any input/select/textarea inside modals
+        // Hard-disable any programmatic scrolling on input focus to prevent snapping.
         document.addEventListener('focusin', (e) => {
             try {
                 const t = e.target;
-                if (!isMobileish()) return;
                 if (!t || !t.closest || !t.closest('.modal')) return;
                 if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable) {
-                    if (window.ModalFocusAutoScroll !== true) return; // do not scroll on focus by default
-                    scrollFocusedIntoView(t);
+                    // Intentionally do nothing: no auto-scroll on focus.
+                    return;
                 }
             } catch(_) {}
         }, true);

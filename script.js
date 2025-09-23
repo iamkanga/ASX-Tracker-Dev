@@ -4578,35 +4578,11 @@ function enableShareFormMobileScrollFix() {
     // Only apply on mobile devices
     const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (!isMobile) return;
-    // Better focus handling: scroll the focused input into the visible area of the modal
-    shareFormSection.addEventListener('focusin', function(e) {
-        // If disabled globally, do nothing to avoid snapping to top on focus
-        try { if (window.DisableShareFormFocusAutoScroll) return; } catch(_) {}
-        const target = e.target;
-        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
-            // Short timeout to allow virtual keyboard to appear and visualViewport to stabilize
-            setTimeout(() => {
-                try {
-                    const modalContent = shareFormSection.querySelector('.single-scroll-modal') || shareFormSection;
-                    // Determine the visible viewport rect (prefer visualViewport when available)
-                    let vvTop = 0, vvHeight = window.innerHeight;
-                    if (window.visualViewport) { vvTop = window.visualViewport.offsetTop || 0; vvHeight = window.visualViewport.height; }
-
-                    // Compute target position relative to modal
-                    const targetRect = target.getBoundingClientRect();
-                    const modalRect = modalContent.getBoundingClientRect();
-                    const relativeTop = targetRect.top - modalRect.top;
-
-                    // If target is outside the visible area (above or below), scroll it into view within modal
-                    if (relativeTop < 0 || (relativeTop + targetRect.height) > modalRect.height) {
-                        // Preferred: use modal's scrollTo with an offset so the input sits comfortably above keyboard
-                        const desiredTop = Math.max(0, relativeTop - 80);
-                        try { modalContent.scrollTo({ top: desiredTop, behavior: 'smooth' }); } catch(_) { modalContent.scrollTop = desiredTop; }
-                    }
-                } catch(_) {}
-            }, 140);
-        }
-    });
+    // Remove any focus-driven scroll adjustments to prevent snapping on input focus
+    try {
+        // If previous listeners were attached, attempting to remove them would require a reference;
+        // since we used an anonymous function earlier, we simply do not reattach any focusin scrolling logic.
+    } catch(_) {}
 
     // Adjust modal container height/padding when visualViewport changes (keyboard show/hide)
     const applyViewportSizing = () => {
