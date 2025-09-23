@@ -10059,6 +10059,31 @@ function stopLivePriceUpdates() {
     }
 }
 
+// Helper: select CUSTOM_TRIGGER_HITS that belong to the current user.
+// Strategy:
+//  1) If we find any hits with exact userId match, return those.
+//  2) Else, include hits whose code exists in this user's portfolio (duplicates from movers/52w with null userId).
+//  3) Else, return all hits as a conservative fallback (prevents empty UI if metadata is incomplete temporarily).
+function selectCustomTriggerHitsForUser(allHits, uid) {
+    try {
+        const list = Array.isArray(allHits) ? allHits : [];
+        if (list.length === 0) return [];
+        const portfolioCodes = new Set((window.allSharesData || []).map(s => s && s.shareName ? String(s.shareName).toUpperCase() : null).filter(Boolean));
+        // Exact userId match takes precedence
+        if (uid) {
+            const mine = list.filter(h => h && h.userId === uid);
+            if (mine.length > 0) return mine;
+        }
+        // If no explicit userId matches, include portfolio-duplicates (movers/52w with null/missing userId)
+        const mineByPortfolio = list.filter(h => {
+            try { return h && portfolioCodes.has(String(h.code || '').toUpperCase()); } catch(_) { return false; }
+        });
+        if (mineByPortfolio.length > 0) return mineByPortfolio;
+        // Fallback: return all (better to show than silently hide)
+        return list;
+    } catch(_) { return []; }
+}
+
 // NEW: Function to update the target hit notification icon
 function updateTargetHitBanner() {
     if (!targetHitIconBtn || !targetHitIconCount || !watchlistSelect || !sortSelect) {
@@ -10070,10 +10095,22 @@ function updateTargetHitBanner() {
         window.__lastTargetBannerSnapshot = { enabledCount: null, displayCount: null, dismissed: null };
     }
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
-    const enabledCount = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0;
-    // Global 52-week alerts are centralized highs/lows; align banner with modal sections (both highs and lows)
-    const globalHighs = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.highs)) ? window.globalHiLo52Alerts.highs.length : 0;
-    const globalLows = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts.lows.length : 0;
+    // Prefer CUSTOM_TRIGGER_HITS for "Custom" notifications; select using userId with a portfolio-based fallback
+    const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
+    const customHitsCount = (function(){
+        try {
+            const arr = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits : [];
+            return selectCustomTriggerHitsForUser(arr, __uid).length;
+        } catch(_) { return 0; }
+    })();
+    const enabledCount = customHitsCount > 0 ? customHitsCount : (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0);
+    // Global 52-week alerts: prefer *_HITS; fall back to legacy alerts structure
+    const globalHighs = (window.globalHiLo52Hits && Array.isArray(window.globalHiLo52Hits.highHits))
+        ? window.globalHiLo52Hits.highHits.length
+        : ((window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.highs)) ? window.globalHiLo52Alerts.highs.length : 0);
+    const globalLows = (window.globalHiLo52Hits && Array.isArray(window.globalHiLo52Hits.lowHits))
+        ? window.globalHiLo52Hits.lowHits.length
+        : ((window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts.lows.length : 0);
     
     // Debug logging for 52-week low count
     console.log('[BANNER-DEBUG] global highs/lows:', { globalHighs, globalLows });
@@ -10085,9 +10122,19 @@ function updateTargetHitBanner() {
         (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ||
         (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0)
     );
-    const centralMoversCount = (window.globalMovers && (typeof window.globalMovers.filteredTotal === 'number'
-        ? window.globalMovers.filteredTotal
-        : (typeof window.globalMovers.totalCount === 'number' ? window.globalMovers.totalCount : 0)));
+    const centralMoversCount = (function(){
+        // Prefer *_HITS lengths; else use filtered/total from legacy object
+        if (window.globalMoversHits) {
+            const up = Array.isArray(window.globalMoversHits.upHits) ? window.globalMoversHits.upHits.length : 0;
+            const down = Array.isArray(window.globalMoversHits.downHits) ? window.globalMoversHits.downHits.length : 0;
+            return up + down;
+        }
+        if (window.globalMovers) {
+            if (typeof window.globalMovers.filteredTotal === 'number') return window.globalMovers.filteredTotal;
+            if (typeof window.globalMovers.totalCount === 'number') return window.globalMovers.totalCount;
+        }
+        return 0;
+    })();
     const legacySummaryCount = (directionalActive && globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0;
     // If central doc is unavailable or zero, fall back to the last locally-computed movers snapshot
     const lastSnapshotCount = (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) ? window.__lastMoversSnapshot.entries.length : 0;
@@ -10233,6 +10280,7 @@ let unsubscribeGlobalSummary = null;
 let unsubscribeGlobalSummaryComprehensive = null;
 let unsubscribeGlobalHiLo = null;
 let unsubscribeGlobalMovers = null; // NEW: centralized movers listener handle
+let unsubscribeCustomTriggerHits = null; // NEW: CUSTOM_TRIGGER_HITS listener handle
 // In-memory cache of global 52-week alerts (central, cross-user)
 let globalHiLo52Alerts = { updatedAt: null, highs: [], lows: [] };
 window.globalHiLo52Alerts = globalHiLo52Alerts;
@@ -10529,7 +10577,8 @@ function startGlobalHiLoListener() {
     const uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
     if (!uid) { console.log('[HiLo52][defer] auth UID not ready'); return; }
     try { verifyCentralAlertsAccess && verifyCentralAlertsAccess(); } catch(_) {}
-    const path = 'artifacts/' + currentAppId + '/alerts/HI_LO_52W';
+    // Use persistent daily HITS document
+    const path = 'artifacts/' + currentAppId + '/alerts/HI_LO_52W_HITS';
     if (!window.__centralRetry) window.__centralRetry = { hiLo: 0, movers: 0 };
     console.log('[HiLo52][attach] path=' + path + ' appId=' + currentAppId + ' uid=' + uid + ' attempt=' + (window.__centralRetry.hiLo+1));
     try {
@@ -10537,20 +10586,29 @@ function startGlobalHiLoListener() {
         unsubscribeGlobalHiLo = firestore.onSnapshot(docRef, (snap) => {
             if (snap.exists()) {
                 const data = snap.data() || {};
-                globalHiLo52Alerts = {
+                // Persist hits and also project to legacy structure for compatibility
+                const hits = {
                     updatedAt: data.updatedAt || null,
-                    highs: Array.isArray(data.highs) ? data.highs : [],
-                    lows: Array.isArray(data.lows) ? data.lows : []
+                    highHits: Array.isArray(data.highHits) ? data.highHits : (Array.isArray(data.highs) ? data.highs : []),
+                    lowHits: Array.isArray(data.lowHits) ? data.lowHits : (Array.isArray(data.lows) ? data.lows : [])
+                };
+                window.globalHiLo52Hits = hits;
+                // Back-compat projection (so old UI paths can still render if referenced)
+                globalHiLo52Alerts = {
+                    updatedAt: hits.updatedAt,
+                    highs: hits.highHits,
+                    lows: hits.lowHits
                 };
                 window.globalHiLo52Alerts = globalHiLo52Alerts;
                 try { window.__hiLoListenerError = false; } catch(_) {}
                 if (window.__centralRetry) window.__centralRetry.hiLo = 0; // reset on success
             } else {
+                window.globalHiLo52Hits = { updatedAt: null, highHits: [], lowHits: [] };
                 globalHiLo52Alerts = { updatedAt: null, highs: [], lows: [] };
                 window.globalHiLo52Alerts = globalHiLo52Alerts;
             }
             try { updateTargetHitBanner(); } catch(_) {}
-            try { refreshNotificationsModalIfOpen('HI_LO_52W'); } catch(_) {}
+            try { refreshNotificationsModalIfOpen('HI_LO_52W_HITS'); } catch(_) {}
         }, (err) => {
             console.warn('[HiLo52] Listener error', err);
             try { window.__hiLoListenerError = true; window.__hiLoListenerErrorMessage = (err && (err.message || err.code)) || 'Listener error'; } catch(_) {}
@@ -10579,32 +10637,41 @@ function startGlobalMoversListener() {
     if (!uid) { console.log('[Movers][defer] auth UID not ready'); return; }
     try { verifyCentralAlertsAccess && verifyCentralAlertsAccess(); } catch(_) {}
     if (!window.__centralRetry) window.__centralRetry = { hiLo: 0, movers: 0 };
-    const path = 'artifacts/' + currentAppId + '/alerts/GLOBAL_MOVERS';
+    // Use persistent daily HITS document
+    const path = 'artifacts/' + currentAppId + '/alerts/GLOBAL_MOVERS_HITS';
     console.log('[Movers][attach] path=' + path + ' appId=' + currentAppId + ' uid=' + uid + ' attempt=' + (window.__centralRetry.movers+1));
     try {
         const docRef = firestore.doc(db, path);
         unsubscribeGlobalMovers = firestore.onSnapshot(docRef, (snap) => {
             if (snap && snap.exists()) {
                 const data = snap.data() || {};
-                globalMovers = {
+                const moversHits = {
                     updatedAt: data.updatedAt || null,
-                    up: Array.isArray(data.up) ? data.up : [],
-                    down: Array.isArray(data.down) ? data.down : [],
-                    upCount: typeof data.upCount === 'number' ? data.upCount : (Array.isArray(data.up)?data.up.length:0),
-                    downCount: typeof data.downCount === 'number' ? data.downCount : (Array.isArray(data.down)?data.down.length:0),
-                    totalCount: typeof data.totalCount === 'number' ? data.totalCount : ((Array.isArray(data.up)?data.up.length:0)+(Array.isArray(data.down)?data.down.length:0)),
-                    thresholds: data.thresholds || null
+                    upHits: Array.isArray(data.upHits) ? data.upHits : (Array.isArray(data.up) ? data.up : []),
+                    downHits: Array.isArray(data.downHits) ? data.downHits : (Array.isArray(data.down) ? data.down : [])
+                };
+                window.globalMoversHits = moversHits;
+                // Back-compat projection to legacy shape expected by some renderers
+                globalMovers = {
+                    updatedAt: moversHits.updatedAt,
+                    up: moversHits.upHits,
+                    down: moversHits.downHits,
+                    upCount: (moversHits.upHits || []).length,
+                    downCount: (moversHits.downHits || []).length,
+                    totalCount: ((moversHits.upHits || []).length + (moversHits.downHits || []).length),
+                    thresholds: null
                 };
                 window.globalMovers = globalMovers;
                 try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log:false }); } catch(_) {}
                 if (window.__centralRetry) window.__centralRetry.movers = 0; // reset on success
             } else {
+                window.globalMoversHits = { updatedAt: null, upHits: [], downHits: [] };
                 globalMovers = { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
                 window.globalMovers = globalMovers;
                 try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log:false }); } catch(_) {}
             }
                 try { updateTargetHitBanner(); } catch(_) {}
-                try { refreshNotificationsModalIfOpen('GLOBAL_MOVERS'); } catch(_) {}
+                try { refreshNotificationsModalIfOpen('GLOBAL_MOVERS_HITS'); } catch(_) {}
         }, (err) => {
             console.warn('[GlobalMovers] Listener error', err);
             try { window.__globalMoversListenerError = true; window.__globalMoversListenerErrorMessage = (err && (err.message||err.code)) || 'Listener error'; } catch(_) {}
@@ -10629,6 +10696,38 @@ function stopGlobalSummaryListener() {
     if (unsubscribeGlobalSummaryComprehensive) { try { unsubscribeGlobalSummaryComprehensive(); } catch(_){} unsubscribeGlobalSummaryComprehensive = null; }
 }
 
+// Listener for persistent daily custom triggers (user targets + duplicated portfolio hits)
+function startCustomTriggerHitsListener() {
+    if (unsubscribeCustomTriggerHits) { try { unsubscribeCustomTriggerHits(); } catch(_){} unsubscribeCustomTriggerHits = null; }
+    if (!db || !firestore || !currentAppId) { console.log('[CustomHits][defer] DB/firestore/appId not ready'); return; }
+    const uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
+    if (!uid) { console.log('[CustomHits][defer] auth UID not ready'); return; }
+    const path = 'artifacts/' + currentAppId + '/alerts/CUSTOM_TRIGGER_HITS';
+    console.log('[CustomHits][attach] path=' + path + ' appId=' + currentAppId + ' uid=' + uid);
+    try {
+        const docRef = firestore.doc(db, path);
+        unsubscribeCustomTriggerHits = firestore.onSnapshot(docRef, (snap) => {
+            if (snap && snap.exists()) {
+                const data = snap.data() || {};
+                window.customTriggerHits = {
+                    updatedAt: data.updatedAt || null,
+                    hits: Array.isArray(data.hits) ? data.hits : []
+                };
+            } else {
+                window.customTriggerHits = { updatedAt: null, hits: [] };
+            }
+            try { updateTargetHitBanner(); } catch(_) {}
+            try { refreshNotificationsModalIfOpen('CUSTOM_TRIGGER_HITS'); } catch(_) {}
+        }, (err) => {
+            console.warn('[CustomHits] Listener error', err);
+        });
+    } catch(e) { console.warn('[CustomHits] Failed to attach listener', e); }
+}
+
+function stopCustomTriggerHitsListener() {
+    if (unsubscribeCustomTriggerHits) { try { unsubscribeCustomTriggerHits(); } catch(_){} unsubscribeCustomTriggerHits = null; }
+}
+
 // Lightweight verification helper to differentiate between:
 //  (a) Security rules denial (true permission issue)
 //  (b) Missing central document (backend hasn't produced it yet)
@@ -10641,8 +10740,9 @@ window.verifyCentralAlertsAccess = async function verifyCentralAlertsAccess() {
     const uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
     if (!uid) { console.log('[CentralVerify] Skipped (no auth user yet)'); return; }
     const targets = [
-        { key: 'HI_LO_52W', path: 'artifacts/' + appId + '/alerts/HI_LO_52W' },
-        { key: 'GLOBAL_MOVERS', path: 'artifacts/' + appId + '/alerts/GLOBAL_MOVERS' }
+        { key: 'HI_LO_52W_HITS', path: 'artifacts/' + appId + '/alerts/HI_LO_52W_HITS' },
+        { key: 'GLOBAL_MOVERS_HITS', path: 'artifacts/' + appId + '/alerts/GLOBAL_MOVERS_HITS' },
+        { key: 'CUSTOM_TRIGGER_HITS', path: 'artifacts/' + appId + '/alerts/CUSTOM_TRIGGER_HITS' }
     ];
     if (!window.__centralDiag) window.__centralDiag = {};
     for (const t of targets) {
@@ -16236,34 +16336,48 @@ function showTargetHitDetailsModal(options={}) {
     try {
         const summaryHost = document.getElementById('notificationsSummary');
         if (summaryHost) {
-            // Counts
-            const enabledTargets = Array.isArray(window.sharesAtTargetPrice) ? window.sharesAtTargetPrice.length : 0;
-            const mutedTargets = Array.isArray(window.sharesAtTargetPriceMuted) ? window.sharesAtTargetPriceMuted.length : 0;
-            const low52Extras = Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.length : 0;
-            const targetCount = enabledTargets + mutedTargets + low52Extras; // include 52W alerts as additional Custom Alerts
+            // Counts: Custom Triggers equals selected CUSTOM_TRIGGER_HITS for the current user (with portfolio-based fallback)
+            const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
+            const customCount = (function(){
+                try {
+                    const arr = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits : [];
+                    return selectCustomTriggerHitsForUser(arr, __uid).length;
+                } catch(_) { return 0; }
+            })();
+            const targetCount = customCount;
             // Prefer centralized filtered movers, then raw, then snapshot fallback
             let gainersCount = 0, losersCount = 0;
             try {
-                const gm = window.globalMovers || {};
-                if (Array.isArray(gm.upFiltered) || Array.isArray(gm.downFiltered) || Array.isArray(gm.up) || Array.isArray(gm.down)) {
-                    gainersCount = Array.isArray(gm.upFiltered) ? gm.upFiltered.length : (Array.isArray(gm.up) ? gm.up.length : 0);
-                    losersCount = Array.isArray(gm.downFiltered) ? gm.downFiltered.length : (Array.isArray(gm.down) ? gm.down.length : 0);
-                } else if (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
-                    const entries = window.__lastMoversSnapshot.entries;
-                    gainersCount = entries.filter(e => (e.direction||'').toLowerCase() === 'up').length;
-                    losersCount = entries.filter(e => (e.direction||'').toLowerCase() === 'down').length;
-                } else if (window.__lastMoversComputed && typeof window.__lastMoversComputed === 'object') {
-                    gainersCount = Array.isArray(window.__lastMoversComputed.ups) ? window.__lastMoversComputed.ups.length : 0;
-                    losersCount = Array.isArray(window.__lastMoversComputed.downs) ? window.__lastMoversComputed.downs.length : 0;
+                if (window.globalMoversHits) {
+                    gainersCount = Array.isArray(window.globalMoversHits.upHits) ? window.globalMoversHits.upHits.length : 0;
+                    losersCount = Array.isArray(window.globalMoversHits.downHits) ? window.globalMoversHits.downHits.length : 0;
+                } else {
+                    const gm = window.globalMovers || {};
+                    if (Array.isArray(gm.upFiltered) || Array.isArray(gm.downFiltered) || Array.isArray(gm.up) || Array.isArray(gm.down)) {
+                        gainersCount = Array.isArray(gm.upFiltered) ? gm.upFiltered.length : (Array.isArray(gm.up) ? gm.up.length : 0);
+                        losersCount = Array.isArray(gm.downFiltered) ? gm.downFiltered.length : (Array.isArray(gm.down) ? gm.down.length : 0);
+                    } else if (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
+                        const entries = window.__lastMoversSnapshot.entries;
+                        gainersCount = entries.filter(e => (e.direction||'').toLowerCase() === 'up').length;
+                        losersCount = entries.filter(e => (e.direction||'').toLowerCase() === 'down').length;
+                    } else if (window.__lastMoversComputed && typeof window.__lastMoversComputed === 'object') {
+                        gainersCount = Array.isArray(window.__lastMoversComputed.ups) ? window.__lastMoversComputed.ups.length : 0;
+                        losersCount = Array.isArray(window.__lastMoversComputed.downs) ? window.__lastMoversComputed.downs.length : 0;
+                    }
                 }
             } catch(_) {}
             // 52-week highs/lows counts from centralized alerts if present
             let high52Count = 0, low52Count = 0;
             try {
-                const hiLo = window.globalHiLo52Alerts || null;
-                if (hiLo) {
-                    high52Count = Array.isArray(hiLo.highs) ? hiLo.highs.length : 0;
-                    low52Count = Array.isArray(hiLo.lows) ? hiLo.lows.length : 0;
+                if (window.globalHiLo52Hits) {
+                    high52Count = Array.isArray(window.globalHiLo52Hits.highHits) ? window.globalHiLo52Hits.highHits.length : 0;
+                    low52Count = Array.isArray(window.globalHiLo52Hits.lowHits) ? window.globalHiLo52Hits.lowHits.length : 0;
+                } else {
+                    const hiLo = window.globalHiLo52Alerts || null;
+                    if (hiLo) {
+                        high52Count = Array.isArray(hiLo.highs) ? hiLo.highs.length : 0;
+                        low52Count = Array.isArray(hiLo.lows) ? hiLo.lows.length : 0;
+                    }
                 }
             } catch(_) {}
 
@@ -16314,29 +16428,62 @@ function showTargetHitDetailsModal(options={}) {
         }
     } catch(err) { console.warn('[NotificationsSummary] Failed to update summary', err); }
 
-    // --- 52 week high/low Section (horizontal, smart UI) ---
-    // Use window.sharesAt52WeekLow to ensure we're looking at the global variable
-    const sharesAt52WeekLow = Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.slice() : [];
-        if (Array.isArray(sharesAt52WeekLow) && sharesAt52WeekLow.length > 0) {
-                // Build a uniform 52-week Low section for user-specific alerts using the same card style
-                const sectionHeader = document.createElement('div');
-                sectionHeader.className = 'low52-section-header';
-                const low52Title = document.createElement('h3');
-                low52Title.className = 'target-hit-section-title low52-heading';
-                low52Title.textContent = '52 Week Low';
-                sectionHeader.appendChild(low52Title);
-                targetHitSharesList.appendChild(sectionHeader);
-
-                // Append cards directly to the main list container (no extra wrappers)
-                const frag = document.createDocumentFragment();
-                sharesAt52WeekLow
-                    .filter(item => !item.isTestCard) // ensure no test cards
-                    .forEach((item) => {
-                        const entry = { code: item.code, name: item.name, shareCode: item.code, live: item.live, low52: item.low52 };
-                        frag.appendChild(renderHiLoEntry(entry, 'low'));
-                    });
-                targetHitSharesList.appendChild(frag);
+    // --- Custom Triggers section from persistent CUSTOM_TRIGGER_HITS ---
+    try {
+    const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
+    let hitsArr = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits.slice() : [];
+    // Filter using helper: prefer exact userId, then portfolio duplicates, else fallback to all
+    hitsArr = selectCustomTriggerHitsForUser(hitsArr, __uid);
+    // Prefer showing explicit target-hit entries first; keep others (e.g., duplicated movers/52w) after
+    const targetHits = hitsArr.filter(h => (h && String(h.intent||'').toLowerCase() === 'target-hit'));
+    const otherHits = hitsArr.filter(h => !(h && String(h.intent||'').toLowerCase() === 'target-hit'));
+    hitsArr = targetHits.concat(otherHits);
+        // targetHitSharesList already cleared above
+        if (!hitsArr.length) {
+            const p = document.createElement('p'); p.className = 'no-alerts-message'; p.textContent = 'No custom triggers currently triggered.'; targetHitSharesList.appendChild(p);
+        } else {
+            const frag = document.createDocumentFragment();
+            hitsArr.forEach(h => {
+                try {
+                    const code = String(h.code || h.shareCode || '').toUpperCase();
+                    const name = sanitizeCompanyName(h.name || h.companyName || code, code);
+                    const intent = (h.intent || '').toLowerCase();
+                    const dir = (h.direction || '').toLowerCase();
+                    const liveVal = (h.live!=null && !isNaN(Number(h.live))) ? Number(h.live) : null;
+                    const targetVal = (h.target!=null && !isNaN(Number(h.target))) ? Number(h.target) : null;
+                    const card = document.createElement('div');
+                    card.className = 'notification-card custom-trigger-card';
+                    const liveDisp = (liveVal!=null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
+                    const tgtDisp = (targetVal!=null) ? ('$' + formatAdaptivePrice(targetVal)) : '';
+                    const userIntent = (h.userIntent || '').toString().trim();
+                    const meta = [intent?intent.toUpperCase():'', dir?dir.toUpperCase():'', userIntent?userIntent.toUpperCase():''].filter(Boolean).join(' · ');
+                    card.innerHTML = `
+                        <div class="notification-card-row">
+                            <div class="notification-card-left">
+                                <div class="notification-code">${code}</div>
+                                <div class="notification-name small">${name}</div>
+                            </div>
+                            <div class="notification-card-right">
+                                <div class="notification-live">${liveDisp}</div>
+                            </div>
+                        </div>
+                        <div class="notification-card-bottom">
+                            ${tgtDisp?`<div class="target-line"><span class="label">Target:</span> ${tgtDisp}</div>`:''}
+                            ${meta?`<div class="meta-line">${meta}</div>`:''}
+                        </div>`;
+                    card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openShareOrSearch(code); });
+                    frag.appendChild(card);
+                } catch(e) { /* skip malformed hit */ }
+            });
+            targetHitSharesList.appendChild(frag);
         }
+    } catch(e) { console.warn('[CustomTriggers] render failed', e); }
+
+    // Show the modal now and exit. Legacy local target list UI has been removed in favor of persistent CUSTOM_TRIGGER_HITS.
+    try { showModal(targetHitDetailsModal); } catch(_) {}
+    try { __userInitiatedTargetModal = true; } catch(_) {}
+    try { logDebug('Notifications modal displayed (Custom Triggers + centralized sections).'); } catch(_) {}
+    return;
 
     // Inject explainer headers for each notifications section
     try {
@@ -17444,9 +17591,10 @@ function initializeApp() {
                 // above. This duplicate code has been removed to prevent conflicts.
                 // Start alerts listener (enabled alerts only; muted excluded from notifications)
                 await loadTriggeredAlertsListener(db, firestore, currentUserId, currentAppId);
-                startGlobalSummaryListener();
+                // startGlobalSummaryListener(); // Deprecated for notifications: persistent *_HITS now used exclusively
                 startGlobalHiLoListener();
                 startGlobalMoversListener(); // NEW centralized movers listener
+                startCustomTriggerHitsListener();
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
                 // Unblock UI immediately; prices can finish in background
@@ -17504,8 +17652,9 @@ function initializeApp() {
                     unsubscribeAlerts = null;
                     logDebug('Firestore Listener: Unsubscribed from alerts listener on logout.');
                 }
-                stopGlobalSummaryListener();
+                // stopGlobalSummaryListener(); // Not started for notifications
                 stopGlobalHiLoListener();
+                stopCustomTriggerHitsListener();
                 stopLivePriceUpdates();
 
                 window._userAuthenticated = false; // Mark user as not authenticated

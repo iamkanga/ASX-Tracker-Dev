@@ -40,6 +40,12 @@ const GLOBAL_MOVERS_DOC_SEGMENTS = ['artifacts', APP_ID, 'alerts', 'GLOBAL_MOVER
 // Central Firestore daily 52-week hit history document
 // Full path: /artifacts/{APP_ID}/alerts/HI_LO_52W_HITS
 const DAILY_HILO_HITS_DOC_SEGMENTS = ['artifacts', APP_ID, 'alerts', 'HI_LO_52W_HITS'];
+// Central Firestore daily GLOBAL_MOVERS hit history document
+// Full path: /artifacts/{APP_ID}/alerts/GLOBAL_MOVERS_HITS
+const DAILY_MOVERS_HITS_DOC_SEGMENTS = ['artifacts', APP_ID, 'alerts', 'GLOBAL_MOVERS_HITS'];
+// Central Firestore daily CUSTOM TRIGGER hit history document
+// Full path: /artifacts/{APP_ID}/alerts/CUSTOM_TRIGGER_HITS
+const DAILY_CUSTOM_HITS_DOC_SEGMENTS = ['artifacts', APP_ID, 'alerts', 'CUSTOM_TRIGGER_HITS'];
 
 // ===============================================================
 // ============= GENERIC FIRESTORE COMMIT UTILITIES ==============
@@ -225,6 +231,20 @@ function runGlobal52WeekScan() {
       Logger.log('[HiLo][DailyHits] Persist error: %s', persistErr && persistErr.message || persistErr);
     }
 
+    // NEW: duplicate portfolio-relevant 52W hits into CUSTOM_TRIGGER_HITS
+    try {
+      duplicateHiLoHitsIntoCustom_(filteredHighs, filteredLows);
+    } catch (dupErr) {
+      Logger.log('[HiLo][Dup->Custom] Error: %s', dupErr && dupErr.message || dupErr);
+    }
+
+    // Backfill duplicates for users who added shares after earlier hits today (idempotent)
+    try {
+      reconcileCustomDuplicatesFromDailyHits_();
+    } catch (reconErr) {
+      Logger.log('[HiLo][Recon->Custom] Error: %s', reconErr && reconErr.message || reconErr);
+    }
+
     // Backward-compatible email path removed from frequent scan.
     // The scan now only updates Firestore documents and daily history.
     // Email summarization is consolidated into the daily digest only.
@@ -339,6 +359,10 @@ function appendDailyHiLoHits_(highsArr, lowsArr) {
   const nowIso = new Date().toISOString();
   const seenHigh = new Set(highHits.map(h => h && h.code));
   const seenLow = new Set(lowHits.map(h => h && h.code));
+  // Normalize existing seen sets to canonical uppercase codes (defensive)
+  const _normCode = (c) => (c || '').toString().trim().toUpperCase();
+  const seenHighNorm = new Set(Array.from(seenHigh).map(_normCode));
+  const seenLowNorm = new Set(Array.from(seenLow).map(_normCode));
 
   function normHiLoItem(e) {
     if (!e) return null;
@@ -356,13 +380,17 @@ function appendDailyHiLoHits_(highsArr, lowsArr) {
 
   (Array.isArray(highsArr) ? highsArr : []).forEach(e => {
     const item = normHiLoItem(e);
-    if (!item) return;
-    if (!seenHigh.has(item.code)) { highHits.push(item); seenHigh.add(item.code); }
+  if (!item) return;
+  const c = _normCode(item.code);
+  item.code = c;
+  if (!seenHighNorm.has(c)) { highHits.push(item); seenHighNorm.add(c); }
   });
   (Array.isArray(lowsArr) ? lowsArr : []).forEach(e => {
     const item = normHiLoItem(e);
-    if (!item) return;
-    if (!seenLow.has(item.code)) { lowHits.push(item); seenLow.add(item.code); }
+  if (!item) return;
+  const c = _normCode(item.code);
+  item.code = c;
+  if (!seenLowNorm.has(c)) { lowHits.push(item); seenLowNorm.add(c); }
   });
 
   writeDailyHiLoHits_({ dayKey, highHits, lowHits });
@@ -427,6 +455,27 @@ function runGlobalMoversScan() {
     console.log('[MoversScan] Evaluation complete', { up: upMovers.length, down: downMovers.length, total: upMovers.length + downMovers.length, thresholds, inHours, settingsUpdateTime: microFinal.updateTime || guaranteed.updateTime });
 
   writeGlobalMoversDoc_(upMovers, downMovers, thresholds, { source: 'scan', inHours, settingsSnapshot: settings, settingsUpdateTime: microFinal.updateTime || guaranteed.updateTime || null, settingsFetchAttempts: guaranteed.attempts, fetchStrategy: 'guaranteed-loop+micro-final' + (guaranteed.fallback ? '+fallback' : '') });
+
+    // Append persistent daily movers hits so intra-scan events are retained per day
+    try {
+      appendDailyMoversHits_(upMovers, downMovers);
+    } catch (persistErr) {
+      Logger.log('[Movers][DailyHits] Persist error: %s', persistErr && persistErr.message || persistErr);
+    }
+
+    // NEW: duplicate portfolio-relevant movers into CUSTOM_TRIGGER_HITS
+    try {
+      duplicateMoversIntoCustom_(upMovers, downMovers);
+    } catch (dupErr) {
+      Logger.log('[Movers][Dup->Custom] Error: %s', dupErr && dupErr.message || dupErr);
+    }
+
+    // Backfill duplicates for users who added shares after earlier hits today (idempotent)
+    try {
+      reconcileCustomDuplicatesFromDailyHits_();
+    } catch (reconErr) {
+      Logger.log('[Movers][Recon->Custom] Error: %s', reconErr && reconErr.message || reconErr);
+    }
 
     // Email sending removed from frequent movers scan.
     // Frequent runs should only persist the movers to Firestore.
@@ -586,6 +635,382 @@ function sanitizeSettingsSnapshotForMeta_(s){
 
 // (Test harness removed for production)
 
+// ================== DAILY MOVERS HITS PERSISTENCE ==================
+/** Fetch current day's GLOBAL_MOVERS hits document from Firestore. */
+function fetchDailyMoversHits_() {
+  const res = _fetchFirestoreDocument_(DAILY_MOVERS_HITS_DOC_SEGMENTS);
+  if (!res.ok) {
+    if (res.notFound) return { ok: true, data: { dayKey: getSydneyDayKey_(), upHits: [], downHits: [] }, updateTime: null };
+    return { ok: false, error: res.error || ('status=' + res.status) };
+  }
+  const data = res.data || {};
+  return { ok: true, data: { dayKey: data.dayKey || getSydneyDayKey_(), upHits: data.upHits || [], downHits: data.downHits || [] }, updateTime: res.updateTime || null };
+}
+
+/** Commit full daily movers hits payload (overwrites arrays intentionally). */
+function writeDailyMoversHits_(payload) {
+  const now = new Date();
+  const body = {
+    dayKey: payload.dayKey || getSydneyDayKey_(),
+    upHits: Array.isArray(payload.upHits) ? payload.upHits : [],
+    downHits: Array.isArray(payload.downHits) ? payload.downHits : [],
+    updatedAt: now
+  };
+  const mask = ['dayKey','upHits','downHits','updatedAt'];
+  return commitCentralDoc_(DAILY_MOVERS_HITS_DOC_SEGMENTS, body, mask);
+}
+
+/** Append today's movers (up/down) hits to the daily history doc with de-dup by code. */
+function appendDailyMoversHits_(upArr, downArr) {
+  const todayKey = getSydneyDayKey_();
+  const current = fetchDailyMoversHits_();
+  if (!current.ok) { Logger.log('[Movers][DailyHits] fetch failed: %s', current.error); return; }
+  let upHits = current.data.upHits || [];
+  let downHits = current.data.downHits || [];
+  let dayKey = current.data.dayKey || todayKey;
+  if (dayKey !== todayKey) {
+    // New day: reset lists
+    upHits = []; downHits = []; dayKey = todayKey;
+  }
+  const nowIso = new Date().toISOString();
+  const seenUp = new Set(upHits.map(h => h && h.code));
+  const seenDown = new Set(downHits.map(h => h && h.code));
+  // Normalize existing seen sets to uppercase codes
+  const _normCode = (c) => (c || '').toString().trim().toUpperCase();
+  const seenUpNorm = new Set(Array.from(seenUp).map(_normCode));
+  const seenDownNorm = new Set(Array.from(seenDown).map(_normCode));
+
+  function normMoverItem(e) {
+    if (!e) return null;
+    const code = (e.code || e.shareCode || '').toString().trim().toUpperCase();
+    if (!code) return null;
+    // Prefer provided fields; compute pct if needed
+    const live = (e.live!=null && !isNaN(e.live)) ? Number(e.live) : null;
+    const prev = (e.prevClose!=null && !isNaN(e.prevClose)) ? Number(e.prevClose) : (e.prev!=null && !isNaN(e.prev) ? Number(e.prev) : null);
+    const change = (e.change!=null && !isNaN(e.change)) ? Number(e.change) : (live!=null && prev!=null ? Number(live - prev) : null);
+    const pct = (e.pct!=null && !isNaN(e.pct)) ? Number(e.pct) : ((change!=null && prev) ? Number((change/prev)*100) : null);
+    const direction = (e.direction || (change!=null ? (change>0?'up':'down') : null)) || null;
+    return { code, name: e.name || e.companyName || null, live: live, prevClose: prev, change: change, pct: pct, direction: direction, t: nowIso };
+  }
+
+  (Array.isArray(upArr) ? upArr : []).forEach(e => {
+  const item = normMoverItem(e);
+  if (!item) return;
+  const c = _normCode(item.code);
+  item.code = c;
+  if (!seenUpNorm.has(c)) { upHits.push(item); seenUpNorm.add(c); }
+  });
+  (Array.isArray(downArr) ? downArr : []).forEach(e => {
+  const item = normMoverItem(e);
+  if (!item) return;
+  const c = _normCode(item.code);
+  item.code = c;
+  if (!seenDownNorm.has(c)) { downHits.push(item); seenDownNorm.add(c); }
+  });
+
+  writeDailyMoversHits_({ dayKey, upHits, downHits });
+}
+
+// ================== PORTFOLIO DUPLICATION -> CUSTOM HITS ==================
+/** For each user, if any of their shares' codes appear in today's up/down movers, append into CUSTOM_TRIGGER_HITS. */
+function duplicateMoversIntoCustom_(upArr, downArr) {
+  try {
+    const moversSet = new Set();
+    (Array.isArray(upArr) ? upArr : []).forEach(e => { const c=(e&&e.code||'').toString().toUpperCase(); if(c) moversSet.add(c); });
+    (Array.isArray(downArr) ? downArr : []).forEach(e => { const c=(e&&e.code||'').toString().toUpperCase(); if(c) moversSet.add(c); });
+    if (moversSet.size === 0) return;
+    // Build quick map for name/live when present
+    const infoMap = {};
+    function num(v){ const n=Number(v); return isFinite(n)? n : null; }
+    (Array.isArray(upArr)?upArr:[]).concat(Array.isArray(downArr)?downArr:[]).forEach(e=>{
+      if (!e || !e.code) return; const c = String(e.code).toUpperCase();
+      if (!infoMap[c]) infoMap[c] = { name: e.name || null, live: num(e.live) };
+    });
+    // Iterate users and their shares
+    const pending = [];
+    const nowIso = new Date().toISOString();
+    const sharesCg = _listCollectionGroup_('shares');
+    if (!sharesCg.ok) { Logger.log('[DupMovers] shares CG list failed: %s', sharesCg.error); return; }
+    (sharesCg.docs || []).forEach(d => {
+      try {
+        const name = d.name || '';
+        const parts = name.split('/');
+        const usersIdx = parts.lastIndexOf('users');
+        if (usersIdx < 0 || usersIdx+2 >= parts.length) return;
+        const uid = parts[usersIdx+1];
+        const shareId = parts[parts.length-1];
+        const f = _fromFsFields_(d.fields || {});
+        // Skip if alerts for this share are explicitly disabled
+        try {
+          const alertDoc = _fetchFirestoreDocument_(['artifacts', APP_ID, 'users', uid, 'alerts', shareId]);
+          if (alertDoc && alertDoc.ok && alertDoc.data && alertDoc.data.enabled === false) return;
+        } catch(_){}
+        const rawCode = (f.shareName || f.shareCode || f.code || '').toString().trim();
+        const code = rawCode ? rawCode.toUpperCase() : null; if (!code) return;
+        if (!moversSet.has(code)) return;
+        const meta = infoMap[code] || {};
+        const direction = (Array.isArray(upArr) && upArr.some(x=> (x.code||'').toString().toUpperCase()===code)) ? 'up' : ((Array.isArray(downArr) && downArr.some(x=> (x.code||'').toString().toUpperCase()===code)) ? 'down' : null);
+        pending.push({ code, name: meta.name || f.companyName || null, live: meta.live || null, intent: 'mover', direction, userId: uid, shareId, t: nowIso });
+      } catch(_){ }
+    });
+    if (pending.length) appendDailyCustomHits_(pending);
+  } catch (e) { Logger.log('[DupMovers] EX', e); }
+}
+
+/** For each user, if any of their shares' codes appear in today's 52W highs/lows, append into CUSTOM_TRIGGER_HITS. */
+function duplicateHiLoHitsIntoCustom_(highsArr, lowsArr) {
+  try {
+    const hiLoSet = new Set();
+    (Array.isArray(highsArr)?highsArr:[]).forEach(e=>{ const c=(e&&e.code||'').toString().toUpperCase(); if(c) hiLoSet.add(c); });
+    (Array.isArray(lowsArr)?lowsArr:[]).forEach(e=>{ const c=(e&&e.code||'').toString().toUpperCase(); if(c) hiLoSet.add(c); });
+    if (hiLoSet.size === 0) return;
+    const infoMap = {};
+    function num(v){ const n=Number(v); return isFinite(n)? n : null; }
+    (Array.isArray(highsArr)?highsArr:[]).concat(Array.isArray(lowsArr)?lowsArr:[]).forEach(e=>{
+      if (!e || !e.code) return; const c = String(e.code).toUpperCase();
+      if (!infoMap[c]) infoMap[c] = { name: e.name || null, live: num(e.live) };
+    });
+    const pending = [];
+    const nowIso = new Date().toISOString();
+    const sharesCg = _listCollectionGroup_('shares');
+    if (!sharesCg.ok) { Logger.log('[DupHiLo] shares CG list failed: %s', sharesCg.error); return; }
+    (sharesCg.docs || []).forEach(d => {
+      try {
+        const name = d.name || '';
+        const parts = name.split('/');
+        const usersIdx = parts.lastIndexOf('users');
+        if (usersIdx < 0 || usersIdx+2 >= parts.length) return;
+        const uid = parts[usersIdx+1];
+        const shareId = parts[parts.length-1];
+        const f = _fromFsFields_(d.fields || {});
+        // Skip if alerts for this share are explicitly disabled
+        try {
+          const alertDoc = _fetchFirestoreDocument_(['artifacts', APP_ID, 'users', uid, 'alerts', shareId]);
+          if (alertDoc && alertDoc.ok && alertDoc.data && alertDoc.data.enabled === false) return;
+        } catch(_){}
+        const rawCode = (f.shareName || f.shareCode || f.code || '').toString().trim();
+        const code = rawCode ? rawCode.toUpperCase() : null; if (!code) return;
+        if (!hiLoSet.has(code)) return;
+        const meta = infoMap[code] || {};
+        const wasHigh = (Array.isArray(highsArr)?highsArr:[]).some(e=> (e&&String(e.code).toUpperCase())===code);
+        const intent = wasHigh ? '52w-high' : '52w-low';
+        pending.push({ code, name: meta.name || f.companyName || null, live: meta.live || null, intent, userId: uid, shareId, t: nowIso });
+      } catch(_){ }
+    });
+    if (pending.length) appendDailyCustomHits_(pending);
+  } catch (e) { Logger.log('[DupHiLo] EX', e); }
+}
+
+// ================== DAILY CUSTOM TRIGGER HITS ==================
+/** Fetch current day's CUSTOM_TRIGGER_HITS document from Firestore. */
+function fetchDailyCustomHits_() {
+  const res = _fetchFirestoreDocument_(DAILY_CUSTOM_HITS_DOC_SEGMENTS);
+  if (!res.ok) {
+    if (res.notFound) return { ok: true, data: { dayKey: getSydneyDayKey_(), hits: [] }, updateTime: null };
+    return { ok: false, error: res.error || ('status=' + res.status) };
+  }
+  const data = res.data || {};
+  return { ok: true, data: { dayKey: data.dayKey || getSydneyDayKey_(), hits: data.hits || [] }, updateTime: res.updateTime || null };
+}
+
+/** Write/overwrite CUSTOM_TRIGGER_HITS doc. */
+function writeDailyCustomHits_(payload) {
+  const now = new Date();
+  const body = {
+    dayKey: payload.dayKey || getSydneyDayKey_(),
+    hits: Array.isArray(payload.hits) ? payload.hits : [],
+    updatedAt: now
+  };
+  const mask = ['dayKey','hits','updatedAt'];
+  return commitCentralDoc_(DAILY_CUSTOM_HITS_DOC_SEGMENTS, body, mask);
+}
+
+/** Append to CUSTOM_TRIGGER_HITS with de-dup on (userId, code). */
+function appendDailyCustomHits_(newHitsArr) {
+  const todayKey = getSydneyDayKey_();
+  const current = fetchDailyCustomHits_();
+  if (!current.ok) { Logger.log('[CustomHits] fetch failed: %s', current.error); return; }
+  let hits = current.data.hits || [];
+  let dayKey = current.data.dayKey || todayKey;
+  if (dayKey !== todayKey) { hits = []; dayKey = todayKey; }
+  const nowIso = new Date().toISOString();
+  // De-duplication key includes intent so same code can appear once per intent per user per day.
+  const _normCode = (c) => (c || '').toString().trim().toUpperCase();
+  // Normalize intent: map legacy names, coerce missing to explicit 'none' to avoid empty-key collisions
+  const _normIntent = (i) => {
+    if (!i) return 'none';
+    const s = i.toString().trim().toLowerCase();
+    if (s === 'global-mover') return 'mover';
+    return s || 'none';
+  };
+  const seen = new Set(hits.map(h => {
+    if (!h) return '';
+    const uid = (h.userId || '');
+    const code = _normCode(h.code || '');
+    const intentRaw = (h.intent || '');
+    const intent = _normIntent(intentRaw);
+    return uid + '|' + code + '|' + intent;
+  }));
+    (Array.isArray(newHitsArr) ? newHitsArr : []).forEach(h => {
+    if (!h || !h.code) return;
+    const uid = (h.userId || '') + '';
+    const code = _normCode(h.code);
+    const intent = _normIntent(h.intent || null);
+    const key = uid + '|' + code + '|' + intent;
+    if (seen.has(key)) return;
+    const item = {
+      code: code,
+      name: h.name || null,
+      live: (h.live!=null && !isNaN(h.live)) ? Number(h.live) : null,
+      target: (h.target!=null && !isNaN(h.target)) ? Number(h.target) : null,
+      direction: h.direction || null,
+      intent: intent || 'none',
+      userId: uid || null,
+      shareId: h.shareId || null,
+      t: h.t || nowIso,
+      userIntent: h.userIntent || null
+    };
+    hits.push(item); seen.add(key);
+  });
+  writeDailyCustomHits_({ dayKey, hits });
+}
+
+/**
+ * Reconcile portfolio-based duplicates from today's daily hits into CUSTOM_TRIGGER_HITS.
+ * This ensures that if a user adds a portfolio share later in the day, they still see
+ * the corresponding movers/52w events under Custom Triggers. Idempotent.
+ */
+function reconcileCustomDuplicatesFromDailyHits_() {
+  try {
+    // Fetch today's daily hits docs
+    const hiloRes = fetchDailyHiLoHits_();
+    const moversRes = fetchDailyMoversHits_();
+    if (!hiloRes.ok && !moversRes.ok) { Logger.log('[CustomRecon] Failed to fetch daily hits'); return; }
+    const highHits = (hiloRes && hiloRes.ok && Array.isArray(hiloRes.data.highHits)) ? hiloRes.data.highHits : [];
+    const lowHits  = (hiloRes && hiloRes.ok && Array.isArray(hiloRes.data.lowHits)) ? hiloRes.data.lowHits : [];
+    const upHits   = (moversRes && moversRes.ok && Array.isArray(moversRes.data.upHits)) ? moversRes.data.upHits : [];
+    const downHits = (moversRes && moversRes.ok && Array.isArray(moversRes.data.downHits)) ? moversRes.data.downHits : [];
+
+    // Build quick lookup sets and info maps
+    const toCode = (c) => (c==null? '' : String(c)).trim().toUpperCase();
+    const num = (v) => { const n = Number(v); return isFinite(n) ? n : null; };
+    const hiSet = new Set(highHits.map(h => toCode(h && h.code)));
+    const loSet = new Set(lowHits.map(h => toCode(h && h.code)));
+    const upSet = new Set(upHits.map(h => toCode(h && h.code)));
+    const dnSet = new Set(downHits.map(h => toCode(h && h.code)));
+    if (hiSet.size===0 && loSet.size===0 && upSet.size===0 && dnSet.size===0) return; // nothing to do
+
+    // Info maps for name/live
+    const info = {};
+    function putInfo(arr) {
+      (Array.isArray(arr)?arr:[]).forEach(h => {
+        if (!h) return; const c = toCode(h.code); if (!c) return;
+        if (!info[c]) info[c] = { name: h.name || null, live: num(h.live) };
+      });
+    }
+    putInfo(highHits); putInfo(lowHits); putInfo(upHits); putInfo(downHits);
+
+    const pending = [];
+    const nowIso = new Date().toISOString();
+    const sharesCg = _listCollectionGroup_('shares');
+    if (!sharesCg.ok) { Logger.log('[CustomRecon] shares CG list failed: %s', sharesCg.error); return; }
+    (sharesCg.docs || []).forEach(d => {
+      try {
+        const name = d.name || '';
+        const parts = name.split('/');
+        const usersIdx = parts.lastIndexOf('users');
+        if (usersIdx < 0 || usersIdx+2 >= parts.length) return;
+        const uid = parts[usersIdx+1];
+        const shareId = parts[parts.length-1];
+        const f = _fromFsFields_(d.fields || {});
+        // Skip if alerts for this share are explicitly disabled
+        try {
+          const alertDoc = _fetchFirestoreDocument_(['artifacts', APP_ID, 'users', uid, 'alerts', shareId]);
+          if (alertDoc && alertDoc.ok && alertDoc.data && alertDoc.data.enabled === false) return;
+        } catch(_){}
+        const rawCode = (f.shareName || f.shareCode || f.code || '').toString().trim();
+        const code = rawCode ? rawCode.toUpperCase() : null; if (!code) return;
+        if (hiSet.has(code)) { const meta = info[code] || {}; pending.push({ code, name: meta.name || f.companyName || null, live: meta.live || null, intent: '52w-high', userId: uid, shareId, t: nowIso }); }
+        if (loSet.has(code)) { const meta = info[code] || {}; pending.push({ code, name: meta.name || f.companyName || null, live: meta.live || null, intent: '52w-low', userId: uid, shareId, t: nowIso }); }
+        if (upSet.has(code)) { const meta = info[code] || {}; pending.push({ code, name: meta.name || f.companyName || null, live: meta.live || null, intent: 'mover', direction: 'up', userId: uid, shareId, t: nowIso }); }
+        if (dnSet.has(code)) { const meta = info[code] || {}; pending.push({ code, name: meta.name || f.companyName || null, live: meta.live || null, intent: 'mover', direction: 'down', userId: uid, shareId, t: nowIso }); }
+      } catch(_){ }
+    });
+
+    if (pending.length) appendDailyCustomHits_(pending);
+  } catch (e) {
+    Logger.log('[CustomRecon] EX %s', e && e.message || e);
+  }
+}
+
+/**
+ * Scan all users' enabled custom target alerts against current Prices sheet and persist hits.
+ * Rule: direction 'above' -> live >= target; 'below' -> live <= target. target>0 required.
+ */
+function runCustomTriggersScan() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const priceRows = fetchAllAsxData_(ss) || [];
+    if (!priceRows.length) { console.log('[CustomScan] No price data; abort.'); return; }
+    // Build quick lookup map by code
+    const priceMap = {};
+    priceRows.forEach(r => { if (r && r.code) priceMap[String(r.code).toUpperCase()] = r; });
+
+    // Iterate via collection group to avoid user-list dependency
+    const sharesCg = _listCollectionGroup_('shares');
+    if (!sharesCg.ok) { console.log('[CustomScan] Failed to list shares (CG):', sharesCg.error); return; }
+    const pendingHits = [];
+    (sharesCg.docs || []).forEach(d => {
+      try {
+        const docName = d.name || '';
+        const parts = docName.split('/');
+        const usersIdx = parts.lastIndexOf('users');
+        if (usersIdx < 0 || usersIdx+2 >= parts.length) return;
+        const userId = parts[usersIdx+1];
+        const shareId = parts[parts.length-1];
+        const fields = _fromFsFields_(d.fields || {});
+        // Per-share alert disable check (default enabled if alert doc missing)
+        let disabled = false;
+        try {
+          const alertDoc = _fetchFirestoreDocument_(['artifacts', APP_ID, 'users', userId, 'alerts', shareId]);
+          if (alertDoc && alertDoc.ok && alertDoc.data && alertDoc.data.enabled === false) disabled = true;
+        } catch(_){}
+        if (disabled) return;
+        const rawCode = (fields.shareName || fields.shareCode || fields.code || '').toString().trim();
+        const code = rawCode ? rawCode.toUpperCase() : null; if (!code) return;
+        function _sanitizeTarget_(v){
+          if (v === null || v === undefined) return NaN;
+          if (typeof v === 'number') return v;
+          let s = String(v).trim(); if (!s) return NaN;
+          s = s.replace(/\$/g,'');
+          const centsMatch = /^([0-9]+)c$/i.exec(s);
+          if (centsMatch) { const centsVal = Number(centsMatch[1]); return isFinite(centsVal) ? (centsVal/100) : NaN; }
+          s = s.replace(/cents?/i,''); s = s.replace(/,/g,''); s = s.replace(/[^0-9.+-]/g,'');
+          if (!s) return NaN; const n = Number(s); return isFinite(n) ? n : NaN;
+        }
+        const tgt = _sanitizeTarget_(fields.targetPrice);
+        if (!isFinite(tgt) || tgt <= 0) return;
+        const direction = (fields.targetDirection || '').toString().trim().toLowerCase();
+        if (direction !== 'above' && direction !== 'below') return;
+        const p = priceMap[code]; if (!p || p.livePrice == null || isNaN(p.livePrice)) return;
+        const live = Number(p.livePrice);
+        const hit = (direction === 'above') ? (live >= tgt) : (live <= tgt);
+        if (!hit) return;
+        pendingHits.push({ code, name: p.name || fields.companyName || null, live, target: tgt, direction, intent: 'target-hit', userIntent: (function(){ const ui = (fields.intent==null? null : String(fields.intent)); return (ui && ui.trim()) ? ui : null; })(), userId, shareId, t: new Date().toISOString() });
+      } catch (e) { Logger.log('[CustomScan] CG share eval error: %s', e && e.message || e); }
+    });
+
+    if (pendingHits.length) {
+      appendDailyCustomHits_(pendingHits);
+      console.log('[CustomScan] Appended hits:', pendingHits.length);
+    } else {
+      console.log('[CustomScan] No hits this cycle.');
+    }
+  } catch (err) {
+    console.error('[CustomScan] ERROR:', err && err.stack || err);
+  }
+}
+
 // ===============================================================
 // ================= SETTINGS / SHARED HELPERS ==================
 // ===============================================================
@@ -724,6 +1149,65 @@ function _fromFsFields_(fields) {
   const out = {};
   Object.keys(fields || {}).forEach(k => out[k] = _fromFsValue_(fields[k]));
   return out;
+}
+
+/** List all documents under a collection using REST (shallow). Returns array of {name, fields}. */
+function _listFirestoreCollection_(collectionPathSegments, options) {
+  const token = ScriptApp.getOAuthToken();
+  const collPath = collectionPathSegments.map(encodeURIComponent).join('/');
+  const url = FIRESTORE_BASE + '/projects/' + FIREBASE_PROJECT_ID + '/databases/(default)/documents/' + collPath;
+  try {
+    const headers = { Authorization: 'Bearer ' + token, Accept: 'application/json' };
+    // Use pageSize to avoid huge payloads; paginate if nextPageToken appears
+    let pageToken = null; const out = [];
+    for (let i=0;i<20;i++) { // safety cap
+      const fullUrl = url + '?pageSize=100' + (pageToken ? ('&pageToken=' + encodeURIComponent(pageToken)) : '');
+      const resp = UrlFetchApp.fetch(fullUrl, { method: 'get', headers, muteHttpExceptions: true });
+      const status = resp.getResponseCode(); const text = resp.getContentText();
+      if (status === 404) return { ok: true, docs: [] };
+      let parsed = null; try { parsed = text ? JSON.parse(text) : null; } catch(_) {}
+      if (status >= 200 && status < 300 && parsed) {
+        const docs = parsed.documents || [];
+        docs.forEach(d => out.push({ name: d.name, fields: d.fields || {}, updateTime: d.updateTime || null, createTime: d.createTime || null }));
+        pageToken = parsed.nextPageToken || null;
+        if (!pageToken) break;
+      } else {
+        return { ok: false, status, error: text };
+      }
+    }
+    return { ok: true, docs: out };
+  } catch (err) {
+    return { ok: false, status: 0, error: String(err) };
+  }
+}
+
+// Advanced helper: run a collection group query using Firestore REST runQuery API
+// Returns only docs under /artifacts/{APP_ID}/users/ to avoid cross-app bleed.
+function _listCollectionGroup_(collectionId) {
+  try {
+    const token = ScriptApp.getOAuthToken();
+    const url = FIRESTORE_BASE + '/projects/' + FIREBASE_PROJECT_ID + '/databases/(default)/documents:runQuery';
+    const body = { structuredQuery: { from: [{ collectionId: collectionId, allDescendants: true }], limit: 1000 } };
+    const resp = UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
+      payload: JSON.stringify(body), muteHttpExceptions: true
+    });
+    const status = resp.getResponseCode();
+    const text = resp.getContentText() || '';
+    if (status < 200 || status >= 300) return { ok: false, status, error: text };
+    let parsed = []; try { parsed = text ? JSON.parse(text) : []; } catch(_) {}
+    const docs = [];
+    const appPath = '/artifacts/' + APP_ID + '/users/';
+    (parsed || []).forEach(row => {
+      const doc = row && row.document;
+      if (!doc || !doc.name) return;
+      if (doc.name.indexOf(appPath) === -1) return;
+      docs.push({ name: doc.name, fields: doc.fields || {}, updateTime: doc.updateTime || null, createTime: doc.createTime || null });
+    });
+    return { ok: true, docs };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
 }
 
 function _fromFsValue_(v) {
@@ -1184,6 +1668,63 @@ function dailyResetTrigger() {
   } catch (e) {
     console.error('Failed to reset daily 52-week hit history:', e);
   }
+  // Reset daily GLOBAL_MOVERS hits in Firestore as well
+  try {
+    const dayKey2 = getSydneyDayKey_();
+    writeDailyMoversHits_({ dayKey: dayKey2, upHits: [], downHits: [] });
+    console.log(`[${now}] Daily GLOBAL_MOVERS hit history reset for ${dayKey2}.`);
+  } catch (e) {
+    console.error('Failed to reset daily GLOBAL_MOVERS hit history:', e);
+  }
+  // Reset daily CUSTOM_TRIGGER_HITS
+  try {
+    const dayKey3 = getSydneyDayKey_();
+    writeDailyCustomHits_({ dayKey: dayKey3, hits: [] });
+    console.log(`[${now}] Daily CUSTOM_TRIGGER_HITS reset for ${dayKey3}.`);
+  } catch (e) {
+    console.error('Failed to reset daily CUSTOM_TRIGGER_HITS:', e);
+  }
+}
+
+/**
+ * Debug helper: returns counts and small samples from the three daily hits docs.
+ * Useful to call from Apps Script editor to quickly confirm whether hits are being appended.
+ */
+function debugDailyHitsParity() {
+  try {
+    const movers = _fetchFirestoreDocument_(DAILY_MOVERS_HITS_DOC_SEGMENTS) || {};
+    const hilo = _fetchFirestoreDocument_(DAILY_HILO_HITS_DOC_SEGMENTS) || {};
+    const custom = _fetchFirestoreDocument_(DAILY_CUSTOM_HITS_DOC_SEGMENTS) || {};
+    const out = {
+      dayKey: getSydneyDayKey_(),
+      movers: { ok: movers.ok === true, dayKey: (movers.data && movers.data.dayKey) || null, upCount: (movers.data && Array.isArray(movers.data.upHits) ? movers.data.upHits.length : null), downCount: (movers.data && Array.isArray(movers.data.downHits) ? movers.data.downHits.length : null), upSample: (movers.data && Array.isArray(movers.data.upHits) ? movers.data.upHits.slice(0,5) : []), downSample: (movers.data && Array.isArray(movers.data.downHits) ? movers.data.downHits.slice(0,5) : []) },
+      hilo: { ok: hilo.ok === true, dayKey: (hilo.data && hilo.data.dayKey) || null, highCount: (hilo.data && Array.isArray(hilo.data.highHits) ? hilo.data.highHits.length : null), lowCount: (hilo.data && Array.isArray(hilo.data.lowHits) ? hilo.data.lowHits.length : null), highSample: (hilo.data && Array.isArray(hilo.data.highHits) ? hilo.data.highHits.slice(0,5) : []), lowSample: (hilo.data && Array.isArray(hilo.data.lowHits) ? hilo.data.lowHits.slice(0,5) : []) },
+      custom: { ok: custom.ok === true, dayKey: (custom.data && custom.data.dayKey) || null, totalHits: (custom.data && Array.isArray(custom.data.hits) ? custom.data.hits.length : null), sample: (custom.data && Array.isArray(custom.data.hits) ? custom.data.hits.slice(0,10) : []) }
+    };
+    Logger.log('[debugDailyHitsParity] %s', JSON.stringify(out));
+    return out;
+  } catch (e) {
+    Logger.log('[debugDailyHitsParity] Error: %s', e && e.message || e);
+    return { ok: false, error: String(e) };
+  }
+}
+
+// ================== DIAGNOSTIC RUNNER (ONE-CLICK) ==================
+/**
+ * Runs all scans and reconciliation in sequence and returns a compact summary for testing.
+ * Usage: runAllAlertScansAndReconcile() from the Apps Script editor.
+ */
+function runAllAlertScansAndReconcile() {
+  const startedAt = new Date().toISOString();
+  let steps = [];
+  try { runGlobal52WeekScan(); steps.push('runGlobal52WeekScan:OK'); } catch(e){ steps.push('runGlobal52WeekScan:ERR:' + (e && e.message || e)); }
+  try { runGlobalMoversScan(); steps.push('runGlobalMoversScan:OK'); } catch(e){ steps.push('runGlobalMoversScan:ERR:' + (e && e.message || e)); }
+  try { runCustomTriggersScan(); steps.push('runCustomTriggersScan:OK'); } catch(e){ steps.push('runCustomTriggersScan:ERR:' + (e && e.message || e)); }
+  try { reconcileCustomDuplicatesFromDailyHits_(); steps.push('reconcileCustomDuplicatesFromDailyHits:OK'); } catch(e){ steps.push('reconcileCustomDuplicatesFromDailyHits:ERR:' + (e && e.message || e)); }
+  const parity = (function(){ try { return debugDailyHitsParity(); } catch(e){ return { ok:false, error:String(e) }; } })();
+  const out = { ok: true, startedAt, finishedAt: new Date().toISOString(), steps, parity };
+  Logger.log('[Diag Runner] %s', JSON.stringify(out));
+  return out;
 }
 
 // ================== DAILY COMBINED EMAIL DIGEST ==================
@@ -1209,64 +1750,82 @@ function sendCombinedDailyDigest_() {
   const recipient = settings.alertEmailRecipients || ALERT_RECIPIENT;
   if (!recipient) { console.log('[DailyDigest] No recipient configured; skipping.'); return; }
 
-  // Fetch GLOBAL_MOVERS snapshot
-  const moversRes = _fetchFirestoreDocument_(GLOBAL_MOVERS_DOC_SEGMENTS, { noCache: true });
-  const movers = (moversRes && moversRes.ok && moversRes.data) ? moversRes.data : { up: [], down: [] };
+  // Fetch sources: movers hits, 52w hits, custom hits
+  const moversHitsRes = _fetchFirestoreDocument_(DAILY_MOVERS_HITS_DOC_SEGMENTS, { noCache: true });
+  const moversHits = (moversHitsRes && moversHitsRes.ok && moversHitsRes.data) ? moversHitsRes.data : { upHits: [], downHits: [], dayKey: getSydneyDayKey_() };
+  const hiloHitsRes = _fetchFirestoreDocument_(DAILY_HILO_HITS_DOC_SEGMENTS, { noCache: true });
+  const hiloHits = (hiloHitsRes && hiloHitsRes.ok && hiloHitsRes.data) ? hiloHitsRes.data : { highHits: [], lowHits: [], dayKey: getSydneyDayKey_() };
+  const customHitsRes = _fetchFirestoreDocument_(DAILY_CUSTOM_HITS_DOC_SEGMENTS, { noCache: true });
+  const customHits = (customHitsRes && customHitsRes.ok && customHitsRes.data) ? customHitsRes.data : { hits: [], dayKey: getSydneyDayKey_() };
 
-  // Fetch HI_LO_52W_HITS daily history
-  const hitsRes = _fetchFirestoreDocument_(DAILY_HILO_HITS_DOC_SEGMENTS, { noCache: true });
-  const hits = (hitsRes && hitsRes.ok && hitsRes.data) ? hitsRes.data : { highHits: [], lowHits: [], dayKey: getSydneyDayKey_() };
-
-  // Build email content
   const sydneyDateStr = Utilities.formatDate(new Date(), ASX_TIME_ZONE, 'dd-MM-yyyy');
-  const fmt = n => (n!=null && isFinite(n)) ? Number(n) : null;
+  const num = v => (v!=null && isFinite(v)) ? Number(v) : null;
 
-  const upArr = Array.isArray(movers.up) ? movers.up : [];
-  const downArr = Array.isArray(movers.down) ? movers.down : [];
-  const upCount = upArr.length;
-  const downCount = downArr.length;
-  const linesUp = upArr.map(o => {
-    const pct = fmt(o.pct); const chg = fmt(o.change);
-    const pctStr = (pct!=null) ? (pct>=0? '+' : '') + pct.toFixed(2) + '%' : '';
-    const chgStr = (chg!=null) ? ((chg>=0? '+' : '') + '$' + Math.abs(chg).toFixed(4)) : '';
-    return `${o.code}${pctStr? '  ' + pctStr : ''}${chgStr? '  (' + chgStr + ')' : ''}`;
-  });
-  const linesDown = downArr.map(o => {
-    const pct = fmt(o.pct); const chg = fmt(o.change);
-    const pctStr = (pct!=null) ? (pct>=0? '+' : '') + pct.toFixed(2) + '%' : '';
-    const chgStr = (chg!=null) ? ((chg>=0? '+' : '') + '$' + Math.abs(chg).toFixed(4)) : '';
-    return `${o.code}${pctStr? '  ' + pctStr : ''}${chgStr? '  (' + chgStr + ')' : ''}`;
-  });
+  // Sort as requested
+  const losers = (Array.isArray(moversHits.downHits) ? moversHits.downHits.slice() : []).sort((a,b)=> Math.abs(num(b.pct)||0) - Math.abs(num(a.pct)||0));
+  const gainers = (Array.isArray(moversHits.upHits) ? moversHits.upHits.slice() : []).sort((a,b)=> (num(b.pct)||0) - (num(a.pct)||0));
+  const lows = (Array.isArray(hiloHits.lowHits) ? hiloHits.lowHits.slice() : []).sort((a,b)=> (num(b.live)||0) - (num(a.live)||0));
+  const highs = (Array.isArray(hiloHits.highHits) ? hiloHits.highHits.slice() : []).sort((a,b)=> (num(b.live)||0) - (num(a.live)||0));
+  const customs = Array.isArray(customHits.hits) ? customHits.hits.slice() : [];
 
-  const highsArr = Array.isArray(hits.highHits) ? hits.highHits : [];
-  const lowsArr = Array.isArray(hits.lowHits) ? hits.lowHits : [];
-  const highsCount = highsArr.length;
-  const lowsCount = lowsArr.length;
-  const highLines = highsArr.map(h => `${h.code}${h.high52!=null? '  H:' + Number(h.high52) : ''}${h.live!=null? '  Lp:' + Number(h.live) : ''}`);
-  const lowLines  = lowsArr.map(l => `${l.code}${l.low52!=null?  '  L:' + Number(l.low52)  : ''}${l.live!=null? '  Lp:' + Number(l.live) : ''}`);
+  // HTML helpers
+  function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+  function td(v){ return '<td style="padding:6px 10px;border-bottom:1px solid #eee;">' + esc(v==null?'' : v) + '</td>'; }
+  function fmtMoney(n){ const x = num(n); return x==null? '' : ('$' + x.toFixed(x<1?4:2)); }
+  function fmtPct(n){ const x = num(n); return x==null? '' : ((x>=0?'+':'') + x.toFixed(2) + '%'); }
 
-  const subject = `ASX Daily Briefing — ${sydneyDateStr} (Movers: ${upCount} up, ${downCount} down | 52-Week: ${highsCount} high, ${lowsCount} low)`;
+  function table(title, rows, headersHtml) {
+    return (
+      '<h3 style="margin:16px 0 8px 0;font-family:Arial,Helvetica,sans-serif;">' + esc(title) + '</h3>' +
+      '<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif;font-size:13px;">' +
+        '<thead><tr style="text-align:left;background:#fafafa;">' + headersHtml + '</tr></thead>' +
+        '<tbody>' + rows.join('') + '</tbody>' +
+      '</table>'
+    );
+  }
 
-  let body = 'Daily summary for Global Movers and 52-Week alerts.\n\n';
-  // Movers section
-  body += `=== GLOBAL MOVERS ===\n`;
-  if (linesUp.length) { body += `-- UP (${linesUp.length}) --\n` + linesUp.join('\n') + '\n'; }
-  if (linesDown.length) { body += `-- DOWN (${linesDown.length}) --\n` + linesDown.join('\n') + '\n'; }
-  if (!linesUp.length && !linesDown.length) { body += 'No movers detected today.\n'; }
-  body += '\n';
-  // 52W section
-  body += `=== 52-WEEK ALERTS (Daily Hits) ===\n`;
-  if (highLines.length) { body += `-- HIGHS (${highLines.length}) --\n` + highLines.join('\n') + '\n'; }
-  if (lowLines.length)  { body += `-- LOWS (${lowLines.length}) --\n`  + lowLines.join('\n')  + '\n'; }
-  if (!highLines.length && !lowLines.length) { body += 'No 52-week highs/lows logged today.\n'; }
+  // Sections
+  const losersRows = losers.map(o => ('<tr>' + td(o.code) + td(esc(o.name||'')) + td(fmtMoney(o.live)) + td(fmtPct(o.pct)) + td(fmtMoney(o.change)) + '</tr>'));
+  const gainersRows = gainers.map(o => ('<tr>' + td(o.code) + td(esc(o.name||'')) + td(fmtMoney(o.live)) + td(fmtPct(o.pct)) + td(fmtMoney(o.change)) + '</tr>'));
+  const lowsRows = lows.map(o => ('<tr>' + td(o.code) + td(esc(o.name||'')) + td(fmtMoney(o.live)) + td(fmtMoney(o.low52)) + td(fmtMoney(o.high52)) + '</tr>'));
+  const highsRows = highs.map(o => ('<tr>' + td(o.code) + td(esc(o.name||'')) + td(fmtMoney(o.live)) + td(fmtMoney(o.low52)) + td(fmtMoney(o.high52)) + '</tr>'));
+  const customRows = customs.map(o => ('<tr>' + td(o.code) + td(esc(o.name||'')) + td(fmtMoney(o.live)) + td(fmtMoney(o.target)) + td(o.direction||'') + td(o.intent||'') + '</tr>'));
 
-  MailApp.sendEmail(recipient, subject, body);
+  const hdrMovers = td('Code')+td('Name')+td('Price')+td('% Change')+td('Δ');
+  const hdrHiLo = td('Code')+td('Name')+td('Price')+td('52W Low')+td('52W High');
+  const hdrCustom = td('Code')+td('Name')+td('Price')+td('Target')+td('Direction')+td('Intent');
+
+  const parts = [];
+  // Order per requirement
+  parts.push(table('Global Movers — Losers', losersRows, hdrMovers));
+  parts.push(table('Global Movers — Gainers', gainersRows, hdrMovers));
+  parts.push(table('52-Week Lows', lowsRows, hdrHiLo));
+  parts.push(table('52-Week Highs', highsRows, hdrHiLo));
+  if (customRows.length) parts.push(table('Custom Triggers', customRows, hdrCustom));
+
+  const counts = `Movers: ${gainersRows.length} up, ${losersRows.length} down | 52-Week: ${highsRows.length} high, ${lowsRows.length} low`;
+  const subject = `ASX Daily Briefing — ${sydneyDateStr} (${counts})`;
+  const htmlBody = (
+    '<div style="font-family:Arial,Helvetica,sans-serif;color:#222;line-height:1.4;">' +
+    `<h2 style="margin:0 0 12px 0;">ASX Daily Briefing — ${esc(sydneyDateStr)}</h2>` +
+    parts.join('<div style="height:14px;"></div>') +
+    '<div style="margin-top:16px;color:#666;font-size:12px;">This email is generated automatically from your ASX Alerts settings.</div>' +
+    '</div>'
+  );
+
+  MailApp.sendEmail({ to: recipient, subject, htmlBody });
 }
 
 // Public wrapper for trigger safety: Apps Script triggers call global functions.
 function sendCombinedDailyDigest() {
   try { sendCombinedDailyDigest_(); }
   catch (e) { console.error('sendCombinedDailyDigest wrapper failed:', e); }
+}
+
+// Public wrapper for trigger: reconcile daily duplicates periodically
+function reconcileCustomDuplicatesFromDailyHits() {
+  try { reconcileCustomDuplicatesFromDailyHits_(); }
+  catch (e) { console.error('reconcileCustomDuplicatesFromDailyHits wrapper failed:', e); }
 }
 
 function fetchAllPriceData(spreadsheet, sheetName) {
@@ -1407,6 +1966,12 @@ function createTriggers() {
   // --- 4) Ensure a separate daily digest trigger at ~16:15 Sydney time (idempotent) ---
   // Force timezone to Australia/Sydney so this fires correctly regardless of project settings.
   _ensureTimeTrigger_('sendCombinedDailyDigest', b => b.inTimezone(ASX_TIME_ZONE).everyDays(1).atHour(16).nearMinute(15));
+
+  // --- 5) Ensure custom triggers scan runs periodically (idempotent) ---
+  _ensureTimeTrigger_('runCustomTriggersScan', b => b.everyMinutes(15));
+
+  // --- 6) Ensure reconciliation of daily duplicates runs periodically (idempotent) ---
+  _ensureTimeTrigger_('reconcileCustomDuplicatesFromDailyHits', b => b.everyMinutes(30));
 
   console.log('Triggers ensured (market alerts unchanged; movers ensured; 52W ensured + stale removed).');
 }

@@ -3,13 +3,28 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Utility predicates
     function isSignedIn() { return request.auth != null; }
-    function isCentralAlertDoc(docId) { return docId in ['HI_LO_52W', 'GLOBAL_MOVERS']; }
+    // Centralized alert documents that are safe for authenticated users to read directly
+    // Includes legacy snapshot docs and new daily persistent *_HITS docs
+    function isCentralAlertDoc(docId) {
+      return docId in [
+        // Legacy snapshot docs (read-only)
+        'HI_LO_52W',
+        'GLOBAL_MOVERS',
+        // New daily persistent logs
+        'HI_LO_52W_HITS',
+        'GLOBAL_MOVERS_HITS',
+        'CUSTOM_TRIGGER_HITS'
+      ];
+    }
 
     /*
      * Centralized global alert documents
      * Path examples:
      *  /artifacts/asx-watchlist-app/alerts/HI_LO_52W
      *  /artifacts/asx-watchlist-app/alerts/GLOBAL_MOVERS
+     *  /artifacts/asx-watchlist-app/alerts/HI_LO_52W_HITS
+     *  /artifacts/asx-watchlist-app/alerts/GLOBAL_MOVERS_HITS
+     *  /artifacts/asx-watchlist-app/alerts/CUSTOM_TRIGGER_HITS
      * Read-only to authenticated users. We purposely ALLOW get but DENY list / query to:
      *  - reduce surface area
      *  - prevent accidental enumeration / future sensitive docs being exposed
