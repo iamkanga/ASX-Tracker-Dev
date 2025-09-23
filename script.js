@@ -5474,7 +5474,19 @@ function openStockSearchForCode(code){
             if (typeof displayStockDetailsInSearchModal === 'function') {
                 displayStockDetailsInSearchModal(upper);
             }
-            try { asxSearchInput.focus(); asxSearchInput.setSelectionRange(upper.length, upper.length); } catch(_) {}
+            // Focus without scrolling to avoid snap-to-top on mobile
+            try {
+                if (window.safeFocus) {
+                    window.safeFocus(asxSearchInput);
+                } else {
+                    try { asxSearchInput.focus({ preventScroll: true }); }
+                    catch(_) { try { asxSearchInput.focus(); } catch(__) {} }
+                }
+                // Defer caret placement to the next tick so it doesn't trigger layout scroll
+                setTimeout(() => {
+                    try { asxSearchInput.setSelectionRange(upper.length, upper.length); } catch(_) {}
+                }, 0);
+            } catch(_) {}
         }
     } catch(_) {}
 }
