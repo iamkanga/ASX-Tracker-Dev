@@ -179,6 +179,19 @@
         try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
     }
 
+    // Safe focus helper to avoid background page jumps when focusing inputs
+    try {
+        if (!window.safeFocus) {
+            window.safeFocus = function(el){
+                try {
+                    if (!el || typeof el.focus !== 'function') return;
+                    try { el.focus({ preventScroll: true }); }
+                    catch(_) { try { el.focus(); } catch(__) {} }
+                } catch(_) {}
+            };
+        }
+    } catch(_) {}
+
 
     function showCustomConfirm(message, callback) {
         try {

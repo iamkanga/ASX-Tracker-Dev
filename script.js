@@ -10482,7 +10482,12 @@ window.showGlobalAlertsModal = function showGlobalAlertsModal() {
         if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
         if (typeof showModal === 'function' && globalAlertsModal) {
             showModal(globalAlertsModal);
-            try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(_) {}
+            try {
+                if (globalPercentIncreaseInput) {
+                    if (window.safeFocus) window.safeFocus(globalPercentIncreaseInput);
+                    else try { globalPercentIncreaseInput.focus({ preventScroll: true }); } catch(_) { try { globalPercentIncreaseInput.focus(); } catch(__) {} }
+                }
+            } catch(_) {}
             return true;
         }
     } catch(e){ console.warn('[GlobalAlerts][open] failed to open modal', e); }
@@ -12191,7 +12196,17 @@ function initGlobalAlertsUI(force) {
     }
     if (globalAlertsBtn && globalAlertsModal) {
         globalAlertsBtn.addEventListener('click', () => {
-            try { showModal(globalAlertsModal); try { scrollMainToTop(); } catch(_) {} if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(e){ console.error('Global Alerts: failed to open modal', e);} });
+            try {
+                showModal(globalAlertsModal);
+                // Do not force page scroll; just focus the first input without scrolling
+                try {
+                    if (globalPercentIncreaseInput) {
+                        if (window.safeFocus) window.safeFocus(globalPercentIncreaseInput);
+                        else try { globalPercentIncreaseInput.focus({ preventScroll: true }); } catch(_) { try { globalPercentIncreaseInput.focus(); } catch(__) {} }
+                    }
+                } catch(_) {}
+            } catch(e){ console.error('Global Alerts: failed to open modal', e); }
+        });
     }
     if (closeGlobalAlertsBtn && globalAlertsModal) {
         closeGlobalAlertsBtn.addEventListener('click', (e) => { e.preventDefault(); try { hideModal(globalAlertsModal); } catch(e){} });
@@ -14791,12 +14806,12 @@ if (targetPriceInput) {
                     if (this.tagName === 'SELECT') {
                         const nextElement = formInputs[index + 1];
                         if (nextElement) {
-                            nextElement.focus();
+                            try { if (window.safeFocus) window.safeFocus(nextElement); else try { nextElement.focus({ preventScroll:true }); } catch(_) { nextElement.focus(); } } catch(_) {}
                         } else if (addCommentSectionBtn && addCommentSectionBtn.offsetParent !== null && !addCommentSectionBtn.classList.contains('is-disabled-icon')) {
                             addCommentSectionBtn.click();
                             const newCommentTitleInput = commentsFormContainer.lastElementChild?.querySelector('.comment-title-input');
                             if (newCommentTitleInput) {
-                                newCommentTitleInput.focus();
+                                try { if (window.safeFocus) window.safeFocus(newCommentTitleInput); else try { newCommentTitleInput.focus({ preventScroll:true }); } catch(_) { newCommentTitleInput.focus(); } } catch(_) {}
                             }
                         } else if (saveShareBtn && !saveShareBtn.classList.contains('is-disabled-icon')) {
                             saveShareBtn.click();
@@ -14811,12 +14826,12 @@ if (targetPriceInput) {
                         // The focus logic below will still proceed.
                         const nextElement = formInputs[index + 1];
                         if (nextElement) {
-                            nextElement.focus();
+                            try { if (window.safeFocus) window.safeFocus(nextElement); else try { nextElement.focus({ preventScroll:true }); } catch(_) { nextElement.focus(); } } catch(_) {}
                         } else if (addCommentSectionBtn && addCommentSectionBtn.offsetParent !== null && !addCommentSectionBtn.classList.contains('is-disabled-icon')) {
                             addCommentSectionBtn.click();
                             const newCommentTitleInput = commentsFormContainer.lastElementChild?.querySelector('.comment-title-input');
                             if (newCommentTitleInput) {
-                                newCommentTitleInput.focus();
+                                try { if (window.safeFocus) window.safeFocus(newCommentTitleInput); else try { newCommentTitleInput.focus({ preventScroll:true }); } catch(_) { newCommentTitleInput.focus(); } } catch(_) {}
                             }
                         } else if (saveShareBtn && !saveShareBtn.classList.contains('is-disabled-icon')) {
                             saveShareBtn.click();
@@ -14828,7 +14843,7 @@ if (targetPriceInput) {
                     // Or if no specific action was taken, try to focus next general element
                     const nextElement = formInputs[index + 1];
                     if (nextElement) {
-                        nextElement.focus();
+                        try { if (window.safeFocus) window.safeFocus(nextElement); else try { nextElement.focus({ preventScroll:true }); } catch(_) { nextElement.focus(); } } catch(_) {}
                     }
                 }
             });
@@ -16650,7 +16665,12 @@ function showTargetHitDetailsModal(options={}) {
                         if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
                         if (globalAlertsModal) {
                             showModal(globalAlertsModal);
-                            try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(_) {}
+                            try {
+                                if (globalPercentIncreaseInput) {
+                                    if (window.safeFocus) window.safeFocus(globalPercentIncreaseInput);
+                                    else try { globalPercentIncreaseInput.focus({ preventScroll: true }); } catch(_) { try { globalPercentIncreaseInput.focus(); } catch(__) {} }
+                                }
+                            } catch(_) {}
                         }
                     }
                 } catch(_){ }
@@ -16676,7 +16696,12 @@ function showTargetHitDetailsModal(options={}) {
                     if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
                     if (typeof showModal === 'function' && globalAlertsModal) {
                         showModal(globalAlertsModal);
-                        try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(_) {}
+                        try {
+                            if (globalPercentIncreaseInput) {
+                                if (window.safeFocus) window.safeFocus(globalPercentIncreaseInput);
+                                else try { globalPercentIncreaseInput.focus({ preventScroll: true }); } catch(_) { try { globalPercentIncreaseInput.focus(); } catch(__) {} }
+                            }
+                        } catch(_) {}
                     }
                 } catch(_){ }
             });
@@ -16699,7 +16724,7 @@ function showTargetHitDetailsModal(options={}) {
                     if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
                     if (typeof showModal === 'function' && globalAlertsModal) {
                         showModal(globalAlertsModal);
-                        try { const el = document.getElementById('globalPercentDecrease'); if (el) el.focus(); } catch(_) {}
+                        try { const el = document.getElementById('globalPercentDecrease'); if (el) { if (window.safeFocus) window.safeFocus(el); else try { el.focus({ preventScroll:true }); } catch(_) { try { el.focus(); } catch(__) {} } } } catch(_) {}
                     }
                 } catch(_){ }
             });
@@ -16718,7 +16743,7 @@ function showTargetHitDetailsModal(options={}) {
                     if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
                     if (typeof showModal === 'function' && globalAlertsModal) {
                         showModal(globalAlertsModal);
-                        try { const el = document.getElementById('hiLoMinimumPrice'); if (el) el.focus(); } catch(_) {}
+                        try { const el = document.getElementById('hiLoMinimumPrice'); if (el) { if (window.safeFocus) window.safeFocus(el); else try { el.focus({ preventScroll:true }); } catch(_) { try { el.focus(); } catch(__) {} } } } catch(_) {}
                     }
                 } catch(_){ }
             });
@@ -16734,7 +16759,7 @@ function showTargetHitDetailsModal(options={}) {
                     if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
                     if (typeof showModal === 'function' && globalAlertsModal) {
                         showModal(globalAlertsModal);
-                        try { const el = document.getElementById('hiLoMinimumPrice'); if (el) el.focus(); } catch(_) {}
+                        try { const el = document.getElementById('hiLoMinimumPrice'); if (el) { if (window.safeFocus) window.safeFocus(el); else try { el.focus({ preventScroll:true }); } catch(_) { try { el.focus(); } catch(__) {} } } } catch(_) {}
                     }
                 } catch(_){ }
             });
