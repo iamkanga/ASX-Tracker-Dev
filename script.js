@@ -16449,14 +16449,113 @@ function showTargetHitDetailsModal(options={}) {
                     const name = sanitizeCompanyName(h.name || h.companyName || code, code);
                     const intent = (h.intent || '').toLowerCase();
                     const dir = (h.direction || '').toLowerCase();
-                    const liveVal = (h.live!=null && !isNaN(Number(h.live))) ? Number(h.live) : null;
+                    let liveVal = (h.live!=null && !isNaN(Number(h.live))) ? Number(h.live) : null;
                     const targetVal = (h.target!=null && !isNaN(Number(h.target))) ? Number(h.target) : null;
+
+                    // Prefer known live price; fallback to global caches
+                    if (liveVal == null && window.livePrices && window.livePrices[code] && window.livePrices[code].live != null) {
+                        try { liveVal = Number(window.livePrices[code].live); } catch(_) {}
+                    }
+
+                    // For duplicated 52-week entries, render using the compact notification card layout
+                    if (intent === '52w-low' || intent === '52w-high') {
+                        // Lookup 52w values from centralized hits if available
+                        let hi = null, lo = null;
+                        try {
+                            const gh = window.globalHiLo52Hits || {};
+                            const lowArr = Array.isArray(gh.lowHits) ? gh.lowHits : [];
+                            const highArr = Array.isArray(gh.highHits) ? gh.highHits : [];
+                            const foundLow = lowArr.find(e => String(e.code || e.shareCode || '').toUpperCase() === code);
+                            const foundHigh = highArr.find(e => String(e.code || e.shareCode || '').toUpperCase() === code);
+                            const src = (intent === '52w-low') ? (foundLow || foundHigh) : (foundHigh || foundLow);
+                            if (src) {
+                                if (src.high52 != null && !isNaN(Number(src.high52))) hi = Number(src.high52);
+                                else if (src.High52 != null && !isNaN(Number(src.High52))) hi = Number(src.High52);
+                                if (src.low52 != null && !isNaN(Number(src.low52))) lo = Number(src.low52);
+                                else if (src.Low52 != null && !isNaN(Number(src.Low52))) lo = Number(src.Low52);
+                                // If live missing, adopt from source
+                                if (liveVal == null && src.live != null && !isNaN(Number(src.live))) {
+                                    liveVal = Number(src.live);
+                                }
+                            }
+                        } catch(_) {}
+
+                        const card = document.createElement('div');
+                        // Use notification-card for consistent compact layout; add hilo-card + low/high accent
+                        const hiloClass = (intent === '52w-low') ? 'low' : 'high';
+                        card.className = 'notification-card custom-trigger-card hilo-card ' + hiloClass;
+                        const liveDisp = (liveVal!=null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
+                        const loHtml = (lo!=null) ? ('$' + formatAdaptivePrice(lo)) : '?';
+                        const hiHtml = (hi!=null) ? ('$' + formatAdaptivePrice(hi)) : '?';
+                        card.innerHTML = `
+                            <div class="notification-card-row">
+                                <div class="notification-card-left">
+                                    <div class="notification-code">${code}</div>
+                                    <div class="notification-name small">${name}</div>
+                                </div>
+                                <div class="notification-card-right">
+                                    <div class="notification-live">${liveDisp}</div>
+                                </div>
+                            </div>
+                            <div class="notification-card-bottom">
+                                <div class="hilo-details"><strong>52W Low:</strong> ${loHtml} &nbsp; <strong>High:</strong> ${hiHtml}</div>
+                            </div>`;
+                        card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openShareOrSearch(code); });
+                        frag.appendChild(card);
+                        return; // done with 52w card
+                    }
+
+                    // Default rendering for other custom triggers (e.g., target-hit, mover duplicates)
                     const card = document.createElement('div');
-                    card.className = 'notification-card custom-trigger-card';
+                    // Base compact card
+                    let classNames = ['notification-card','custom-trigger-card'];
+                    // Add left-accent for mover duplicates
+                    if (intent === 'mover') {
+                        classNames.push('mover-card');
+                        if (dir === 'up' || dir === 'down') classNames.push(dir);
+                    }
+                    // Add left-accent for target-hit entries
+                    if (intent === 'target-hit') {
+                        classNames.push('target-hit-accent');
+                        // Map intent/direction to classes so CSS can set red/green correctly
+                        const uiRaw = (h.userIntent || '').toString().trim().toLowerCase();
+                        const isBuy = uiRaw.includes('buy');
+                        const isSell = uiRaw.includes('sell');
+                        if (isBuy) classNames.push('intent-buy');
+                        else if (isSell) classNames.push('intent-sell');
+                        // Direction classes for color mapping fallbacks
+                        if (dir === 'above' || dir === 'below') classNames.push('dir-' + dir);
+                        // As an additional safeguard, set the CSS variable directly when we can infer mapping
+                        // Priority (most common): Buy Below -> red, Sell Above -> green
+                        try {
+                            if (isBuy && dir === 'below') {
+                                card.style.setProperty('--target-hit-border-color', 'var(--negative,#d9534f)');
+                            } else if (isSell && dir === 'above') {
+                                card.style.setProperty('--target-hit-border-color', 'var(--positive,#0a8a00)');
+                            } else if (!uiRaw && (dir === 'below' || dir === 'above')) {
+                                // If userIntent missing, fall back to direction semantics
+                                card.style.setProperty('--target-hit-border-color', dir === 'below' ? 'var(--negative,#d9534f)' : 'var(--positive,#0a8a00)');
+                            }
+                        } catch(_) {}
+                    }
+                    card.className = classNames.join(' ');
                     const liveDisp = (liveVal!=null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
                     const tgtDisp = (targetVal!=null) ? ('$' + formatAdaptivePrice(targetVal)) : '';
                     const userIntent = (h.userIntent || '').toString().trim();
-                    const meta = [intent?intent.toUpperCase():'', dir?dir.toUpperCase():'', userIntent?userIntent.toUpperCase():''].filter(Boolean).join(' · ');
+                    // Build a human-friendly, de-emphasized meta line
+                    const prettyUserIntent = (function(){
+                        if (!userIntent) return '';
+                        const ui = userIntent.toLowerCase();
+                        if (ui.includes('buy') && ui.includes('below')) return 'Buy below';
+                        if (ui.includes('sell') && ui.includes('above')) return 'Sell above';
+                        if (ui.includes('buy') && ui.includes('above')) return 'Buy above';
+                        if (ui.includes('sell') && ui.includes('below')) return 'Sell below';
+                        // Fallback: title case raw
+                        return ui.replace(/[-_]+/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+                    })();
+                    const meta = (intent === 'target-hit')
+                        ? ['Target hit', prettyUserIntent].filter(Boolean).join(' · ')
+                        : [intent?intent.toUpperCase():'', dir?dir.toUpperCase():'', userIntent?userIntent.toUpperCase():''].filter(Boolean).join(' · ');
                     card.innerHTML = `
                         <div class="notification-card-row">
                             <div class="notification-card-left">

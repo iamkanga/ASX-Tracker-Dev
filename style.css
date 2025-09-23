@@ -471,6 +471,19 @@
 .notification-card .notification-pct.up { color:var(--positive,#0a8a00); }
 .notification-card .notification-pct.down { color:var(--negative,#d9534f); }
 .notification-card .notification-name.small { font-size: 0.78rem; opacity: 0.9; }
+/* Compact 52-week accents when rendered as notification-cards in Custom Triggers */
+.notification-card.hilo-card { border-left: 4px solid transparent; }
+.notification-card.hilo-card.high { border-left-color: var(--positive,#0a8a00); }
+.notification-card.hilo-card.low { border-left-color: var(--negative,#d9534f); }
+.notification-card .hilo-details { color: var(--text-color-secondary,#666); font-size: 0.78rem; margin-top: 6px; }
+
+/* Movers accents on compact notification cards (already defined globally for mover-card) */
+.notification-card.mover-card.up { border-left: 4px solid var(--positive,#0a8a00); }
+.notification-card.mover-card.down { border-left: 4px solid var(--negative,#d9534f); }
+
+/* Target price line: softer weight and size to reduce prominence */
+.notification-card .target-line { font-size: 0.78rem; font-weight: 500; color: var(--text-color-secondary,#666); }
+.notification-card .target-line .label { color: var(--ghosted-text,#777); font-weight: 600; }
 /* Trigger chip badges */
 .notification-chip {
     display: inline-block;
@@ -2793,6 +2806,15 @@ body table tbody tr.neutral-change-row, #mobileShareCards .mobile-card.neutral-c
     border-radius: var(--target-hit-border-radius, 8px) ;
     padding-left: calc(12px - var(--target-hit-border-width, 4px)); /* visually compensate for left border */
 }
+/* Semantic mapping for target-hit colors: Buy Below -> red; Sell Above -> green.
+   Use userIntent and direction helper classes, with direction-only fallbacks. */
+.notification-card.custom-trigger-card.target-hit-accent.intent-buy.dir-below { --target-hit-border-color: var(--negative,#d9534f); }
+.notification-card.custom-trigger-card.target-hit-accent.intent-sell.dir-above { --target-hit-border-color: var(--positive,#0a8a00); }
+/* Fallback when only direction known */
+.notification-card.custom-trigger-card.target-hit-accent.dir-below { --target-hit-border-color: var(--negative,#d9534f); }
+.notification-card.custom-trigger-card.target-hit-accent.dir-above { --target-hit-border-color: var(--positive,#0a8a00); }
+/* De-emphasize meta line (e.g., 'Target hit', 'Buy below') similar to the target price line */
+.notification-card .meta-line { font-size: 0.78rem; font-weight: 500; color: var(--text-color-secondary,#666); opacity: 0.88; }
 
 /* Mobile: keep left accent for custom alert list items; mobile cards have their own styling */
 @media (max-width: 768px) {
