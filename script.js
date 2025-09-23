@@ -1993,7 +1993,10 @@ document.addEventListener('DOMContentLoaded', function () {
     // Splash version display
     try {
         const splashVerEl = document.getElementById('splashAppVersion');
-    if (splashVerEl) splashVerEl.textContent = 'v' + APP_VERSION;
+        if (splashVerEl) {
+            // Always force the current version string on load to avoid stale DOM
+            splashVerEl.textContent = 'v' + APP_VERSION;
+        }
     } catch (e) { /* ignore */ }
 
     // Force Update button handler - posts SKIP_WAITING to waiting worker or triggers update

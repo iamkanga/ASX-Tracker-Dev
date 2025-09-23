@@ -16,7 +16,7 @@
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <div id="splashScreen" class="splash-screen">
-    <p id="splashAppVersion" class="app-version-splash app-version-splash-top"></p>
+    <p id="splashAppVersion" class="app-version-splash app-version-splash-top">v2.15.9</p>
         <img id="splashKangarooIcon" src="Kangaicon.jpg" alt="Kangaroo App Icon" class="splash-icon">
         <button id="splashSignInBtn" class="google-auth-btn">
             <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg">
@@ -992,7 +992,7 @@
     <!-- Service worker registration and immediate update helper -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js').then(reg => {
+            navigator.serviceWorker.register('service-worker.js?v=2.15.9').then(reg => {
                 try { reg.update(); } catch(e){}
                 // If a new worker is already waiting, ask it to skipWaiting
                 if (reg.waiting) {
