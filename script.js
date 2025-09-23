@@ -6216,9 +6216,8 @@ function showModal(modalElement) {
     // .app-hidden after .modal.show which prevents display unless we remove it here.
     try { modalElement.classList.remove('app-hidden'); } catch(_){}
     modalElement.classList.add('show');
-        modalElement.scrollTop = 0;
+        // Do not force-scroll to top here; preserve user's last position and avoid snapping.
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
-        if (scrollableContent) scrollableContent.scrollTop = 0;
         if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') {
             try { initializeShareNameAutocomplete(true); } catch(_) {}
         }
@@ -6235,9 +6234,8 @@ function showModalNoHistory(modalElement) {
     // Remove initial hide marker before showing (see comment in showModal)
     try { modalElement.classList.remove('app-hidden'); } catch(_){}
     modalElement.classList.add('show');
-        modalElement.scrollTop = 0;
+        // Do not reset scroll on show without history either to avoid snapping.
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
-        if (scrollableContent) scrollableContent.scrollTop = 0;
         if (typeof logDebug === 'function') logDebug('Modal (no-history): Showing modal: ' + modalElement.id);
     } catch (e) { console.warn('showModalNoHistory fallback failed', e); }
 }

@@ -12,7 +12,7 @@
     // Expose safe global fallbacks so other modules can call these even if script.js hasn't attached real implementations yet.
     try {
         if (!window.logDebug) window.logDebug = function(){ try { console.log.apply(console, arguments); } catch(_){} };
-        if (!window.showModal) window.showModal = function(m){ try { if (m) { m.style.setProperty('display','flex','important'); m.scrollTop = 0;} } catch(_){} };
+    if (!window.showModal) window.showModal = function(m){ try { if (m) { m.style.setProperty('display','flex','important'); /* do not force scrollTop here */ } } catch(_){} };
         if (!window.hideModal) window.hideModal = function(m){ try { if (m) m.style.setProperty('display','none','important'); } catch(_){} };
         if (!window.scrollMainToTop) window.scrollMainToTop = function(instant){
             try {
@@ -256,9 +256,9 @@
         // Add semantic class for visibility
         try { modalElement.classList.add('show'); } catch(_){}
     modalElement.style.setProperty('display', 'flex', 'important');
-        modalElement.scrollTop = 0;
+        // Do not force modal scroll to top on open; allow user-controlled position
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
-    if (scrollableContent) scrollableContent.scrollTop = 0;
+        // If there is a known reason to reset (e.g., explicit caller intent), handle via a separate helper.
     try { if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') initializeShareNameAutocomplete(true); } catch(_) {}
     // After showing, trigger keyboard-aware sizing in case a virtual keyboard is present
     try {
@@ -280,9 +280,8 @@
         try { modalElement.classList.remove('app-hidden'); } catch(_){}
         try { modalElement.classList.add('show'); } catch(_){}
     modalElement.style.setProperty('display', 'flex', 'important');
-        modalElement.scrollTop = 0;
+        // Do not reset scroll on show without history either.
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
-        if (scrollableContent) scrollableContent.scrollTop = 0;
     }
 
     // Hide a modal visually but keep it on the in-app back stack so it can be restored on Back
@@ -534,6 +533,12 @@
         if (window.__keyboardAwareModalsInstalled) return;
         window.__keyboardAwareModalsInstalled = true;
 
+        // Feature flag: disable auto-scroll on input focus inside modals by default.
+        // Set window.ModalFocusAutoScroll = true to re-enable the previous behavior.
+        if (typeof window.ModalFocusAutoScroll === 'undefined') {
+            window.ModalFocusAutoScroll = false;
+        }
+
         const isMobileish = () => {
             try { return (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch(_) { return true; }
         };
@@ -632,23 +637,24 @@
                 const modal = target.closest && target.closest('.modal');
                 const scroller = getScrollable(modal);
                 if (!scroller) return;
-                // Delay slightly so keyboard/viewport settles
-                setTimeout(() => {
-                    try {
-                        // Try native scrollIntoView on nearest scrollable ancestor
-                        if (typeof target.scrollIntoView === 'function') {
-                            target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
-                        }
-                        // Ensure within scroller bounds as a fallback
-                        const tRect = target.getBoundingClientRect();
-                        const sRect = scroller.getBoundingClientRect();
-                        if (tRect.bottom > sRect.bottom - 16 || tRect.top < sRect.top + 16) {
-                            const deltaTop = (tRect.top - sRect.top) - 80; // offset so field sits above keyboard
-                            const desired = Math.max(0, scroller.scrollTop + deltaTop);
-                            try { scroller.scrollTo({ top: desired, behavior: 'smooth' }); } catch(_) { scroller.scrollTop = desired; }
-                        }
-                    } catch(_) {}
-                }, 140);
+                // Auto-scroll on focus intentionally disabled unless explicitly enabled by flag.
+                if (window.ModalFocusAutoScroll === true) {
+                    // Delay slightly so keyboard/viewport settles
+                    setTimeout(() => {
+                        try {
+                            if (typeof target.scrollIntoView === 'function') {
+                                target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+                            }
+                            const tRect = target.getBoundingClientRect();
+                            const sRect = scroller.getBoundingClientRect();
+                            if (tRect.bottom > sRect.bottom - 16 || tRect.top < sRect.top + 16) {
+                                const deltaTop = (tRect.top - sRect.top) - 80;
+                                const desired = Math.max(0, scroller.scrollTop + deltaTop);
+                                try { scroller.scrollTo({ top: desired, behavior: 'smooth' }); } catch(_) { scroller.scrollTop = desired; }
+                            }
+                        } catch(_) {}
+                    }, 140);
+                }
             } catch(_) {}
         }
 
@@ -659,6 +665,7 @@
                 if (!isMobileish()) return;
                 if (!t || !t.closest || !t.closest('.modal')) return;
                 if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable) {
+                    if (window.ModalFocusAutoScroll !== true) return; // do not scroll on focus by default
                     scrollFocusedIntoView(t);
                 }
             } catch(_) {}
