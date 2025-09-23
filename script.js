@@ -3542,7 +3542,7 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
                 try {
                     if (typeof sortSelect !== 'undefined' && sortSelect) {
                         // Focus first
-                        sortSelect.focus();
+                        try { if (window.safeFocus) window.safeFocus(sortSelect); else try { sortSelect.focus({ preventScroll: true }); } catch(_) { sortSelect.focus(); } } catch(_) {}
                         // Attempt to open the native select dropdown by simulating a click
                         try { sortSelect.click(); } catch(_) {}
                     }
@@ -5352,7 +5352,10 @@ function toggleAccordionSection(section) {
     // Handle scrolling adjustments for mobile and modal context
     if (opening && window.innerWidth < 650) {
         setTimeout(() => {
-            try { toggleBtn.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
+            try {
+                const inModal = toggleBtn && toggleBtn.closest && toggleBtn.closest('.modal');
+                if (!inModal) toggleBtn.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch(e) {}
         }, 30);
     }
     
@@ -6768,7 +6771,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     }
     setTimeout(() => initShareFormAccordion(true), 10);
     try { scrollMainToTop(); } catch(_) {}
-    shareNameInput.focus();
+    try { if (window.safeFocus) window.safeFocus(shareNameInput); else try { shareNameInput.focus({ preventScroll:true }); } catch(_) { shareNameInput.focus(); } } catch(_) {}
     // Always show live price snapshot if code is present
     if (shareNameInput && shareNameInput.value.trim()) {
         updateAddFormLiveSnapshot(shareNameInput.value.trim());
@@ -8599,7 +8602,7 @@ function openWatchlistPicker() {
             toggleCodeButtonsArrow();
             try { hideModal(watchlistPickerModal); } catch (_) { watchlistPickerModal.classList.add('app-hidden'); watchlistPickerModal.style.display = 'none'; }
             if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded', 'false');
-            if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus();
+            if (dynamicWatchlistTitleText) { try { if (window.safeFocus) window.safeFocus(dynamicWatchlistTitleText); else try { dynamicWatchlistTitleText.focus({ preventScroll:true }); } catch(_) { dynamicWatchlistTitleText.focus(); } } catch(_) {} }
         };
         div.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); div.click(); } };
         watchlistPickerList.appendChild(div);
@@ -8631,7 +8634,7 @@ if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
         setTimeout(()=>{
             const listEl = document.getElementById('watchlistPickerList');
             const first = listEl && listEl.querySelector('.picker-item');
-            if (first) first.focus();
+            if (first) { try { if (window.safeFocus) window.safeFocus(first); else try { first.focus({ preventScroll:true }); } catch(_) { first.focus(); } } catch(_) {} }
         },30);
     };
     // Bind to the narrow span to keep the click target tight
@@ -8648,14 +8651,14 @@ if (closeWatchlistPickerBtn && !closeWatchlistPickerBtn.getAttribute('data-picke
         const modalEl=document.getElementById('watchlistPickerModal');
         if (modalEl) { try { hideModal(modalEl); } catch(_) { modalEl.classList.add('app-hidden'); } }
         if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false');
-        if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus();
+    if (dynamicWatchlistTitleText) { try { if (window.safeFocus) window.safeFocus(dynamicWatchlistTitleText); else try { dynamicWatchlistTitleText.focus({ preventScroll:true }); } catch(_) { dynamicWatchlistTitleText.focus(); } } catch(_) {} }
     });
     closeWatchlistPickerBtn.setAttribute('data-picker-close-bound','true');
 }
 if (!window.__watchlistPickerGlobalBound) {
     window.__watchlistPickerGlobalBound = true;
-    window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
-    window.addEventListener('keydown', e=>{ if(e.key==='Escape' && watchlistPickerModal && watchlistPickerModal.style.display!=='none' && !watchlistPickerModal.classList.contains('app-hidden')){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
+    window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) { try { if (window.safeFocus) window.safeFocus(dynamicWatchlistTitleText); else try { dynamicWatchlistTitleText.focus({ preventScroll:true }); } catch(_) { dynamicWatchlistTitleText.focus(); } } catch(_) {} } } });
+    window.addEventListener('keydown', e=>{ if(e.key==='Escape' && watchlistPickerModal && watchlistPickerModal.style.display!=='none' && !watchlistPickerModal.classList.contains('app-hidden')){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) { try { if (window.safeFocus) window.safeFocus(dynamicWatchlistTitleText); else try { dynamicWatchlistTitleText.focus({ preventScroll:true }); } catch(_) { dynamicWatchlistTitleText.focus(); } } catch(_) {} } } });
 }
 
 // Wrap loadUserWatchlistsAndSettings to refresh new UI parts after data load
@@ -8696,7 +8699,7 @@ function bindHeaderInteractiveElements() {
             setTimeout(()=>{
                 const listEl = document.getElementById('watchlistPickerList');
                 const first = listEl && listEl.querySelector('.picker-item');
-                if (first) first.focus();
+                if (first) { try { if (window.safeFocus) window.safeFocus(first); else try { first.focus({ preventScroll:true }); } catch(_) { first.focus(); } } catch(_) {} }
             },30);
         };
         clickable.addEventListener('click', openPicker);
@@ -8707,7 +8710,7 @@ function bindHeaderInteractiveElements() {
     const closeBtn = document.getElementById('closeWatchlistPickerBtn');
     const pickerModal = document.getElementById('watchlistPickerModal');
     if (closeBtn && closeBtn.getAttribute('data-close-bound') !== 'true') {
-        closeBtn.addEventListener('click', ()=>{ if (pickerModal) pickerModal.classList.add('app-hidden'); if (titleEl) { titleEl.setAttribute('aria-expanded','false'); } if (textEl) textEl.focus(); });
+    closeBtn.addEventListener('click', ()=>{ if (pickerModal) pickerModal.classList.add('app-hidden'); if (titleEl) { titleEl.setAttribute('aria-expanded','false'); } if (textEl) { try { if (window.safeFocus) window.safeFocus(textEl); else try { textEl.focus({ preventScroll:true }); } catch(_) { textEl.focus(); } } catch(_) {} } });
         closeBtn.setAttribute('data-close-bound','true');
     }
 }
@@ -9537,7 +9540,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 showModal(shareFormSection); // Show add/edit modal
                 // Ensure accordion is properly initialized after modal is shown
                 setTimeout(() => initShareFormAccordion(true), 10);
-                if (targetPriceInput) targetPriceInput.focus();
+                if (targetPriceInput) { try { if (window.safeFocus) window.safeFocus(targetPriceInput); else try { targetPriceInput.focus({ preventScroll:true }); } catch(_) { targetPriceInput.focus(); } } catch(_) {} }
                 checkFormDirtyState(); // Recompute dirty state
             });
         }
@@ -13573,7 +13576,7 @@ function handleAddShareClick() {
     // Ensure accordion is properly initialized after modal is shown
     setTimeout(() => initShareFormAccordion(true), 10);
     try { scrollMainToTop(); } catch(_) {}
-    shareNameInput.focus();
+    try { if (window.safeFocus) window.safeFocus(shareNameInput); else try { shareNameInput.focus({ preventScroll:true }); } catch(_) { shareNameInput.focus(); } } catch(_) {}
     // Always show live price snapshot if code is present
     if (shareNameInput && shareNameInput.value.trim()) {
         updateAddFormLiveSnapshot(shareNameInput.value.trim());
@@ -14415,7 +14418,7 @@ async function initializeAppLogic() {
                 // changes that can cause mobile layout jumps (which were opening the "Other Details" accordion)
                 const next = targetPriceInput;
                 try {
-                    if (!('ontouchstart' in window) && next) next.focus();
+                    if (!('ontouchstart' in window) && next) { try { if (window.safeFocus) window.safeFocus(next); else try { next.focus({ preventScroll:true }); } catch(_) { next.focus(); } } catch(_) {} }
                 } catch(_) {}
 
                 checkFormDirtyState();
@@ -14578,12 +14581,18 @@ async function initializeAppLogic() {
                 e.preventDefault(); // Prevent cursor movement in input
                 currentSelectedSuggestionIndex = (currentSelectedSuggestionIndex + 1) % items.length;
                 updateSelectedSuggestion(items);
-                items[currentSelectedSuggestionIndex].scrollIntoView({ block: 'nearest' });
+                try {
+                    const inModal = items[currentSelectedSuggestionIndex] && items[currentSelectedSuggestionIndex].closest && items[currentSelectedSuggestionIndex].closest('.modal');
+                    if (!inModal) items[currentSelectedSuggestionIndex].scrollIntoView({ block: 'nearest' });
+                } catch(_) {}
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault(); // Prevent cursor movement in input
                 currentSelectedSuggestionIndex = (currentSelectedSuggestionIndex - 1 + items.length) % items.length;
                 updateSelectedSuggestion(items);
-                items[currentSelectedSuggestionIndex].scrollIntoView({ block: 'nearest' });
+                try {
+                    const inModal = items[currentSelectedSuggestionIndex] && items[currentSelectedSuggestionIndex].closest && items[currentSelectedSuggestionIndex].closest('.modal');
+                    if (!inModal) items[currentSelectedSuggestionIndex].scrollIntoView({ block: 'nearest' });
+                } catch(_) {}
             } else if (e.key === 'Enter') {
                 e.preventDefault(); // Prevent form submission
                 if (currentSelectedSuggestionIndex > -1) {
@@ -15657,7 +15666,7 @@ if (sortSelect) {
             originalWatchlistData = getCurrentWatchlistFormData(true); // Store initial state for dirty check
             showModal(addWatchlistModal);
             try { scrollMainToTop(); } catch(_) {}
-            newWatchlistNameInput.focus();
+            try { if (window.safeFocus) window.safeFocus(newWatchlistNameInput); else try { newWatchlistNameInput.focus({ preventScroll:true }); } catch(_) { newWatchlistNameInput.focus(); } } catch(_) {}
             toggleAppSidebar(false);
             checkWatchlistFormDirtyState(true); // Check dirty state immediately after opening
         });
@@ -15719,7 +15728,7 @@ if (sortSelect) {
             originalWatchlistData = getCurrentWatchlistFormData(false); // Store initial state for dirty check
             showModal(manageWatchlistModal);
             try { scrollMainToTop(); } catch(_) {}
-            editWatchlistNameInput.focus();
+            try { if (window.safeFocus) window.safeFocus(editWatchlistNameInput); else try { editWatchlistNameInput.focus({ preventScroll:true }); } catch(_) { editWatchlistNameInput.focus(); } } catch(_) {}
             toggleAppSidebar(false);
             checkWatchlistFormDirtyState(false); // Check dirty state immediately after opening
         });
@@ -15907,8 +15916,8 @@ if (sortSelect) {
             const first = focusables[0];
             const last = focusables[focusables.length-1];
             if (e.key === 'Tab') {
-                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); try { if (window.safeFocus) window.safeFocus(last); else try { last.focus({ preventScroll:true }); } catch(_) { last.focus(); } } catch(_) {} }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); try { if (window.safeFocus) window.safeFocus(first); else try { first.focus({ preventScroll:true }); } catch(_) { first.focus(); } } catch(_) {} }
             }
         }
         document.addEventListener('keydown', trapFocus, true);
@@ -15923,7 +15932,7 @@ if (sortSelect) {
                 // Move initial focus
                 setTimeout(()=>{
                     const first = appSidebar.querySelector(firstFocusableSelector);
-                    if (first) first.focus();
+                    if (first) { try { if (window.safeFocus) window.safeFocus(first); else try { first.focus({ preventScroll:true }); } catch(_) { first.focus(); } } catch(_) {} }
                 },30);
             } else {
                 if (mainContent) mainContent.removeAttribute('inert');
@@ -16054,8 +16063,8 @@ if (sortSelect) {
                 const first = focusables[0];
                 const last = focusables[focusables.length-1];
                 if (e.key === 'Tab') {
-                    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-                    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+                    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); try { if (window.safeFocus) window.safeFocus(last); else try { last.focus({ preventScroll:true }); } catch(_) { last.focus(); } } catch(_) {} }
+                    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); try { if (window.safeFocus) window.safeFocus(first); else try { first.focus({ preventScroll:true }); } catch(_) { first.focus(); } } catch(_) {} }
                 }
             }
             document.addEventListener('keydown', trapFocus, true);
@@ -16070,7 +16079,7 @@ if (sortSelect) {
                     // Move initial focus
                     setTimeout(()=>{
                         const first = appSidebar.querySelector(firstFocusableSelector);
-                        if (first) first.focus();
+                        if (first) { try { if (window.safeFocus) window.safeFocus(first); else try { first.focus({ preventScroll:true }); } catch(_) { first.focus(); } } catch(_) {} }
                     },30);
                 } else {
                     if (mainContent) mainContent.removeAttribute('inert');
@@ -16171,7 +16180,7 @@ if (sortSelect) {
             currentSearchShareData = null;
             showModal(stockSearchModal);
             try { scrollMainToTop(); } catch(_) {}
-            asxSearchInput.focus();
+            try { if (window.safeFocus) window.safeFocus(asxSearchInput); else try { asxSearchInput.focus({ preventScroll:true }); } catch(_) { asxSearchInput.focus(); } } catch(_) {}
             toggleAppSidebar(false); // Close sidebar
         });
     }
@@ -16439,7 +16448,10 @@ function showTargetHitDetailsModal(options={}) {
                         // Open target section
                         targetSection.classList.add('open');
                         header.setAttribute('aria-expanded', 'true');
-                        try { header.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(_) {}
+                        try {
+                            const inModal = header && header.closest && header.closest('.modal');
+                            if (!inModal) header.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        } catch(_) {}
                     }
                 });
                 summaryHost.__chipsBound = true;

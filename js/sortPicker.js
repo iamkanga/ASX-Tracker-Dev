@@ -374,7 +374,7 @@ export function openSortPicker() {
                 else if (typeof hideModal === 'function') hideModal(modalEl);
                 else if (modalEl) { modalEl.classList.remove('show'); modalEl.classList.add('app-hidden'); modalEl.style.setProperty('display','none','important'); }
             } catch(_) {}
-            try { const btn = document.getElementById('sortPickerBtn'); if (btn) { btn.setAttribute('aria-expanded','false'); btn.focus(); } } catch(_) {}
+            try { const btn = document.getElementById('sortPickerBtn'); if (btn) { btn.setAttribute('aria-expanded','false'); if (window.safeFocus) window.safeFocus(btn); else try { btn.focus({ preventScroll:true }); } catch(_) { btn.focus(); } } } catch(_) {}
         };
         row.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.click(); } };
         list.appendChild(row);
@@ -424,7 +424,7 @@ export function initSortPicker() {
         try { btn.setAttribute('aria-expanded', 'true'); } catch(_) {}
         setTimeout(()=>{
             const first = document.querySelector('#sortPickerList .sort-picker-row');
-            if (first) first.focus();
+            if (first) { try { if (window.safeFocus) window.safeFocus(first); else try { first.focus({ preventScroll:true }); } catch(_) { first.focus(); } } catch(_) {} }
         },30);
     });
 
@@ -436,7 +436,7 @@ export function initSortPicker() {
                 try { e.preventDefault(); e.stopPropagation(); } catch(_){}
                 const modal = document.getElementById('sortPickerModal');
                 try { if (window.UI && window.UI.hideModal) window.UI.hideModal(modal); else if (typeof hideModal === 'function') hideModal(modal); else { modal.classList.remove('show'); modal.classList.add('app-hidden'); modal.style.setProperty('display','none','important'); } } catch(_){}
-                try { btn.setAttribute('aria-expanded','false'); btn.focus(); } catch(_){}
+                try { btn.setAttribute('aria-expanded','false'); if (window.safeFocus) window.safeFocus(btn); else try { btn.focus({ preventScroll:true }); } catch(_) { btn.focus(); } } catch(_){}
             });
         }
     } catch(_) {}
@@ -458,7 +458,7 @@ if (!window.__sortPickerGlobalBound) {
                 if (e.target === modal) {
                     try { hideModal(modal); } catch(_) { if (modal) modal.classList.add('app-hidden'); }
                     if (btn) btn.setAttribute('aria-expanded','false');
-                    if (btn) btn.focus();
+                    if (btn) { try { if (window.safeFocus) window.safeFocus(btn); else try { btn.focus({ preventScroll:true }); } catch(_) { btn.focus(); } } catch(_) {} }
                 }
             } catch(_) {}
         });
@@ -468,7 +468,7 @@ if (!window.__sortPickerGlobalBound) {
                 if (e.key === 'Escape' && modal && !modal.classList.contains('app-hidden')) {
                     try { hideModal(modal); } catch(_) { modal.classList.add('app-hidden'); }
                     if (btn) btn.setAttribute('aria-expanded','false');
-                    if (btn) btn.focus();
+                    if (btn) { try { if (window.safeFocus) window.safeFocus(btn); else try { btn.focus({ preventScroll:true }); } catch(_) { btn.focus(); } } catch(_) {} }
                 }
             } catch(_) {}
         });

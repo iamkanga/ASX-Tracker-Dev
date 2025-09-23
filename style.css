@@ -7077,6 +7077,14 @@ table td.live-price-cell.negative-change {
 #shareDetailModal .modal-content { width:94%; max-width:540px; }
 #shareDetailModal { overscroll-behavior:contain; }
 
+/* Hard-disable UA auto-smooth/anchoring inside all modal scrollers to prevent focus-induced snapping */
+.modal .modal-content,
+.modal .modal-body-scrollable,
+.modal .single-scroll-modal {
+    scroll-behavior: auto !important;
+    overflow-anchor: none !important;
+}
+
 /* Center & constrain login note (single line) */
 #commSecLoginMessage { text-align:center; display:block; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:6px 0 0 0 !important; grid-column:1 / -1; order:999; }
 

@@ -669,7 +669,9 @@
                     setTimeout(() => {
                         try {
                             if (typeof target.scrollIntoView === 'function') {
-                                target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+                                // Only auto-scroll if not inside a modal; avoid any snapping within modals
+                                const inModal = target && target.closest && target.closest('.modal');
+                                if (!inModal) target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
                             }
                             const tRect = target.getBoundingClientRect();
                             const sRect = scroller.getBoundingClientRect();
@@ -730,4 +732,47 @@
         // Expose for debugging
         try { window.ModalViewportManager = { refresh: applyViewportSizing }; } catch(_) {}
     } catch (e) { /* silent */ }
+})();
+
+// Global guard: prevent programmatic scrollIntoView during input focus inside modals (anti-snap hardening)
+(function installModalFocusScrollGuards(){
+    try {
+        if (window.__modalFocusScrollGuardsInstalled) return;
+        window.__modalFocusScrollGuardsInstalled = true;
+
+        let focusPhase = false;
+        let focusTimer = null;
+        const markFocusPhase = () => {
+            focusPhase = true;
+            if (focusTimer) clearTimeout(focusTimer);
+            // Keep window for a short time slice to catch chained handlers (caret, selection)
+            focusTimer = setTimeout(() => { focusPhase = false; }, 240);
+        };
+
+        document.addEventListener('focusin', (e)=>{
+            try {
+                const t = e.target;
+                if (t && t.closest && t.closest('.modal')) {
+                    markFocusPhase();
+                }
+            } catch(_) {}
+        }, true);
+
+        // Patch scrollIntoView to no-op during focus phase inside modals
+        const proto = Element.prototype;
+        const origSIV = proto.scrollIntoView;
+        if (origSIV && !proto.__scrollIntoViewPatchedForModals) {
+            Object.defineProperty(proto, '__scrollIntoViewPatchedForModals', { value: true, writable: false });
+            proto.scrollIntoView = function patchedScrollIntoView(arg){
+                try {
+                    const inModal = this && this.closest && this.closest('.modal');
+                    if (inModal && focusPhase) {
+                        // Suppress scroll snapping triggered by focus/selection in modal
+                        return; // no-op
+                    }
+                } catch(_) {}
+                try { return origSIV.apply(this, arguments); } catch(e) { try { return origSIV.call(this, arg); } catch(_) {} }
+            };
+        }
+    } catch(_) {}
 })();

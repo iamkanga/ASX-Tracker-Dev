@@ -562,7 +562,7 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
         container.appendChild(wrap);
 
         if (focus) {
-            try { if (window.safeFocus) window.safeFocus(titleInput); else titleInput.focus(); } catch(_) {}
+            try { if (window.safeFocus) window.safeFocus(titleInput); else try { titleInput.focus({ preventScroll:true }); } catch(_) { titleInput.focus(); } } catch(_) {}
         }
 
         // Wire up dirty-state listeners and delete behavior
@@ -884,7 +884,7 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
 
     try {
         if (cashAssetNameInput && cashAssetNameInput.focus) {
-            if (window.safeFocus) window.safeFocus(cashAssetNameInput); else cashAssetNameInput.focus();
+            if (window.safeFocus) window.safeFocus(cashAssetNameInput); else { try { cashAssetNameInput.focus({ preventScroll:true }); } catch(_) { cashAssetNameInput.focus(); } }
         }
     } catch(_) {}
     try { window.checkCashAssetFormDirtyState && window.checkCashAssetFormDirtyState(); } catch(_) {}
