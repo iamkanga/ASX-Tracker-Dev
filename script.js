@@ -2591,7 +2591,7 @@ let globalMinimumPriceInput = null;
 let hiLoMinimumPriceInput = null;
 let hiLoMinimumMarketCapInput = null;
 let emailAlertsEnabledInput = null;
-let globalAlertsSettingsSummaryEl = null; // displays current settings under sidebar button
+let globalAlertsSettingsSummaryEl = null; // sidebar summary removed
 
 // Early preload: if user recently cleared thresholds and we saved a local snapshot, apply it immediately
 // to avoid a flash of stale remote values before Firestore listener returns.
@@ -12066,17 +12066,8 @@ function formatGlobalAlertPart(pct, dol) {
 }
 
 function updateGlobalAlertsSettingsSummary() {
-    if (!globalAlertsSettingsSummaryEl) globalAlertsSettingsSummaryEl = document.getElementById('globalAlertsSettingsSummary');
-    if (!globalAlertsSettingsSummaryEl) return;
-    const incPart = formatGlobalAlertPart(globalPercentIncrease, globalDollarIncrease);
-    const decPart = formatGlobalAlertPart(globalPercentDecrease, globalDollarDecrease);
-    if (incPart === 'Off' && decPart === 'Off') {
-        globalAlertsSettingsSummaryEl.textContent = '';
-    } else {
-    const minPart = globalMinimumPrice ? ('Min: $' + Number(globalMinimumPrice).toFixed(2) + ' | ') : '';
-        globalAlertsSettingsSummaryEl.textContent = minPart + 'Increase: ' + incPart + ' | Decrease: ' + decPart;
-    }
-    // Also update the in-modal thresholds summary card, if present
+    // Sidebar summary removed by request; keep function to service callers but do nothing for sidebar.
+    // Still update the in-modal thresholds summary card, if present
     try {
         const elInc = document.getElementById('gaSumIncrease');
         const elDec = document.getElementById('gaSumDecrease');
@@ -12084,8 +12075,8 @@ function updateGlobalAlertsSettingsSummary() {
         const elHiLoMinPrice = document.getElementById('gaSumHiLoMinPrice');
         const elHiLoMinCap = document.getElementById('gaSumHiLoMinCap');
         const elEmail = document.getElementById('gaSumEmail');
-        if (elInc) elInc.textContent = incPart;
-        if (elDec) elDec.textContent = decPart;
+        if (elInc) elInc.textContent = formatGlobalAlertPart(globalPercentIncrease, globalDollarIncrease);
+        if (elDec) elDec.textContent = formatGlobalAlertPart(globalPercentDecrease, globalDollarDecrease);
         if (elMin) elMin.textContent = (typeof globalMinimumPrice === 'number' && globalMinimumPrice > 0) ? ('$' + Number(globalMinimumPrice).toFixed(2)) : 'Off';
         if (elHiLoMinPrice) elHiLoMinPrice.textContent = (typeof hiLoMinimumPrice === 'number' && hiLoMinimumPrice > 0) ? ('$' + Number(hiLoMinimumPrice).toFixed(2)) : 'Off';
         if (elHiLoMinCap) elHiLoMinCap.textContent = (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) ? ('$' + formatCompactNumber(hiLoMinimumMarketCap, { maximumFractionDigits: 1 })) : 'Off';
