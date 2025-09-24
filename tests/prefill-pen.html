@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Prefill CodePen – Inline Share Form Isolation</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { margin:0; padding:40px clamp(18px,4vw,60px); background:#101418; color:#e9edf1; line-height:1.5; }
+    h1 { margin:0 0 4px; font-size:clamp(1.6rem,3.4vw,2.4rem); letter-spacing:.5px; background:linear-gradient(90deg,#f5f5f5,#b7a6a6 70%); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    p.lead { margin:.2rem 0 2rem; color:#7d8792; max-width:780px; }
+    form { margin:28px 0 0; }
+    button { cursor:pointer; font:600 15px/1 system-ui, sans-serif; padding:14px 28px; border-radius:1000px; background:#a49393; color:#0f1115; border:1px solid #a49393; letter-spacing:.5px; box-shadow:0 4px 18px -6px #000; transition:background .18s, transform .18s; }
+    button:hover { background:#bba8a8; }
+    button:active { transform:translateY(1px); }
+    pre { background:#151b21; padding:14px 18px; border-radius:10px; overflow:auto; font-size:12px; line-height:1.3; max-height:320px; border:1px solid #23303a; }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; }
+    details { margin:34px 0 0; }
+    summary { cursor:pointer; font-weight:600; letter-spacing:.4px; }
+    footer { margin-top:60px; font-size:12px; color:#55616d; }
+    .ok-badge { display:inline-block; background:#243127; color:#50d67f; padding:2px 8px 3px; border-radius:999px; font-size:11px; letter-spacing:.5px; margin-left:8px; }
+    .auto-submit-row { margin-top:18px; display:flex; align-items:center; gap:10px; font-size:13px; color:#92a2b3; }
+    label.inline { display:flex; align-items:center; gap:8px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <h1>CodePen Prefill &ndash; Inline Share Form Isolation</h1>
+  <p class="lead">This helper file packages the previously created <strong>inline share form + scroll/focus diagnostics</strong> into the CodePen <code>/pen/define</code> API format. Click the button below &mdash; a new tab opens with the Pen pre-populated. Just press "Save" in CodePen and copy the <em>Full Page</em> URL for mobile testing.</p>
+
+  <form id="penForm" action="https://codepen.io/pen/define" method="POST" target="_blank">
+    <input type="hidden" id="penData" name="data" value="" />
+    <button type="submit">Create CodePen Now</button>
+    <div class="auto-submit-row">
+      <label class="inline"><input type="checkbox" id="autoSubmit" checked /> Auto-submit on load</label>
+      <span class="ok-badge" id="statusBadge">READY</span>
+    </div>
+  </form>
+
+  <details>
+    <summary>View Embedded Source (HTML / CSS / JS)</summary>
+    <p>The exact code that will be sent to CodePen is embedded below (unmodified from <code>isolation-test.html</code> apart from splitting into panels and moving meta tags into the head field).</p>
+    <h3>HTML Panel</h3>
+    <pre><code id="preview-html"></code></pre>
+    <h3>CSS Panel</h3>
+    <pre><code id="preview-css"></code></pre>
+    <h3>JS Panel</h3>
+    <pre><code id="preview-js"></code></pre>
+  </details>
+
+  <footer>
+    Generated locally. You can keep this file offline. No network call occurs until you click (or auto-submit) the form which POSTs directly to CodePen.
+  </footer>
+
+  <!-- Raw panel sources stored as inert script tags to avoid escaping headaches -->
+  <script type="text/plain" id="src-head"><meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\">\n<title>Inline Share Form Isolation Test</title></script>
+  <script type="text/plain" id="src-html">
+<header>
+    <h1>Inline Share Form Isolation</h1>
+    <p class="subtitle">Goal: Prove a zero-scroll-jump inline opening &amp; focus experience (no sticky header)</p>
+</header>
+<main>
+    <section class="intro-block">
+        <p>This standalone page isolates the problem. Click <strong>Open Form</strong> below. The form will be inserted inline (not modal), without a sticky header. We instrument scroll positions and detect any unintended jump or anchoring shift both on open and when focusing inputs. If a jump were to occur, it would be reported in the diagnostics bar at the bottom.</p>
+        <p>The environment deliberately includes tall spacer regions &amp; a heavy shadow form container to surface any scroll anchoring misbehavior. All code is self-contained &amp; no external assets are loaded.</p>
+    </section>
+    <div class="actions-row">
+        <button id="openFormBtn" type="button">Open Form</button>
+        <button id="focusFirstInputBtn" type="button" disabled>Focus Code Input</button>
+        <button id="collapseFormBtn" type="button" disabled>Collapse Form</button>
+    </div>
+
+    <div class="spacer-block">TOP SPACER – scroll down a little before opening to validate no jump</div>
+
+    <div id="shareFormWrapper"></div>
+
+    <div class="spacer-block">BOTTOM SPACER – provides lower scroll extents for further focus tests</div>
+
+</main>
+
+<div id="diagBar" aria-live="polite">
+    <span id="diagOpen">Open: <span class="ok">pending</span></span>
+    <span id="diagFocus">Focus: <span class="ok">pending</span></span>
+    <span id="diagScroll">ScrollΔ: 0px</span>
+</div>
+  </script>
+  <script type="text/plain" id="src-css">:root {\n    --bg: #0f1115;\n    --panel: #1d2229;\n    --panel-alt: #252c35;\n    --accent: #a49393;\n    --accent-hover: #bba8a8;\n    --text: #f5f6f8;\n    --ghost: #6c737d;\n    --danger: #ff4d4d;\n    --radius: 14px;\n    --transition: 140ms ease;\n    font-family: 'Inter', system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif;\n}\n* { box-sizing: border-box; }\nbody { margin:0; font-family: inherit; background: linear-gradient(135deg,#101318,#171d24); color: var(--text); -webkit-font-smoothing:antialiased; }\nh1,h2,h3 { font-weight:600; letter-spacing:.5px; }\np { line-height:1.45; }\na { color: var(--accent); }\n\nheader { padding: 28px clamp(16px,4vw,48px) 12px; }\nheader h1 { margin:0 0 4px; font-size: clamp(1.6rem,3.4vw,2.35rem); background:linear-gradient(90deg,#d7d2d2,#a49393 70%); -webkit-background-clip:text; background-clip:text; color:transparent; }\nheader .subtitle { color:var(--ghost); margin:0; font-size:0.95rem; }\n\nmain { max-width: 1080px; margin:0 auto; padding:0 clamp(16px,4vw,48px) 120px; }\n.intro-block { max-width:760px; font-size:1.05rem; margin-bottom:40px; }\n.filler { margin:36px 0; background:linear-gradient(90deg,#1c2229,#202830); border:1px solid #2a323c; padding:20px 22px; border-radius:18px; box-shadow:0 4px 28px -8px #000 inset, 0 6px 18px -12px rgba(0,0,0,.6); }\n\n.actions-row { display:flex; gap:14px; flex-wrap:wrap; margin: 14px 0 34px; }\nbutton { cursor:pointer; font:inherit; background:var(--accent); color:#0d0f12; border:1px solid var(--accent); border-radius: 1000px; padding:12px 24px; font-weight:600; letter-spacing:.4px; transition: background var(--transition), transform var(--transition), box-shadow var(--transition); position:relative; overflow:hidden; }\nbutton:hover { background: var(--accent-hover); }\nbutton:active { transform:translateY(1px); }\n\n/* Inline Form Container */\n#shareFormWrapper { margin:0 auto; max-width:880px; }\n#shareFormSection { display:none; margin:0 0 80px; }\n#shareFormSection.inline-active { display:block; animation: fadeSlide .42s cubic-bezier(.21,.9,.24,1); }\n@keyframes fadeSlide { from { opacity:0; transform:translateY(24px) scale(.985); } to { opacity:1; transform:translateY(0) scale(1); } }\n\n.share-form-panel { background:linear-gradient(145deg,#232b33,#1d242b); border:1px solid #2b333c; border-radius: var(--radius); padding: 22px clamp(18px,2.6vw,38px) 46px; box-shadow:0 6px 48px -18px rgba(0,0,0,.65), 0 2px 6px -2px rgba(0,0,0,.5), 0 0 0 1px #303a44 inset; position:relative; overflow:hidden; }\n.form-header-bar { display:flex; align-items:flex-start; gap:18px; margin:0 0 18px; }\n.form-header-bar .titles { flex:1 1 auto; }\n.form-header-bar h2 { margin:.2rem 0 .15rem; font-size:1.6rem; letter-spacing:.75px; font-weight:700; }\n.form-header-bar p.company { margin:.1rem 0 0; font-size:.85rem; letter-spacing:.35px; font-weight:400; color:var(--ghost); text-transform:uppercase; }\n\n/* Action group - scrolls with page (NO sticky) */\n.form-actions { display:flex; flex-direction:row; gap:8px; }\n.icon-btn { width:44px; height:44px; border-radius:14px; background:linear-gradient(135deg,#2c3540,#222a32); border:1px solid #343f47; display:inline-flex; align-items:center; justify-content:center; color:var(--accent); font-size:1.05rem; position:relative; isolation:isolate; box-shadow:0 3px 14px -4px #000; }\n.icon-btn:hover { border-color:#46515a; color:#fff; }\n.icon-btn.danger { color:var(--danger); border-color:#3a1010; background:linear-gradient(135deg,#431e1e,#241212); }\n.icon-btn.danger:hover { border-color:#5c2020; color:#fff; }\n\n/* Accordion */\n.accordion { margin: 12px 0 4px; border-radius: 16px; overflow:hidden; border:1px solid #303942; background:linear-gradient(145deg,#1b2127,#232c36); }\n.accordion-section + .accordion-section { border-top:1px solid #303942; }\n.accordion-toggle { all:unset; cursor:pointer; display:flex; align-items:center; justify-content:space-between; width:100%; padding:16px 20px; font-weight:600; letter-spacing:.55px; font-size:.92rem; color:var(--accent); background:linear-gradient(90deg,#222a33,#1d242b); position:relative; }\n.accordion-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }\n.accordion-toggle .caret { transition: transform .3s ease; transform:rotate(-90deg); opacity:.9; }\n.accordion-section.open .accordion-toggle .caret { transform:rotate(0deg); }\n.accordion-panel { display:none; padding: 2px clamp(18px,2.4vw,32px) 26px; animation: panelFade .35s ease; }\n@keyframes panelFade { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }\n.accordion-section.open .accordion-panel { display:block; }\n\nlabel { display:block; font-size:.75rem; text-transform:uppercase; letter-spacing:.4px; margin:18px 0 6px; color:var(--ghost); font-weight:600; }\ninput[type=text], input[type=number] { width:100%; background:#14191e; border:1px solid #2d363f; border-radius:12px; padding:12px 14px; font:600 0.95rem/1.2 'Inter', system-ui; color:var(--text); letter-spacing:.5px; box-shadow:0 1px 0 0 #000 inset, 0 0 0 1px #202930 inset; transition:border .18s; }\ninput:focus { outline:none; border-color:var(--accent); }\n.input-row-inline { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:18px 22px; }\n\n.footer-info { margin-top:38px; font-size:.7rem; color:#46525d; letter-spacing:.45px; text-align:center; }\n\n/* Scroll Jump Diagnostics Bar */\n#diagBar { position:fixed; left:0; bottom:0; right:0; background:#14181d; border-top:1px solid #25303a; padding:6px 14px; font:500 12px/1.35 'Inter',sans-serif; letter-spacing:.5px; display:flex; flex-wrap:wrap; gap:16px; z-index:999; color:#9aa7b3; }\n#diagBar span { white-space:nowrap; }\n#diagBar .ok { color:#40d07d; }\n#diagBar .warn { color:#e2b04f; }\n#diagBar .bad { color:#ff6262; }\n\n/* Utility spacing for enough scroll area to expose any jump */\n.spacer-block { height:480px; background:linear-gradient(180deg,#12161b,#171d23); border:1px dashed #232c36; margin:34px 0 48px; border-radius:16px; display:flex; align-items:center; justify-content:center; color:#37424c; font-size:.85rem; letter-spacing:1px; }\n\n@media (max-width:760px){\n    .share-form-panel { padding: 20px 18px 44px; }\n    .form-header-bar h2 { font-size:1.35rem; }\n    .accordion-panel { padding-left:18px; padding-right:18px; }\n}</script>
+  <script type="text/plain" id="src-js">(function(){\n    const state = {\n        opened:false,\n        baselineScroll:0,\n        lastScroll:0,\n        lastFocusScroll:0,\n        openDelta:0,\n        focusDelta:0\n    };\n\n    const openBtn = document.getElementById('openFormBtn');\n    const focusBtn = document.getElementById('focusFirstInputBtn');\n    const collapseBtn = document.getElementById('collapseFormBtn');\n    const wrapper = document.getElementById('shareFormWrapper');\n\n    const diagOpen = document.getElementById('diagOpen').querySelector('span');\n    const diagFocus = document.getElementById('diagFocus').querySelector('span');\n    const diagScroll = document.getElementById('diagScroll');\n\n    function fmtDelta(d){ return (d>0?'+':'') + d + 'px'; }\n    function classify(d){ if (Math.abs(d) &lt; 2) return 'ok'; if (Math.abs(d) &lt; 12) return 'warn'; return 'bad'; }\n\n    function updateScrollDiag(){\n        const cur = window.scrollY || document.documentElement.scrollTop;\n        const delta = cur - state.lastScroll;\n        state.lastScroll = cur;\n        diagScroll.textContent = 'ScrollΔ: ' + fmtDelta(delta);\n    }\n    window.addEventListener('scroll', updateScrollDiag, { passive:true });\n\n    function buildForm(){\n        const container = document.createElement('section');\n        container.id = 'shareFormSection';\n        container.className = 'inline-active';\n        container.innerHTML = `\n            <div class="share-form-panel" role="form" aria-labelledby="formTitle">\n                <div class="form-header-bar">\n                    <div class="titles">\n                        <h2 id="formTitle">Add New Share</h2>\n                        <p class="company" id="companyName">Company (auto)</p>\n                    </div>\n                    <div class="form-actions" aria-label="Actions">\n                        <button type="button" class="icon-btn danger" id="deleteBtn" title="Delete" aria-label="Delete">✕</button>\n                        <button type="button" class="icon-btn" id="saveBtn" title="Save" aria-label="Save">💾</button>\n                        <button type="button" class="icon-btn" id="closeBtn" title="Close" aria-label="Close">⤫</button>\n                    </div>\n                </div>\n                <div class="accordion" id="shareFormAccordion">\n                    ${buildAccordionSection('core','Core Info', `\n                        <label for="shareCode">ASX Code</label>\n                        <input id="shareCode" type="text" placeholder="BHP" autocomplete="off" />\n                        <div class="input-row-inline">\n                            <div>\n                                <label for="watchlist">Watchlist</label>\n                                <input id="watchlist" type="text" placeholder="Growth"/>\n                            </div>\n                            <div>\n                                <label for="rating">Rating (1-5)</label>\n                                <input id="rating" type="number" min="0" max="5" step="1" placeholder="3" />\n                            </div>\n                        </div>\n                    `, true)}\n                    ${buildAccordionSection('portfolio','Holdings', `\n                        <label for="shares">Number of Shares</label>\n                        <input id="shares" type="number" min="0" step="1" placeholder="1000" />\n                        <label for="avgPrice">Average Purchase Price ($)</label>\n                        <input id="avgPrice" type="number" min="0" step="0.01" placeholder="23.45" />\n                    `)}\n                    ${buildAccordionSection('target','Target & Rating', `\n                        <label for="targetPrice">Target Price ($)</label>\n                        <input id="targetPrice" type="number" step="0.01" placeholder="25.50" />\n                        <label for="intent">Intent</label>\n                        <input id="intent" type="text" placeholder="Buy / Sell" />\n                    `)}\n                    ${buildAccordionSection('dividends','Dividends', `\n                        <label for="divAmount">Dividend Amount (annual $)</label>\n                        <input id="divAmount" type="number" step="0.001" placeholder="1.250" />\n                        <label for="frank">Franking Credits (%)</label>\n                        <input id="frank" type="number" step="0.1" min="0" max="100" placeholder="70" />\n                    `)}\n                    ${buildAccordionSection('comments','Comments', `\n                        <label for="comment1">Comment</label>\n                        <input id="comment1" type="text" placeholder="Observation" />\n                        <label for="comment2">Additional</label>\n                        <input id="comment2" type="text" placeholder="Strategy notes" />\n                    `)}\n                </div>\n                <div class="footer-info">Scroll &amp; focus inputs: any unexpected scroll anchoring will be detected below.</div>\n            </div>`;\n        return container;\n    }\n\n    function buildAccordionSection(key,title,inner,open=false){\n        return `<div class="accordion-section ${open?'open':''}" data-section="${key}">\n            <button type="button" class="accordion-toggle" aria-expanded="${open}" aria-controls="panel-${key}" id="accordion-header-${key}">\n                <span>${title}</span>\n                <span class="caret">▶</span>\n            </button>\n            <div id="panel-${key}" class="accordion-panel" role="region" aria-labelledby="accordion-header-${key}">\n                ${inner}\n            </div>\n        </div>`;\n    }\n\n    function initAccordion(root){\n        root.addEventListener('click', e => {\n            const header = e.target.closest('.accordion-toggle');\n            if (!header) return;\n            const section = header.closest('.accordion-section');\n            if (!section) return;\n            const open = section.classList.toggle('open');\n            header.setAttribute('aria-expanded', open);\n        });\n    }\n\n    function openForm(){\n        if (state.opened) return;\n        state.baselineScroll = window.scrollY || document.documentElement.scrollTop;\n        const node = buildForm();\n        wrapper.appendChild(node);\n        initAccordion(node.querySelector('#shareFormAccordion'));\n        state.opened = true;\n        requestAnimationFrame(()=>{\n            const after = window.scrollY || document.documentElement.scrollTop;\n            const delta = after - state.baselineScroll;\n            const cls = classify(delta);\n            diagOpen.className = cls;\n            diagOpen.textContent = (cls==='ok'?'OK ':'Δ ') + fmtDelta(delta);\n            focusBtn.disabled = false;\n            collapseBtn.disabled = false;\n            console.log('[Isolation] Form opened. Scroll delta:', delta);\n        });\n    }\n\n    function collapseForm(){\n        if (!state.opened) return;\n        const form = document.getElementById('shareFormSection');\n        if (form) form.remove();\n        state.opened = false;\n        focusBtn.disabled = true;\n        collapseBtn.disabled = true;\n        console.log('[Isolation] Form collapsed');\n    }\n\n    function focusFirst(){\n        const field = document.getElementById('shareCode');\n        if (!field) return;\n        const before = window.scrollY || document.documentElement.scrollTop;\n        field.focus({ preventScroll:true });\n        setTimeout(()=>{\n            const after = window.scrollY || document.documentElement.scrollTop;\n            const delta = after - before;\n            const cls = classify(delta);\n            diagFocus.className = cls;\n            diagFocus.textContent = (cls==='ok'?'OK ':'Δ ') + fmtDelta(delta);\n            console.log('[Isolation] Focus test delta:', delta);\n        }, 60);\n    }\n\n    openBtn.addEventListener('click', openForm);\n    focusBtn.addEventListener('click', focusFirst);\n    collapseBtn.addEventListener('click', collapseForm);\n\n})();</script>
+
+  <script>
+  // Build the CodePen define payload from the embedded plain text blocks.
+  (function(){
+    function grab(id){ return document.getElementById(id).textContent; }
+    const head = grab('src-head');
+    const html = grab('src-html').trim();
+    const css = grab('src-css');
+    const js = grab('src-js');
+
+    // Preview
+    document.getElementById('preview-html').textContent = html;
+    document.getElementById('preview-css').textContent = css;
+    document.getElementById('preview-js').textContent = js;
+
+    const payload = {
+      title: 'Inline Share Form Isolation Test',
+      description: 'Self-contained inline form + scroll/focus delta diagnostics to detect mobile scroll jump (no sticky header).',
+      tags: ['scroll','focus','mobile','isolation','test'],
+      editors: '101', // HTML & JS open by default
+      head,
+      html,
+      css,
+      js
+    };
+
+    const json = JSON.stringify(payload).replace(/<\/script>/g,'<\\/script>');
+    const field = document.getElementById('penData');
+    field.value = json;
+    document.getElementById('statusBadge').textContent = 'PACKAGED';
+    document.getElementById('statusBadge').style.background = '#1d2c22';
+    document.getElementById('statusBadge').style.color = '#50d67f';
+
+    if (document.getElementById('autoSubmit').checked) {
+      setTimeout(()=>{ document.getElementById('penForm').requestSubmit(); }, 120);
+    }
+  })();
+  </script>
+</body>
+</html>

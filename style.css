@@ -338,41 +338,7 @@
     padding-top: 4px;
 }
 
-/* ================= Inline Share Form Fallback (mobile) ================= */
-@media (max-width: 840px) {
-    #shareFormSection.inline-share-form-active {
-        background: transparent !important; /* no backdrop */
-        box-shadow: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-    #shareFormSection.inline-share-form-active .modal-content.inline-share-form-content {
-        background: var(--modal-inline-bg, var(--modal-content-bg, #fff));
-        border-radius: 12px;
-        box-shadow: 0 4px 18px rgba(0,0,0,0.18);
-        padding-bottom: 28px;
-        margin: 12px 12px 48px 12px;
-        position: relative;
-    }
-    #shareFormSection.inline-share-form-active .modal-content.inline-share-form-content .modal-header-with-icon.inline-sticky-header {
-        position: sticky;
-        top: 0;
-        z-index: 50;
-        background: linear-gradient(var(--modal-inline-bg, #fff) 75%, rgba(255,255,255,0.85));
-        backdrop-filter: saturate(1.2) blur(4px);
-        -webkit-backdrop-filter: saturate(1.2) blur(4px);
-        padding-top: 10px;
-        margin: 0 -4px 6px -4px;
-    }
-    html.inline-share-form-open, body.inline-share-form-open {
-        overscroll-behavior: contain;
-    }
-    /* Collapse animation (set inline via JS) */
-    #shareFormSection.inline-share-form-active.collapsing { overflow: hidden; }
-    #shareFormSection.inline-share-form-active .accordion-section { border-bottom: 1px solid var(--divider-color, #ececec); }
-    #shareFormSection.inline-share-form-active .accordion-toggle { padding: 14px 8px; }
-    #shareFormSection.inline-share-form-active .accordion-panel { padding: 0 4px 16px 4px; }
-}
+/* (Removed legacy Inline Share Form Fallback block - superseded by Final Non-Sticky Mobile Integration styles) */
 
 /* Ensure the header-left-container doesn't collapse and centers its contents */
 .header-left-container { align-items: center; }
@@ -478,6 +444,52 @@
 .low52-heading-white {
     color: #fff !important;
 }
+
+/* ================= Inline Share Form (Final Non-Sticky Mobile Integration) ================= */
+@media (max-width: 860px) {
+    .inline-share-form-panel { 
+        background: linear-gradient(145deg,#232b33,#1d242b); 
+        border:1px solid #2b333c; 
+        border-radius: 14px; 
+        padding: 22px 20px 44px; 
+        box-shadow:0 6px 48px -18px rgba(0,0,0,.65), 0 2px 6px -2px rgba(0,0,0,.5), 0 0 0 1px #303a44 inset; 
+        position: relative; 
+        overflow: hidden; 
+        animation: inlineFormFadeSlide .42s cubic-bezier(.21,.9,.24,1); 
+        margin: 12px 8px 56px; 
+    }
+    @keyframes inlineFormFadeSlide { from { opacity:0; transform:translateY(24px) scale(.985); } to { opacity:1; transform:translateY(0) scale(1); } }
+    .inline-share-form-header { display:flex; align-items:flex-start; gap:18px; margin:0 0 18px; }
+    .inline-share-form-header .titles { flex:1 1 auto; }
+    .inline-share-form-header h2 { margin:.2rem 0 .15rem; font-size:1.45rem; letter-spacing:.75px; font-weight:700; }
+    .inline-share-form-header p.company { margin:.1rem 0 0; font-size:.78rem; letter-spacing:.35px; font-weight:400; color:#6c737d; text-transform:uppercase; }
+    .inline-share-form-actions { display:flex; flex-direction:row; gap:8px; }
+    .inline-share-form-actions .icon-btn { width:44px; height:44px; border-radius:14px; background:linear-gradient(135deg,#2c3540,#222a32); border:1px solid #343f47; display:inline-flex; align-items:center; justify-content:center; color:#a49393; font-size:1.05rem; box-shadow:0 3px 14px -4px #000; }
+    .inline-share-form-actions .icon-btn:hover { border-color:#46515a; color:#fff; }
+    .inline-share-form-actions .icon-btn.danger { color:#ff4d4d; border-color:#3a1010; background:linear-gradient(135deg,#431e1e,#241212); }
+    .inline-share-form-actions .icon-btn.danger:hover { border-color:#5c2020; color:#fff; }
+    /* Accordion */
+    .inline-share-form-accordion { margin:12px 0 4px; border-radius:16px; overflow:hidden; border:1px solid #303942; background:linear-gradient(145deg,#1b2127,#232c36); }
+    .inline-share-form-accordion .accordion-section + .accordion-section { border-top:1px solid #303942; }
+    .inline-share-form-accordion .accordion-toggle { all:unset; cursor:pointer; display:flex; align-items:center; justify-content:space-between; width:100%; padding:16px 20px; font-weight:600; letter-spacing:.55px; font-size:.9rem; color:#a49393; background:linear-gradient(90deg,#222a33,#1d242b); position:relative; }
+    .inline-share-form-accordion .accordion-toggle:focus-visible { outline:2px solid #a49393; outline-offset:2px; }
+    .inline-share-form-accordion .accordion-toggle .caret { transition: transform .3s ease; transform:rotate(-90deg); opacity:.9; }
+    .inline-share-form-accordion .accordion-section.open .accordion-toggle .caret { transform:rotate(0deg); }
+    .inline-share-form-accordion .accordion-panel { display:none; padding: 2px 22px 26px 22px; animation: inlinePanelFade .35s ease; }
+    @keyframes inlinePanelFade { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+    .inline-share-form-accordion .accordion-section.open .accordion-panel { display:block; }
+    .inline-share-form-panel label { display:block; font-size:.7rem; text-transform:uppercase; letter-spacing:.4px; margin:18px 0 6px; color:#6c737d; font-weight:600; }
+    .inline-share-form-panel input[type=text],
+    .inline-share-form-panel input[type=number] { width:100%; background:#14191e; border:1px solid #2d363f; border-radius:12px; padding:12px 14px; font:600 0.92rem/1.2 'Inter', system-ui; color:#f5f6f8; letter-spacing:.5px; box-shadow:0 1px 0 0 #000 inset, 0 0 0 1px #202930 inset; transition:border .18s; }
+    .inline-share-form-panel input:focus { outline:none; border-color:#a49393; }
+    .inline-share-form-panel .input-row-inline { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px 18px; }
+    .inline-share-form-footer { margin-top:34px; font-size:.65rem; color:#46525d; letter-spacing:.45px; text-align:center; }
+}
+
+/* Host positioning and open state body hook */
+body.inline-share-form-open { overscroll-behavior: contain; }
+body.inline-share-form-open #inlineShareFormHost { scroll-margin-top: 12px; }
+
 .low52-thresh-white {
     color: #fff !important;
 }
