@@ -16397,7 +16397,7 @@ if (sortSelect) {
 // This closing brace correctly ends the `initializeAppLogic` function here.
 // Build Marker: v0.1.14 (Universal modal scroll guard + instrumentation expansion)
 // Also expose as a runtime variable for lightweight diagnostics
-window.BUILD_MARKER = 'v0.1.14';
+window.BUILD_MARKER = 'v0.1.15';
 
 // Global helper: render a unified 52-week high/low notification card
 // Safe to call from both the modern modal renderer and legacy/local paths.
@@ -18870,6 +18870,39 @@ try {
         // Initial snapshot
         scanAndRecord();
     } catch(err){ console.warn('UniversalModalScrollPreserver install failed', err); }
+})();
+// === Keyboard / VisualViewport Height Shrink Guard ===
+(function installViewportShrinkGuard(){
+    try {
+        if (!window.visualViewport) return;
+        if (window.__viewportShrinkGuardInstalled) return; window.__viewportShrinkGuardInstalled = true;
+        let lastH = visualViewport.height;
+        visualViewport.addEventListener('resize', () => {
+            try {
+                const newH = visualViewport.height;
+                const delta = lastH - newH;
+                lastH = newH;
+                if (delta > 120) { // significant shrink (likely keyboard)
+                    const modals = document.querySelectorAll('.modal.show');
+                    modals.forEach(modal => {
+                        const scroller = modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal;
+                        if (!scroller) return;
+                        // If shrunk caused jump to near-top unexpectedly & we had baseline, restore
+                        if (modal.__baselineScrollTop && modal.__baselineScrollTop > 100 && scroller.scrollTop < 10) {
+                            const before = scroller.scrollTop;
+                            scroller.scrollTop = modal.__baselineScrollTop;
+                            try {
+                                window.__modalResetEvents = window.__modalResetEvents || [];
+                                window.__modalResetEvents.push({ t: Date.now(), id: modal.id||null, from: before, to: scroller.scrollTop, reason: 'viewport-shrink' });
+                                if (window.__modalResetEvents.length > 50) window.__modalResetEvents.splice(0, window.__modalResetEvents.length - 50);
+                            } catch(_){ }
+                            if (window.__scrollDebug || window.scrollDebug) console.debug('[ViewportShrinkGuard] restored', { id: modal.id, before, after: scroller.scrollTop });
+                        }
+                    });
+                }
+            } catch(_){ }
+        });
+    } catch(err){ console.warn('ViewportShrinkGuard install failed', err); }
 })();
 // === End Universal Modal Scroll Preservation ===
 
