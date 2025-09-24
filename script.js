@@ -16327,9 +16327,9 @@ if (sortSelect) {
     // applyCompactViewMode(); // Disabled - conflicts with robust restoration
 } 
 // This closing brace correctly ends the `initializeAppLogic` function here.
-// Build Marker: v0.1.13 (Network-first CSS/JS, cache bust deploy)
+// Build Marker: v0.1.14 (Universal modal scroll guard + instrumentation expansion)
 // Also expose as a runtime variable for lightweight diagnostics
-window.BUILD_MARKER = 'v0.1.13';
+window.BUILD_MARKER = 'v0.1.14';
 
 // Global helper: render a unified 52-week high/low notification card
 // Safe to call from both the modern modal renderer and legacy/local paths.
@@ -18072,7 +18072,7 @@ try {
                 try {
                     const diag = {};
                     // Keep this in sync with the Build Marker comment near initializeAppLogic end
-                    diag.buildMarker = 'v0.1.13';
+                    diag.buildMarker = 'v0.1.14';
                     diag.time = new Date().toISOString();
                     diag.userId = (typeof currentUserId!=='undefined')? currentUserId : null;
                     diag.activeWatchlistId = (typeof activeWatchlistId!=='undefined')? activeWatchlistId : null;
@@ -18409,7 +18409,7 @@ try {
         const diag = {};
         try {
             // Reuse core fields (mirror diagnostics button logic where feasible)
-            diag.buildMarker = 'v0.1.13';
+            diag.buildMarker = 'v0.1.14';
             diag.time = new Date().toISOString();
             diag.userId = (typeof currentUserId!=='undefined')? currentUserId : null;
             diag.activeWatchlistId = (typeof activeWatchlistId!=='undefined')? activeWatchlistId : null;
@@ -18689,4 +18689,102 @@ try {
     } catch(err){ console.warn('AccordionScrollGuard install failed', err); }
 })();
 // === End Accordion Scroll Guard ===
+
+// === Universal Modal Scroll Preservation ===
+// Goal: Prevent scrollTop resets across ANY modal (including those without accordions)
+// Strategy:
+//  1. Track last stable scroll position for each open modal's primary scroller.
+//  2. On focusin inside a modal OR visualViewport resize (keyboard show/hide), schedule a stabilization check.
+//  3. If scrollTop unexpectedly drops near 0 (and user had meaningful prior position), attempt proportional restore.
+//  4. Avoid fighting intentional user scroll by only intervening when a large downward jump occurs within a short window.
+(function installUniversalModalScrollPreserver(){
+    try {
+        if (window.__universalModalScrollPreserverInstalled) return; window.__universalModalScrollPreserverInstalled = true;
+        const modalState = new Map(); // modalEl -> { lastTop, lastHeight, lastUpdate }
+        const MIN_TRACK = 60; // require at least this scrollTop before we consider restoring
+        const JUMP_THRESHOLD = 80; // a drop greater than this is suspicious
+        const NEAR_TOP = 12; // treat <= this as top reset
+        const WINDOW_MS = 900; // restoration reaction window
+
+        function primaryScroller(modal){
+            if (!modal) return null;
+            return modal.querySelector('.modal-body-scrollable') || modal.querySelector('.modal-body') || modal;
+        }
+        function record(modal){
+            try {
+                const sc = primaryScroller(modal);
+                if (!sc) return;
+                modalState.set(modal, { lastTop: sc.scrollTop, lastHeight: sc.scrollHeight, lastUpdate: Date.now() });
+            } catch(_){}
+        }
+        function restoreIfNeeded(modal, reason){
+            try {
+                const st = modalState.get(modal);
+                if (!st) return;
+                const sc = primaryScroller(modal); if (!sc) return;
+                const now = Date.now();
+                const dt = now - st.lastUpdate;
+                if (dt > WINDOW_MS) return; // stale baseline
+                const before = st.lastTop;
+                const after = sc.scrollTop;
+                if (before <= MIN_TRACK) return; // user not far enough for restore
+                const drop = before - after;
+                if (drop < JUMP_THRESHOLD && !(after <= NEAR_TOP && before > MIN_TRACK)) return; // not a suspicious jump
+                // Proportional restore if height changed
+                let target = before;
+                if (st.lastHeight && st.lastHeight !== sc.scrollHeight) {
+                    const prevScrollable = st.lastHeight - sc.clientHeight;
+                    const newScrollable = sc.scrollHeight - sc.clientHeight;
+                    if (prevScrollable > 0 && newScrollable > 0) {
+                        const ratio = before / prevScrollable;
+                        target = Math.round(newScrollable * ratio);
+                    }
+                }
+                sc.scrollTop = target;
+                try { if (window.__modalScrollTrace) window.__modalScrollTrace.push({ t: now, id: modal.id||null, restoredTo: target, reason: reason||'auto', universal: true }); } catch(_){ }
+                try { if (window.__scrollDebug || window.scrollDebug) console.debug('[UniversalModalScrollPreserver] restore', { id: modal.id, before, after, target, reason }); } catch(_){ }
+            } catch(err){ /* ignore */ }
+        }
+        function scanAndRecord(){
+            try {
+                document.querySelectorAll('.modal.show, .modal[style*="display: flex"]').forEach(m=> record(m));
+            } catch(_){}
+        }
+        // Track scroll changes to keep lastTop fresh
+        setInterval(scanAndRecord, 1500);
+        document.addEventListener('scroll', (e)=>{
+            try {
+                const m = e.target && e.target.closest && e.target.closest('.modal');
+                if (!m) return;
+                record(m);
+            } catch(_){}
+        }, true);
+        // Focus handling
+        document.addEventListener('focusin', (e)=>{
+            try {
+                const modal = e.target && e.target.closest && e.target.closest('.modal');
+                if (!modal) return;
+                record(modal);
+                // After layout (keyboard / style changes), check for jump
+                requestAnimationFrame(()=> requestAnimationFrame(()=> restoreIfNeeded(modal, 'focus')));
+            } catch(_){}
+        }, true);
+        // visualViewport resize (keyboard show/hide)
+        if (window.visualViewport) {
+            const vvHandler = ()=>{
+                try {
+                    const modals = document.querySelectorAll('.modal.show, .modal[style*="display: flex"]');
+                    modals.forEach(m=> {
+                        record(m); // capture baseline pre-change
+                        requestAnimationFrame(()=> requestAnimationFrame(()=> restoreIfNeeded(m, 'viewport')));
+                    });
+                } catch(_){}
+            };
+            visualViewport.addEventListener('resize', vvHandler, { passive: true });
+        }
+        // Initial snapshot
+        scanAndRecord();
+    } catch(err){ console.warn('UniversalModalScrollPreserver install failed', err); }
+})();
+// === End Universal Modal Scroll Preservation ===
 
