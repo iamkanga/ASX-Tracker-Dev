@@ -358,6 +358,15 @@
                 </span>
             </div>
         </div>
+        <div class="menu-section developer-section">
+            <h3>Developer</h3>
+            <div class="menu-buttons-group" style="gap:10px;">
+                <label for="adaptiveModalToggle" class="theme-select-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="adaptiveModalToggle" style="transform:scale(1.2);cursor:pointer;" />
+                    <span>Enable Adaptive Modal Fix</span>
+                </label>
+            </div>
+        </div>
     </nav>
 
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -989,6 +998,52 @@
         try { if (SortPicker && typeof SortPicker.initSortPicker === 'function') SortPicker.initSortPicker(); } catch(e) { console.warn('SortPicker auto-init failed', e); }
     </script>
     <script src="script.js?v=2.15.13" type="module"></script>
+    <script>
+        // Developer toggle: Adaptive Modal Fix feature flag
+        (function(){
+            try {
+                const KEY = 'flag:adaptiveModal';
+                const toggle = document.getElementById('adaptiveModalToggle');
+                if (!toggle) return;
+                // Load persisted state
+                const saved = localStorage.getItem(KEY);
+                const active = saved === '1';
+                window.__vvAdaptiveModal = active; // prime flag before any modal opens
+                toggle.checked = active;
+                toggle.addEventListener('change', ()=>{
+                    const on = !!toggle.checked;
+                    window.__vvAdaptiveModal = on;
+                    try { localStorage.setItem(KEY, on ? '1':'0'); } catch(_){ }
+                    // If the Add/Edit Share modal is currently open, force a light reflow of adaptive layout
+                    try {
+                        const modal = document.getElementById('shareFormSection');
+                        if (modal && modal.style.display !== 'none' && !modal.classList.contains('app-hidden')) {
+                            if (on) {
+                                // Trigger adaptive install if not already applied
+                                if (!modal.__vvAdaptiveApplied) {
+                                    try { showModal(modal); } catch(_){ }
+                                } else {
+                                    // Recompute existing adaptive sizing
+                                    if (window.visualViewport) {
+                                        window.dispatchEvent(new Event('resize'));
+                                    }
+                                }
+                            } else {
+                                // Remove adaptive styles when turning off (non-destructive)
+                                try {
+                                    modal.classList.remove('vv-adaptive');
+                                    modal.style.top='';modal.style.bottom='';modal.style.maxHeight='';
+                                    const scroller = modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal;
+                                    if (scroller) { scroller.style.maxHeight=''; scroller.style.overscrollBehavior=''; }
+                                    delete modal.__vvAdaptiveApplied;
+                                } catch(_){ }
+                            }
+                        }
+                    } catch(_){ }
+                });
+            } catch(e){ console.warn('Adaptive Modal toggle init failed', e); }
+        })();
+    </script>
     <script>
         // Sync splash version text with runtime BUILD_MARKER if available (robust against stale HTML cache)
         (function(){

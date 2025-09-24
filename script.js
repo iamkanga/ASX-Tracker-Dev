@@ -5193,6 +5193,9 @@ function initShareFormAccordion(force = false) {
         const header = e.target.closest('.accordion-toggle');
         if (!header || !root.contains(header)) return;
         e.preventDefault();
+        // Prevent the click from bubbling to global window click handlers that might close the modal
+        try { e.stopPropagation(); } catch(_){ }
+        try { e.stopImmediatePropagation(); } catch(_){ }
         const section = header.closest('.accordion-section');
         if (!section) return;
         toggleAccordionSection(section);
