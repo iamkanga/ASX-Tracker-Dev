@@ -6390,76 +6390,130 @@ function showModal(modalElement) {
             }
         } catch(stabErr){ try { console.warn('ScrollStabilizer install error', stabErr); } catch(_){} }
 
-        // Extreme Anti-Jump Guard (focus / visualViewport induced) – only for Add/Edit Share modal
+        // Adaptive Modal Layout (visualViewport-driven) – structural mitigation for mobile keyboard snap
         try {
-            if (modalElement.id === 'shareFormSection' && !modalElement.__antiJumpInstalled) {
-                modalElement.__antiJumpInstalled = true;
-                (function installAntiJump(modal){
+            if (window.__vvAdaptiveModal && modalElement.id === 'shareFormSection' && !modalElement.__vvAdaptiveApplied) {
+                modalElement.__vvAdaptiveApplied = true;
+                (function installAdaptive(modal){
+                    const DEBUG = !!(window.__scrollDebug || window.scrollDebug);
                     const scroller = modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal;
                     if (!scroller) return;
-                    let userInteracting = false;
-                    let lastStableTop = 0; // we always open at 0 now
-                    let lastRestoreAt = 0;
-                    const JUMP_THRESHOLD = 140; // px upward jump that we treat as involuntary
-                    const MAX_RESTORES = 6; // safety cap
-                    let restoreCount = 0;
-                    function markUser(){ userInteracting = true; setTimeout(()=>{ userInteracting = false; }, 1600); }
-                    ['touchstart','wheel','mousedown'].forEach(ev=> scroller.addEventListener(ev, markUser, { passive:true }));
-                    function considerRestore(reason){
+                    // Optional: if VIP was previously installed, disable it (structural approach supersedes proxy focus)
+                    try { if (modal.__vipInstalled && typeof window.__disableVIP === 'function') { window.__disableVIP(); if (DEBUG) console.debug('[AdaptiveModal] Disabled VIP'); } } catch(_){ }
+                    let headerEl = modal.querySelector('.modal-header');
+                    function compute(){
                         try {
-                            if (userInteracting) { lastStableTop = scroller.scrollTop; return; }
-                            const cur = scroller.scrollTop;
-                            const delta = cur - lastStableTop;
-                            // Only treat positive large deltas (content pushed upward) as harmful; allow small natural adjustments
-                            if (delta > JUMP_THRESHOLD && restoreCount < MAX_RESTORES) {
-                                // Heuristic: if focused element is near top already, no need for jump; restore
-                                const active = document.activeElement;
-                                let focusNeedScroll = false;
-                                if (active && active.tagName === 'INPUT') {
-                                    const r = active.getBoundingClientRect();
-                                    focusNeedScroll = (r.top < 20 || r.bottom > (window.innerHeight * 0.92));
-                                }
-                                if (!focusNeedScroll) {
-                                    const before = cur;
-                                    scroller.scrollTop = lastStableTop;
-                                    restoreCount++;
-                                    lastRestoreAt = Date.now();
-                                    if (window.__scrollDebug || window.scrollDebug) console.debug('[AntiJump] restore', { reason, before, after: scroller.scrollTop, baseline: lastStableTop, delta, restores: restoreCount });
-                                    return;
-                                }
-                            }
-                            // Update baseline if stable (avoid capturing while a restore just happened to prevent loops)
-                            if (Math.abs(delta) < 24 && (Date.now() - lastRestoreAt) > 120) {
-                                lastStableTop = cur;
-                            }
-                        } catch(e) { /* silent */ }
+                            const vv = window.visualViewport;
+                            const safeTop = 8 + (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-top'))||0);
+                            const fullHeight = vv ? vv.height : window.innerHeight;
+                            const headerH = headerEl ? headerEl.getBoundingClientRect().height : 0;
+                            const padding = 12; // bottom breathing room above keyboard
+                            const usable = Math.max(320, fullHeight - safeTop - padding);
+                            // Pin modal to top (leave small margin) and constrain body height
+                            modal.style.top = safeTop + 'px';
+                            modal.style.bottom = 'auto';
+                            modal.style.maxHeight = usable + 'px';
+                            modal.classList.add('vv-adaptive');
+                            // Allow header + body layout: body gets remaining space
+                            const bodyMax = usable - headerH - 4; // minor compensation
+                            scroller.style.maxHeight = bodyMax + 'px';
+                            scroller.style.overscrollBehavior = 'contain';
+                            // Avoid retaining a previous scroll pushing content up
+                            if (scroller.scrollTop > bodyMax - 40) { scroller.scrollTop = Math.max(0, bodyMax - 60); }
+                            if (DEBUG) console.debug('[AdaptiveModal] applied', { fullHeight, usable, bodyMax, headerH });
+                        } catch(err) { if (DEBUG) console.debug('[AdaptiveModal] compute error', err); }
                     }
-                    // Focus handling – defer a little to allow native layout shift to happen first
-                    scroller.addEventListener('focusin', (e)=>{
-                        if (e.target && e.target.tagName === 'INPUT') {
-                            const pre = scroller.scrollTop;
-                            setTimeout(()=> considerRestore('focus'), 50);
-                            setTimeout(()=> considerRestore('focus-late'), 220);
-                            if (window.__scrollDebug || window.scrollDebug) console.debug('[AntiJump] focusin field', e.target.dataset && e.target.dataset.index, 'preTop', pre);
-                        }
-                    }, true);
-                    // visualViewport resize/scroll events often precede jumps when keyboard appears
+                    // Recompute on relevant viewport/layout changes
                     if (window.visualViewport) {
-                        ['resize','scroll'].forEach(ev => window.visualViewport.addEventListener(ev, ()=>{
-                            setTimeout(()=> considerRestore('vv-'+ev), 35);
-                            setTimeout(()=> considerRestore('vv-late-'+ev), 180);
-                        }));
+                        visualViewport.addEventListener('resize', compute);
+                        visualViewport.addEventListener('scroll', compute); // keyboard slide / zoom
                     }
-                    // Safety observer for attribute/content mutations causing reflow jumps
-                    try {
-                        const mo = new MutationObserver(()=> setTimeout(()=> considerRestore('mutation'), 16));
-                        mo.observe(scroller, { subtree:true, childList:true, attributes:true, characterData:false });
-                        setTimeout(()=>{ try { mo.disconnect(); } catch(_){ } }, 4000); // auto-disconnect
-                    } catch(_){}
-                    if (window.__scrollDebug || window.scrollDebug) console.debug('[AntiJump] installed for', modal.id);
+                    window.addEventListener('orientationchange', ()=> setTimeout(compute, 60));
+                    window.addEventListener('resize', ()=> setTimeout(compute, 30));
+                    setTimeout(compute, 0); // initial
+                    setTimeout(compute, 120); // after potential font/layout shifts
                 })(modalElement);
             }
-        } catch(e) { try { console.warn('AntiJump install failed', e); } catch(_){} }
+        } catch(adErr) { try { console.warn('AdaptiveModal install failed', adErr); } catch(_){} }
+        // Final Escalation: Virtual Input Proxy (VIP) to fully isolate focused input from scroll container heuristics
+        try {
+            if (modalElement.id === 'shareFormSection' && !modalElement.__vipInstalled) {
+                modalElement.__vipInstalled = true;
+                (function installVIP(modal){
+                    const scroller = modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal;
+                    if (!scroller) return;
+                    const DEBUG = !!(window.__scrollDebug || window.scrollDebug);
+                    let overlay = document.getElementById('__vipOverlay');
+                    if (!overlay) {
+                        overlay = document.createElement('div');
+                        overlay.id='__vipOverlay';
+                        overlay.style.cssText='position:fixed;left:0;top:0;right:0;z-index:99998;height:0;pointer-events:none;font:inherit;';
+                        document.body.appendChild(overlay);
+                    }
+                    const pool = []; // reusable clones
+                    let active = null; // { orig, clone }
+                    function allocClone(){
+                        let c = pool.find(x=>!x.inUse);
+                        if (!c) {
+                            c = document.createElement('input');
+                            c.type='text';
+                            c.autocomplete='off';
+                            c.className='vip-clone-input';
+                            c.style.cssText='position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:auto;z-index:100000;background:transparent;border:0;font:inherit;padding:0;margin:0;';
+                            overlay.appendChild(c);
+                        }
+                        c.inUse=true; return c;
+                    }
+                    function releaseClone(c){ if (!c) return; c.inUse=false; c.blur(); c.value=''; }
+                    function syncToOrig(){ if (active && active.orig && active.clone && active.orig.value !== active.clone.value){ active.orig.value = active.clone.value; active.orig.dispatchEvent(new Event('input',{bubbles:true})); } }
+                    function positionClone(){
+                        if (!active) return;
+                        const r = active.orig.getBoundingClientRect();
+                        active.clone.style.left = Math.max(2, r.left+2) + 'px';
+                        active.clone.style.top = Math.max(2, r.top+2) + 'px';
+                        active.clone.style.width = Math.max(40, r.width) + 'px';
+                        active.clone.style.height = Math.max(24, r.height) + 'px';
+                    }
+                    function adoptStyles(cl, orig){
+                        try { const cs = getComputedStyle(orig); ['fontSize','fontFamily','fontWeight','letterSpacing','lineHeight','textTransform','textAlign','paddingLeft','paddingRight','paddingTop','paddingBottom'].forEach(p=> cl.style[p]=cs[p]); } catch(_){}
+                    }
+                    function activate(e){
+                        const orig = e.target;
+                        if (!orig || orig.tagName!=='INPUT' || orig.type!=='text' || orig.readOnly || orig.disabled) return;
+                        e.preventDefault(); e.stopPropagation();
+                        if (active && active.orig === orig) { positionClone(); return; }
+                        if (active) { syncToOrig(); releaseClone(active.clone); active=null; }
+                        const clone = allocClone(); active = { orig, clone };
+                        adoptStyles(clone, orig);
+                        clone.value = orig.value || '';
+                        positionClone();
+                        try { clone.focus({ preventScroll:true }); } catch(_) { try { clone.focus(); } catch(__){} }
+                        if (DEBUG) console.debug('[VIP] activate for', orig.name||orig.id||'(field)');
+                    }
+                    function deactivate(reason){ if (!active) return; syncToOrig(); releaseClone(active.clone); if (DEBUG) console.debug('[VIP] deactivate', reason); active=null; }
+                    // Keep in sync
+                    overlay.addEventListener('input', syncToOrig, true);
+                    overlay.addEventListener('keyup', syncToOrig, true);
+                    overlay.addEventListener('focusout', (ev)=>{ if (active && ev.target===active.clone) setTimeout(()=>{ if (active && document.activeElement!==active.clone) deactivate('blur'); }, 30); }, true);
+                    // Intercept direct taps before native focus scroll
+                    scroller.addEventListener('pointerdown', (e)=>{ if (e.target && e.target.tagName==='INPUT' && e.target.type==='text') activate(e); else if (active) deactivate('pointer-other'); }, true);
+                    scroller.addEventListener('focusin', (e)=>{ if (e.target && e.target.tagName==='INPUT' && e.target.type==='text') activate(e); }, true);
+                    // Reposition on layout/viewport shifts
+                    scroller.addEventListener('scroll', positionClone, { passive:true });
+                    if (window.visualViewport){ visualViewport.addEventListener('resize', ()=>{ positionClone(); }, false); visualViewport.addEventListener('scroll', ()=>{ positionClone(); }, false); }
+                    window.addEventListener('orientationchange', ()=> setTimeout(positionClone, 100));
+                    // Ensure flush on modal hide / navigation
+                    const origHide = window.hideModal;
+                    if (!window.__vipHideWrapped) {
+                        window.hideModal = function(m){ try { if (m===modal) deactivate('modal-hide'); } catch(_){} return origHide && origHide.apply(this, arguments); };
+                        window.__vipHideWrapped = true;
+                    }
+                    window.addEventListener('beforeunload', ()=> deactivate('unload'));
+                    window.__disableVIP = function(){ deactivate('external-disable'); modal.__vipInstalled=false; };
+                    if (DEBUG) console.debug('[VIP] installed for', modal.id);
+                })(modalElement);
+            }
+        } catch(vipErr){ try { console.warn('VIP install failed', vipErr); } catch(_){} }
         // Do not force-scroll to top here; preserve user's last position and avoid snapping.
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         // Persistent modal scroll memory (session-based) EXCEPT for shareFormSection to avoid stale mid-form positioning

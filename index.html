@@ -988,7 +988,7 @@
         import SortPicker from './js/sortPicker.js';
         try { if (SortPicker && typeof SortPicker.initSortPicker === 'function') SortPicker.initSortPicker(); } catch(e) { console.warn('SortPicker auto-init failed', e); }
     </script>
-    <script src="script.js?v=2.15.12" type="module"></script>
+    <script src="script.js?v=2.15.13" type="module"></script>
     <script>
         // Sync splash version text with runtime BUILD_MARKER if available (robust against stale HTML cache)
         (function(){
@@ -1006,7 +1006,7 @@
     <!-- Service worker registration and immediate update helper -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js?v=2.15.12').then(reg => {
+            navigator.serviceWorker.register('service-worker.js?v=2.15.13').then(reg => {
                 try { reg.update(); } catch(e){}
                 // If a new worker is already waiting, ask it to skipWaiting
                 if (reg.waiting) {
@@ -1033,7 +1033,7 @@
             });
             // Runtime version negotiation: ensure page version matches SW; if mismatch persists, hard reload bypassing cache
             (function versionGuard(){
-                const EXPECT = '2.15.12';
+                const EXPECT = '2.15.13';
                 let lastMismatchReload = 0;
                 function requestSwVersion(){
                     if (!navigator.serviceWorker.controller) return;

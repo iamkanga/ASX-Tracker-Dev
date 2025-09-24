@@ -4,9 +4,9 @@
 // IMPORTANT: Increment APP_VERSION on ANY deploy that changes shipped JS/CSS/HTML.
 // The service worker now also embeds a BUILD_STAMP so even if APP_VERSION is forgotten,
 // byte-diff in this file still triggers an update. However, always bump for clarity.
-const APP_VERSION = '2.15.12';
+const APP_VERSION = '2.15.13';
 // Unique build stamp (ISO) - forces SW byte change each build even if version forgotten
-const BUILD_STAMP = '2025-09-24T00:00:00Z';
+const BUILD_STAMP = '2025-09-24T01:30:00Z';
 
 // Cache name for the current version (auto-derived from APP_VERSION so we don't forget to bump both)
 const CACHE_NAME = `share-watchlist-${APP_VERSION}`;
