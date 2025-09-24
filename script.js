@@ -19078,3 +19078,94 @@ try {
 })();
 // === End Universal Modal Scroll Preservation ===
 
+// === Modal Focus Interceptor (Preemptive Anti-Snap Layer) ===
+// Rationale: Mobile Chrome sometimes force-scrolls focused inputs to the very top of the scroll container
+// even when focus({preventScroll:true}) is used. We intercept the *pointer intention* (touchstart/pointerdown)
+// before the browser's default focus logic runs, preventDefault() (so the native scroll-align routine never fires),
+// then programmatically focus with preventScroll and restore the previous scrollTop if the UA still adjusted.
+// This is more aggressive than prior reactive restorers because it prevents the initial unwanted jump.
+(function installModalFocusInterceptor(){
+    try {
+        if (window.__modalFocusInterceptorInstalled) return; window.__modalFocusInterceptorInstalled = true;
+        const INPUT_SELECTOR = 'input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=reset]), textarea, select';
+        function getScroller(modal){
+            return modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal;
+        }
+        function shouldIntercept(el){
+            if (!el) return false;
+            // Only intercept visible, enabled form fields inside an open modal
+            if (el.disabled || el.readOnly) return false; // skip readonly/disabled (native scroll minimal anyway)
+            const modal = el.closest && el.closest('.modal');
+            if (!modal || !modal.classList.contains('show')) return false;
+            // Skip if user already performed a manual vertical scroll VERY recently (baseline likely fresh)
+            const scroller = getScroller(modal);
+            if (!scroller) return false;
+            // Allow interception irrespective of scroll position; adaptive heuristics could be added later.
+            return true;
+        }
+        function focusWithoutScroll(target, scroller, baseline){
+            let attempts = 0;
+            function enforce(){
+                attempts++;
+                try {
+                    if (document.activeElement !== target) {
+                        try { target.focus({preventScroll:true}); } catch(_) { try { target.focus(); } catch(__){} }
+                    }
+                } catch(_){}
+                // If scroll moved, restore.
+                if (scroller && typeof baseline === 'number' && Math.abs(scroller.scrollTop - baseline) > 2) {
+                    scroller.scrollTop = baseline;
+                }
+                if (attempts < 4) requestAnimationFrame(enforce); // reinforce over a few frames (keyboard/layout settling)
+            }
+            enforce();
+        }
+        function handler(e){
+            try {
+                const t = e.target && e.target.closest && e.target.closest(INPUT_SELECTOR);
+                if (!t || !shouldIntercept(t)) return;
+                // Prevent the native focus-triggered autoscroll path.
+                // NOTE: passive must be false for preventDefault to work (we declared listener accordingly).
+                e.preventDefault();
+                const modal = t.closest('.modal');
+                const scroller = getScroller(modal);
+                const baseline = scroller ? scroller.scrollTop : 0;
+                // Defer focus to next microtask / frame so we are outside the default event processing stack.
+                setTimeout(()=> focusWithoutScroll(t, scroller, baseline), 0);
+            } catch(err){ /* swallow */ }
+        }
+        // Attach both touchstart (mobile) and pointerdown (fallback) with non-passive so we can preventDefault.
+        document.addEventListener('touchstart', handler, { capture:true, passive:false });
+        document.addEventListener('pointerdown', handler, { capture:true, passive:false });
+        // As an additional safety net, if a focus *still* causes a jump (programmatic / keyboard), capture focusin
+        // and restore scrollTop immediately before paint.
+        document.addEventListener('focusin', function(e){
+            try {
+                const t = e.target;
+                if (!t || !t.matches || !t.matches(INPUT_SELECTOR)) return;
+                const modal = t.closest && t.closest('.modal.show');
+                if (!modal) return;
+                const scroller = getScroller(modal);
+                if (!scroller) return;
+                const before = scroller.scrollTop;
+                // Schedule a double rAF restore if scrollTop plummets (< before - significant delta or near 0 when before was deep)
+                requestAnimationFrame(()=>{
+                    const after1 = scroller.scrollTop;
+                    if (before > 120 && after1 < 20) {
+                        scroller.scrollTop = before;
+                        requestAnimationFrame(()=>{ if (scroller.scrollTop < before - 5) scroller.scrollTop = before; });
+                    }
+                });
+            } catch(_){ }
+        }, true);
+        // Inject a minimal style to reduce external anchoring influences.
+        try {
+            const style = document.createElement('style');
+            style.textContent = '.modal-body-scrollable, .single-scroll-modal { overscroll-behavior: contain; }';
+            document.head.appendChild(style);
+        } catch(_){ }
+        if (window.__scrollDebug || window.scrollDebug) console.debug('[FocusInterceptor] installed');
+    } catch(err){ console.warn('ModalFocusInterceptor install failed', err); }
+})();
+// === End Modal Focus Interceptor ===
+
