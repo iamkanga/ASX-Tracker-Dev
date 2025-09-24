@@ -4874,6 +4874,105 @@ function showCustomAlert(message, duration = 3000, type = 'info') {
 // Expose globally for use in other modules
 window.showCustomAlert = showCustomAlert;
 
+// --- Adaptive Modal Enforcement Wrapper (ensures logic runs even if UI.showModal overrides fallback) ---
+(function(){
+    try {
+        const DEBUG_FLAG = ()=> !!(window.__scrollDebug || window.scrollDebug);
+        function applyAdaptiveIfNeeded(modal){
+            try {
+                if (!window.__vvAdaptiveModal) return; // feature flag off
+                if (!modal || modal.id !== 'shareFormSection') return;
+                if (modal.__vvAdaptiveApplied) return; // already applied
+                const scroller = modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal;
+                if (!scroller) return;
+                // Mark applied early to avoid re-entrancy loops
+                modal.__vvAdaptiveApplied = true;
+                // If VIP installed, disable (structural supersedes)
+                try { if (modal.__vipInstalled && typeof window.__disableVIP === 'function') { window.__disableVIP(); if (DEBUG_FLAG()) console.debug('[AdaptiveModal] Disabled VIP via wrapper'); } } catch(_){ }
+                function compute(){
+                    try {
+                        const vv = window.visualViewport;
+                        const safeTopInset = 8;
+                        const safeTop = safeTopInset + (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-top'))||0);
+                        const fullHeight = vv ? vv.height : window.innerHeight;
+                        // Use header inside this modal instance
+                        const headerEl = modal.querySelector('.modal-header-with-icon, .modal-header, header, h2');
+                        const headerH = headerEl ? headerEl.getBoundingClientRect().height : 0;
+                        const padding = 12;
+                        const usable = Math.max(300, fullHeight - safeTop - padding);
+                        modal.style.position = modal.style.position || 'fixed';
+                        modal.style.top = safeTop + 'px';
+                        modal.style.left = '0';
+                        modal.style.right = '0';
+                        modal.style.bottom = 'auto';
+                        modal.style.margin = '0 auto';
+                        modal.style.maxHeight = usable + 'px';
+                        modal.classList.add('vv-adaptive');
+                        const bodyMax = usable - headerH - 4;
+                        scroller.style.maxHeight = bodyMax + 'px';
+                        scroller.style.overscrollBehavior = 'contain';
+                        if (scroller.scrollTop > bodyMax - 40) scroller.scrollTop = Math.max(0, bodyMax - 60);
+                        if (DEBUG_FLAG()) console.debug('[AdaptiveModal] applied(wrapper)', { fullHeight, usable, bodyMax, headerH });
+                    } catch(err) { if (DEBUG_FLAG()) console.debug('[AdaptiveModal] compute error(wrapper)', err); }
+                }
+                // Bind listeners (idempotent under flag)
+                if (window.visualViewport) {
+                    visualViewport.addEventListener('resize', compute);
+                    visualViewport.addEventListener('scroll', compute);
+                }
+                window.addEventListener('orientationchange', ()=> setTimeout(compute, 60));
+                window.addEventListener('resize', ()=> setTimeout(compute, 30));
+                setTimeout(compute, 0);
+                setTimeout(compute, 120);
+            } catch(e){ if (DEBUG_FLAG()) console.debug('[AdaptiveModal] wrapper apply failed', e); }
+        }
+        // Expose for manual re-run
+        window.__applyAdaptiveModal = applyAdaptiveIfNeeded;
+        // Wrap existing showModal (UI variant or fallback) exactly once
+        if (!window.__adaptiveShowWrap) {
+            window.__adaptiveShowWrap = true;
+            const origShow = window.showModal;
+            window.showModal = function(modal){
+                const ret = origShow && origShow.apply(this, arguments);
+                // Adaptive after original show (modal now visible)
+                try { applyAdaptiveIfNeeded(modal); } catch(_) {}
+                return ret;
+            };
+            if (DEBUG_FLAG()) console.debug('[AdaptiveModal] showModal wrapper installed');
+        }
+        // In case UI.showModal is assigned later (after this script), poll briefly
+        let wrapTries = 0;
+        const interval = setInterval(()=>{
+            wrapTries++;
+            try {
+                if (window.UI && typeof window.UI.showModal === 'function' && !window.UI.__adaptiveWrapped) {
+                    const orig = window.UI.showModal;
+                    window.UI.showModal = function(m){
+                        const r = orig.apply(this, arguments);
+                        try { applyAdaptiveIfNeeded(m); } catch(_) {}
+                        return r;
+                    };
+                    window.UI.__adaptiveWrapped = true;
+                    if (DEBUG_FLAG()) console.debug('[AdaptiveModal] UI.showModal wrapper installed');
+                }
+            } catch(_) {}
+            if (wrapTries > 40) clearInterval(interval); // stop after ~4s
+        }, 100);
+        // Safety observer: if modal becomes visible without wrapper firing, attempt apply
+        const shareModal = document.getElementById('shareFormSection');
+        if (shareModal && !shareModal.__adaptiveVisObs) {
+            try {
+                const obs = new MutationObserver(()=>{
+                    const visible = shareModal.style.display !== 'none' && !shareModal.classList.contains('app-hidden');
+                    if (visible) applyAdaptiveIfNeeded(shareModal);
+                });
+                obs.observe(shareModal, { attributes:true, attributeFilter:['style','class'] });
+                shareModal.__adaptiveVisObs = true;
+            } catch(_){}
+        }
+    } catch(e){ /* silent */ }
+})();
+
 // ToastManager: centralized API
 const ToastManager = (() => {
     const container = () => document.getElementById('toastContainer');
