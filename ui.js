@@ -12,6 +12,27 @@
     // Body scroll lock (nested-safe): freeze background page scroll while any modal is open
     let __bodyScrollLockCount = 0;
     let __bodyScrollLockRestore = null;
+    // Track open modals explicitly to avoid stale isAnyModalOpen() race conditions
+    const __openModals = new Set();
+    function addOpenModal(modal){ try { if (!modal) return; if (!__openModals.has(modal)) { __openModals.add(modal); } } catch(_){} }
+    function removeOpenModal(modal){ try { if (!modal) return; if (__openModals.has(modal)) { __openModals.delete(modal); } } catch(_){} }
+    function visibleModalCount(){ try { return Array.from(__openModals).filter(m=> m && m.classList && m.classList.contains('show') && m.style.display!=='none').length; } catch(_) { return 0; } }
+    function reconcileModalLocks(){
+        try {
+            // Remove any stale references (detached nodes)
+            Array.from(__openModals).forEach(m=>{ try { if (!m.isConnected) __openModals.delete(m); } catch(_){} });
+            const liveQuery = Array.from(document.querySelectorAll('.modal.show')).filter(m=> m.style.display !== 'none');
+            // Sync set with actual DOM state (add missing, remove vanished)
+            liveQuery.forEach(m=> addOpenModal(m));
+            Array.from(__openModals).forEach(m=>{ if (!liveQuery.includes(m)) __openModals.delete(m); });
+            const liveCount = liveQuery.length;
+            if (liveCount === 0 && __bodyScrollLockCount > 0) {
+                // Force unlock if our counting missed something
+                __bodyScrollLockCount = 1; // ensure next unlock restores
+                unlockBodyScroll();
+            }
+        } catch(_){}
+    }
     function lockBodyScroll() {
         try {
             __bodyScrollLockCount++;
@@ -334,8 +355,12 @@
     } catch(_) {}
     try { if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id || true }, '', '#modal'); } catch(_) {}
     try { if (window.toggleAppSidebar && window.appSidebar && window.appSidebar.classList.contains('open')) window.toggleAppSidebar(false); } catch(_) {}
-        // Lock body scroll if this is the first visible modal
-        try { if (!isAnyModalOpen()) lockBodyScroll(); } catch(_) {}
+        // Register modal & lock if transitioning from 0->1
+        try {
+            const before = visibleModalCount();
+            addOpenModal(modalElement);
+            if (before === 0) lockBodyScroll();
+        } catch(_){}
         // Unhide any hidden ancestor modals so nested modals are not blocked by parent's app-hidden
         try {
             let anc = modalElement.parentElement;
@@ -362,9 +387,12 @@
 
     function showModalNoHistory(modalElement) {
         if (!modalElement) return;
-        // No stack and no browser history push: used when restoring a previous modal on back
-        // Lock body scroll if this is the first visible modal
-        try { if (!isAnyModalOpen()) lockBodyScroll(); } catch(_) {}
+        // No stack and no browser history push. Track & lock if first.
+        try {
+            const before = visibleModalCount();
+            addOpenModal(modalElement);
+            if (before === 0) lockBodyScroll();
+        } catch(_){}
         try {
             let anc = modalElement.parentElement;
             while (anc && anc !== document.body) {
@@ -384,9 +412,10 @@
         if (!modalElement) return;
         try { modalElement.classList.remove('show'); } catch(_){}
         modalElement.style.setProperty('display','none','important');
-        // If this was the last modal, unlock body scroll after styles settle
-        const maybeUnlock = () => { try { if (!isAnyModalOpen()) unlockBodyScroll(); } catch(_) {} };
-        try { requestAnimationFrame(maybeUnlock); setTimeout(maybeUnlock, 60); } catch(_) {}
+        // Update tracking & maybe unlock
+        removeOpenModal(modalElement);
+        const maybeUnlock = () => { try { reconcileModalLocks(); if (visibleModalCount() === 0) unlockBodyScroll(); } catch(_) {} };
+        try { requestAnimationFrame(maybeUnlock); setTimeout(maybeUnlock, 80); } catch(_) {}
         // Note: do NOT call removeModalFromStack here, so the previous modal remains just beneath top
     }
 
@@ -396,9 +425,10 @@
         try { modalElement.classList.remove('show'); } catch(_){}
         try { modalElement.classList.add('app-hidden'); } catch(_){}
         modalElement.style.setProperty('display', 'none', 'important');
-        // If no other modals remain visible, unlock body scroll
-        const maybeUnlock = () => { try { if (!isAnyModalOpen()) unlockBodyScroll(); } catch(_) {} };
-        try { requestAnimationFrame(maybeUnlock); setTimeout(maybeUnlock, 60); } catch(_) {}
+        removeOpenModal(modalElement);
+        // If no other modals remain visible, unlock body scroll (with reconciliation safety)
+        const maybeUnlock = () => { try { reconcileModalLocks(); if (visibleModalCount() === 0) unlockBodyScroll(); } catch(_) {} };
+        try { requestAnimationFrame(maybeUnlock); setTimeout(maybeUnlock, 80); setTimeout(maybeUnlock, 240); } catch(_) {}
     }
 
     // Core padding adjuster (non-scrolling) retained for backwards compatibility.
@@ -468,7 +498,8 @@
             if (modal) modal.style.setProperty('display', 'none', 'important');
         });
         try { document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show')); } catch(_) {}
-        try { unlockBodyScroll(); } catch(_) {}
+        try { __openModals.clear(); } catch(_) {}
+        try { __bodyScrollLockCount = 1; unlockBodyScroll(); } catch(_) {}
         try { if (typeof resetCalculator === 'function') resetCalculator(); } catch(_) {}
         try { if (typeof deselectCurrentShare === 'function') deselectCurrentShare(); } catch(_) {}
         try { if (typeof deselectCurrentCashAsset === 'function') deselectCurrentCashAsset(); } catch(_) {}
@@ -497,6 +528,11 @@
         lockBodyScroll,
         unlockBodyScroll
     });
+    // Failsafe: observe modal show/hide changes and reconcile lock state in case of edge races
+    try {
+        const mo = new MutationObserver(()=>{ try { reconcileModalLocks(); } catch(_){} });
+        mo.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class','style'] });
+    } catch(_){}
 })();
 
 // Calculators UI (Standard & Dividend)
