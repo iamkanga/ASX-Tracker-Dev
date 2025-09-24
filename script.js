@@ -19482,3 +19482,155 @@ try {
 })();
 // === End Virtual Modal Scroll ===
 
+// === Input Focus Isolation (Extreme Anti-Snap Layer) ===
+// Goal: Completely bypass Chrome/Android native scroll alignment by never allowing the scrolled modal input
+// element to receive focus during the unstable keyboard activation window. Instead, we focus a fixed-position
+// clone appended to <body>. The original input remains in the DOM (hidden/aria inert) so layout stays stable.
+// When the clone blurs (or user finishes), its value is synced back and the clone is removed.
+// This neutralizes any attempt by the browser to scroll the modal container to bring the focused element to top.
+(function installInputFocusIsolation(){
+    try {
+        if (window.__inputFocusIsolationInstalled) return; window.__inputFocusIsolationInstalled = true;
+        const UA = navigator.userAgent || '';
+        const IS_ANDROID = /Android/i.test(UA);
+        const ENABLE_ALWAYS_DEBUG = false; // set true to test on desktop
+        if (!(IS_ANDROID || ENABLE_ALWAYS_DEBUG)) return; // Limit scope
+        const INPUT_SELECTOR = 'input[type="text"], input[type="number"], input[type="email"], input[type="search"], input[type="tel"], input[type="url"], input:not([type]), textarea';
+        const ACTIVE_CLASS = 'focus-isolated-clone';
+        const isoState = { active: null }; // { original, clone, modal, scroller }
+
+        function isInShownModal(el){
+            const modal = el && el.closest && el.closest('.modal');
+            return modal && modal.classList.contains('show') ? modal : null;
+        }
+        function getScroller(modal){ return modal && (modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal); }
+
+        function alreadyIsolated(el){ return !!(el && el.dataset && el.dataset.isoActive === '1'); }
+
+        function createClone(orig){
+            const r = orig.getBoundingClientRect();
+            const clone = document.createElement(orig.tagName.toLowerCase() === 'textarea' ? 'textarea' : 'input');
+            clone.className = (orig.className || '') + ' ' + ACTIVE_CLASS;
+            // Copy basic attributes
+            ['type','placeholder','inputmode','pattern','maxlength','min','max','step','autocomplete'].forEach(attr=>{
+                if (orig.hasAttribute && orig.hasAttribute(attr)) clone.setAttribute(attr, orig.getAttribute(attr));
+            });
+            clone.value = orig.value || '';
+            clone.style.cssText = [
+                'position:fixed',
+                'z-index:99999',
+                'left:' + r.left + 'px',
+                'top:' + r.top + 'px',
+                'width:' + r.width + 'px',
+                'height:' + r.height + 'px',
+                'margin:0',
+                'padding:' + getComputedStyle(orig).padding,
+                'font:' + getComputedStyle(orig).font,
+                'color:' + getComputedStyle(orig).color,
+                'background:' + getComputedStyle(orig).backgroundColor,
+                'border:' + getComputedStyle(orig).border,
+                'border-radius:' + getComputedStyle(orig).borderRadius,
+                'box-sizing:border-box'
+            ].join(';');
+            clone.setAttribute('data-iso-clone','1');
+            return clone;
+        }
+
+        function positionClone(){
+            if (!isoState.active) return;
+            const { original, clone } = isoState.active;
+            if (!original || !clone) return;
+            const r = original.getBoundingClientRect();
+            clone.style.left = r.left + 'px';
+            clone.style.top = r.top + 'px';
+            clone.style.width = r.width + 'px';
+            clone.style.height = r.height + 'px';
+        }
+
+        function activateIsolation(orig){
+            try {
+                if (!orig || alreadyIsolated(orig)) return false;
+                const modal = isInShownModal(orig); if (!modal) return false;
+                const scroller = getScroller(modal) || modal;
+                orig.dataset.isoActive = '1';
+                const clone = createClone(orig);
+                // Hide / inert original while preserving layout
+                orig.dataset.prevTabIndex = orig.getAttribute('tabindex') || '';
+                orig.setAttribute('tabindex','-1');
+                orig.setAttribute('aria-hidden','true');
+                orig.style.visibility = 'hidden';
+                document.body.appendChild(clone);
+                isoState.active = { original: orig, clone, modal, scroller };
+                // Sync value changes
+                clone.addEventListener('input', ()=>{ try { orig.value = clone.value; orig.dispatchEvent(new Event('input',{bubbles:true})); } catch(_){} });
+                clone.addEventListener('keydown', (e)=>{
+                    if (e.key === 'Enter') { try { clone.blur(); } catch(_){ } }
+                });
+                clone.addEventListener('blur', ()=>{ deactivateIsolation(); });
+                // Reposition on scroll/resize (should not happen due to snap now, but safe)
+                const reposition = ()=> positionClone();
+                window.addEventListener('resize', reposition, { passive:true });
+                scroller.addEventListener('scroll', reposition, { passive:true });
+                isoState.active.cleanup = ()=>{
+                    window.removeEventListener('resize', reposition);
+                    scroller.removeEventListener('scroll', reposition);
+                };
+                setTimeout(()=>{ try { clone.focus({ preventScroll:true }); clone.setSelectionRange(clone.value.length, clone.value.length); } catch(_){ try { clone.focus(); } catch(__){} } }, 0);
+                if (window.__scrollDebug || window.scrollDebug) console.debug('[InputIsolation] Activated for', orig.id || orig.name || orig.tagName);
+                return true;
+            } catch(err){ console.warn('activateIsolation failed', err); }
+            return false;
+        }
+
+        function deactivateIsolation(){
+            try {
+                if (!isoState.active) return;
+                const { original, clone, cleanup } = isoState.active;
+                if (cleanup) cleanup();
+                if (clone && clone.parentNode) clone.parentNode.removeChild(clone);
+                if (original){
+                    original.style.visibility = '';
+                    if (original.dataset.prevTabIndex !== undefined){
+                        if (original.dataset.prevTabIndex) original.setAttribute('tabindex', original.dataset.prevTabIndex); else original.removeAttribute('tabindex');
+                        delete original.dataset.prevTabIndex;
+                    }
+                    original.removeAttribute('aria-hidden');
+                    delete original.dataset.isoActive;
+                    try { original.focus({ preventScroll:true }); } catch(_){ try { original.focus(); } catch(__){} }
+                }
+                isoState.active = null;
+                if (window.__scrollDebug || window.scrollDebug) console.debug('[InputIsolation] Deactivated');
+            } catch(err){ console.warn('deactivateIsolation failed', err); }
+        }
+
+        // Intercept pointer/touch before native focus
+        function preFocusHandler(e){
+            try {
+                const target = e.target && e.target.closest && e.target.closest(INPUT_SELECTOR);
+                if (!target) return;
+                if (!isInShownModal(target)) return; // only in shown modals
+                if (alreadyIsolated(target)) return;
+                // Only isolate first focus attempt within a short window after modal show OR always? We'll isolate always for reliability.
+                if (activateIsolation(target)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            } catch(err){ }
+        }
+        document.addEventListener('pointerdown', preFocusHandler, { capture:true, passive:false });
+        document.addEventListener('touchstart', preFocusHandler, { capture:true, passive:false });
+        // Defensive: if user navigates away or modal hides, clean up.
+        document.addEventListener('visibilitychange', ()=>{ if (document.hidden) deactivateIsolation(); });
+        document.addEventListener('focusout', (e)=>{
+            // If clone lost focus and new focus is outside clone/original, ensure isolation ends
+            if (isoState.active && (!e.relatedTarget || (isoState.active.clone !== e.relatedTarget && isoState.active.original !== e.relatedTarget))) {
+                setTimeout(()=>{ if (isoState.active && document.activeElement !== isoState.active.clone) deactivateIsolation(); }, 30);
+            }
+        });
+        // Public manual API for testing
+        window.__isolationAPI = { activate: activateIsolation, deactivate: deactivateIsolation };
+        if (window.__scrollDebug || window.scrollDebug) console.debug('[InputIsolation] Installed (Android=' + IS_ANDROID + ')');
+    } catch(err){ console.warn('InputFocusIsolation install failed', err); }
+})();
+// === End Input Focus Isolation ===
+
