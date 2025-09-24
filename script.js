@@ -19169,3 +19169,178 @@ try {
 })();
 // === End Modal Focus Interceptor ===
 
+// === Virtual Modal Scroll (Final Anti-Snap Escalation) ===
+// Strategy: Replace native scrolling within modal scrollers on mobile (Android focus snap issue) with a
+// virtual scroll layer using translateY. This blocks the browser from performing automatic scroll alignment
+// on focus, because the native scroll container never changes scrollTop (overflow is hidden) — instead we
+// maintain a synthetic scrollTop value and transform the inner content. Existing code that reads/sets
+// scroller.scrollTop continues to work via a monkey-patched accessor. We also synthesize 'scroll' events.
+(function installVirtualModalScroll(){
+    try {
+        if (window.__virtualModalScrollInstalled) return; window.__virtualModalScrollInstalled = true;
+        const UA = navigator.userAgent || '';
+        const IS_ANDROID = /Android/i.test(UA); // primary target
+        const ENABLE_ALWAYS_DEBUG = false; // set true for forcing on desktop dev
+        const MIN_CONTENT_EXCESS = 120; // require content to overflow meaningfully before virtualizing
+        const MODAL_SELECTOR = '.modal.show';
+        const SCROLLER_SELECTOR = '.modal-body-scrollable, .single-scroll-modal';
+
+        function qualifies(scroller){
+            if (!scroller) return false;
+            if (scroller.__vScrollInstalled) return false;
+            if (!(IS_ANDROID || ENABLE_ALWAYS_DEBUG)) return false; // Limit scope to Android unless forced
+            // Heuristic: must be within a shown modal
+            const modal = scroller.closest && scroller.closest('.modal');
+            if (!modal || !modal.classList.contains('show')) return false;
+            const ch = scroller.scrollHeight; const vh = scroller.clientHeight;
+            if (!ch || !vh || (ch - vh) < MIN_CONTENT_EXCESS) return false;
+            return true;
+        }
+
+        function install(scroller){
+            try {
+                if (!qualifies(scroller)) return;
+                const modal = scroller.closest('.modal');
+                scroller.__vScrollInstalled = true;
+                const originalOverflow = scroller.style.overflow;
+                scroller.style.overflow = 'hidden';
+                // Wrap existing children
+                const inner = document.createElement('div');
+                inner.className = 'vscroll-inner';
+                while (scroller.firstChild) inner.appendChild(scroller.firstChild);
+                scroller.appendChild(inner);
+                scroller.__vInner = inner;
+                scroller.__vScrollTop = scroller.__vScrollTop || 0;
+                function maxScroll(){
+                    return Math.max(0, (inner.scrollHeight - scroller.clientHeight));
+                }
+                function applyTransform(){
+                    inner.style.transform = 'translateY(' + (-scroller.__vScrollTop) + 'px)';
+                }
+                function emitScroll(){
+                    const ev = new Event('scroll', { bubbles:false, cancelable:false });
+                    scroller.dispatchEvent(ev);
+                }
+                function setVirtualTop(v){
+                    const max = maxScroll();
+                    const nv = Math.max(0, Math.min(v, max));
+                    if (nv === scroller.__vScrollTop) return;
+                    scroller.__vScrollTop = nv;
+                    applyTransform();
+                    emitScroll();
+                }
+                // Monkey patch scrollTop getter/setter
+                try {
+                    Object.defineProperty(scroller, 'scrollTop', {
+                        get(){ return scroller.__vScrollTop || 0; },
+                        set(v){ setVirtualTop(Number(v)||0); },
+                        configurable:true
+                    });
+                    Object.defineProperty(scroller, 'scrollHeight', {
+                        get(){ return (scroller.__vInner && scroller.__vInner.scrollHeight) || 0; },
+                        configurable:true
+                    });
+                } catch(_){}
+                // Touch / Pointer based manual scroll
+                let touchActive = false, startY=0, startTop=0, lastMoveT=0;
+                function onStart(e){
+                    try {
+                        const t = (e.touches && e.touches[0]) || e;
+                        touchActive = true; startY = t.clientY; startTop = scroller.__vScrollTop; lastMoveT=Date.now();
+                    } catch(_){ }
+                }
+                function onMove(e){
+                    if (!touchActive) return;
+                    try { e.preventDefault(); } catch(_){ }
+                    const t = (e.touches && e.touches[0]) || e;
+                    const dy = t.clientY - startY;
+                    setVirtualTop(startTop - dy);
+                    lastMoveT = Date.now();
+                }
+                function onEnd(){ touchActive = false; }
+                scroller.addEventListener('touchstart', onStart, { passive:false });
+                scroller.addEventListener('touchmove', onMove, { passive:false });
+                scroller.addEventListener('touchend', onEnd, { passive:true });
+                scroller.addEventListener('touchcancel', onEnd, { passive:true });
+                // Wheel fallback (desktop testing)
+                scroller.addEventListener('wheel', (e)=>{ setVirtualTop(scroller.__vScrollTop + e.deltaY); e.preventDefault(); }, { passive:false });
+                // Programmatic ensureVisible for focused inputs
+                function ensureVisible(target){
+                    if (!target || !target.getBoundingClientRect) return;
+                    const rect = target.getBoundingClientRect();
+                    const headerOffset = 56; // approximate safe top (modal header)
+                    const bottomSafe = (window.visualViewport ? window.visualViewport.height : window.innerHeight) - 16;
+                    // Adjust calculations relative to scroller viewport (assumed aligned with window for fixed modal)
+                    if (rect.top < headerOffset){
+                        setVirtualTop(scroller.__vScrollTop + (rect.top - headerOffset));
+                    } else if (rect.bottom > bottomSafe){
+                        setVirtualTop(scroller.__vScrollTop + (rect.bottom - bottomSafe));
+                    }
+                }
+                // Focus handler
+                document.addEventListener('focusin', (e)=>{
+                    try {
+                        if (!modal.classList.contains('show')) return;
+                        if (!e.target || !scroller.contains(e.target)) return;
+                        const before = scroller.__vScrollTop;
+                        requestAnimationFrame(()=>{ // after layouts/keyboard shifts
+                            ensureVisible(e.target);
+                            // Guard: if virtualization caused unintended jump upward, revert
+                            if (before > 100 && scroller.__vScrollTop < 20) setVirtualTop(before);
+                        });
+                    } catch(_){ }
+                }, true);
+                // Resize (keyboard) adjustments — clamp transform within new max
+                if (window.visualViewport){
+                    visualViewport.addEventListener('resize', ()=>{ setVirtualTop(scroller.__vScrollTop); });
+                }
+                // Initial paint
+                applyTransform();
+                if (window.__scrollDebug || window.scrollDebug) console.debug('[VirtualScroll] enabled for modal scroller', { id: modal && modal.id });
+                // Provide API for debugging toggles
+                scroller.__virtualApi = { set: setVirtualTop, refresh: applyTransform, destroy: destroy };
+                function destroy(){
+                    try {
+                        if (!scroller.__vScrollInstalled) return;
+                        // Restore children
+                        while(inner.firstChild) scroller.appendChild(inner.firstChild);
+                        inner.remove();
+                        scroller.style.overflow = originalOverflow;
+                        delete scroller.__vScrollInstalled;
+                        delete scroller.__vInner;
+                        // Remove property overrides by redefining defaults (may not be perfect)
+                        try { delete scroller.scrollTop; } catch(_){}
+                        try { delete scroller.scrollHeight; } catch(_){}
+                    } catch(_){}
+                }
+            } catch(err){ console.warn('VirtualScroll install failed for a scroller', err); }
+        }
+
+        function scan(){
+            try {
+                const modals = document.querySelectorAll(MODAL_SELECTOR);
+                modals.forEach(m => {
+                    const scroller = m.querySelector(SCROLLER_SELECTOR) || m;
+                    install(scroller);
+                });
+            } catch(_){ }
+        }
+        // Observe modal show
+        const mo = new MutationObserver(muts => {
+            let needsScan = false;
+            muts.forEach(m => {
+                if (m.type === 'attributes' && m.attributeName === 'class') {
+                    const el = m.target;
+                    if (el.classList && el.classList.contains('modal') && el.classList.contains('show')) needsScan = true;
+                }
+            });
+            if (needsScan) scan();
+        });
+        mo.observe(document.documentElement || document.body, { subtree:true, attributes:true, attributeFilter:['class'] });
+        // Initial attempt (for already open modals)
+        setTimeout(scan, 50);
+        if (window.__scrollDebug || window.scrollDebug) console.debug('[VirtualScroll] installer active (Android=' + IS_ANDROID + ')');
+    } catch(err){ console.warn('VirtualModalScroll global install failed', err); }
+})();
+// === End Virtual Modal Scroll ===
+
