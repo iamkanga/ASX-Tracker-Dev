@@ -6297,6 +6297,144 @@ function updateCompactViewButtonState() {
     logDebug('UI State: Compact view button enabled (mode=' + currentMobileViewMode + ').');
 }
 
+// === Advanced Modal Diagnostics (Final Escalation Instrumentation) ===
+// Captures detailed traces: scroll deltas, focus sequences, mutation patterns, viewport changes, and jump detection.
+// Exposed via window.__modalDiag + helper: window.dumpModalScrollDiagnostics()
+// Goal: Definitively identify the trigger sequence for mobile snap (which prior mitigations failed to suppress).
+(function initAdvancedModalDiagnostics(){
+    try {
+        if (window.__advancedModalDiagnosticsInstalled) return; window.__advancedModalDiagnosticsInstalled = true;
+        const MAX_ENTRIES = 400; // ring buffer size per trace
+        const diag = window.__modalDiag = window.__modalDiag || {
+            scrollTrace: [],       // {t,id,st,delta,src,user,afterFocusMs,afterVvMs}
+            focusTrace: [],        // {t,id,elTag,elId,classes,st,rect}
+            mutationTrace: [],     // {t,id,type,added,removed,totalChildren,cleared}
+            viewportTrace: [],     // {t,h,w,scale,deltaH}
+            jumpEvents: [],        // {t,id,from,to,delta,context}
+            lastFocusAt: 0,
+            lastVvResizeAt: 0,
+            version: 'adv-diag-1'
+        };
+        function push(arr, obj){ arr.push(obj); if (arr.length > MAX_ENTRIES) arr.splice(0, arr.length - MAX_ENTRIES); }
+        // Utility to safely get modal scroller
+        function getScroller(modal){ return modal && (modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal); }
+        // Install per-modal observers
+        function installForModal(modal){
+            try {
+                if (!modal || modal.__advDiagInstalled) return; modal.__advDiagInstalled = true;
+                const scroller = getScroller(modal) || modal;
+                modal.__advScroller = scroller;
+                // Scroll listener
+                let lastScrollTop = scroller.scrollTop;
+                scroller.addEventListener('scroll', function(ev){
+                    const now = Date.now();
+                    const st = scroller.scrollTop;
+                    const delta = st - lastScrollTop;
+                    const afterFocusMs = diag.lastFocusAt ? (now - diag.lastFocusAt) : null;
+                    const afterVvMs = diag.lastVvResizeAt ? (now - diag.lastVvResizeAt) : null;
+                    const src = ev.isTrusted ? 'trusted' : 'programmatic';
+                    const user = ev.isTrusted && Math.abs(delta) < 180 ? 'maybeUser' : (ev.isTrusted ? 'trusted' : 'no');
+                    push(diag.scrollTrace, { t: now, id: modal.id||null, st, delta, src, user, afterFocusMs, afterVvMs });
+                    // Jump detection heuristic: large positive or negative delta near a recent focus / vv resize
+                    if (Math.abs(delta) > 140 && ((afterFocusMs !== null && afterFocusMs < 800) || (afterVvMs !== null && afterVvMs < 800))) {
+                        push(diag.jumpEvents, { t: now, id: modal.id||null, from: lastScrollTop, to: st, delta, context: { afterFocusMs, afterVvMs } });
+                    }
+                    lastScrollTop = st;
+                }, { passive:true, capture:true });
+                // Mutation observer to detect wholesale content replacement
+                try {
+                    const mo = new MutationObserver(muts => {
+                        let added = 0, removed = 0, cleared = false;
+                        muts.forEach(m => {
+                            if (m.type === 'childList') {
+                                added += m.addedNodes ? m.addedNodes.length : 0;
+                                removed += m.removedNodes ? m.removedNodes.length : 0;
+                                if (!cleared && scroller && scroller.children && scroller.children.length === 0) cleared = true;
+                            }
+                        });
+                        if (added || removed || cleared) {
+                            push(diag.mutationTrace, { t: Date.now(), id: modal.id||null, type: 'childList', added, removed, totalChildren: scroller.children ? scroller.children.length : null, cleared });
+                        }
+                    });
+                    mo.observe(scroller, { subtree:true, childList:true });
+                    modal.__advDiagMutationObserver = mo;
+                } catch(_){}
+            } catch(err){ console.warn('AdvancedDiag: installForModal failed', err); }
+        }
+        // Focus trace
+        document.addEventListener('focusin', (e)=>{
+            try {
+                const modal = e.target && e.target.closest && e.target.closest('.modal.show');
+                if (modal) {
+                    diag.lastFocusAt = Date.now();
+                    const scroller = getScroller(modal) || { scrollTop: null };
+                    const r = (e.target.getBoundingClientRect && e.target.getBoundingClientRect()) || {};
+                    push(diag.focusTrace, { t: diag.lastFocusAt, id: modal.id||null, elTag: e.target.tagName, elId: e.target.id||'', classes: (e.target.className||'').toString().slice(0,80), st: scroller.scrollTop, rect: { top: Math.round(r.top), bottom: Math.round(r.bottom), height: Math.round(r.height) } });
+                }
+            } catch(_){ }
+        }, true);
+        // Visual viewport trace
+        if (window.visualViewport) {
+            visualViewport.addEventListener('resize', ()=>{
+                try {
+                    const now = Date.now();
+                    const h = Math.round(visualViewport.height); const w = Math.round(visualViewport.width); const scale = visualViewport.scale;
+                    const last = diag.viewportTrace.length ? diag.viewportTrace[diag.viewportTrace.length-1] : null;
+                    const deltaH = last ? (h - last.h) : 0;
+                    diag.lastVvResizeAt = now;
+                    push(diag.viewportTrace, { t: now, h, w, scale, deltaH });
+                } catch(_){ }
+            });
+        }
+        // Global modal show observer to auto-install per-modal
+        const showMo = new MutationObserver(muts => {
+            muts.forEach(m => {
+                if (m.type === 'attributes' && m.attributeName === 'class') {
+                    const el = m.target;
+                    if (el.classList && el.classList.contains('modal') && el.classList.contains('show')) {
+                        installForModal(el);
+                    }
+                }
+            });
+        });
+        try { showMo.observe(document.documentElement || document.body, { subtree:true, attributes:true, attributeFilter:['class'] }); } catch(_){}
+        // Public dump function
+        window.dumpModalScrollDiagnostics = function(){
+            try {
+                const summary = {
+                    version: diag.version,
+                    scrollEvents: diag.scrollTrace.length,
+                    focusEvents: diag.focusTrace.length,
+                    mutationEvents: diag.mutationTrace.length,
+                    viewportEvents: diag.viewportTrace.length,
+                    jumpEvents: diag.jumpEvents.length,
+                    recentJumps: diag.jumpEvents.slice(-5)
+                };
+                console.log('[ModalDiag] Summary:', summary);
+                console.log('[ModalDiag] Last 15 scroll:', diag.scrollTrace.slice(-15));
+                console.log('[ModalDiag] Last 8 focus:', diag.focusTrace.slice(-8));
+                console.log('[ModalDiag] Last 8 mutations:', diag.mutationTrace.slice(-8));
+                console.log('[ModalDiag] Last 6 viewport:', diag.viewportTrace.slice(-6));
+                return summary;
+            } catch(err){ console.warn('dumpModalScrollDiagnostics failed', err); }
+        };
+        window.clearModalScrollDiagnostics = function(){
+            diag.scrollTrace.length = 0; diag.focusTrace.length = 0; diag.mutationTrace.length = 0; diag.viewportTrace.length = 0; diag.jumpEvents.length = 0; console.log('[ModalDiag] Cleared.');
+        };
+        // Extreme measure placeholder (to be invoked after diagnostics review)
+        window.__extremeFocusRedirect = function(target){
+            try {
+                if (!target) return;
+                let sentinel = document.getElementById('__focusSentinelPre');
+                if (!sentinel) { sentinel = document.createElement('button'); sentinel.id='__focusSentinelPre'; sentinel.tabIndex=-1; sentinel.style.cssText='position:fixed;left:-9999px;top:0;height:1px;width:1px;opacity:0;'; document.body.appendChild(sentinel); }
+                sentinel.focus({ preventScroll:true });
+                setTimeout(()=>{ try { target.focus({ preventScroll:true }); } catch(_){ try { target.focus(); } catch(__){} } }, 40);
+            } catch(err){ console.warn('__extremeFocusRedirect failed', err); }
+        };
+        if (window.__scrollDebug || window.scrollDebug) console.debug('[AdvancedModalDiagnostics] installed');
+    } catch(err){ console.warn('AdvancedModalDiagnostics install failed', err); }
+})();
+
 function showModal(modalElement) {
     try { console.debug && console.debug('TRACE showModal called for:', modalElement && modalElement.id); } catch(_){}
     // Prefer UI module if available
