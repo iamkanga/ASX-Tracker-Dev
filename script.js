@@ -2056,6 +2056,24 @@ document.addEventListener('DOMContentLoaded', function () {
         if (splashVerEl) {
             // Always force the current version string on load to avoid stale DOM
             splashVerEl.textContent = 'v' + APP_VERSION;
+            // Persist visibility: guard against later accidental blanking
+            const observer = new MutationObserver(muts => {
+                muts.forEach(m => {
+                    if (m.type === 'characterData' || m.type === 'childList') {
+                        if (!splashVerEl.textContent || splashVerEl.textContent.trim() === '') {
+                            splashVerEl.textContent = 'v' + APP_VERSION;
+                        }
+                    }
+                    if (m.type === 'attributes' && splashVerEl.style && splashVerEl.style.display === 'none') {
+                        splashVerEl.style.display = '';
+                    }
+                });
+            });
+            try { observer.observe(splashVerEl, { characterData: true, childList: true, subtree: true, attributes: true, attributeFilter: ['style'] }); } catch(_){ }
+            // Auto-disconnect once splash hides
+            const stopObs = () => { try { observer.disconnect(); } catch(_){} };
+            document.addEventListener('transitionend', (e)=> { if (e.target === splashScreen && splashScreen.classList.contains('hidden')) stopObs(); }, { passive:true });
+            setTimeout(stopObs, 15000);
         }
     } catch (e) { /* ignore */ }
 
@@ -18968,6 +18986,95 @@ try {
             } catch(_){ }
         });
     } catch(err){ console.warn('ViewportShrinkGuard install failed', err); }
+})();
+// === Hard Lock Scroll Strategy ===
+// Purpose: During the critical focus + keyboard appearance window, convert the modal scroll area to a position-stable layer
+// to neutralize browser auto-scroll attempts, then restore normal scrolling.
+(function installHardLockScroll(){
+    try {
+        if (window.__hardLockScrollInstalled) return; window.__hardLockScrollInstalled = true;
+        const LOCK_WINDOW_MS = 1800; // time after modal show to allow hard lock interventions
+        const FOCUS_LOCK_MS = 900;   // time after each focus to reinforce lock
+        const MODAL_SELECTOR = '.modal.show';
+        let lastModalShowAt = 0;
+        let activeLocks = new Set();
+
+        function getScroller(modal){
+            return modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal;
+        }
+        function lock(modal, reason){
+            const scroller = getScroller(modal);
+            if (!scroller) return;
+            if (!modal.__baselineScrollTop) modal.__baselineScrollTop = scroller.scrollTop;
+            if (!scroller.__hardLockActive){
+                scroller.__hardLockActive = true;
+                scroller.__origOverflow = scroller.style.overflow;
+                scroller.__origPosition = scroller.style.position;
+                scroller.__origTop = scroller.style.top;
+                scroller.__origHeight = scroller.style.height;
+                const h = scroller.clientHeight;
+                const st = scroller.scrollTop;
+                // Fix the scroller in place so browser attempts to auto-scroll have no visible effect
+                scroller.style.overflow = 'hidden';
+                scroller.style.position = 'relative';
+                scroller.style.top = '0';
+                scroller.style.height = h + 'px';
+                // Mirror scroll position using a transform container technique (optional) - simplified: just store baseline
+                if (window.__scrollDebug || window.scrollDebug) console.debug('[HardLock] engaged', { id: modal.id, reason, st });
+                activeLocks.add(scroller);
+            }
+            scroller.__hardLockExpires = Date.now() + FOCUS_LOCK_MS;
+        }
+        function unlock(scroller){
+            if (!scroller || !scroller.__hardLockActive) return;
+            if (Date.now() < scroller.__hardLockExpires) return; // still within per-focus lock
+            scroller.style.overflow = scroller.__origOverflow || '';
+            scroller.style.position = scroller.__origPosition || '';
+            scroller.style.top = scroller.__origTop || '';
+            scroller.style.height = scroller.__origHeight || '';
+            scroller.__hardLockActive = false;
+            activeLocks.delete(scroller);
+            if (window.__scrollDebug || window.scrollDebug) console.debug('[HardLock] released');
+        }
+        // Observe modal show via class mutations
+        const mo = new MutationObserver(muts => {
+            muts.forEach(m => {
+                if (m.type === 'attributes' && m.attributeName === 'class') {
+                    const el = m.target;
+                    if (el.classList && el.classList.contains('modal') && el.classList.contains('show')) {
+                        lastModalShowAt = Date.now();
+                        lock(el, 'show');
+                    }
+                }
+            });
+        });
+        mo.observe(document.documentElement || document.body, { subtree:true, attributes:true, attributeFilter:['class'] });
+        // Focus-based reinforcement
+        document.addEventListener('focusin', (e)=>{
+            try {
+                const modal = e.target && e.target.closest && e.target.closest(MODAL_SELECTOR.replace('.show',''));
+                if (!modal) return;
+                if ((Date.now() - lastModalShowAt) < LOCK_WINDOW_MS) {
+                    lock(modal, 'focus');
+                }
+            } catch(_){ }
+        }, true);
+        // Keyboard (viewport shrink) reinforcement already covered by viewport guard; piggyback here
+        if (window.visualViewport) {
+            visualViewport.addEventListener('resize', ()=>{
+                try {
+                    const modals = document.querySelectorAll(MODAL_SELECTOR);
+                    modals.forEach(m => {
+                        if ((Date.now() - lastModalShowAt) < LOCK_WINDOW_MS) lock(m, 'vv-resize');
+                    });
+                } catch(_){ }
+            });
+        }
+        // Periodic unlock sweeper
+        setInterval(()=>{
+            activeLocks.forEach(scroller => unlock(scroller));
+        }, 350);
+    } catch(err){ console.warn('HardLockScroll install failed', err); }
 })();
 // === End Universal Modal Scroll Preservation ===
 
