@@ -18196,6 +18196,69 @@ try {
                     diag.swController = (navigator.serviceWorker.controller && navigator.serviceWorker.controller.state) || null;
                     diag.windowLocation = window.location.href;
                     diag.docHidden = document.hidden;
+                    // === Added: Mobile Modal Snap Diagnostics Block ===
+                    try {
+                        // Device & viewport info
+                        const vv = window.visualViewport || null;
+                        diag.userAgent = navigator.userAgent;
+                        diag.viewport = {
+                            innerWidth: window.innerWidth,
+                            innerHeight: window.innerHeight,
+                            clientWidth: document.documentElement && document.documentElement.clientWidth,
+                            clientHeight: document.documentElement && document.documentElement.clientHeight,
+                            screen: { width: screen && screen.width, height: screen && screen.height, availHeight: screen && screen.availHeight, orientation: (screen.orientation && screen.orientation.type) || null },
+                            visualViewport: vv ? { width: vv.width, height: vv.height, scale: vv.scale, offsetTop: vv.offsetTop, offsetLeft: vv.offsetLeft, pageTop: vv.pageTop, pageLeft: vv.pageLeft } : null
+                        };
+
+                        // Scroll-related flags & state
+                        const ae = document.activeElement;
+                        const modalOpen = !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
+                        const inModalFocus = !!(ae && ae.closest && ae.closest('.modal'));
+                        const focusWindow = (typeof window !== 'undefined' && window.__modalFocusWindow && Date.now() < window.__modalFocusWindow);
+                        diag.scrollFlags = {
+                            ModalFocusAutoScroll: window.ModalFocusAutoScroll,
+                            __modalFocusWindow: window.__modalFocusWindow || null,
+                            activeElement: ae ? { tag: ae.tagName, id: ae.id || null, classes: ae.className || null, inModal: inModalFocus } : null,
+                            bodyHasModalOpenClass: document.body.classList.contains('modal-open'),
+                            docScrollTop: (document.scrollingElement && document.scrollingElement.scrollTop) || window.pageYOffset || 0,
+                            pageYOffset: window.pageYOffset || 0,
+                            bodyStyleTop: document.body && document.body.style && document.body.style.top || null,
+                            guard: { modalOpen, inModalFocus, focusWindow, wouldSuppressScrollMainToTop: (modalOpen || inModalFocus || focusWindow) }
+                        };
+
+                        // Active/open modals snapshot
+                        try {
+                            const openModals = Array.from(document.querySelectorAll('.modal.show, .modal[style*="display: flex"]'));
+                            if (openModals.length) {
+                                diag.openModals = openModals.map(m => {
+                                    // Find a likely scroll container inside the modal
+                                    let scrollEl = m.querySelector('.modal-body-scrollable') || m.querySelector('.modal-body') || m;
+                                    return {
+                                        id: m.id || null,
+                                        classes: m.className,
+                                        scrollTop: scrollEl ? scrollEl.scrollTop : null,
+                                        scrollHeight: scrollEl ? scrollEl.scrollHeight : null,
+                                        clientHeight: scrollEl ? scrollEl.clientHeight : null,
+                                        contentOverscroll: scrollEl ? (scrollEl.scrollHeight - scrollEl.clientHeight - scrollEl.scrollTop) : null
+                                    };
+                                });
+                            } else {
+                                diag.openModals = [];
+                            }
+                        } catch(modErr) { diag.openModalsError = ''+modErr; }
+
+                        // Recent focus chain (lightweight) – walk up from active element
+                        if (ae) {
+                            try {
+                                const chain = []; let cur = ae; let depth=0;
+                                while (cur && depth < 6) { chain.push({ tag: cur.tagName, id: cur.id||null, cls: cur.className||null }); cur = cur.parentElement; depth++; }
+                                diag.activeElementChain = chain;
+                            } catch(chainErr) { diag.activeElementChainError = ''+chainErr; }
+                        }
+                    } catch(diagSnapErr) {
+                        diag.snapDiagnosticsError = ''+diagSnapErr;
+                    }
+                    // === End Added Block ===
                     const text = JSON.stringify(diag, null, 2);
                     try { await navigator.clipboard.writeText(text); showCustomAlert('Diagnostics copied'); }
                     catch(_) { alert(text); }
