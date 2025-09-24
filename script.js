@@ -142,9 +142,39 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
     try { if (hiloHighContainer) hiloHighContainer.innerHTML = ''; } catch(_) {}
     try { if (hiloLowContainer) hiloLowContainer.innerHTML = ''; } catch(_) {}
 
-    // Render GLOBAL_MOVERS (window.globalMovers expected shape: { up: [...], down: [...], upSample, downSample })
-        // If central doc is missing or empty, fall back to the last local snapshot computed by applyGlobalSummaryFilter
-        let gm = (window.globalMovers && (Array.isArray(window.globalMovers.up) || Array.isArray(window.globalMovers.down))) ? window.globalMovers : null;
+    // Normalize data sources (mirror isolation test): prefer *Hits docs then legacy projections
+        // MOVERS normalization
+        let gm = null;
+        try {
+            if (window.globalMoversHits && (Array.isArray(window.globalMoversHits.upHits) || Array.isArray(window.globalMoversHits.downHits))) {
+                gm = {
+                    updatedAt: window.globalMoversHits.updatedAt || null,
+                    up: window.globalMoversHits.upHits || [],
+                    down: window.globalMoversHits.downHits || [],
+                    upCount: (window.globalMoversHits.upHits||[]).length,
+                    downCount: (window.globalMoversHits.downHits||[]).length,
+                    totalCount: ((window.globalMoversHits.upHits||[]).length + (window.globalMoversHits.downHits||[]).length),
+                    thresholds: (window.globalMovers && window.globalMovers.thresholds) || null
+                };
+            }
+        } catch(_) {}
+        // Legacy fallback
+        if (!gm && window.globalMovers && (Array.isArray(window.globalMovers.up) || Array.isArray(window.globalMovers.down))) {
+            gm = window.globalMovers;
+        }
+        // Snapshot fallback
+        if (!gm || (!Array.isArray(gm.up) && !Array.isArray(gm.down))) {
+            try {
+                const snap = window.__lastMoversSnapshot || null;
+                if (snap && Array.isArray(snap.entries)) {
+                    const ups = snap.entries.filter(e=> e.direction === 'up').map(e=>({ code: e.code, name: e.name||null, live: e.live, prevClose: e.prev, pct: e.pct, change: e.change, direction: 'up' }));
+                    const downs = snap.entries.filter(e=> e.direction === 'down').map(e=>({ code: e.code, name: e.name||null, live: e.live, prevClose: e.prev, pct: e.pct, change: e.change, direction: 'down' }));
+                    gm = { updatedAt: (new Date()).toISOString(), up: ups, down: downs, upCount: ups.length, downCount: downs.length, totalCount: ups.length + downs.length, thresholds: null };
+                    window.globalMovers = gm;
+                }
+            } catch(_) {}
+        }
+        if (!gm) gm = { updatedAt: null, up: [], down: [], upCount:0, downCount:0, totalCount:0, thresholds:null };
         if (!gm || (!Array.isArray(gm.up) && !Array.isArray(gm.down))) {
             try {
                 const snap = window.__lastMoversSnapshot || null;
@@ -415,6 +445,18 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             };
             // (Optional) Could display explainer using curThr if desired
 
+        // 52W HI/LO normalization (prefer hits doc structure)
+        let hilo = { highs: [], lows: [], updatedAt: null };
+        try {
+            if (window.globalHiLo52Hits && (Array.isArray(window.globalHiLo52Hits.highHits) || Array.isArray(window.globalHiLo52Hits.lowHits))) {
+                hilo = { highs: window.globalHiLo52Hits.highHits || [], lows: window.globalHiLo52Hits.lowHits || [], updatedAt: window.globalHiLo52Hits.updatedAt || null };
+            } else if (window.globalHiLo52Alerts && (Array.isArray(window.globalHiLo52Alerts.highs) || Array.isArray(window.globalHiLo52Alerts.lows))) {
+                hilo = { highs: window.globalHiLo52Alerts.highs || [], lows: window.globalHiLo52Alerts.lows || [], updatedAt: window.globalHiLo52Alerts.updatedAt || null };
+            } else if (window.hilo && (Array.isArray(window.hilo.highs) || Array.isArray(window.hilo.lows))) {
+                hilo = window.hilo;
+            }
+        } catch(_) {}
+
         // Ensure fixed header (explainer) with inner scroll for hi/lo sections
         if (hiloHighContainer) {
             // Ensure host/inner structure
@@ -434,7 +476,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             if (highInner) {
                 highInner.innerHTML = '';
                 const fragH = document.createDocumentFragment();
-                (hilo.highs || []).forEach(e => { fragH.appendChild(renderHiLoEntry(e, 'high')); });
+                (hilo.highs || []).forEach(e => { try { fragH.appendChild(renderHiLoEntry(e, 'high')); } catch(err){ /* noop */ } });
                 highInner.appendChild(fragH);
             }
         }
@@ -453,7 +495,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             if (lowInner) {
                 lowInner.innerHTML = '';
                 const fragL = document.createDocumentFragment();
-                (hilo.lows || []).forEach(e => { fragL.appendChild(renderHiLoEntry(e, 'low')); });
+                (hilo.lows || []).forEach(e => { try { fragL.appendChild(renderHiLoEntry(e, 'low')); } catch(err){ /* noop */ } });
                 lowInner.appendChild(fragL);
             }
         }
@@ -473,10 +515,17 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                             return !inner || inner.children.length === 0;
                         };
                         const moversEmpty = isEmpty(gainersContainer) && isEmpty(losersContainer);
-                        const stillEmpty = moversEmpty && isEmpty(hiloHighContainer) && isEmpty(hiloLowContainer);
+                        const hiloEmpty = isEmpty(hiloHighContainer) && isEmpty(hiloLowContainer);
+                        const stillEmpty = moversEmpty && hiloEmpty;
                         if (stillEmpty && typeof window.__renderTargetHitDetailsModalImpl === 'function' && !modal.__retryOnce) {
                             modal.__retryOnce = true;
                             window.__renderTargetHitDetailsModalImpl({ retry: true });
+                        } else if (hiloEmpty && !moversEmpty && !modal.__notedPartial) {
+                            modal.__notedPartial = true;
+                            console.warn('[GlobalAlerts][Diag] Movers rendered but Hi/Lo empty. Check listener for HI_LO_52W_HITS or field names.');
+                        } else if (moversEmpty && !hiloEmpty && !modal.__notedPartialMovers) {
+                            modal.__notedPartialMovers = true;
+                            console.warn('[GlobalAlerts][Diag] Hi/Lo rendered but Movers empty. Check GLOBAL_MOVERS_HITS listener.');
                         }
                     } catch(_) {}
                 }, 150);
@@ -6342,36 +6391,43 @@ function showModal(modalElement) {
         } catch(stabErr){ try { console.warn('ScrollStabilizer install error', stabErr); } catch(_){} }
         // Do not force-scroll to top here; preserve user's last position and avoid snapping.
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
-        // Persistent modal scroll memory (session-based)
+        // Persistent modal scroll memory (session-based) EXCEPT for shareFormSection to avoid stale mid-form positioning
         try {
             const scroller = scrollableContent || modalElement.querySelector('.single-scroll-modal') || modalElement;
             if (scroller) {
                 const key = 'modalScroll:'+ (modalElement.id||'');
-                // Restore only if we previously stored a meaningful position
-                if (!modalElement.__scrollMemoryRestored) {
-                    modalElement.__scrollMemoryRestored = true;
-                    const stored = sessionStorage.getItem(key);
-                    if (stored) {
-                        const val = parseInt(stored,10);
-                        if (!isNaN(val) && val > 40) {
-                            // Defer restore slightly to allow layout height settle
-                            setTimeout(()=>{ try { scroller.scrollTop = val; modalElement.__baselineScrollTop = val; } catch(_){ } }, 30);
+                const skipMemory = (modalElement.id === 'shareFormSection');
+                if (skipMemory) {
+                    // Always start at top for Add/Edit Share modal to prevent header being off-screen.
+                    try { scroller.scrollTop = 0; modalElement.__baselineScrollTop = 0; sessionStorage.removeItem(key); } catch(_){}
+                    if (window.__scrollDebug || window.scrollDebug) console.debug('[ModalScrollMemory] Skipped restore & cleared key for shareFormSection');
+                } else {
+                    // Restore only if we previously stored a meaningful position
+                    if (!modalElement.__scrollMemoryRestored) {
+                        modalElement.__scrollMemoryRestored = true;
+                        const stored = sessionStorage.getItem(key);
+                        if (stored) {
+                            const val = parseInt(stored,10);
+                            if (!isNaN(val) && val > 40) {
+                                // Defer restore slightly to allow layout height settle
+                                setTimeout(()=>{ try { scroller.scrollTop = val; modalElement.__baselineScrollTop = val; if (window.__scrollDebug||window.scrollDebug) console.debug('[ModalScrollMemory] Restored', key, val); } catch(_){ } }, 30);
+                            }
                         }
                     }
-                }
-                // Track user scroll to update stored position (throttled)
-                if (!scroller.__persistListenerAttached) {
-                    scroller.__persistListenerAttached = true;
-                    let lastSave = 0;
-                    scroller.addEventListener('scroll', ()=>{
-                        const now = Date.now();
-                        if (now - lastSave > 400) { // throttle
-                            lastSave = now;
-                            try {
-                                if (scroller.scrollTop > 10) sessionStorage.setItem(key, String(scroller.scrollTop));
-                            } catch(_){ }
-                        }
-                    }, { passive:true });
+                    // Track user scroll to update stored position (throttled)
+                    if (!scroller.__persistListenerAttached) {
+                        scroller.__persistListenerAttached = true;
+                        let lastSave = 0;
+                        scroller.addEventListener('scroll', ()=>{
+                            const now = Date.now();
+                            if (now - lastSave > 400) { // throttle
+                                lastSave = now;
+                                try {
+                                    if (scroller.scrollTop > 10) sessionStorage.setItem(key, String(scroller.scrollTop));
+                                } catch(_){ }
+                            }
+                        }, { passive:true });
+                    }
                 }
             }
         } catch(_){ }

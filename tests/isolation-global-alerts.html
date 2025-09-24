@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Isolation Test - Global Alerts Rendering</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin:0; padding:0; background:#111; color:#eee; }
+    header { padding:12px 16px; background:#222; font-weight:600; }
+    main { padding:12px 16px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+    .section { background:#1e1e1e; border:1px solid #333; border-radius:6px; padding:10px 12px; min-height:140px; display:flex; flex-direction:column; }
+    .section h2 { margin:0 0 8px; font-size:14px; text-transform:uppercase; letter-spacing:.05em; color:#8ab4ff; display:flex; align-items:center; gap:6px; }
+    .count-pill { background:#333; padding:2px 6px; border-radius:12px; font-size:11px; color:#ccc; }
+    .cards { overflow:auto; scrollbar-width:thin; flex:1; display:grid; gap:6px; align-content:start; }
+    .card { background:#262626; border:1px solid #3a3a3a; border-radius:5px; padding:6px 8px; font-size:13px; line-height:1.25; cursor:pointer; display:flex; flex-direction:column; gap:2px; }
+    .card:hover { border-color:#555; background:#2d2d2d; }
+    .code { font-weight:600; font-size:13px; }
+    .name { font-size:11px; color:#bbb; }
+    .row { display:flex; justify-content:space-between; align-items:center; }
+    .pct.up { color:#5cc46b; }
+    .pct.down { color:#ff6b6b; }
+    .hi { color:#5cc46b; }
+    .lo { color:#ff6b6b; }
+    .status { font-size:11px; color:#888; margin-top:4px; }
+    .error { color:#ff6b6b; }
+    .loading { opacity:.7; }
+    #toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+    button { background:#2a2a2a; color:#ddd; border:1px solid #444; border-radius:4px; padding:6px 10px; cursor:pointer; font-size:13px; }
+    button:hover { background:#333; }
+    .badge { background:#444; padding:2px 5px; border-radius:10px; font-size:10px; }
+    #raw { white-space:pre; font-size:11px; background:#181818; padding:10px; border:1px solid #333; border-radius:6px; max-height:280px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <header>Isolation Test: Global Alerts (Movers & 52W Hi/Lo)</header>
+  <main>
+    <div id="toolbar">
+      <button id="btnSignIn" title="Authenticate with Google to satisfy Firestore security rules">Sign In (Google)</button>
+      <button id="btnSignOut" style="display:none;">Sign Out</button>
+      <span id="userInfo" style="font-size:11px; color:#aaa; min-width:140px;"></span>
+      <button id="btnLoad">Load From Firestore</button>
+      <button id="btnMock">Inject Mock Data</button>
+      <button id="btnClear">Clear</button>
+      <span id="status" class="status">Idle</span>
+    </div>
+    <div class="grid" id="sections">
+      <div class="section" id="secGainers">
+        <h2>Global Gainers <span class="count-pill" id="cntGainers">0</span></h2>
+        <div class="cards" id="cardsGainers"></div>
+        <div class="status" id="statGainers"></div>
+      </div>
+      <div class="section" id="secLosers">
+        <h2>Global Losers <span class="count-pill" id="cntLosers">0</span></h2>
+        <div class="cards" id="cardsLosers"></div>
+        <div class="status" id="statLosers"></div>
+      </div>
+      <div class="section" id="secHighs">
+        <h2>52W Highs <span class="count-pill" id="cntHighs">0</span></h2>
+        <div class="cards" id="cardsHighs"></div>
+        <div class="status" id="statHighs"></div>
+      </div>
+      <div class="section" id="secLows">
+        <h2>52W Lows <span class="count-pill" id="cntLows">0</span></h2>
+        <div class="cards" id="cardsLows"></div>
+        <div class="status" id="statLows"></div>
+      </div>
+    </div>
+    <h3 style="margin-top:28px; font-size:14px;">Raw Data Snapshot</h3>
+    <div id="raw">(none)</div>
+  </main>
+  <script type="module">
+    // --- App ID Derivation (priority: localStorage override > ?appId= > firebaseConfig.projectId > default) ---
+    function deriveAppId() {
+      try {
+        const ls = window.localStorage.getItem('isolationAppId');
+        const param = new URLSearchParams(location.search).get('appId');
+        const cfg = (window.firebaseConfig && window.firebaseConfig.projectId) || null;
+        return (ls && ls.trim()) || (param && param.trim()) || cfg || 'default-app';
+      } catch { return 'default-app'; }
+    }
+    let APP_ID = deriveAppId();
+    function buildPaths(id){
+      return {
+        movers: `artifacts/${id}/alerts/GLOBAL_MOVERS_HITS`,
+        hilo: `artifacts/${id}/alerts/HI_LO_52W_HITS`
+      };
+    }
+    let { movers: MOVERS_PATH, hilo: HILO_PATH } = buildPaths(APP_ID);
+
+    // --- Firebase bootstrap (will noop if firebaseConfig absent) ---
+  let firestoreDb = null; let fs = null; let firebaseApp = null; let auth = null; let authModule = null; let currentUser = null;
+    async function initFirebaseIfPossible() {
+      if (firestoreDb) return firestoreDb;
+      if (!window.firebaseConfig) {
+        console.warn('[Isolation] No firebaseConfig found on window; running in mock-only mode.');
+        return null;
+      }
+      const { initializeApp } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js');
+      const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+      firebaseApp = initializeApp(window.firebaseConfig);
+      fs = { doc, getDoc };
+      firestoreDb = getFirestore(firebaseApp);
+      return firestoreDb;
+    }
+
+    async function initAuthIfPossible() {
+      if (!window.firebaseConfig) return null;
+      if (auth) return auth;
+  const { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
+      authModule = { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut };
+      auth = getAuth(firebaseApp || (await initFirebaseIfPossible()));
+      // Observe state
+      authModule.onAuthStateChanged(auth, (u) => {
+        currentUser = u;
+        updateAuthUI();
+        if (u && autoLoadAfterSignIn) { autoLoadAfterSignIn = false; loadOnce(); }
+      });
+      return auth;
+    }
+
+    let autoLoadAfterSignIn = false;
+
+    function updateAuthUI() {
+      const btnIn = document.getElementById('btnSignIn');
+      const btnOut = document.getElementById('btnSignOut');
+      const info = document.getElementById('userInfo');
+      const loadBtn = document.getElementById('btnLoad');
+      if (!window.firebaseConfig) {
+        btnIn.style.display = 'none';
+        btnOut.style.display = 'none';
+        info.textContent = 'Mock mode (no config)';
+        loadBtn.disabled = false; // allow mock usage
+        return;
+      }
+      if (currentUser) {
+        btnIn.style.display = 'none';
+        btnOut.style.display = '';
+        info.textContent = (currentUser.email || currentUser.uid).slice(0,48);
+        loadBtn.disabled = false;
+        setStatus('Signed in');
+      } else {
+        btnIn.style.display = '';
+        btnOut.style.display = 'none';
+        info.textContent = 'Not signed in';
+        // Disable Firestore load when config present but unauthenticated (rules likely block)
+        loadBtn.disabled = true;
+        setStatus('Sign in required for Firestore');
+      }
+    }
+
+    // --- DOM refs ---
+    const statusEl = document.getElementById('status');
+    const rawEl = document.getElementById('raw');
+    const el = (id) => document.getElementById(id);
+
+    function setStatus(msg, kind='info') {
+      statusEl.textContent = msg;
+      statusEl.className = 'status' + (kind==='error'?' error':'') + (kind==='loading'?' loading':'');
+    }
+
+    function fmtMoney(v) {
+      if (v==null || isNaN(v)) return 'N/A';
+      const n = Number(v);
+      if (n >= 1000) return '$' + n.toLocaleString(undefined,{maximumFractionDigits:2});
+      if (n >= 1) return '$' + n.toFixed(2);
+      if (n > 0) return '$' + n.toPrecision(3);
+      return '$' + n;
+    }
+    function fmtPct(v) {
+      if (v==null || isNaN(v)) return '';
+      const n = Number(v);
+      return (n>0?'+':'') + n.toFixed(2) + '%';
+    }
+
+    function sanitizeName(name, code) {
+      try {
+        if (!name) return '';
+        const c = (code||'').toUpperCase();
+        let n = String(name);
+        const patterns = [
+          new RegExp(`\\s*\\(ASX:${c}\\)`, 'i'),
+          new RegExp(`\\s*\\(${c}\\)`, 'i'),
+          new RegExp(`^${c}\\s*[-–:/\\|]\\s*`, 'i'),
+          new RegExp(`\\s*[-–:/\\|]\\s*${c}$`, 'i')
+        ];
+        patterns.forEach(rx=> n = n.replace(rx,''));
+        return n.trim();
+      } catch { return name || ''; }
+    }
+
+    function clearSections() {
+      ['Gainers','Losers','Highs','Lows'].forEach(k=>{
+        el('cards'+k).innerHTML='';
+        el('cnt'+k).textContent='0';
+        el('stat'+k).textContent='';
+      });
+    }
+
+    function renderMoverCard(item, dir) {
+      const code = String(item.code || item.shareCode || '').toUpperCase();
+      const name = sanitizeName(item.name || item.companyName || '', code);
+      const pct = item.pct!=null ? Number(item.pct) : (item.percent!=null?Number(item.percent):null);
+      const live = item.live!=null ? Number(item.live) : null;
+      const ch = item.change!=null ? Number(item.change) : null;
+      const pctText = fmtPct(pct);
+      const dirClass = dir === 'up' ? 'up' : 'down';
+      const elDiv = document.createElement('div');
+      elDiv.className = 'card';
+      elDiv.innerHTML = `<div class="row"><span class="code">${code}</span><span class="pct ${dirClass}">${pctText}</span></div>
+        <div class="row"><span class="name">${name}</span><span>${ch!=null?(ch>0?'+':'')+ch:''}</span></div>
+        <div class="row"><span class="badge">${dir==='up'?'▲':'▼'} mover</span><span>${live!=null?fmtMoney(live):''}</span></div>`;
+      return elDiv;
+    }
+
+    function renderHiLoCard(item, kind) {
+      const code = String(item.code || item.shareCode || '').toUpperCase();
+      const name = sanitizeName(item.name || item.companyName || '', code);
+      const live = item.live!=null ? Number(item.live) : null;
+      const hi = item.high52!=null?Number(item.high52): (item.high!=null?Number(item.high):null);
+      const lo = item.low52!=null?Number(item.low52): (item.low!=null?Number(item.low):null);
+      const d = document.createElement('div');
+      d.className = 'card';
+      d.innerHTML = `<div class="row"><span class="code">${code}</span><span class="${kind==='high'?'hi':'lo'}">${kind==='high'? 'High':'Low'}</span></div>
+        <div class="row"><span class="name">${name}</span><span>${live!=null?fmtMoney(live):''}</span></div>
+        <div class="row"><span class="badge">52W</span><span>${kind==='high'?(hi!=null?fmtMoney(hi):'?'):(lo!=null?fmtMoney(lo):'?')}</span></div>`;
+      return d;
+    }
+
+    function populateSections({movers, hilo}) {
+      clearSections();
+      if (movers) {
+        const up = Array.isArray(movers.upHits)? movers.upHits : (Array.isArray(movers.up)?movers.up:[]);
+        const down = Array.isArray(movers.downHits)? movers.downHits : (Array.isArray(movers.down)?movers.down:[]);
+        el('cntGainers').textContent = up.length;
+        el('cntLosers').textContent = down.length;
+        up.forEach(it=> el('cardsGainers').appendChild(renderMoverCard(it,'up')));
+        down.forEach(it=> el('cardsLosers').appendChild(renderMoverCard(it,'down')));
+        if (!up.length) el('statGainers').textContent = 'No gainers.';
+        if (!down.length) el('statLosers').textContent = 'No losers.';
+      }
+      if (hilo) {
+        const highs = Array.isArray(hilo.highHits)?hilo.highHits:(Array.isArray(hilo.highs)?hilo.highs:[]);
+        const lows = Array.isArray(hilo.lowHits)?hilo.lowHits:(Array.isArray(hilo.lows)?hilo.lows:[]);
+        el('cntHighs').textContent = highs.length;
+        el('cntLows').textContent = lows.length;
+        highs.forEach(it=> el('cardsHighs').appendChild(renderHiLoCard(it,'high')));
+        lows.forEach(it=> el('cardsLows').appendChild(renderHiLoCard(it,'low')));
+        if (!highs.length) el('statHighs').textContent = 'No highs.';
+        if (!lows.length) el('statLows').textContent = 'No lows.';
+      }
+    }
+
+    function showRaw(obj) {
+      try { rawEl.textContent = JSON.stringify(obj, null, 2); } catch { rawEl.textContent = '(error serializing)'; }
+    }
+
+    async function loadOnce() {
+      setStatus('Loading...', 'loading');
+      await initFirebaseIfPossible();
+      await initAuthIfPossible();
+      if (window.firebaseConfig && !currentUser) {
+        setStatus('Must sign in first (blocked by rules)', 'error');
+        return;
+      }
+      if (!firestoreDb || !fs) {
+        setStatus('Firestore unavailable - provide firebaseConfig or use Mock Data', 'error');
+        return;
+      }
+      try {
+        // Support re-deriving APP_ID post sign-in in case projectId becomes available only after config injection
+        const newAppId = deriveAppId();
+        if (newAppId !== APP_ID) {
+          APP_ID = newAppId;
+          ({ movers: MOVERS_PATH, hilo: HILO_PATH } = buildPaths(APP_ID));
+        }
+        const moversRef = fs.doc(firestoreDb, MOVERS_PATH);
+        const hiloRef = fs.doc(firestoreDb, HILO_PATH);
+        const [moversSnap, hiloSnap] = await Promise.all([fs.getDoc(moversRef), fs.getDoc(hiloRef)]);
+        const moversExists = moversSnap.exists();
+        const hiloExists = hiloSnap.exists();
+        const moversRaw = moversExists ? moversSnap.data() : null;
+        const hiloRaw = hiloExists ? hiloSnap.data() : null;
+        const movers = moversRaw ? moversRaw : { upHits:[], downHits:[], updatedAt:null, __missing:true };
+        const hilo = hiloRaw ? hiloRaw : { highHits:[], lowHits:[], updatedAt:null, __missing:true };
+        populateSections({ movers, hilo });
+        showRaw({
+          meta: {
+            appId: APP_ID,
+            paths: { MOVERS_PATH, HILO_PATH },
+            moversExists, hiloExists,
+            timestamp: new Date().toISOString()
+          },
+            movers, hilo
+        });
+        if (!moversExists || !hiloExists) {
+          setStatus('Loaded (one or more docs missing)', 'error');
+        } else if ((movers.upHits||movers.up||[]).length===0 && (movers.downHits||movers.down||[]).length===0 && (hilo.highHits||hilo.highs||[]).length===0 && (hilo.lowHits||hilo.lows||[]).length===0) {
+          setStatus('Loaded (documents empty)', 'error');
+        } else {
+          setStatus('Loaded');
+        }
+      } catch (e) {
+        console.error('[Isolation] Load failed', e);
+        setStatus('Load failed: '+ (e.code || e.message || e), 'error');
+      }
+    }
+
+    function injectMock() {
+      const movers = {
+        updatedAt: new Date().toISOString(),
+        upHits: [
+          { code:'ABC', name:'ABC Group (ASX:ABC)', pct: 5.34, change: 0.12, live: 2.45 },
+          { code:'XYZ', name:'XYZ Holdings', pct: 3.12, change: 0.08, live: 1.97 }
+        ],
+        downHits: [
+          { code:'DEF', name:'DEF Minerals - DEF', pct: -4.22, change: -0.09, live: 2.01 }
+        ]
+      };
+      const hilo = {
+        updatedAt: new Date().toISOString(),
+        highHits: [
+          { code:'LMN', name:'LMN Tech', high52: 12.34, live: 12.30 },
+          { code:'QRS', name:'QRS Biotech (QRS)', high52: 8.10, live: 8.05 }
+        ],
+        lowHits: [
+          { code:'TUV', name:'TUV Energy', low52: 0.45, live: 0.46 }
+        ]
+      };
+      populateSections({ movers, hilo });
+      showRaw({ movers, hilo, source:'mock' });
+      setStatus('Mock data injected');
+    }
+
+    function clearAll() {
+      clearSections();
+      showRaw('(none)');
+      setStatus('Cleared');
+    }
+
+    // Wire buttons
+    document.getElementById('btnLoad').addEventListener('click', loadOnce);
+    document.getElementById('btnMock').addEventListener('click', injectMock);
+    document.getElementById('btnClear').addEventListener('click', clearAll);
+    document.getElementById('btnSignIn').addEventListener('click', async () => {
+      try {
+        await initFirebaseIfPossible();
+        await initAuthIfPossible();
+        const provider = new authModule.GoogleAuthProvider();
+        setStatus('Signing in...', 'loading');
+        await authModule.signInWithPopup(auth, provider);
+        setStatus('Signed in');
+      } catch (e) {
+        console.warn('[Isolation][Auth] Sign-in failed', e);
+        setStatus('Sign-in failed: ' + (e.code || e.message || e), 'error');
+      }
+    });
+    document.getElementById('btnSignOut').addEventListener('click', async () => {
+      if (!auth || !authModule) return;
+      try {
+        await authModule.signOut(auth);
+        setStatus('Signed out');
+        clearAll();
+      } catch (e) {
+        console.warn('[Isolation][Auth] Sign-out failed', e);
+        setStatus('Sign-out failed: ' + (e.code || e.message || e), 'error');
+      }
+    });
+
+    // Initialize auth (non-blocking). If user previously signed in in this origin, state will restore.
+    if (window.firebaseConfig) { initFirebaseIfPossible().then(initAuthIfPossible).catch(()=>{}); }
+
+    // Auto-mock on first load if no firebaseConfig is present
+    if (!window.firebaseConfig) {
+      injectMock();
+    } else {
+      updateAuthUI();
+      console.log('[Isolation] Derived APP_ID =', APP_ID, ' MOVERS_PATH =', MOVERS_PATH, ' HILO_PATH =', HILO_PATH);
+    }
+  </script>
+</body>
+</html>

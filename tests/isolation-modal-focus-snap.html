@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Isolation Test - Mobile Modal Input Focus Snap</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <style>
+    :root {
+      --modal-height: 82vh; /* baseline; can be changed via controls */
+    }
+    html, body { margin:0; padding:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#111; color:#eee; }
+    header { padding:10px 14px; background:#1c1c1c; font-size:14px; position:sticky; top:0; z-index:10; }
+    main { padding:14px; display:flex; flex-direction:column; gap:16px; }
+    .controls { display:flex; flex-wrap:wrap; gap:8px; font-size:12px; }
+    .controls label { display:flex; align-items:center; gap:4px; background:#222; padding:4px 8px; border:1px solid #333; border-radius:4px; cursor:pointer; }
+    .controls label:hover { background:#262626; }
+    button { background:#2e2e2e; color:#ddd; border:1px solid #3d3d3d; border-radius:4px; padding:6px 10px; font-size:12px; cursor:pointer; }
+    button:hover { background:#373737; }
+    .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50; }
+    .modal { background:#1e1e1e; border:1px solid #2f2f2f; width:min(600px,100%); max-height:var(--modal-height); display:flex; flex-direction:column; border-radius:10px; box-shadow:0 10px 30px -10px rgba(0,0,0,.7); overflow:hidden; }
+    .modal.fixedHeightExperimental { height:var(--modal-height); }
+    .modal-header { padding:10px 14px; font-weight:600; font-size:14px; background:#252525; position:sticky; top:0; z-index:5; }
+    .modal-body { padding:12px 14px 80px; overflow:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; gap:14px; flex:1; }
+    .modal-body.preventOverscroll { overscroll-behavior:contain; }
+    fieldset { border:1px solid #333; padding:12px 12px 4px; border-radius:8px; }
+    fieldset legend { padding:0 6px; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:#8ab4ff; }
+    .group { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; }
+    .form-row { display:flex; flex-direction:column; gap:2px; font-size:11px; }
+    input[type=text] { background:#262626; border:1px solid #3a3a3a; border-radius:4px; padding:8px 8px; color:#eee; font-size:13px; width:100%; box-sizing:border-box; }
+    input[type=text]:focus { outline:2px solid #556ee6; border-color:#556ee6; }
+    .log-wrap { background:#161616; border:1px solid #262626; padding:8px 10px; border-radius:6px; font-size:11px; max-height:200px; overflow:auto; line-height:1.3; }
+    .log-wrap strong { color:#8ab4ff; }
+    .badge { background:#333; padding:2px 6px; border-radius:12px; font-size:10px; margin-left:6px; }
+    .footer-note { font-size:11px; color:#888; padding:10px 4px 40px; text-align:center; }
+    .vhMode-dvh .modal { max-height:82dvh; }
+    .vhMode-svh .modal { max-height:82svh; }
+    .vhMode-lvh .modal { max-height:82lvh; }
+    .highlightScrollChange { animation: pulse .7s ease; }
+    @keyframes pulse { from { background:#332200; } to { background:transparent; } }
+    .pinViewportHeight body { height:100vh; overflow:hidden; }
+    .forceNoBodyScroll { position:fixed; inset:0; overflow:hidden; }
+    .metric-bar { display:flex; gap:12px; flex-wrap:wrap; font-size:11px; background:#181818; padding:6px 10px; border:1px solid #232323; border-radius:6px; }
+    .metric { display:flex; flex-direction:column; }
+    .metric span:first-child { font-weight:600; color:#bbb; }
+  </style>
+</head>
+<body>
+  <header>Isolation: Mobile Modal Input Focus Snap<span class="badge" id="envBadge">env?</span></header>
+  <main>
+    <section class="controls" id="controls">
+      <label><input type="checkbox" id="chkPreventScroll"> preventScroll on focus</label>
+      <label><input type="checkbox" id="chkRestoreScroll"> restore modal scrollTop after focus</label>
+      <label><input type="checkbox" id="chkPreventOverscroll" checked> overscroll-behavior:contain</label>
+      <label><input type="checkbox" id="chkLockBody"> lock body scroll</label>
+      <label><input type="checkbox" id="chkUseTransform"> apply translateZ(0)</label>
+      <label><input type="checkbox" id="chkBlockScrollIntoView"> suppress native scroll-into-view heuristics</label>
+      <label><input type="checkbox" id="chkScrollPadding"> add scroll-padding-top</label>
+      <label><input type="checkbox" id="chkVisualViewportSync"> visualViewport resize -> adjust modal height</label>
+      <label><input type="checkbox" id="chkInputModeDecimal"> inputs inputmode=decimal</label>
+      <label><input type="checkbox" id="chkVHModeDvh"> 82dvh</label>
+      <label><input type="checkbox" id="chkVHModeSvh"> 82svh</label>
+      <label><input type="checkbox" id="chkVHModeLvh"> 82lvh</label>
+      <button id="btnScrollTop">Scroll Top</button>
+      <button id="btnScrollMiddle">Scroll Middle</button>
+      <button id="btnScrollBottom">Scroll Bottom</button>
+      <button id="btnClearLog">Clear Log</button>
+    </section>
+
+    <div class="metric-bar" id="metricBar">
+      <div class="metric"><span>window.scrollY</span><span id="mScroll">0</span></div>
+      <div class="metric"><span>modal.scrollTop</span><span id="mModalScroll">0</span></div>
+      <div class="metric"><span>visualViewport.height</span><span id="mVVH">?</span></div>
+      <div class="metric"><span>visualViewport.offsetTop</span><span id="mVVTop">?</span></div>
+      <div class="metric"><span>innerHeight</span><span id="mIH">?</span></div>
+      <div class="metric"><span>orientation</span><span id="mOrient">?</span></div>
+    </div>
+
+    <div class="modal-backdrop" id="backdrop">
+      <div class="modal" id="modal">
+        <div class="modal-header">Test Modal: Focus Any Input to Reproduce Snap</div>
+        <div class="modal-body" id="modalBody">
+          <fieldset>
+            <legend>Inputs (1 - 12)</legend>
+            <div class="group" id="group1"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Inputs (13 - 24)</legend>
+            <div class="group" id="group2"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Inputs (25 - 36)</legend>
+            <div class="group" id="group3"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Deep Inputs (37 - 48)</legend>
+            <div class="group" id="group4"></div>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+
+    <div class="log-wrap" id="log"></div>
+    <div class="footer-note">Goal: Reproduce uncontrolled snapping when focusing inputs on mobile (especially iOS Safari / Android Chrome). Toggle strategies above; observe scroll metrics & logs. We will later port a proven mitigation back into the main app.</div>
+  </main>
+
+  <script>
+  (function(){
+    const logEl = document.getElementById('log');
+    const modal = document.getElementById('modal');
+    const modalBody = document.getElementById('modalBody');
+    const envBadge = document.getElementById('envBadge');
+
+    const mScroll = document.getElementById('mScroll');
+    const mModalScroll = document.getElementById('mModalScroll');
+    const mVVH = document.getElementById('mVVH');
+    const mVVTop = document.getElementById('mVVTop');
+    const mIH = document.getElementById('mIH');
+    const mOrient = document.getElementById('mOrient');
+
+    function detectEnv(){
+      const ua = navigator.userAgent;
+      const isIOS = /iP(hone|ad|od)/.test(ua) || (/Mac/.test(ua) && 'ontouchend' in document);
+      const isAndroid = /Android/.test(ua);
+      const isChrome = /Chrome\//.test(ua);
+      const isSafari = /^((?!Chrome|Firefox).)*Safari/.test(ua);
+      envBadge.textContent = [isIOS?'iOS':null,isAndroid?'Android':null,isSafari?'Safari':null,isChrome?'Chrome':null].filter(Boolean).join(' ') || 'Unknown';
+    }
+    detectEnv();
+
+    function log(msg){
+      const time = new Date().toISOString().split('T')[1].replace('Z','');
+      const line = document.createElement('div');
+      line.innerHTML = '<strong>'+time+'</strong> '+msg;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function updateMetrics(){
+      mScroll.textContent = window.scrollY|0;
+      mModalScroll.textContent = modalBody.scrollTop|0;
+      mIH.textContent = window.innerHeight|0;
+      if (window.visualViewport){
+        mVVH.textContent = window.visualViewport.height|0;
+        mVVTop.textContent = window.visualViewport.offsetTop|0;
+      }
+      mOrient.textContent = (screen.orientation && screen.orientation.type) || (window.orientation+'') || '?';
+    }
+    updateMetrics();
+
+    ['scroll','resize'].forEach(ev=> window.addEventListener(ev,()=>{ updateMetrics(); }));
+    if (window.visualViewport){
+      ['resize','scroll'].forEach(ev=> window.visualViewport.addEventListener(ev,()=>{ updateMetrics(); if (chkVisualViewportSync.checked){
+          // Adjust modal height to remaining space (attempt mitigation)
+          const avail = window.visualViewport.height - 40; // minus header approx
+          modal.style.maxHeight = avail + 'px';
+          log('visualViewport '+ev+' -> adjust modal.maxHeight='+avail);
+        }}));
+    }
+
+    function buildInputs(){
+      const groups = [group1,group2,group3,group4];
+      let idx = 1;
+      groups.forEach(g=>{
+        for (let i=0;i<12;i++){
+          const wrap = document.createElement('div');
+            wrap.className='form-row';
+          const label = document.createElement('label');
+          label.textContent = 'Field '+idx;
+          const inp = document.createElement('input');
+          inp.type='text';
+          inp.autocomplete='off';
+          inp.dataset.index=idx;
+          wrap.appendChild(label); wrap.appendChild(inp); g.appendChild(wrap); idx++;
+        }
+      });
+    }
+    buildInputs();
+
+    // Control references
+    const chkPreventScroll = document.getElementById('chkPreventScroll');
+    const chkRestoreScroll = document.getElementById('chkRestoreScroll');
+    const chkPreventOverscroll = document.getElementById('chkPreventOverscroll');
+    const chkLockBody = document.getElementById('chkLockBody');
+    const chkUseTransform = document.getElementById('chkUseTransform');
+    const chkBlockScrollIntoView = document.getElementById('chkBlockScrollIntoView');
+    const chkScrollPadding = document.getElementById('chkScrollPadding');
+    const chkVisualViewportSync = document.getElementById('chkVisualViewportSync');
+    const chkInputModeDecimal = document.getElementById('chkInputModeDecimal');
+    const chkVHModeDvh = document.getElementById('chkVHModeDvh');
+    const chkVHModeSvh = document.getElementById('chkVHModeSvh');
+    const chkVHModeLvh = document.getElementById('chkVHModeLvh');
+
+    function applyDynamicModes(){
+      document.body.classList.remove('vhMode-dvh','vhMode-svh','vhMode-lvh');
+      if (chkVHModeDvh.checked) document.body.classList.add('vhMode-dvh');
+      if (chkVHModeSvh.checked) document.body.classList.add('vhMode-svh');
+      if (chkVHModeLvh.checked) document.body.classList.add('vhMode-lvh');
+    }
+
+    function applyInputMode(){
+      document.querySelectorAll('#modalBody input[type=text]').forEach(inp=>{
+        if (chkInputModeDecimal.checked) inp.setAttribute('inputmode','decimal'); else inp.removeAttribute('inputmode');
+      });
+    }
+
+    function applyScrollPadding(){
+      if (chkScrollPadding.checked){
+        modalBody.style.scrollPaddingTop = '80px';
+      } else {
+        modalBody.style.scrollPaddingTop = '';
+      }
+    }
+
+    function applyOverscroll(){
+      modalBody.classList.toggle('preventOverscroll', chkPreventOverscroll.checked);
+    }
+
+    function applyBodyLock(){
+      document.documentElement.classList.toggle('forceNoBodyScroll', chkLockBody.checked);
+    }
+
+    function applyTransform(){
+      if (chkUseTransform.checked){
+        modal.style.transform = 'translateZ(0)';
+      } else {
+        modal.style.transform = '';
+      }
+    }
+
+    [chkPreventOverscroll, chkScrollPadding, chkLockBody, chkUseTransform, chkInputModeDecimal, chkVHModeDvh, chkVHModeSvh, chkVHModeLvh]
+      .forEach(chk=> chk.addEventListener('change',()=>{
+        applyOverscroll();
+        applyScrollPadding();
+        applyBodyLock();
+        applyTransform();
+        applyInputMode();
+        applyDynamicModes();
+        log('Toggle: '+chk.id+' -> '+chk.checked);
+      }));
+
+    // Buttons
+    btnScrollTop.addEventListener('click',()=>{ modalBody.scrollTo({top:0,behavior:'smooth'}); });
+    btnScrollMiddle.addEventListener('click',()=>{ modalBody.scrollTo({top: modalBody.scrollHeight/2, behavior:'smooth'}); });
+    btnScrollBottom.addEventListener('click',()=>{ modalBody.scrollTo({top: modalBody.scrollHeight, behavior:'smooth'}); });
+    btnClearLog.addEventListener('click',()=>{ logEl.innerHTML=''; });
+
+    let lastModalScroll = modalBody.scrollTop;
+    modalBody.addEventListener('scroll',()=>{
+      updateMetrics();
+      if (Math.abs(modalBody.scrollTop - lastModalScroll) > 2){
+        modalBody.classList.add('highlightScrollChange');
+        setTimeout(()=> modalBody.classList.remove('highlightScrollChange'),350);
+      }
+      lastModalScroll = modalBody.scrollTop;
+    }, { passive:true });
+
+    let restoring = false;
+
+    modalBody.addEventListener('focusin',(e)=>{
+      if (e.target.tagName === 'INPUT'){
+        const i = e.target.dataset.index;
+        const beforeDocY = window.scrollY;
+        const beforeModal = modalBody.scrollTop;
+        log('focusin field '+i+' (before: windowY='+beforeDocY+' modalY='+beforeModal+')');
+        if (chkPreventScroll.checked && e.target.scrollIntoView) {
+          try { e.target.scrollIntoView({ block:'nearest', behavior:'instant' }); } catch {}
+        }
+      }
+    });
+
+    // Intercept native scrolling adjustments triggered after focus
+    document.addEventListener('focus',(e)=>{
+      if (e.target.tagName === 'INPUT'){
+        const target = e.target;
+        const index = target.dataset.index;
+        const savedModalTop = modalBody.scrollTop;
+        const savedDocY = window.scrollY;
+        if (chkPreventScroll.checked) {
+          try { target.focus({ preventScroll: true }); } catch {}
+        }
+        if (chkRestoreScroll.checked){
+          requestAnimationFrame(()=>{
+            // Attempt to restore
+            modalBody.scrollTop = savedModalTop;
+            window.scrollTo(0, savedDocY);
+            log('restore after focus field '+index+' -> modalTop='+savedModalTop+' windowY='+savedDocY);
+          });
+        }
+      }
+    }, true);
+
+    // Attempt to block programmatic scrollIntoView calls higher up (heuristic)
+    const nativeScrollIntoView = Element.prototype.scrollIntoView;
+    if (nativeScrollIntoView){
+      Element.prototype.scrollIntoView = function(){
+        if (chkBlockScrollIntoView.checked) {
+          log('blocked scrollIntoView on '+(this.tagName+ (this.id?('#'+this.id):'')) );
+          return; // swallow
+        }
+        return nativeScrollIntoView.apply(this, arguments);
+      };
+    }
+
+    // Orientation change / resize logs
+    ['orientationchange','resize'].forEach(ev=> window.addEventListener(ev,()=>{
+      log(ev+' innerHeight='+window.innerHeight+' viewportHeight='+(window.visualViewport?window.visualViewport.height:'?'));
+      updateMetrics();
+    }));
+
+    // Initial apply
+    applyOverscroll();
+    applyScrollPadding();
+    applyBodyLock();
+    applyTransform();
+    applyInputMode();
+    applyDynamicModes();
+    updateMetrics();
+
+    log('Ready. Tap into various inputs near bottom to observe any snap. Adjust toggles to test mitigations.');
+  })();
+  </script>
+</body>
+</html>
