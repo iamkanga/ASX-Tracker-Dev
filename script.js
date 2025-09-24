@@ -18640,3 +18640,53 @@ try {
 })();
 // === End Instrumentation Blocks ===
 
+// === Accordion Scroll Guard (mitigate snap-to-top on section toggle) ===
+(function installAccordionScrollGuard(){
+    try {
+        if (window.__accordionScrollGuardInstalled) return; window.__accordionScrollGuardInstalled = true;
+        const MODAL_ID = 'shareFormSection';
+        const RESTORE_THRESHOLD = 50; // only attempt restore if user had scrolled meaningfully
+        const MAX_DELTA_FOR_RESTORE = 1200; // ignore pathological jumps beyond this
+        document.addEventListener('click', (e)=>{
+            try {
+                const btn = e.target && e.target.closest && e.target.closest('.accordion-toggle');
+                if (!btn) return;
+                const modal = btn.closest && btn.closest('#'+MODAL_ID);
+                if (!modal) return; // we only guard inside primary share modal for now
+                const scroller = modal.querySelector('.modal-body-scrollable') || modal.querySelector('.modal-body') || modal;
+                if (!scroller) return;
+                const before = scroller.scrollTop;
+                const beforeHeight = scroller.scrollHeight;
+                // Defer measurement until DOM mutations settle (accordion expand/collapse)
+                let frame = 0; const MEASURE_FRAMES = 3; // ~2 rAFs after layout
+                function measure(){
+                    frame++;
+                    if (frame < MEASURE_FRAMES) { requestAnimationFrame(measure); return; }
+                    try {
+                        const after = scroller.scrollTop;
+                        const afterHeight = scroller.scrollHeight;
+                        if (before > RESTORE_THRESHOLD) {
+                            const droppedToTop = after < 8 && before > 40; // treat near-top as reset
+                            const bigUnexpectedJump = (before - after) > 80 && (before - after) < MAX_DELTA_FOR_RESTORE;
+                            if (droppedToTop || bigUnexpectedJump) {
+                                // Attempt to restore prior relative position. If height changed, adjust proportionally.
+                                let target = before;
+                                if (afterHeight !== beforeHeight && beforeHeight > 0) {
+                                    const ratio = before / (beforeHeight - scroller.clientHeight || beforeHeight);
+                                    const newMaxScrollable = afterHeight - scroller.clientHeight;
+                                    target = Math.max(0, Math.min(newMaxScrollable, Math.round(newMaxScrollable * ratio)));
+                                }
+                                scroller.scrollTop = target;
+                                try { if (window.__modalScrollTrace) window.__modalScrollTrace.push({ t: Date.now(), id: MODAL_ID, restoredTo: target, guard: true }); } catch(_){ }
+                                try { if (window.__scrollDebug || window.scrollDebug) console.debug('[AccordionScrollGuard] restored scrollTop', { before, after, target, beforeHeight, afterHeight }); } catch(_){ }
+                            }
+                        }
+                    } catch(err){ /* ignore */ }
+                }
+                requestAnimationFrame(measure);
+            } catch(_){}
+        }, true);
+    } catch(err){ console.warn('AccordionScrollGuard install failed', err); }
+})();
+// === End Accordion Scroll Guard ===
+
