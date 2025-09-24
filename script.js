@@ -6293,6 +6293,54 @@ function showModal(modalElement) {
     // .app-hidden after .modal.show which prevents display unless we remove it here.
     try { modalElement.classList.remove('app-hidden'); } catch(_){}
     modalElement.classList.add('show');
+        // Scroll Stabilizer: mitigate early unintended scrollTop resets during first render/layout shifts
+        try {
+            if (!modalElement.__scrollStabilizerInstalled) {
+                (function installModalScrollStabilizer(modal){
+                    modal.__scrollStabilizerInstalled = true;
+                    const scroller = modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal;
+                    if (!scroller) return;
+                    const startTop = scroller.scrollTop;
+                    modal.__baselineScrollTop = startTop;
+                    modal.__stabilizeUntil = Date.now() + 1600;
+                    modal.__userScrolled = false;
+                    const debug = !!(window.__scrollDebug || window.scrollDebug);
+                    if (debug) console.debug('[Stabilizer] init', { id: modal.id, startTop });
+                    scroller.addEventListener('scroll', function onScroll(){
+                        if (scroller.scrollTop !== startTop && !modal.__userScrolled) modal.__userScrolled = true;
+                        if (modal.__userScrolled && scroller.scrollTop > 0) modal.__baselineScrollTop = scroller.scrollTop;
+                    }, { passive:true });
+                    function maybeRestore(reason){
+                        if (Date.now() > modal.__stabilizeUntil) return;
+                        if (modal.__userScrolled) return;
+                        if (modal.__baselineScrollTop > 80 && scroller.scrollTop < 20) {
+                            const before = scroller.scrollTop;
+                            scroller.scrollTop = modal.__baselineScrollTop;
+                            try {
+                                window.__modalResetEvents = window.__modalResetEvents || [];
+                                window.__modalResetEvents.push({ t: Date.now(), id: modal.id||null, from: before, to: scroller.scrollTop, reason: 'stabilizer-'+reason });
+                                if (window.__modalResetEvents.length > 50) window.__modalResetEvents.splice(0, window.__modalResetEvents.length - 50);
+                            } catch(_){ }
+                            if (debug) console.debug('[Stabilizer] restore', { id: modal.id, reason, before, after: scroller.scrollTop, baseline: modal.__baselineScrollTop });
+                        }
+                    }
+                    let mo;
+                    try {
+                        mo = new MutationObserver(function(muts){
+                            for (const m of muts) {
+                                if (m.type === 'childList' || m.type === 'attributes') { maybeRestore('mutation'); break; }
+                            }
+                        });
+                        mo.observe(scroller, { subtree:true, childList:true, attributes:true, attributeFilter:['class','style'] });
+                    } catch(_){ }
+                    ['focusin','input'].forEach(evt => scroller.addEventListener(evt, ()=> maybeRestore(evt), true));
+                    setTimeout(()=>{ try { if (mo) mo.disconnect(); } catch(_){ } if (debug) console.debug('[Stabilizer] window ended', { id: modal.id }); }, 1700);
+                })(modalElement);
+            } else {
+                const scroller = modalElement.querySelector('.modal-body-scrollable') || modalElement.querySelector('.single-scroll-modal') || modalElement;
+                if (scroller) modalElement.__baselineScrollTop = scroller.scrollTop;
+            }
+        } catch(stabErr){ try { console.warn('ScrollStabilizer install error', stabErr); } catch(_){} }
         // Do not force-scroll to top here; preserve user's last position and avoid snapping.
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') {
