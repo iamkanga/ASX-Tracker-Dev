@@ -18353,3 +18353,171 @@ try {
 })();
 // --- End Super Debug Always-Install ---
 
+// === Modal Snap Diagnostics (Hotkey + Mobile Gesture) ===
+// Purpose: Allow capturing the enhanced diagnostics JSON while a modal is open
+// WITHOUT opening the sidebar (which dismisses the modal on mobile). Provides:
+//  - Global function: window.captureModalSnapDiagnostics()
+//  - Hotkey: Alt+Shift+M (or Meta+Shift+M) when a modal is open
+//  - Triple‑tap gesture: 3 taps within 900ms inside an open modal body
+//  - Long‑press (800ms) on a modal title (h3.modal-title) also triggers capture
+(function installModalSnapDiagnostics(){
+    if (window.captureModalSnapDiagnostics) return; // idempotent
+
+    function buildEnhancedDiag(){
+        const diag = {};
+        try {
+            // Reuse core fields (mirror diagnostics button logic where feasible)
+            diag.buildMarker = 'v0.1.13';
+            diag.time = new Date().toISOString();
+            diag.userId = (typeof currentUserId!=='undefined')? currentUserId : null;
+            diag.activeWatchlistId = (typeof activeWatchlistId!=='undefined')? activeWatchlistId : null;
+            diag.selectedWatchlists = (typeof currentSelectedWatchlistIds!=='undefined')? currentSelectedWatchlistIds : [];
+            diag.alertCounts = {
+                enabled: Array.isArray(sharesAtTargetPrice)? sharesAtTargetPrice.length : null,
+                muted: Array.isArray(sharesAtTargetPriceMuted)? sharesAtTargetPriceMuted.length : null,
+                globalSummary: (typeof globalAlertSummary==='object' && globalAlertSummary && globalAlertSummary.totalCount) || 0
+            };
+            diag.globalSummary = globalAlertSummary || null;
+            try { diag.lastLivePriceSample = Object.entries(livePrices||{}).slice(0,10); } catch(_){}
+            // Viewport & scroll (mirrors enhanced block)
+            const vv = window.visualViewport || null;
+            diag.userAgent = navigator.userAgent;
+            diag.viewport = {
+                innerWidth: window.innerWidth,
+                innerHeight: window.innerHeight,
+                clientWidth: document.documentElement && document.documentElement.clientWidth,
+                clientHeight: document.documentElement && document.documentElement.clientHeight,
+                screen: { width: screen && screen.width, height: screen && screen.height, availHeight: screen && screen.availHeight, orientation: (screen.orientation && screen.orientation.type) || null },
+                visualViewport: vv ? { width: vv.width, height: vv.height, scale: vv.scale, offsetTop: vv.offsetTop, offsetLeft: vv.offsetLeft, pageTop: vv.pageTop, pageLeft: vv.pageLeft } : null
+            };
+            const ae = document.activeElement;
+            const now = Date.now();
+            const modalOpen = !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
+            const inModalFocus = !!(ae && ae.closest && ae.closest('.modal'));
+            const focusWindow = (typeof window !== 'undefined' && window.__modalFocusWindow && now < window.__modalFocusWindow);
+            diag.scrollFlags = {
+                ModalFocusAutoScroll: window.ModalFocusAutoScroll,
+                __modalFocusWindow: window.__modalFocusWindow || null,
+                activeElement: ae ? { tag: ae.tagName, id: ae.id||null, classes: ae.className||null, inModal: inModalFocus } : null,
+                bodyHasModalOpenClass: document.body.classList.contains('modal-open'),
+                docScrollTop: (document.scrollingElement && document.scrollingElement.scrollTop) || window.pageYOffset || 0,
+                pageYOffset: window.pageYOffset || 0,
+                bodyStyleTop: document.body && document.body.style && document.body.style.top || null,
+                guard: { modalOpen, inModalFocus, focusWindow, wouldSuppressScrollMainToTop: (modalOpen || inModalFocus || focusWindow) }
+            };
+            // Open modals snapshot
+            try {
+                const openModals = Array.from(document.querySelectorAll('.modal.show, .modal[style*="display: flex"]'));
+                diag.openModals = openModals.map(m=>{
+                    let scrollEl = m.querySelector('.modal-body-scrollable') || m.querySelector('.modal-body') || m;
+                    return {
+                        id: m.id || null,
+                        classes: m.className,
+                        scrollTop: scrollEl ? scrollEl.scrollTop : null,
+                        scrollHeight: scrollEl ? scrollEl.scrollHeight : null,
+                        clientHeight: scrollEl ? scrollEl.clientHeight : null,
+                        contentOverscroll: scrollEl ? (scrollEl.scrollHeight - scrollEl.clientHeight - scrollEl.scrollTop) : null
+                    };
+                });
+            } catch(modErr){ diag.openModalsError = ''+modErr; }
+            if (!diag.openModals) diag.openModals = [];
+            if (ae) {
+                try { const chain = []; let cur=ae, d=0; while(cur && d<6){ chain.push({ tag:cur.tagName, id:cur.id||null, cls:cur.className||null }); cur=cur.parentElement; d++; } diag.activeElementChain = chain; } catch(chainErr){ diag.activeElementChainError=''+chainErr; }
+            }
+            // Lightweight extra: record last 4 touch points (if instrumentation added later)
+            if (window.__recentTouchPoints) diag.recentTouchPoints = window.__recentTouchPoints.slice(-4);
+        } catch(err){ diag.error = ''+err; }
+        return diag;
+    }
+
+    async function captureModalSnapDiagnostics(options={}) {
+        try {
+            const diag = buildEnhancedDiag();
+            diag.captureTrigger = options.trigger || 'manual';
+            const text = JSON.stringify(diag, null, 2);
+            let copied=false;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try { await navigator.clipboard.writeText(text); copied=true; } catch(_){}
+            }
+            if (!copied) {
+                // Fallback: create transient textarea
+                try { const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); copied=true; } catch(_){}
+            }
+            try { console.groupCollapsed('%c[ModalSnapDiagnostics]','color:#ffbf49'); console.log(text); console.groupEnd(); } catch(_){}
+            try { if (typeof showCustomAlert==='function') showCustomAlert(copied?'Modal snap diagnostics copied':'Modal snap diagnostics ready (copy manually)'); } catch(_){}
+            return diag;
+        } catch(err) {
+            console.warn('captureModalSnapDiagnostics failed', err);
+            try { showCustomAlert && showCustomAlert('Snap diagnostics failed: '+err.message); } catch(_){ }
+        }
+    }
+    window.captureModalSnapDiagnostics = captureModalSnapDiagnostics;
+
+    // Hotkey: Alt+Shift+M or Meta+Shift+M (avoid conflict with Alt+Shift+D SuperDebug)
+    document.addEventListener('keydown', (e)=>{
+        try {
+            if (!((e.altKey||e.metaKey) && e.shiftKey && e.code==='KeyM')) return;
+            // Only run if a modal is open
+            const modalOpen = !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
+            if (!modalOpen) return;
+            e.preventDefault();
+            captureModalSnapDiagnostics({ trigger:'hotkey' });
+        } catch(_){}
+    }, true);
+
+    // Triple-tap gesture inside any open modal body
+    (function installTripleTap(){
+        let tapCount = 0; let firstTs = 0; const windowMs = 900;
+        document.addEventListener('click', (e)=>{
+            try {
+                const modal = e.target && e.target.closest && e.target.closest('.modal');
+                if (!modal) return;
+                const now = Date.now();
+                if (!firstTs || (now - firstTs) > windowMs) { tapCount = 0; firstTs = now; }
+                tapCount++;
+                if (tapCount === 3) {
+                    tapCount = 0; firstTs = 0;
+                    captureModalSnapDiagnostics({ trigger:'triple-tap' });
+                }
+            } catch(_){}
+        }, true);
+    })();
+
+    // Long-press on a modal title (h3.modal-title)
+    ;(function installLongPress(){
+        let pressTimer=null; const holdMs=800;
+        function start(e){
+            try {
+                const title = e.target && e.target.closest && e.target.closest('h3.modal-title');
+                if (!title) return;
+                if (pressTimer) clearTimeout(pressTimer);
+                pressTimer = setTimeout(()=>{ captureModalSnapDiagnostics({ trigger:'long-press-title' }); }, holdMs);
+            } catch(_){}
+        }
+        function cancel(){ if (pressTimer) { clearTimeout(pressTimer); pressTimer=null; } }
+        document.addEventListener('touchstart', start, true);
+        document.addEventListener('touchend', cancel, true);
+        document.addEventListener('touchmove', cancel, true);
+        document.addEventListener('mousedown', start, true);
+        document.addEventListener('mouseup', cancel, true);
+        document.addEventListener('mousemove', cancel, true);
+    })();
+
+    // Optional: track recent touch points (last 6) for context
+    (function trackRecentTouches(){
+        try {
+            window.__recentTouchPoints = window.__recentTouchPoints || [];
+            document.addEventListener('touchstart', (e)=>{
+                try {
+                    const t = e.touches && e.touches[0];
+                    if (!t) return;
+                    window.__recentTouchPoints.push({ t: Date.now(), x: t.clientX, y: t.clientY, target: (e.target && e.target.tagName) || null });
+                    if (window.__recentTouchPoints.length > 12) window.__recentTouchPoints.splice(0, window.__recentTouchPoints.length - 12);
+                } catch(_){}
+            }, true);
+        } catch(_){}
+    })();
+
+})();
+// === End Modal Snap Diagnostics ===
+
