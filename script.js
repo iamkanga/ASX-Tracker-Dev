@@ -6343,6 +6343,39 @@ function showModal(modalElement) {
         } catch(stabErr){ try { console.warn('ScrollStabilizer install error', stabErr); } catch(_){} }
         // Do not force-scroll to top here; preserve user's last position and avoid snapping.
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+        // Persistent modal scroll memory (session-based)
+        try {
+            const scroller = scrollableContent || modalElement.querySelector('.single-scroll-modal') || modalElement;
+            if (scroller) {
+                const key = 'modalScroll:'+ (modalElement.id||'');
+                // Restore only if we previously stored a meaningful position
+                if (!modalElement.__scrollMemoryRestored) {
+                    modalElement.__scrollMemoryRestored = true;
+                    const stored = sessionStorage.getItem(key);
+                    if (stored) {
+                        const val = parseInt(stored,10);
+                        if (!isNaN(val) && val > 40) {
+                            // Defer restore slightly to allow layout height settle
+                            setTimeout(()=>{ try { scroller.scrollTop = val; modalElement.__baselineScrollTop = val; } catch(_){ } }, 30);
+                        }
+                    }
+                }
+                // Track user scroll to update stored position (throttled)
+                if (!scroller.__persistListenerAttached) {
+                    scroller.__persistListenerAttached = true;
+                    let lastSave = 0;
+                    scroller.addEventListener('scroll', ()=>{
+                        const now = Date.now();
+                        if (now - lastSave > 400) { // throttle
+                            lastSave = now;
+                            try {
+                                if (scroller.scrollTop > 10) sessionStorage.setItem(key, String(scroller.scrollTop));
+                            } catch(_){ }
+                        }
+                    }, { passive:true });
+                }
+            }
+        } catch(_){ }
         if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') {
             try { initializeShareNameAutocomplete(true); } catch(_) {}
         }
@@ -18772,6 +18805,38 @@ try {
             } catch(_){}
         }, true);
     } catch(err){ console.warn('AccordionScrollGuard install failed', err); }
+})();
+// Defer initial accordion open expansion to minimize layout jump on first modal show
+(function smoothInitialAccordionOpen(){
+    try {
+        if (window.__smoothInitialAccordionApplied) return; window.__smoothInitialAccordionApplied = true;
+        const MODAL_ID = 'shareFormSection';
+        document.addEventListener('showModalComplete', (e)=>{ /* custom hook if ever dispatched */ }, true);
+        // On first paint after modal shows, capture height then allow expansion
+        const obs = new MutationObserver(muts => {
+            muts.forEach(m => {
+                if (m.type === 'attributes' && m.target.id === MODAL_ID && m.attributeName === 'class') {
+                    const modal = m.target;
+                    if (modal.classList.contains('show') && !modal.__accordionDeferDone) {
+                        modal.__accordionDeferDone = true;
+                        const scroller = modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal;
+                        if (!scroller) return;
+                        const openSection = scroller.querySelector('.accordion-section.open');
+                        if (openSection) {
+                            // Temporarily collapse & re-expand smoothly after baseline captured
+                            openSection.classList.remove('open');
+                            requestAnimationFrame(()=>{
+                                modal.__baselineScrollTop = scroller.scrollTop; // lock baseline
+                                requestAnimationFrame(()=> openSection.classList.add('open'));
+                            });
+                        }
+                    }
+                }
+            });
+        });
+        obs.observe(document.documentElement || document.body, { subtree:true, attributes:true, attributeFilter:['class'] });
+        setTimeout(()=>{ try { obs.disconnect(); } catch(_){ } }, 6000);
+    } catch(err){ console.warn('smoothInitialAccordionOpen failed', err); }
 })();
 // === End Accordion Scroll Guard ===
 
