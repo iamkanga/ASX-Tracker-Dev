@@ -492,6 +492,19 @@
         });
     } catch (e) { console.warn('UI: Failed to install padding handlers', e); }
 
+    // Short-lived modal focus suppression window: when an input inside a modal gains focus, record a timestamp
+    try {
+        document.addEventListener('focusin', (e) => {
+            try {
+                const t = e.target;
+                if (!t) return;
+                if (t.closest && t.closest('.modal')) {
+                    window.__modalFocusWindow = Date.now() + 600; // 600ms suppression for accidental scrollMainToTop triggers
+                }
+            } catch(_) {}
+        }, true);
+    } catch(_) {}
+
     function closeModals() {
         // Keep behavior light here; prefer callers to do auto-save logic before calling closeModals
         document.querySelectorAll('.modal').forEach(modal => {

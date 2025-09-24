@@ -938,6 +938,20 @@ document.addEventListener('DOMContentLoaded', function () {
     // Helper: scroll main content to specified position in a resilient way
     function scrollMainToTop(instant = false, targetPosition = 0) {
         try {
+            // Guard: suppress scroll if a modal is currently open or focus just occurred inside a modal
+            try {
+                const now = Date.now();
+                const modalOpen = !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
+                const ae = document.activeElement;
+                const inModalFocus = ae && ae.closest && ae.closest('.modal');
+                const focusWindow = (typeof window !== 'undefined' && window.__modalFocusWindow && now < window.__modalFocusWindow);
+                // Allow explicit override via third argument options { force:true }
+                let force = false;
+                if (arguments.length > 2 && arguments[2] && typeof arguments[2] === 'object') {
+                    force = !!arguments[2].force;
+                }
+                if (!force && (modalOpen || inModalFocus || focusWindow)) return; // skip unintended snap inside modals
+            } catch(_) {}
             // Prefer the global smart implementation defined by UI module if present
             if (typeof window !== 'undefined' && window.scrollMainToTop && window.scrollMainToTop !== scrollMainToTop) {
                 try { window.scrollMainToTop(instant, targetPosition); return; } catch (err) { /* ignore */ }
