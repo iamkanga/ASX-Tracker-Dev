@@ -6389,6 +6389,77 @@ function showModal(modalElement) {
                 if (scroller) modalElement.__baselineScrollTop = scroller.scrollTop;
             }
         } catch(stabErr){ try { console.warn('ScrollStabilizer install error', stabErr); } catch(_){} }
+
+        // Extreme Anti-Jump Guard (focus / visualViewport induced) – only for Add/Edit Share modal
+        try {
+            if (modalElement.id === 'shareFormSection' && !modalElement.__antiJumpInstalled) {
+                modalElement.__antiJumpInstalled = true;
+                (function installAntiJump(modal){
+                    const scroller = modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal;
+                    if (!scroller) return;
+                    let userInteracting = false;
+                    let lastStableTop = 0; // we always open at 0 now
+                    let lastRestoreAt = 0;
+                    const JUMP_THRESHOLD = 140; // px upward jump that we treat as involuntary
+                    const MAX_RESTORES = 6; // safety cap
+                    let restoreCount = 0;
+                    function markUser(){ userInteracting = true; setTimeout(()=>{ userInteracting = false; }, 1600); }
+                    ['touchstart','wheel','mousedown'].forEach(ev=> scroller.addEventListener(ev, markUser, { passive:true }));
+                    function considerRestore(reason){
+                        try {
+                            if (userInteracting) { lastStableTop = scroller.scrollTop; return; }
+                            const cur = scroller.scrollTop;
+                            const delta = cur - lastStableTop;
+                            // Only treat positive large deltas (content pushed upward) as harmful; allow small natural adjustments
+                            if (delta > JUMP_THRESHOLD && restoreCount < MAX_RESTORES) {
+                                // Heuristic: if focused element is near top already, no need for jump; restore
+                                const active = document.activeElement;
+                                let focusNeedScroll = false;
+                                if (active && active.tagName === 'INPUT') {
+                                    const r = active.getBoundingClientRect();
+                                    focusNeedScroll = (r.top < 20 || r.bottom > (window.innerHeight * 0.92));
+                                }
+                                if (!focusNeedScroll) {
+                                    const before = cur;
+                                    scroller.scrollTop = lastStableTop;
+                                    restoreCount++;
+                                    lastRestoreAt = Date.now();
+                                    if (window.__scrollDebug || window.scrollDebug) console.debug('[AntiJump] restore', { reason, before, after: scroller.scrollTop, baseline: lastStableTop, delta, restores: restoreCount });
+                                    return;
+                                }
+                            }
+                            // Update baseline if stable (avoid capturing while a restore just happened to prevent loops)
+                            if (Math.abs(delta) < 24 && (Date.now() - lastRestoreAt) > 120) {
+                                lastStableTop = cur;
+                            }
+                        } catch(e) { /* silent */ }
+                    }
+                    // Focus handling – defer a little to allow native layout shift to happen first
+                    scroller.addEventListener('focusin', (e)=>{
+                        if (e.target && e.target.tagName === 'INPUT') {
+                            const pre = scroller.scrollTop;
+                            setTimeout(()=> considerRestore('focus'), 50);
+                            setTimeout(()=> considerRestore('focus-late'), 220);
+                            if (window.__scrollDebug || window.scrollDebug) console.debug('[AntiJump] focusin field', e.target.dataset && e.target.dataset.index, 'preTop', pre);
+                        }
+                    }, true);
+                    // visualViewport resize/scroll events often precede jumps when keyboard appears
+                    if (window.visualViewport) {
+                        ['resize','scroll'].forEach(ev => window.visualViewport.addEventListener(ev, ()=>{
+                            setTimeout(()=> considerRestore('vv-'+ev), 35);
+                            setTimeout(()=> considerRestore('vv-late-'+ev), 180);
+                        }));
+                    }
+                    // Safety observer for attribute/content mutations causing reflow jumps
+                    try {
+                        const mo = new MutationObserver(()=> setTimeout(()=> considerRestore('mutation'), 16));
+                        mo.observe(scroller, { subtree:true, childList:true, attributes:true, characterData:false });
+                        setTimeout(()=>{ try { mo.disconnect(); } catch(_){ } }, 4000); // auto-disconnect
+                    } catch(_){}
+                    if (window.__scrollDebug || window.scrollDebug) console.debug('[AntiJump] installed for', modal.id);
+                })(modalElement);
+            }
+        } catch(e) { try { console.warn('AntiJump install failed', e); } catch(_){} }
         // Do not force-scroll to top here; preserve user's last position and avoid snapping.
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         // Persistent modal scroll memory (session-based) EXCEPT for shareFormSection to avoid stale mid-form positioning
