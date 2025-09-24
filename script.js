@@ -337,6 +337,9 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                                         if (Array.isArray(window.__vvTrace)) {
                                             diag.visualViewportTrace = window.__vvTrace.slice(-10);
                                         }
+                                        if (Array.isArray(window.__modalResetEvents)) {
+                                            diag.modalResetEvents = window.__modalResetEvents.slice(-10);
+                                        }
                                     } catch(_){ }
                                     // Enumerate detailed scroll containers per modal (capturing nested scrollables)
                                     try {
@@ -9593,10 +9596,27 @@ async function displayStockDetailsInSearchModal(asxCode) {
                 }
                 // Fetch snapshot to prefill reference price & live view
                 try { updateAddFormLiveSnapshot(currentSearchShareData.shareCode); } catch(_) {}
-                showModal(shareFormSection); // Show add/edit modal
-                // Ensure accordion is properly initialized after modal is shown
-                setTimeout(() => initShareFormAccordion(true), 10);
-                if (targetPriceInput) { try { if (window.safeFocus) window.safeFocus(targetPriceInput); else try { targetPriceInput.focus({ preventScroll:true }); } catch(_) { targetPriceInput.focus(); } } catch(_) {} }
+                // Preserve any pre-existing scroll offset if modal was previously opened in this session
+                try {
+                    if (!shareFormSection.__scrollMemory) shareFormSection.__scrollMemory = 0;
+                    const scrollerPre = shareFormSection.querySelector('.modal-body-scrollable') || shareFormSection.querySelector('.modal-body') || shareFormSection;
+                    if (scrollerPre) shareFormSection.__scrollMemory = scrollerPre.scrollTop || 0;
+                } catch(_){}
+                showModal(shareFormSection); // Show add/edit modal (no immediate focus to avoid snap)
+                // After render, restore previous scroll position if meaningful
+                setTimeout(()=>{
+                    try {
+                        const scroller = shareFormSection.querySelector('.modal-body-scrollable') || shareFormSection.querySelector('.modal-body') || shareFormSection;
+                        if (scroller && shareFormSection.__scrollMemory && shareFormSection.__scrollMemory > 40) {
+                            scroller.scrollTop = shareFormSection.__scrollMemory;
+                        }
+                    } catch(_){}
+                    try { initShareFormAccordion(true); } catch(_){}
+                }, 16);
+                // Remove aggressive automatic focusing; user will tap target field. If we must focus, delay & prevent scroll.
+                /* if (targetPriceInput) {
+                    setTimeout(()=>{ try { if (window.safeFocus) window.safeFocus(targetPriceInput); else targetPriceInput.focus({ preventScroll:true }); } catch(_){} }, 60);
+                } */
                 checkFormDirtyState(); // Recompute dirty state
             });
         }
@@ -18594,6 +18614,9 @@ try {
     try {
         if (window.__modalScrollInstrumented) return; window.__modalScrollInstrumented = true;
         window.__modalScrollTrace = window.__modalScrollTrace || [];
+        window.__modalResetEvents = window.__modalResetEvents || [];
+        let lastUserTouchTs = 0;
+        document.addEventListener('touchstart', ()=>{ lastUserTouchTs = Date.now(); }, true);
         const observerInterval = 1200; // periodically (re)bind in case modals recreated
         function bind(){
             try {
@@ -18602,12 +18625,26 @@ try {
                     if (m.__scrollTraceBound) return; m.__scrollTraceBound = true;
                     const scroller = m.querySelector('.modal-body-scrollable') || m.querySelector('.modal-body') || m;
                     if (!scroller) return;
+                    scroller.__lastScrollTopSnapshot = scroller.scrollTop;
+                    scroller.__lastScrollTs = Date.now();
                     scroller.addEventListener('scroll', ()=>{
                         try {
+                            const now = Date.now();
+                            const prev = scroller.__lastScrollTopSnapshot || 0;
+                            const current = scroller.scrollTop;
                             window.__modalScrollTrace.push({
-                                t: Date.now(), id: m.id||null, st: scroller.scrollTop,
+                                t: now, id: m.id||null, st: current,
                                 sh: scroller.scrollHeight, ch: scroller.clientHeight
                             });
+                            // Detect sudden reset to (near) top after having a meaningful scroll
+                            if (prev > 120 && current <= 5) {
+                                const sinceTouch = now - lastUserTouchTs;
+                                window.__modalResetEvents.push({ t: now, id: m.id||null, from: prev, to: current, sinceTouch, sh: scroller.scrollHeight, ch: scroller.clientHeight });
+                                if (window.__modalResetEvents.length > 50) window.__modalResetEvents.splice(0, window.__modalResetEvents.length - 50);
+                                try { if (window.__scrollDebug || window.scrollDebug) console.debug('[ModalResetDetect] reset', { id: m.id, from: prev, to: current, sinceTouch }); } catch(_){ }
+                            }
+                            scroller.__lastScrollTopSnapshot = current;
+                            scroller.__lastScrollTs = now;
                             if (window.__modalScrollTrace.length > 120) window.__modalScrollTrace.splice(0, window.__modalScrollTrace.length - 120);
                         } catch(_){}
                     }, { passive: true });
