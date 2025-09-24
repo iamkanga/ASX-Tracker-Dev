@@ -326,6 +326,48 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                                     if (lp) {
                                         it.live = it.live == null ? lp.live : it.live;
                                         it.prevClose = it.prevClose == null ? lp.prevClose : it.prevClose;
+                                    // Include instrumentation traces if present
+                                    try {
+                                        if (Array.isArray(window.__scrollMainInvocations)) {
+                                            diag.scrollMainToTopTrace = window.__scrollMainInvocations.slice(-8);
+                                        }
+                                        if (Array.isArray(window.__modalScrollTrace)) {
+                                            diag.modalScrollTrace = window.__modalScrollTrace.slice(-12);
+                                        }
+                                        if (Array.isArray(window.__vvTrace)) {
+                                            diag.visualViewportTrace = window.__vvTrace.slice(-10);
+                                        }
+                                    } catch(_){ }
+                                    // Enumerate detailed scroll containers per modal (capturing nested scrollables)
+                                    try {
+                                        if (diag.openModals && diag.openModals.length) {
+                                            diag.openModalsDetailed = Array.from(document.querySelectorAll('.modal.show, .modal[style*="display: flex"]')).map(m=>{
+                                                const containers = [];
+                                                const all = m.querySelectorAll('*');
+                                                all.forEach(el=>{
+                                                    try {
+                                                        const sh = el.scrollHeight, ch = el.clientHeight;
+                                                        if (!ch || !sh) return;
+                                                        if (sh - ch > 4) {
+                                                            const cs = getComputedStyle(el);
+                                                            if (/(auto|scroll)/.test(cs.overflowY || '') ) {
+                                                                containers.push({
+                                                                    tag: el.tagName,
+                                                                    id: el.id||null,
+                                                                    classes: el.className||null,
+                                                                    scrollTop: el.scrollTop,
+                                                                    scrollHeight: sh,
+                                                                    clientHeight: ch,
+                                                                    overscroll: sh - ch - el.scrollTop
+                                                                });
+                                                            }
+                                                        }
+                                                    } catch(_){}
+                                                });
+                                                return { modalId: m.id||null, containers: containers.slice(0,8) };
+                                            });
+                                        }
+                                    } catch(_){ }
                                         if (it.pct == null && it.prevClose && it.live!=null) {
                                             const ch2 = it.live - it.prevClose; it.pct = (it.prevClose !== 0) ? Math.abs((ch2 / it.prevClose) * 100) : null;
                                         }
@@ -18520,4 +18562,81 @@ try {
 
 })();
 // === End Modal Snap Diagnostics ===
+
+// === Instrumentation: scrollMainToTop invocation trace ===
+(function instrumentScrollMain(){
+    try {
+        if (window.__scrollMainInstrumented) return; window.__scrollMainInstrumented = true;
+        window.__scrollMainInvocations = window.__scrollMainInvocations || [];
+        const original = window.scrollMainToTop;
+        if (typeof original === 'function') {
+            window.scrollMainToTop = function instrumentedScrollMain(instant, targetPosition){
+                try {
+                    const ae = document.activeElement;
+                    const modalOpen = !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
+                    const inModalFocus = !!(ae && ae.closest && ae.closest('.modal'));
+                    const focusWindow = (typeof window !== 'undefined' && window.__modalFocusWindow && Date.now() < window.__modalFocusWindow);
+                    window.__scrollMainInvocations.push({
+                        t: Date.now(), instant: !!instant, targetPosition: targetPosition||0,
+                        modalOpen, inModalFocus, focusWindow,
+                        ae: ae ? (ae.id||ae.className||ae.tagName) : null
+                    });
+                    if (window.__scrollMainInvocations.length > 40) window.__scrollMainInvocations.splice(0, window.__scrollMainInvocations.length - 40);
+                } catch(_){}
+                return original.apply(this, arguments);
+            };
+        }
+    } catch(err){ console.warn('scrollMain instrumentation failed', err); }
+})();
+
+// === Instrumentation: Modal scroll trace (detect sudden resets) ===
+(function instrumentModalScroll(){
+    try {
+        if (window.__modalScrollInstrumented) return; window.__modalScrollInstrumented = true;
+        window.__modalScrollTrace = window.__modalScrollTrace || [];
+        const observerInterval = 1200; // periodically (re)bind in case modals recreated
+        function bind(){
+            try {
+                const modals = document.querySelectorAll('.modal');
+                modals.forEach(m=>{
+                    if (m.__scrollTraceBound) return; m.__scrollTraceBound = true;
+                    const scroller = m.querySelector('.modal-body-scrollable') || m.querySelector('.modal-body') || m;
+                    if (!scroller) return;
+                    scroller.addEventListener('scroll', ()=>{
+                        try {
+                            window.__modalScrollTrace.push({
+                                t: Date.now(), id: m.id||null, st: scroller.scrollTop,
+                                sh: scroller.scrollHeight, ch: scroller.clientHeight
+                            });
+                            if (window.__modalScrollTrace.length > 120) window.__modalScrollTrace.splice(0, window.__modalScrollTrace.length - 120);
+                        } catch(_){}
+                    }, { passive: true });
+                });
+            } catch(_){}
+        }
+        bind(); setInterval(bind, observerInterval);
+    } catch(err){ console.warn('modal scroll instrumentation failed', err); }
+})();
+
+// === Instrumentation: visualViewport events (resize/scroll) ===
+(function instrumentVisualViewport(){
+    try {
+        if (!window.visualViewport) return;
+        if (window.__vvInstrumented) return; window.__vvInstrumented = true;
+        window.__vvTrace = window.__vvTrace || [];
+        function record(ev){
+            try {
+                const vv = window.visualViewport;
+                window.__vvTrace.push({
+                    t: Date.now(), type: ev.type,
+                    w: vv.width, h: vv.height, scale: vv.scale,
+                    pt: vv.pageTop, pl: vv.pageLeft, ot: vv.offsetTop, ol: vv.offsetLeft
+                });
+                if (window.__vvTrace.length > 60) window.__vvTrace.splice(0, window.__vvTrace.length - 60);
+            } catch(_){}
+        }
+        ['resize','scroll'].forEach(evt=> visualViewport.addEventListener(evt, record, { passive: true }));
+    } catch(err){ console.warn('visualViewport instrumentation failed', err); }
+})();
+// === End Instrumentation Blocks ===
 
