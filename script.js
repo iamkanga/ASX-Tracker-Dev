@@ -285,8 +285,8 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 </div>`;
             // click behavior: open search/detail
             card.addEventListener('click', (e)=>{
-                try { hideModal(targetHitDetailsModal); } catch(_){}
-                try { openStockSearchForCode(code); } catch(_){}
+                try { hideModal(targetHitDetailsModal); } catch(_){ }
+                try { openStockSearchForCode(code); } catch(_){ }
             });
             return card;
         }
@@ -326,51 +326,6 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                                     if (lp) {
                                         it.live = it.live == null ? lp.live : it.live;
                                         it.prevClose = it.prevClose == null ? lp.prevClose : it.prevClose;
-                                    // Include instrumentation traces if present
-                                    try {
-                                        if (Array.isArray(window.__scrollMainInvocations)) {
-                                            diag.scrollMainToTopTrace = window.__scrollMainInvocations.slice(-8);
-                                        }
-                                        if (Array.isArray(window.__modalScrollTrace)) {
-                                            diag.modalScrollTrace = window.__modalScrollTrace.slice(-12);
-                                        }
-                                        if (Array.isArray(window.__vvTrace)) {
-                                            diag.visualViewportTrace = window.__vvTrace.slice(-10);
-                                        }
-                                        if (Array.isArray(window.__modalResetEvents)) {
-                                            diag.modalResetEvents = window.__modalResetEvents.slice(-10);
-                                        }
-                                    } catch(_){ }
-                                    // Enumerate detailed scroll containers per modal (capturing nested scrollables)
-                                    try {
-                                        if (diag.openModals && diag.openModals.length) {
-                                            diag.openModalsDetailed = Array.from(document.querySelectorAll('.modal.show, .modal[style*="display: flex"]')).map(m=>{
-                                                const containers = [];
-                                                const all = m.querySelectorAll('*');
-                                                all.forEach(el=>{
-                                                    try {
-                                                        const sh = el.scrollHeight, ch = el.clientHeight;
-                                                        if (!ch || !sh) return;
-                                                        if (sh - ch > 4) {
-                                                            const cs = getComputedStyle(el);
-                                                            if (/(auto|scroll)/.test(cs.overflowY || '') ) {
-                                                                containers.push({
-                                                                    tag: el.tagName,
-                                                                    id: el.id||null,
-                                                                    classes: el.className||null,
-                                                                    scrollTop: el.scrollTop,
-                                                                    scrollHeight: sh,
-                                                                    clientHeight: ch,
-                                                                    overscroll: sh - ch - el.scrollTop
-                                                                });
-                                                            }
-                                                        }
-                                                    } catch(_){}
-                                                });
-                                                return { modalId: m.id||null, containers: containers.slice(0,8) };
-                                            });
-                                        }
-                                    } catch(_){ }
                                         if (it.pct == null && it.prevClose && it.live!=null) {
                                             const ch2 = it.live - it.prevClose; it.pct = (it.prevClose !== 0) ? Math.abs((ch2 / it.prevClose) * 100) : null;
                                         }
@@ -412,7 +367,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                     <div class="notification-card-bottom mover-bottom-row">
                         <div class="mover-change ${dirClass}">${arrow} ${chText}${pctText?` (${pctText})`:''}</div>
                     </div>`;
-                card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openStockSearchForCode(code); });
+                card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){ } openStockSearchForCode(code); });
                 return card;
             }
 
@@ -458,119 +413,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 downDollar: (toNum(baseThr.downDollar) != null ? toNum(baseThr.downDollar) : (eff ? toNum(eff.downDollar) : null)),
                 minimumPrice: (toNum(baseThr.minimumPrice) != null ? toNum(baseThr.minimumPrice) : (eff ? toNum(eff.minimumPrice) : null))
             };
-            const upLabel = (function(){
-                const pct = (curThr.upPercent != null && isFinite(curThr.upPercent) && curThr.upPercent > 0) ? (Number(curThr.upPercent).toFixed(0) + '%') : null;
-                const dol = (curThr.upDollar != null && isFinite(curThr.upDollar) && curThr.upDollar > 0) ? ('$' + Number(curThr.upDollar).toFixed(2)) : null;
-                const move = (pct || dol) ? `Gainers ≥ ${[pct, dol].filter(Boolean).join(' or ')}` : 'Gainers ≥ Not set';
-                const minP = (curThr.minimumPrice != null && isFinite(curThr.minimumPrice) && curThr.minimumPrice > 0) ? ('$' + Number(curThr.minimumPrice).toFixed(2)) : 'Not set';
-                return `${move} | Min Price: ${minP}`;
-            })();
-            const downLabel = (function(){
-                const pct = (curThr.downPercent != null && isFinite(curThr.downPercent) && curThr.downPercent > 0) ? (Number(curThr.downPercent).toFixed(0) + '%') : null;
-                const dol = (curThr.downDollar != null && isFinite(curThr.downDollar) && curThr.downDollar > 0) ? ('$' + Number(curThr.downDollar).toFixed(2)) : null;
-                const move = (pct || dol) ? `Losers ≥ ${[pct, dol].filter(Boolean).join(' or ')}` : 'Losers ≥ Not set';
-                const minP = (curThr.minimumPrice != null && isFinite(curThr.minimumPrice) && curThr.minimumPrice > 0) ? ('$' + Number(curThr.minimumPrice).toFixed(2)) : 'Not set';
-                return `${move} | Min Price: ${minP}`;
-            })();
-
-            // Always refresh explainers for consistency with 52-week sections
-            if (gainersContainer) insertExplainer(gainersContainer, upLabel);
-            if (losersContainer) insertExplainer(losersContainer, downLabel);
-
-            if (gainersInner) {
-                const items = upArr.filter(x => (x.direction||'').toLowerCase()==='up');
-                renderMoversInto(gainersInner, items, 'up');
-            }
-            if (losersInner) {
-                const items = downArr.filter(x => (x.direction||'').toLowerCase()==='down');
-                renderMoversInto(losersInner, items, 'down');
-            }
-        
-
-        // Render HI_LO_52W
-        // Prefer centralized HI_LO_52W, but don't leave UI blank: if highs/lows are empty, derive a local projection from livePrices
-        const hiloSource = window.globalHiLo52Alerts || {};
-        const hilo = {
-            highs: (hiloSource && Array.isArray(hiloSource.highs)) ? [...hiloSource.highs] : [],
-            lows: (hiloSource && Array.isArray(hiloSource.lows)) ? [...hiloSource.lows] : []
-        };
-
-        // Local fallback: compute 52-week highs/lows from available livePrices if either list is empty
-        try {
-            const needHighs = !Array.isArray(hilo.highs) || hilo.highs.length === 0;
-            const needLows = !Array.isArray(hilo.lows) || hilo.lows.length === 0;
-            if (needHighs || needLows) {
-                const local = (function computeLocalHiLoProjection() {
-                    const result = { highs: [], lows: [] };
-                    try {
-                        const epsilon = 0.01; // small buffer for comparisons
-                        const minPrice = (typeof hiLoMinimumPrice === 'number' && hiLoMinimumPrice > 0) ? hiLoMinimumPrice : null;
-                        const entries = (livePrices && typeof livePrices === 'object') ? Object.entries(livePrices) : [];
-                        for (const [code, lp] of entries) {
-                            if (!lp || lp.live == null || isNaN(lp.live)) continue;
-                            if (minPrice != null && lp.live < minPrice) continue; // respect Min Price if set
-                            const hi = (lp.High52 != null && !isNaN(lp.High52)) ? lp.High52 : null;
-                            const lo = (lp.Low52 != null && !isNaN(lp.Low52)) ? lp.Low52 : null;
-                            const name = lp.companyName || null;
-                            if (needHighs && hi != null && lp.live >= (hi - epsilon)) {
-                                result.highs.push({ code, name, live: lp.live, high52: hi, low52: lo, type: 'high' });
-                            }
-                            if (needLows && lo != null && lp.live <= (lo + epsilon)) {
-                                result.lows.push({ code, name, live: lp.live, high52: hi, low52: lo, type: 'low' });
-                            }
-                        }
-                    } catch (e) { console.warn('[HiLo52][fallback] local projection failed', e); }
-                    return result;
-                })();
-                if (needHighs) hilo.highs = local.highs;
-                if (needLows) hilo.lows = local.lows;
-            }
-        } catch(_) { /* non-fatal */ }
-    function renderHiLoEntry(e, kind) {
-        const code = String(e.code || e.shareCode || '').toUpperCase();
-        // Clean up embedded code fragments from company names (e.g., "(ASX:ABC)", "(ABC)", "- ABC")
-    const name = sanitizeCompanyName(e.name || e.companyName || code, code);
-            const liveVal = (e.live!=null && !isNaN(Number(e.live))) ? Number(e.live) : null;
-            const liveDisplay = (liveVal!=null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
-            // Pull both 52W High and Low from entry or livePrices fallback
-            let lp = null; try { lp = (window.livePrices && window.livePrices[code]) ? window.livePrices[code] : null; } catch(_) {}
-            const hiRaw = (e.high52 ?? e.High52 ?? e.hi52 ?? e.high ?? (lp ? (lp.high52 ?? lp.High52 ?? lp.hi52 ?? lp.high) : null) ?? null);
-            const loRaw = (e.low52 ?? e.Low52 ?? e.lo52 ?? e.low ?? (lp ? (lp.low52 ?? lp.Low52 ?? lp.lo52 ?? lp.low) : null) ?? null);
-            const hiDisplay = (hiRaw!=null && !isNaN(Number(hiRaw))) ? ('$' + formatAdaptivePrice(Number(hiRaw))) : '?';
-            const loDisplay = (loRaw!=null && !isNaN(Number(loRaw))) ? ('$' + formatAdaptivePrice(Number(loRaw))) : '?';
-            const card = document.createElement('div');
-            card.className = 'notification-card hilo-card ' + kind;
-            card.innerHTML = `
-                <div class="notification-card-row">
-                    <div class="notification-card-left">
-                        <div class="notification-code">${code}</div>
-                        <div class="notification-name small">${name}</div>
-                    </div>
-                    <div class="notification-card-right">
-                            <div class="notification-live">${liveDisplay}</div>
-                    </div>
-                </div>
-                <div class="notification-card-bottom hilo-bottom-row">
-                    <div class="hilo-low"><span class="label">Low:</span> ${loDisplay}</div>
-                    <div class="hilo-high"><span class="label">High:</span> ${hiDisplay}</div>
-                </div>`;
-            card.addEventListener('click', ()=>{
-                try { hideModal(targetHitDetailsModal); } catch(_) {}
-                try {
-                    const list = (window.allSharesData || []);
-                    const share = list.find(s => s && s.shareName && String(s.shareName).toUpperCase() === code);
-                    if (share && typeof selectShare === 'function') {
-                        try { wasShareDetailOpenedFromTargetAlerts = true; } catch(_) {}
-                        selectShare(share.id);
-                        if (typeof showShareDetails === 'function') showShareDetails();
-                        return;
-                    }
-                } catch(_) {}
-                // Fallback: if share not found locally, open search (should be rare per user flow)
-                try { if (typeof openStockSearchForCode === 'function') openStockSearchForCode(code); } catch(_) {}
-            });
-            return card;
-        }
+            // (Optional) Could display explainer using curThr if desired
 
         // Ensure fixed header (explainer) with inner scroll for hi/lo sections
         if (hiloHighContainer) {
