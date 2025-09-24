@@ -4879,6 +4879,7 @@ window.showCustomAlert = showCustomAlert;
     try {
         const DEBUG_FLAG = ()=> !!(window.__scrollDebug || window.scrollDebug);
         function applyAdaptiveIfNeeded(modal){
+            if (window.__inlineShareForm) return; // Inline mode supersedes adaptive entirely
             try {
                 if (!window.__vvAdaptiveModal) return; // feature flag off
                 if (!modal || modal.id !== 'shareFormSection') return;
@@ -4971,6 +4972,89 @@ window.showCustomAlert = showCustomAlert;
             } catch(_){}
         }
     } catch(e){ /* silent */ }
+})();
+
+// --- Inline Share Form Fallback (mobile structural mode) ---
+(function(){
+    try {
+        const isMobile = ()=> window.matchMedia && window.matchMedia('(max-width: 840px)').matches; // configurable breakpoint
+        function activateInline(modal){
+            if (!modal) return;
+            if (!isMobile()) return; // only on mobile sizes
+            // Mark activation
+            modal.classList.add('inline-share-form-active');
+            document.documentElement.classList.add('inline-share-form-open');
+            // Ensure visible inline
+            modal.style.display='block';
+            modal.style.position='static';
+            modal.style.top='';
+            modal.style.left='';
+            modal.style.right='';
+            modal.style.maxHeight='none';
+            // Content adjustments
+            const content = modal.querySelector('.modal-content');
+            if (content) {
+                content.classList.add('inline-share-form-content');
+                content.style.maxHeight='none';
+            }
+            // Sticky header inside content
+            const hdr = modal.querySelector('.modal-header-with-icon');
+            if (hdr) {
+                hdr.classList.add('inline-sticky-header');
+            }
+            // Disable VIP & adaptive traces if present
+            try { if (typeof window.__disableVIP === 'function') window.__disableVIP(); } catch(_){ }
+            try { delete modal.__vvAdaptiveApplied; } catch(_){ }
+            if (window.__scrollDebug || window.scrollDebug) console.debug('[InlineShareForm] Activated inline mode');
+            // Scroll modal into view if below fold
+            setTimeout(()=>{
+                try { modal.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(_){ }
+            }, 30);
+        }
+        window.__activateInlineShareForm = activateInline;
+        // Wrap showModal for interception
+        if (!window.__inlineShowWrap) {
+            window.__inlineShowWrap = true;
+            const origShow = window.showModal;
+            window.showModal = function(modal){
+                if (modal && modal.id === 'shareFormSection' && window.__inlineShareForm && (window.matchMedia && window.matchMedia('(max-width: 840px)').matches)) {
+                    // Instead of modal overlay semantics, use inline presentation
+                    // Ensure hidden state classes removed
+                    try { modal.classList.remove('app-hidden'); } catch(_){ }
+                    activateInline(modal);
+                    return modal;
+                }
+                return origShow && origShow.apply(this, arguments);
+            };
+        }
+        // Provide close helper
+        window.__closeInlineShareForm = function(){
+            const modal = document.getElementById('shareFormSection');
+            if (!modal) return;
+            if (!modal.classList.contains('inline-share-form-active')) return;
+            // Smooth collapse transition
+            modal.style.transition='max-height 0.3s ease';
+            const h = modal.scrollHeight;
+            modal.style.overflow='hidden';
+            modal.style.maxHeight = h + 'px';
+            requestAnimationFrame(()=>{
+                modal.style.maxHeight='0px';
+            });
+            setTimeout(()=>{
+                // Reset styles after collapse
+                modal.style.display='none';
+                modal.style.removeProperty('max-height');
+                modal.style.removeProperty('overflow');
+                modal.style.removeProperty('transition');
+                modal.classList.remove('inline-share-form-active');
+                document.documentElement.classList.remove('inline-share-form-open');
+                // Restore baseline modal semantics if re-opened later without inline
+                if (window.__scrollDebug || window.scrollDebug) console.debug('[InlineShareForm] Closed inline form');
+                // Scroll main list top
+                try { const list = document.getElementById('stockWatchlistSection'); if (list) list.scrollIntoView({ behavior:'smooth', block:'start' }); else window.scrollTo({ top:0, behavior:'smooth'}); } catch(_){ }
+            }, 310);
+        };
+    } catch(e){ console.warn('Inline Share Form init failed', e); }
 })();
 
 // ToastManager: centralized API
@@ -15356,7 +15440,7 @@ if (targetPriceInput) {
 
         // General modal closing logic (for other modals)
         if (event.target === shareDetailModal || event.target === dividendCalculatorModal ||
-            event.target === shareFormSection ||
+            (event.target === shareFormSection && !(window.__inlineShareForm && shareFormSection && shareFormSection.classList.contains('inline-share-form-active'))) ||
             event.target === calculatorModal || event.target === addWatchlistModal ||
             event.target === manageWatchlistModal || event.target === alertPanel ||
             event.target === cashAssetFormModal || event.target === cashAssetDetailModal ||

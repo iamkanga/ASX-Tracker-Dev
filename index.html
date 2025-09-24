@@ -365,6 +365,10 @@
                     <input type="checkbox" id="adaptiveModalToggle" style="transform:scale(1.2);cursor:pointer;" />
                     <span>Enable Adaptive Modal Fix</span>
                 </label>
+                <label for="inlineFormToggle" class="theme-select-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="inlineFormToggle" style="transform:scale(1.2);cursor:pointer;" />
+                    <span>Inline Share Form (Mobile)</span>
+                </label>
             </div>
         </div>
     </nav>
@@ -1111,6 +1115,51 @@
                 setInterval(requestSwVersion, 15000); // periodic verify
             })();
         }
+                    // Developer toggle: Inline Share Form (mobile) feature flag
+                    ;(function(){
+                        try {
+                            const KEY = 'flag:inlineShareForm';
+                            const toggle = document.getElementById('inlineFormToggle');
+                            if (!toggle) return;
+                            const saved = localStorage.getItem(KEY);
+                            const active = saved === '1';
+                            window.__inlineShareForm = active;
+                            toggle.checked = active;
+                            function applyInlineState(){
+                                const modal = document.getElementById('shareFormSection');
+                                if (!modal) return;
+                                if (!window.__inlineShareForm) {
+                                    // Revert to modal style if was inline
+                                    modal.classList.remove('inline-share-form-active');
+                                    modal.style.position='';
+                                    modal.style.top='';
+                                    modal.style.left='';
+                                    modal.style.right='';
+                                    modal.style.maxHeight='';
+                                    const hdr = modal.querySelector('.modal-header-with-icon');
+                                    if (hdr) hdr.classList.remove('inline-sticky-header');
+                                    const content = modal.querySelector('.modal-content');
+                                    if (content) content.classList.remove('inline-share-form-content');
+                                    document.documentElement.classList.remove('inline-share-form-open');
+                                    return;
+                                }
+                                // If turning on and modal visible, transform immediately
+                                if (modal.style.display !== 'none' && !modal.classList.contains('app-hidden')) {
+                                    if (typeof window.__activateInlineShareForm === 'function') window.__activateInlineShareForm(modal);
+                                }
+                            }
+                            toggle.addEventListener('change', ()=>{
+                                const on = !!toggle.checked;
+                                window.__inlineShareForm = on;
+                                try { localStorage.setItem(KEY, on ? '1':'0'); } catch(_){ }
+                                // Turning inline on disables adaptive effectually
+                                if (on) window.__vvAdaptiveModal = false;
+                                applyInlineState();
+                            });
+                            // initial application (without forcing open)
+                            // Do not forcibly show the modal; just prep classes when it opens.
+                        } catch(e){ console.warn('Inline Share Form toggle init failed', e); }
+                    })();
     </script>
     <!-- Copilot update: 2025-07-29 - change for sync test -->
     <!-- TEMP: runtime style injection to force 50% larger key mobile-card elements (remove after verification) -->
