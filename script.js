@@ -16440,14 +16440,21 @@ function showTargetHitDetailsModal(options={}) {
     try {
         const summaryHost = document.getElementById('notificationsSummary');
         if (summaryHost) {
-            // Counts: Custom Triggers equals selected CUSTOM_TRIGGER_HITS for the current user (with portfolio-based fallback)
+            // Counts: Custom Triggers equals the union of
+            // - selected CUSTOM_TRIGGER_HITS for the current user
+            // - live in-memory triggered alerts (sharesAtTargetPrice)
+            // - per-user 52-week hits (sharesAt52WeekLow / sharesAt52WeekHigh if present)
             const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
-            const customCount = (function(){
-                try {
-                    const arr = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits : [];
-                    return selectCustomTriggerHitsForUser(arr, __uid).length;
-                } catch(_) { return 0; }
-            })();
+            // Build union of codes so badge/modal counts match what user sees in notifications
+            const centralHitsRaw = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits.slice() : [];
+            const selectedCentralHits = selectCustomTriggerHitsForUser(centralHitsRaw, __uid) || [];
+            const liveArrForCount = (window.sharesAtTargetPrice && Array.isArray(window.sharesAtTargetPrice)) ? window.sharesAtTargetPrice : (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []);
+            const low52ArrForCount = (Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.filter(i => !i.muted) : []);
+            const unionCodes = new Set();
+            try { selectedCentralHits.forEach(h => { const c = String(h && (h.code || h.shareCode || h.shareName || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch(_) {}
+            try { liveArrForCount.forEach(s => { const c = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch(_) {}
+            try { low52ArrForCount.forEach(s => { const c = String(s && (s.code || s.shareName || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch(_) {}
+            const customCount = unionCodes.size;
             const targetCount = customCount;
             // Prefer centralized filtered movers, then raw, then snapshot fallback
             let gainersCount = 0, losersCount = 0;
@@ -16536,7 +16543,15 @@ function showTargetHitDetailsModal(options={}) {
     try {
     const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
     // Normalize live-triggered shares into a hit-like shape so the existing renderer can consume them
-    const liveShares = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.slice() : [];
+    // Include per-user 52-week low/high alerts so they appear in the Custom Triggers section
+    const liveShares = [];
+    try {
+        if (Array.isArray(sharesAtTargetPrice)) liveShares.push(...sharesAtTargetPrice.slice());
+        if (Array.isArray(window.sharesAt52WeekLow)) {
+            // Only include non-muted 52w entries
+            window.sharesAt52WeekLow.forEach(s => { try { if (s && !s.muted) liveShares.push(s); } catch(_) {} });
+        }
+    } catch(_) { /* defensive */ }
     const hitsFromLive = liveShares.map(s => {
         try {
             const code = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase();
