@@ -863,9 +863,26 @@ function onLivePricesUpdated() {
     try {
         // Read authoritative sort order from state module
         const __liveSortOrder = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
-        if (__liveSortOrder && (__liveSortOrder.startsWith('percentageChange') || __liveSortOrder.startsWith('dividendAmount'))) {
-            sortShares();
-        } else {
+        // Fields that rely on live pricing and therefore require a resort when live prices change
+        const LIVE_DEPENDENT_SORT_FIELDS = new Set([
+            'percentageChange', // % change from prevClose
+            'dividendAmount',   // yield calculations use live/current price
+            'dayDollar',        // daily $ P/L
+            'totalDollar',      // current value (price * shares)
+            'capitalGain',      // capital gain uses live price
+            'currentPrice',     // direct price sort
+            'targetPrice'       // target price comparisons sometimes use live price fallbacks
+        ]);
+        let didSort = false;
+        try {
+            const field = (__liveSortOrder || '').split('-')[0];
+            if (__liveSortOrder && LIVE_DEPENDENT_SORT_FIELDS.has(field)) {
+                logDebug('Live Price: Active sort is live-dependent ("' + field + '") — resorting shares.');
+                sortShares();
+                didSort = true;
+            }
+        } catch (_) { /* defensive: fall through to render */ }
+        if (!didSort) {
             renderWatchlist();
         }
         if (typeof renderPortfolioList === 'function') {
@@ -7194,6 +7211,24 @@ async function saveShareData(isSilent = false) {
         }
 
         try {
+            // OPTIMISTIC MERGE: update in-memory cache immediately so UI reflects changes
+            try {
+                const idx = allSharesData.findIndex(s => s && s.id === selectedShareDocId);
+                if (idx !== -1) {
+                    const oldShareData = allSharesData[idx];
+                    // Merge new values into cache immediately (non-destructive for missing fields)
+                    allSharesData[idx] = Object.assign({}, allSharesData[idx], shareData);
+                    try { console.log('Optimistic cache merge for share ID:', selectedShareDocId, { before: oldShareData, after: allSharesData[idx] }); } catch(_) {}
+                } else {
+                    // If not found, add a provisional entry so details render immediately
+                    try { allSharesData.push(Object.assign({}, shareData, { id: selectedShareDocId })); } catch(_) {}
+                }
+                // Re-render watchlist and update banners/modal if open so user sees updates instantly
+                try { if (typeof renderWatchlist === 'function') renderWatchlist(); } catch(_) {}
+                try { updateTargetHitBanner(); } catch(_) {}
+                try { if (typeof refreshNotificationsModalIfOpen === 'function') refreshNotificationsModalIfOpen('CUSTOM_TRIGGER_HITS'); } catch(_) {}
+            } catch(e) { console.warn('Optimistic merge failed', e); }
+
             const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
             await firestore.updateDoc(shareDocRef, shareData);
             // Phase 2: Upsert alert document for this share (intent + direction)
@@ -7201,25 +7236,6 @@ async function saveShareData(isSilent = false) {
                 await upsertAlertForShare(selectedShareDocId, shareName, shareData, false);
             } catch (e) {
                 console.error('Alerts: Failed to upsert alert for share update:', e);
-            }
-            // Update local cache so reopening reflects new selections immediately
-            try {
-                const idx = allSharesData.findIndex(s => s.id === selectedShareDocId);
-                if (idx !== -1) {
-                    const oldShareData = allSharesData[idx];
-                    allSharesData[idx] = { ...allSharesData[idx], ...shareData };
-                    console.log('Cache Update Debug:', {
-                        shareId: selectedShareDocId,
-                        oldWatchlistId: oldShareData.watchlistId,
-                        oldWatchlistIds: oldShareData.watchlistIds,
-                        newWatchlistId: shareData.watchlistId,
-                        newWatchlistIds: shareData.watchlistIds
-                    });
-                } else {
-                    console.warn('Cache Update Debug: Share not found in allSharesData for ID:', selectedShareDocId);
-                }
-            } catch(e) {
-                console.warn('Cache Update Debug: Error updating cache:', e);
             }
             if (!isSilent) showCustomAlert('Update successful', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' (ID: ' + selectedShareDocId + ') updated.');
@@ -10159,13 +10175,17 @@ function updateTargetHitBanner() {
     // Only enabled alerts are surfaced; muted are excluded from count & styling.
     // Prefer CUSTOM_TRIGGER_HITS for "Custom" notifications; select using userId with a portfolio-based fallback
     const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
-    const customHitsCount = (function(){
-        try {
-            const arr = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits : [];
-            return selectCustomTriggerHitsForUser(arr, __uid).length;
-        } catch(_) { return 0; }
-    })();
-    const enabledCount = customHitsCount > 0 ? customHitsCount : (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0);
+    // Get central hits safely
+    const centralHitsRaw = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits.slice() : [];
+    const selectedCentralHits = selectCustomTriggerHitsForUser(centralHitsRaw, __uid) || [];
+    // Use live in-memory shares too (ensure we reference the window mirror explicitly)
+    const liveArr = (window.sharesAtTargetPrice && Array.isArray(window.sharesAtTargetPrice)) ? window.sharesAtTargetPrice : (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []);
+    // Build a union of codes across central hits and live shares so the badge reflects both
+    const unionCodes = new Set();
+    try { selectedCentralHits.forEach(h => { const c = String(h && (h.code || h.shareCode || h.shareName || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch(_) {}
+    try { liveArr.forEach(s => { const c = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch(_) {}
+    const customHitsCount = unionCodes.size;
+    const enabledCount = customHitsCount > 0 ? customHitsCount : (Array.isArray(liveArr) ? liveArr.length : 0);
     // Global 52-week alerts: prefer *_HITS; fall back to legacy alerts structure
     const globalHighs = (window.globalHiLo52Hits && Array.isArray(window.globalHiLo52Hits.highHits))
         ? window.globalHiLo52Hits.highHits.length
@@ -16372,14 +16392,17 @@ function showTargetHitDetailsModal(options={}) {
         showCustomAlert('Error displaying target hit details. Please try again.', 2000);
         return;
     }
-    // Guard: if no enabled/muted alerts AND no active global summary, suppress unless explicit
+    // Guard: if no enabled/muted alerts, no custom hits, AND no active global summary, suppress unless explicit
     try {
         const noLocalEnabled = !sharesAtTargetPrice || sharesAtTargetPrice.length === 0;
         const noLocalMuted = !sharesAtTargetPriceMuted || sharesAtTargetPriceMuted.length === 0;
         const hasGlobalActive = (typeof isDirectionalThresholdsActive === 'function') ? isDirectionalThresholdsActive() : false;
         const hasDisplayableGlobal = hasGlobalActive && globalAlertSummary && globalAlertSummary.totalCount > 0;
-        if (!explicit && noLocalEnabled && noLocalMuted && !hasDisplayableGlobal) {
-            if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[TargetHitModal] Auto-open suppressed: no alerts or global summary to display.');
+        // Consider custom trigger hits as a source of displayable alerts for auto-open
+        const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
+        const customHitsCount = (function(){ try { const arr = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits : []; return selectCustomTriggerHitsForUser(arr, __uid).length; } catch(_) { return 0; } })();
+        if (!explicit && noLocalEnabled && noLocalMuted && !hasDisplayableGlobal && customHitsCount === 0) {
+            if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[TargetHitModal] Auto-open suppressed: no alerts, no custom triggers, or global summary to display.');
             return;
         }
     } catch(_err) { /* ignore */ }
@@ -16490,15 +16513,55 @@ function showTargetHitDetailsModal(options={}) {
         }
     } catch(err) { console.warn('[NotificationsSummary] Failed to update summary', err); }
 
-    // --- Custom Triggers section from persistent CUSTOM_TRIGGER_HITS ---
+    // --- Custom Triggers section: prefer live in-memory triggered alerts (sharesAtTargetPrice), then merge central CUSTOM_TRIGGER_HITS ---
     try {
     const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
-    let hitsArr = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits.slice() : [];
-    // Filter using helper: prefer exact userId, then portfolio duplicates, else fallback to all
-    hitsArr = selectCustomTriggerHitsForUser(hitsArr, __uid);
-    // Prefer showing explicit target-hit entries first; keep others (e.g., duplicated movers/52w) after
-    const targetHits = hitsArr.filter(h => (h && String(h.intent||'').toLowerCase() === 'target-hit'));
-    const otherHits = hitsArr.filter(h => !(h && String(h.intent||'').toLowerCase() === 'target-hit'));
+    // Normalize live-triggered shares into a hit-like shape so the existing renderer can consume them
+    const liveShares = Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.slice() : [];
+    const hitsFromLive = liveShares.map(s => {
+        try {
+            const code = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase();
+            const name = sanitizeCompanyName(s && (s.name || s.companyName || ''), code);
+            // live value: prefer explicit live on the share, else global livePrices
+            let liveVal = (s && s.live != null && !isNaN(Number(s.live))) ? Number(s.live) : null;
+            if (liveVal == null) {
+                try { if (window.livePrices && window.livePrices[code] && window.livePrices[code].live != null) liveVal = Number(window.livePrices[code].live); } catch(_) {}
+            }
+            // target value: prefer targetPrice, fallback to target
+            const targetVal = (s && s.targetPrice != null && !isNaN(Number(s.targetPrice))) ? Number(s.targetPrice) : ((s && s.target != null && !isNaN(Number(s.target))) ? Number(s.target) : null);
+            const dir = (s && s.targetDirection) ? s.targetDirection : ((targetVal != null && liveVal != null) ? (liveVal >= targetVal ? 'above' : 'below') : '');
+            const userIntent = (s && s.intent) ? s.intent : (s && s.userIntent ? s.userIntent : '');
+            return { code, name, intent: 'target-hit', direction: dir, live: liveVal, target: targetVal, userIntent: userIntent, id: s && s.id };
+        } catch(_) { return null; }
+    }).filter(Boolean);
+
+    // Pull central customTriggerHits for the user and slice to avoid mutating original
+    let centralHits = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits.slice() : [];
+    centralHits = selectCustomTriggerHitsForUser(centralHits, __uid);
+
+    // Deduplicate by code: prefer live-derived hits (already triggered from runtime) over central doc duplicates
+    const seenCodes = new Set(hitsFromLive.map(h => String(h.code || '').toUpperCase()));
+    const mergedCentral = centralHits.filter(h => {
+        try { const c = String(h && (h.code || h.shareCode || '')).toUpperCase(); return !seenCodes.has(c); } catch(_) { return true; }
+    });
+
+    // Combine live-first then central fallback entries
+    let hitsArr = hitsFromLive.concat(mergedCentral);
+
+    // Accept multiple intent variants produced by different producers/legacy shapes
+    const isTargetHitIntent = (h) => {
+        try {
+            const intent = String(h && (h.intent || h.userIntent || '')).toLowerCase().trim();
+            if (!intent) return false;
+            if (intent === 'target-hit' || intent === 'target_hit' || intent === 'targethit' || intent === 'target hit') return true;
+            if (/target[-_ ]?hit/.test(intent)) return true;
+            if (intent.indexOf('target') !== -1 && intent.indexOf('hit') !== -1) return true;
+            if (intent === 'target' && (h && (h.target != null))) return true;
+            return false;
+        } catch(_) { return false; }
+    };
+    const targetHits = hitsArr.filter(h => isTargetHitIntent(h));
+    const otherHits = hitsArr.filter(h => !isTargetHitIntent(h));
     hitsArr = targetHits.concat(otherHits);
         // targetHitSharesList already cleared above
         if (!hitsArr.length) {
