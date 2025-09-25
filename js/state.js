@@ -109,9 +109,42 @@ export function setLivePrices(data) {
             // Nothing useful returned — do not wipe existing livePrices (prevents transient Loading... states)
             if (typeof window !== 'undefined') window.livePrices = livePrices;
         } else {
-            // Merge so we preserve older entries that weren't part of this fetch
-            livePrices = Object.assign({}, (livePrices || {}), data);
-            if (typeof window !== 'undefined') window.livePrices = livePrices;
+            // Merge so we preserve older entries that weren't part of this fetch.
+            // Do a per-code merge so partial updates (e.g. only live) do not remove previously-known fields like High52/Low52.
+            try {
+                const merged = Object.assign({}, (livePrices || {}));
+                incomingKeys.forEach(key => {
+                    try {
+                        const incoming = data[key];
+                        const existing = merged[key] && typeof merged[key] === 'object' ? merged[key] : {};
+                        if (incoming && typeof incoming === 'object') {
+                            // Merge properties conservatively: only overwrite when incoming value is not null/undefined.
+                            const out = Object.assign({}, existing);
+                            Object.keys(incoming).forEach(k => {
+                                try {
+                                    const val = incoming[k];
+                                    if (val !== null && typeof val !== 'undefined') {
+                                        out[k] = val;
+                                    } // else preserve existing value
+                                } catch(_) {}
+                            });
+                            merged[key] = out;
+                        } else {
+                            // Non-object incoming payload (primitive) — just replace at this key
+                            merged[key] = incoming;
+                        }
+                    } catch (inner) {
+                        // Fallback: set the incoming value directly
+                        try { merged[key] = data[key]; } catch(_) { /* ignore */ }
+                    }
+                });
+                livePrices = merged;
+                if (typeof window !== 'undefined') window.livePrices = livePrices;
+            } catch (mergeErr) {
+                // If merge failed unexpectedly, fall back to simple shallow merge to avoid data loss
+                livePrices = Object.assign({}, (livePrices || {}), data);
+                if (typeof window !== 'undefined') window.livePrices = livePrices;
+            }
         }
         // Recompute whether we now have any data after merge
         // (keep original prevHadData variable semantics for downstream logic)

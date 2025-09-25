@@ -11162,16 +11162,32 @@ function recomputeTriggeredAlerts() {
     const muted = [];
     const lpEntries = Object.entries(livePrices || {});
     const byCode = new Map();
-    (allSharesData||[]).forEach(s => { if (s && s.shareName) byCode.set(s.shareName.toUpperCase(), s); });
+    // Build lookup by several possible identifier fields to be tolerant of varying shapes
+    (allSharesData||[]).forEach(s => {
+        if (!s) return;
+        try {
+            const pushKey = (k) => { if (k && typeof k === 'string') byCode.set(k.toUpperCase(), s); };
+            if (s.shareName) pushKey(s.shareName);
+            if (s.code) pushKey(s.code);
+            if (s.shareCode) pushKey(s.shareCode);
+            if (s.symbol) pushKey(s.symbol);
+            // also accept companyName as a fallback (rare)
+            if (s.companyName) pushKey(s.companyName);
+        } catch(_) {}
+    });
     
+            const missingMatchCodes = [];
             lpEntries.forEach(([code, lp]) => {
-            if (!lp || !lp.targetHit) return; // only shares currently at target
-            const share = byCode.get(code);
-            if (!share) return;
-            const enabledState = alertsEnabledMap.has(share.id) ? alertsEnabledMap.get(share.id) : true;
-            const clone = { ...share };
-            if (enabledState) enabled.push(clone); else muted.push(clone);
-        });
+                    if (!lp || !lp.targetHit) return; // only shares currently at target
+                    const share = byCode.get(code) || byCode.get(String(code).toUpperCase());
+                    if (!share) {
+                        missingMatchCodes.push(code);
+                        return;
+                    }
+                    const enabledState = alertsEnabledMap.has(share.id) ? alertsEnabledMap.get(share.id) : true;
+                    const clone = { ...share };
+                    if (enabledState) enabled.push(clone); else muted.push(clone);
+                });
     const newEnabled = dedupeSharesById(enabled);
     const newMuted = dedupeSharesById(muted);
     // Build signatures to detect no-op updates
@@ -11188,6 +11204,9 @@ function recomputeTriggeredAlerts() {
     setSharesAtTargetPrice(newEnabled); // active notifications
     sharesAtTargetPriceMuted = newMuted; // muted notifications
     try { console.log('[Diag][recomputeTriggeredAlerts] enabledIds:', newEnabled.map(s=>s.id), 'mutedIds:', newMuted.map(s=>s.id)); } catch(_){ }
+    if (missingMatchCodes.length > 0) {
+        try { console.warn('[Diag][recomputeTriggeredAlerts] livePrices had targetHit for codes with no matching allSharesData entry:', missingMatchCodes.slice(0,20)); } catch(_){}
+    }
     updateTargetHitBanner();
     try { enforceTargetHitStyling(); } catch(_) {}
     if (!suppressAutoOpen && targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
@@ -16584,24 +16603,77 @@ function showTargetHitDetailsModal(options={}) {
 
                     // For duplicated 52-week entries, render using the compact notification card layout
                     if (intent === '52w-low' || intent === '52w-high') {
-                        // Lookup 52w values from centralized hits if available
+                        // Robust 52-week lookup: prefer centralized hits, then livePrices (many variants), then legacy global alerts, then allSharesData.
                         let hi = null, lo = null;
                         try {
+                            // 1) Centralized computed hits (preferred)
                             const gh = window.globalHiLo52Hits || {};
                             const lowArr = Array.isArray(gh.lowHits) ? gh.lowHits : [];
                             const highArr = Array.isArray(gh.highHits) ? gh.highHits : [];
-                            const foundLow = lowArr.find(e => String(e.code || e.shareCode || '').toUpperCase() === code);
-                            const foundHigh = highArr.find(e => String(e.code || e.shareCode || '').toUpperCase() === code);
+                            const foundLow = lowArr.find(e => String(e.code || e.shareCode || e.shareName || '').toUpperCase() === code);
+                            const foundHigh = highArr.find(e => String(e.code || e.shareCode || e.shareName || '').toUpperCase() === code);
                             const src = (intent === '52w-low') ? (foundLow || foundHigh) : (foundHigh || foundLow);
                             if (src) {
-                                if (src.high52 != null && !isNaN(Number(src.high52))) hi = Number(src.high52);
-                                else if (src.High52 != null && !isNaN(Number(src.High52))) hi = Number(src.High52);
-                                if (src.low52 != null && !isNaN(Number(src.low52))) lo = Number(src.low52);
-                                else if (src.Low52 != null && !isNaN(Number(src.Low52))) lo = Number(src.Low52);
-                                // If live missing, adopt from source
-                                if (liveVal == null && src.live != null && !isNaN(Number(src.live))) {
-                                    liveVal = Number(src.live);
+                                const pickNum = (obj, ...keys) => {
+                                    for (const k of keys) {
+                                        try { if (obj && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch(_) {}
+                                    }
+                                    return null;
+                                };
+                                hi = pickNum(src, 'high52', 'High52', 'hi52', 'high', 'High');
+                                lo = pickNum(src, 'low52', 'Low52', 'lo52', 'low', 'Low');
+                                if (liveVal == null) {
+                                    const liveCandidate = pickNum(src, 'live', 'Live', 'lastLivePrice');
+                                    if (liveCandidate != null) liveVal = liveCandidate;
                                 }
+                            }
+
+                            // 2) If still missing, inspect livePrices for multiple possible field names
+                            if ((hi == null || lo == null) && window.livePrices && window.livePrices[code]) {
+                                const lp = window.livePrices[code];
+                                const pickNum = (obj, ...keys) => {
+                                    for (const k of keys) {
+                                        try { if (obj && typeof obj === 'object' && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch(_) {}
+                                    }
+                                    return null;
+                                };
+                                if (hi == null) hi = pickNum(lp, 'high52', 'High52', 'hi52', 'high', 'High');
+                                if (lo == null) lo = pickNum(lp, 'low52', 'Low52', 'lo52', 'low', 'Low');
+                                if (liveVal == null) {
+                                    const lv = pickNum(lp, 'live', 'Live', 'lastLivePrice'); if (lv != null) liveVal = lv;
+                                }
+                            }
+
+                            // 3) Fallback: legacy globalHiLo52Alerts structure
+                            if ((hi == null || lo == null) && window.globalHiLo52Alerts) {
+                                try {
+                                    const highs = Array.isArray(window.globalHiLo52Alerts.highs) ? window.globalHiLo52Alerts.highs : [];
+                                    const lows = Array.isArray(window.globalHiLo52Alerts.lows) ? window.globalHiLo52Alerts.lows : [];
+                                    const foundLow2 = lows.find(e => String(e.code || e.shareCode || '').toUpperCase() === code);
+                                    const foundHigh2 = highs.find(e => String(e.code || e.shareCode || '').toUpperCase() === code);
+                                    const src2 = (intent === '52w-low') ? (foundLow2 || foundHigh2) : (foundHigh2 || foundLow2);
+                                    if (src2) {
+                                        const pickNum = (obj, ...keys) => { for (const k of keys) { try { if (obj && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch(_){} } return null; };
+                                        if (hi == null) hi = pickNum(src2, 'high52', 'High52', 'hi52', 'high', 'High');
+                                        if (lo == null) lo = pickNum(src2, 'low52', 'Low52', 'lo52', 'low', 'Low');
+                                    }
+                                } catch(_) {}
+                            }
+
+                            // 4) Final fallback: check allSharesData for stored hi/lo fields
+                            if ((hi == null || lo == null) && Array.isArray(allSharesData)) {
+                                try {
+                                    const found = allSharesData.find(s => String((s && (s.shareName || s.code || '') )).toUpperCase() === code);
+                                    if (found) {
+                                        const pickNum = (obj, ...keys) => { for (const k of keys) { try { if (obj && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch(_){} } return null; };
+                                        if (hi == null) hi = pickNum(found, 'high52', 'High52', 'hi52', 'high', 'High');
+                                        if (lo == null) lo = pickNum(found, 'low52', 'Low52', 'lo52', 'low', 'Low');
+                                    }
+                                } catch(_) {}
+                            }
+
+                            if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
+                                try { console.debug('[52W-DEBUG] code=', code, 'hi=', hi, 'lo=', lo, 'liveVal=', liveVal, 'srcCentral=', src, 'lp=', window.livePrices && window.livePrices[code]); } catch(_) {}
                             }
                         } catch(_) {}
 
@@ -17598,6 +17670,32 @@ function showTargetHitDetailsModal(options={}) {
 // Expose the function to window object for global access
 window.showTargetHitDetailsModal = showTargetHitDetailsModal;
 window.recomputeTriggeredAlerts = recomputeTriggeredAlerts;
+
+// Debug helper: dumps current trigger state for inspection in browser console
+if (typeof window !== 'undefined') {
+    window.dumpTriggerState = function() {
+        try {
+            const sampleLive = {};
+            (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []).forEach(s => {
+                const code = (s && (s.shareName || s.code || s.shareCode || s.symbol) || '').toUpperCase();
+                sampleLive[code] = window.livePrices && window.livePrices[code] ? window.livePrices[code] : null;
+            });
+            const out = {
+                timestamp: new Date().toISOString(),
+                sharesAtTargetPrice: (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.map(s => ({ id: s.id, code: (s.shareName||s.code||s.shareCode||'').toUpperCase(), name: s.companyName || s.shareName || s.name || '' })) : []),
+                sharesAtTargetPriceMuted: (Array.isArray(sharesAtTargetPriceMuted) ? sharesAtTargetPriceMuted.map(s => ({ id: s.id, code: (s.shareName||s.code||s.shareCode||'').toUpperCase(), name: s.companyName || s.shareName || s.name || '' })) : []),
+                alertsEnabledMapSize: (alertsEnabledMap && typeof alertsEnabledMap.size !== 'undefined') ? alertsEnabledMap.size : null,
+                liveSamples: sampleLive,
+                liveKeysCount: Object.keys(window.livePrices || {}).length,
+                allSharesDataCount: Array.isArray(allSharesData) ? allSharesData.length : null
+            };
+            console.groupCollapsed('[DumpTriggerState]');
+            console.log(out);
+            console.groupEnd();
+            return out;
+        } catch(e) { console.error('dumpTriggerState failed', e); return null; }
+    };
+}
 
 // Toggle GA_SUMMARY enabled flag (mute/unmute for session)
 async function toggleGlobalSummaryEnabled() {
