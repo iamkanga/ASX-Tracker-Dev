@@ -338,8 +338,6 @@
     padding-top: 4px;
 }
 
-/* (Removed legacy Inline Share Form Fallback block - superseded by Final Non-Sticky Mobile Integration styles) */
-
 /* Ensure the header-left-container doesn't collapse and centers its contents */
 .header-left-container { align-items: center; }
 
@@ -444,54 +442,6 @@
 .low52-heading-white {
     color: #fff !important;
 }
-
-/* ================= Inline Share Form (Final Non-Sticky Mobile Integration) ================= */
-@media (max-width: 860px) {
-    .inline-share-form-panel { 
-        background: linear-gradient(145deg,#232b33,#1d242b); 
-        border:1px solid #2b333c; 
-        border-radius: 14px; 
-        padding: 22px 20px 44px; 
-        box-shadow:0 6px 48px -18px rgba(0,0,0,.65), 0 2px 6px -2px rgba(0,0,0,.5), 0 0 0 1px #303a44 inset; 
-        position: relative; 
-        overflow: hidden; 
-        animation: inlineFormFadeSlide .42s cubic-bezier(.21,.9,.24,1); 
-        margin: 12px 8px 56px; 
-    }
-    @keyframes inlineFormFadeSlide { from { opacity:0; transform:translateY(24px) scale(.985); } to { opacity:1; transform:translateY(0) scale(1); } }
-    .inline-share-form-header { display:flex; align-items:flex-start; gap:18px; margin:0 0 18px; }
-    .inline-share-form-header .titles { flex:1 1 auto; }
-    .inline-share-form-header h2 { margin:.2rem 0 .15rem; font-size:1.45rem; letter-spacing:.75px; font-weight:700; }
-    .inline-share-form-header p.company { margin:.1rem 0 0; font-size:.78rem; letter-spacing:.35px; font-weight:400; color:#6c737d; text-transform:uppercase; }
-    .inline-share-form-actions { display:flex; flex-direction:row; gap:8px; }
-    .inline-share-form-actions .icon-btn { width:44px; height:44px; border-radius:14px; background:linear-gradient(135deg,#2c3540,#222a32); border:1px solid #343f47; display:inline-flex; align-items:center; justify-content:center; color:#a49393; font-size:1.05rem; box-shadow:0 3px 14px -4px #000; }
-    .inline-share-form-actions .icon-btn:hover { border-color:#46515a; color:#fff; }
-    .inline-share-form-actions .icon-btn.danger { color:#ff4d4d; border-color:#3a1010; background:linear-gradient(135deg,#431e1e,#241212); }
-    .inline-share-form-actions .icon-btn.danger:hover { border-color:#5c2020; color:#fff; }
-    /* Accordion */
-    .inline-share-form-accordion { margin:12px 0 4px; border-radius:16px; overflow:hidden; border:1px solid #303942; background:linear-gradient(145deg,#1b2127,#232c36); }
-    .inline-share-form-accordion .accordion-section + .accordion-section { border-top:1px solid #303942; }
-    .inline-share-form-accordion .accordion-toggle { all:unset; cursor:pointer; display:flex; align-items:center; justify-content:space-between; width:100%; padding:16px 20px; font-weight:600; letter-spacing:.55px; font-size:.9rem; color:#a49393; background:linear-gradient(90deg,#222a33,#1d242b); position:relative; }
-    .inline-share-form-accordion .accordion-toggle:focus-visible { outline:2px solid #a49393; outline-offset:2px; }
-    .inline-share-form-accordion .accordion-toggle .caret { transition: transform .3s ease; transform:rotate(-90deg); opacity:.9; }
-    .inline-share-form-accordion .accordion-section.open .accordion-toggle .caret { transform:rotate(0deg); }
-    .inline-share-form-accordion .accordion-panel { display:none; padding: 2px 22px 26px 22px; animation: inlinePanelFade .35s ease; }
-    @keyframes inlinePanelFade { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
-    .inline-share-form-accordion .accordion-section.open .accordion-panel { display:block; }
-    .inline-share-form-panel label { display:block; font-size:.7rem; text-transform:uppercase; letter-spacing:.4px; margin:18px 0 6px; color:#6c737d; font-weight:600; }
-    .inline-share-form-panel input[type=text],
-    .inline-share-form-panel input[type=number] { width:100%; background:#14191e; border:1px solid #2d363f; border-radius:12px; padding:12px 14px; font:600 0.92rem/1.2 'Inter', system-ui; color:#f5f6f8; letter-spacing:.5px; box-shadow:0 1px 0 0 #000 inset, 0 0 0 1px #202930 inset; transition:border .18s; }
-    .inline-share-form-panel input:focus { outline:none; border-color:#a49393; }
-    .inline-share-form-panel .input-row-inline { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px 18px; }
-    .inline-share-form-footer { margin-top:34px; font-size:.65rem; color:#46525d; letter-spacing:.45px; text-align:center; }
-}
-
-/* Host positioning and open state body hook */
-body.inline-share-form-open { overscroll-behavior: contain; }
-body.inline-share-form-open #inlineShareFormHost { scroll-margin-top: 12px; }
-/* Inline host container inherits page flow; ensure no unexpected spacing */
-#inlineShareFormHost { margin: 0; padding: 0; }
-
 .low52-thresh-white {
     color: #fff !important;
 }
@@ -4661,13 +4611,6 @@ body.theme-muted-grey {
 /* Utility class JS can toggle when a virtual keyboard shows on mobile */
 body.keyboard-visible { /* marker class (intentionally minimal) */ --keyboard-visible:1; }
 
-/* Prevent any browser-driven scroll anchoring or smooth scrolling inside modal scroll areas */
-.modal .modal-content,
-.single-scroll-modal {
-    scroll-behavior: auto !important;
-    overflow-anchor: none;
-}
-
 /* Subtle Themes - Adjusted for better visual distinction */
 body.theme-subtle-1 { /* Subtle Sky */
     --background-color: #e0eaf2; /* Lighter blue */
@@ -7127,14 +7070,6 @@ table td.live-price-cell.negative-change {
 #shareDetailModal .modal-content { width:94%; max-width:540px; }
 #shareDetailModal { overscroll-behavior:contain; }
 
-/* Hard-disable UA auto-smooth/anchoring inside all modal scrollers to prevent focus-induced snapping */
-.modal .modal-content,
-.modal .modal-body-scrollable,
-.modal .single-scroll-modal {
-    scroll-behavior: auto !important;
-    overflow-anchor: none !important;
-}
-
 /* Center & constrain login note (single line) */
 #commSecLoginMessage { text-align:center; display:block; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:6px 0 0 0 !important; grid-column:1 / -1; order:999; }
 
@@ -7226,11 +7161,9 @@ table td.live-price-cell.negative-change {
     font-size: 2.2em !important;
     font-weight: 800 !important;
     line-height: 1.1 !important;
-    color: var(--text-color, #333) !important; /* ensure not muted */
+    color: var(--text-color, #333) !important;
     text-align: left !important;
     display: block !important;
-    opacity: 1 !important; /* never ghost the title */
-    filter: none !important; /* avoid inherited grayscale */
 }
 
 /* NEW: Container for the modal title (ASX Code + Company Name) */
@@ -8197,8 +8130,7 @@ input.smart-ph:focus::placeholder { opacity:0.15; }
     text-align: left !important;
     width: 100% !important;
     visibility: visible !important;
-    opacity: 1 !important; /* enforce full opacity */
-    filter: none !important;
+    opacity: 1 !important;
 }
 
 /* Force the comments section title to display correctly */
@@ -8267,19 +8199,10 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
     font-weight: 800 !important;
     margin: 0 !important;
     padding: 0 !important;
-        color: var(--text-color, #333) !important; /* Use theme text color; fallback provided */
+    color: #333 !important; /* Fallback color */
     line-height: 1.1 !important;
     text-align: left !important;
     width: 100% !important;
-        opacity: 1 !important;
-        filter: none !important;
-}
-
-/* Tablet/layout safeguard: ensure Holdings & Dividends spans full width even if class omitted */
-@media (min-width: 641px) and (max-width: 1024px) {
-    .share-detail-sections .detail-card[data-section="dividends"] {
-        grid-column: 1 / -1;
-    }
 }
 
 /* Add button for cash asset comments: bottom-left action row */

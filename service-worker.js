@@ -1,22 +1,15 @@
-// Service Worker Version: 1.1.0 (aggressive cache-busting)
+// Service Worker Version: 1.0.17
 
 // Unified App / Asset Version (bump this when deploying front-end changes to force fresh fetch of CSS/JS)
-// IMPORTANT: Increment APP_VERSION on ANY deploy that changes shipped JS/CSS/HTML.
-// The service worker now also embeds a BUILD_STAMP so even if APP_VERSION is forgotten,
-// byte-diff in this file still triggers an update. However, always bump for clarity.
-const APP_VERSION = '2.15.13';
-// Unique build stamp (ISO) - forces SW byte change each build even if version forgotten
-const BUILD_STAMP = '2025-09-24T01:30:00Z';
+const APP_VERSION = '2.15.8';
 
 // Cache name for the current version (auto-derived from APP_VERSION so we don't forget to bump both)
 const CACHE_NAME = `share-watchlist-${APP_VERSION}`;
-// A short-lived runtime cache for opportunistic non-core responses (separate from versioned precache)
-const RUNTIME_CACHE = 'runtime-v1';
 
 // List of essential application assets to precache
 const CACHED_ASSETS = [
-    // We intentionally DO NOT precache index.html anymore to avoid serving stale shell after deploy.
-    // It will be fetched network-first on navigation; offline fallback still provided via root cache if present.
+    './', // Caches the root (index.html)
+    './index.html',
     `./script.js?v=${APP_VERSION}`,
     `./style.css?v=${APP_VERSION}`,
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap',
@@ -30,24 +23,27 @@ const CACHED_ASSETS = [
 
 // Install event: cache assets individually so one failure doesn't abort install
 self.addEventListener('install', (event) => {
-    console.log('[SW] Installing… version', APP_VERSION, 'stamp', BUILD_STAMP, 'cache', CACHE_NAME);
+    console.log('[SW] Installing… version', APP_VERSION, 'cache', CACHE_NAME);
     event.waitUntil((async ()=>{
-        try {
-            const cache = await caches.open(CACHE_NAME);
-            for (const url of CACHED_ASSETS) {
-                const bustUrl = url + (url.includes('?') ? '&' : '?') + 'cb=' + APP_VERSION + '-' + BUILD_STAMP;
-                const req = new Request(bustUrl, { cache: 'reload' });
-                try {
-                    const res = await fetch(req);
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
-                    await cache.put(url, res.clone()); // store under canonical key (without cb param)
-                    console.log('[SW] Cached core asset:', url);
-                } catch(err) {
-                    console.warn('[SW] (install) failed to cache core asset', url, err.message||err);
-                }
+        const cache = await caches.open(CACHE_NAME);
+        const results = await Promise.all(CACHED_ASSETS.map(async (url) => {
+            const req = new Request(url, { cache: 'no-cache' });
+            try {
+                const res = await fetch(req);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await cache.put(req, res.clone());
+                console.log('[SW] Cached:', url);
+                return { url, ok:true };
+            } catch(err) {
+                console.warn('[SW] Cache miss (skipped):', url, err.message || err);
+                return { url, ok:false, err:err.message||String(err) };
             }
-        } catch(e) {
-            console.warn('[SW] install caching loop failed', e);
+        }));
+        const failed = results.filter(r=>!r.ok);
+        if (failed.length) {
+            console.warn('[SW] Some assets failed to cache (install continues):', failed.map(f=>f.url));
+        } else {
+            console.log('[SW] All listed assets cached.');
         }
         await self.skipWaiting();
     })());
@@ -55,52 +51,28 @@ self.addEventListener('install', (event) => {
 
 // Activate event: cleans up old caches
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activating version', APP_VERSION);
-    event.waitUntil((async ()=>{
-        try {
-            const names = await caches.keys();
-            await Promise.all(names.map(n => {
-                if (n.startsWith('share-watchlist-') && n !== CACHE_NAME) {
-                    console.log('[SW] Deleting old cache:', n);
-                    return caches.delete(n);
-                }
-                return null;
-            }));
-        } catch(e){ console.warn('[SW] cache cleanup failed', e); }
-        try { await self.clients.claim(); } catch(_){}
-        // Broadcast new version so clients can self-reload if needed
-        try {
-            const all = await self.clients.matchAll({ includeUncontrolled:true, type:'window' });
-            for (const client of all) {
-                client.postMessage({ type:'SW_VERSION', version: APP_VERSION, stamp: BUILD_STAMP });
-            }
-        } catch(e){ console.warn('[SW] broadcast failed', e); }
-    })());
+    console.log('Service Worker: Activating...');
+    event.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName.startsWith('share-watchlist-') && cacheName !== CACHE_NAME) {
+                        console.log('Service Worker: Deleting old cache:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => {
+            console.log('Service Worker: Old caches cleared. Claiming clients.');
+            return self.clients.claim(); // Take control of all clients immediately
+        })
+    );
 });
 
 // Fetch event: intercepts network requests
 self.addEventListener('fetch', (event) => {
     // Only cache GET requests
     if (event.request.method === 'GET') {
-        // Navigation requests (user refresh / open). Always network-first with explicit reload to defeat cached index.
-        if (event.request.mode === 'navigate') {
-            event.respondWith((async ()=>{
-                try {
-                    const net = await fetch(event.request, { cache: 'reload' });
-                    // Optionally keep a copy of latest root as offline fallback (store in runtime cache)
-                    try {
-                        const rt = await caches.open(RUNTIME_CACHE);
-                        rt.put('./', net.clone());
-                    } catch(_){}
-                    return net;
-                } catch(err) {
-                    const cachedRoot = await caches.match('./');
-                    if (cachedRoot) return cachedRoot;
-                    return new Response('Offline', { status: 503, statusText:'Offline'});
-                }
-            })());
-            return;
-        }
         // Skip non-http(s) schemes (e.g., chrome-extension, file, data)
         try {
             const u = new URL(event.request.url);
@@ -130,22 +102,19 @@ self.addEventListener('fetch', (event) => {
             const isSameOrigin = url.origin === self.location.origin;
             const isCoreAsset = isSameOrigin && (url.pathname.endsWith('/style.css') || url.pathname.endsWith('/script.js'));
             if (isCoreAsset) {
-                // Always network-first with reload directive & version/hash busting
-                const busted = new Request(url.pathname + url.search + (url.search ? '&' : '?') + 'v=' + APP_VERSION + '-' + BUILD_STAMP, { cache: 'reload' });
-                event.respondWith((async ()=>{
-                    try {
-                        const net = await fetch(busted);
-                        if (net && net.status === 200) {
-                            try { const c = await caches.open(CACHE_NAME); await c.put(event.request, net.clone()); } catch(_){ }
-                        }
-                        return net;
-                    } catch(err) {
-                        const match = await caches.match(event.request);
-                        if (match) return match;
-                        return safeMatchOrFallback(event.request);
-                    }
-                })());
-                return; // stop
+                event.respondWith(
+                    fetch(event.request)
+                        .then(resp => {
+                            // On success, update cache copy asynchronously
+                            if (resp && resp.status === 200) {
+                                const clone = resp.clone();
+                                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(()=>{});
+                            }
+                            return resp;
+                        })
+                        .catch(() => safeMatchOrFallback(event.request)) // Fallback to cached or offline
+                );
+                return; // Prevent falling through to cache-first path
             }
         } catch(_e) { /* noop */ }
 
@@ -209,23 +178,8 @@ self.addEventListener('fetch', (event) => {
 
 // Message event: allows the app to send messages to the service worker (e.g., to skip waiting)
 self.addEventListener('message', (event) => {
-    const data = event.data || {};
-    if (data.type === 'SKIP_WAITING') {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
-        console.log('[SW] Skip waiting message received, activating now.');
-    } else if (data.type === 'CHECK_VERSION') {
-        try { event.source && event.source.postMessage({ type:'SW_VERSION', version: APP_VERSION, stamp: BUILD_STAMP }); } catch(_){}
-    } else if (data.type === 'CLEAR_RUNTIME_CACHE') {
-        caches.delete(RUNTIME_CACHE).then(()=> console.log('[SW] Runtime cache cleared on request')).catch(()=>{});
+        console.log('Service Worker: Skip waiting message received, new SW activated.');
     }
 });
-
-// Periodic self-update hint (optional; noop if unsupported)
-if ('periodicSync' in self.registration) {
-    // Register a periodic sync for version check (safe to ignore failures)
-    self.registration.periodicSync.getTags().then(tags => {
-        if (!tags.includes('version-check')) {
-            self.registration.periodicSync.register('version-check', { minInterval: 6 * 60 * 60 * 1000 }).catch(()=>{});
-        }
-    }).catch(()=>{});
-}

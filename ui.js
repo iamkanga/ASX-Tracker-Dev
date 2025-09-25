@@ -3,93 +3,6 @@
     // Internal helpers: safe DOM queries
     function $(sel) { return document.querySelector(sel); }
     function $id(id) { return document.getElementById(id); }
-    // Helper: detect if any modal is currently open/visible
-    function isAnyModalOpen() {
-        try {
-            return !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
-        } catch(_) { return false; }
-    }
-    // Body scroll lock (nested-safe): freeze background page scroll while any modal is open
-    let __bodyScrollLockCount = 0;
-    let __bodyScrollLockRestore = null;
-    // Track open modals explicitly to avoid stale isAnyModalOpen() race conditions
-    const __openModals = new Set();
-    function addOpenModal(modal){ try { if (!modal) return; if (!__openModals.has(modal)) { __openModals.add(modal); } } catch(_){} }
-    function removeOpenModal(modal){ try { if (!modal) return; if (__openModals.has(modal)) { __openModals.delete(modal); } } catch(_){} }
-    function visibleModalCount(){ try { return Array.from(__openModals).filter(m=> m && m.classList && m.classList.contains('show') && m.style.display!=='none').length; } catch(_) { return 0; } }
-    function reconcileModalLocks(){
-        try {
-            // Remove any stale references (detached nodes)
-            Array.from(__openModals).forEach(m=>{ try { if (!m.isConnected) __openModals.delete(m); } catch(_){} });
-            const liveQuery = Array.from(document.querySelectorAll('.modal.show')).filter(m=> m.style.display !== 'none');
-            // Sync set with actual DOM state (add missing, remove vanished)
-            liveQuery.forEach(m=> addOpenModal(m));
-            Array.from(__openModals).forEach(m=>{ if (!liveQuery.includes(m)) __openModals.delete(m); });
-            const liveCount = liveQuery.length;
-            if (liveCount === 0 && __bodyScrollLockCount > 0) {
-                // Force unlock if our counting missed something
-                __bodyScrollLockCount = 1; // ensure next unlock restores
-                unlockBodyScroll();
-            }
-        } catch(_){}
-    }
-    function lockBodyScroll() {
-        try {
-            __bodyScrollLockCount++;
-            if (__bodyScrollLockCount > 1) return; // already locked
-            const docEl = document.documentElement;
-            const body = document.body;
-            const scrollY = Math.round(window.pageYOffset || window.scrollY || docEl.scrollTop || 0);
-            const prev = {
-                pos: body.style.position,
-                top: body.style.top,
-                left: body.style.left,
-                right: body.style.right,
-                width: body.style.width,
-                overflow: body.style.overflow,
-                paddingRight: body.style.paddingRight,
-                scrollBehavior: docEl.style.scrollBehavior,
-            };
-            const scrollbarW = Math.max(0, (window.innerWidth || 0) - (docEl.clientWidth || 0));
-            docEl.style.scrollBehavior = 'auto'; // avoid smooth scroll side-effects on restore
-            body.style.position = 'fixed';
-            body.style.top = `-${scrollY}px`;
-            body.style.left = '0';
-            body.style.right = '0';
-            body.style.width = '100%';
-            body.style.overflow = 'hidden';
-            if (scrollbarW > 0) {
-                try {
-                    const pr = parseInt(window.getComputedStyle(body).paddingRight, 10) || 0;
-                    body.style.paddingRight = (pr + scrollbarW) + 'px';
-                } catch(_) {}
-            }
-            try { body.classList.add('modal-open'); } catch(_) {}
-            __bodyScrollLockRestore = function restoreBodyScroll(){
-                try { body.classList.remove('modal-open'); } catch(_) {}
-                body.style.position = prev.pos || '';
-                body.style.top = prev.top || '';
-                body.style.left = prev.left || '';
-                body.style.right = prev.right || '';
-                body.style.width = prev.width || '';
-                body.style.overflow = prev.overflow || '';
-                body.style.paddingRight = prev.paddingRight || '';
-                docEl.style.scrollBehavior = prev.scrollBehavior || '';
-                const y = Math.max(0, scrollY);
-                // Restore after styles are cleared so it takes effect immediately
-                try { window.scrollTo(0, y); } catch(_) {}
-            };
-        } catch(_) {}
-    }
-    function unlockBodyScroll() {
-        try {
-            if (__bodyScrollLockCount > 0) __bodyScrollLockCount--;
-            if (__bodyScrollLockCount === 0 && typeof __bodyScrollLockRestore === 'function') {
-                const restore = __bodyScrollLockRestore; __bodyScrollLockRestore = null;
-                restore();
-            }
-        } catch(_) {}
-    }
     // Import calculation helpers from utils if available on window (script.js exposes via imports)
     try {
         if (!window.calculateUnfrankedYield && typeof calculateUnfrankedYield === 'function') window.calculateUnfrankedYield = calculateUnfrankedYield;
@@ -99,12 +12,10 @@
     // Expose safe global fallbacks so other modules can call these even if script.js hasn't attached real implementations yet.
     try {
         if (!window.logDebug) window.logDebug = function(){ try { console.log.apply(console, arguments); } catch(_){} };
-    if (!window.showModal) window.showModal = function(m){ try { if (m) { m.style.setProperty('display','flex','important'); /* do not force scrollTop here */ } } catch(_){} };
+        if (!window.showModal) window.showModal = function(m){ try { if (m) { m.style.setProperty('display','flex','important'); m.scrollTop = 0;} } catch(_){} };
         if (!window.hideModal) window.hideModal = function(m){ try { if (m) m.style.setProperty('display','none','important'); } catch(_){} };
-    if (!window.scrollMainToTop) window.scrollMainToTop = function(instant){
+        if (!window.scrollMainToTop) window.scrollMainToTop = function(instant){
             try {
-        // Do not adjust page scroll if a modal is open; avoid perceived "snap to top" while editing in modals
-        if (isAnyModalOpen()) return;
                 const headerEl = document.getElementById('appHeader') || document.querySelector('.app-header');
                 const asxButtonsEl = document.getElementById('asxCodeButtonsContainer') || document.querySelector('.asx-code-buttons');
                 const mainEl = document.querySelector('main.container') || document.querySelector('main') || document.body;
@@ -260,24 +171,6 @@
         try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
     }
 
-    // Safe focus helper to avoid background page jumps when focusing inputs
-    try {
-        if (!window.safeFocus) {
-            window.safeFocus = function(el){
-                try {
-                    if (!el || typeof el.focus !== 'function') return;
-                    try { el.focus({ preventScroll: true }); return; }
-                    catch(_) {
-                        // If inside a modal, do NOT fall back to plain focus() as it may cause a jump
-                        try { if (el.closest && el.closest('.modal')) return; } catch(__) {}
-                        // Outside modals it's safe to fall back
-                        try { el.focus(); } catch(__) {}
-                    }
-                } catch(_) {}
-            };
-        }
-    } catch(_) {}
-
 
     function showCustomConfirm(message, callback) {
         try {
@@ -292,8 +185,6 @@
                 // Guard against multiple bindings: replaceNode technique for one-time listeners
                 function cleanup() {
                     try { modal.classList.remove('show'); modal.style.setProperty('display','none','important'); } catch(_){}
-                    // If no more modals remain, unlock body scroll
-                    try { if (!isAnyModalOpen()) unlockBodyScroll(); } catch(_) {}
                 }
 
                 const onOk = () => { cleanup(); try { callback && callback(true); } catch(_){} };
@@ -302,9 +193,6 @@
                 // Ensure previous listeners are removed by cloning nodes
                 const okClone = okBtn.cloneNode(true); okBtn.parentNode.replaceChild(okClone, okBtn);
                 const cancelClone = cancelBtn.cloneNode(true); cancelBtn.parentNode.replaceChild(cancelClone, cancelBtn);
-
-                // Ensure body scroll is locked while confirm modal is visible (only when opening the first modal)
-                try { if (!isAnyModalOpen()) lockBodyScroll(); } catch(_) {}
                 const closeClone = closeBtn ? closeBtn.cloneNode(true) : null; if (closeBtn && closeClone) closeBtn.parentNode.replaceChild(closeClone, closeBtn);
 
                 okClone.addEventListener('click', onOk, { once: true });
@@ -355,12 +243,6 @@
     } catch(_) {}
     try { if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id || true }, '', '#modal'); } catch(_) {}
     try { if (window.toggleAppSidebar && window.appSidebar && window.appSidebar.classList.contains('open')) window.toggleAppSidebar(false); } catch(_) {}
-        // Register modal & lock if transitioning from 0->1
-        try {
-            const before = visibleModalCount();
-            addOpenModal(modalElement);
-            if (before === 0) lockBodyScroll();
-        } catch(_){}
         // Unhide any hidden ancestor modals so nested modals are not blocked by parent's app-hidden
         try {
             let anc = modalElement.parentElement;
@@ -374,9 +256,9 @@
         // Add semantic class for visibility
         try { modalElement.classList.add('show'); } catch(_){}
     modalElement.style.setProperty('display', 'flex', 'important');
-        // Do not force modal scroll to top on open; allow user-controlled position
+        modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
-        // If there is a known reason to reset (e.g., explicit caller intent), handle via a separate helper.
+    if (scrollableContent) scrollableContent.scrollTop = 0;
     try { if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') initializeShareNameAutocomplete(true); } catch(_) {}
     // After showing, trigger keyboard-aware sizing in case a virtual keyboard is present
     try {
@@ -387,12 +269,7 @@
 
     function showModalNoHistory(modalElement) {
         if (!modalElement) return;
-        // No stack and no browser history push. Track & lock if first.
-        try {
-            const before = visibleModalCount();
-            addOpenModal(modalElement);
-            if (before === 0) lockBodyScroll();
-        } catch(_){}
+        // No stack and no browser history push: used when restoring a previous modal on back
         try {
             let anc = modalElement.parentElement;
             while (anc && anc !== document.body) {
@@ -403,8 +280,9 @@
         try { modalElement.classList.remove('app-hidden'); } catch(_){}
         try { modalElement.classList.add('show'); } catch(_){}
     modalElement.style.setProperty('display', 'flex', 'important');
-        // Do not reset scroll on show without history either.
+        modalElement.scrollTop = 0;
         const scrollableContent = modalElement.querySelector('.modal-body-scrollable');
+        if (scrollableContent) scrollableContent.scrollTop = 0;
     }
 
     // Hide a modal visually but keep it on the in-app back stack so it can be restored on Back
@@ -412,10 +290,6 @@
         if (!modalElement) return;
         try { modalElement.classList.remove('show'); } catch(_){}
         modalElement.style.setProperty('display','none','important');
-        // Update tracking & maybe unlock
-        removeOpenModal(modalElement);
-        const maybeUnlock = () => { try { reconcileModalLocks(); if (visibleModalCount() === 0) unlockBodyScroll(); } catch(_) {} };
-        try { requestAnimationFrame(maybeUnlock); setTimeout(maybeUnlock, 80); } catch(_) {}
         // Note: do NOT call removeModalFromStack here, so the previous modal remains just beneath top
     }
 
@@ -425,10 +299,6 @@
         try { modalElement.classList.remove('show'); } catch(_){}
         try { modalElement.classList.add('app-hidden'); } catch(_){}
         modalElement.style.setProperty('display', 'none', 'important');
-        removeOpenModal(modalElement);
-        // If no other modals remain visible, unlock body scroll (with reconciliation safety)
-        const maybeUnlock = () => { try { reconcileModalLocks(); if (visibleModalCount() === 0) unlockBodyScroll(); } catch(_) {} };
-        try { requestAnimationFrame(maybeUnlock); setTimeout(maybeUnlock, 80); setTimeout(maybeUnlock, 240); } catch(_) {}
     }
 
     // Core padding adjuster (non-scrolling) retained for backwards compatibility.
@@ -451,12 +321,9 @@
         const changedHeight = adjustMainContentPadding();
         // Always scroll to top when invoked for explicit UI events (spec requirement)
         // To avoid interrupting user scroll during passive resize, caller can pass { suppressScroll:true }.
-        try {
-            const modalOpen = (function(){ try { return !!document.querySelector('.modal.show, .modal[style*="display: flex"]'); } catch(_) { return false; } })();
-            if (!opts.suppressScroll && !modalOpen) {
-                try { if (window.scrollMainToTop) window.scrollMainToTop(true); else window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch(_) {}
-            }
-        } catch(_) {}
+        if (!opts.suppressScroll) {
+            try { if (window.scrollMainToTop) window.scrollMainToTop(true); else window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); } catch(_) {}
+        }
         return changedHeight;
     }
 
@@ -492,27 +359,11 @@
         });
     } catch (e) { console.warn('UI: Failed to install padding handlers', e); }
 
-    // Short-lived modal focus suppression window: when an input inside a modal gains focus, record a timestamp
-    try {
-        document.addEventListener('focusin', (e) => {
-            try {
-                const t = e.target;
-                if (!t) return;
-                if (t.closest && t.closest('.modal')) {
-                    window.__modalFocusWindow = Date.now() + 600; // 600ms suppression for accidental scrollMainToTop triggers
-                }
-            } catch(_) {}
-        }, true);
-    } catch(_) {}
-
     function closeModals() {
         // Keep behavior light here; prefer callers to do auto-save logic before calling closeModals
         document.querySelectorAll('.modal').forEach(modal => {
             if (modal) modal.style.setProperty('display', 'none', 'important');
         });
-        try { document.querySelectorAll('.modal.show').forEach(m=>m.classList.remove('show')); } catch(_) {}
-        try { __openModals.clear(); } catch(_) {}
-        try { __bodyScrollLockCount = 1; unlockBodyScroll(); } catch(_) {}
         try { if (typeof resetCalculator === 'function') resetCalculator(); } catch(_) {}
         try { if (typeof deselectCurrentShare === 'function') deselectCurrentShare(); } catch(_) {}
         try { if (typeof deselectCurrentCashAsset === 'function') deselectCurrentCashAsset(); } catch(_) {}
@@ -536,16 +387,8 @@
         showCustomAlert,
         showCustomConfirm,
         adjustMainContentPadding,
-        ToastManager,
-        // expose for optional diagnostics
-        lockBodyScroll,
-        unlockBodyScroll
+        ToastManager
     });
-    // Failsafe: observe modal show/hide changes and reconcile lock state in case of edge races
-    try {
-        const mo = new MutationObserver(()=>{ try { reconcileModalLocks(); } catch(_){} });
-        mo.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class','style'] });
-    } catch(_){}
 })();
 
 // Calculators UI (Standard & Dividend)
@@ -658,10 +501,10 @@
             }
 
             // Bind listeners
-            if (dividendCalcBtn){ dividendCalcBtn.addEventListener('click', function(){ try{ if (calcDividendAmountInput) calcDividendAmountInput.value = ''; if (calcCurrentPriceInput) calcCurrentPriceInput.value = ''; if (calcFrankingCreditsInput) calcFrankingCreditsInput.value = ''; if (calcUnfrankedYieldSpan) calcUnfrankedYieldSpan.textContent = '-'; if (calcFrankedYieldSpan) calcFrankedYieldSpan.textContent = '-'; if (calcEstimatedDividend) calcEstimatedDividend.textContent = '-'; if (investmentValueSelect) investmentValueSelect.value = '10000'; if (dividendCalculatorModal) { if (window.showModal) window.showModal(dividendCalculatorModal); else showModal(dividendCalculatorModal); } if (calcCurrentPriceInput) { try { if (window.safeFocus) window.safeFocus(calcCurrentPriceInput); else try { calcCurrentPriceInput.focus({ preventScroll:true }); } catch(_) { calcCurrentPriceInput.focus(); } } catch(_) {} } try{ if (window.toggleAppSidebar) window.toggleAppSidebar(false); else toggleAppSidebar(false); }catch(_){} }catch(e){console.warn('dividend open failed', e);} }); }
+            if (dividendCalcBtn){ dividendCalcBtn.addEventListener('click', function(){ try{ if (calcDividendAmountInput) calcDividendAmountInput.value = ''; if (calcCurrentPriceInput) calcCurrentPriceInput.value = ''; if (calcFrankingCreditsInput) calcFrankingCreditsInput.value = ''; if (calcUnfrankedYieldSpan) calcUnfrankedYieldSpan.textContent = '-'; if (calcFrankedYieldSpan) calcFrankedYieldSpan.textContent = '-'; if (calcEstimatedDividend) calcEstimatedDividend.textContent = '-'; if (investmentValueSelect) investmentValueSelect.value = '10000'; if (dividendCalculatorModal) { if (window.showModal) window.showModal(dividendCalculatorModal); else showModal(dividendCalculatorModal); } try{ if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); }catch(_){} if (calcCurrentPriceInput) calcCurrentPriceInput.focus(); try{ if (window.toggleAppSidebar) window.toggleAppSidebar(false); else toggleAppSidebar(false); }catch(_){} }catch(e){console.warn('dividend open failed', e);} }); }
             [calcDividendAmountInput, calcCurrentPriceInput, calcFrankingCreditsInput, investmentValueSelect].forEach(function(input){ if (input){ input.addEventListener('input', updateDividendCalculations); input.addEventListener('change', updateDividendCalculations); } });
 
-            if (standardCalcBtn){ standardCalcBtn.addEventListener('click', function(){ resetCalculator(); if (calculatorModal) showModal(calculatorModal); try{ toggleAppSidebar(false); }catch(_){} }); }
+            if (standardCalcBtn){ standardCalcBtn.addEventListener('click', function(){ resetCalculator(); if (calculatorModal) showModal(calculatorModal); try{ if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); }catch(_){} toggleAppSidebar(false); }); }
 
             if (calculatorButtons){ calculatorButtons.addEventListener('click', function(event){ var target = event.target; if (!target || !target.classList || !target.classList.contains('calc-btn') || target.classList.contains('is-disabled-icon')) return; var value = target.dataset.value; var action = target.dataset.action; if (value) appendNumber(value); else if (action) handleAction(action); }); }
 
@@ -690,14 +533,6 @@
     try {
         if (window.__keyboardAwareModalsInstalled) return;
         window.__keyboardAwareModalsInstalled = true;
-
-        // Hard-disable auto-scroll on input focus inside modals to stop any snapping.
-        // Keep a sticky default of false and actively reset to false if toggled elsewhere.
-        if (typeof window.ModalFocusAutoScroll === 'undefined') {
-            window.ModalFocusAutoScroll = false;
-        } else {
-            window.ModalFocusAutoScroll = false;
-        }
 
         const isMobileish = () => {
             try { return (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch(_) { return true; }
@@ -797,38 +632,34 @@
                 const modal = target.closest && target.closest('.modal');
                 const scroller = getScrollable(modal);
                 if (!scroller) return;
-                // Auto-scroll on focus intentionally disabled unless explicitly enabled by flag.
-                if (window.ModalFocusAutoScroll === true) {
-                    // Delay slightly so keyboard/viewport settles
-                    setTimeout(() => {
-                        try {
-                            if (typeof target.scrollIntoView === 'function') {
-                                // Only auto-scroll if not inside a modal; avoid any snapping within modals
-                                const inModal = target && target.closest && target.closest('.modal');
-                                if (!inModal) target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
-                            }
-                            const tRect = target.getBoundingClientRect();
-                            const sRect = scroller.getBoundingClientRect();
-                            if (tRect.bottom > sRect.bottom - 16 || tRect.top < sRect.top + 16) {
-                                const deltaTop = (tRect.top - sRect.top) - 80;
-                                const desired = Math.max(0, scroller.scrollTop + deltaTop);
-                                try { scroller.scrollTo({ top: desired, behavior: 'smooth' }); } catch(_) { scroller.scrollTop = desired; }
-                            }
-                        } catch(_) {}
-                    }, 140);
-                }
+                // Delay slightly so keyboard/viewport settles
+                setTimeout(() => {
+                    try {
+                        // Try native scrollIntoView on nearest scrollable ancestor
+                        if (typeof target.scrollIntoView === 'function') {
+                            target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+                        }
+                        // Ensure within scroller bounds as a fallback
+                        const tRect = target.getBoundingClientRect();
+                        const sRect = scroller.getBoundingClientRect();
+                        if (tRect.bottom > sRect.bottom - 16 || tRect.top < sRect.top + 16) {
+                            const deltaTop = (tRect.top - sRect.top) - 80; // offset so field sits above keyboard
+                            const desired = Math.max(0, scroller.scrollTop + deltaTop);
+                            try { scroller.scrollTo({ top: desired, behavior: 'smooth' }); } catch(_) { scroller.scrollTop = desired; }
+                        }
+                    } catch(_) {}
+                }, 140);
             } catch(_) {}
         }
 
         // Global focus handler for any input/select/textarea inside modals
-        // Hard-disable any programmatic scrolling on input focus to prevent snapping.
         document.addEventListener('focusin', (e) => {
             try {
                 const t = e.target;
+                if (!isMobileish()) return;
                 if (!t || !t.closest || !t.closest('.modal')) return;
                 if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable) {
-                    // Intentionally do nothing: no auto-scroll on focus.
-                    return;
+                    scrollFocusedIntoView(t);
                 }
             } catch(_) {}
         }, true);
@@ -844,18 +675,11 @@
             window.addEventListener('resize', applyViewportSizing);
         }
 
-        // When a modal opens, lock body scroll if first modal and re-apply sizing on next frame
+        // When a modal opens, re-apply sizing on next frame
         try {
             const origShow = window.showModal;
             window.showModal = function patchedShowModal(m){
-                try {
-                    // Lock body scroll if no other modals are visible (covers callers using the global window.showModal)
-                    try {
-                        const anyOpen = !!document.querySelector('.modal.show, .modal[style*="display: flex"]');
-                        if (!anyOpen && window.UI && typeof window.UI.lockBodyScroll === 'function') window.UI.lockBodyScroll();
-                    } catch(_) {}
-                    return (origShow && origShow.call ? origShow.call(window, m) : (origShow ? origShow(m) : null));
-                }
+                try { return (origShow && origShow.call ? origShow.call(window, m) : (origShow ? origShow(m) : null)); }
                 finally { try { requestAnimationFrame(applyViewportSizing); setTimeout(applyViewportSizing, 60); } catch(_) {} }
             };
         } catch(_) {}
@@ -873,47 +697,4 @@
         // Expose for debugging
         try { window.ModalViewportManager = { refresh: applyViewportSizing }; } catch(_) {}
     } catch (e) { /* silent */ }
-})();
-
-// Global guard: prevent programmatic scrollIntoView during input focus inside modals (anti-snap hardening)
-(function installModalFocusScrollGuards(){
-    try {
-        if (window.__modalFocusScrollGuardsInstalled) return;
-        window.__modalFocusScrollGuardsInstalled = true;
-
-        let focusPhase = false;
-        let focusTimer = null;
-        const markFocusPhase = () => {
-            focusPhase = true;
-            if (focusTimer) clearTimeout(focusTimer);
-            // Keep window for a short time slice to catch chained handlers (caret, selection)
-            focusTimer = setTimeout(() => { focusPhase = false; }, 240);
-        };
-
-        document.addEventListener('focusin', (e)=>{
-            try {
-                const t = e.target;
-                if (t && t.closest && t.closest('.modal')) {
-                    markFocusPhase();
-                }
-            } catch(_) {}
-        }, true);
-
-        // Patch scrollIntoView to no-op during focus phase inside modals
-        const proto = Element.prototype;
-        const origSIV = proto.scrollIntoView;
-        if (origSIV && !proto.__scrollIntoViewPatchedForModals) {
-            Object.defineProperty(proto, '__scrollIntoViewPatchedForModals', { value: true, writable: false });
-            proto.scrollIntoView = function patchedScrollIntoView(arg){
-                try {
-                    const inModal = this && this.closest && this.closest('.modal');
-                    if (inModal && focusPhase) {
-                        // Suppress scroll snapping triggered by focus/selection in modal
-                        return; // no-op
-                    }
-                } catch(_) {}
-                try { return origSIV.apply(this, arguments); } catch(e) { try { return origSIV.call(this, arg); } catch(_) {} }
-            };
-        }
-    } catch(_) {}
 })();

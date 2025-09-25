@@ -6,7 +6,7 @@
     <title>Share Watchlist (Updated)</title>
     <link rel="icon" href="favicon.png" type="image/png">
 
-    <link rel="stylesheet" href="style.css?v=2.15.11">
+    <link rel="stylesheet" href="style.css?v=2.15.6">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="manifest" href="./manifest.json">
@@ -16,8 +16,7 @@
     <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <div id="splashScreen" class="splash-screen">
-    <!-- Visible build/version marker (updated for deployment verification). The static text is immediately visible; a tiny inline script later will sync it with window.BUILD_MARKER if present. -->
-    <p id="splashAppVersion" class="app-version-splash app-version-splash-top" data-static-version="v0.1.15">v0.1.15</p>
+    <p id="splashAppVersion" class="app-version-splash app-version-splash-top"></p>
         <img id="splashKangarooIcon" src="Kangaicon.jpg" alt="Kangaroo App Icon" class="splash-icon">
         <button id="splashSignInBtn" class="google-auth-btn">
             <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg">
@@ -257,6 +256,7 @@
                 <button id="globalAlertsBtn" class="menu-button-item" data-action-closes-menu="true">
                     <i class="fas fa-bell"></i> <span>Global Alerts</span>
                 </button>
+                <div id="globalAlertsSettingsSummary" class="global-alerts-summary-text" aria-live="polite"></div>
             </div>
         </div>
 
@@ -358,19 +358,6 @@
                 </span>
             </div>
         </div>
-        <div class="menu-section developer-section">
-            <h3>Developer</h3>
-            <div class="menu-buttons-group" style="gap:10px;">
-                <label for="adaptiveModalToggle" class="theme-select-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                    <input type="checkbox" id="adaptiveModalToggle" style="transform:scale(1.2);cursor:pointer;" />
-                    <span>Enable Adaptive Modal Fix</span>
-                </label>
-                <label for="inlineFormToggle" class="theme-select-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                    <input type="checkbox" id="inlineFormToggle" style="transform:scale(1.2);cursor:pointer;" />
-                    <span>Inline Share Form (Mobile)</span>
-                </label>
-            </div>
-        </div>
     </nav>
 
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
@@ -398,9 +385,6 @@
             <div class="loader"></div>
             <p>Loading data...</p>
         </div>
-
-        <!-- Inline Share Form Host (mobile-only activation via window.__inlineShareFormEnabled) -->
-        <div id="inlineShareFormHost" class="inline-share-form-host" aria-live="polite"></div>
 
         <div id="stockWatchlistSection" class="share-list-section">
             <div class="table-container">
@@ -619,7 +603,7 @@
                         <h3 class="detail-card-title">Comments</h3>
                         <div id="modalCommentsContainer" class="modal-comments-sections"></div>
                     </section>
-                    <section class="detail-card full-span" data-section="dividends">
+                    <section class="detail-card" data-section="dividends">
                         <h3 class="detail-card-title">Holdings & Dividends</h3>
                         <div class="detail-row"><span class="detail-label">Number of Shares</span><span id="modalPortfolioShares" class="detail-value"></span></div>
                         <div class="detail-row"><span class="detail-label">Average Purchase Price</span><span id="modalPortfolioAvgPrice" class="detail-value"></span></div>
@@ -1004,71 +988,11 @@
         import SortPicker from './js/sortPicker.js';
         try { if (SortPicker && typeof SortPicker.initSortPicker === 'function') SortPicker.initSortPicker(); } catch(e) { console.warn('SortPicker auto-init failed', e); }
     </script>
-    <script src="script.js?v=2.15.13" type="module"></script>
-    <script>
-        // Developer toggle: Adaptive Modal Fix feature flag
-        (function(){
-            try {
-                const KEY = 'flag:adaptiveModal';
-                const toggle = document.getElementById('adaptiveModalToggle');
-                if (!toggle) return;
-                // Load persisted state
-                const saved = localStorage.getItem(KEY);
-                const active = saved === '1';
-                window.__vvAdaptiveModal = active; // prime flag before any modal opens
-                toggle.checked = active;
-                toggle.addEventListener('change', ()=>{
-                    const on = !!toggle.checked;
-                    window.__vvAdaptiveModal = on;
-                    try { localStorage.setItem(KEY, on ? '1':'0'); } catch(_){ }
-                    // If the Add/Edit Share modal is currently open, force a light reflow of adaptive layout
-                    try {
-                        const modal = document.getElementById('shareFormSection');
-                        if (modal && modal.style.display !== 'none' && !modal.classList.contains('app-hidden')) {
-                            if (on) {
-                                // Trigger adaptive install if not already applied
-                                if (!modal.__vvAdaptiveApplied) {
-                                    try { showModal(modal); } catch(_){ }
-                                } else {
-                                    // Recompute existing adaptive sizing
-                                    if (window.visualViewport) {
-                                        window.dispatchEvent(new Event('resize'));
-                                    }
-                                }
-                            } else {
-                                // Remove adaptive styles when turning off (non-destructive)
-                                try {
-                                    modal.classList.remove('vv-adaptive');
-                                    modal.style.top='';modal.style.bottom='';modal.style.maxHeight='';
-                                    const scroller = modal.querySelector('.modal-body-scrollable') || modal.querySelector('.single-scroll-modal') || modal;
-                                    if (scroller) { scroller.style.maxHeight=''; scroller.style.overscrollBehavior=''; }
-                                    delete modal.__vvAdaptiveApplied;
-                                } catch(_){ }
-                            }
-                        }
-                    } catch(_){ }
-                });
-            } catch(e){ console.warn('Adaptive Modal toggle init failed', e); }
-        })();
-    </script>
-    <script>
-        // Sync splash version text with runtime BUILD_MARKER if available (robust against stale HTML cache)
-        (function(){
-            try {
-                var el = document.getElementById('splashAppVersion');
-                if (!el) return;
-                var runtime = window.BUILD_MARKER || (window.BUILD_MARKER_GLOBAL) || null;
-                if (runtime && typeof runtime === 'string') {
-                    if (!/^v/.test(runtime)) runtime = 'v'+runtime;
-                    if (el.textContent.trim() !== runtime) el.textContent = runtime;
-                }
-            } catch(e) { /* silent */ }
-        })();
-    </script>
+    <script src="script.js?v=2.15.6" type="module"></script>
     <!-- Service worker registration and immediate update helper -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js?v=2.15.13').then(reg => {
+            navigator.serviceWorker.register('service-worker.js').then(reg => {
                 try { reg.update(); } catch(e){}
                 // If a new worker is already waiting, ask it to skipWaiting
                 if (reg.waiting) {
@@ -1093,36 +1017,8 @@
                 refreshing = true;
                 window.location.reload();
             });
-            // Runtime version negotiation: ensure page version matches SW; if mismatch persists, hard reload bypassing cache
-            (function versionGuard(){
-                const EXPECT = '2.15.13';
-                let lastMismatchReload = 0;
-                function requestSwVersion(){
-                    if (!navigator.serviceWorker.controller) return;
-                    navigator.serviceWorker.controller.postMessage({ type:'CHECK_VERSION' });
-                }
-                navigator.serviceWorker.addEventListener('message', (e)=>{
-                    const d = e.data || {};
-                    if (d.type === 'SW_VERSION') {
-                        if (d.version !== EXPECT) {
-                            const now = Date.now();
-                            if (now - lastMismatchReload > 5000) {
-                                lastMismatchReload = now;
-                                console.warn('[VersionGuard] Page expects', EXPECT, 'but SW reports', d.version, '-> forcing hard reload');
-                                location.replace(location.pathname + '?v=' + EXPECT + '-' + now);
-                            }
-                        }
-                    }
-                });
-                setTimeout(requestSwVersion, 400);
-                setInterval(requestSwVersion, 15000); // periodic verify
-            })();
         }
-        // NOTE: Legacy inline modal fallback script removed (2025-09 integration).
-        // The new non-modal inline implementation is loaded via js/inlineAddShare.js.
     </script>
-    <!-- New Inline Share Form integration module -->
-    <script src="js/inlineAddShare.js?v=2.15.13" type="module" defer></script>
     <!-- Copilot update: 2025-07-29 - change for sync test -->
     <!-- TEMP: runtime style injection to force 50% larger key mobile-card elements (remove after verification) -->
     <script>
