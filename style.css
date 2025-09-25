@@ -489,6 +489,8 @@
 /* Host positioning and open state body hook */
 body.inline-share-form-open { overscroll-behavior: contain; }
 body.inline-share-form-open #inlineShareFormHost { scroll-margin-top: 12px; }
+/* Inline host container inherits page flow; ensure no unexpected spacing */
+#inlineShareFormHost { margin: 0; padding: 0; }
 
 .low52-thresh-white {
     color: #fff !important;

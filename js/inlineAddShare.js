@@ -1,134 +1,103 @@
-// Inline Add Share Form (mobile, non-sticky) integration
-// Activated when window.__inlineShareFormEnabled === true AND viewport <= 860px
-// Relies on host element: #inlineShareFormHost added to index.html
+// Inline Add/Edit Share: dock the existing modal content into the page flow on mobile when enabled.
+// Reuses the exact markup and classes from #shareFormSection so visuals and behavior match the modal.
+// No sticky header; the header scrolls naturally with the page.
 
 (function(){
   const MOBILE_MAX = 860;
   const hostId = 'inlineShareFormHost';
-  let openState = { open:false, baselineScroll:0 };
-  const STORAGE_KEY = 'flag:inlineShareFormFinal';
+  let openState = { open:false, placeholder:null, node:null, originalParent:null };
+  const STORAGE_KEYS = ['flag:inlineShareForm','flag:inlineShareFormFinal']; // prefer first; keep compat
 
-  function isEnabled(){
-    return !!window.__inlineShareFormEnabled && window.matchMedia && window.matchMedia('(max-width: '+MOBILE_MAX+'px)').matches;
+  function getFlag(){
+    if (typeof window.__inlineShareForm === 'boolean') return window.__inlineShareForm;
+    if (typeof window.__inlineShareFormEnabled === 'boolean') return window.__inlineShareFormEnabled;
+    // fallback from storage
+    for (const k of STORAGE_KEYS) { try { const v = localStorage.getItem(k); if (v === '1' || v === '0') return v === '1'; } catch(_){} }
+    return false;
   }
-
+  function setFlag(v){
+    window.__inlineShareForm = !!v;
+    window.__inlineShareFormEnabled = !!v; // mirror for safety
+    try { localStorage.setItem(STORAGE_KEYS[0], v ? '1':'0'); } catch(_){ }
+  }
+  function isEnabled(){
+    return !!getFlag() && window.matchMedia && window.matchMedia('(max-width: '+MOBILE_MAX+'px)').matches;
+  }
   function ensureHost(){ return document.getElementById(hostId); }
 
-  function buildSection(){
-    const section = document.createElement('section');
-    section.id = 'inlineShareFormSection';
-    section.className = 'inline-share-form-panel';
-    section.innerHTML = `
-      <div class="inline-share-form-header">
-        <div class="titles">
-          <h2 id="inlineShareFormTitle">Add New Share</h2>
-          <p class="company" id="inlineShareCompany">Company (auto)</p>
-        </div>
-        <div class="inline-share-form-actions" aria-label="Actions">
-          <button type="button" class="icon-btn danger" data-inline-share="delete" title="Delete" aria-label="Delete">✕</button>
-          <button type="button" class="icon-btn" data-inline-share="save" title="Save" aria-label="Save">💾</button>
-          <button type="button" class="icon-btn" data-inline-share="close" title="Close" aria-label="Close">⤫</button>
-        </div>
-      </div>
-      <div class="inline-share-form-accordion" id="inlineShareAccordion">
-        ${accordionSection('core','Core Info', `
-            <label for="inlineShareCode">ASX Code</label>
-            <input id="inlineShareCode" type="text" placeholder="BHP" autocomplete="off" />
-            <div class="input-row-inline">
-                <div>
-                    <label for="inlineWatchlist">Watchlist</label>
-                    <input id="inlineWatchlist" type="text" placeholder="Growth"/>
-                </div>
-                <div>
-                    <label for="inlineRating">Rating (1-5)</label>
-                    <input id="inlineRating" type="number" min="0" max="5" step="1" placeholder="3" />
-                </div>
-            </div>
-        `, true)}
-        ${accordionSection('portfolio','Holdings', `
-            <label for="inlineShares">Number of Shares</label>
-            <input id="inlineShares" type="number" min="0" step="1" placeholder="1000" />
-            <label for="inlineAvgPrice">Average Purchase Price ($)</label>
-            <input id="inlineAvgPrice" type="number" min="0" step="0.01" placeholder="23.45" />
-        `)}
-        ${accordionSection('target','Target & Rating', `
-            <label for="inlineTargetPrice">Target Price ($)</label>
-            <input id="inlineTargetPrice" type="number" step="0.01" placeholder="25.50" />
-            <label for="inlineIntent">Intent</label>
-            <input id="inlineIntent" type="text" placeholder="Buy / Sell" />
-        `)}
-        ${accordionSection('dividends','Dividends', `
-            <label for="inlineDivAmount">Dividend Amount (annual $)</label>
-            <input id="inlineDivAmount" type="number" step="0.001" placeholder="1.250" />
-            <label for="inlineFrank">Franking Credits (%)</label>
-            <input id="inlineFrank" type="number" step="0.1" min="0" max="100" placeholder="70" />
-        `)}
-        ${accordionSection('comments','Comments', `
-            <label for="inlineComment1">Comment</label>
-            <input id="inlineComment1" type="text" placeholder="Observation" />
-            <label for="inlineComment2">Additional</label>
-            <input id="inlineComment2" type="text" placeholder="Strategy notes" />
-        `)}
-      </div>
-      <div class="inline-share-form-footer">Scroll & focus inputs: any unexpected scroll anchoring should be eliminated.</div>
-    `;
-    return section;
-  }
+  function getModal(){ return document.getElementById('shareFormSection'); }
 
-  function accordionSection(key,title,inner,open){
-    return `<div class="accordion-section ${open?'open':''}" data-section="${key}">
-      <button type="button" class="accordion-toggle" aria-expanded="${!!open}" aria-controls="inline-panel-${key}" id="inline-accordion-header-${key}">
-        <span>${title}</span><span class="caret">▶</span>
-      </button>
-      <div id="inline-panel-${key}" class="accordion-panel" role="region" aria-labelledby="inline-accordion-header-${key}">${inner}</div>
-    </div>`;
-  }
-
-  function initAccordion(root){
-    root.addEventListener('click', e => {
-      const header = e.target.closest('.accordion-toggle');
-      if(!header) return;
-      const section = header.closest('.accordion-section');
-      if(!section) return;
-      const open = section.classList.toggle('open');
-      header.setAttribute('aria-expanded', open);
+  function dockInline(){
+    if(openState.open) return true;
+    const host = ensureHost(); if(!host) return false;
+    const modal = getModal(); if(!modal) return false;
+    // Create a placeholder to restore original position on close
+    const placeholder = document.createComment('inline-share-dock');
+    const parent = modal.parentNode;
+    if (!parent) return false;
+    parent.insertBefore(placeholder, modal);
+    // Prepare modal element for inline flow
+    try {
+      modal.classList.remove('modal'); // remove fixed overlay style
+      modal.classList.add('inline-docked');
+      modal.style.display = '';
+      modal.style.position = '';
+      modal.style.left = '';
+      modal.style.top = '';
+      modal.style.width = '';
+      modal.style.height = '';
+      modal.style.padding = '';
+    } catch(_){ }
+    // Mount entire modal container into host so descendant selectors (#shareFormSection ...) still apply
+    host.innerHTML = '';
+    host.appendChild(modal);
+    openState.open = true;
+    openState.placeholder = placeholder;
+    openState.node = modal;
+    openState.originalParent = parent;
+    document.body.classList.add('inline-share-form-open');
+    // Initialize accordion if needed
+    try {
+      const root = document.getElementById('shareFormAccordion');
+      if (root && (!root.dataset.accordionInit || root.dataset.accordionInit === 'false')) {
+        if (typeof window.initShareFormAccordion === 'function') window.initShareFormAccordion(true);
+      }
+    } catch(_){ }
+    // Focus first input
+    requestAnimationFrame(()=>{
+      const field = document.getElementById('shareName');
+      if(field) { try { field.focus({ preventScroll:true }); } catch(_) { field.focus(); } }
     });
+    // Back stack (optional)
+    try { if(typeof window.__appBackStackPush === 'function') window.__appBackStackPush('inlineShareForm', host); } catch(_) {}
+    return true;
+  }
+
+  function undockInline(){
+    if(!openState.open) return;
+    const modal = openState.node || getModal();
+    if (modal && openState.placeholder && openState.originalParent) {
+      // Restore class and position, move element back
+      try { modal.classList.remove('inline-docked'); modal.classList.add('modal'); } catch(_){}
+      try { openState.originalParent.insertBefore(modal, openState.placeholder); } catch(_){}
+      try { openState.placeholder.remove(); } catch(_){}
+    }
+    try { document.body.classList.remove('inline-share-form-open'); } catch(_){ }
+    const host = ensureHost(); if(host) host.innerHTML = '';
+    openState.open = false;
+    openState.placeholder = null;
+    openState.node = null;
+    openState.originalParent = null;
+    try { if(typeof window.__appBackStackPop === 'function') window.__appBackStackPop('inlineShareForm'); } catch(_){ }
   }
 
   function openInline(){
     if(!isEnabled()) return false;
-    if(openState.open){
-      // Scroll existing form into view instead of rebuilding
-      const section = document.getElementById('inlineShareFormSection');
-      if(section) section.scrollIntoView({ behavior:'smooth', block:'start' });
-      return true;
-    }
-    const host = ensureHost(); if(!host) return false;
-    openState.baselineScroll = window.scrollY || document.documentElement.scrollTop;
-    const section = buildSection();
-    host.appendChild(section);
-    initAccordion(section.querySelector('#inlineShareAccordion'));
-    openState.open = true;
-    document.body.classList.add('inline-share-form-open');
-    // Auto focus first input after paint
-    requestAnimationFrame(()=>{
-      const field = document.getElementById('inlineShareCode');
-      if(field) { try { field.focus({ preventScroll:true }); } catch(_) { field.focus(); } }
-    });
-    // Back stack integration (best-effort)
-    try { if(typeof window.__appBackStackPush === 'function') window.__appBackStackPush('inlineShareForm', section); } catch(_) {}
-    return true;
+    return dockInline();
   }
+  function closeInline(){ undockInline(); }
 
-  function closeInline(){
-    const section = document.getElementById('inlineShareFormSection');
-    if(section) section.remove();
-    openState.open = false;
-    document.body.classList.remove('inline-share-form-open');
-    try { if(typeof window.__appBackStackPop === 'function') window.__appBackStackPop('inlineShareForm'); } catch(_) {}
-  }
-
-  // Expose public helpers
+  // Expose helpers
   window.__openInlineShareForm = openInline;
   window.__closeInlineShareForm = closeInline;
   window.__isInlineShareFormOpen = () => openState.open;
@@ -137,8 +106,10 @@
     if(!isEnabled()) return false;
     const opened = openInline();
     if(opened){
-      e && e.preventDefault && e.preventDefault();
-      e && e.stopPropagation && e.stopPropagation();
+      if (e) {
+        if (e.preventDefault) e.preventDefault();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation(); else if (e.stopPropagation) e.stopPropagation();
+      }
       return true;
     }
     return false;
@@ -151,44 +122,37 @@
       if(!btn) return;
       if(btn.__inlineWired) return;
       btn.addEventListener('click', (e)=>{
-        if(maybeIntercept(e)) return; // inline consumed
-        // fallback to existing modal path (do nothing here)
-      }, true); // capture so we pre-empt modal
+        if(maybeIntercept(e)) return; // inline consumed; do not fall back to modal
+      }, true); // capture early
       btn.__inlineWired = true;
     });
+    // Let the default close handler run (it calls clearForm/closeModals), then undock inline
+    document.addEventListener('click', (e)=>{
+      const closeEl = e.target && e.target.closest && e.target.closest('#shareFormSection .form-close-button');
+      if (closeEl && openState.open) {
+        // Do not block the event; schedule undock after handler runs
+        setTimeout(()=>{ try { closeInline(); } catch(_) {} }, 0);
+      }
+    }, false);
   }
 
-  // Global close delegation for inline form buttons
-  document.addEventListener('click', (e)=>{
-    const closeBtn = e.target.closest && e.target.closest('[data-inline-share="close"]');
-    if(closeBtn){ e.preventDefault(); closeInline(); return; }
-    const deleteBtn = e.target.closest && e.target.closest('[data-inline-share="delete"]');
-    if(deleteBtn){ e.preventDefault(); closeInline(); return; } // simple; real delete logic can be wired later
-    const saveBtn = e.target.closest && e.target.closest('[data-inline-share="save"]');
-    if(saveBtn){ e.preventDefault(); /* integrate saveShareData later */ closeInline(); return; }
-  });
-
-  // React to flag changes via developer toggle
+  // React to sidebar toggle
   function installFlagObserver(){
     const inlineToggle = document.getElementById('inlineFormToggle');
     if(inlineToggle && !inlineToggle.__inlineHook){
-      // Load persisted value (if any), else use existing toggle checked state
+      // init from storage if present
       try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if(saved === '1' || saved === '0') {
-          inlineToggle.checked = saved === '1';
-        }
+        for (const k of STORAGE_KEYS) { const v = localStorage.getItem(k); if (v === '1' || v === '0') { inlineToggle.checked = v === '1'; break; } }
       } catch(_){}
-      window.__inlineShareFormEnabled = inlineToggle.checked;
+      setFlag(!!inlineToggle.checked);
       inlineToggle.addEventListener('change', ()=>{
-        window.__inlineShareFormEnabled = inlineToggle.checked;
-        try { localStorage.setItem(STORAGE_KEY, inlineToggle.checked ? '1':'0'); } catch(_){}
+        setFlag(!!inlineToggle.checked);
         if(!inlineToggle.checked && openState.open) closeInline();
       });
       inlineToggle.__inlineHook = true;
     } else if(!inlineToggle) {
-      // Fallback: derive from stored flag when toggle absent (unlikely) so programmatic use still works
-      try { window.__inlineShareFormEnabled = localStorage.getItem(STORAGE_KEY) === '1'; } catch(_) {}
+      // derive from storage
+      setFlag(getFlag());
     }
   }
 

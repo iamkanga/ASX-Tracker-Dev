@@ -11,7 +11,8 @@ const { exec } = require('child_process');
 
 let DESIRED_PORT = process.env.PORT ? Number(process.env.PORT) : 5173;
 const ROOT = process.cwd();
-const DEFAULT_PAGE = '/tests/isolation-global-alerts.html';
+// Restore original behavior: serve main application entry instead of test isolation page
+const DEFAULT_PAGE = '/index.html';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -59,17 +60,17 @@ const server = http.createServer((req, res) => {
     const mime = MIME[ext] || 'application/octet-stream';
     fs.readFile(filePath, (err2, data) => {
       if (err2) return send(res, 500, 'Error reading file');
-      // If serving the isolation HTML, inject config before </head>
-      if (injectedFirebaseConfig && /isolation-global-alerts\.html$/.test(filePath) && mime.startsWith('text/html')) {
+      // Optional: inject firebaseConfig into index.html if not already present (development only)
+      if (injectedFirebaseConfig && /index\.html$/.test(filePath) && mime.startsWith('text/html')) {
         let html = data.toString('utf8');
         if (!/window\.firebaseConfig\s*=/.test(html)) {
-          const snippet = `\n<script>/* injected firebaseConfig */\nwindow.firebaseConfig = ${injectedFirebaseConfig};\n</script>\n`;
-          if (/<\/head>/i.test(html)) {
-            html = html.replace(/<\/head>/i, snippet + '</head>');
-          } else {
-            html = snippet + html;
-          }
-          console.log('[isolation-serve] Injected firebaseConfig into isolation page');
+            const snippet = `\n<script>/* injected firebaseConfig (dev serve) */\nwindow.firebaseConfig = ${injectedFirebaseConfig};\n</script>\n`;
+            if (/<\/head>/i.test(html)) {
+              html = html.replace(/<\/head>/i, snippet + '</head>');
+            } else {
+              html = snippet + html;
+            }
+            console.log('[isolation-serve] Injected firebaseConfig into index.html');
         }
         res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'no-cache' });
         return res.end(html);
@@ -82,10 +83,10 @@ const server = http.createServer((req, res) => {
 
 function startServer(port) {
   server.listen(port, () => {
-    const url = `http://localhost:${port}${DEFAULT_PAGE}`;
-    console.log('\n[isolation-serve] Serving static files from: ' + ROOT);
-    console.log('[isolation-serve] Port chosen: ' + port);
-    console.log('[isolation-serve] Open: ' + url + '\n');
+  const url = `http://localhost:${port}/`;
+  console.log('\n[dev-serve] Serving static files from: ' + ROOT);
+  console.log('[dev-serve] Port chosen: ' + port);
+  console.log('[dev-serve] Opening main app at: ' + url + '\n');
     const cmd = process.platform === 'win32' ? `start ${url}` : process.platform === 'darwin' ? `open ${url}` : `xdg-open ${url}`;
     try { exec(cmd); } catch(_) {}
   }).on('error', (err) => {
