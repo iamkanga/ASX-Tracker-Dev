@@ -144,7 +144,26 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
 
     // Render GLOBAL_MOVERS (window.globalMovers expected shape: { up: [...], down: [...], upSample, downSample })
         // If central doc is missing or empty, fall back to the last local snapshot computed by applyGlobalSummaryFilter
-        let gm = (window.globalMovers && (Array.isArray(window.globalMovers.up) || Array.isArray(window.globalMovers.down))) ? window.globalMovers : null;
+        // Accept both modern '*Hits' names and legacy names (up/down). Prefer new names but fall back to legacy.
+        function coerceMoversShape(raw) {
+            try {
+                if (!raw || typeof raw !== 'object') return null;
+                // Prefer new keys
+                const upList = Array.isArray(raw.upHits) ? raw.upHits : (Array.isArray(raw.up) ? raw.up : (Array.isArray(raw.upList) ? raw.upList : []));
+                const downList = Array.isArray(raw.downHits) ? raw.downHits : (Array.isArray(raw.down) ? raw.down : (Array.isArray(raw.downList) ? raw.downList : []));
+                const thresholds = raw.thresholds || raw.meta || null;
+                return {
+                    updatedAt: raw.updatedAt || raw.lastUpdated || null,
+                    up: upList || [],
+                    down: downList || [],
+                    upCount: (upList || []).length,
+                    downCount: (downList || []).length,
+                    totalCount: ((upList || []).length + (downList || []).length),
+                    thresholds: thresholds
+                };
+            } catch (_) { return null; }
+        }
+        let gm = coerceMoversShape(window.globalMovers);
         if (!gm || (!Array.isArray(gm.up) && !Array.isArray(gm.down))) {
             try {
                 const snap = window.__lastMoversSnapshot || null;
@@ -161,7 +180,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 gm = window.globalMovers || { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
             }
         }
-        // --- Filtering refinement (frontend safeguard) ---
+    // --- Filtering refinement (frontend safeguard) ---
         // Some environments have reported an excessively large movers list (hundreds of entries)
         // when the centralized GLOBAL_MOVERS doc either (a) lacks thresholds metadata or (b) was
         // populated before stricter server filtering was deployed. To keep the UI concise and
@@ -388,14 +407,17 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 return parts.join(' | ');
             }
             // Insert contextual explainers for each section
-            function insertExplainer(host, text){
+            function insertExplainer(host, text, targetKey){
                 try {
                     if (!host) return;
                     const existing = host.querySelector('.section-explainer');
                     if (existing) existing.remove();
                     const el = document.createElement('div');
                     el.className = 'section-explainer';
+                    el.setAttribute('role', 'button');
+                    el.setAttribute('tabindex', '0');
                     el.textContent = text || '';
+                    if (targetKey) el.setAttribute('data-settings-target', targetKey);
                     host.insertBefore(el, host.firstChild);
                 } catch(_) {}
             }
@@ -429,8 +451,8 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             })();
 
             // Always refresh explainers for consistency with 52-week sections
-            if (gainersContainer) insertExplainer(gainersContainer, upLabel);
-            if (losersContainer) insertExplainer(losersContainer, downLabel);
+            if (gainersContainer) insertExplainer(gainersContainer, upLabel, 'global-gainers');
+            if (losersContainer) insertExplainer(losersContainer, downLabel, 'global-losers');
 
             if (gainersInner) {
                 const items = upArr.filter(x => (x.direction||'').toLowerCase()==='up');
@@ -539,7 +561,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                     const mcNum = toNum(hiLoMinimumMarketCap);
                     const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
                     const mc = (mcNum!=null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
-                    insertExplainer(hiloHighContainer, `Min Price: ${mp} | Min Mkt Cap: ${mc}`);
+                    insertExplainer(hiloHighContainer, `Min Price: ${mp} | Min Mkt Cap: ${mc}`, '52w-highs');
                 } catch(_) { insertExplainer(hiloHighContainer, 'Min Price: Not set | Min Mkt Cap: Not set'); }
             })();
             // Render cards into the inner scroller
@@ -559,7 +581,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                     const mcNum = toNum(hiLoMinimumMarketCap);
                     const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
                     const mc = (mcNum!=null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
-                    insertExplainer(hiloLowContainer, `Min Price: ${mp} | Min Mkt Cap: ${mc}`);
+                    insertExplainer(hiloLowContainer, `Min Price: ${mp} | Min Mkt Cap: ${mc}`, '52w-lows');
                 } catch(_) { insertExplainer(hiloLowContainer, 'Min Price: Not set | Min Mkt Cap: Not set'); }
             })();
             if (lowInner) {
@@ -1686,6 +1708,46 @@ try {
         }
     }, true);
 } catch(_) {}
+// Delegate clicks on elements with `data-settings-target` to open the settings page
+try {
+    document.addEventListener('click', function (ev) {
+        try {
+            const btn = ev.target && ev.target.closest ? ev.target.closest('[data-settings-target]') : null;
+            if (!btn) return;
+            ev.preventDefault();
+            const targetKey = btn.getAttribute('data-settings-target') || '';
+            // Close the notifications modal if present
+            try {
+                const modal = document.getElementById('targetHitDetailsModal');
+                if (modal) {
+                    try { if (typeof hideModal === 'function') hideModal(modal); else { modal.style.display = 'none'; modal.classList.remove('show'); } } catch(_) {}
+                }
+            } catch(_) {}
+            // Open the Global Alerts Settings modal (in-place) without navigation
+            try {
+                const settingsModal = document.getElementById('globalAlertsModal');
+                if (settingsModal) {
+                    try {
+                        // If app exposes showModal helper, prefer it so history/back handling is consistent
+                        if (typeof window.showModal === 'function') {
+                            window.showModal(settingsModal);
+                        } else {
+                            settingsModal.style.display = 'flex';
+                            settingsModal.classList.add('show');
+                        }
+                        // Optionally, focus first focusable element inside the settings modal
+                        try { const first = settingsModal.querySelector('button, input, [tabindex]:not([tabindex="-1"])'); if (first) first.focus(); } catch(_) {}
+                    } catch (e) { console.warn('Failed to show globalAlertsModal', e); }
+                } else {
+                    // As a fallback, if the modal element doesn't exist, log the key for debugging
+                    console.warn('[Settings] globalAlertsModal not found for target:', targetKey);
+                }
+            } catch (e) {
+                console.warn('Opening settings modal failed', e);
+            }
+        } catch (err) { console.warn('settings-target click handler failed', err); }
+    }, false);
+} catch (_) {}
 //  This script interacts with Firebase Firestore for data storage.
 
 // --- GLOBAL VARIABLES ---
