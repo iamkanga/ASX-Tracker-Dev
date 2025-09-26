@@ -6,6 +6,29 @@
     transition: opacity 0.3s ease, filter 0.3s ease;
 }
 
+
+/* Toast container: ensure toasts appear above modals and other layers. */
+#toastContainer.toast-container {
+    position: fixed !important;
+    top: 16px !important;
+    right: 16px !important;
+    left: auto !important;
+    z-index: 2147483647 !important; /* very high to overlay modals */
+    display: block !important;
+    pointer-events: none !important; /* allow clicks through except on toasts themselves */
+}
+.toast {
+    pointer-events: auto !important; /* allow interactions (clicks) on toast elements */
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    opacity: 0.99; /* ensure visibility when over other layers */
+}
+
+/* Stack toasts top-right downward and animate entrance */
+.toast-container .toast { transform: translateY(-8px); transition: transform 160ms ease, opacity 180ms ease; }
+.toast.show { transform: translateY(0); }
+
 /* === Custom Confirmation Modal === */
 #customConfirmModal.modal {
     position: fixed;
