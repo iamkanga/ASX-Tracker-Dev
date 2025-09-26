@@ -8341,6 +8341,18 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
     position: static !important;
 }
 
+/* Strong override: ensure Cash & Assets modal titles are full-strength (not ghosted) */
+/* This forces the title color and opacity regardless of theme variable overrides or accidental ghosted classes */
+#cashAssetFormModal h2#cashFormTitle,
+#cashAssetDetailModal h2#modalCashAssetName,
+#cashAssetFormModal #cashFormTitle,
+#cashAssetDetailModal #modalCashAssetName {
+    color: var(--text-color, #222) !important;
+    opacity: 1 !important;
+    filter: none !important;
+    -webkit-text-fill-color: var(--text-color, #222) !important; /* iOS/Safari fallback */
+}
+
 .add-section-icon {
     background: none;
     border: none;
