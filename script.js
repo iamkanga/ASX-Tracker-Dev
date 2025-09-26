@@ -15541,7 +15541,10 @@ if (sortSelect) {
                     } catch(_) {
                         try { alert('A share with this code already exists. Save blocked.'); } catch(_){}
                     }
-                    ev && ev.stopPropagation();
+                    // Prevent any other click handlers (including the AppService save handler)
+                    // from running on this event.
+                    if (ev && typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+                    try { if (ev && typeof ev.preventDefault === 'function') ev.preventDefault(); } catch(_) {}
                     return; // prevent original save path
                 }
             } catch(e) { console.warn('Duplicate intercept failed', e); }
