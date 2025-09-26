@@ -10284,13 +10284,46 @@ function updateTargetHitBanner() {
 // Debounced refresh for Notifications modal when it's already open
 function refreshNotificationsModalIfOpen(reason) {
     try {
-        const open = (typeof targetHitDetailsModal !== 'undefined' && targetHitDetailsModal && targetHitDetailsModal.style && targetHitDetailsModal.style.display !== 'none');
-        if (!open) return;
+        const modal = (typeof targetHitDetailsModal !== 'undefined') ? targetHitDetailsModal : null;
+        if (!modal) return;
+        const isVisible = (() => {
+            try {
+                if (modal.classList && modal.classList.contains('show')) return true;
+                if (modal.style && modal.style.display && modal.style.display !== 'none') return true;
+                if (window.getComputedStyle) {
+                    const computed = window.getComputedStyle(modal);
+                    if (computed && computed.display !== 'none' && computed.visibility !== 'hidden' && computed.opacity !== '0') return true;
+                }
+            } catch(_) {}
+            return false;
+        })();
+        if (!isVisible) return;
         if (window.__notifRefreshScheduled) return;
         window.__notifRefreshScheduled = true;
         setTimeout(() => {
             window.__notifRefreshScheduled = false;
-            try { showTargetHitDetailsModal({ explicit: true }); } catch(_) {}
+            try {
+                const stillVisible = (() => {
+                    try {
+                        if (modal.classList && modal.classList.contains('show')) return true;
+                        if (modal.style && modal.style.display && modal.style.display !== 'none') return true;
+                        if (window.getComputedStyle) {
+                            const computed = window.getComputedStyle(modal);
+                            if (computed && computed.display !== 'none' && computed.visibility !== 'hidden' && computed.opacity !== '0') return true;
+                        }
+                    } catch(_) {}
+                    return false;
+                })();
+                if (!stillVisible) return;
+                const alreadyUserInitiated = !!__userInitiatedTargetModal;
+                showTargetHitDetailsModal({
+                    explicit: true,
+                    userInitiated: alreadyUserInitiated,
+                    allowDuringInitialLoad: alreadyUserInitiated && window.__initialLoadPhase,
+                    refresh: true,
+                    reason
+                });
+            } catch(_) {}
         }, 250);
     } catch(_) {}
 }
@@ -12027,7 +12060,7 @@ if (typeof window !== 'undefined') {
                     console.log('[TEST] Created backup array with length:', backupArray.length);
 
                     // Call the modal
-                    window.showTargetHitDetailsModal({ explicit: true });
+                    window.showTargetHitDetailsModal({ explicit: true, userInitiated: true, allowDuringInitialLoad: true });
 
                     // Update the notification banner AFTER the modal is opened
                     setTimeout(() => {
@@ -12047,7 +12080,7 @@ if (typeof window !== 'undefined') {
                             console.log('[TEST] Was:', backupArray.length, 'Now:', window.sharesAt52WeekLow.length);
                             window.sharesAt52WeekLow = [...backupArray];
                             console.log('[TEST] Restored array, now calling modal again...');
-                            window.showTargetHitDetailsModal({ explicit: true });
+                            window.showTargetHitDetailsModal({ explicit: true, userInitiated: true, allowDuringInitialLoad: true });
                         }
                     }, 50);
                 }, 100);
@@ -12111,7 +12144,7 @@ if (typeof window !== 'undefined') {
             }
             
             if (typeof window.showTargetHitDetailsModal === 'function') {
-                window.showTargetHitDetailsModal({ explicit: true });
+                window.showTargetHitDetailsModal({ explicit: true, userInitiated: true, allowDuringInitialLoad: true });
                 console.log('[TEST] Opened target hit details modal');
             }
         } catch(e) {
@@ -12381,7 +12414,7 @@ function initGlobalAlertsUI(force) {
                 try {
                     const modalOpen = (typeof targetHitDetailsModal !== 'undefined' && targetHitDetailsModal && targetHitDetailsModal.style && targetHitDetailsModal.style.display !== 'none');
                     if (modalOpen && typeof showTargetHitDetailsModal === 'function') {
-                        showTargetHitDetailsModal({ explicit: true });
+                        showTargetHitDetailsModal({ explicit: true, userInitiated: true });
                     }
                 } catch(_) {}
             } catch(err) { console.warn('Global Alerts: post-save refresh failed', err); }
@@ -16414,9 +16447,20 @@ if (typeof window.renderHiLoEntry !== 'function') {
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal(options={}) {
-    const explicit = !!options.explicit;
-    if (window.__initialLoadPhase && !explicit && !__userInitiatedTargetModal) {
-        if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[TargetHitModal] Suppressed auto-open during initial load phase');
+    const explicit = options.explicit === true;
+    const userInitiated = options.userInitiated === true;
+    const allowDuringInitialLoad = options.allowDuringInitialLoad === true || userInitiated;
+    try {
+        if (window.__initialLoadPhase) {
+            window.__targetHitModalInitLogCount = (window.__targetHitModalInitLogCount || 0) + 1;
+            if (window.__targetHitModalInitLogCount <= 4) {
+                console.warn('[TargetHitModal][InitPhase] open requested during initial load', { options, explicit, userInitiated, allowDuringInitialLoad, alreadyUserInitiated: __userInitiatedTargetModal });
+                try { console.trace('[TargetHitModal][InitPhase] trace'); } catch(_) {}
+            }
+        }
+    } catch(_) {}
+    if (window.__initialLoadPhase && !allowDuringInitialLoad && !__userInitiatedTargetModal) {
+        if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[TargetHitModal] Suppressed auto-open during initial load phase', { explicit, userInitiated, allowDuringInitialLoad });
         return;
     }
     if (!targetHitDetailsModal || !targetHitSharesList) {
@@ -17787,7 +17831,7 @@ if (targetHitIconBtn) {
         logDebug('Target Alert: Icon button clicked. Opening details modal.');
         __userInitiatedTargetModal = true;
         ALLOW_ALERT_MODAL_AUTO_OPEN = true; // enable future passive opens this session
-        showTargetHitDetailsModal({ explicit:true });
+        showTargetHitDetailsModal({ explicit:true, userInitiated:true, allowDuringInitialLoad:true });
     });
 }
 let firebaseServices;
