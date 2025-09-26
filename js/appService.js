@@ -339,6 +339,9 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                         const updatedShares = [...currentShares];
                         updatedShares[idx] = { ...updatedShares[idx], ...shareData, userId: currentUserId };
                         setAllSharesData(updatedShares);
+                        // Immediately recompute triggered alerts and refresh the target-hit banner
+                        try { if (typeof window.recomputeTriggeredAlerts === 'function') window.recomputeTriggeredAlerts(); } catch(_) {}
+                        try { if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner(); } catch(_) {}
                     }
                 } catch(_) {}
 

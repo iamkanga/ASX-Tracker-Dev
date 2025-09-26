@@ -858,41 +858,33 @@ function sortSharesByPercentageChange(shares) {
     });
 }
 
-// Lean live prices hook: only resort when sort actually depends on live data
+// Live prices hook: always re-apply current sort and re-render the watchlist
+// After any live-price update we must ensure the list reflects new prices and is resorted
 function onLivePricesUpdated() {
     try {
-        // Read authoritative sort order from state module
-        const __liveSortOrder = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
-        // Fields that rely on live pricing and therefore require a resort when live prices change
-        const LIVE_DEPENDENT_SORT_FIELDS = new Set([
-            'percentageChange', // % change from prevClose
-            'dividendAmount',   // yield calculations use live/current price
-            'dayDollar',        // daily $ P/L
-            'totalDollar',      // current value (price * shares)
-            'capitalGain',      // capital gain uses live price
-            'currentPrice',     // direct price sort
-            'targetPrice'       // target price comparisons sometimes use live price fallbacks
-        ]);
-        let didSort = false;
+        // Prefer calling the canonical sort routine which also triggers renderWatchlist()
+        if (typeof sortShares === 'function') {
+            try {
+                logDebug && logDebug('Live Price: Invoking sortShares() after live update');
+            } catch(_) {}
+            try { sortShares(); } catch (sErr) { console.warn('Live Price: sortShares() failed, falling back to renderWatchlist()', sErr); if (typeof renderWatchlist === 'function') try { renderWatchlist(); } catch(_) {} }
+        } else if (typeof renderWatchlist === 'function') {
+            // If sortShares is not available, at least re-render the watchlist
+            try { renderWatchlist(); } catch(e) { console.warn('Live Price: renderWatchlist() failed in onLivePricesUpdated', e); }
+        }
+
+        // Also refresh portfolio list if visible
         try {
-            const field = (__liveSortOrder || '').split('-')[0];
-            if (__liveSortOrder && LIVE_DEPENDENT_SORT_FIELDS.has(field)) {
-                logDebug('Live Price: Active sort is live-dependent ("' + field + '") — resorting shares.');
-                sortShares();
-                didSort = true;
+            if (typeof renderPortfolioList === 'function') {
+                const section = document.getElementById('portfolioSection');
+                if (section && section.style.display !== 'none') {
+                    try { renderPortfolioList(); } catch(e) { console.warn('Live Price: renderPortfolioList failed', e); }
+                }
             }
-        } catch (_) { /* defensive: fall through to render */ }
-        if (!didSort) {
-            renderWatchlist();
-        }
-        if (typeof renderPortfolioList === 'function') {
-            const section = document.getElementById('portfolioSection');
-            if (section && section.style.display !== 'none') {
-                renderPortfolioList();
-            }
-        }
-    // After dynamic content changes (which can slightly shift header height due to wrapping), reposition & scroll to top.
-    try { if (window.repositionMainContentUnderHeader) window.repositionMainContentUnderHeader(); else if (window.adjustMainContentPadding) { window.adjustMainContentPadding(); if (window.scrollMainToTop) window.scrollMainToTop(true); } } catch(_) {}
+        } catch (_) {}
+
+        // After dynamic content changes, reposition & optionally scroll to top.
+        try { if (window.repositionMainContentUnderHeader) window.repositionMainContentUnderHeader(); else if (window.adjustMainContentPadding) { window.adjustMainContentPadding(); if (window.scrollMainToTop) window.scrollMainToTop(true); } } catch(_) {}
     } catch (e) {
         console.error('Live Price: onLivePricesUpdated error:', e);
     }

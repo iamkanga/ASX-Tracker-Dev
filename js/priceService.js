@@ -197,7 +197,24 @@ export async function fetchLivePrices(opts = {}) {
         if (Array.isArray(window.sharesAt52WeekLow)) {
             // Removed CBA test card injection
         }
-        try { if (typeof window.onLivePricesUpdated === 'function') window.onLivePricesUpdated(); } catch(_) {}
+        // Notify the app that live prices were applied. If the preferred
+        // hook is missing or errors, fall back to explicit UI updates so
+        // the watchlist reflects new prices and sorting is applied.
+        try {
+            if (typeof window.onLivePricesUpdated === 'function') {
+                try { window.onLivePricesUpdated(); }
+                catch(hookErr) {
+                    console.warn('PriceService: onLivePricesUpdated hook threw an error', hookErr);
+                    // Fallbacks below
+                    try { if (typeof window.sortShares === 'function') window.sortShares(); } catch(_) {}
+                    try { if (typeof window.renderWatchlist === 'function') window.renderWatchlist(); } catch(_) {}
+                }
+            } else {
+                // No hook defined - perform explicit updates to be safe
+                try { if (typeof window.sortShares === 'function') window.sortShares(); } catch(err) { console.warn('PriceService fallback: sortShares failed', err); }
+                try { if (typeof window.renderWatchlist === 'function') window.renderWatchlist(); } catch(err) { console.warn('PriceService fallback: renderWatchlist failed', err); }
+            }
+        } catch(_) {}
         window._livePricesLoaded = true;
         // If this is the first successful live-price application, perform the
         // unified-loader -> render -> reveal transition so users never see a
