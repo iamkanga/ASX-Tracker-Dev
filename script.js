@@ -15516,12 +15516,30 @@ if (sortSelect) {
                 const val = (shareNameInput.value || '').trim().toUpperCase();
                 if (val) {
                     const exists = Array.isArray(allSharesData) && allSharesData.some(s => s && (s.shareName||'').toUpperCase() === val);
-                    setDuplicateState(exists && (!selectedShareDocId || (selectedShareDocId && allSharesData.findIndex(s=>s.id===selectedShareDocId && (s.shareName||'').toUpperCase()===val)===-1)));
+                    // Consider it a duplicate only if there exists another share with the same code
+                    // whose id is different from the currently edited share (if any).
+                    let isDup = false;
+                    if (exists) {
+                        const other = (Array.isArray(allSharesData) ? allSharesData.find(s => s && (s.shareName||'').toUpperCase() === val && s.id !== (selectedShareDocId || null)) : null);
+                        isDup = !!other;
+                    }
+                    setDuplicateState(isDup);
                 } else {
                     setDuplicateState(false);
                 }
             } catch(e) { console.warn('Duplicate code check failed', e); }
         });
+
+        // Evaluate initial state once in case the input is prefilled when opening the modal for edit
+        try {
+            const initialVal = (shareNameInput.value || '').trim().toUpperCase();
+            if (initialVal) {
+                const other = (Array.isArray(allSharesData) ? allSharesData.find(s => s && (s.shareName||'').toUpperCase() === initialVal && s.id !== (selectedShareDocId || null)) : null);
+                setDuplicateState(!!other);
+            } else {
+                setDuplicateState(false);
+            }
+        } catch(_) {}
 
         // Intercept Save click to show friendly message if duplicate flag present
         const _origSaveHandler = saveShareBtn.onclick || null;

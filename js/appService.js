@@ -348,8 +348,16 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 try {
                     if (!isSilent) {
                         console.log('[SHARE UPDATED] Success notification');
+                        // Ensure modal is closed first so the toast is visible immediately over the UI
+                        try {
+                            if (window.shareFormSection) {
+                                window.shareFormSection.style.setProperty('display', 'none', 'important');
+                                window.shareFormSection.classList.add('app-hidden');
+                            }
+                            if (typeof window.closeModals === 'function') window.closeModals();
+                        } catch(_) {}
 
-                        // Try ToastManager first
+                        // Try ToastManager first (top-right toast will now be visible)
                         if (window.ToastManager && typeof window.ToastManager.success === 'function') {
                             window.ToastManager.success('Share updated successfully');
                             console.log('[SHARE UPDATED] Toast notification sent via ToastManager');
@@ -473,6 +481,17 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
 
                 try {
                     window.deselectCurrentShare && window.deselectCurrentShare();
+                } catch(_) {}
+
+                // Ensure modal is closed and cleaned up before returning
+                try {
+                    const frm = (typeof document !== 'undefined') ? document.getElementById('shareFormSection') : null;
+                    if (frm && frm.style) {
+                        try { frm.style.setProperty('display', 'none', 'important'); } catch(_) {}
+                        try { frm.classList.add('app-hidden'); } catch(_) {}
+                    }
+                    try { if (window.shareDetailModal && window.shareDetailModal.dataset) delete window.shareDetailModal.dataset.shareId; } catch(_) {}
+                    try { if (typeof window.closeModals === 'function') window.closeModals(); } catch(_) {}
                 } catch(_) {}
 
                 return;

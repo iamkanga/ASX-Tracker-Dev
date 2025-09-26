@@ -105,8 +105,34 @@
     // ToastManager (moved from script.js)
     const ToastManager = (() => {
         const container = () => $id('toastContainer');
+        const ensureContainer = () => {
+            let root = container();
+            try {
+                if (!root) {
+                    root = document.createElement('div');
+                    root.id = 'toastContainer';
+                    root.className = 'toast-container';
+                }
+                // Ensure container is positioned above modals and non-blocking by default
+                try {
+                    root.style.position = 'fixed';
+                    root.style.top = '16px';
+                    root.style.right = '16px';
+                    root.style.left = 'auto';
+                    root.style.zIndex = '2147483647';
+                    root.style.pointerEvents = 'none';
+                    // Create a new stacking context and optimize compositing so it wins over transformed parents
+                    root.style.transform = 'translateZ(0)';
+                    root.style.willChange = 'transform, opacity';
+                } catch(_) {}
+                // Move container to end of body so it's last in DOM order (helps ensure it overlays other fixed elements)
+                try { document.body.appendChild(root); } catch(_) {}
+            } catch(_) {}
+            return root;
+        };
+
         const makeToast = (opts) => {
-            const root = container();
+            const root = ensureContainer();
             if (!root) return null;
             const { message, type = 'info', duration = 2000, actions = [] } = opts || {};
             const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
@@ -127,7 +153,30 @@
                     try { cfg && typeof cfg.onClick === 'function' && cfg.onClick(); } finally { remove(); }
                 });
             });
-            root.appendChild(toast);
+            // Allow the toast itself to receive pointer events while container remains non-blocking
+            try {
+                toast.style.pointerEvents = 'auto';
+                toast.style.zIndex = '2147483648';
+                // Position the toast as a fixed element appended to body so it wins over any modal stacking contexts
+                toast.style.position = 'fixed';
+                // For confirmation toasts (have actions) render as a centered overlay above modals.
+                if (actions && actions.length) {
+                    toast.classList.add('overlay');
+                    toast.style.top = '50%';
+                    toast.style.left = '50%';
+                    toast.style.right = 'auto';
+                    toast.style.transform = 'translate(-50%, -50%)';
+                    // Slightly larger and constrained width for readability
+                    toast.style.maxWidth = '720px';
+                    toast.style.width = 'min(92%, 720px)';
+                } else {
+                    // Default: top-right positioning
+                    toast.style.top = toast.style.top || '16px';
+                    toast.style.right = toast.style.right || '16px';
+                    toast.style.left = 'auto';
+                }
+            } catch(_) {}
+            try { document.body.appendChild(toast); } catch(_) { root.appendChild(toast); }
             requestAnimationFrame(()=> toast.classList.add('show'));
             if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
             return { el: toast, close: remove };
@@ -162,7 +211,15 @@
                 toast.innerHTML = `<span class="icon"></span><div class="message"></div>`;
                 toast.querySelector('.message').textContent = message;
                 const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
-                container.appendChild(toast);
+                try {
+                    toast.style.pointerEvents = 'auto';
+                    toast.style.zIndex = '2147483648';
+                    toast.style.position = 'fixed';
+                    toast.style.top = toast.style.top || '16px';
+                    toast.style.right = toast.style.right || '16px';
+                    toast.style.left = 'auto';
+                } catch(_) {}
+                try { document.body.appendChild(toast); } catch(_) { container.appendChild(toast); }
                 requestAnimationFrame(()=> toast.classList.add('show'));
                 if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
                 return;
