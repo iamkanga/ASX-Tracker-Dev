@@ -2659,7 +2659,8 @@ let globalMinimumPriceInput = null;
 let hiLoMinimumPriceInput = null;
 let hiLoMinimumMarketCapInput = null;
 let emailAlertsEnabledInput = null;
-let globalAlertsSettingsSummaryEl = null; // displays current settings under sidebar button
+// Note: sidebar summary element (#globalAlertsSettingsSummary) was removed from index.html.
+// The in-modal summary card (gaSum*) is still updated below.
 
 // Early preload: if user recently cleared thresholds and we saved a local snapshot, apply it immediately
 // to avoid a flash of stale remote values before Firestore listener returns.
@@ -12181,16 +12182,9 @@ function formatGlobalAlertPart(pct, dol) {
 }
 
 function updateGlobalAlertsSettingsSummary() {
-    if (!globalAlertsSettingsSummaryEl) globalAlertsSettingsSummaryEl = document.getElementById('globalAlertsSettingsSummary');
-    if (!globalAlertsSettingsSummaryEl) return;
+    // Update text parts for use in the in-modal summary card
     const incPart = formatGlobalAlertPart(globalPercentIncrease, globalDollarIncrease);
     const decPart = formatGlobalAlertPart(globalPercentDecrease, globalDollarDecrease);
-    if (incPart === 'Off' && decPart === 'Off') {
-        globalAlertsSettingsSummaryEl.textContent = '';
-    } else {
-    const minPart = globalMinimumPrice ? ('Min: $' + Number(globalMinimumPrice).toFixed(2) + ' | ') : '';
-        globalAlertsSettingsSummaryEl.textContent = minPart + 'Increase: ' + incPart + ' | Decrease: ' + decPart;
-    }
     // Also update the in-modal thresholds summary card, if present
     try {
         const elInc = document.getElementById('gaSumIncrease');
