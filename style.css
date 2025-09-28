@@ -1820,6 +1820,25 @@ function makeFilesAvailableToSourceControlCSS() {
 .portfolio-summary-bar .summary-card.neutral {
     border-color: var(--accent-color, #a49393) !important;
 }
+/* Apply same compact background tints to portfolio summary cards (no border changes) */
+/* Patch version: 2025-09-28 v2 */
+.portfolio-summary-bar .summary-card.positive { background: var(--watch-bg-positive); }
+.portfolio-summary-bar .summary-card.negative { background: var(--watch-bg-negative); }
+.portfolio-summary-bar .summary-card.neutral  { background: var(--watch-bg-neutral); }
+
+/* Dark theme gradients for summary cards to match portfolio cards */
+body.dark-theme .portfolio-summary-bar .summary-card.positive {
+    background: linear-gradient(145deg, hsl(120, 100%, 8%), hsl(120, 100%, 4%));
+    color: #f0f0f0;
+}
+body.dark-theme .portfolio-summary-bar .summary-card.negative {
+    background: linear-gradient(145deg, hsl(353, 70%, 10%), hsl(353, 70%, 6%));
+    color: #f0f0f0;
+}
+body.dark-theme .portfolio-summary-bar .summary-card.neutral {
+    background: linear-gradient(145deg, #282828, #181818);
+    color: #f0f0f0;
+}
 .portfolio-summary-bar .summary-label {
         font-size: 1.13rem;
         color: var(--label-color);
