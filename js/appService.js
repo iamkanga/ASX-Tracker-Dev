@@ -185,6 +185,33 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
         }
     }
 
+    // Duplicate check for updates: prevent renaming an existing share to a code that already exists
+    if (window.selectedShareDocId) {
+        try {
+            const existing = getAllSharesData() || [];
+            const codeUpper = (shareData.shareName || '').toUpperCase();
+            const conflict = existing.find(s => (s && (s.shareName || '').toUpperCase() === codeUpper && s.id !== window.selectedShareDocId));
+            if (conflict) {
+                try {
+                    const msg = 'A share with this code already exists. Save blocked.';
+                    if (!isSilent) {
+                        if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+                            window.ToastManager.info(msg, 3000);
+                        } else if (typeof window.showCustomAlert === 'function') {
+                            window.showCustomAlert(msg);
+                        } else {
+                            try { alert(msg); } catch(_) {}
+                        }
+                    }
+                } catch(_) {}
+                console.warn('Save Share: Duplicate code detected on update, aborting save:', codeUpper);
+                return;
+            }
+        } catch (e) {
+            console.warn('[SaveShare] Update duplicate detection failed, proceeding with save. err=', e && e.message ? e.message : e);
+        }
+    }
+
     // Set entry price logic
     if (window.selectedShareDocId) {
         // Editing existing share: always ignore entryPrice from form, preserve only original

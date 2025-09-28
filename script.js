@@ -2022,7 +2022,8 @@ try { window.suppressShareFormReopen = window.suppressShareFormReopen || false; 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-09-21 - Global alerts explainers always show thresholds with 'Not set' placeholders
-const APP_VERSION = '2.15.8';
+// Bump: 2025-09-28 - patched version for release QA
+const APP_VERSION = '2.15.9';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)
