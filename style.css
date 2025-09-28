@@ -6615,89 +6615,52 @@ table tbody tr.target-hit-alert td,
 .portfolio-cards { display:none; }
 
 
-/* Stronger portfolio context button coloring */
-.asx-code-btn.portfolio-context.positive { background: rgba(6,255,79,0.12); border-color: var(--brand-green); color: var(--brand-green); }
-.asx-code-btn.portfolio-context.negative { background: rgba(255,49,49,0.12); border-color: var(--brand-red); color: var(--brand-red); }
-.asx-code-btn.portfolio-context.neutral { background:rgba(255,255,255,0.05); }
+/* ===== ASX Code Buttons: Unified Styling (Backgrounds & Borders) ===== */
 
-/* Patch version: 2025-09-28 v8 */
-/* Portfolio-scoped button backgrounds should match cards; text should reflect live-update (movement) colors */
-#portfolioSection .asx-code-buttons-container button.asx-code-btn.portfolio-context.positive {
+/* Light Theme Backgrounds */
+#asxCodeButtonsContainer button.asx-code-btn.positive {
     background: var(--watch-bg-positive) !important;
-    color: var(--brand-green) !important; /* same as live update positive */
+    color: var(--brand-green) !important;
 }
-#portfolioSection .asx-code-buttons-container button.asx-code-btn.portfolio-context.negative {
+#asxCodeButtonsContainer button.asx-code-btn.negative {
     background: var(--watch-bg-negative) !important;
-    color: var(--brand-red) !important; /* same as live update negative */
+    color: var(--brand-red) !important;
 }
-#portfolioSection .asx-code-buttons-container button.asx-code-btn.portfolio-context.neutral {
+#asxCodeButtonsContainer button.asx-code-btn.neutral {
     background: var(--watch-bg-neutral) !important;
-    color: inherit !important; /* neutral keeps the default text color */
+    color: inherit !important;
 }
-/* Dark theme gradients for buttons inside portfolio. Keep backgrounds but let text show movement colors */
-body.dark-theme #portfolioSection .asx-code-buttons-container button.asx-code-btn.portfolio-context.positive {
+
+/* Dark Theme Gradient Backgrounds */
+body.dark-theme #asxCodeButtonsContainer button.asx-code-btn.positive {
     background: linear-gradient(145deg, hsl(120, 100%, 8%), hsl(120, 100%, 4%)) !important;
     color: var(--brand-green) !important;
 }
-body.dark-theme #portfolioSection .asx-code-buttons-container button.asx-code-btn.portfolio-context.negative {
+body.dark-theme #asxCodeButtonsContainer button.asx-code-btn.negative {
     background: linear-gradient(145deg, hsl(353, 70%, 10%), hsl(353, 70%, 6%)) !important;
     color: var(--brand-red) !important;
 }
-body.dark-theme #portfolioSection .asx-code-buttons-container button.asx-code-btn.portfolio-context.neutral {
+body.dark-theme #asxCodeButtonsContainer button.asx-code-btn.neutral {
     background: linear-gradient(145deg, #282828, #181818) !important;
     color: inherit !important;
 }
 
-/* Patch version: 2025-09-28 v4 */
-/* Correct selector: ASX buttons live in #asxCodeButtonsContainer (header). Apply same backgrounds and text colors for portfolio-context buttons. Do not change borders. */
-/* Header-located ASX buttons: ensure text reflects live-update (movement) color, not forced white */
-#asxCodeButtonsContainer button.asx-code-btn.portfolio-context.positive {
-    background: var(--watch-bg-positive) !important;
-    color: var(--brand-green) !important; /* movement color */
+/* Colored Borders (Both Themes) */
+#asxCodeButtonsContainer button.asx-code-btn.positive {
+    border-color: var(--brand-green) !important;
 }
-#asxCodeButtonsContainer button.asx-code-btn.portfolio-context.negative {
-    background: var(--watch-bg-negative) !important;
-    color: var(--brand-red) !important; /* movement color */
+#asxCodeButtonsContainer button.asx-code-btn.negative {
+    border-color: var(--brand-red) !important;
 }
-#asxCodeButtonsContainer button.asx-code-btn.portfolio-context.neutral {
-    background: var(--watch-bg-neutral) !important;
-    color: inherit !important; /* neutral keeps default text */
-}
-/* Dark theme: still let movement color show (brand colors are vivid on dark bg) */
-body.dark-theme #asxCodeButtonsContainer button.asx-code-btn.portfolio-context.positive {
-    background: linear-gradient(145deg, hsl(120, 100%, 8%), hsl(120, 100%, 4%)) !important;
-    color: var(--brand-green) !important;
-}
-body.dark-theme #asxCodeButtonsContainer button.asx-code-btn.portfolio-context.negative {
-    background: linear-gradient(145deg, hsl(353, 70%, 10%), hsl(353, 70%, 6%)) !important;
-    color: var(--brand-red) !important;
-}
-body.dark-theme #asxCodeButtonsContainer button.asx-code-btn.portfolio-context.neutral {
-    background: linear-gradient(145deg, #282828, #181818) !important;
-    color: inherit !important;
+#asxCodeButtonsContainer button.asx-code-btn.neutral {
+    border-color: #a49393 !important;
 }
 
-/* Patch version: 2025-09-28 v5 */
-/* Match ASX button border colors to portfolio card borders (color only; keep button width unchanged) */
-#asxCodeButtonsContainer button.asx-code-btn.portfolio-context.positive { border-color: var(--brand-green) !important; }
-#asxCodeButtonsContainer button.asx-code-btn.portfolio-context.negative { border-color: var(--brand-red) !important; }
-#asxCodeButtonsContainer button.asx-code-btn.portfolio-context.neutral { border-color: #a49393 !important; }
-/* Dark theme: ensure border colors also match; use same variables (they resolve appropriately) */
-body.dark-theme #asxCodeButtonsContainer button.asx-code-btn.portfolio-context.positive { border-color: var(--brand-green) !important; }
-body.dark-theme #asxCodeButtonsContainer button.asx-code-btn.portfolio-context.negative { border-color: var(--brand-red) !important; }
-body.dark-theme #asxCodeButtonsContainer button.asx-code-btn.portfolio-context.neutral { border-color: #a49393 !important; }
-
-/* Patch version: 2025-09-28 v7 */
-/* Remove overlay sheen; ensure buttons use the exact same backgrounds as portfolio cards */
-#asxCodeButtonsContainer button.asx-code-btn.portfolio-context {
-    box-shadow: none !important; /* match card styling */
-    background-clip: padding-box; /* prevent accidental bleed from borders */
+/* Remove overlay sheen */
+#asxCodeButtonsContainer button.asx-code-btn {
+    box-shadow: none !important;
+    background-clip: padding-box;
 }
-/* Ensure explicit background parity with portfolio cards (light & dark versions are defined earlier) */
-#asxCodeButtonsContainer button.asx-code-btn.portfolio-context.positive { background: var(--watch-bg-positive) !important; }
-#asxCodeButtonsContainer button.asx-code-btn.portfolio-context.negative { background: var(--watch-bg-negative) !important; }
-#asxCodeButtonsContainer button.asx-code-btn.portfolio-context.neutral { background: var(--watch-bg-neutral) !important; }
-/* Dark theme backgrounds already set earlier to gradients; keep those rules to preserve parity */
 .portfolio-card .pc-live { display:flex; align-items:center; gap:4px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; }
 .portfolio-card .pc-live.live { color:var(--green-color); }
 .portfolio-card .pc-live.stale { opacity:0.75; }
