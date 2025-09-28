@@ -3262,6 +3262,47 @@ body.dark-theme .mobile-share-cards.compact-view .target-hit-alert {
     background: linear-gradient(145deg, #282828, #181818);
 }
 
+/* ------------------------------------------------------------------ */
+/* Apply compact-card background treatment to the regular (non-compact) */
+/* mobile cards and table rows so table/card/default views match compact. */
+/* This intentionally only adjusts backgrounds and text color — it does NOT */
+/* modify borders, border widths, or border colors.                               */
+/* ------------------------------------------------------------------ */
+
+/* Light mode: use the same subtle movement tints as compact cards */
+.mobile-share-cards .positive-change-card { background: var(--watch-bg-positive); }
+.mobile-share-cards .negative-change-card { background: var(--watch-bg-negative); }
+.mobile-share-cards .neutral-change-card  { background: var(--watch-bg-neutral); }
+
+/* Ensure table rows (desktop table view) match the same subtle tints */
+body table tbody tr.positive-change-row { background-color: var(--watch-bg-positive) !important; }
+body table tbody tr.negative-change-row { background-color: var(--watch-bg-negative) !important; }
+body table tbody tr.neutral-change-row  { background-color: var(--watch-bg-neutral)  !important; }
+
+/* Dark mode: reuse the compact-view gradients for a richer appearance */
+body.dark-theme .mobile-share-cards .mobile-card {
+    color: #f0f0f0; /* clearer, higher-contrast text like compact cards */
+}
+body.dark-theme .mobile-share-cards .positive-change-card {
+    background: linear-gradient(145deg, hsl(120, 100%, 8%), hsl(120, 100%, 4%));
+}
+body.dark-theme .mobile-share-cards .negative-change-card {
+    background: linear-gradient(145deg, hsl(353, 70%, 10%), hsl(353, 70%, 6%));
+}
+body.dark-theme .mobile-share-cards .neutral-change-card {
+    background: linear-gradient(145deg, #282828, #181818);
+}
+body.dark-theme .mobile-share-cards .target-hit-alert {
+    background: linear-gradient(145deg, #282828, #181818);
+}
+
+/* Dark mode: table rows should also match the compact look (subtle gradients)
+   Keep borders untouched — only change background and text color. */
+body.dark-theme table tbody tr.positive-change-row { background: linear-gradient(145deg, hsl(120, 100%, 8%), hsl(120, 100%, 4%)); color: #f0f0f0; }
+body.dark-theme table tbody tr.negative-change-row { background: linear-gradient(145deg, hsl(353, 70%, 10%), hsl(353, 70%, 6%)); color: #f0f0f0; }
+body.dark-theme table tbody tr.neutral-change-row  { background: linear-gradient(145deg, #282828, #181818); color: #f0f0f0; }
+
+
 
 /* Dark Theme Variables */
 body.dark-theme {
