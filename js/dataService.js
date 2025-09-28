@@ -103,7 +103,32 @@ export async function loadShares(dbArg, firestoreArg, currentUserId, currentAppI
 
             setAllSharesData((Array.isArray(fetchedShares) ? fetchedShares : []).filter(Boolean));
             window.logDebug && window.logDebug('Shares: Shares data updated from snapshot. Total shares: ' + (Array.isArray(allSharesData)? allSharesData.length : 0));
-            try { window.renderWatchlist && window.renderWatchlist(); } catch(_) {}
+
+            // If a save just happened we may be suppressing reopen of the share form.
+            // Defer potentially modal-triggering UI updates until suppression clears to avoid
+            // snapshot-driven reopen/selection races. We still update state immediately above.
+            const runUiUpdates = () => {
+                try { window.renderWatchlist && window.renderWatchlist(); } catch(_) {}
+                try { window.forceApplyCurrentSort && window.forceApplyCurrentSort(); } catch(_) {}
+                try { window.sortShares && window.sortShares(); } catch(_) {}
+                try { window.renderAsxCodeButtons && window.renderAsxCodeButtons(); } catch(_) {}
+            };
+
+            if (window.suppressShareFormReopen) {
+                // Poll for suppression to clear (short lived). If it doesn't clear within
+                // a reasonable window, run updates anyway to avoid stalling the UI.
+                const maxAttempts = 40; // 40 * 250ms = 10s max
+                let attempts = 0;
+                const waiter = setInterval(() => {
+                    attempts++;
+                    if (!window.suppressShareFormReopen || attempts >= maxAttempts) {
+                        try { runUiUpdates(); } catch(_) {}
+                        try { clearInterval(waiter); } catch(_) {}
+                    }
+                }, 250);
+            } else {
+                try { window.renderWatchlist && window.renderWatchlist(); } catch(_) {}
+            }
 
             try {
                 if (Array.isArray(allSharesData) && window.alertsEnabledMap && typeof window.alertsEnabledMap === 'object') {

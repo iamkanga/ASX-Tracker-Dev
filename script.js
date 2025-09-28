@@ -48,8 +48,9 @@ try {
             window.__dynamicUnifiedLoaderId = 'dynamic-unified-loader';
         }
     }
-} catch(_) {}
-
+                    } catch (e) {
+                        try { console.warn('[LoaderInject] failed to inject dynamic loader', e); } catch (_) { }
+                    }
 // Frontend helper: call the Apps Script web app to trigger a privileged sync
 // Replace DEPLOYED_WEBAPP_URL with your actual deployed Apps Script Web App URL
 window.triggerServerSideGlobalSettingsSync = async function triggerServerSideGlobalSettingsSync(userId) {
@@ -345,13 +346,15 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                                     if (lp) {
                                         it.live = it.live == null ? lp.live : it.live;
                                         it.prevClose = it.prevClose == null ? lp.prevClose : it.prevClose;
-                                        if (it.pct == null && it.prevClose && it.live!=null) {
-                                            const ch2 = it.live - it.prevClose; it.pct = (it.prevClose !== 0) ? Math.abs((ch2 / it.prevClose) * 100) : null;
+                                        if (it.pct == null && it.prevClose && it.live != null) {
+                                            const ch2 = it.live - it.prevClose;
+                                            it.pct = (it.prevClose !== 0) ? Math.abs((ch2 / it.prevClose) * 100) : null;
                                         }
                                     }
                                 }
-                            } catch(_) {}
-                            innerFrag.appendChild(renderMoverCardWithMovement(it));
+                            } catch (e) {
+                                try { console.warn('[Movers] live fallback failed for item', e); } catch (_) { }
+                            }
                         });
                         containerInner.appendChild(innerFrag);
                 } catch (err) { console.warn('renderMoversIntoHost failed', err); }
@@ -1783,6 +1786,14 @@ window.filteredLog = function(...args) {
 };
 try {
     window.showModal = function(m){
+        // Prevent re-opening the share form when suppression is active
+        try {
+            if (m && ((m.id === 'shareFormSection') || (m === shareFormSection)) && window.suppressShareFormReopen) {
+                try { logDebug && logDebug('showModal: suppressed opening share form due to suppressShareFormReopen flag'); } catch(_) {}
+                return;
+            }
+        } catch(_) {}
+
         // Prefer UI module which also pushes history/stack
         if (typeof window.UI !== 'undefined' && window.UI.showModal) {
             // Avoid duplicate push
@@ -2004,7 +2015,9 @@ let originalShareData = null; // Stores the original share data when editing for
 let originalWatchlistData = null; // Stores original watchlist data for dirty state check in watchlist modals
 let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist being edited in the modal
 // Guard against unintended re-opening of the Share Edit modal shortly after save
-let suppressShareFormReopen = false;
+// Use a window-scoped sentinel so other modules (dataService, appService) can
+// set/check it across module boundaries and avoid reopening the form after save.
+try { window.suppressShareFormReopen = window.suppressShareFormReopen || false; } catch(_) { window.suppressShareFormReopen = false; }
 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
@@ -4812,8 +4825,10 @@ async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
 
 // Centralized Modal Closing Function
 function closeModals() {
+    // If callers specifically set this flag, skip any auto-save logic while closing modals.
+    const __suppressAutoSaveOnClose = !!(window && window.__suppressAutoSaveOnClose);
     // Auto-save logic for share form
-    if (shareFormSection && shareFormSection.style.display !== 'none') {
+    if (!__suppressAutoSaveOnClose && shareFormSection && shareFormSection.style.display !== 'none') {
         logDebug('Auto-Save: Share form modal is closing. Checking for unsaved changes.');
 
 
@@ -4844,7 +4859,7 @@ function closeModals() {
     }
 
     // NEW: Auto-save logic for watchlist modals
-    if (addWatchlistModal && addWatchlistModal.style.display !== 'none') {
+    if (!__suppressAutoSaveOnClose && addWatchlistModal && addWatchlistModal.style.display !== 'none') {
         logDebug('Auto-Save: Add Watchlist modal is closing. Checking for unsaved changes.');
         const currentWatchlistData = getCurrentWatchlistFormData(true); // true for add modal
         if (currentWatchlistData.name.trim() !== '') {
@@ -4855,7 +4870,7 @@ function closeModals() {
         }
     }
 
-    if (manageWatchlistModal && manageWatchlistModal.style.display !== 'none') {
+    if (!__suppressAutoSaveOnClose && manageWatchlistModal && manageWatchlistModal.style.display !== 'none') {
         logDebug('Auto-Save: Manage Watchlist modal is closing. Checking for unsaved changes.');
         const currentWatchlistData = getCurrentWatchlistFormData(false); // false for edit modal
         if (originalWatchlistData && !areWatchlistDataEqual(originalWatchlistData, currentWatchlistData)) {
@@ -4874,7 +4889,7 @@ function closeModals() {
     // Leave a blank line here for readability.
 
     // NEW: Auto-save logic for cash asset form modal (2.1)
-    if (cashAssetFormModal && cashAssetFormModal.style.display !== 'none') {
+    if (!__suppressAutoSaveOnClose && cashAssetFormModal && cashAssetFormModal.style.display !== 'none') {
         logDebug('Auto-Save: Cash Asset form modal is closing. Checking for unsaved changes.');
         const currentCashData = getCurrentCashAssetFormData();
         const isCashAssetNameValid = currentCashData.name.trim() !== '';
@@ -6704,7 +6719,7 @@ function updateWatchlistDropdownButton() {
 }
 
 function showEditFormForSelectedShare(shareIdToEdit = null) {
-    if (suppressShareFormReopen) {
+    if (window.suppressShareFormReopen) {
         logDebug('Share Form: Suppression active; blocking unintended reopen.');
         return;
     }
@@ -7239,8 +7254,8 @@ async function saveShareData(isSilent = false) {
             shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
             shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
         }
-        // Prevent any stray observers from reopening the form immediately after save
-        if (!isSilent) { suppressShareFormReopen = true; setTimeout(()=>{ suppressShareFormReopen = false; }, 8000); }
+    // Prevent any stray observers from reopening the form immediately after save
+    if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000); }
         deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
             // NEW: Explicitly hide the share form modal immediately and deselect the share
             if (!isSilent && shareFormSection) {
@@ -7284,29 +7299,36 @@ async function saveShareData(isSilent = false) {
         try {
             const existingByCode = Array.isArray(allSharesData) ? allSharesData.find(s => s && (s.shareName || '').toUpperCase() === shareName) : null;
             if (existingByCode && existingByCode.id) {
-                console.warn('Save Share: Duplicate code detected. Switching to update for id:', existingByCode.id);
-                // Update existing share instead of creating a new one
-                try {
-                    const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', existingByCode.id);
-                    await firestore.updateDoc(shareDocRef, Object.assign({}, shareData, { lastModifiedFromDupSave: new Date().toISOString() }));
-                    // Update local cache
-                    const idx = allSharesData.findIndex(s => s && s.id === existingByCode.id);
-                    if (idx !== -1) {
-                        allSharesData[idx] = Object.assign({}, allSharesData[idx], shareData);
+                // If the new share includes portfolio holdings or explicitly targets Portfolio, prefer creating a new share
+                const hasPortfolioAdd = (shareData && ((shareData.portfolioShares && Number(shareData.portfolioShares) > 0) || (Array.isArray(shareData.watchlistIds) && shareData.watchlistIds.includes('portfolio')) || (shareData.watchlistId === 'portfolio')));
+                if (!hasPortfolioAdd) {
+                    console.warn('Save Share: Duplicate code detected. Switching to update for id:', existingByCode.id);
+                    // Update existing share instead of creating a new one
+                    try {
+                        const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', existingByCode.id);
+                        await firestore.updateDoc(shareDocRef, Object.assign({}, shareData, { lastModifiedFromDupSave: new Date().toISOString() }));
+                        // Update local cache
+                        const idx = allSharesData.findIndex(s => s && s.id === existingByCode.id);
+                        if (idx !== -1) {
+                            allSharesData[idx] = Object.assign({}, allSharesData[idx], shareData);
+                        }
+                        selectedShareDocId = existingByCode.id;
+                        // Phase 2: upsert alert for this share
+                        try { await upsertAlertForShare(selectedShareDocId, shareName, shareData, true); } catch(e) { console.error('Alerts: Failed to upsert after dedupe save:', e); }
+                        if (!isSilent) showCustomAlert('Updated existing share instead of creating duplicate', 1500);
+                        // Refresh prices and UI
+                        await fetchLivePrices();
+                        try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch(_) {}
+                    } catch (e) {
+                        console.error('Firestore: Error updating existing share during dedupe save:', e);
+                        if (!isSilent) showCustomAlert('Error updating existing share: ' + (e && e.message ? e.message : e));
                     }
-                    selectedShareDocId = existingByCode.id;
-                    // Phase 2: upsert alert for this share
-                    try { await upsertAlertForShare(selectedShareDocId, shareName, shareData, true); } catch(e) { console.error('Alerts: Failed to upsert after dedupe save:', e); }
-                    if (!isSilent) showCustomAlert('Updated existing share instead of creating duplicate', 1500);
-                    // Refresh prices and UI
-                    await fetchLivePrices();
-                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch(_) {}
-                } catch (e) {
-                    console.error('Firestore: Error updating existing share during dedupe save:', e);
-                    if (!isSilent) showCustomAlert('Error updating existing share: ' + (e && e.message ? e.message : e));
+                    if (!isSilent) closeModals();
+                    return;
+                } else {
+                    // Found an existing share but the new data includes portfolio/watchlist additions - create a new share instead
+                    console.log('Save Share: Existing share found but new share includes portfolio/watchlist additions; creating a new share instead of updating existing.');
                 }
-                if (!isSilent) closeModals();
-                return;
             }
         } catch(e) { console.warn('Dedupe check failed', e); }
 
@@ -7366,11 +7388,12 @@ async function saveShareData(isSilent = false) {
                 const created = Object.assign({}, shareData, { id: newDocRef.id });
                 if (!Array.isArray(allSharesData)) allSharesData = [];
 
-                // Replace provisional entry if it exists (match by shareName and __provisional flag)
+                // Replace provisional entry if it exists (match by the exact provisional id)
                 let replaced = false;
                 for (let i = 0; i < allSharesData.length; i++) {
                     const s = allSharesData[i];
-                    if (s && s.__provisional && s.shareName === created.shareName) {
+                    // Use the provisionalId generated at save-time so we only replace the exact optimistic entry
+                    if (s && s.__provisional && s.id === provisionalId) {
                         allSharesData[i] = created;
                         replaced = true;
                         break;
@@ -7410,8 +7433,8 @@ async function saveShareData(isSilent = false) {
             shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
             shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
         }
-        // Prevent any stray observers from reopening the form immediately after save
-        if (!isSilent) { suppressShareFormReopen = true; setTimeout(()=>{ suppressShareFormReopen = false; }, 8000); }
+    // Prevent any stray observers from reopening the form immediately after save
+    if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000); }
         deselectCurrentShare(); // Deselect newly added share BEFORE fetching live prices
             // NEW: Explicitly hide the share form modal immediately and deselect the share
             if (!isSilent && shareFormSection) {
@@ -15573,26 +15596,41 @@ if (sortSelect) {
         saveShareBtn.addEventListener('click', async (ev) => {
             try {
                 if (__isDuplicateCode) {
-                    // New behavior: block save and show a toast informing the user.
-                    const code = (shareNameInput.value||'').trim().toUpperCase();
-                    try {
+                    // Block save and show an appropriate message depending on context
+                    const form = (typeof getCurrentFormData === 'function') ? getCurrentFormData() : null;
+                    const isEditing = !!selectedShareDocId;
+                    const hasWatchlistSelection = (form && ((Array.isArray(form.watchlistIds) && form.watchlistIds.length > 0) || (form.watchlistId && form.watchlistId !== '')));
+
+                    if (isEditing && !hasWatchlistSelection) {
+                        const msg = 'Save canceled — please assign this share to at least one watchlist before saving.';
                         if (window.ToastManager && typeof window.ToastManager.info === 'function') {
-                            window.ToastManager.info('A share with this code already exists. Save blocked.', 3000);
+                            window.ToastManager.info(msg, 3500);
                         } else if (typeof window.showCustomAlert === 'function') {
-                            window.showCustomAlert('A share with this code already exists. Save blocked.', 2500);
+                            window.showCustomAlert(msg);
                         } else {
-                            alert('A share with this code already exists. Save blocked.');
+                            try { alert(msg); } catch(_) {}
                         }
-                    } catch(_) {
-                        try { alert('A share with this code already exists. Save blocked.'); } catch(_){}
+                    } else {
+                        const dupMsg = 'A share with this code already exists. Save blocked.';
+                        if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+                            window.ToastManager.info(dupMsg, 3000);
+                        } else if (typeof window.showCustomAlert === 'function') {
+                            window.showCustomAlert(dupMsg, 2500);
+                        } else {
+                            try { alert(dupMsg); } catch(_) {}
+                        }
                     }
+
                     // Prevent any other click handlers (including the AppService save handler)
                     // from running on this event.
                     if (ev && typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
                     try { if (ev && typeof ev.preventDefault === 'function') ev.preventDefault(); } catch(_) {}
                     return; // prevent original save path
                 }
-            } catch(e) { console.warn('Duplicate intercept failed', e); }
+            } catch(e) {
+                console.warn('Duplicate intercept failed', e);
+            }
+
             // otherwise proceed with original click handlers (if any were wired via onclick)
             if (_origSaveHandler) try { _origSaveHandler.call(saveShareBtn, ev); } catch(_) {}
         });

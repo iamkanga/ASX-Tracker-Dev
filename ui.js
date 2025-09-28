@@ -434,9 +434,22 @@
 
     // Expose lightweight API on window.UI for backwards-compatible calls from script.js
     window.UI = window.UI || {};
+    // Bridge: prefer any global window.showModal implementation (script.js wrapper)
+    // This ensures a single canonical suppression check (e.g. window.suppressShareFormReopen)
+    // is always honored when other modules call window.UI.showModal.
+    function uiShowModalBridge(el) {
+        try {
+            // If a global window.showModal exists and is not this local function, delegate to it
+            if (typeof window.showModal === 'function' && window.showModal !== showModal) {
+                try { return window.showModal(el); } catch(_) { /* fallthrough to local */ }
+            }
+        } catch(_) {}
+        return showModal(el);
+    }
+
     Object.assign(window.UI, {
-        // Use the locally defined showModal to enforce history+stack push
-        showModal: (el)=> showModal(el),
+        // Use the bridged showModal so global guards (suppression) are applied
+        showModal: (el) => uiShowModalBridge(el),
         showModalNoHistory,
         hideModalKeepStack,
         hideModal,

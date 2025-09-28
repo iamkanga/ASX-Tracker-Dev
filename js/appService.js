@@ -109,6 +109,28 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
         });
     }
 
+    // Prevent saving an existing share with no watchlist assigned.
+    // A share must always belong to at least one watchlist to be persisted.
+    if (window.selectedShareDocId) {
+        if (!Array.isArray(finalWatchlistIds) || finalWatchlistIds.length === 0) {
+            try {
+                if (!isSilent) {
+                    // Friendly, actionable message when a save is blocked due to no watchlist
+                    const msg = 'Save canceled — please assign this share to at least one watchlist before saving.';
+                    if (window.showCustomAlert && typeof window.showCustomAlert === 'function') {
+                        window.showCustomAlert(msg);
+                    } else if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+                        window.ToastManager.info(msg, 3500);
+                    } else {
+                        try { alert(msg); } catch(_) {}
+                    }
+                }
+            } catch(_) {}
+            console.warn('Save Share: Attempted to save existing share without any watchlist assignment - aborting save.');
+            return;
+        }
+    }
+
     const shareData = {
         shareName: shareName,
         userId: currentUserId,
@@ -602,8 +624,8 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             try {
                 const provisionalShare = Object.assign({}, shareData, { id: provisionalId, __provisional: true, userId: currentUserId });
                 const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
-                // Remove any existing provisional for same code to avoid duplicates
-                const filtered = currentShares.filter(s => !(s && s.__provisional && s.shareName === provisionalShare.shareName));
+                // Remove any existing provisional for same code to avoid duplicates (keep other provisionals intact)
+                const filtered = currentShares.filter(s => !(s && s.__provisional && s.shareName === provisionalShare.shareName && s.id !== provisionalId));
                 // If sorting by percentageChange, insert at the correct position immediately
                 try {
                     const sortVal = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : (window.getCurrentSortOrder ? window.getCurrentSortOrder() : '');
@@ -688,10 +710,10 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             try {
                 docRef = await firestore.addDoc(sharesCollection, { ...shareData, userId: currentUserId });
             } catch (error) {
-                // Remove provisional on failure and notify the user
+                // Remove the exact provisional on failure and notify the user
                 try {
                     const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
-                    const cleaned = currentShares.filter(s => !(s && s.__provisional && s.shareName === shareName));
+                    const cleaned = currentShares.filter(s => !(s && s.__provisional && s.id === provisionalId));
                     setAllSharesData(cleaned);
                 } catch(_) {}
                 console.error('Error creating share:', error);
@@ -719,11 +741,11 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             try {
                 const created = { ...shareData, id: newShareId, userId: currentUserId };
                 const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
-                // Remove any provisional entries for this shareName and any existing entries with same id
+                // Remove only the exact provisional entry (matched by provisionalId) and any existing entries with same id
                 const next = currentShares.filter(s => {
                     if (!s) return false;
                     if (s.id === newShareId) return false; // remove duplicates
-                    if (s.__provisional && s.shareName === created.shareName) return false; // remove provisional
+                    if (s.__provisional && s.id === provisionalId) return false; // remove the exact provisional
                     return true;
                 });
                 next.push(created);
@@ -894,7 +916,20 @@ export async function deleteShare(shareId) {
             console.error('[SHARE DELETED] Error showing notification:', error);
         }
         try { window.updateTargetHitBanner && window.updateTargetHitBanner(); } catch(_) {}
-        try { window.closeModals && window.closeModals(); } catch(_) {}
+        try {
+            // Clear selection & modal restore hints so closing modals can't be re-opened by restore logic
+            try { if (window.selectedShareDocId) window.selectedShareDocId = null; } catch(_) {}
+            try { if (window.shareDetailModal && window.shareDetailModal.dataset) delete window.shareDetailModal.dataset.shareId; } catch(_) {}
+            try { window.wasEditOpenedFromShareDetail = false; } catch(_) {}
+            try { window.wasShareDetailOpenedFromTargetAlerts = false; } catch(_) {}
+            try { if (window.shareFormSection) { window.shareFormSection.style.setProperty('display','none','important'); window.shareFormSection.classList.remove('show'); } } catch(_) {}
+            try { if (window.shareDetailModal) { window.shareDetailModal.style.setProperty('display','none','important'); window.shareDetailModal.classList.remove('show'); } } catch(_) {}
+
+            // Prevent closeModals from triggering auto-save while we intentionally close the modal after deletion
+            try { window.__suppressAutoSaveOnClose = true; } catch(_) {}
+            try { window.closeModals && window.closeModals(); } catch(_) {}
+            try { window.__suppressAutoSaveOnClose = false; } catch(_) {}
+        } catch(_) {}
 
         // Update UI immediately after successful share deletion
         // Note: For deletions, we don't need to fetch live prices as the deleted share won't have prices anyway
