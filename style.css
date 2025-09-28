@@ -1970,6 +1970,33 @@ function makeFilesAvailableToSourceControlCSS() {
     --target-pulse-color: var(--accent-color);
     --target-pulse-color-rgb: 164, 147, 147;
 }
+.portfolio-cards-grid .portfolio-card.positive { background: var(--watch-bg-positive); }
+.portfolio-cards-grid .portfolio-card.negative { background: var(--watch-bg-negative); }
+.portfolio-cards-grid .portfolio-card.neutral  { background: var(--watch-bg-neutral); }
+
+/* Ensure portfolio list/card rows in other portfolio views match compact tints */
+.portfolio-card.positive { background: var(--watch-bg-positive); }
+.portfolio-card.negative { background: var(--watch-bg-negative); }
+.portfolio-card.neutral  { background: var(--watch-bg-neutral); }
+
+/* Dark theme gradients for portfolio cards to match compact cards look */
+body.dark-theme .portfolio-cards-grid .portfolio-card.positive {
+    background: linear-gradient(145deg, hsl(120, 100%, 8%), hsl(120, 100%, 4%));
+    color: #f0f0f0;
+}
+body.dark-theme .portfolio-cards-grid .portfolio-card.negative {
+    background: linear-gradient(145deg, hsl(353, 70%, 10%), hsl(353, 70%, 6%));
+    color: #f0f0f0;
+}
+body.dark-theme .portfolio-cards-grid .portfolio-card.neutral {
+    background: linear-gradient(145deg, #282828, #181818);
+    color: #f0f0f0;
+}
+
+/* Also cover single portfolio-card instances outside the grid */
+body.dark-theme .portfolio-card.positive { background: linear-gradient(145deg, hsl(120, 100%, 8%), hsl(120, 100%, 4%)); color: #f0f0f0; }
+body.dark-theme .portfolio-card.negative { background: linear-gradient(145deg, hsl(353, 70%, 10%), hsl(353, 70%, 6%)); color: #f0f0f0; }
+body.dark-theme .portfolio-card.neutral  { background: linear-gradient(145deg, #282828, #181818); color: #f0f0f0; }
 .portfolio-card.expanded { box-shadow: none; }
 /* Three-column layout for portfolio card main information */
 .portfolio-card .pc-top-line {
