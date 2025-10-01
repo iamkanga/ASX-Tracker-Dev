@@ -7882,6 +7882,19 @@ function showShareDetails() {
         setIconDisabled(modalListcorpLink, true);
     }
 
+    // HotCopper.com.au Link (NEW)
+    const modalHotCopperLink = document.getElementById('modalHotCopperLink');
+    if (modalHotCopperLink && share.shareName) {
+        const hotCopperUrl = `https://hotcopper.com.au/asx/${share.shareName.toLowerCase()}`;
+        modalHotCopperLink.href = hotCopperUrl;
+        modalHotCopperLink.innerHTML = `View on HotCopper <i class="fas fa-external-link-alt"></i>`;
+        modalHotCopperLink.style.display = 'inline-flex';
+        setIconDisabled(modalHotCopperLink, false);
+    } else if (modalHotCopperLink) {
+        modalHotCopperLink.style.display = 'none';
+        setIconDisabled(modalHotCopperLink, true);
+    }
+
     // CommSec.com.au Link (DYNAMIC) + Google Finance
     if (modalCommSecLink && share.shareName) {
         const commsecUrl = `https://www2.commsec.com.au/quotes/summary?stockCode=${encodeURIComponent(share.shareName)}&exchangeCode=ASX`;
