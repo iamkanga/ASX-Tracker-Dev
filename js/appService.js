@@ -769,14 +769,17 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 const created = { ...shareData, id: newShareId, userId: currentUserId };
                 const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
                 // Remove only the exact provisional entry (matched by provisionalId) and any existing entries with same id
-                const next = currentShares.filter(s => {
-                    if (!s) return false;
-                    if (s.id === newShareId) return false; // remove duplicates
-                    if (s.__provisional && s.id === provisionalId) return false; // remove the exact provisional
-                    return true;
-                });
-                next.push(created);
-                setAllSharesData(next);
+                const provisionalIndex = currentShares.findIndex(s => s.__provisional && s.id === provisionalId);
+                if (provisionalIndex !== -1) {
+                    const next = [...currentShares];
+                    next[provisionalIndex] = created;
+                    setAllSharesData(next);
+                } else {
+                    // Provisional not found, so just add the new share
+                    const next = currentShares.filter(s => s.id !== newShareId);
+                    next.push(created);
+                    setAllSharesData(next);
+                }
                 // Immediately re-apply current sort so the new share appears in the correct position
                 try { if (typeof window !== 'undefined' && typeof window.sortShares === 'function') window.sortShares(); } catch(_) {}
             } catch (e) {
