@@ -7849,7 +7849,7 @@ function showShareDetails() {
         const marketIndexUrl = 'https://www.marketindex.com.au/asx/' + share.shareName.toLowerCase();
         modalMarketIndexLink.href = marketIndexUrl;
     // Text no longer includes the ASX code per spec; keep consistent "View on ..." prefix
-    modalMarketIndexLink.innerHTML = 'View on MarketIndex.com.au <i class="fas fa-external-link-alt"></i>';
+    modalMarketIndexLink.innerHTML = 'View on Market Index <i class="fas fa-external-link-alt"></i>';
         modalMarketIndexLink.style.display = 'inline-flex';
         setIconDisabled(modalMarketIndexLink, false);
     } else if (modalMarketIndexLink) {
