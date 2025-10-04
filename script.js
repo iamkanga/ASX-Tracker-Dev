@@ -17966,6 +17966,8 @@ function initializeApp() {
         }
 
     window.__handleAuthStateChange = async (user) => {
+        // Always clear notification state on any auth state change (sign-in, sign-out, refresh, switch)
+        clearAllNotificationState();
             if (user) {
                 // Restore movers view if it was active prior to a storage reset during auth
                 try {
