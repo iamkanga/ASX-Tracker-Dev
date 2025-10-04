@@ -7834,10 +7834,11 @@ function showShareDetails() {
         }
     }
     // External Links
+
     if (modalNewsLink && share.shareName) {
         const newsUrl = 'https://news.google.com/search?q=' + encodeURIComponent(share.shareName) + '%20ASX&hl=en-AU&gl=AU&ceid=AU%3Aen';
         modalNewsLink.href = newsUrl;
-        modalNewsLink.innerHTML = 'View ' + share.shareName.toUpperCase() + ' News <i class="fas fa-external-link-alt"></i>';
+        modalNewsLink.innerHTML = 'News <i class="fas fa-external-link-alt"></i>';
         modalNewsLink.style.display = 'inline-flex';
         setIconDisabled(modalNewsLink, false);
     } else if (modalNewsLink) {
@@ -7848,8 +7849,7 @@ function showShareDetails() {
     if (modalMarketIndexLink && share.shareName) {
         const marketIndexUrl = 'https://www.marketindex.com.au/asx/' + share.shareName.toLowerCase();
         modalMarketIndexLink.href = marketIndexUrl;
-    // Text no longer includes the ASX code per spec; keep consistent "View on ..." prefix
-    modalMarketIndexLink.innerHTML = 'View on Market Index <i class="fas fa-external-link-alt"></i>';
+        modalMarketIndexLink.innerHTML = 'Market Index <i class="fas fa-external-link-alt"></i>';
         modalMarketIndexLink.style.display = 'inline-flex';
         setIconDisabled(modalMarketIndexLink, false);
     } else if (modalMarketIndexLink) {
@@ -7859,10 +7859,9 @@ function showShareDetails() {
 
     // Fool.com.au Link
     if (modalFoolLink && share.shareName) {
-        // Updated Motley Fool URL pattern (old: /quote/CODE/ -> new: /tickers/asx-code/ )
         const foolCode = String(share.shareName).trim().toLowerCase();
         modalFoolLink.href = `https://www.fool.com.au/tickers/asx-${foolCode}/`;
-        modalFoolLink.innerHTML = 'View on Fool.com.au <i class="fas fa-external-link-alt"></i>';
+        modalFoolLink.innerHTML = 'Motley Fool <i class="fas fa-external-link-alt"></i>';
         modalFoolLink.style.display = 'inline-flex';
         setIconDisabled(modalFoolLink, false);
     } else if (modalFoolLink) {
@@ -7874,7 +7873,7 @@ function showShareDetails() {
     if (modalListcorpLink && share.shareName) {
         const listcorpUrl = `https://www.listcorp.com/asx/${share.shareName.toLowerCase()}`;
         modalListcorpLink.href = listcorpUrl;
-        modalListcorpLink.innerHTML = `View on Listcorp.com <i class="fas fa-external-link-alt"></i>`;
+        modalListcorpLink.innerHTML = `Listcorp <i class=\"fas fa-external-link-alt\"></i>`;
         modalListcorpLink.style.display = 'inline-flex';
         setIconDisabled(modalListcorpLink, false);
     } else if (modalListcorpLink) {
@@ -7887,7 +7886,7 @@ function showShareDetails() {
     if (modalHotCopperLink && share.shareName) {
         const hotCopperUrl = `https://hotcopper.com.au/asx/${share.shareName.toLowerCase()}`;
         modalHotCopperLink.href = hotCopperUrl;
-        modalHotCopperLink.innerHTML = `View on HotCopper <i class="fas fa-external-link-alt"></i>`;
+        modalHotCopperLink.innerHTML = `HotCopper <i class=\"fas fa-external-link-alt\"></i>`;
         modalHotCopperLink.style.display = 'inline-flex';
         setIconDisabled(modalHotCopperLink, false);
     } else if (modalHotCopperLink) {
@@ -7899,7 +7898,7 @@ function showShareDetails() {
     if (modalCommSecLink && share.shareName) {
         const commsecUrl = `https://www2.commsec.com.au/quotes/summary?stockCode=${encodeURIComponent(share.shareName)}&exchangeCode=ASX`;
         modalCommSecLink.href = commsecUrl;
-        modalCommSecLink.innerHTML = 'View on CommSec.com.au <i class="fas fa-external-link-alt"></i>';
+        modalCommSecLink.innerHTML = 'CommSec <i class="fas fa-external-link-alt"></i>';
         modalCommSecLink.style.display = 'inline-flex';
         setIconDisabled(modalCommSecLink, false);
     } else if (modalCommSecLink) {
