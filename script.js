@@ -1851,6 +1851,18 @@ try { window.formatAdaptivePrice = formatAdaptivePrice; } catch(_) {}
 let db;
 let auth = null;
 let currentUserId = null;
+
+// Clears all global notification state (movers, hi/lo, custom trigger hits, etc.)
+function clearAllNotificationState() {
+    try {
+        window.globalMovers = { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
+        window.globalHiLo52Alerts = { updatedAt: null, highs: [], lows: [] };
+        window.globalHiLo52Hits = { updatedAt: null, highHits: [], lowHits: [] };
+        window.customTriggerHits = { updatedAt: null, hits: [] };
+        if (typeof refreshNotificationsModalIfOpen === 'function') refreshNotificationsModalIfOpen('signout');
+        if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner();
+    } catch(_) {}
+}
 let currentAppId;
 let firestore;
 let authFunctions;
@@ -18102,6 +18114,8 @@ function initializeApp() {
             else {
                 currentUserId = null;
                 window.currentUserId = null; // Clear from window object
+                // Clear all notification state to prevent leakage between users
+                clearAllNotificationState();
                 // Reset title safely using the inner span, do not expand click target
                 try { ensureTitleStructure(); const t = document.getElementById('dynamicWatchlistTitleText'); if (t) t.textContent = 'Share Watchlist'; } catch(e) {}
                 logDebug('AuthState: User signed out.');
