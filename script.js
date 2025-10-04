@@ -15812,12 +15812,12 @@ if (sortSelect) {
                 const shares = (typeof getAllSharesData === 'function') ? getAllSharesData() : (window.allSharesData || []);
                 const s = shares.find(x => x && x.id === selectedShareDocId);
                 const code = (s && s.shareName) ? String(s.shareName).toUpperCase() : 'this share';
-                showCustomConfirm(`Delete "${code}"? This action cannot be undone.`, async (confirmed) => {
+                showCustomConfirm(`Are you sure you want to delete "${code}" this action cannot be undone?`, async (confirmed) => {
                     if (!confirmed) return;
                     try { await deleteShareSvc(selectedShareDocId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); }
                 });
             } catch (_) {
-                showCustomConfirm('Delete this share? This action cannot be undone.', async (confirmed) => { if (!confirmed) return; try { await deleteShareSvc(selectedShareDocId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); } });
+                showCustomConfirm('Are you sure you want to delete this share this action cannot be undone?', async (confirmed) => { if (!confirmed) return; try { await deleteShareSvc(selectedShareDocId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); } });
             }
         });
     }
@@ -15847,12 +15847,12 @@ if (sortSelect) {
                 const shares = (typeof getAllSharesData === 'function') ? getAllSharesData() : (window.allSharesData || []);
                 const s = shares.find(x => x && x.id === shareToDeleteId);
                 const code = (s && s.shareName) ? String(s.shareName).toUpperCase() : 'this share';
-                showCustomConfirm(`Delete "${code}"? This action cannot be undone.`, async (confirmed) => {
+                showCustomConfirm(`Are you sure you want to delete "${code}" this action cannot be undone?`, async (confirmed) => {
                     if (!confirmed) return;
                     try { await deleteShareSvc(shareToDeleteId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); }
                 });
             } catch (_) {
-                showCustomConfirm('Delete this share? This action cannot be undone.', async (confirmed) => { if (!confirmed) return; try { await deleteShareSvc(shareToDeleteId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); } });
+                showCustomConfirm('Are you sure you want to delete this share this action cannot be undone?', async (confirmed) => { if (!confirmed) return; try { await deleteShareSvc(shareToDeleteId); } catch (error) { console.error('Firestore: Error deleting share:', error); showCustomAlert('Error deleting share: ' + error.message); } });
             }
         });
     }

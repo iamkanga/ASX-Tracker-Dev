@@ -1120,7 +1120,7 @@ export async function deleteWatchlist(watchlistId) {
         try {
             if (window.showCustomConfirm) {
                 window.showCustomConfirm(
-                    `Delete "${watchlistName}"? Shares in this watchlist only will be removed.`,
+                    `Are you sure you want to delete "${watchlistName}" shares in this watchlist will be deleted if they are not in other watch lists?`,
                     async (confirmed) => {
                         if (!confirmed) {
                             try { window.showCustomAlert && window.showCustomAlert('Watchlist deletion cancelled.', 1000); } catch(_) {}
