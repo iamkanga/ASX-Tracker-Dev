@@ -326,38 +326,47 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
         const gainersInner = ensureScrollHost(gainersContainer);
         const losersInner = ensureScrollHost(losersContainer);
         function renderMoversInto(containerInner, items, dir) {
-                try {
-                    const fragment = document.createDocumentFragment();
-                        let arr = Array.isArray(items) ? items.slice() : [];
-                        // Keep items if we can determine movement via computed values or provided pct/change fields
-                        arr = arr.filter(it => {
+            try {
+                const fragment = document.createDocumentFragment();
+                let arr = Array.isArray(items) ? items.slice() : [];
+                arr.forEach(it => {
+                    let card;
+                    try {
+                        // Try to use the normal card if possible
                         const live = (it.live != null && !isNaN(it.live)) ? Number(it.live) : null;
                         const prev = (it.prevClose != null && !isNaN(it.prevClose)) ? Number(it.prevClose) : null;
-                        const ch = (live!=null && prev!=null) ? (live - prev) : null;
-                        const hasComputed = (ch!=null && ch !== 0 && prev !== 0);
-                        const hasProvided = (it.pct!=null && !isNaN(it.pct)) || (it.change!=null && !isNaN(it.change));
-                        return hasComputed || hasProvided;
-                    });
-                        const innerFrag = document.createDocumentFragment();
-                        arr.forEach(it => {
-                            try {
-                                if ((it.live == null || it.prevClose == null) && window.livePrices && it && it.code) {
-                                    const lp = window.livePrices[it.code];
-                                    if (lp) {
-                                        it.live = it.live == null ? lp.live : it.live;
-                                        it.prevClose = it.prevClose == null ? lp.prevClose : it.prevClose;
-                                        if (it.pct == null && it.prevClose && it.live != null) {
-                                            const ch2 = it.live - it.prevClose;
-                                            it.pct = (it.prevClose !== 0) ? Math.abs((ch2 / it.prevClose) * 100) : null;
-                                        }
-                                    }
-                                }
-                            } catch (e) {
-                                try { console.warn('[Movers] live fallback failed for item', e); } catch (_) { }
-                            }
-                        });
-                        containerInner.appendChild(innerFrag);
-                } catch (err) { console.warn('renderMoversIntoHost failed', err); }
+                        const hasMovement = (it.pct != null && !isNaN(it.pct)) || (it.change != null && !isNaN(it.change)) || (live != null && prev != null);
+                        if (hasMovement) {
+                            card = renderMoverCardWithMovement(it);
+                        } else {
+                            // Fallback: minimal card with just code and name
+                            const code = (it.code || it.shareCode || '').toUpperCase();
+                            const name = sanitizeCompanyName(it.name || it.companyName || '', code);
+                            card = document.createElement('div');
+                            card.className = 'notification-card mover-card';
+                            card.setAttribute('data-code', code);
+                            card.innerHTML = `
+                                <div class="notification-card-row">
+                                    <div class="notification-card-left">
+                                        <div class="notification-code">${code}</div>
+                                        <div class="notification-name small">${name}</div>
+                                    </div>
+                                    <div class="notification-card-right">
+                                        <div class="notification-live"><span class='na'>No movement data</span></div>
+                                    </div>
+                                </div>
+                            `;
+                            card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openStockSearchForCode(code); });
+                        }
+                    } catch (e) {
+                        card = document.createElement('div');
+                        card.className = 'notification-card mover-card';
+                        card.textContent = '[Error rendering entry]';
+                    }
+                    fragment.appendChild(card);
+                });
+                containerInner.appendChild(fragment);
+            } catch (err) { console.warn('renderMoversIntoHost failed', err); }
         }
 
                 // Extended mover card showing dollar and percent changes
@@ -399,6 +408,9 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             // Fallback: if filtering produced empty results but raw arrays are populated, use raw arrays to avoid blank UI
             if (Array.isArray(gm.up) && upArr.length === 0 && gm.up.length > 0) upArr = gm.up;
             if (Array.isArray(gm.down) && downArr.length === 0 && gm.down.length > 0) downArr = gm.down;
+            // EXTRA: If both filtered and raw are empty, but the original data exists, try to use the original data
+            if ((!Array.isArray(upArr) || upArr.length === 0) && Array.isArray(gm.up) && gm.up.length > 0) upArr = gm.up;
+            if ((!Array.isArray(downArr) || downArr.length === 0) && Array.isArray(gm.down) && gm.down.length > 0) downArr = gm.down;
             // Add thresholds hint to headers via title attribute
             const eff = gm && gm.__effectiveThresholds ? gm.__effectiveThresholds : (gm && gm.thresholds ? gm.thresholds : null);
             function thresholdsLabel(eff){
