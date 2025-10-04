@@ -9530,6 +9530,9 @@ async function displayStockDetailsInSearchModal(asxCode) {
                     <a id="searchModalListcorpLink" href="#" target="_blank" class="external-link">View on Listcorp.com <i class="fas fa-external-link-alt"></i></a>
                 </div>
                 <div class="external-link-item">
+                    <a id="searchModalHotCopperLink" href="#" target="_blank" class="external-link">View on HotCopper.com.au <i class="fas fa-external-link-alt"></i></a>
+                </div>
+                <div class="external-link-item">
                     <a id="searchModalCommSecLink" href="#" target="_blank" class="external-link">View on CommSec.com.au <i class="fas fa-external-link-alt"></i></a>
                 </div>
                 <div class="external-link-item">
