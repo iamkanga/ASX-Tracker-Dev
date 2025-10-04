@@ -7836,9 +7836,10 @@ function showShareDetails() {
     // External Links
 
     if (modalNewsLink && share.shareName) {
+        const code = String(share.shareName).toUpperCase();
         const newsUrl = 'https://news.google.com/search?q=' + encodeURIComponent(share.shareName) + '%20ASX&hl=en-AU&gl=AU&ceid=AU%3Aen';
         modalNewsLink.href = newsUrl;
-        modalNewsLink.innerHTML = 'News <i class="fas fa-external-link-alt"></i>';
+        modalNewsLink.innerHTML = code + ' News <i class="fas fa-external-link-alt"></i>';
         modalNewsLink.style.display = 'inline-flex';
         setIconDisabled(modalNewsLink, false);
     } else if (modalNewsLink) {
@@ -9545,18 +9546,39 @@ async function displayStockDetailsInSearchModal(asxCode) {
         const searchModalFoolLink = document.getElementById('searchModalFoolLink');
         const searchModalListcorpLink = document.getElementById('searchModalListcorpLink');
         const searchModalCommSecLink = document.getElementById('searchModalCommSecLink');
-    const searchModalGoogleFinanceLink = document.getElementById('searchModalGoogleFinanceLink');
+        const searchModalGoogleFinanceLink = document.getElementById('searchModalGoogleFinanceLink');
+        const searchModalHotCopperLink = document.getElementById('searchModalHotCopperLink');
 
-        if (searchModalNewsLink) searchModalNewsLink.href = `https://news.google.com/search?q=${encodedAsxCode}%20ASX&hl=en-AU&gl=AU&ceid=AU%3Aen`;
-        if (searchModalMarketIndexLink) searchModalMarketIndexLink.href = `https://www.marketindex.com.au/asx/${asxCode.toLowerCase()}`;
+        if (searchModalNewsLink) {
+            const code = String(asxCode).toUpperCase();
+            searchModalNewsLink.href = `https://news.google.com/search?q=${encodedAsxCode}%20ASX&hl=en-AU&gl=AU&ceid=AU%3Aen`;
+            searchModalNewsLink.innerHTML = code + ' News <i class="fas fa-external-link-alt"></i>';
+        }
+        if (searchModalMarketIndexLink) {
+            searchModalMarketIndexLink.href = `https://www.marketindex.com.au/asx/${asxCode.toLowerCase()}`;
+            searchModalMarketIndexLink.innerHTML = 'Market Index <i class="fas fa-external-link-alt"></i>';
+        }
         if (searchModalFoolLink) {
-            // Updated Motley Fool URL pattern (old: /quote/CODE/ -> new: /tickers/asx-code/ )
             const foolSearchCode = String(asxCode).trim().toLowerCase();
             searchModalFoolLink.href = `https://www.fool.com.au/tickers/asx-${foolSearchCode}/`;
+            searchModalFoolLink.innerHTML = 'Motley Fool <i class="fas fa-external-link-alt"></i>';
         }
-        if (searchModalListcorpLink) searchModalListcorpLink.href = `https://www.listcorp.com/asx/${asxCode.toLowerCase()}`;
-        if (searchModalCommSecLink) searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
-    if (searchModalGoogleFinanceLink) searchModalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${asxCode.toUpperCase()}:ASX`;
+        if (searchModalListcorpLink) {
+            searchModalListcorpLink.href = `https://www.listcorp.com/asx/${asxCode.toLowerCase()}`;
+            searchModalListcorpLink.innerHTML = 'Listcorp <i class="fas fa-external-link-alt"></i>';
+        }
+        if (searchModalHotCopperLink) {
+            searchModalHotCopperLink.href = `https://hotcopper.com.au/asx/${asxCode.toLowerCase()}`;
+            searchModalHotCopperLink.innerHTML = 'HotCopper <i class="fas fa-external-link-alt"></i>';
+        }
+        if (searchModalCommSecLink) {
+            searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
+            searchModalCommSecLink.innerHTML = 'CommSec <i class="fas fa-external-link-alt"></i>';
+        }
+        if (searchModalGoogleFinanceLink) {
+            searchModalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${asxCode.toUpperCase()}:ASX`;
+            searchModalGoogleFinanceLink.innerHTML = 'Google Finance <i class="fas fa-external-link-alt"></i>';
+        }
     // Typography diagnostics for search modal
     setTimeout(() => { try { logSearchModalTypographyRatios(); } catch(_) {} }, 0);
 
