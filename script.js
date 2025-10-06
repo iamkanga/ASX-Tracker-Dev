@@ -2047,7 +2047,7 @@ try { window.suppressShareFormReopen = window.suppressShareFormReopen || false; 
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-09-21 - Global alerts explainers always show thresholds with 'Not set' placeholders
 // Bump: 2025-09-28 - patched version for release QA
-const APP_VERSION = '3.13.1';
+const APP_VERSION = '3.13.2';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)
