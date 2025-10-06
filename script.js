@@ -2047,7 +2047,7 @@ try { window.suppressShareFormReopen = window.suppressShareFormReopen || false; 
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
 // Release: 2025-09-21 - Global alerts explainers always show thresholds with 'Not set' placeholders
 // Bump: 2025-09-28 - patched version for release QA
-const APP_VERSION = '3.13';
+const APP_VERSION = '3.13.1';
 
 // Persisted set of share IDs to hide from totals (Option A)
 // Persisted set of share IDs to hide from totals (Option A)
@@ -10234,9 +10234,9 @@ function selectCustomTriggerHitsForUser(allHits, uid) {
         const mineByPortfolio = list.filter(h => {
             try { return h && portfolioCodes.has(String(h.code || '').toUpperCase()); } catch(_) { return false; }
         });
-        if (mineByPortfolio.length > 0) return mineByPortfolio;
-        // Fallback: return all (better to show than silently hide)
-        return list;
+    if (mineByPortfolio.length > 0) return mineByPortfolio;
+    // Fallback: return empty array (do not show hits for unrelated users)
+    return [];
     } catch(_) { return []; }
 }
 
@@ -10511,6 +10511,17 @@ window.recomputeGlobalMoversFiltered = function recomputeGlobalMoversFiltered(op
             minimumPrice: stricter(local.minimumPrice, server && server.minimumPrice)
         };
         const noDir = [effective.upPercent,effective.upDollar,effective.downPercent,effective.downDollar].every(v=>v==null);
+        // Only show notifications if user has shares or has set thresholds
+        const hasShares = Array.isArray(window.allSharesData) && window.allSharesData.length > 0;
+        if ((noDir && !hasShares)) {
+            gm.upFiltered = [];
+            gm.downFiltered = [];
+            gm.filteredTotal = 0;
+            if (options.log || window.DEBUG_MODE) {
+                try { console.log('[GlobalMovers][recompute] No thresholds set and no shares, no global movers shown.'); } catch(_){}
+            }
+            return;
+        }
         if (noDir && rawTotal>120) { effective.upPercent = 1; effective.downPercent = 1; }
         const filterFn = (item)=>{
             // Prefer computed values, but fall back to provided pct/change when live/prevClose are missing.
