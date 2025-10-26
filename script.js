@@ -1235,7 +1235,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="summary-label">Total Return</div>
                 <div class="summary-value ${totalCapitalGain >= 0 ? 'positive' : 'negative'}">${fmtMoney(totalCapitalGain)} <span class="summary-pct">${fmtPct(overallPLPct)}</span></div>
             </div>
-            <div class="summary-card neutral">
+            <div class="summary-card summary-total neutral">
                 <div class="summary-label">Total Portfolio Value</div>
                 <div class="summary-value">${fmtMoney(totalValue)}</div>
             </div>
