@@ -735,7 +735,18 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             // Attempt to create the Firestore document
             let docRef;
             try {
-                docRef = await firestore.addDoc(sharesCollection, { ...shareData, userId: currentUserId });
+                docRef = await (async () => {
+                    try {
+                        return await firestore.addDoc(sharesCollection, { ...shareData, userId: currentUserId });
+                    } catch (error) {
+                        if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
+                            console.warn('Auth error creating share, retrying once...');
+                            await new Promise(r => setTimeout(r, 1500));
+                            return await firestore.addDoc(sharesCollection, { ...shareData, userId: currentUserId });
+                        }
+                        throw error;
+                    }
+                })();
             } catch (error) {
                 // Remove the exact provisional on failure and notify the user
                 try {
