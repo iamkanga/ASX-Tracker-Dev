@@ -1373,6 +1373,14 @@ export async function saveCashAsset(isSilent = false) {
         console.error('Firestore: Error saving cash asset:', error);
         console.error('Error details:', { message: error.message, code: error.code, stack: error.stack });
         try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Error saving cash asset: ' + (error.message || 'Unknown error')); } catch(_) {}
+        // Close modal on failure
+        try {
+            if (!isSilent && typeof window.closeModals === 'function') {
+                window.closeModals();
+            }
+        } catch (e) {
+            console.error('Failed to close modal on error:', e);
+        }
     }
     finally {
         try { window.__modalSaveInProgress = false; } catch(_) { window.__modalSaveInProgress = false; }
