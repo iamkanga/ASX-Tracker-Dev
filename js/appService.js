@@ -626,6 +626,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             return;
         }
 
+        let provisionalId = null;
         // Create new share
         try {
             const sharesCollection = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
@@ -647,7 +648,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             } catch(_) {}
 
             // OPTIMISTIC UI: Insert a provisional share into local state so user sees it immediately
-            const provisionalId = '__pending:' + Date.now() + ':' + Math.random().toString(36).slice(2,8);
+            provisionalId = '__pending:' + Date.now() + ':' + Math.random().toString(36).slice(2,8);
             try {
                 const provisionalShare = Object.assign({}, shareData, { id: provisionalId, __provisional: true, userId: currentUserId });
                 const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
@@ -765,6 +766,14 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                             alert('Failed to save share: ' + (error && error.message ? error.message : 'Unknown error'));
                         }
                     } catch(_) {}
+                }
+                // Close modal on failure
+                try {
+                    if (!isSilent && typeof window.closeModals === 'function') {
+                        window.closeModals();
+                    }
+                } catch (e) {
+                    console.error('Failed to close modal on error:', e);
                 }
                 return;
             }
@@ -890,8 +899,26 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             return;
         } catch (error) {
             console.error('Error creating share (outer):', error);
+            if (provisionalId) {
+                try {
+                    const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
+                    const cleaned = currentShares.filter(s => !(s && s.__provisional && s.id === provisionalId));
+                    setAllSharesData(cleaned);
+                    console.log('Rolled back provisional share on outer catch:', provisionalId);
+                } catch(cleanupError) {
+                    console.error('Failed to cleanup provisional share on outer catch:', cleanupError);
+                }
+            }
             if (!isSilent) {
                 try { window.showCustomAlert && window.showCustomAlert('Error creating share: ' + (error && error.message ? error.message : error)); } catch(_) {}
+            }
+            // Close modal on failure
+            try {
+                if (!isSilent && typeof window.closeModals === 'function') {
+                    window.closeModals();
+                }
+            } catch (e) {
+                console.error('Failed to close modal on error:', e);
             }
             return;
         }
