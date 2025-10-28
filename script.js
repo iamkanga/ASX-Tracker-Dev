@@ -17934,23 +17934,18 @@ function initializeApp() {
         // Ensure persistence is set once
         try {
             // Force persistent local storage for auth so the user remains signed in across app restarts.
-            // Prefer browserLocalPersistence; fall back to browserSessionPersistence only if local is unavailable.
-            if (authFunctions.setPersistence) {
-                const targetPersistence = authFunctions.browserLocalPersistence || authFunctions.browserSessionPersistence;
-                if (targetPersistence) {
-                    authFunctions
-                        .setPersistence(auth, targetPersistence)
-                        .then(() => logDebug('Auth: Persistence set to ' + (targetPersistence === authFunctions.browserSessionPersistence ? 'browserSessionPersistence' : 'browserLocalPersistence') + '.'))
-                        .catch((e) => console.warn('Auth: Failed to set persistence, continuing with default.', e));
-                }
+            if (authFunctions.setPersistence && authFunctions.browserLocalPersistence) {
+                authFunctions
+                    .setPersistence(auth, authFunctions.browserLocalPersistence)
+                    .then(() => logDebug('Auth: Persistence set to browserLocalPersistence.'))
+                    .catch((e) => console.warn('Auth: Failed to set persistence to browserLocalPersistence, continuing with default.', e));
             }
         } catch (e) {
             console.warn('Auth: Failed to set persistence (outer), continuing with default.', e);
         }
-
-    window.__handleAuthStateChange = async (user) => {
         // Always clear notification state on any auth state change (sign-in, sign-out, refresh, switch)
         clearAllNotificationState();
+        window.__handleAuthStateChange = async (user) => {
             if (user) {
                 // Restore movers view if it was active prior to a storage reset during auth
                 try {
