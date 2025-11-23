@@ -7911,7 +7911,7 @@ function showShareDetails() {
     if (modalHotCopperLink && share.shareName) {
         const hotCopperUrl = `https://hotcopper.com.au/asx/${share.shareName.toLowerCase()}`;
         modalHotCopperLink.href = hotCopperUrl;
-        modalHotCopperLink.innerHTML = `HotCopper <i class=\"fas fa-external-link-alt\"></i>`;
+        modalHotCopperLink.innerHTML = `HotCopper <i class="fas fa-external-link-alt"></i>`;
         modalHotCopperLink.style.display = 'inline-flex';
         setIconDisabled(modalHotCopperLink, false);
     } else if (modalHotCopperLink) {
@@ -7919,8 +7919,21 @@ function showShareDetails() {
         setIconDisabled(modalHotCopperLink, true);
     }
 
+    const modalRaskMediaLink = document.getElementById('modalRaskMediaLink');
+    if (modalRaskMediaLink && share.shareName) {
+        const raskMediaUrl = `https://www.raskmedia.com.au/asx/${share.shareName.toLowerCase()}/`;
+        modalRaskMediaLink.href = raskMediaUrl;
+        modalRaskMediaLink.innerHTML = `Rask Media <i class="fas fa-external-link-alt"></i>`;
+        modalRaskMediaLink.style.display = 'inline-flex';
+        setIconDisabled(modalRaskMediaLink, false);
+    } else if (modalRaskMediaLink) {
+        modalRaskMediaLink.style.display = 'none';
+        setIconDisabled(modalRaskMediaLink, true);
+    }
+
     // CommSec.com.au Link (DYNAMIC) + Google Finance
     if (modalCommSecLink && share.shareName) {
+
         const commsecUrl = `https://www2.commsec.com.au/quotes/summary?stockCode=${encodeURIComponent(share.shareName)}&exchangeCode=ASX`;
         modalCommSecLink.href = commsecUrl;
         modalCommSecLink.innerHTML = 'CommSec <i class="fas fa-external-link-alt"></i>';
@@ -9557,6 +9570,9 @@ async function displayStockDetailsInSearchModal(asxCode) {
                     <a id="searchModalHotCopperLink" href="#" target="_blank" class="external-link">View on HotCopper.com.au <i class="fas fa-external-link-alt"></i></a>
                 </div>
                 <div class="external-link-item">
+                    <a id="searchModalRaskMediaLink" href="#" target="_blank" class="external-link">View on Rask Media <i class="fas fa-external-link-alt"></i></a>
+                </div>
+                <div class="external-link-item">
                     <a id="searchModalCommSecLink" href="#" target="_blank" class="external-link">View on CommSec.com.au <i class="fas fa-external-link-alt"></i></a>
                 </div>
                 <div class="external-link-item">
@@ -9598,6 +9614,13 @@ async function displayStockDetailsInSearchModal(asxCode) {
             searchModalHotCopperLink.href = `https://hotcopper.com.au/asx/${asxCode.toLowerCase()}`;
             searchModalHotCopperLink.innerHTML = 'HotCopper <i class="fas fa-external-link-alt"></i>';
         }
+
+        const searchModalRaskMediaLink = document.getElementById('searchModalRaskMediaLink');
+        if (searchModalRaskMediaLink) {
+            searchModalRaskMediaLink.href = `https://www.raskmedia.com.au/asx/${asxCode.toLowerCase()}/`;
+            searchModalRaskMediaLink.innerHTML = 'Rask Media <i class="fas fa-external-link-alt"></i>';
+        }
+        
         if (searchModalCommSecLink) {
             searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
             searchModalCommSecLink.innerHTML = 'CommSec <i class="fas fa-external-link-alt"></i>';
