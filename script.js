@@ -13512,21 +13512,37 @@ function checkCashAssetFormDirtyState() {
     const isNameValid = currentData.name.trim() !== '';
     let canSave = isNameValid;
 
-    if (selectedCashAssetDocId && originalCashAssetData) {
+    // Read from window to get values set by uiService.js
+    const selectedId = window.selectedCashAssetDocId;
+    const originalData = window.originalCashAssetData;
+
+    console.log('[Cash Dirty Check] selectedCashAssetDocId:', selectedId);
+    console.log('[Cash Dirty Check] originalCashAssetData:', originalData);
+    console.log('[Cash Dirty Check] currentData:', currentData);
+
+    if (selectedId && originalData) {
         // For existing assets, enable save if data is dirty (including checkbox state)
-        const isDirty = !areCashAssetDataEqual(originalCashAssetData, currentData);
+        const isDirty = !areCashAssetDataEqual(originalData, currentData);
+        console.log('[Cash Dirty Check] isDirty:', isDirty);
         canSave = canSave && isDirty;
         if (!isDirty) {
             logDebug('Dirty State: Existing cash asset: No changes detected, save disabled.');
         }
-    } else if (!selectedCashAssetDocId) {
+    } else if (!selectedId) {
         // For new cash assets, enable if name is valid (no original data to compare against)
         // 'canSave' is already 'isNameValid' here.
+        console.log('[Cash Dirty Check] New asset mode, canSave based on name validity:', canSave);
+    } else {
+        console.log('[Cash Dirty Check] Edit mode but originalCashAssetData is null - this should not happen!');
     }
 
+    console.log('[Cash Dirty Check] Final canSave:', canSave);
     setIconDisabled(saveCashAssetBtn, !canSave);
     logDebug('Dirty State: Cash asset save button enabled: ' + canSave);
 }
+
+// Expose on window for use in uiService.js
+window.checkCashAssetFormDirtyState = checkCashAssetFormDirtyState;
 
 async function saveCashAsset(isSilent = false) {
     logDebug('Cash Form: saveCashAsset called (delegated-only).');

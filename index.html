@@ -70,7 +70,8 @@
             </div>
             <!-- Single dynamic clickable title acts as the only title bar -->
             <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false">
-                <span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span></h1>
+                <span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span>
+            </h1>
             <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right icon-button"
                 aria-label="Add Share">
                 <i class="fas fa-plus"></i>
@@ -424,7 +425,8 @@
             <p><strong>Error:</strong> Firebase failed to initialize.</p>
             <p>This is usually due to missing or incorrect Firebase configuration. Please ensure your
                 <code>firebaseConfig</code> in <code>index.html</code> is correctly set up from your Firebase project
-                settings.</p>
+                settings.
+            </p>
             <p>Core application features will not work without a valid Firebase connection.</p>
         </div>
 
@@ -1130,7 +1132,7 @@
         import SortPicker from './js/sortPicker.js';
         try { if (SortPicker && typeof SortPicker.initSortPicker === 'function') SortPicker.initSortPicker(); } catch (e) { console.warn('SortPicker auto-init failed', e); }
     </script>
-    <script src="script.js?v=2.15.8" type="module"></script>
+    <script src="script.js?v=2.16.5" type="module"></script>
     <!-- Service worker registration and immediate update helper -->
     <script>
         if ('serviceWorker' in navigator) {

@@ -6,82 +6,82 @@ import { getUserCashCategories, getCurrentSortOrder } from './state.js';
 
 // Backed by window to avoid multiple copies across modules and to preserve legacy access
 function readAsxExpandedFromStorage() {
-	try { return localStorage.getItem('asxButtonsExpanded') === 'true'; } catch(_) { return false; }
+    try { return localStorage.getItem('asxButtonsExpanded') === 'true'; } catch (_) { return false; }
 }
 
 if (typeof window !== 'undefined' && typeof window.asxButtonsExpanded === 'undefined') {
-	window.asxButtonsExpanded = readAsxExpandedFromStorage();
+    window.asxButtonsExpanded = readAsxExpandedFromStorage();
 }
 
 export function getAsxButtonsExpanded() {
-	return !!(typeof window !== 'undefined' ? window.asxButtonsExpanded : false);
+    return !!(typeof window !== 'undefined' ? window.asxButtonsExpanded : false);
 }
 
 export function setAsxButtonsExpanded(value) {
-	const next = !!value;
-	if (typeof window !== 'undefined') {
-		window.asxButtonsExpanded = next;
-		try { localStorage.setItem('asxButtonsExpanded', next ? 'true' : 'false'); } catch(_) {}
-	}
+    const next = !!value;
+    if (typeof window !== 'undefined') {
+        window.asxButtonsExpanded = next;
+        try { localStorage.setItem('asxButtonsExpanded', next ? 'true' : 'false'); } catch (_) { }
+    }
 }
 
 export function applyAsxButtonsState() {
     const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
     const toggleAsxButtonsBtn = document.getElementById('toggleAsxButtonsBtn');
     const asxCodeButtonsToggle = document.getElementById('asxCodeButtonsToggle');
-	if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) {
-		console.warn('applyAsxButtonsState: Missing elements - container:', !!asxCodeButtonsContainer, 'button:', !!toggleAsxButtonsBtn);
-		return;
-	}
+    if (!asxCodeButtonsContainer || !toggleAsxButtonsBtn) {
+        console.warn('applyAsxButtonsState: Missing elements - container:', !!asxCodeButtonsContainer, 'button:', !!toggleAsxButtonsBtn);
+        return;
+    }
 
-	// If Cash & Assets view is active, fully hide and disable ASX controls
-	try {
-		const selIds = getCurrentSelectedWatchlistIds();
-		const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
-		const isCashView = Array.isArray(selIds) && selIds.includes(CASH_ID);
+    // If Cash & Assets view is active, fully hide and disable ASX controls
+    try {
+        const selIds = getCurrentSelectedWatchlistIds();
+        const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
+        const isCashView = Array.isArray(selIds) && selIds.includes(CASH_ID);
 
         if (isCashView) {
-			toggleAsxButtonsBtn.style.display = 'none';
-			toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
-			toggleAsxButtonsBtn.setAttribute('aria-expanded', 'false');
-			toggleAsxButtonsBtn.setAttribute('aria-pressed', 'false');
+            toggleAsxButtonsBtn.style.display = 'none';
+            toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
+            toggleAsxButtonsBtn.setAttribute('aria-expanded', 'false');
+            toggleAsxButtonsBtn.setAttribute('aria-pressed', 'false');
             if (asxCodeButtonsToggle) {
                 asxCodeButtonsToggle.style.display = 'none';
                 asxCodeButtonsToggle.setAttribute('aria-disabled', 'true');
                 asxCodeButtonsToggle.setAttribute('aria-expanded', 'false');
                 asxCodeButtonsToggle.setAttribute('aria-pressed', 'false');
             }
-			asxCodeButtonsContainer.classList.add('app-hidden');
-			asxCodeButtonsContainer.classList.remove('expanded');
-			asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
-			asxCodeButtonsContainer.style.display = 'none';
-			return;
-		}
-	} catch(_) {}
+            asxCodeButtonsContainer.classList.add('app-hidden');
+            asxCodeButtonsContainer.classList.remove('expanded');
+            asxCodeButtonsContainer.setAttribute('aria-hidden', 'true');
+            asxCodeButtonsContainer.style.display = 'none';
+            return;
+        }
+    } catch (_) { }
 
-	// FIX: Ensure ASX button state is properly restored from localStorage when switching away from Cash view
-	// This fixes the bug where ASX buttons don't show after switching from Cash view
-	try {
-		// Re-read the state from localStorage to ensure it's current
-		const savedState = readAsxExpandedFromStorage();
-		if (typeof window !== 'undefined') {
-			window.asxButtonsExpanded = savedState;
-		}
-	} catch(e) {
-		console.warn('ASX state restoration failed:', e);
-	}
+    // FIX: Ensure ASX button state is properly restored from localStorage when switching away from Cash view
+    // This fixes the bug where ASX buttons don't show after switching from Cash view
+    try {
+        // Re-read the state from localStorage to ensure it's current
+        const savedState = readAsxExpandedFromStorage();
+        if (typeof window !== 'undefined') {
+            window.asxButtonsExpanded = savedState;
+        }
+    } catch (e) {
+        console.warn('ASX state restoration failed:', e);
+    }
 
-	const hasButtons = !!asxCodeButtonsContainer.querySelector('button.asx-code-btn');
-	const shouldShow = !!hasButtons && getAsxButtonsExpanded();
+    const hasButtons = !!asxCodeButtonsContainer.querySelector('button.asx-code-btn');
+    const shouldShow = !!hasButtons && getAsxButtonsExpanded();
 
-	if (shouldShow) {
-		asxCodeButtonsContainer.classList.add('expanded');
-		asxCodeButtonsContainer.classList.remove('app-hidden');
-		asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
-		// Force display to ensure it overrides any conflicting CSS
-		asxCodeButtonsContainer.style.display = 'flex';
-		asxCodeButtonsContainer.style.opacity = '1';
-		asxCodeButtonsContainer.style.maxHeight = '500px';
+    if (shouldShow) {
+        asxCodeButtonsContainer.classList.add('expanded');
+        asxCodeButtonsContainer.classList.remove('app-hidden');
+        asxCodeButtonsContainer.setAttribute('aria-hidden', 'false');
+        // Force display to ensure it overrides any conflicting CSS
+        asxCodeButtonsContainer.style.display = 'flex';
+        asxCodeButtonsContainer.style.opacity = '1';
+        asxCodeButtonsContainer.style.maxHeight = '500px';
 
     } else {
         asxCodeButtonsContainer.classList.remove('expanded');
@@ -97,27 +97,27 @@ export function applyAsxButtonsState() {
     }
 
     if (!hasButtons) {
-		toggleAsxButtonsBtn.style.display = 'none';
-		toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
+        toggleAsxButtonsBtn.style.display = 'none';
+        toggleAsxButtonsBtn.setAttribute('aria-disabled', 'true');
         if (asxCodeButtonsToggle) {
             asxCodeButtonsToggle.style.display = 'none';
             asxCodeButtonsToggle.setAttribute('aria-disabled', 'true');
         }
-	} else {
-		toggleAsxButtonsBtn.style.display = 'inline-flex';
-		toggleAsxButtonsBtn.removeAttribute('aria-disabled');
+    } else {
+        toggleAsxButtonsBtn.style.display = 'inline-flex';
+        toggleAsxButtonsBtn.removeAttribute('aria-disabled');
         if (asxCodeButtonsToggle) {
             asxCodeButtonsToggle.style.display = 'inline-block';
             asxCodeButtonsToggle.removeAttribute('aria-disabled');
         }
-	}
+    }
 
-	try {
-		toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
-		toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
-		const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
-		if (labelSpan) labelSpan.textContent = 'ASX Codes';
-	} catch(_) {}
+    try {
+        toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!shouldShow));
+        toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!shouldShow));
+        const labelSpan = toggleAsxButtonsBtn.querySelector('.asx-toggle-label');
+        if (labelSpan) labelSpan.textContent = 'ASX Codes';
+    } catch (_) { }
 
     // Reflect state on new header two-line toggle
     try {
@@ -125,19 +125,19 @@ export function applyAsxButtonsState() {
             asxCodeButtonsToggle.setAttribute('aria-pressed', String(!!shouldShow));
             asxCodeButtonsToggle.setAttribute('aria-expanded', String(!!shouldShow));
         }
-    } catch(_) {}
+    } catch (_) { }
 
-	const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
-	if (chevronIcon) chevronIcon.classList.toggle('expanded', shouldShow);
+    const chevronIcon = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle');
+    if (chevronIcon) chevronIcon.classList.toggle('expanded', shouldShow);
 
     // Universal layout fix: after ASX buttons visibility changes, immediately recalc and reposition main content.
     try {
         if (window.repositionMainContentUnderHeader) {
-            requestAnimationFrame(()=> window.repositionMainContentUnderHeader());
+            requestAnimationFrame(() => window.repositionMainContentUnderHeader());
         } else if (window.adjustMainContentPadding) {
             requestAnimationFrame(window.adjustMainContentPadding);
         }
-    } catch(_) {}
+    } catch (_) { }
 }
 
 export function toggleCodeButtonsArrow() {
@@ -145,38 +145,38 @@ export function toggleCodeButtonsArrow() {
     const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
     const asxCodeButtonsToggle = document.getElementById('asxCodeButtonsToggle');
 
-	if (!toggleAsxButtonsBtn) {
-		console.warn('toggleCodeButtonsArrow: toggleAsxButtonsBtn not found');
-		return;
-	}
+    if (!toggleAsxButtonsBtn) {
+        console.warn('toggleCodeButtonsArrow: toggleAsxButtonsBtn not found');
+        return;
+    }
 
-	const selIds = getCurrentSelectedWatchlistIds();
-	const current = (selIds && selIds[0]) || null;
-	const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
+    const selIds = getCurrentSelectedWatchlistIds();
+    const current = (selIds && selIds[0]) || null;
+    const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
 
     if (current === CASH_ID) {
-		toggleAsxButtonsBtn.style.display = 'none';
+        toggleAsxButtonsBtn.style.display = 'none';
         if (asxCodeButtonsToggle) {
             asxCodeButtonsToggle.style.display = 'none';
             asxCodeButtonsToggle.setAttribute('aria-disabled', 'true');
             asxCodeButtonsToggle.setAttribute('aria-expanded', 'false');
             asxCodeButtonsToggle.setAttribute('aria-pressed', 'false');
         }
-		if (asxCodeButtonsContainer) {
-			asxCodeButtonsContainer.classList.add('app-hidden');
-			asxCodeButtonsContainer.style.display = 'none';
-		}
-	} else {
-		// FIX: Ensure ASX button state is properly restored when switching TO non-cash view
-		// This ensures the saved state from localStorage is applied immediately
-		try {
-			const savedState = readAsxExpandedFromStorage();
-			if (typeof window !== 'undefined') {
-				window.asxButtonsExpanded = savedState;
-			}
-		} catch(e) {
-			console.warn('ASX state restoration in toggleCodeButtonsArrow failed:', e);
-		}
+        if (asxCodeButtonsContainer) {
+            asxCodeButtonsContainer.classList.add('app-hidden');
+            asxCodeButtonsContainer.style.display = 'none';
+        }
+    } else {
+        // FIX: Ensure ASX button state is properly restored when switching TO non-cash view
+        // This ensures the saved state from localStorage is applied immediately
+        try {
+            const savedState = readAsxExpandedFromStorage();
+            if (typeof window !== 'undefined') {
+                window.asxButtonsExpanded = savedState;
+            }
+        } catch (e) {
+            console.warn('ASX state restoration in toggleCodeButtonsArrow failed:', e);
+        }
 
         toggleAsxButtonsBtn.style.display = '';
         if (asxCodeButtonsToggle) {
@@ -191,79 +191,79 @@ export function toggleCodeButtonsArrow() {
             // container does not remain visible when collapsed.
             asxCodeButtonsContainer.style.display = getAsxButtonsExpanded() ? 'flex' : 'none';
         }
-		applyAsxButtonsState();
-	}
+        applyAsxButtonsState();
+    }
 }
 
 export function getCurrentFormData() {
-	const comments = [];
-	const commentsFormContainer = document.getElementById('dynamicCommentsArea');
-	if (commentsFormContainer) {
-		commentsFormContainer.querySelectorAll('.comment-section').forEach(section => {
-			const titleInput = section.querySelector('.comment-title-input');
-			const textInput = section.querySelector('.comment-text-input');
-			const title = titleInput ? titleInput.value.trim() : '';
-			const text = textInput ? textInput.value.trim() : '';
-			if (title || text) comments.push({ title: title, text: text });
-		});
-	}
+    const comments = [];
+    const commentsFormContainer = document.getElementById('dynamicCommentsArea');
+    if (commentsFormContainer) {
+        commentsFormContainer.querySelectorAll('.comment-section').forEach(section => {
+            const titleInput = section.querySelector('.comment-title-input');
+            const textInput = section.querySelector('.comment-text-input');
+            const title = titleInput ? titleInput.value.trim() : '';
+            const text = textInput ? textInput.value.trim() : '';
+            if (title || text) comments.push({ title: title, text: text });
+        });
+    }
 
-	const shareNameInput = document.getElementById('shareName');
-	const currentPriceInput = document.getElementById('currentPrice');
-	const targetPriceInput = document.getElementById('targetPrice');
-	const dividendAmountInput = document.getElementById('dividendAmount');
-	const frankingCreditsInput = document.getElementById('frankingCredits');
-	const shareRatingSelect = document.getElementById('shareRating');
-	const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
-	const shareWatchlistEnhanced = document.getElementById('shareWatchlistEnhanced');
+    const shareNameInput = document.getElementById('shareName');
+    const currentPriceInput = document.getElementById('currentPrice');
+    const targetPriceInput = document.getElementById('targetPrice');
+    const dividendAmountInput = document.getElementById('dividendAmount');
+    const frankingCreditsInput = document.getElementById('frankingCredits');
+    const shareRatingSelect = document.getElementById('shareRating');
+    const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
+    const shareWatchlistEnhanced = document.getElementById('shareWatchlistEnhanced');
 
-	const portfolioSharesEl = document.getElementById('portfolioShares');
-	const portfolioAvgPriceEl = document.getElementById('portfolioAvgPrice');
-	const portfolioSharesVal = portfolioSharesEl ? parseFloat(portfolioSharesEl.value) : NaN;
-	const portfolioAvgPriceVal = portfolioAvgPriceEl ? parseFloat(portfolioAvgPriceEl.value) : NaN;
+    const portfolioSharesEl = document.getElementById('portfolioShares');
+    const portfolioAvgPriceEl = document.getElementById('portfolioAvgPrice');
+    const portfolioSharesVal = portfolioSharesEl ? parseFloat(portfolioSharesEl.value) : NaN;
+    const portfolioAvgPriceVal = portfolioAvgPriceEl ? parseFloat(portfolioAvgPriceEl.value) : NaN;
 
-	return {
-		shareName: (shareNameInput && shareNameInput.value ? shareNameInput.value : '').trim().toUpperCase(),
-		currentPrice: currentPriceInput ? parseFloat(currentPriceInput.value) : null,
-		entryPrice: null, // Will be populated from currentPrice in appService.js
-		entryDate: null, // Will be populated with current date in appService.js
-		targetPrice: targetPriceInput ? parseFloat(targetPriceInput.value) : NaN,
-		targetDirection: (document.getElementById('targetAboveCheckbox') && document.getElementById('targetAboveCheckbox').checked) ? 'above' : 'below',
-		dividendAmount: dividendAmountInput ? parseFloat(dividendAmountInput.value) : NaN,
-		frankingCredits: frankingCreditsInput ? parseFloat(frankingCreditsInput.value) : NaN,
-		starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0,
-		comments: comments,
-		watchlistId: shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null,
-		watchlistIds: (() => {
-			try {
-				if (shareWatchlistEnhanced) {
-					const enhancedVals = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(cb=>cb.value).filter(Boolean);
-					if (enhancedVals.length) return enhancedVals;
-				}
-			} catch(_) {}
-			const legacyEls = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
-			const legacyVals = Array.from(legacyEls).map(x => x.value).filter(Boolean);
-			if (legacyVals.length) return legacyVals;
-			const single = shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null;
-			return single ? [single] : null;
-		})(),
-		portfolioShares: isNaN(portfolioSharesVal) ? null : Math.trunc(portfolioSharesVal),
-		portfolioAvgPrice: isNaN(portfolioAvgPriceVal) ? null : portfolioAvgPriceVal
-	};
+    return {
+        shareName: (shareNameInput && shareNameInput.value ? shareNameInput.value : '').trim().toUpperCase(),
+        currentPrice: currentPriceInput ? parseFloat(currentPriceInput.value) : null,
+        entryPrice: null, // Will be populated from currentPrice in appService.js
+        entryDate: null, // Will be populated with current date in appService.js
+        targetPrice: targetPriceInput ? parseFloat(targetPriceInput.value) : NaN,
+        targetDirection: (document.getElementById('targetAboveCheckbox') && document.getElementById('targetAboveCheckbox').checked) ? 'above' : 'below',
+        dividendAmount: dividendAmountInput ? parseFloat(dividendAmountInput.value) : NaN,
+        frankingCredits: frankingCreditsInput ? parseFloat(frankingCreditsInput.value) : NaN,
+        starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0,
+        comments: comments,
+        watchlistId: shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null,
+        watchlistIds: (() => {
+            try {
+                if (shareWatchlistEnhanced) {
+                    const enhancedVals = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value).filter(Boolean);
+                    if (enhancedVals.length) return enhancedVals;
+                }
+            } catch (_) { }
+            const legacyEls = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
+            const legacyVals = Array.from(legacyEls).map(x => x.value).filter(Boolean);
+            if (legacyVals.length) return legacyVals;
+            const single = shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null;
+            return single ? [single] : null;
+        })(),
+        portfolioShares: isNaN(portfolioSharesVal) ? null : Math.trunc(portfolioSharesVal),
+        portfolioAvgPrice: isNaN(portfolioAvgPriceVal) ? null : portfolioAvgPriceVal
+    };
 }
 
 export function getCurrentCashAssetFormData() {
-	const comments = [];
-	const cashAssetCommentsContainer = document.getElementById('cashAssetCommentsContainer') || document.getElementById('cashAssetCommentsArea');
-	if (cashAssetCommentsContainer) {
-		cashAssetCommentsContainer.querySelectorAll('.comment-section').forEach(section => {
-			const titleInput = section.querySelector('.comment-title-input');
-			const textInput = section.querySelector('.comment-text-input');
-			const title = titleInput ? titleInput.value.trim() : '';
-			const text = textInput ? textInput.value.trim() : '';
-			if (title || text) comments.push({ title: title, text: text });
-		});
-	}
+    const comments = [];
+    const cashAssetCommentsContainer = document.getElementById('cashAssetCommentsContainer') || document.getElementById('cashAssetCommentsArea');
+    if (cashAssetCommentsContainer) {
+        cashAssetCommentsContainer.querySelectorAll('.comment-section').forEach(section => {
+            const titleInput = section.querySelector('.comment-title-input');
+            const textInput = section.querySelector('.comment-text-input');
+            const title = titleInput ? titleInput.value.trim() : '';
+            const text = textInput ? textInput.value.trim() : '';
+            if (title || text) comments.push({ title: title, text: text });
+        });
+    }
     const cashAssetNameInput = document.getElementById('cashAssetName');
     const cashAssetBalanceInput = document.getElementById('cashAssetBalance');
     // The modal checkbox was removed; use the model's isHidden value when editing an existing asset.
@@ -271,21 +271,21 @@ export function getCurrentCashAssetFormData() {
         name: (cashAssetNameInput && cashAssetNameInput.value ? cashAssetNameInput.value : '').trim(),
         balance: cashAssetBalanceInput ? parseFloat(cashAssetBalanceInput.value) : NaN,
         comments: comments,
-        isHidden: (function(){
+        isHidden: (function () {
             try {
                 if (window.selectedCashAssetDocId) {
                     const current = getUserCashCategories() || [];
                     const found = current.find(c => c && c.id === window.selectedCashAssetDocId);
                     return !!(found && found.isHidden);
                 }
-            } catch(_) {}
+            } catch (_) { }
             return false;
         })()
     };
 }
 
 // Backwards-compat: expose helpers on window for older code paths
-try { window.getCurrentFormData = getCurrentFormData; window.getCurrentCashAssetFormData = getCurrentCashAssetFormData; } catch(_) {}
+try { window.getCurrentFormData = getCurrentFormData; window.getCurrentCashAssetFormData = getCurrentCashAssetFormData; } catch (_) { }
 
 
 // Cash & Assets rendering helpers consolidated here
@@ -293,11 +293,11 @@ export function renderCashCategories() {
     const cashCategoriesContainer = document.getElementById('cashCategoriesContainer');
     if (!cashCategoriesContainer) { console.error('renderCashCategories: cashCategoriesContainer element not found.'); return; }
     const categories = getUserCashCategories();
-    try { console.log('[Diag][Cash] renderCashCategories called. Count=', Array.isArray(categories)?categories.length:'n/a'); } catch(_) {}
+    try { console.log('[Diag][Cash] renderCashCategories called. Count=', Array.isArray(categories) ? categories.length : 'n/a'); } catch (_) { }
     cashCategoriesContainer.innerHTML = '';
 
     const sortValue = getCurrentSortOrder();
-    const [field, order] = (sortValue||'').split('-');
+    const [field, order] = (sortValue || '').split('-');
     // Prefer centralized sort function if available (keeps behavior consistent across modules)
     let sorted = Array.isArray(categories) ? [...categories] : [];
     try {
@@ -310,14 +310,14 @@ export function renderCashCategories() {
             // Map UI logical fields to actual model properties
             const sortField = (field === 'totalDollar') ? 'balance' : field;
             if (sortField === 'balance') {
-                sorted.sort((a,b)=>{
-                    const aN = (typeof a.balance === 'number' && !isNaN(a.balance)) ? a.balance : (order==='asc'?Infinity:-Infinity);
-                    const bN = (typeof b.balance === 'number' && !isNaN(b.balance)) ? b.balance : (order==='asc'?Infinity:-Infinity);
-                    return order==='asc' ? aN-bN : bN-aN;
+                sorted.sort((a, b) => {
+                    const aN = (typeof a.balance === 'number' && !isNaN(a.balance)) ? a.balance : (order === 'asc' ? Infinity : -Infinity);
+                    const bN = (typeof b.balance === 'number' && !isNaN(b.balance)) ? b.balance : (order === 'asc' ? Infinity : -Infinity);
+                    return order === 'asc' ? aN - bN : bN - aN;
                 });
             } else if (sortField === 'name') {
-                sorted.sort((a,b)=> (a.name||'').toUpperCase().localeCompare((b.name||'').toUpperCase()));
-                if (order==='desc') sorted.reverse();
+                sorted.sort((a, b) => (a.name || '').toUpperCase().localeCompare((b.name || '').toUpperCase()));
+                if (order === 'desc') sorted.reverse();
             }
         }
     } catch (e) {
@@ -360,7 +360,7 @@ export function renderCashCategories() {
             hideBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                try { window.logDebug && window.logDebug('Cash Categories: hide toggle clicked for ID=' + category.id); } catch(_) {}
+                try { window.logDebug && window.logDebug('Cash Categories: hide toggle clicked for ID=' + category.id); } catch (_) { }
 
                 const newHidden = !Boolean(category.isHidden);
 
@@ -379,9 +379,9 @@ export function renderCashCategories() {
                         hideBtn.innerHTML = '<i class="fas fa-eye"></i>';
                     }
                     // Recalculate total immediately and re-render cash categories so hidden items reposition
-                    try { if (typeof calculateTotalCash === 'function') calculateTotalCash(); } catch(_) {}
-                    try { if (typeof renderCashCategories === 'function') renderCashCategories(); } catch(_) {}
-                } catch(_) {}
+                    try { if (typeof calculateTotalCash === 'function') calculateTotalCash(); } catch (_) { }
+                    try { if (typeof renderCashCategories === 'function') renderCashCategories(); } catch (_) { }
+                } catch (_) { }
 
                 // Persist change via AppService if available
                 try {
@@ -389,10 +389,10 @@ export function renderCashCategories() {
                         await window.AppService.updateCashCategoryVisibility(category.id, !!newHidden);
                     } else if (window.AppService && typeof window.AppService.saveCashAsset === 'function') {
                         // Fallback: perform a targeted save by selecting the asset and calling saveCashAsset
-                        try { window.selectedCashAssetDocId = category.id; } catch(_) {}
+                        try { window.selectedCashAssetDocId = category.id; } catch (_) { }
                         // Prepare a shallow form snapshot so saveCashAsset will pick up isHidden
                         // NOTE: getCurrentCashAssetFormData no longer includes a checkbox; rely on category.isHidden to be preserved by AppService before calling save
-                        try { await window.AppService.saveCashAsset(true); } catch(e) { throw e; }
+                        try { await window.AppService.saveCashAsset(true); } catch (e) { throw e; }
                     } else {
                         console.warn('No persistence API available to update cash category visibility.');
                     }
@@ -412,15 +412,15 @@ export function renderCashCategories() {
                             hideBtn.title = 'Hide asset';
                             hideBtn.innerHTML = '<i class="fas fa-eye"></i>';
                         }
-                        try { if (typeof calculateTotalCash === 'function') calculateTotalCash(); } catch(_) {}
-                        try { if (typeof renderCashCategories === 'function') renderCashCategories(); } catch(_) {}
-                    } catch(_) {}
-                    try { window.showCustomAlert && window.showCustomAlert('Error saving visibility change'); } catch(_) {}
+                        try { if (typeof calculateTotalCash === 'function') calculateTotalCash(); } catch (_) { }
+                        try { if (typeof renderCashCategories === 'function') renderCashCategories(); } catch (_) { }
+                    } catch (_) { }
+                    try { window.showCustomAlert && window.showCustomAlert('Error saving visibility change'); } catch (_) { }
                 }
             });
 
             categoryHeader.appendChild(hideBtn);
-        } catch(_) {}
+        } catch (_) { }
         categoryItem.appendChild(categoryHeader);
 
         const balanceDisplay = document.createElement('span');
@@ -433,30 +433,30 @@ export function renderCashCategories() {
             } else {
                 balanceDisplay.textContent = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num);
             }
-        } catch(_) { balanceDisplay.textContent = String(num); }
+        } catch (_) { balanceDisplay.textContent = String(num); }
         categoryItem.appendChild(balanceDisplay);
 
         categoryItem.addEventListener('click', () => {
-            try { window.logDebug && window.logDebug('Cash Categories: Card clicked for category ID: ' + category.id); } catch(_) {}
-            try { window.selectCashAsset && window.selectCashAsset(category.id); } catch(_) {}
+            try { window.logDebug && window.logDebug('Cash Categories: Card clicked for category ID: ' + category.id); } catch (_) { }
+            try { window.selectCashAsset && window.selectCashAsset(category.id); } catch (_) { }
             try {
                 // Diagnostic: record intent to open the modal and the current suppression state
-                try { window.logDebug && window.logDebug('UI: Requesting showAddEditCashCategoryModal for ID=' + category.id + ' (suppress=' + (window.__suppressCashModalReopen || 0) + ', justSaved=' + (window.__justSavedCashAssetId || 'null') + ')'); } catch(_) {}
+                try { window.logDebug && window.logDebug('UI: Requesting showAddEditCashCategoryModal for ID=' + category.id + ' (suppress=' + (window.__suppressCashModalReopen || 0) + ', justSaved=' + (window.__justSavedCashAssetId || 'null') + ')'); } catch (_) { }
                 showAddEditCashCategoryModal(category.id);
-            } catch(_) {}
+            } catch (_) { }
         });
 
         cashCategoriesContainer.appendChild(categoryItem);
     });
-    try { window.logDebug && window.logDebug('Cash Categories: UI rendered.'); } catch(_) {}
-    try { calculateTotalCash(); } catch(_) {}
+    try { window.logDebug && window.logDebug('Cash Categories: UI rendered.'); } catch (_) { }
+    try { calculateTotalCash(); } catch (_) { }
 }
 
 export function calculateTotalCash() {
     const totalEl = document.getElementById('totalCashDisplay');
     const categories = getUserCashCategories();
     let total = 0;
-    (categories||[]).forEach(category => {
+    (categories || []).forEach(category => {
         if (!category.isHidden && typeof category.balance === 'number' && !isNaN(category.balance)) total += category.balance;
     });
     if (totalEl) {
@@ -466,12 +466,12 @@ export function calculateTotalCash() {
             } else {
                 totalEl.textContent = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(total);
             }
-        } catch(_) { totalEl.textContent = String(total); }
+        } catch (_) { totalEl.textContent = String(total); }
     }
-    try { window.logDebug && window.logDebug('Cash Categories: Total cash calculated'); } catch(_) {}
+    try { window.logDebug && window.logDebug('Cash Categories: Total cash calculated'); } catch (_) { }
 }
 
-try { window.renderCashCategories = renderCashCategories; window.calculateTotalCash = calculateTotalCash; } catch(_) {}
+try { window.renderCashCategories = renderCashCategories; window.calculateTotalCash = calculateTotalCash; } catch (_) { }
 
 // Add button context helpers
 export function updateAddHeaderButton() {
@@ -483,12 +483,12 @@ export function updateAddHeaderButton() {
             const selIds = getCurrentSelectedWatchlistIds();
             const isCash = Array.isArray(selIds) && selIds.includes((window && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank');
             if (isCash) {
-                try { if (window.handleAddCashAssetClick) window.handleAddCashAssetClick(); else renderCashCategories() || null; } catch(_) {}
+                try { if (window.handleAddCashAssetClick) window.handleAddCashAssetClick(); else renderCashCategories() || null; } catch (_) { }
             } else {
-                try { if (window.handleAddShareClick) window.handleAddShareClick(); } catch(_) {}
+                try { if (window.handleAddShareClick) window.handleAddShareClick(); } catch (_) { }
             }
         });
-    } catch(_) {}
+    } catch (_) { }
 }
 
 export function updateSidebarAddButtonContext() {
@@ -500,23 +500,23 @@ export function updateSidebarAddButtonContext() {
             const selIds = getCurrentSelectedWatchlistIds();
             const isCash = Array.isArray(selIds) && selIds.includes((window && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank');
             if (isCash) {
-                try { if (window.handleAddCashAssetClick) window.handleAddCashAssetClick(); } catch(_) {}
+                try { if (window.handleAddCashAssetClick) window.handleAddCashAssetClick(); } catch (_) { }
             } else {
-                try { if (window.handleAddShareClick) window.handleAddShareClick(); } catch(_) {}
+                try { if (window.handleAddShareClick) window.handleAddShareClick(); } catch (_) { }
             }
         });
-    } catch(_) {}
+    } catch (_) { }
 }
 
 export function handleAddShareClick() {
-    try { if (window.openAddShareModal) window.openAddShareModal(); } catch(_) {}
+    try { if (window.openAddShareModal) window.openAddShareModal(); } catch (_) { }
 }
 
 export function handleAddCashAssetClick() {
-    try { if (window.showAddEditCashCategoryModal) window.showAddEditCashCategoryModal(null); else renderCashCategories(); } catch(_) {}
+    try { if (window.showAddEditCashCategoryModal) window.showAddEditCashCategoryModal(null); else renderCashCategories(); } catch (_) { }
 }
 
-try { window.updateAddHeaderButton = updateAddHeaderButton; window.updateSidebarAddButtonContext = updateSidebarAddButtonContext; window.handleAddShareClick = handleAddShareClick; window.handleAddCashAssetClick = handleAddCashAssetClick; } catch(_) {}
+try { window.updateAddHeaderButton = updateAddHeaderButton; window.updateSidebarAddButtonContext = updateSidebarAddButtonContext; window.handleAddShareClick = handleAddShareClick; window.handleAddCashAssetClick = handleAddCashAssetClick; } catch (_) { }
 
 // Cash modal open helper (moved from script)
 export function showAddEditCashCategoryModal(assetIdToEdit = null) {
@@ -562,36 +562,36 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
         container.appendChild(wrap);
 
         if (focus) {
-            try { if (window.safeFocus) window.safeFocus(titleInput); else try { titleInput.focus({ preventScroll:true }); } catch(_) { titleInput.focus(); } } catch(_) {}
+            try { if (window.safeFocus) window.safeFocus(titleInput); else try { titleInput.focus({ preventScroll: true }); } catch (_) { titleInput.focus(); } } catch (_) { }
         }
 
         // Wire up dirty-state listeners and delete behavior
-        try { titleInput.addEventListener('input', checkCashAssetFormDirtyState); } catch(_) {}
-        try { textArea.addEventListener('input', checkCashAssetFormDirtyState); } catch(_) {}
+        try { titleInput.addEventListener('input', checkCashAssetFormDirtyState); } catch (_) { }
+        try { textArea.addEventListener('input', checkCashAssetFormDirtyState); } catch (_) { }
         try {
             deleteBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                try { wrap.remove(); } catch(_) { if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap); }
-                try { checkCashAssetFormDirtyState(); } catch(_) {}
+                try { wrap.remove(); } catch (_) { if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap); }
+                try { checkCashAssetFormDirtyState(); } catch (_) { }
             });
-        } catch(_) {}
+        } catch (_) { }
     }
 
     if (assetIdToEdit) {
-        const asset = (getUserCashCategories()||[]).find(a=>a && a.id===assetIdToEdit);
-        if (!asset) { try { window.showCustomAlert && window.showCustomAlert('Cash asset not found.'); } catch(_) {} return; }
-        try { window.selectedCashAssetDocId = assetIdToEdit; } catch(_) {}
+        const asset = (getUserCashCategories() || []).find(a => a && a.id === assetIdToEdit);
+        if (!asset) { try { window.showCustomAlert && window.showCustomAlert('Cash asset not found.'); } catch (_) { } return; }
+        // selectedCashAssetDocId will be set after form population
         // Guard: if a cash asset was just saved, suppress immediate re-open to avoid close->reopen loop
         try {
             if (window.__suppressCashModalReopen && window.__justSavedCashAssetId) {
                 // If this open is for the same asset that was just saved, ignore it
                 if (assetIdToEdit && window.__justSavedCashAssetId === assetIdToEdit) {
-                    try { window.logDebug && window.logDebug('UI: Suppressing immediate reopen of cash modal for just-saved asset ID: ' + assetIdToEdit); } catch(_) {}
-                    try { console.trace && console.trace('TRACE: Suppressed cash modal reopen for asset ID: ' + assetIdToEdit); } catch(_) {}
+                    try { window.logDebug && window.logDebug('UI: Suppressing immediate reopen of cash modal for just-saved asset ID: ' + assetIdToEdit); } catch (_) { }
+                    try { console.trace && console.trace('TRACE: Suppressed cash modal reopen for asset ID: ' + assetIdToEdit); } catch (_) { }
                     return; // Suppress reopen
                 }
             }
-        } catch(_) {}
+        } catch (_) { }
         if (cashFormTitle) {
             cashFormTitle.textContent = 'Edit Cash Asset';
 
@@ -616,12 +616,12 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
 
 
         if (cashAssetNameInput) cashAssetNameInput.value = asset.name || '';
-        if (cashAssetBalanceInput) cashAssetBalanceInput.value = (typeof asset.balance==='number' && !isNaN(asset.balance)) ? String(asset.balance) : '';
-        if (deleteCashAssetBtn) try { deleteCashAssetBtn.classList.remove('hidden'); } catch(_) {}
+        if (cashAssetBalanceInput) cashAssetBalanceInput.value = (typeof asset.balance === 'number' && !isNaN(asset.balance)) ? String(asset.balance) : '';
+        if (deleteCashAssetBtn) try { deleteCashAssetBtn.classList.remove('hidden'); } catch (_) { }
         if (cashAssetCommentsContainer) {
             cashAssetCommentsContainer.innerHTML = '';
             if (Array.isArray(asset.comments) && asset.comments.length) {
-                asset.comments.forEach(c=> addCommentSection(cashAssetCommentsContainer, c.title, c.text, false));
+                asset.comments.forEach(c => addCommentSection(cashAssetCommentsContainer, c.title, c.text, false));
             } else {
                 addCommentSection(cashAssetCommentsContainer, '', '', true);
             }
@@ -707,12 +707,12 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
                 }
             }, 200);
         }
-        if (addCashAssetCommentBtn) try { addCashAssetCommentBtn.classList.remove('hidden'); } catch(_) {}
-    // isHidden is managed on the card via the on-card toggle; modal does not expose a hide checkbox
+        if (addCashAssetCommentBtn) try { addCashAssetCommentBtn.classList.remove('hidden'); } catch (_) { }
+        // isHidden is managed on the card via the on-card toggle; modal does not expose a hide checkbox
         if (deleteCashAssetBtn) {
             try {
                 deleteCashAssetBtn.onclick = null;
-                deleteCashAssetBtn.onclick = async function() {
+                deleteCashAssetBtn.onclick = async function () {
                     try {
                         // Get the asset name for the confirm/notification
                         const assets = getUserCashCategories() || [];
@@ -720,7 +720,7 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
                         const assetName = assetToDelete ? assetToDelete.name : 'Cash Asset';
 
                         const confirmFn = (typeof window.showCustomConfirm === 'function') ? window.showCustomConfirm : null;
-                        if (!confirmFn) { try { window.showCustomAlert && window.showCustomAlert('Confirmation UI unavailable, deletion cancelled.'); } catch(_) {} return; }
+                        if (!confirmFn) { try { window.showCustomAlert && window.showCustomAlert('Confirmation UI unavailable, deletion cancelled.'); } catch (_) { } return; }
 
                         confirmFn(`Delete "${assetName}"? This action cannot be undone.`, async (confirmed) => {
                             if (!confirmed) return;
@@ -729,19 +729,19 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
                                     await window.AppService.deleteCashCategory(window.selectedCashAssetDocId);
                                 }
                                 // Show success toast with asset name
-                                try { window.showCustomAlert && window.showCustomAlert(`"${assetName}" deleted successfully!`, 1500); } catch(_) {}
+                                try { window.showCustomAlert && window.showCustomAlert(`"${assetName}" deleted successfully!`, 1500); } catch (_) { }
                                 // Update UI and close modal
-                                try { if (typeof window.renderCashCategories === 'function') window.renderCashCategories(); } catch(_) {}
-                                try { if (typeof window.calculateTotalCash === 'function') window.calculateTotalCash(); } catch(_) {}
-                                try { if (window.closeModals) window.closeModals(); else if (cashAssetFormModal) cashAssetFormModal.style.display='none'; } catch(_) {}
-                            } catch(e) {
+                                try { if (typeof window.renderCashCategories === 'function') window.renderCashCategories(); } catch (_) { }
+                                try { if (typeof window.calculateTotalCash === 'function') window.calculateTotalCash(); } catch (_) { }
+                                try { if (window.closeModals) window.closeModals(); else if (cashAssetFormModal) cashAssetFormModal.style.display = 'none'; } catch (_) { }
+                            } catch (e) {
                                 console.error('Delete cash asset failed', e);
-                                try { window.showCustomAlert && window.showCustomAlert('Failed to delete cash asset.', 2000); } catch(_) {}
+                                try { window.showCustomAlert && window.showCustomAlert('Failed to delete cash asset.', 2000); } catch (_) { }
                             }
                         });
-                    } catch(_) {}
+                    } catch (_) { }
                 };
-            } catch(_) {}
+            } catch (_) { }
         }
     } else {
         if (cashFormTitle) {
@@ -825,18 +825,18 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
                 }
             }, 200);
         }
-        if (addCashAssetCommentBtn) try { addCashAssetCommentBtn.classList.remove('hidden'); } catch(_) {}
-    // Modal reset: isHidden remains controlled by the card state; no modal checkbox to reset
-        try { window.selectedCashAssetDocId = null; } catch(_) {}
+        if (addCashAssetCommentBtn) try { addCashAssetCommentBtn.classList.remove('hidden'); } catch (_) { }
+        // Modal reset: isHidden remains controlled by the card state; no modal checkbox to reset
+        // selectedCashAssetDocId will be set after form population
     }
 
-    try { window.setIconDisabled && window.setIconDisabled(document.getElementById('saveCashAssetBtn'), true); } catch(_) {}
+    try { window.setIconDisabled && window.setIconDisabled(document.getElementById('saveCashAssetBtn'), true); } catch (_) { }
     try {
-        try { window.logDebug && window.logDebug('UI: Showing cash asset modal for ID=' + (assetIdToEdit || 'new')); } catch(_) {}
-        try { console.trace && console.trace('TRACE: showAddEditCashCategoryModal called for ID=' + (assetIdToEdit || 'new')); } catch(_) {}
+        try { window.logDebug && window.logDebug('UI: Showing cash asset modal for ID=' + (assetIdToEdit || 'new')); } catch (_) { }
+        try { console.trace && console.trace('TRACE: showAddEditCashCategoryModal called for ID=' + (assetIdToEdit || 'new')); } catch (_) { }
         window.showModal ? window.showModal(cashAssetFormModal) : cashAssetFormModal.classList.remove('app-hidden');
-        cashAssetFormModal.style.display='flex';
-    } catch(_) {}
+        cashAssetFormModal.style.display = 'flex';
+    } catch (_) { }
 
     // FINAL FORCE: Ensure add button is visible after modal is shown
     setTimeout(() => {
@@ -884,13 +884,32 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
 
     try {
         if (cashAssetNameInput && cashAssetNameInput.focus) {
-            if (window.safeFocus) window.safeFocus(cashAssetNameInput); else { try { cashAssetNameInput.focus({ preventScroll:true }); } catch(_) { cashAssetNameInput.focus(); } }
+            if (window.safeFocus) window.safeFocus(cashAssetNameInput); else { try { cashAssetNameInput.focus({ preventScroll: true }); } catch (_) { cashAssetNameInput.focus(); } }
         }
-    } catch(_) {}
-    try { window.checkCashAssetFormDirtyState && window.checkCashAssetFormDirtyState(); } catch(_) {}
+    } catch (_) { }
+
+    // CRITICAL: Set selectedCashAssetDocId and originalCashAssetData appropriately
+    // This must happen AFTER form population and BEFORE checkCashAssetFormDirtyState
+    try {
+        if (assetIdToEdit) {
+            // For edits: capture the current form state as the baseline for dirty checking
+            window.selectedCashAssetDocId = assetIdToEdit;
+            window.originalCashAssetData = getCurrentCashAssetFormData();
+            console.log('[Cash Asset] Edit mode - originalCashAssetData set:', window.originalCashAssetData);
+        } else {
+            // For new assets: ensure both are null so dirty check doesn't apply
+            window.selectedCashAssetDocId = null;
+            window.originalCashAssetData = null;
+            console.log('[Cash Asset] New asset mode - originalCashAssetData cleared');
+        }
+    } catch (e) {
+        console.warn('[Cash Asset] Failed to set originalCashAssetData:', e);
+    }
+
+    try { window.checkCashAssetFormDirtyState && window.checkCashAssetFormDirtyState(); } catch (_) { }
 }
 
-try { window.showAddEditCashCategoryModal = showAddEditCashCategoryModal; } catch(_) {}
+try { window.showAddEditCashCategoryModal = showAddEditCashCategoryModal; } catch (_) { }
 
 // Ensure the comments area positioning is reapplied whenever the cash modal DOM updates
 function applyCashCommentsOffsets() {
@@ -914,8 +933,8 @@ function applyCashCommentsOffsets() {
             actionRow.style.top = '33px';
         }
         // Debug hook
-        try { console.log('applyCashCommentsOffsets executed'); } catch(_) {}
-    } catch (e) { try { console.error('applyCashCommentsOffsets error', e); } catch(_) {} }
+        try { console.log('applyCashCommentsOffsets executed'); } catch (_) { }
+    } catch (e) { try { console.error('applyCashCommentsOffsets error', e); } catch (_) { } }
 }
 
 try {
@@ -930,5 +949,5 @@ try {
         // Apply immediately in case modal already present
         setTimeout(applyCashCommentsOffsets, 50);
     }
-} catch(_) {}
+} catch (_) { }
 
