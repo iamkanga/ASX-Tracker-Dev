@@ -22,7 +22,7 @@ const dividendCalcBtn = document.getElementById('dividendCalcBtn');
 const asxCodeButtonsContainer = document.getElementById('asxCodeButtonsContainer');
 // Ensure scroll class applied (id container present in DOM from HTML)
 if (asxCodeButtonsContainer && !asxCodeButtonsContainer.classList.contains('asx-code-buttons-scroll')) {
-    try { asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll'); } catch(_) {}
+    try { asxCodeButtonsContainer.classList.add('asx-code-buttons-scroll'); } catch (_) { }
 }
 
 // Dynamic unified loader injection
@@ -43,14 +43,14 @@ try {
                 const tableContainer = document.querySelector('#stockWatchlistSection .table-container');
                 if (tableContainer && tableContainer.parentNode) tableContainer.parentNode.insertBefore(wrapper, tableContainer.nextSibling);
                 else injectTarget.appendChild(wrapper);
-            } catch(_) { injectTarget.appendChild(wrapper); }
+            } catch (_) { injectTarget.appendChild(wrapper); }
             // Expose a helper to remove the injected loader
             window.__dynamicUnifiedLoaderId = 'dynamic-unified-loader';
         }
     }
-                    } catch (e) {
-                        try { console.warn('[LoaderInject] failed to inject dynamic loader', e); } catch (_) { }
-                    }
+} catch (e) {
+    try { console.warn('[LoaderInject] failed to inject dynamic loader', e); } catch (_) { }
+}
 // Frontend helper: call the Apps Script web app to trigger a privileged sync
 // Replace DEPLOYED_WEBAPP_URL with your actual deployed Apps Script Web App URL
 window.triggerServerSideGlobalSettingsSync = async function triggerServerSideGlobalSettingsSync(userId) {
@@ -93,19 +93,19 @@ window.triggerServerSideGlobalSettingsSync = async function triggerServerSideGlo
         console.warn('[SyncTrigger] Primary call failed (will attempt JSONP fallback)', err);
         return new Promise((resolve) => {
             const callbackName = '__asx_sync_cb_' + Math.random().toString(36).slice(2);
-            window[callbackName] = function(result) {
-                try { delete window[callbackName]; } catch(_) {}
+            window[callbackName] = function (result) {
+                try { delete window[callbackName]; } catch (_) { }
                 resolve(result || { ok: false, error: 'jsonp-no-result' });
             };
             const script = document.createElement('script');
             script.src = DEPLOYED_WEBAPP_URL + '?userId=' + encodeURIComponent(userId) + '&callback=' + callbackName;
-            script.onerror = function(e) {
-                try { delete window[callbackName]; } catch(_) {}
+            script.onerror = function (e) {
+                try { delete window[callbackName]; } catch (_) { }
                 resolve({ ok: false, error: 'jsonp-load-failed' });
             };
             document.head.appendChild(script);
             // Cleanup script tag after a short timeout
-            setTimeout(() => { try { script.remove(); } catch(_) {} }, 15_000);
+            setTimeout(() => { try { script.remove(); } catch (_) { } }, 15_000);
         });
     }
 };
@@ -126,24 +126,24 @@ function enforceTargetHitStyling() {
     return undefined;
 }
 
-window.__renderTargetHitDetailsModalImpl = function(options={}) {
+window.__renderTargetHitDetailsModalImpl = function (options = {}) {
     try {
         const modal = document.getElementById('targetHitDetailsModal');
         if (!modal) { console.warn('[GlobalAlerts] targetHitDetailsModal not found'); return; }
-    // Locate the real containers used in the HTML
-    const gainersContainer = modal.querySelector('#globalGainersContainer');
-    const losersContainer = modal.querySelector('#globalLosersContainer');
-    const hiloHighContainer = modal.querySelector('#globalHigh52Container');
-    const hiloLowContainer = modal.querySelector('#globalLow52Container');
-    if (!gainersContainer && !losersContainer && !hiloHighContainer && !hiloLowContainer) { console.warn('[GlobalAlerts] modal containers missing'); return; }
+        // Locate the real containers used in the HTML
+        const gainersContainer = modal.querySelector('#globalGainersContainer');
+        const losersContainer = modal.querySelector('#globalLosersContainer');
+        const hiloHighContainer = modal.querySelector('#globalHigh52Container');
+        const hiloLowContainer = modal.querySelector('#globalLow52Container');
+        if (!gainersContainer && !losersContainer && !hiloHighContainer && !hiloLowContainer) { console.warn('[GlobalAlerts] modal containers missing'); return; }
 
-    // Clear previous contents
-    try { if (gainersContainer) gainersContainer.innerHTML = ''; } catch(_) {}
-    try { if (losersContainer) losersContainer.innerHTML = ''; } catch(_) {}
-    try { if (hiloHighContainer) hiloHighContainer.innerHTML = ''; } catch(_) {}
-    try { if (hiloLowContainer) hiloLowContainer.innerHTML = ''; } catch(_) {}
+        // Clear previous contents
+        try { if (gainersContainer) gainersContainer.innerHTML = ''; } catch (_) { }
+        try { if (losersContainer) losersContainer.innerHTML = ''; } catch (_) { }
+        try { if (hiloHighContainer) hiloHighContainer.innerHTML = ''; } catch (_) { }
+        try { if (hiloLowContainer) hiloLowContainer.innerHTML = ''; } catch (_) { }
 
-    // Render GLOBAL_MOVERS (window.globalMovers expected shape: { up: [...], down: [...], upSample, downSample })
+        // Render GLOBAL_MOVERS (window.globalMovers expected shape: { up: [...], down: [...], upSample, downSample })
         // If central doc is missing or empty, fall back to the last local snapshot computed by applyGlobalSummaryFilter
         // Accept both modern '*Hits' names and legacy names (up/down). Prefer new names but fall back to legacy.
         function coerceMoversShape(raw) {
@@ -170,8 +170,8 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 const snap = window.__lastMoversSnapshot || null;
                 if (snap && Array.isArray(snap.entries)) {
                     // Build a gm-shaped object from the snapshot entries
-                    const ups = snap.entries.filter(e=> e.direction === 'up').map(e=>({ code: e.code, name: e.name||null, live: e.live, prevClose: e.prev, pct: e.pct, change: e.change, direction: 'up' }));
-                    const downs = snap.entries.filter(e=> e.direction === 'down').map(e=>({ code: e.code, name: e.name||null, live: e.live, prevClose: e.prev, pct: e.pct, change: e.change, direction: 'down' }));
+                    const ups = snap.entries.filter(e => e.direction === 'up').map(e => ({ code: e.code, name: e.name || null, live: e.live, prevClose: e.prev, pct: e.pct, change: e.change, direction: 'up' }));
+                    const downs = snap.entries.filter(e => e.direction === 'down').map(e => ({ code: e.code, name: e.name || null, live: e.live, prevClose: e.prev, pct: e.pct, change: e.change, direction: 'down' }));
                     gm = { updatedAt: (new Date()).toISOString(), up: ups, down: downs, upCount: ups.length, downCount: downs.length, totalCount: ups.length + downs.length, thresholds: null };
                     window.globalMovers = gm; // expose for debugging
                 } else {
@@ -181,7 +181,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 gm = window.globalMovers || { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
             }
         }
-    // --- Filtering refinement (frontend safeguard) ---
+        // --- Filtering refinement (frontend safeguard) ---
         // Some environments have reported an excessively large movers list (hundreds of entries)
         // when the centralized GLOBAL_MOVERS doc either (a) lacks thresholds metadata or (b) was
         // populated before stricter server filtering was deployed. To keep the UI concise and
@@ -208,7 +208,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                     };
                 }
                 // Read CURRENT local settings every modal open (no caching) – they may have changed without reload
-                function numPos(v){ return (typeof v === 'number' && isFinite(v) && v>0) ? v : null; }
+                function numPos(v) { return (typeof v === 'number' && isFinite(v) && v > 0) ? v : null; }
                 const local = {
                     upPercent: numPos(window.globalPercentIncrease),
                     upDollar: numPos(window.globalDollarIncrease),
@@ -217,7 +217,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                     minimumPrice: numPos(window.globalMinimumPrice)
                 };
                 // Decide effective thresholds: prefer CURRENT local settings; fall back to server when local is unset
-                function preferLocal(loc, srv){ return (loc!=null && isFinite(loc) && loc>0) ? loc : ((srv!=null && isFinite(srv) && srv>0) ? srv : null); }
+                function preferLocal(loc, srv) { return (loc != null && isFinite(loc) && loc > 0) ? loc : ((srv != null && isFinite(srv) && srv > 0) ? srv : null); }
                 const effective = {
                     upPercent: preferLocal(local.upPercent, server && server.upPercent),
                     upDollar: preferLocal(local.upDollar, server && server.upDollar),
@@ -231,32 +231,32 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                     const prev = (item.prevClose != null && !isNaN(item.prevClose)) ? Number(item.prevClose) : (item.prevClosePrice != null && !isNaN(item.prevClosePrice) ? Number(item.prevClosePrice) : null);
                     const providedPct = (item.pct != null && !isNaN(item.pct)) ? Number(item.pct) : null;
                     const providedCh = (item.change != null && !isNaN(item.change)) ? Number(item.change) : (item.ch != null && !isNaN(item.ch) ? Number(item.ch) : null);
-                    const computedCh = (live!=null && prev!=null) ? (live - prev) : null;
-                    const computedPct = (computedCh!=null && prev!=null && prev!==0) ? ((computedCh/prev)*100) : null;
-                    const dir = (item.direction||'').toLowerCase() || ((computedCh!=null) ? (computedCh>0?'up':(computedCh<0?'down':'')) : '');
+                    const computedCh = (live != null && prev != null) ? (live - prev) : null;
+                    const computedPct = (computedCh != null && prev != null && prev !== 0) ? ((computedCh / prev) * 100) : null;
+                    const dir = (item.direction || '').toLowerCase() || ((computedCh != null) ? (computedCh > 0 ? 'up' : (computedCh < 0 ? 'down' : '')) : '');
 
                     if (effective.minimumPrice && live != null && live < effective.minimumPrice) return false;
 
                     // Evaluate thresholds using OR logic across percent and dollar
                     const evalUp = () => {
-                        const pctAvail = (computedPct!=null) || (providedPct!=null);
-                        const chAvail = (computedCh!=null) || (providedCh!=null);
-                        const pctVal = (computedPct!=null) ? computedPct : providedPct;
-                        const chVal = (computedCh!=null) ? computedCh : providedCh;
-                        const pctOk = (effective.upPercent!=null && pctAvail) ? (pctVal >= effective.upPercent) : null;
-                        const dolOk = (effective.upDollar!=null && chAvail) ? (Math.abs(chVal) >= effective.upDollar) : null;
+                        const pctAvail = (computedPct != null) || (providedPct != null);
+                        const chAvail = (computedCh != null) || (providedCh != null);
+                        const pctVal = (computedPct != null) ? computedPct : providedPct;
+                        const chVal = (computedCh != null) ? computedCh : providedCh;
+                        const pctOk = (effective.upPercent != null && pctAvail) ? (pctVal >= effective.upPercent) : null;
+                        const dolOk = (effective.upDollar != null && chAvail) ? (Math.abs(chVal) >= effective.upDollar) : null;
                         // If at least one criterion is measurable, require that measurable one(s) pass (OR)
                         if (pctOk !== null || dolOk !== null) return (!!pctOk) || (!!dolOk);
                         // If nothing measurable but item was classified as up, keep it (don’t over-prune)
                         return true;
                     };
                     const evalDown = () => {
-                        const pctAvail = (computedPct!=null) || (providedPct!=null);
-                        const chAvail = (computedCh!=null) || (providedCh!=null);
-                        const pctValAbs = (computedPct!=null) ? Math.abs(computedPct) : (providedPct!=null ? Math.abs(providedPct) : null);
-                        const chValAbs = (computedCh!=null) ? Math.abs(computedCh) : (providedCh!=null ? Math.abs(providedCh) : null);
-                        const pctOk = (effective.downPercent!=null && pctAvail) ? (pctValAbs >= effective.downPercent) : null;
-                        const dolOk = (effective.downDollar!=null && chAvail) ? (chValAbs >= effective.downDollar) : null;
+                        const pctAvail = (computedPct != null) || (providedPct != null);
+                        const chAvail = (computedCh != null) || (providedCh != null);
+                        const pctValAbs = (computedPct != null) ? Math.abs(computedPct) : (providedPct != null ? Math.abs(providedPct) : null);
+                        const chValAbs = (computedCh != null) ? Math.abs(computedCh) : (providedCh != null ? Math.abs(providedCh) : null);
+                        const pctOk = (effective.downPercent != null && pctAvail) ? (pctValAbs >= effective.downPercent) : null;
+                        const dolOk = (effective.downDollar != null && chAvail) ? (chValAbs >= effective.downDollar) : null;
                         if (pctOk !== null || dolOk !== null) return (!!pctOk) || (!!dolOk);
                         return true;
                     };
@@ -272,7 +272,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 gm.__serverThresholds = server; gm.__localThresholds = local; gm.__effectiveThresholds = effective;
                 gm.upFiltered = upFiltered; gm.downFiltered = downFiltered; gm.filteredTotal = upFiltered.length + downFiltered.length;
                 if (window.DEBUG_MODE) {
-                    try { /* GlobalMovers filter diagnostics removed */ } catch(_){ }
+                    try { /* GlobalMovers filter diagnostics removed */ } catch (_) { }
                 }
             }
         } catch (fErr) { console.warn('[GlobalMovers][filter] frontend filtering failed', fErr); }
@@ -304,15 +304,15 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                     <div class="mover-change ${dirClass}">${arrow} ${pct}</div>
                 </div>`;
             // click behavior: open search/detail
-            card.addEventListener('click', (e)=>{
-                try { hideModal(targetHitDetailsModal); } catch(_){}
-                try { openStockSearchForCode(code); } catch(_){}
+            card.addEventListener('click', (e) => {
+                try { hideModal(targetHitDetailsModal); } catch (_) { }
+                try { openStockSearchForCode(code); } catch (_) { }
             });
             return card;
         }
 
         // Add a scroll wrapper to ensure long lists are scrollable
-        function ensureScrollHost(container){
+        function ensureScrollHost(container) {
             if (!container) return null;
             let inner = container.querySelector('.notification-list-inner');
             if (!inner) {
@@ -356,7 +356,7 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                                     </div>
                                 </div>
                             `;
-                            card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openStockSearchForCode(code); });
+                            card.addEventListener('click', () => { try { hideModal(targetHitDetailsModal); } catch (_) { } openStockSearchForCode(code); });
                         }
                     } catch (e) {
                         card = document.createElement('div');
@@ -369,115 +369,115 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             } catch (err) { console.warn('renderMoversIntoHost failed', err); }
         }
 
-                // Extended mover card showing dollar and percent changes
-            function renderMoverCardWithMovement(o) {
-                const code = (o.code || o.shareCode || '').toUpperCase();
-                const name = sanitizeCompanyName(o.name || o.companyName || '', code);
-                const liveNum = (o.live != null && !isNaN(Number(o.live))) ? Number(o.live) : null;
-                const prev = (o.prevClose != null && !isNaN(Number(o.prevClose))) ? Number(o.prevClose) : (o.prevClosePrice != null ? Number(o.prevClosePrice) : null);
-                const ch = (liveNum != null && prev != null) ? Number((liveNum - prev).toFixed(2)) : (o.ch != null ? Number(o.ch) : null);
-                const pct = (ch != null && prev != null && prev !== 0) ? Number(((ch / prev) * 100).toFixed(2)) : (o.pct != null ? Number(o.pct) : null);
-                const dirClass = (ch === null || ch === 0) ? 'flat' : (ch > 0 ? 'up' : 'down');
-                const arrow = dirClass === 'up' ? '▲' : (dirClass === 'down' ? '▼' : '');
+        // Extended mover card showing dollar and percent changes
+        function renderMoverCardWithMovement(o) {
+            const code = (o.code || o.shareCode || '').toUpperCase();
+            const name = sanitizeCompanyName(o.name || o.companyName || '', code);
+            const liveNum = (o.live != null && !isNaN(Number(o.live))) ? Number(o.live) : null;
+            const prev = (o.prevClose != null && !isNaN(Number(o.prevClose))) ? Number(o.prevClose) : (o.prevClosePrice != null ? Number(o.prevClosePrice) : null);
+            const ch = (liveNum != null && prev != null) ? Number((liveNum - prev).toFixed(2)) : (o.ch != null ? Number(o.ch) : null);
+            const pct = (ch != null && prev != null && prev !== 0) ? Number(((ch / prev) * 100).toFixed(2)) : (o.pct != null ? Number(o.pct) : null);
+            const dirClass = (ch === null || ch === 0) ? 'flat' : (ch > 0 ? 'up' : 'down');
+            const arrow = dirClass === 'up' ? '▲' : (dirClass === 'down' ? '▼' : '');
 
-                const card = document.createElement('div');
-                card.className = 'notification-card mover-card ' + dirClass;
-                card.setAttribute('data-code', code);
-                const pctText = (pct!=null) ? `${pct>0?'+':''}${pct}%` : '';
-                const chText = (ch!=null) ? `${ch>0?'+':''}$${Number(ch).toFixed(2)}` : '-';
-                card.innerHTML = `
+            const card = document.createElement('div');
+            card.className = 'notification-card mover-card ' + dirClass;
+            card.setAttribute('data-code', code);
+            const pctText = (pct != null) ? `${pct > 0 ? '+' : ''}${pct}%` : '';
+            const chText = (ch != null) ? `${ch > 0 ? '+' : ''}$${Number(ch).toFixed(2)}` : '-';
+            card.innerHTML = `
                     <div class="notification-card-row">
                         <div class="notification-card-left">
                             <div class="notification-code">${code}</div>
                             <div class="notification-name small">${name}</div>
                         </div>
                         <div class="notification-card-right">
-                            <div class="notification-live">${liveNum!=null?('$'+formatAdaptivePrice(liveNum)):'<span class="na">N/A</span>'}</div>
+                            <div class="notification-live">${liveNum != null ? ('$' + formatAdaptivePrice(liveNum)) : '<span class="na">N/A</span>'}</div>
                         </div>
                     </div>
                     <div class="notification-card-bottom mover-bottom-row">
-                        <div class="mover-change ${dirClass}">${arrow} ${chText}${pctText?` (${pctText})`:''}</div>
+                        <div class="mover-change ${dirClass}">${arrow} ${chText}${pctText ? ` (${pctText})` : ''}</div>
                     </div>`;
-                card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openStockSearchForCode(code); });
-                return card;
-            }
+            card.addEventListener('click', () => { try { hideModal(targetHitDetailsModal); } catch (_) { } openStockSearchForCode(code); });
+            return card;
+        }
 
-            // Build sections from filtered arrays
-            let upArr = (gm && Array.isArray(gm.upFiltered)) ? gm.upFiltered : (Array.isArray(gm.up) ? gm.up : []);
-            let downArr = (gm && Array.isArray(gm.downFiltered)) ? gm.downFiltered : (Array.isArray(gm.down) ? gm.down : []);
-            // Fallback: if filtering produced empty results but raw arrays are populated, use raw arrays to avoid blank UI
-            if (Array.isArray(gm.up) && upArr.length === 0 && gm.up.length > 0) upArr = gm.up;
-            if (Array.isArray(gm.down) && downArr.length === 0 && gm.down.length > 0) downArr = gm.down;
-            // EXTRA: If both filtered and raw are empty, but the original data exists, try to use the original data
-            if ((!Array.isArray(upArr) || upArr.length === 0) && Array.isArray(gm.up) && gm.up.length > 0) upArr = gm.up;
-            if ((!Array.isArray(downArr) || downArr.length === 0) && Array.isArray(gm.down) && gm.down.length > 0) downArr = gm.down;
-            // Add thresholds hint to headers via title attribute
-            const eff = gm && gm.__effectiveThresholds ? gm.__effectiveThresholds : (gm && gm.thresholds ? gm.thresholds : null);
-            function thresholdsLabel(eff){
-                if (!eff) return '';
-                const parts = [];
-                if (eff.upPercent || eff.upDollar) parts.push(`Up ≥ ${eff.upPercent?eff.upPercent+'%':''}${(eff.upPercent&&eff.upDollar)?' or ':''}${eff.upDollar?('$'+eff.upDollar):''}`.trim());
-                if (eff.downPercent || eff.downDollar) parts.push(`Down ≥ ${eff.downPercent?eff.downPercent+'%':''}${(eff.downPercent&&eff.downDollar)?' or ':''}${eff.downDollar?('$'+eff.downDollar):''}`.trim());
-                if (eff.minimumPrice) parts.push(`Min Price $${eff.minimumPrice}`);
-                return parts.join(' | ');
-            }
-            // Insert contextual explainers for each section
-            function insertExplainer(host, text, targetKey){
-                try {
-                    if (!host) return;
-                    const existing = host.querySelector('.section-explainer');
-                    if (existing) existing.remove();
-                    const el = document.createElement('div');
-                    el.className = 'section-explainer';
-                    el.setAttribute('role', 'button');
-                    el.setAttribute('tabindex', '0');
-                    el.textContent = text || '';
-                    if (targetKey) el.setAttribute('data-settings-target', targetKey);
-                    host.insertBefore(el, host.firstChild);
-                } catch(_) {}
-            }
-            // Build always-on explainer labels using current thresholds with 'Not set' placeholders
-            // Merge per-field with effective server thresholds so we don't show 'Not set' due to timing
-            const baseThr = (typeof window.getCurrentDirectionalThresholds === 'function' ? window.getCurrentDirectionalThresholds() : {}) || {};
-            const toNum = (v) => {
-                const n = Number(v);
-                return (v != null && isFinite(n) && n > 0) ? n : null;
-            };
-            const curThr = {
-                upPercent: (toNum(baseThr.upPercent) != null ? toNum(baseThr.upPercent) : (eff ? toNum(eff.upPercent) : null)),
-                upDollar: (toNum(baseThr.upDollar) != null ? toNum(baseThr.upDollar) : (eff ? toNum(eff.upDollar) : null)),
-                downPercent: (toNum(baseThr.downPercent) != null ? toNum(baseThr.downPercent) : (eff ? toNum(eff.downPercent) : null)),
-                downDollar: (toNum(baseThr.downDollar) != null ? toNum(baseThr.downDollar) : (eff ? toNum(eff.downDollar) : null)),
-                minimumPrice: (toNum(baseThr.minimumPrice) != null ? toNum(baseThr.minimumPrice) : (eff ? toNum(eff.minimumPrice) : null))
-            };
-            const upLabel = (function(){
-                const pct = (curThr.upPercent != null && isFinite(curThr.upPercent) && curThr.upPercent > 0) ? (Number(curThr.upPercent).toFixed(0) + '%') : null;
-                const dol = (curThr.upDollar != null && isFinite(curThr.upDollar) && curThr.upDollar > 0) ? ('$' + Number(curThr.upDollar).toFixed(2)) : null;
-                const move = (pct || dol) ? `Gainers ≥ ${[pct, dol].filter(Boolean).join(' or ')}` : 'Gainers ≥ Not set';
-                const minP = (curThr.minimumPrice != null && isFinite(curThr.minimumPrice) && curThr.minimumPrice > 0) ? ('$' + Number(curThr.minimumPrice).toFixed(2)) : 'Not set';
-                return `${move} | Min Price: ${minP}`;
-            })();
-            const downLabel = (function(){
-                const pct = (curThr.downPercent != null && isFinite(curThr.downPercent) && curThr.downPercent > 0) ? (Number(curThr.downPercent).toFixed(0) + '%') : null;
-                const dol = (curThr.downDollar != null && isFinite(curThr.downDollar) && curThr.downDollar > 0) ? ('$' + Number(curThr.downDollar).toFixed(2)) : null;
-                const move = (pct || dol) ? `Losers ≥ ${[pct, dol].filter(Boolean).join(' or ')}` : 'Losers ≥ Not set';
-                const minP = (curThr.minimumPrice != null && isFinite(curThr.minimumPrice) && curThr.minimumPrice > 0) ? ('$' + Number(curThr.minimumPrice).toFixed(2)) : 'Not set';
-                return `${move} | Min Price: ${minP}`;
-            })();
+        // Build sections from filtered arrays
+        let upArr = (gm && Array.isArray(gm.upFiltered)) ? gm.upFiltered : (Array.isArray(gm.up) ? gm.up : []);
+        let downArr = (gm && Array.isArray(gm.downFiltered)) ? gm.downFiltered : (Array.isArray(gm.down) ? gm.down : []);
+        // Fallback: if filtering produced empty results but raw arrays are populated, use raw arrays to avoid blank UI
+        if (Array.isArray(gm.up) && upArr.length === 0 && gm.up.length > 0) upArr = gm.up;
+        if (Array.isArray(gm.down) && downArr.length === 0 && gm.down.length > 0) downArr = gm.down;
+        // EXTRA: If both filtered and raw are empty, but the original data exists, try to use the original data
+        if ((!Array.isArray(upArr) || upArr.length === 0) && Array.isArray(gm.up) && gm.up.length > 0) upArr = gm.up;
+        if ((!Array.isArray(downArr) || downArr.length === 0) && Array.isArray(gm.down) && gm.down.length > 0) downArr = gm.down;
+        // Add thresholds hint to headers via title attribute
+        const eff = gm && gm.__effectiveThresholds ? gm.__effectiveThresholds : (gm && gm.thresholds ? gm.thresholds : null);
+        function thresholdsLabel(eff) {
+            if (!eff) return '';
+            const parts = [];
+            if (eff.upPercent || eff.upDollar) parts.push(`Up ≥ ${eff.upPercent ? eff.upPercent + '%' : ''}${(eff.upPercent && eff.upDollar) ? ' or ' : ''}${eff.upDollar ? ('$' + eff.upDollar) : ''}`.trim());
+            if (eff.downPercent || eff.downDollar) parts.push(`Down ≥ ${eff.downPercent ? eff.downPercent + '%' : ''}${(eff.downPercent && eff.downDollar) ? ' or ' : ''}${eff.downDollar ? ('$' + eff.downDollar) : ''}`.trim());
+            if (eff.minimumPrice) parts.push(`Min Price $${eff.minimumPrice}`);
+            return parts.join(' | ');
+        }
+        // Insert contextual explainers for each section
+        function insertExplainer(host, text, targetKey) {
+            try {
+                if (!host) return;
+                const existing = host.querySelector('.section-explainer');
+                if (existing) existing.remove();
+                const el = document.createElement('div');
+                el.className = 'section-explainer';
+                el.setAttribute('role', 'button');
+                el.setAttribute('tabindex', '0');
+                el.textContent = text || '';
+                if (targetKey) el.setAttribute('data-settings-target', targetKey);
+                host.insertBefore(el, host.firstChild);
+            } catch (_) { }
+        }
+        // Build always-on explainer labels using current thresholds with 'Not set' placeholders
+        // Merge per-field with effective server thresholds so we don't show 'Not set' due to timing
+        const baseThr = (typeof window.getCurrentDirectionalThresholds === 'function' ? window.getCurrentDirectionalThresholds() : {}) || {};
+        const toNum = (v) => {
+            const n = Number(v);
+            return (v != null && isFinite(n) && n > 0) ? n : null;
+        };
+        const curThr = {
+            upPercent: (toNum(baseThr.upPercent) != null ? toNum(baseThr.upPercent) : (eff ? toNum(eff.upPercent) : null)),
+            upDollar: (toNum(baseThr.upDollar) != null ? toNum(baseThr.upDollar) : (eff ? toNum(eff.upDollar) : null)),
+            downPercent: (toNum(baseThr.downPercent) != null ? toNum(baseThr.downPercent) : (eff ? toNum(eff.downPercent) : null)),
+            downDollar: (toNum(baseThr.downDollar) != null ? toNum(baseThr.downDollar) : (eff ? toNum(eff.downDollar) : null)),
+            minimumPrice: (toNum(baseThr.minimumPrice) != null ? toNum(baseThr.minimumPrice) : (eff ? toNum(eff.minimumPrice) : null))
+        };
+        const upLabel = (function () {
+            const pct = (curThr.upPercent != null && isFinite(curThr.upPercent) && curThr.upPercent > 0) ? (Number(curThr.upPercent).toFixed(0) + '%') : null;
+            const dol = (curThr.upDollar != null && isFinite(curThr.upDollar) && curThr.upDollar > 0) ? ('$' + Number(curThr.upDollar).toFixed(2)) : null;
+            const move = (pct || dol) ? `Gainers ≥ ${[pct, dol].filter(Boolean).join(' or ')}` : 'Gainers ≥ Not set';
+            const minP = (curThr.minimumPrice != null && isFinite(curThr.minimumPrice) && curThr.minimumPrice > 0) ? ('$' + Number(curThr.minimumPrice).toFixed(2)) : 'Not set';
+            return `${move} | Min Price: ${minP}`;
+        })();
+        const downLabel = (function () {
+            const pct = (curThr.downPercent != null && isFinite(curThr.downPercent) && curThr.downPercent > 0) ? (Number(curThr.downPercent).toFixed(0) + '%') : null;
+            const dol = (curThr.downDollar != null && isFinite(curThr.downDollar) && curThr.downDollar > 0) ? ('$' + Number(curThr.downDollar).toFixed(2)) : null;
+            const move = (pct || dol) ? `Losers ≥ ${[pct, dol].filter(Boolean).join(' or ')}` : 'Losers ≥ Not set';
+            const minP = (curThr.minimumPrice != null && isFinite(curThr.minimumPrice) && curThr.minimumPrice > 0) ? ('$' + Number(curThr.minimumPrice).toFixed(2)) : 'Not set';
+            return `${move} | Min Price: ${minP}`;
+        })();
 
-            // Always refresh explainers for consistency with 52-week sections
-            if (gainersContainer) insertExplainer(gainersContainer, upLabel, 'global-gainers');
-            if (losersContainer) insertExplainer(losersContainer, downLabel, 'global-losers');
+        // Always refresh explainers for consistency with 52-week sections
+        if (gainersContainer) insertExplainer(gainersContainer, upLabel, 'global-gainers');
+        if (losersContainer) insertExplainer(losersContainer, downLabel, 'global-losers');
 
-            if (gainersInner) {
-                const items = upArr.filter(x => (x.direction||'').toLowerCase()==='up');
-                renderMoversInto(gainersInner, items, 'up');
-            }
-            if (losersInner) {
-                const items = downArr.filter(x => (x.direction||'').toLowerCase()==='down');
-                renderMoversInto(losersInner, items, 'down');
-            }
-        
+        if (gainersInner) {
+            const items = upArr.filter(x => (x.direction || '').toLowerCase() === 'up');
+            renderMoversInto(gainersInner, items, 'up');
+        }
+        if (losersInner) {
+            const items = downArr.filter(x => (x.direction || '').toLowerCase() === 'down');
+            renderMoversInto(losersInner, items, 'down');
+        }
+
 
         // Render HI_LO_52W
         // Prefer centralized HI_LO_52W, but don't leave UI blank: if highs/lows are empty, derive a local projection from livePrices
@@ -517,19 +517,19 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                 if (needHighs) hilo.highs = local.highs;
                 if (needLows) hilo.lows = local.lows;
             }
-        } catch(_) { /* non-fatal */ }
-    function renderHiLoEntry(e, kind) {
-        const code = String(e.code || e.shareCode || '').toUpperCase();
-        // Clean up embedded code fragments from company names (e.g., "(ASX:ABC)", "(ABC)", "- ABC")
-    const name = sanitizeCompanyName(e.name || e.companyName || code, code);
-            const liveVal = (e.live!=null && !isNaN(Number(e.live))) ? Number(e.live) : null;
-            const liveDisplay = (liveVal!=null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
+        } catch (_) { /* non-fatal */ }
+        function renderHiLoEntry(e, kind) {
+            const code = String(e.code || e.shareCode || '').toUpperCase();
+            // Clean up embedded code fragments from company names (e.g., "(ASX:ABC)", "(ABC)", "- ABC")
+            const name = sanitizeCompanyName(e.name || e.companyName || code, code);
+            const liveVal = (e.live != null && !isNaN(Number(e.live))) ? Number(e.live) : null;
+            const liveDisplay = (liveVal != null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
             // Pull both 52W High and Low from entry or livePrices fallback
-            let lp = null; try { lp = (window.livePrices && window.livePrices[code]) ? window.livePrices[code] : null; } catch(_) {}
+            let lp = null; try { lp = (window.livePrices && window.livePrices[code]) ? window.livePrices[code] : null; } catch (_) { }
             const hiRaw = (e.high52 ?? e.High52 ?? e.hi52 ?? e.high ?? (lp ? (lp.high52 ?? lp.High52 ?? lp.hi52 ?? lp.high) : null) ?? null);
             const loRaw = (e.low52 ?? e.Low52 ?? e.lo52 ?? e.low ?? (lp ? (lp.low52 ?? lp.Low52 ?? lp.lo52 ?? lp.low) : null) ?? null);
-            const hiDisplay = (hiRaw!=null && !isNaN(Number(hiRaw))) ? ('$' + formatAdaptivePrice(Number(hiRaw))) : '?';
-            const loDisplay = (loRaw!=null && !isNaN(Number(loRaw))) ? ('$' + formatAdaptivePrice(Number(loRaw))) : '?';
+            const hiDisplay = (hiRaw != null && !isNaN(Number(hiRaw))) ? ('$' + formatAdaptivePrice(Number(hiRaw))) : '?';
+            const loDisplay = (loRaw != null && !isNaN(Number(loRaw))) ? ('$' + formatAdaptivePrice(Number(loRaw))) : '?';
             const card = document.createElement('div');
             card.className = 'notification-card hilo-card ' + kind;
             card.innerHTML = `
@@ -546,20 +546,20 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
                     <div class="hilo-low"><span class="label">Low:</span> ${loDisplay}</div>
                     <div class="hilo-high"><span class="label">High:</span> ${hiDisplay}</div>
                 </div>`;
-            card.addEventListener('click', ()=>{
-                try { hideModal(targetHitDetailsModal); } catch(_) {}
+            card.addEventListener('click', () => {
+                try { hideModal(targetHitDetailsModal); } catch (_) { }
                 try {
                     const list = (window.allSharesData || []);
                     const share = list.find(s => s && s.shareName && String(s.shareName).toUpperCase() === code);
                     if (share && typeof selectShare === 'function') {
-                        try { wasShareDetailOpenedFromTargetAlerts = true; } catch(_) {}
+                        try { wasShareDetailOpenedFromTargetAlerts = true; } catch (_) { }
                         selectShare(share.id);
                         if (typeof showShareDetails === 'function') showShareDetails();
                         return;
                     }
-                } catch(_) {}
+                } catch (_) { }
                 // Fallback: if share not found locally, open search (should be rare per user flow)
-                try { if (typeof openStockSearchForCode === 'function') openStockSearchForCode(code); } catch(_) {}
+                try { if (typeof openStockSearchForCode === 'function') openStockSearchForCode(code); } catch (_) { }
             });
             return card;
         }
@@ -569,15 +569,15 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
             // Ensure host/inner structure
             const highInner = ensureScrollHost(hiloHighContainer);
             // Insert explainer pinned above the inner
-            (function insertHiExplainer(){
+            (function insertHiExplainer() {
                 try {
-                    const toNum = (v)=>{ const n = Number(v); return (v!=null && isFinite(n) && n>0) ? n : null; };
+                    const toNum = (v) => { const n = Number(v); return (v != null && isFinite(n) && n > 0) ? n : null; };
                     const mpNum = toNum(hiLoMinimumPrice);
                     const mcNum = toNum(hiLoMinimumMarketCap);
-                    const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
-                    const mc = (mcNum!=null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
+                    const mp = (mpNum != null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
+                    const mc = (mcNum != null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
                     insertExplainer(hiloHighContainer, `Min Price: ${mp} | Min Mkt Cap: ${mc}`, '52w-highs');
-                } catch(_) { insertExplainer(hiloHighContainer, 'Min Price: Not set | Min Mkt Cap: Not set'); }
+                } catch (_) { insertExplainer(hiloHighContainer, 'Min Price: Not set | Min Mkt Cap: Not set'); }
             })();
             // Render cards into the inner scroller
             if (highInner) {
@@ -589,15 +589,15 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
         }
         if (hiloLowContainer) {
             const lowInner = ensureScrollHost(hiloLowContainer);
-            (function insertLoExplainer(){
+            (function insertLoExplainer() {
                 try {
-                    const toNum = (v)=>{ const n = Number(v); return (v!=null && isFinite(n) && n>0) ? n : null; };
+                    const toNum = (v) => { const n = Number(v); return (v != null && isFinite(n) && n > 0) ? n : null; };
                     const mpNum = toNum(hiLoMinimumPrice);
                     const mcNum = toNum(hiLoMinimumMarketCap);
-                    const mp = (mpNum!=null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
-                    const mc = (mcNum!=null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
+                    const mp = (mpNum != null) ? ('$' + mpNum.toFixed(2)) : 'Not set';
+                    const mc = (mcNum != null) ? ('$' + formatCompactNumber(mcNum)) : 'Not set';
                     insertExplainer(hiloLowContainer, `Min Price: ${mp} | Min Mkt Cap: ${mc}`, '52w-lows');
-                } catch(_) { insertExplainer(hiloLowContainer, 'Min Price: Not set | Min Mkt Cap: Not set'); }
+                } catch (_) { insertExplainer(hiloLowContainer, 'Min Price: Not set | Min Mkt Cap: Not set'); }
             })();
             if (lowInner) {
                 lowInner.innerHTML = '';
@@ -608,28 +608,28 @@ window.__renderTargetHitDetailsModalImpl = function(options={}) {
         }
 
         // Mark this modal as rendered via the modern global sections path so legacy fallbacks can skip duplicating UI
-        try { modal.__newGlobalRendered = true; } catch(_) {}
+        try { modal.__newGlobalRendered = true; } catch (_) { }
 
         // Show modal via existing helper if present
-            try { if (typeof window.showModal === 'function') { showModal(modal); } else { modal.style.display = 'flex'; modal.classList.add('show'); } } catch(_) { modal.style.display = 'flex'; modal.classList.add('show'); }
-            // Minimal reliability guard: if both movers and hilo sections are still empty shortly after open, retry once.
-            try {
-                setTimeout(() => {
-                    try {
-                        const isEmpty = (host) => {
-                            if (!host) return true;
-                            const inner = host.querySelector('.notification-list-inner');
-                            return !inner || inner.children.length === 0;
-                        };
-                        const moversEmpty = isEmpty(gainersContainer) && isEmpty(losersContainer);
-                        const stillEmpty = moversEmpty && isEmpty(hiloHighContainer) && isEmpty(hiloLowContainer);
-                        if (stillEmpty && typeof window.__renderTargetHitDetailsModalImpl === 'function' && !modal.__retryOnce) {
-                            modal.__retryOnce = true;
-                            window.__renderTargetHitDetailsModalImpl({ retry: true });
-                        }
-                    } catch(_) {}
-                }, 150);
-            } catch(_) {}
+        try { if (typeof window.showModal === 'function') { showModal(modal); } else { modal.style.display = 'flex'; modal.classList.add('show'); } } catch (_) { modal.style.display = 'flex'; modal.classList.add('show'); }
+        // Minimal reliability guard: if both movers and hilo sections are still empty shortly after open, retry once.
+        try {
+            setTimeout(() => {
+                try {
+                    const isEmpty = (host) => {
+                        if (!host) return true;
+                        const inner = host.querySelector('.notification-list-inner');
+                        return !inner || inner.children.length === 0;
+                    };
+                    const moversEmpty = isEmpty(gainersContainer) && isEmpty(losersContainer);
+                    const stillEmpty = moversEmpty && isEmpty(hiloHighContainer) && isEmpty(hiloLowContainer);
+                    if (stillEmpty && typeof window.__renderTargetHitDetailsModalImpl === 'function' && !modal.__retryOnce) {
+                        modal.__retryOnce = true;
+                        window.__renderTargetHitDetailsModalImpl({ retry: true });
+                    }
+                } catch (_) { }
+            }, 150);
+        } catch (_) { }
     } catch (err) {
         console.warn('[GlobalAlerts] showTargetHitDetailsModal (impl) failed', err);
     }
@@ -641,13 +641,13 @@ window.DEBUG_MODE = (typeof window.DEBUG_MODE !== 'undefined') ? window.DEBUG_MO
 
 function debugLog() {
     if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
-           try { console.log.apply(console, arguments); } catch(_) {}
+        try { console.log.apply(console, arguments); } catch (_) { }
     }
 }
 
 function debugDebug() {
     if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
-           try { console.debug.apply(console, arguments); } catch(_) {}
+        try { console.debug.apply(console, arguments); } catch (_) { }
     }
 }
 
@@ -667,64 +667,64 @@ function sanitizeCompanyName(name, code) {
         ];
         patterns.forEach(rx => { n = n.replace(rx, ''); });
         return n.trim();
-    } catch(_) { return name || ''; }
+    } catch (_) { return name || ''; }
 }
 
 // Lightweight console filter: when DEBUG_MODE is false, suppress noisy diagnostic logs
 // that begin with known diagnostic tags. This keeps regular console output intact.
-(function installConsoleFilter(){
+(function installConsoleFilter() {
     try {
-            // Aggressive tag list: any console message whose first argument string begins with
-            // one of these tags will be suppressed when DEBUG_MODE is false.
-            const tags = [
-                // existing diagnostics
-                '[BANNER-DEBUG]','[Diag]','[TEST]','[DiagnosticsDump]','[MOVERS DEBUG]','[ASX Debug]','[NotifDiag]','[GlobalAlerts] Listener',
-                // expanded suppression list (from user QA)
-                '[DISPLAY]','[PADDING DEBUG]','[SORT HANDSHAKE]','[SCROLL DEBUG]','[SingleScroll]','[TypographyDiagnostics]','[SCROLL DEBUG]',
-                '[SYNC]','[SyncTrigger]','[Movers init]','[Movers fallback]','[DEBUG]','[ELEMENT CHECK]','[TOGGLE DEBUG]','[GlobalAlerts]','[DiagDirectional]'
-            ];
+        // Aggressive tag list: any console message whose first argument string begins with
+        // one of these tags will be suppressed when DEBUG_MODE is false.
+        const tags = [
+            // existing diagnostics
+            '[BANNER-DEBUG]', '[Diag]', '[TEST]', '[DiagnosticsDump]', '[MOVERS DEBUG]', '[ASX Debug]', '[NotifDiag]', '[GlobalAlerts] Listener',
+            // expanded suppression list (from user QA)
+            '[DISPLAY]', '[PADDING DEBUG]', '[SORT HANDSHAKE]', '[SCROLL DEBUG]', '[SingleScroll]', '[TypographyDiagnostics]', '[SCROLL DEBUG]',
+            '[SYNC]', '[SyncTrigger]', '[Movers init]', '[Movers fallback]', '[DEBUG]', '[ELEMENT CHECK]', '[TOGGLE DEBUG]', '[GlobalAlerts]', '[DiagDirectional]'
+        ];
         const rawLog = console.log.bind(console);
         const rawDebug = console.debug ? console.debug.bind(console) : rawLog;
-    const rawInfo = console.info ? console.info.bind(console) : rawLog;
-        console.log = function(...args){
+        const rawInfo = console.info ? console.info.bind(console) : rawLog;
+        console.log = function (...args) {
             try {
                 if (!window.DEBUG_MODE && args && args.length && typeof args[0] === 'string') {
                     const a0 = args[0];
                     for (let t of tags) { if (a0.indexOf(t) === 0) return; }
                 }
-            } catch(_){}
+            } catch (_) { }
             return rawLog.apply(console, args);
         };
-        console.debug = function(...args){
+        console.debug = function (...args) {
             try {
                 if (!window.DEBUG_MODE && args && args.length && typeof args[0] === 'string') {
                     const a0 = args[0];
                     for (let t of tags) { if (a0.indexOf(t) === 0) return; }
                 }
-            } catch(_){}
+            } catch (_) { }
             return rawDebug.apply(console, args);
         };
-        console.info = function(...args){
+        console.info = function (...args) {
             try {
                 if (!window.DEBUG_MODE && args && args.length && typeof args[0] === 'string') {
                     const a0 = args[0];
                     for (let t of tags) { if (a0.indexOf(t) === 0) return; }
                 }
-            } catch(_){ }
+            } catch (_) { }
             return rawInfo.apply(console, args);
         };
-    } catch(_){}
+    } catch (_) { }
 })();
 
 // Patch wrapper: after saving settings, also trigger the server-side sync (fire-and-forget)
-(function patchSaveGlobalAlertSettingsToTriggerServerSync(){
+(function patchSaveGlobalAlertSettingsToTriggerServerSync() {
     const original = saveGlobalAlertSettingsDirectional;
-    saveGlobalAlertSettingsDirectional = async function(settings) {
-        try { await original(settings); } catch(e){ console.warn('[GlobalAlerts] original save failed', e); }
+    saveGlobalAlertSettingsDirectional = async function (settings) {
+        try { await original(settings); } catch (e) { console.warn('[GlobalAlerts] original save failed', e); }
         try {
             const uid = currentUserId || (window.firebase && window.firebase.auth && window.firebase.auth().currentUser && window.firebase.auth().currentUser.uid);
             if (uid) {
-                window.triggerServerSideGlobalSettingsSync(uid).catch(()=>{});
+                window.triggerServerSideGlobalSettingsSync(uid).catch(() => { });
             } else {
                 console.warn('[SyncTrigger] No user id available for server-side sync');
             }
@@ -763,15 +763,15 @@ try {
             }
         }
     });
-} catch (_) {}
+} catch (_) { }
 document.addEventListener('DOMContentLoaded', () => {
     try {
         const ov = document.getElementById('sidebarOverlay') || document.querySelector('.sidebar-overlay');
         if (ov) {
             // Lightweight listener probe (no diagnostic logging)
-            try { ov.addEventListener('mousedown', () => {}, { once: true }); ov.dispatchEvent(new Event('mousedown')); } catch(_) {}
+            try { ov.addEventListener('mousedown', () => { }, { once: true }); ov.dispatchEvent(new Event('mousedown')); } catch (_) { }
         }
-    } catch(e) { console.warn('[Diag] Overlay singleton check failed', e); }
+    } catch (e) { console.warn('[Diag] Overlay singleton check failed', e); }
 });
 // ...existing code...
 
@@ -782,11 +782,11 @@ function fixLow52MuteButton(card) {
     if (!card) return;
     const muteBtn = card.querySelector('.low52-mute-btn');
     if (muteBtn) {
-            muteBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                card.classList.toggle('low52-card-hidden');
-            });
+        muteBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            card.classList.toggle('low52-card-hidden');
+        });
     }
 }
 
@@ -796,10 +796,10 @@ function fixLow52MuteButton(card) {
 
 // Title mutation observer guard to restore if emptied by outside DOM ops
 try {
-    (function installTitleGuard(){
+    (function installTitleGuard() {
         if (window.__titleGuardInstalled) return; window.__titleGuardInstalled = true;
-        const host = document.getElementById('dynamicWatchlistTitle'); if(!host) return;
-        const obs = new MutationObserver(()=>{
+        const host = document.getElementById('dynamicWatchlistTitle'); if (!host) return;
+        const obs = new MutationObserver(() => {
             try {
                 const span = document.getElementById('dynamicWatchlistTitleText');
                 if (!span) return;
@@ -811,17 +811,17 @@ try {
                     else if (wid === CASH_BANK_WATCHLIST_ID) expected = 'Cash & Assets';
                     else if (wid === ALL_SHARES_ID) expected = 'All Shares';
                     else {
-                        const wl = (userWatchlists||[]).find(w=>w.id===wid);
+                        const wl = (userWatchlists || []).find(w => w.id === wid);
                         expected = (wl && wl.name) ? wl.name : 'Share Watchlist';
                     }
                     span.textContent = expected;
                     console.warn('[TitleGuard] Restored empty dynamic title to:', expected);
                 }
-            } catch(_) {}
+            } catch (_) { }
         });
-        obs.observe(host, { childList:true, characterData:true, subtree:true });
+        obs.observe(host, { childList: true, characterData: true, subtree: true });
     })();
-} catch(_) {}
+} catch (_) { }
 
 // ...existing code...
 // Historical enforcement patch removed (cleanup)
@@ -881,11 +881,11 @@ function onLivePricesUpdated() {
         if (typeof sortShares === 'function') {
             try {
                 logDebug && logDebug('Live Price: Invoking sortShares() after live update');
-            } catch(_) {}
-            try { sortShares(); } catch (sErr) { console.warn('Live Price: sortShares() failed, falling back to renderWatchlist()', sErr); if (typeof renderWatchlist === 'function') try { renderWatchlist(); } catch(_) {} }
+            } catch (_) { }
+            try { sortShares(); } catch (sErr) { console.warn('Live Price: sortShares() failed, falling back to renderWatchlist()', sErr); if (typeof renderWatchlist === 'function') try { renderWatchlist(); } catch (_) { } }
         } else if (typeof renderWatchlist === 'function') {
             // If sortShares is not available, at least re-render the watchlist
-            try { renderWatchlist(); } catch(e) { console.warn('Live Price: renderWatchlist() failed in onLivePricesUpdated', e); }
+            try { renderWatchlist(); } catch (e) { console.warn('Live Price: renderWatchlist() failed in onLivePricesUpdated', e); }
         }
 
         // Also refresh portfolio list if visible
@@ -893,13 +893,13 @@ function onLivePricesUpdated() {
             if (typeof renderPortfolioList === 'function') {
                 const section = document.getElementById('portfolioSection');
                 if (section && section.style.display !== 'none') {
-                    try { renderPortfolioList(); } catch(e) { console.warn('Live Price: renderPortfolioList failed', e); }
+                    try { renderPortfolioList(); } catch (e) { console.warn('Live Price: renderPortfolioList failed', e); }
                 }
             }
-        } catch (_) {}
+        } catch (_) { }
 
         // After dynamic content changes, reposition & optionally scroll to top.
-        try { if (window.repositionMainContentUnderHeader) window.repositionMainContentUnderHeader(); else if (window.adjustMainContentPadding) { window.adjustMainContentPadding(); if (window.scrollMainToTop) window.scrollMainToTop(true); } } catch(_) {}
+        try { if (window.repositionMainContentUnderHeader) window.repositionMainContentUnderHeader(); else if (window.adjustMainContentPadding) { window.adjustMainContentPadding(); if (window.scrollMainToTop) window.scrollMainToTop(true); } } catch (_) { }
     } catch (e) {
         console.error('Live Price: onLivePricesUpdated error:', e);
     }
@@ -912,8 +912,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Import and call watchlist functions
     if (window.watchlistModule) {
         window.watchlistModule.renderWatchlistSelect();
-    // If we have a persisted lastKnownTargetCount, ensure the notification icon restores pre-live-load
-    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
+        // If we have a persisted lastKnownTargetCount, ensure the notification icon restores pre-live-load
+        try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch (e) { console.warn('Early Target Alert restore failed', e); }
         window.watchlistModule.populateShareWatchlistSelect();
         window.watchlistModule.ensurePortfolioOptionPresent();
         setTimeout(window.watchlistModule.ensurePortfolioOptionPresent, 2000);
@@ -932,7 +932,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return (h > 16) || (h === 16 && m >= 0);
     }
     function updateMarketStatusUI() {
-    const open = isAsxMarketOpen();
+        const open = isAsxMarketOpen();
         if (marketStatusBanner) {
             if (!open) {
                 const now = new Date();
@@ -944,7 +944,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 marketStatusBanner.classList.add('app-hidden');
             }
         }
-    // No global disabling; controls remain enabled regardless of market state
+        // No global disabling; controls remain enabled regardless of market state
     }
     // Initial status and periodic re-check each minute
     updateMarketStatusUI();
@@ -954,18 +954,18 @@ document.addEventListener('DOMContentLoaded', function () {
     if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
         watchlistSelect.addEventListener('change', function () {
             // Capture previous selection for shallow back
-            try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; pushAppStateEntry('watchlist', prev); logBackDebug('WATCHLIST change push prev=', prev); } catch(_) {}
+            try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; pushAppStateEntry('watchlist', prev); logBackDebug('WATCHLIST change push prev=', prev); } catch (_) { }
             // If Portfolio is selected, show portfolio view
             if (watchlistSelect.value === 'portfolio') {
                 showPortfolioView();
-                try { setLastSelectedView('portfolio'); } catch(e){}
+                try { setLastSelectedView('portfolio'); } catch (e) { }
             } else {
                 // Default: show normal watchlist view
                 showWatchlistView();
-                try { setLastSelectedView(watchlistSelect.value); } catch(e){}
+                try { setLastSelectedView(watchlistSelect.value); } catch (e) { }
             }
             // Push a browser history entry so Back triggers popstate -> handleGlobalBack
-            try { if (typeof pushAppState === 'function') pushAppState({ watchlist: watchlistSelect.value }, '', '#watchlist'); } catch(_) {}
+            try { if (typeof pushAppState === 'function') pushAppState({ watchlist: watchlistSelect.value }, '', '#watchlist'); } catch (_) { }
             updateMainButtonsState(true);
             // Ensure main content scrolls to the top after a view change for consistent UX
             try {
@@ -976,7 +976,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 } else {
                     scrollMainToTop();
                 }
-            } catch(_) {}
+            } catch (_) { }
         });
     }
 
@@ -992,15 +992,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 try {
                     el.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
                     return;
-                } catch(_) {}
+                } catch (_) { }
             }
-        } catch (_) {}
+        } catch (_) { }
 
-        try { window.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' }); } catch(_) {}
+        try { window.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' }); } catch (_) { }
     }
 
     // Portfolio view logic
-    window.showPortfolioView = function() {
+    window.showPortfolioView = function () {
         // Hide normal stock watchlist section, show a dedicated portfolio section (create if needed)
         if (!document.getElementById('portfolioSection')) {
             const portfolioSection = document.createElement('div');
@@ -1021,24 +1021,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 watchlistSelect.value = 'portfolio';
             }
         }
-    // Persist user intent
-    try { setLastSelectedView('portfolio'); } catch(e) {}
+        // Persist user intent
+        try { setLastSelectedView('portfolio'); } catch (e) { }
         let portfolioSection = document.getElementById('portfolioSection');
         portfolioSection.style.display = 'block';
-    renderPortfolioList();
-    try { scrollMainToTop(); } catch(_) {}
-    // Keep header text in sync
-    try { updateMainTitle(); } catch(e) {}
-    // Ensure sort options and alerts are correct for Portfolio view
-    try { renderSortSelect(); } catch(e) {}
-    try { updateSortPickerButtonText(); } catch(e) {}
-    try { updateTargetHitBanner(); } catch(e) {}
+        renderPortfolioList();
+        try { scrollMainToTop(); } catch (_) { }
+        // Keep header text in sync
+        try { updateMainTitle(); } catch (e) { }
+        // Ensure sort options and alerts are correct for Portfolio view
+        try { renderSortSelect(); } catch (e) { }
+        try { updateSortPickerButtonText(); } catch (e) { }
+        try { updateTargetHitBanner(); } catch (e) { }
         if (typeof renderAsxCodeButtons === 'function') {
             if (asxCodeButtonsContainer) asxCodeButtonsContainer.classList.remove('app-hidden');
             renderAsxCodeButtons();
         }
     };
-    window.showWatchlistView = function() {
+    window.showWatchlistView = function () {
         // Hide portfolio section if present, show normal stock watchlist section
         let portfolioSection = document.getElementById('portfolioSection');
         if (portfolioSection) portfolioSection.style.display = 'none';
@@ -1049,10 +1049,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const mobileContainer = getMobileShareCardsContainer();
         if (mobileContainer) mobileContainer.style.display = '';
         // Update sort picker button text when switching to watchlist view
-        try { updateSortPickerButtonText(); } catch(e) {}
+        try { updateSortPickerButtonText(); } catch (e) { }
     };
     // Render portfolio list (uses live prices when available)
-    window.renderPortfolioList = function() {
+    window.renderPortfolioList = function () {
+        console.log('[Debug] window.renderPortfolioList CALLED');
+        // ... (rest of function)
         const portfolioListContainer = document.getElementById('portfolioListContainer');
         if (!portfolioListContainer) return;
 
@@ -1080,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let lossPLSum = 0;
 
         // For each share, calculate metrics
-    const cards = portfolioShares.map((share, i) => {
+        const cards = portfolioShares.map((share, i) => {
             const shares = (share.portfolioShares !== null && share.portfolioShares !== undefined && !isNaN(Number(share.portfolioShares)))
                 ? Math.trunc(Number(share.portfolioShares)) : '';
             const avgPrice = (share.portfolioAvgPrice !== null && share.portfolioAvgPrice !== undefined && !isNaN(Number(share.portfolioAvgPrice)))
@@ -1133,9 +1135,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const rowPLPct = (typeof avgPrice === 'number' && avgPrice > 0 && typeof priceNow === 'number') ? ((priceNow - avgPrice) / avgPrice) * 100 : null;
             const plClass = (typeof rowPL === 'number') ? (rowPL > 0 ? 'positive' : (rowPL < 0 ? 'negative' : 'neutral')) : '';
-        if (plClass === 'neutral') {
-            try { /* neutral card assignment */ } catch(_) {}
-        }
+            if (plClass === 'neutral') {
+                try { /* neutral card assignment */ } catch (_) { }
+            }
             const todayClass = (todayChange > 0) ? 'positive' : (todayChange < 0 ? 'negative' : 'neutral');
 
             // Custom target-hit indicator: pulsing dot next to code
@@ -1151,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Build code with optional colored dot
             const codeWithDot = (() => {
                 if (!(isTargetHit && !targetHitIconDismissed)) return `${share.shareName || ''}`;
-                const color = dToday>0 ? 'var(--brand-green)' : (dToday<0 ? 'var(--brand-red)' : 'var(--accent-color)');
+                const color = dToday > 0 ? 'var(--brand-green)' : (dToday < 0 ? 'var(--brand-red)' : 'var(--accent-color)');
                 return `${share.shareName || ''}<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
             })();
             return `<div class="portfolio-card ${todayClass}${isHidden ? ' hidden-from-totals' : ''}" data-doc-id="${share.id}">
@@ -1196,12 +1198,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         <span class="portfolio-detail-val">${avgPrice !== null ? fmtMoney(avgPrice) : ''}</span>
                     </div>
                     ${(() => {
-                        const at = renderAlertTargetInline(share);
-                        return at ? `<div class="portfolio-detail-row"><span class="portfolio-detail-label">Target Value</span><span class="portfolio-detail-val">${at}</span></div>` : '';
-                    })()}
+                    const at = renderAlertTargetInline(share);
+                    return at ? `<div class="portfolio-detail-row"><span class="portfolio-detail-label">Target Value</span><span class="portfolio-detail-val">${at}</span></div>` : '';
+                })()}
                 </div>
             </div>`;
-    });
+        });
 
         // Calculate overall %
         overallPLPct = (totalCostBasis > 0 && typeof totalPL === 'number') ? (totalPL / totalCostBasis) * 100 : 0;
@@ -1209,15 +1211,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // After mapping, inject a test neutral card at the start for debug/visual confirmation
 
-    // Compute overall today percentage from aggregated totalValue (excluding hidden shares)
-    todayNetPct = (totalValue > 0) ? ((todayNet / totalValue) * 100) : 0;
+        // Compute overall today percentage from aggregated totalValue (excluding hidden shares)
+        todayNetPct = (totalValue > 0) ? ((todayNet / totalValue) * 100) : 0;
 
-    // Note: Day Change uses net movement (gains minus losses)
+        // Note: Day Change uses net movement (gains minus losses)
 
-    // Compute explicit total capital gain (sum of per-card rowPL used in cards)
-    const totalCapitalGain = totalPL; // totalPL is already aggregated for non-hidden shares above
+        // Compute explicit total capital gain (sum of per-card rowPL used in cards)
+        const totalCapitalGain = totalPL; // totalPL is already aggregated for non-hidden shares above
 
-    // --- Summary Bar ---
+        // --- Summary Bar ---
         const summaryBar = `<div class="portfolio-summary-bar">
             <div class="summary-card ${todayNet > 0 ? 'positive' : todayNet < 0 ? 'negative' : 'neutral'}">
                 <div class="summary-label">Total Day Change</div>
@@ -1292,7 +1294,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 };
                 const titleEl = portfolioSummaryModal.querySelector('.modal-title');
                 if (titleEl) titleEl.textContent = titleMap[type] || 'Summary';
-            } catch (_) {}
+            } catch (_) { }
 
             const listNode = portfolioSummaryModal.querySelector('.summary-list');
             listNode.innerHTML = '';
@@ -1350,14 +1352,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     const sharesCount = it.sharesCount || 0;
                     const avgPrice = (s.portfolioAvgPrice !== null && s.portfolioAvgPrice !== undefined && !isNaN(Number(s.portfolioAvgPrice))) ? Number(s.portfolioAvgPrice) : null;
                     const gain = (it.priceNow !== null && avgPrice !== null && sharesCount) ? ((it.priceNow - avgPrice) * sharesCount) : 0;
-                    return { code: (s.shareName||'').toUpperCase(), gain };
+                    return { code: (s.shareName || '').toUpperCase(), gain };
                 }).filter(r => r.code);
                 if (rows.length === 0) {
                     const msg = 'No shares available for capital gain summary';
-                    try { if (window.ToastManager && typeof window.ToastManager.info === 'function') window.ToastManager.info(msg, { duration: 1400 }); else if (typeof showCustomAlert === 'function') showCustomAlert(msg,1400); else console.log(msg); } catch(_){}
+                    try { if (window.ToastManager && typeof window.ToastManager.info === 'function') window.ToastManager.info(msg, { duration: 1400 }); else if (typeof showCustomAlert === 'function') showCustomAlert(msg, 1400); else console.log(msg); } catch (_) { }
                     return;
                 }
-                rows.sort((a,b) => b.gain - a.gain);
+                rows.sort((a, b) => b.gain - a.gain);
                 rows.forEach(r => {
                     const item = document.createElement('div');
                     const cls = (r.gain > 0) ? 'positive' : (r.gain < 0 ? 'negative' : 'neutral');
@@ -1365,7 +1367,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     item.innerHTML = `<div class="summary-item-left"><span class="summary-item-code">${r.code}</span></div><div class="summary-item-right"><span class="summary-item-dollar-change">${fmtMoney(r.gain)}</span></div>`;
                     listNode.appendChild(item);
                 });
-                try { pushAppStateEntry && pushAppStateEntry('summaryModal', type); } catch(_){}
+                try { pushAppStateEntry && pushAppStateEntry('summaryModal', type); } catch (_) { }
                 showModal(portfolioSummaryModal);
                 return;
             }
@@ -1382,21 +1384,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     const costBasis = (avgPrice !== null && sharesCount > 0) ? (avgPrice * sharesCount) : null;
                     const diff = (costBasis !== null) ? (totalValueForShare - costBasis) : null;
                     const cls = (diff === null) ? 'neutral' : (diff > 0 ? 'positive' : (diff < 0 ? 'negative' : 'neutral'));
-                    return { code: (s.shareName||'').toUpperCase(), total: totalValueForShare, cls };
+                    return { code: (s.shareName || '').toUpperCase(), total: totalValueForShare, cls };
                 }).filter(r => r.code);
                 if (rows.length === 0) {
                     const msg = 'No shares available for current value summary';
-                    try { if (window.ToastManager && typeof window.ToastManager.info === 'function') window.ToastManager.info(msg, { duration: 1400 }); else if (typeof showCustomAlert === 'function') showCustomAlert(msg,1400); else console.log(msg); } catch(_){}
+                    try { if (window.ToastManager && typeof window.ToastManager.info === 'function') window.ToastManager.info(msg, { duration: 1400 }); else if (typeof showCustomAlert === 'function') showCustomAlert(msg, 1400); else console.log(msg); } catch (_) { }
                     return;
                 }
-                rows.sort((a,b) => b.total - a.total);
+                rows.sort((a, b) => b.total - a.total);
                 rows.forEach(r => {
                     const item = document.createElement('div');
                     item.className = `summary-list-item ${r.cls}`;
                     item.innerHTML = `<div class="summary-item-left"><span class="summary-item-code">${r.code}</span></div><div class="summary-item-right"><span class="summary-item-dollar-change">${fmtMoney(r.total)}</span></div>`;
                     listNode.appendChild(item);
                 });
-                try { pushAppStateEntry && pushAppStateEntry('summaryModal', type); } catch(_){}
+                try { pushAppStateEntry && pushAppStateEntry('summaryModal', type); } catch (_) { }
                 showModal(portfolioSummaryModal);
                 return;
             }
@@ -1467,7 +1469,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // --- Expand/Collapse Logic (Accordion) & Eye Button ---
         const cardNodes = portfolioListContainer.querySelectorAll('.portfolio-card');
-    cardNodes.forEach((card, idx) => {
+        cardNodes.forEach((card, idx) => {
             // Get the share object for this card
             const share = portfolioShares[idx];
             const arrow = card.querySelector('.portfolio-centered-arrow');
@@ -1535,45 +1537,45 @@ html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-
 `;
                             (document.head || document.documentElement).appendChild(s);
                         }
-                    } catch(_) {}
+                    } catch (_) { }
                     // Apply important inline properties
-                    try { card.style.setProperty('background-color', resolvedBG, 'important'); } catch(_) {}
-                    try { card.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important'); } catch(_) {}
-                    try { card.style.setProperty('-webkit-touch-callout', 'none', 'important'); } catch(_) {}
-                    try { card.style.setProperty('user-select', 'none', 'important'); } catch(_) {}
+                    try { card.style.setProperty('background-color', resolvedBG, 'important'); } catch (_) { }
+                    try { card.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important'); } catch (_) { }
+                    try { card.style.setProperty('-webkit-touch-callout', 'none', 'important'); } catch (_) { }
+                    try { card.style.setProperty('user-select', 'none', 'important'); } catch (_) { }
                     // Also apply tap-highlight / touch-callout suppression to children for extra coverage
                     try {
                         const children = card.querySelectorAll('*');
                         for (let i = 0; i < children.length; i++) {
                             const el = children[i];
-                            try { el.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important'); } catch(_) {}
-                            try { el.style.setProperty('-webkit-touch-callout', 'none', 'important'); } catch(_) {}
-                            try { el.style.setProperty('user-select', 'none', 'important'); } catch(_) {}
+                            try { el.style.setProperty('-webkit-tap-highlight-color', 'transparent', 'important'); } catch (_) { }
+                            try { el.style.setProperty('-webkit-touch-callout', 'none', 'important'); } catch (_) { }
+                            try { el.style.setProperty('user-select', 'none', 'important'); } catch (_) { }
                         }
-                    } catch(_) {}
-                } catch(_) {}
+                    } catch (_) { }
+                } catch (_) { }
             };
 
             const removeNoTap = (ev) => {
                 try {
                     if (!card.__noTapApplied) return;
                     // Remove the inline overrides we added
-                    try { card.style.removeProperty('background-color'); } catch(_) {}
-                    try { card.style.removeProperty('-webkit-tap-highlight-color'); } catch(_) {}
-                    try { card.style.removeProperty('-webkit-touch-callout'); } catch(_) {}
-                    try { card.style.removeProperty('user-select'); } catch(_) {}
+                    try { card.style.removeProperty('background-color'); } catch (_) { }
+                    try { card.style.removeProperty('-webkit-tap-highlight-color'); } catch (_) { }
+                    try { card.style.removeProperty('-webkit-touch-callout'); } catch (_) { }
+                    try { card.style.removeProperty('user-select'); } catch (_) { }
                     try {
                         const children = card.querySelectorAll('*');
                         for (let i = 0; i < children.length; i++) {
                             const el = children[i];
-                            try { el.style.removeProperty('-webkit-tap-highlight-color'); } catch(_) {}
-                            try { el.style.removeProperty('-webkit-touch-callout'); } catch(_) {}
-                            try { el.style.removeProperty('user-select'); } catch(_) {}
+                            try { el.style.removeProperty('-webkit-tap-highlight-color'); } catch (_) { }
+                            try { el.style.removeProperty('-webkit-touch-callout'); } catch (_) { }
+                            try { el.style.removeProperty('user-select'); } catch (_) { }
                         }
-                    } catch(_) {}
+                    } catch (_) { }
                     card.__noTapApplied = false;
-                    try { card.classList.remove('no-tap-ephemeral'); } catch(_) {}
-                } catch(_) {}
+                    try { card.classList.remove('no-tap-ephemeral'); } catch (_) { }
+                } catch (_) { }
             };
 
             if (window.PointerEvent) {
@@ -1595,7 +1597,7 @@ html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-
                     card.addEventListener('contextmenu', (e) => { e.preventDefault(); }, { passive: false });
                     card.addEventListener('selectstart', (e) => { e.preventDefault(); }, { passive: false });
                 }
-            } catch(_) {}
+            } catch (_) { }
 
             // NOTE: card-level tap should open share details. The expand/collapse
             // behavior is handled only by the dedicated arrow control below. We
@@ -1612,7 +1614,7 @@ html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-
                     hiddenFromTotalsShareIds.add(share.id);
                 }
 
-                eyeBtn.addEventListener('click', async function(e) {
+                eyeBtn.addEventListener('click', async function (e) {
                     e.stopPropagation();
                     // If user held Ctrl/Meta or Shift while clicking, treat as 'open details' to preserve previous flow
                     if (e.ctrlKey || e.metaKey || e.shiftKey) {
@@ -1645,13 +1647,18 @@ html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-
                                 if (idx !== -1) {
                                     const next = currentShares.slice();
                                     next[idx] = { ...next[idx], isHiddenInPortfolio: !!nextHidden };
-                                    try { setAllSharesData(next); } catch(_) { window.allSharesData = next; }
+                                    try { setAllSharesData(next); } catch (_) { window.allSharesData = next; }
                                 }
                             }
                         } catch (e) { console.warn('Optimistic local share update failed', e); }
-                        try { if (typeof sortShares === 'function') sortShares(); } catch(_) {}
-                        try { renderPortfolioList(); } catch(_) {}
-                    } catch(err) {
+                        try { if (typeof sortShares === 'function') sortShares(); } catch (_) { }
+                        try { renderPortfolioList(); } catch (_) { }
+
+                        // Fix: Recompute alerts immediately to reflect hidden state in notifications
+                        console.log('[Debug] Eye Icon Clicked: Calling recomputeTriggeredAlerts');
+                        try { if (typeof recomputeTriggeredAlerts === 'function') recomputeTriggeredAlerts(); else console.warn('recomputeTriggeredAlerts is not a function'); } catch (e) { console.error('Error calling recomputeTriggeredAlerts', e); }
+
+                    } catch (err) {
                         console.warn('Optimistic UI update failed for eye toggle', err);
                     }
 
@@ -1669,7 +1676,7 @@ html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-
                     } catch (err) {
                         console.error('Failed to persist share hidden state to Firestore:', err);
                         // On failure, keep optimistic UI but notify user
-                        try { if (window.ToastManager && typeof window.ToastManager.error === 'function') window.ToastManager.error('Failed to save visibility change'); else if (window.showCustomAlert) window.showCustomAlert('Failed to save visibility change', 1800); } catch(_) {}
+                        try { if (window.ToastManager && typeof window.ToastManager.error === 'function') window.ToastManager.error('Failed to save visibility change'); else if (window.showCustomAlert) window.showCustomAlert('Failed to save visibility change', 1800); } catch (_) { }
                     }
                 });
             }
@@ -1679,7 +1686,7 @@ html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-
             // opens the viewing modal. Explicitly exclude the eye button and the
             // expand arrow so those retain their own behavior.
             if (!card.__clickThroughAttached) {
-                card.addEventListener('click', function(e) {
+                card.addEventListener('click', function (e) {
                     // Ignore clicks on buttons, links, inputs or elements that handle their own click
                     const interactive = e.target.closest('button, a, input, .pc-eye-btn, .pc-chevron-btn, .portfolio-centered-arrow');
                     if (interactive) return;
@@ -1720,18 +1727,18 @@ html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-
 
 // On full page load (including reload), ensure main content starts at the top
 window.addEventListener('load', () => {
-    try { scrollMainToTop(true); } catch(_) {}
+    try { scrollMainToTop(true); } catch (_) { }
 });
 // Log modal close clicks to correlate with [Back] history handling
 try {
-    document.addEventListener('click', function(e){
+    document.addEventListener('click', function (e) {
         const closeBtn = e.target && (e.target.closest && (e.target.closest('[data-dismiss="modal"], [data-close-modal], .modal .close, .modal .modal-close, .close-modal') || null));
         if (closeBtn) {
             const modalEl = closeBtn.closest && closeBtn.closest('.modal');
-            try { if (window.logBackDebug) window.logBackDebug('CLICK close', modalEl && modalEl.id); } catch(_) {}
+            try { if (window.logBackDebug) window.logBackDebug('CLICK close', modalEl && modalEl.id); } catch (_) { }
         }
     }, true);
-} catch(_) {}
+} catch (_) { }
 // Delegate clicks on elements with `data-settings-target` to open the settings page
 try {
     document.addEventListener('click', function (ev) {
@@ -1744,9 +1751,9 @@ try {
             try {
                 const modal = document.getElementById('targetHitDetailsModal');
                 if (modal) {
-                    try { if (typeof hideModal === 'function') hideModal(modal); else { modal.style.display = 'none'; modal.classList.remove('show'); } } catch(_) {}
+                    try { if (typeof hideModal === 'function') hideModal(modal); else { modal.style.display = 'none'; modal.classList.remove('show'); } } catch (_) { }
                 }
-            } catch(_) {}
+            } catch (_) { }
             // Open the Global Alerts Settings modal (in-place) without navigation
             try {
                 const settingsModal = document.getElementById('globalAlertsModal');
@@ -1760,7 +1767,7 @@ try {
                             settingsModal.classList.add('show');
                         }
                         // Optionally, focus first focusable element inside the settings modal
-                        try { const first = settingsModal.querySelector('button, input, [tabindex]:not([tabindex="-1"])'); if (first) first.focus(); } catch(_) {}
+                        try { const first = settingsModal.querySelector('button, input, [tabindex]:not([tabindex="-1"])'); if (first) first.focus(); } catch (_) { }
                     } catch (e) { console.warn('Failed to show globalAlertsModal', e); }
                 } else {
                     // As a fallback, if the modal element doesn't exist, log the key for debugging
@@ -1771,7 +1778,7 @@ try {
             }
         } catch (err) { console.warn('settings-target click handler failed', err); }
     }, false);
-} catch (_) {}
+} catch (_) { }
 //  This script interacts with Firebase Firestore for data storage.
 
 // --- GLOBAL VARIABLES ---
@@ -1782,45 +1789,45 @@ window.toggleDebug = (on) => { DEBUG_MODE = !!on; };
 function logDebug(message, ...optionalParams) {
     if (DEBUG_MODE) {
         // This line MUST call the native console.log, NOT logDebug itself.
-        console.log(message, ...optionalParams); 
+        console.log(message, ...optionalParams);
     }
 }
 // Expose core helpers to other modules
-try { window.logDebug = logDebug; } catch(_) {}
+try { window.logDebug = logDebug; } catch (_) { }
 // NOTE: console monkey-patching removed to avoid surprising global behavior.
 // Use `logDebug(...)` or `window.filteredLog(...)` for controlled debug output.
-window.filteredLog = function(...args) {
+window.filteredLog = function (...args) {
     try {
         if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
             console.log(...args);
         }
-    } catch(_) {}
+    } catch (_) { }
 };
 try {
-    window.showModal = function(m){
+    window.showModal = function (m) {
         // Prevent re-opening the share form when suppression is active
         try {
             if (m && ((m.id === 'shareFormSection') || (m === shareFormSection)) && window.suppressShareFormReopen) {
-                try { logDebug && logDebug('showModal: suppressed opening share form due to suppressShareFormReopen flag'); } catch(_) {}
+                try { logDebug && logDebug('showModal: suppressed opening share form due to suppressShareFormReopen flag'); } catch (_) { }
                 return;
             }
-        } catch(_) {}
+        } catch (_) { }
 
         // Prefer UI module which also pushes history/stack
         if (typeof window.UI !== 'undefined' && window.UI.showModal) {
             // Avoid duplicate push
-            try { if (stackHasModal(m)) { return window.UI.showModalNoHistory ? window.UI.showModalNoHistory(m) : UI.showModal(m); } } catch(_) {}
+            try { if (stackHasModal(m)) { return window.UI.showModalNoHistory ? window.UI.showModalNoHistory(m) : UI.showModal(m); } } catch (_) { }
             return window.UI.showModal(m);
         }
         // Fallback: push into back stack and browser history, then show
-    try { if (m && !stackHasModal(m) && typeof window.__appBackStackPush === 'function') { window.__appBackStackPush('modal', m); logBackDebug('MODAL open push', m && m.id); } } catch(_) {}
-    try { if (m && typeof pushAppState === 'function') { pushAppState({ modalId: m.id || true }, '', '#modal'); } } catch(_) {}
-    try { if (m) { m.style.setProperty('display','flex','important'); m.classList.add('show'); } } catch(_){}
+        try { if (m && !stackHasModal(m) && typeof window.__appBackStackPush === 'function') { window.__appBackStackPush('modal', m); logBackDebug('MODAL open push', m && m.id); } } catch (_) { }
+        try { if (m && typeof pushAppState === 'function') { pushAppState({ modalId: m.id || true }, '', '#modal'); } } catch (_) { }
+        try { if (m) { m.style.setProperty('display', 'flex', 'important'); m.classList.add('show'); } } catch (_) { }
     };
-} catch(_) {}
+} catch (_) { }
 try {
     if (!window.scrollMainToTop) {
-        window.scrollMainToTop = function(instant, targetPosition = 0){
+        window.scrollMainToTop = function (instant, targetPosition = 0) {
             logDebug('[ASX Debug] window.scrollMainToTop called with instant:', instant, 'targetPosition:', targetPosition);
             try {
                 const el = document.querySelector('main.container');
@@ -1832,20 +1839,20 @@ try {
                     logDebug('[ASX Debug] window.scrollMainToTop - scrolling window to position:', targetPosition);
                     window.scrollTo({ top: targetPosition, left: 0, behavior: instant ? 'auto' : 'smooth' });
                 }
-            } catch(error) {
+            } catch (error) {
                 console.error('[ASX Debug] window.scrollMainToTop error:', error);
             }
         };
     }
-} catch(_) {}
-try { window.updateAddFormLiveSnapshot = updateAddFormLiveSnapshot; } catch(_) {}
+} catch (_) { }
+try { window.updateAddFormLiveSnapshot = updateAddFormLiveSnapshot; } catch (_) { }
 
 // Expose utils-derived helpers (needed by ui.js calculators)
-try { window.calculateUnfrankedYield = calculateUnfrankedYield; } catch(_) {}
-try { window.calculateFrankedYield = calculateFrankedYield; } catch(_) {}
-try { window.estimateDividendIncome = estimateDividendIncome; } catch(_) {}
-try { window.formatAdaptivePercent = formatAdaptivePercent; } catch(_) {}
-try { window.formatAdaptivePrice = formatAdaptivePrice; } catch(_) {}
+try { window.calculateUnfrankedYield = calculateUnfrankedYield; } catch (_) { }
+try { window.calculateFrankedYield = calculateFrankedYield; } catch (_) { }
+try { window.estimateDividendIncome = estimateDividendIncome; } catch (_) { }
+try { window.formatAdaptivePercent = formatAdaptivePercent; } catch (_) { }
+try { window.formatAdaptivePrice = formatAdaptivePrice; } catch (_) { }
 // --- END DEBUG LOGGING SETUP ---
 
 let db;
@@ -1861,7 +1868,7 @@ function clearAllNotificationState() {
         window.customTriggerHits = { updatedAt: null, hits: [] };
         if (typeof refreshNotificationsModalIfOpen === 'function') refreshNotificationsModalIfOpen('signout');
         if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner();
-    } catch(_) {}
+    } catch (_) { }
 }
 let currentAppId;
 let firestore;
@@ -1934,24 +1941,24 @@ function ensureMoversPlaceholder() {
         if (!tbody) return false;
         if (!tbody.querySelector('tr.__movers-loading')) {
             const tr = document.createElement('tr');
-            tr.className='__movers-loading';
+            tr.className = '__movers-loading';
             const td = document.createElement('td');
             td.colSpan = 50;
             td.textContent = 'Loading movers…';
-            td.style.opacity='0.65';
-            td.style.fontStyle='italic';
-            td.style.textAlign='center';
+            td.style.opacity = '0.65';
+            td.style.fontStyle = 'italic';
+            td.style.textAlign = 'center';
             tr.appendChild(td);
             tbody.appendChild(tr);
-    }
-    try { window.__lastBackAction = 'modal'; } catch(_) {}
-    return true;
-    } catch(_) { return false; }
+        }
+        try { window.__lastBackAction = 'modal'; } catch (_) { }
+        return true;
+    } catch (_) { return false; }
 }
 
 function scheduleMoversFallback() {
     if (__moversFallbackScheduled) return; __moversFallbackScheduled = true;
-    setTimeout(()=>{
+    setTimeout(() => {
         try {
             const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
             const haveMovers = getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers';
@@ -1959,13 +1966,13 @@ function scheduleMoversFallback() {
                 // Fallback to All Shares (user request) while preserving intent logs
                 setCurrentSelectedWatchlistIds([ALL_SHARES_ID]);
                 if (typeof watchlistSelect !== 'undefined' && watchlistSelect) watchlistSelect.value = ALL_SHARES_ID;
-                try { setLastSelectedView(ALL_SHARES_ID); } catch(_) {}
-                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch(_) {}
-                if (typeof renderWatchlist === 'function') { try { renderWatchlist(); } catch(_) {} }
+                try { setLastSelectedView(ALL_SHARES_ID); } catch (_) { }
+                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch (_) { }
+                if (typeof renderWatchlist === 'function') { try { renderWatchlist(); } catch (_) { } }
                 console.warn('[Movers restore][fallback->allShares] Movers failed to attach; defaulted to All Shares.');
-                try { scrollMainToTop(); } catch(_) {}
+                try { scrollMainToTop(); } catch (_) { }
             }
-        } catch(e) { console.warn('[Movers fallback] failed', e); }
+        } catch (e) { console.warn('[Movers fallback] failed', e); }
     }, 2500);
 }
 // Restore last explicit watchlist (including virtual '__movers') from localStorage before any render logic
@@ -1977,62 +1984,62 @@ try {
             try {
                 const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : [];
                 if (prev.join(',') !== parsed.join(',')) pushAppStateEntry('watchlist', prev);
-            } catch(_) {}
+            } catch (_) { }
             setCurrentSelectedWatchlistIds(parsed);
         }
     }
-} catch(_) {}
+} catch (_) { }
 // Initialize dismissal and sort state from localStorage as early as possible to avoid flashes/defaults
-try { targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true'; } catch(e) {}
+try { targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true'; } catch (e) { }
 // Restore last selected view (persisted)
 try {
     const lastView = localStorage.getItem('lastSelectedView');
     if (lastView === '__movers') {
         // Immediate forced selection BEFORE any data. Will re-render later as data arrives.
-    try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== '__movers') pushAppStateEntry('watchlist', prev); } catch(_) {}
-    setCurrentSelectedWatchlistIds(['__movers']);
+        try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== '__movers') pushAppStateEntry('watchlist', prev); } catch (_) { }
+        setCurrentSelectedWatchlistIds(['__movers']);
         __forcedInitialMovers = true;
-    try { console.log('[Movers init] Forced initial Movers selection before data load'); } catch(_) {}
+        try { console.log('[Movers init] Forced initial Movers selection before data load'); } catch (_) { }
         // Set select value if present
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = '__movers'; }
-    // Insert placeholder (retry a few frames if table not yet present)
-    let tries = 0; (function attempt(){ if (ensureMoversPlaceholder()) return; if (++tries < 10) requestAnimationFrame(attempt); })();
+        // Insert placeholder (retry a few frames if table not yet present)
+        let tries = 0; (function attempt() { if (ensureMoversPlaceholder()) return; if (++tries < 10) requestAnimationFrame(attempt); })();
         // Schedule an early render/enforce even if data empty; later data loads will call render again.
-        setTimeout(()=>{ try { if (typeof renderWatchlist==='function') renderWatchlist(); enforceMoversVirtualView(true); } catch(_) {} }, 50);
-        try { updateMainTitle(); } catch(e) {}
-        try { ensureTitleStructure(); } catch(e) {}
-        try { updateTargetHitBanner(); } catch(e) {}
-    // Schedule fallback to All Shares if movers never attaches
-    scheduleMoversFallback();
+        setTimeout(() => { try { if (typeof renderWatchlist === 'function') renderWatchlist(); enforceMoversVirtualView(true); } catch (_) { } }, 50);
+        try { updateMainTitle(); } catch (e) { }
+        try { ensureTitleStructure(); } catch (e) { }
+        try { updateTargetHitBanner(); } catch (e) { }
+        // Schedule fallback to All Shares if movers never attaches
+        scheduleMoversFallback();
     } else if (lastView === 'portfolio') {
-    try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== 'portfolio') pushAppStateEntry('watchlist', prev); } catch(_) {}
-    setCurrentSelectedWatchlistIds(['portfolio']);
-    if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
+        try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== 'portfolio') pushAppStateEntry('watchlist', prev); } catch (_) { }
+        setCurrentSelectedWatchlistIds(['portfolio']);
+        if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = 'portfolio'; }
         // Defer actual DOM switch until initial data load completes; hook into data load readiness
         window.addEventListener('load', () => {
             setTimeout(() => { if (typeof showPortfolioView === 'function') showPortfolioView(); }, 300);
         });
 
-    // Keep header and alerts consistent after portfolio render
-    try { updateMainTitle(); } catch(e) {}
-    try { ensureTitleStructure(); } catch(e) {}
-    try { updateTargetHitBanner(); } catch(e) {}
+        // Keep header and alerts consistent after portfolio render
+        try { updateMainTitle(); } catch (e) { }
+        try { ensureTitleStructure(); } catch (e) { }
+        try { updateTargetHitBanner(); } catch (e) { }
     } else if (lastView && lastView !== 'portfolio') {
-    try {
-        const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : [];
-        if (prev.join(',') !== [lastView].join(',')) pushAppStateEntry('watchlist', prev);
-    } catch(_) {}
-    setCurrentSelectedWatchlistIds([lastView]);
+        try {
+            const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : [];
+            if (prev.join(',') !== [lastView].join(',')) pushAppStateEntry('watchlist', prev);
+        } catch (_) { }
+        setCurrentSelectedWatchlistIds([lastView]);
         if (typeof watchlistSelect !== 'undefined' && watchlistSelect) { watchlistSelect.value = lastView; }
-        try { updateMainTitle(); } catch(e) {}
-        try { ensureTitleStructure(); } catch(e) {}
-        try { updateTargetHitBanner(); } catch(e) {}
+        try { updateMainTitle(); } catch (e) { }
+        try { ensureTitleStructure(); } catch (e) { }
+        try { updateTargetHitBanner(); } catch (e) { }
     }
-} catch(e) { /* ignore */ }
+} catch (e) { /* ignore */ }
 const ALL_SHARES_ID = 'all_shares_option'; // Special ID for the "Show All Shares" option
 const CASH_BANK_WATCHLIST_ID = 'cashBank'; // NEW: Special ID for the "Cash & Assets" option
 // moved to state.js: currentSortOrder
-try { const lsSort = localStorage.getItem('lastSortOrder'); if (lsSort) { setCurrentSortOrder(lsSort); } } catch(e) {}
+try { const lsSort = localStorage.getItem('lastSortOrder'); if (lsSort) { setCurrentSortOrder(lsSort); } } catch (e) { }
 let contextMenuOpen = false; // To track if the custom context menu is open
 let currentContextMenuShareId = null; // Stores the ID of the share that opened the context menu
 let originalShareData = null; // Stores the original share data when editing for dirty state check
@@ -2041,7 +2048,7 @@ let currentEditingWatchlistId = null; // NEW: Stores the ID of the watchlist bei
 // Guard against unintended re-opening of the Share Edit modal shortly after save
 // Use a window-scoped sentinel so other modules (dataService, appService) can
 // set/check it across module boundaries and avoid reopening the form after save.
-try { window.suppressShareFormReopen = window.suppressShareFormReopen || false; } catch(_) { window.suppressShareFormReopen = false; }
+try { window.suppressShareFormReopen = window.suppressShareFormReopen || false; } catch (_) { window.suppressShareFormReopen = false; }
 
 // App version (displayed in UI title bar)
 // REMINDER: Before each release, update APP_VERSION here, in the splash screen, and any other version displays.
@@ -2062,33 +2069,33 @@ try {
             JSON.parse(stored).forEach(id => hiddenFromTotalsShareIds.add(id));
         }
         // Mirror to window for other modules
-        try { window.hiddenFromTotalsShareIds = hiddenFromTotalsShareIds; } catch(_) {}
+        try { window.hiddenFromTotalsShareIds = hiddenFromTotalsShareIds; } catch (_) { }
     }
 } catch (e) {
     hiddenFromTotalsShareIds = new Set();
 }
 
 function persistHiddenFromTotals() {
-    try { localStorage.setItem('hiddenFromTotalsShareIds', JSON.stringify(Array.from(hiddenFromTotalsShareIds))); } catch(_) {}
-    try { window.hiddenFromTotalsShareIds = hiddenFromTotalsShareIds; } catch(_) {}
+    try { localStorage.setItem('hiddenFromTotalsShareIds', JSON.stringify(Array.from(hiddenFromTotalsShareIds))); } catch (_) { }
+    try { window.hiddenFromTotalsShareIds = hiddenFromTotalsShareIds; } catch (_) { }
 }
 
 // External API: allow other modules (e.g., dataService) to apply an authoritative list of hidden IDs
 try {
-    window.applyHiddenFromTotalsIds = function(arr) {
+    window.applyHiddenFromTotalsIds = function (arr) {
         try {
             if (!Array.isArray(arr)) return;
             hiddenFromTotalsShareIds = new Set(arr.filter(Boolean));
             // Persist locally and mirror
             persistHiddenFromTotals();
             // Trigger re-render of portfolio/UI if available
-            try { if (typeof renderPortfolioList === 'function') renderPortfolioList(); } catch(_) {}
-            try { if (typeof sortShares === 'function') sortShares(); } catch(_) {}
+            try { if (typeof renderPortfolioList === 'function') renderPortfolioList(); } catch (_) { }
+            try { if (typeof sortShares === 'function') sortShares(); } catch (_) { }
         } catch (e) {
             console.warn('applyHiddenFromTotalsIds failed', e);
         }
     };
-} catch (_) {}
+} catch (_) { }
 
 // Double-back exit toast state (used when there is nothing left to go back to in-app)
 let __lastBackPressAt = 0;
@@ -2102,7 +2109,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Splash version display
     try {
         const splashVerEl = document.getElementById('splashAppVersion');
-    if (splashVerEl) splashVerEl.textContent = 'v' + APP_VERSION;
+        if (splashVerEl) splashVerEl.textContent = 'v' + APP_VERSION;
     } catch (e) { /* ignore */ }
 
     // Force Update button handler - posts SKIP_WAITING to waiting worker or triggers update
@@ -2184,7 +2191,7 @@ async function getAppVersionReport() {
 }
 
 // Update splash element title with SW diagnostic info for quick visibility
-(async function annotateSplashWithSW(){
+(async function annotateSplashWithSW() {
     try {
         const el = document.getElementById('splashAppVersion');
         if (!el) return;
@@ -2194,7 +2201,7 @@ async function getAppVersionReport() {
         if (rep.activeScript) parts.push('active:' + rep.activeScript.split('/').pop());
         if (Array.isArray(rep.versionedCaches) && rep.versionedCaches.length) parts.push('cache:' + rep.versionedCaches.join(','));
         if (parts.length) el.title = parts.join(' | ');
-    } catch(_) {}
+    } catch (_) { }
 })();
 
 // Expose reporter to console for manual inspection
@@ -2203,7 +2210,7 @@ window.getAppVersionReport = getAppVersionReport;
 // Remember prior movers selection across auth resets: stash in sessionStorage before clearing localStorage (if any external code clears it)
 
 // Runtime enforcement: ensure modals follow the single-scroll-container pattern
-(function enforceSingleScrollModals(){
+(function enforceSingleScrollModals() {
     function normalizeModalContent(mc) {
         if (!mc) return { added: false, unwrapped: 0 };
         let added = false;
@@ -2219,14 +2226,14 @@ window.getAppVersionReport = getAppVersionReport;
                 while (inner.firstChild) mc.appendChild(inner.firstChild);
                 inner.remove();
                 unwrapped++;
-            } catch(e) { console.warn('[SingleScroll] Failed to unwrap inner container', e); }
+            } catch (e) { console.warn('[SingleScroll] Failed to unwrap inner container', e); }
         });
         // Ensure touch-scrolling styles present (defensive)
         try {
             mc.style.overflowY = mc.style.overflowY || 'auto';
             mc.style.webkitOverflowScrolling = 'touch';
             if (!mc.style.maxHeight) mc.style.maxHeight = 'calc(100vh - 80px)';
-        } catch(e) {}
+        } catch (e) { }
         return { added, unwrapped };
     }
 
@@ -2244,7 +2251,7 @@ window.getAppVersionReport = getAppVersionReport;
             } else {
                 console.debug('[SingleScroll] No changes required — modals already normalized (count:', report.total, ')');
             }
-        } catch(e) { console.warn('[SingleScroll] Enforcement failed', e); }
+        } catch (e) { console.warn('[SingleScroll] Enforcement failed', e); }
     }
 
     if (document.readyState === 'loading') {
@@ -2254,7 +2261,7 @@ window.getAppVersionReport = getAppVersionReport;
     }
 
     // Re-run automatically when DOM changes (e.g., modals injected dynamically)
-    (function installObserver(){
+    (function installObserver() {
         let timer = null;
         const debouncedRun = () => {
             if (timer) clearTimeout(timer);
@@ -2281,7 +2288,7 @@ window.getAppVersionReport = getAppVersionReport;
                 }
             });
             observer.observe(document.documentElement || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-        } catch(e) {
+        } catch (e) {
             // noop
         }
     })();
@@ -2291,7 +2298,7 @@ window.getAppVersionReport = getAppVersionReport;
 })();
 // Non-mutating diagnostic: returns a report of what the enforcement would change
 // Usage (from console): await window.__enforceSingleScrollModalsReport()
-window.__enforceSingleScrollModalsReport = function() {
+window.__enforceSingleScrollModalsReport = function () {
     function describeNode(n) {
         if (!n) return null;
         const id = n.id ? `#${n.id}` : '';
@@ -2329,9 +2336,9 @@ window.__enforceSingleScrollModalsReport = function() {
 
 
 // Runtime enforcement: ensure modals follow the single-scroll-container pattern
-(function enforceSingleScrollModals(){
+(function enforceSingleScrollModals() {
     function normalizeModalContent(mc) {
-        if (!mc) return { added:false, unwrapped:0 };
+        if (!mc) return { added: false, unwrapped: 0 };
         let added = false;
         if (!mc.classList.contains('single-scroll-modal')) {
             mc.classList.add('single-scroll-modal');
@@ -2345,14 +2352,14 @@ window.__enforceSingleScrollModalsReport = function() {
                 while (inner.firstChild) mc.appendChild(inner.firstChild);
                 inner.remove();
                 unwrapped++;
-            } catch(e) { console.warn('[SingleScroll] Failed to unwrap inner container', e); }
+            } catch (e) { console.warn('[SingleScroll] Failed to unwrap inner container', e); }
         });
         // Ensure touch-scrolling styles present (defensive)
         try {
             mc.style.webkitOverflowScrolling = mc.style['-webkit-overflow-scrolling'] = mc.style['-webkit-overflow-scrolling'] || 'touch';
             mc.style.overflowY = mc.style.overflowY || 'auto';
             if (!mc.style.maxHeight) mc.style.maxHeight = 'calc(100vh - 80px)';
-        } catch(e) {}
+        } catch (e) { }
         return { added, unwrapped };
     }
 
@@ -2370,66 +2377,106 @@ window.__enforceSingleScrollModalsReport = function() {
             } else {
                 console.debug('[SingleScroll] No changes required — modals already normalized (count:', report.total, ')');
             }
-        } catch(e) { console.warn('[SingleScroll] Enforcement failed', e); }
+        } catch (e) { console.warn('[SingleScroll] Enforcement failed', e); }
     }
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', run, { once: true });
     } else {
         // Run ASAP if DOM already loaded
-// Runtime enforcement: ensure modals follow the single-scroll-container pattern
-(function enforceSingleScrollModals(){
-    function normalizeModalContent(mc) {
-        if (!mc) return { added:false, unwrapped:0 };
-        let added = false;
-        if (!mc.classList.contains('single-scroll-modal')) {
-            mc.classList.add('single-scroll-modal');
-            added = true;
-        }
-        // Move children out of any nested .modal-body-scrollable wrappers
-        const inners = Array.from(mc.querySelectorAll('.modal-body-scrollable'));
-        let unwrapped = 0;
-        inners.forEach(inner => {
-            try {
-                while (inner.firstChild) mc.appendChild(inner.firstChild);
-                inner.remove();
-                unwrapped++;
-            } catch(e) { console.warn('[SingleScroll] Failed to unwrap inner container', e); }
-        });
-        // Ensure touch-scrolling styles present (defensive)
-        try {
-            mc.style.overflowY = mc.style.overflowY || 'auto';
-            mc.style.webkitOverflowScrolling = 'touch';
-            if (!mc.style.maxHeight) mc.style.maxHeight = 'calc(100vh - 80px)';
-        } catch(e) {}
-        return { added, unwrapped };
-    }
-
-    function run() {
-        try {
-            const modalContents = document.querySelectorAll('.modal .modal-content');
-            const report = { total: modalContents.length, changed: 0, unwrapped: 0 };
-            modalContents.forEach(mc => {
-                const r = normalizeModalContent(mc);
-                if (r.added) report.changed++;
-                report.unwrapped += r.unwrapped || 0;
-            });
-            if (report.changed || report.unwrapped) {
-                console.info('[SingleScroll] Enforced single-scroll on', report.total, 'modals — added class to', report.changed, 'and unwrapped', report.unwrapped, 'inner containers.');
-            } else {
-                console.debug('[SingleScroll] No changes required — modals already normalized (count:', report.total, ')');
+        // Runtime enforcement: ensure modals follow the single-scroll-container pattern
+        (function enforceSingleScrollModals() {
+            function normalizeModalContent(mc) {
+                if (!mc) return { added: false, unwrapped: 0 };
+                let added = false;
+                if (!mc.classList.contains('single-scroll-modal')) {
+                    mc.classList.add('single-scroll-modal');
+                    added = true;
+                }
+                // Move children out of any nested .modal-body-scrollable wrappers
+                const inners = Array.from(mc.querySelectorAll('.modal-body-scrollable'));
+                let unwrapped = 0;
+                inners.forEach(inner => {
+                    try {
+                        while (inner.firstChild) mc.appendChild(inner.firstChild);
+                        inner.remove();
+                        unwrapped++;
+                    } catch (e) { console.warn('[SingleScroll] Failed to unwrap inner container', e); }
+                });
+                // Ensure touch-scrolling styles present (defensive)
+                try {
+                    mc.style.overflowY = mc.style.overflowY || 'auto';
+                    mc.style.webkitOverflowScrolling = 'touch';
+                    if (!mc.style.maxHeight) mc.style.maxHeight = 'calc(100vh - 80px)';
+                } catch (e) { }
+                return { added, unwrapped };
             }
-        } catch(e) { console.warn('[SingleScroll] Enforcement failed', e); }
-    }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', run, { once: true });
-    } else {
+            function run() {
+                try {
+                    const modalContents = document.querySelectorAll('.modal .modal-content');
+                    const report = { total: modalContents.length, changed: 0, unwrapped: 0 };
+                    modalContents.forEach(mc => {
+                        const r = normalizeModalContent(mc);
+                        if (r.added) report.changed++;
+                        report.unwrapped += r.unwrapped || 0;
+                    });
+                    if (report.changed || report.unwrapped) {
+                        console.info('[SingleScroll] Enforced single-scroll on', report.total, 'modals — added class to', report.changed, 'and unwrapped', report.unwrapped, 'inner containers.');
+                    } else {
+                        console.debug('[SingleScroll] No changes required — modals already normalized (count:', report.total, ')');
+                    }
+                } catch (e) { console.warn('[SingleScroll] Enforcement failed', e); }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', run, { once: true });
+            } else {
+                setTimeout(run, 0);
+            }
+
+            // Re-run automatically when DOM changes (e.g., modals injected dynamically)
+            (function installObserver() {
+                let timer = null;
+                const debouncedRun = () => {
+                    if (timer) clearTimeout(timer);
+                    timer = setTimeout(() => { run(); timer = null; }, 120);
+                };
+
+                try {
+                    const observer = new MutationObserver((mutations) => {
+                        for (const m of mutations) {
+                            if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
+                                // If any modal or modal-content nodes were added, trigger normalization
+                                for (const n of m.addedNodes) {
+                                    if (n.nodeType === 1) {
+                                        const el = /** @type {Element} */ (n);
+                                        if (el.classList && (el.classList.contains('modal') || el.classList.contains('modal-content') || el.querySelector && el.querySelector('.modal-content'))) {
+                                            debouncedRun();
+                                            return;
+                                        }
+                                    }
+                                }
+                            } else if (m.type === 'attributes' && m.attributeName === 'class') {
+                                debouncedRun();
+                                return;
+                            }
+                        }
+                    });
+                    observer.observe(document.documentElement || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+                } catch (e) {
+                    // If observer installation fails, still expose manual trigger
+                }
+            })();
+
+            // Expose for manual debugging from console
+            window.__enforceSingleScrollModals = run;
+        })();
         setTimeout(run, 0);
     }
 
     // Re-run automatically when DOM changes (e.g., modals injected dynamically)
-    (function installObserver(){
+    (function installObserver() {
         let timer = null;
         const debouncedRun = () => {
             if (timer) clearTimeout(timer);
@@ -2457,47 +2504,7 @@ window.__enforceSingleScrollModalsReport = function() {
                 }
             });
             observer.observe(document.documentElement || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-        } catch(e) {
-            // If observer installation fails, still expose manual trigger
-        }
-    })();
-
-    // Expose for manual debugging from console
-    window.__enforceSingleScrollModals = run;
-})();
-        setTimeout(run, 0);
-    }
-
-    // Re-run automatically when DOM changes (e.g., modals injected dynamically)
-    (function installObserver(){
-        let timer = null;
-        const debouncedRun = () => {
-            if (timer) clearTimeout(timer);
-            timer = setTimeout(() => { run(); timer = null; }, 120);
-        };
-
-        try {
-            const observer = new MutationObserver((mutations) => {
-                for (const m of mutations) {
-                    if (m.type === 'childList' && m.addedNodes && m.addedNodes.length) {
-                        // If any modal or modal-content nodes were added, trigger normalization
-                        for (const n of m.addedNodes) {
-                            if (n.nodeType === 1) {
-                                const el = /** @type {Element} */ (n);
-                                if (el.classList && (el.classList.contains('modal') || el.classList.contains('modal-content') || el.querySelector && el.querySelector('.modal-content'))) {
-                                    debouncedRun();
-                                    return;
-                                }
-                            }
-                        }
-                    } else if (m.type === 'attributes' && m.attributeName === 'class') {
-                        debouncedRun();
-                        return;
-                    }
-                }
-            });
-            observer.observe(document.documentElement || document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-        } catch(e) {
+        } catch (e) {
             // If observer installation fails, still expose manual trigger
         }
     })();
@@ -2506,7 +2513,7 @@ window.__enforceSingleScrollModalsReport = function() {
     window.__enforceSingleScrollModals = run;
 })();
 // === Typography Diagnostics ===
-function logTypographyRatios(contextLabel='') {
+function logTypographyRatios(contextLabel = '') {
     try {
         const root = document;
         const priceEl = root.querySelector('#shareDetailModal .live-price-display-section .live-price-large, #shareDetailModal .modal-share-name');
@@ -2524,13 +2531,13 @@ function logTypographyRatios(contextLabel='') {
             weekHighPx: getSize(weekHighEl),
             pePx: getSize(peEl)
         };
-        ['changePx','weekLowPx','weekHighPx','pePx'].forEach(k => {
-            if (!isNaN(report[k]) && !isNaN(primarySize) && primarySize>0) {
-                report[k.replace('Px','Ratio')] = +(report[k] / primarySize).toFixed(3);
+        ['changePx', 'weekLowPx', 'weekHighPx', 'pePx'].forEach(k => {
+            if (!isNaN(report[k]) && !isNaN(primarySize) && primarySize > 0) {
+                report[k.replace('Px', 'Ratio')] = +(report[k] / primarySize).toFixed(3);
             }
         });
         console.log('[TypographyDiagnostics]', report);
-    } catch(e) { console.warn('Typography diagnostics failed', e); }
+    } catch (e) { console.warn('Typography diagnostics failed', e); }
 }
 
 function logSearchModalTypographyRatios() {
@@ -2544,26 +2551,26 @@ function logSearchModalTypographyRatios() {
         const getSize = el => el ? parseFloat(getComputedStyle(el).fontSize) : NaN;
         const primarySize = getSize(priceEl);
         const report = {
-            context:'search-modal',
+            context: 'search-modal',
             primaryPx: primarySize,
             changePx: getSize(changeEl),
             weekLowPx: getSize(weekLowEl),
             weekHighPx: getSize(weekHighEl),
             pePx: getSize(peEl)
         };
-        ['changePx','weekLowPx','weekHighPx','pePx'].forEach(k => {
-            if (!isNaN(report[k]) && !isNaN(primarySize) && primarySize>0) {
-                report[k.replace('Px','Ratio')] = +(report[k] / primarySize).toFixed(3);
+        ['changePx', 'weekLowPx', 'weekHighPx', 'pePx'].forEach(k => {
+            if (!isNaN(report[k]) && !isNaN(primarySize) && primarySize > 0) {
+                report[k.replace('Px', 'Ratio')] = +(report[k] / primarySize).toFixed(3);
             }
         });
         console.log('[TypographyDiagnostics]', report);
-    } catch(e) { console.warn('Search typography diagnostics failed', e); }
+    } catch (e) { console.warn('Search typography diagnostics failed', e); }
 }
 try {
     if (localStorage.getItem('lastSelectedView') === '__movers') {
-        sessionStorage.setItem('preResetLastSelectedView','__movers');
+        sessionStorage.setItem('preResetLastSelectedView', '__movers');
     }
-} catch(_) {}
+} catch (_) { }
 
 
 // Live Price Data
@@ -2607,23 +2614,23 @@ function updateLivePriceTimestamp(ts) {
         labelEl.style.display = 'block';
         labelEl.style.visibility = 'visible';
         labelEl.style.opacity = '1';
-                // label element initialized
+        // label element initialized
     } else {
         console.error('Label element not found!');
     }
 }
 
 // Expose timestamp updater for other modules (e.g., priceService)
-try { window.updateLivePriceTimestamp = updateLivePriceTimestamp; } catch(_) {}
+try { window.updateLivePriceTimestamp = updateLivePriceTimestamp; } catch (_) { }
 // Ensure a global fetchLivePrices reference exists for legacy callers (no extra side-effects here)
 try {
     if (typeof fetchLivePrices === 'function' && !window.fetchLivePrices) {
         window.fetchLivePrices = (...args) => fetchLivePrices.apply(null, args);
     }
-} catch(_) {}
+} catch (_) { }
 
 // Also update timestamp on DOMContentLoaded (in case prices are preloaded)
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     updateLivePriceTimestamp(Date.now());
 
     // Stale snapshot handshake removed; snapshot restoration happens synchronously on module load.
@@ -2631,7 +2638,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Click-to-Refresh on Timestamp Container
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     try {
         const tsContainer = document.getElementById('livePriceTimestampContainer');
         if (tsContainer) {
@@ -2639,12 +2646,12 @@ document.addEventListener('DOMContentLoaded', function() {
             tsContainer.title = 'Click to refresh live prices';
             tsContainer.addEventListener('click', async (e) => {
                 e.preventDefault();
-                try { window.logDebug && window.logDebug('UI: Timestamp clicked — refreshing live prices.'); } catch(_) {}
+                try { window.logDebug && window.logDebug('UI: Timestamp clicked — refreshing live prices.'); } catch (_) { }
                 // Mirror sidebar behavior: show toast notification
-                try { if (typeof window.showCustomAlert === 'function') window.showCustomAlert('Refreshing live prices...', 1000); } catch(_) {}
+                try { if (typeof window.showCustomAlert === 'function') window.showCustomAlert('Refreshing live prices...', 1000); } catch (_) { }
                 // Provide quick visual feedback
                 const tsEl = document.getElementById('livePriceTimestamp');
-                if (tsEl) { tsEl.style.opacity = '0.6'; setTimeout(()=>{ tsEl.style.opacity = '1'; }, 250); }
+                if (tsEl) { tsEl.style.opacity = '0.6'; setTimeout(() => { tsEl.style.opacity = '1'; }, 250); }
                 try {
                     if (typeof fetchLivePricesAndUpdateUI === 'function') {
                         await fetchLivePricesAndUpdateUI();
@@ -2715,7 +2722,7 @@ try {
             console.log('[GlobalAlerts][preload] Applied local snapshot of directional thresholds before remote load', parsed);
         }
     }
-} catch(e) { /* ignore */ }
+} catch (e) { /* ignore */ }
 
 let unsubscribeShares = null; // Holds the unsubscribe function for the Firestore shares listener
 let unsubscribeCashCategories = null; // NEW: Holds the unsubscribe function for Firestore cash categories listener
@@ -2731,7 +2738,7 @@ let lastKnownTargetCount = 0;
 try {
     const persisted = parseInt(localStorage.getItem('lastKnownTargetCount') || '0', 10);
     if (!isNaN(persisted) && persisted > 0) lastKnownTargetCount = persisted;
-} catch(e) {}
+} catch (e) { }
 
 // NEW: Global variable to track the current mobile view mode ('default' or 'compact')
 // SUPER ROBUST: Single source of truth for view mode with immediate DOM application
@@ -2955,7 +2962,7 @@ if (typeof window !== 'undefined') {
     }
 
     // Add global debug function for troubleshooting
-    window.debugCompactView = function() {
+    window.debugCompactView = function () {
         debugViewModeState('manual_debug');
         console.log('View Mode: Manual debug completed');
         return {
@@ -2969,19 +2976,19 @@ if (typeof window !== 'undefined') {
     };
 
     // Add function to force compact mode for testing
-    window.forceCompactView = function() {
+    window.forceCompactView = function () {
         console.log('View Mode: Forcing compact view for testing...');
         setMobileViewMode('compact', 'manual_force');
     };
 
     // Add function to force default mode for testing
-    window.forceDefaultView = function() {
+    window.forceDefaultView = function () {
         console.log('View Mode: Forcing default view for testing...');
         setMobileViewMode('default', 'manual_force');
     };
 
     // Debug function to check compact view state
-    window.checkCompactViewState = function() {
+    window.checkCompactViewState = function () {
         console.log('View Mode State:', {
             mode: currentMobileViewMode,
             initialized: viewModeInitialized,
@@ -2991,7 +2998,7 @@ if (typeof window !== 'undefined') {
     };
 
     // Debug function to test view mode persistence
-    window.testViewModePersistence = async function() {
+    window.testViewModePersistence = async function () {
         console.log('Testing view mode persistence...');
 
         try {
@@ -3005,7 +3012,7 @@ if (typeof window !== 'undefined') {
     };
 
     // Debug function to check movers data
-    window.debugMoversData = function() {
+    window.debugMoversData = function () {
         try {
             const moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || [];
             const base = dedupeSharesById(allSharesData);
@@ -3018,7 +3025,7 @@ if (typeof window !== 'undefined') {
                 matchingShares: matchingShares.length,
                 watchlist: currentSelectedWatchlistIds
             });
-        } catch(e) {
+        } catch (e) {
             console.error('Movers debug failed:', e.message);
         }
     };
@@ -3028,7 +3035,7 @@ if (typeof window !== 'undefined') {
 };
 
 // Debug function to check movers state
-window.checkMoversState = function() {
+window.checkMoversState = function () {
     try {
         const moversResult = applyGlobalSummaryFilter({ silent: true, computeOnly: true });
         console.log('Movers State:', {
@@ -3038,64 +3045,64 @@ window.checkMoversState = function() {
             moversCount: moversResult ? moversResult.length : 0,
             hasSnapshot: !!window.__lastMoversSnapshot
         });
-    } catch(e) {
+    } catch (e) {
         console.error('Movers state check failed:', e.message);
     }
 };
 
-    // Set up a MutationObserver to watch for DOM changes and apply view mode when container appears
-    const setupDOMWatcher = () => {
-        // Guard against multiple registrations
-        if (window.__domWatcherSetup) {
-            try { console.debug('DOM Watcher: Already set up, skipping duplicate registration'); } catch(_) {}
-            return;
-        }
-        window.__domWatcherSetup = true;
-        if (typeof MutationObserver !== 'undefined') {
-            const observer = new MutationObserver((mutations) => {
-                for (const mutation of mutations) {
-                    if (mutation.type === 'childList') {
-                        mutation.addedNodes.forEach((node) => {
-                            if (node.nodeType === Node.ELEMENT_NODE) {
-                                // Check if the added element is our container or contains it
-                                const container = node.id === 'mobileShareCards' ? node :
-                                    node.querySelector ? node.querySelector('#mobileShareCards') : null;
-
-                                if (container && currentMobileViewMode && viewModeInitialized) {
-                                    console.log('DOM Watcher: mobileShareCardsContainer appeared, applying view mode');
-                                    // Small delay to ensure element is fully ready
-                                    setTimeout(() => {
-                                        if (currentMobileViewMode === 'compact') {
-                                            container.classList.add('compact-view');
-                                        } else {
-                                            container.classList.remove('compact-view');
-                                        }
-                                        console.log('DOM Watcher: Applied view mode to newly appeared container');
-                                    }, 50);
-                                }
-                            }
-                        });
-                    }
-                }
-            });
-
-            // Start observing the document body for changes
-            if (document.body) {
-                observer.observe(document.body, {
-                    childList: true,
-                    subtree: true
-                });
-                console.log('DOM Watcher: Started observing for mobileShareCardsContainer');
-            }
-        }
-    };
-
-    // Start the DOM watcher
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupDOMWatcher);
-    } else {
-        setupDOMWatcher();
+// Set up a MutationObserver to watch for DOM changes and apply view mode when container appears
+const setupDOMWatcher = () => {
+    // Guard against multiple registrations
+    if (window.__domWatcherSetup) {
+        try { console.debug('DOM Watcher: Already set up, skipping duplicate registration'); } catch (_) { }
+        return;
     }
+    window.__domWatcherSetup = true;
+    if (typeof MutationObserver !== 'undefined') {
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            // Check if the added element is our container or contains it
+                            const container = node.id === 'mobileShareCards' ? node :
+                                node.querySelector ? node.querySelector('#mobileShareCards') : null;
+
+                            if (container && currentMobileViewMode && viewModeInitialized) {
+                                console.log('DOM Watcher: mobileShareCardsContainer appeared, applying view mode');
+                                // Small delay to ensure element is fully ready
+                                setTimeout(() => {
+                                    if (currentMobileViewMode === 'compact') {
+                                        container.classList.add('compact-view');
+                                    } else {
+                                        container.classList.remove('compact-view');
+                                    }
+                                    console.log('DOM Watcher: Applied view mode to newly appeared container');
+                                }, 50);
+                            }
+                        }
+                    });
+                }
+            }
+        });
+
+        // Start observing the document body for changes
+        if (document.body) {
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+            console.log('DOM Watcher: Started observing for mobileShareCardsContainer');
+        }
+    }
+};
+
+// Start the DOM watcher
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupDOMWatcher);
+} else {
+    setupDOMWatcher();
+}
 // Early restore of persisted mobile view mode using centralized manager
 // Only set the mode variable, don't try to manipulate DOM yet
 try {
@@ -3105,7 +3112,7 @@ try {
         viewModeInitialized = true;
         if (DEBUG_MODE) console.log('View Mode: Early restored mode =', currentMobileViewMode);
     }
-} catch(_) {}
+} catch (_) { }
 
 // Helper to ensure compact mode class is always applied
 function applyCompactViewMode() {
@@ -3124,7 +3131,7 @@ function applyCompactViewMode() {
     // Adjust layout after view mode change
     requestAnimationFrame(adjustMainContentPadding);
     // Update toggle button label/icon if present
-    try { if (typeof updateCompactViewButtonState === 'function') updateCompactViewButtonState(); } catch(_) {}
+    try { if (typeof updateCompactViewButtonState === 'function') updateCompactViewButtonState(); } catch (_) { }
 }
 
 // === User Preferences Persistence (Firestore-backed) ===
@@ -3140,7 +3147,7 @@ async function loadUserPreferences() {
             return userPreferences;
         }
         if (DEBUG_MODE) console.log('[Prefs] No existing preferences doc');
-    } catch(e) { if (DEBUG_MODE) console.warn('Prefs: load failed', e); }
+    } catch (e) { if (DEBUG_MODE) console.warn('Prefs: load failed', e); }
     return {};
 }
 async function persistUserPreference(key, value) {
@@ -3151,19 +3158,19 @@ async function persistUserPreference(key, value) {
         await firestore.setDoc(prefsRef, obj, { merge: true });
         userPreferences[key] = value;
         if (DEBUG_MODE) console.log('[Prefs] Persisted', key, '=', value);
-    } catch(e) { if (DEBUG_MODE) console.warn('Prefs: persist failed', e); }
+    } catch (e) { if (DEBUG_MODE) console.warn('Prefs: persist failed', e); }
 }
 
 // Helper: persist lastSelectedView to both localStorage & Firestore (if authenticated)
 function setLastSelectedView(val) {
     if (!val) return;
     // Skip if unchanged (avoid noisy duplicate writes)
-    const currentLocal = (()=>{ try { return localStorage.getItem('lastSelectedView'); } catch(_) { return null; } })();
+    const currentLocal = (() => { try { return localStorage.getItem('lastSelectedView'); } catch (_) { return null; } })();
     if (currentLocal === val && userPreferences.lastSelectedView === val) {
         if (DEBUG_MODE) console.log('[Prefs] setLastSelectedView unchanged ->', val);
         return;
     }
-    try { localStorage.setItem('lastSelectedView', val); } catch(_) {}
+    try { localStorage.setItem('lastSelectedView', val); } catch (_) { }
     userPreferences.lastSelectedView = val;
     if (db && currentUserId && firestore) {
         // Debounce Firestore writes within a short window
@@ -3171,8 +3178,8 @@ function setLastSelectedView(val) {
         const rec = window.__lastViewPersist;
         rec.value = val; rec.ts = Date.now();
         if (rec.timer) { clearTimeout(rec.timer); rec.timer = null; }
-        rec.timer = setTimeout(()=>{
-            try { persistUserPreference('lastSelectedView', rec.value); } catch(_) {}
+        rec.timer = setTimeout(() => {
+            try { persistUserPreference('lastSelectedView', rec.value); } catch (_) { }
         }, 500); // 500ms debounce collects rapid consecutive changes
     }
     if (DEBUG_MODE) console.log('[Prefs] setLastSelectedView ->', val);
@@ -3190,11 +3197,11 @@ function restoreViewAndModeFromPreferences() {
         if (lastView) {
             if (lastView === 'portfolio') {
                 showPortfolioView();
-                try { scrollMainToTop(true); } catch(_) {}
+                try { scrollMainToTop(true); } catch (_) { }
             } else if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
                 // If movers virtual view
                 if (lastView === '__movers') {
-                    try { watchlistSelect.value = ALL_SHARES_ID; } catch(_) {}
+                    try { watchlistSelect.value = ALL_SHARES_ID; } catch (_) { }
                     setCurrentSelectedWatchlistIds(['__movers']);
                     renderWatchlist();
                     enforceMoversVirtualView();
@@ -3235,7 +3242,7 @@ function restoreViewAndModeFromPreferences() {
                         }
 
                         renderWatchlist();
-                        try { scrollMainToTop(); } catch(_) {}
+                        try { scrollMainToTop(); } catch (_) { }
                         updateMainTitle();
                     }
                 }
@@ -3251,28 +3258,28 @@ function restoreViewAndModeFromPreferences() {
         if (storedMode !== 'compact' && storedMode !== 'default') {
             storedMode = 'default';
             // Bootstrap Firestore doc with default if missing
-            if (Object.keys(userPreferences||{}).length === 0 || userPreferences.compactViewMode === undefined) {
-                try { persistUserPreference('compactViewMode', storedMode); } catch(_) {}
+            if (Object.keys(userPreferences || {}).length === 0 || userPreferences.compactViewMode === undefined) {
+                try { persistUserPreference('compactViewMode', storedMode); } catch (_) { }
             }
         }
         currentMobileViewMode = storedMode;
-        try { localStorage.setItem('currentMobileViewMode', currentMobileViewMode); } catch(_) {}
+        try { localStorage.setItem('currentMobileViewMode', currentMobileViewMode); } catch (_) { }
         // applyCompactViewMode(); // Disabled - conflicts with robust restoration
-    } catch(e) { console.warn('Restore preferences failed', e); }
+    } catch (e) { console.warn('Restore preferences failed', e); }
 }
 
 function scheduleMoversDeferredEnforce() {
     try {
         if (window.__moversDeferredEnforceTimer) return; // debounce
-        window.__moversDeferredEnforceTimer = setTimeout(()=>{
+        window.__moversDeferredEnforceTimer = setTimeout(() => {
             window.__moversDeferredEnforceTimer = null;
             try {
                 if (localStorage.getItem('lastSelectedView') === '__movers' || (userPreferences && userPreferences.lastSelectedView === '__movers')) {
                     enforceMoversVirtualView();
                 }
-            } catch(e){ console.warn('Deferred movers enforce failed', e); }
+            } catch (e) { console.warn('Deferred movers enforce failed', e); }
         }, 1800); // after first live price fetch cycle likely done
-    } catch(_) {}
+    } catch (_) { }
 }
 
 // Auto-open suppression sentinel: require user interaction (clicking alert icon) before any passive auto-open
@@ -3307,14 +3314,14 @@ function refreshActiveModalLayout(reason) {
     try {
         const refresh = window.ModalViewportManager && window.ModalViewportManager.refresh;
         if (typeof refresh === 'function') {
-            try { if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.debug('[ModalRefresh] Trigger', reason || ''); } catch(_) {}
+            try { if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.debug('[ModalRefresh] Trigger', reason || ''); } catch (_) { }
             // Run on next frame and once more shortly after to allow reflow/paint to settle
-            try { requestAnimationFrame(refresh); } catch(_) { try { refresh(); } catch(_) {} }
-            try { setTimeout(refresh, 60); } catch(_) {}
+            try { requestAnimationFrame(refresh); } catch (_) { try { refresh(); } catch (_) { } }
+            try { setTimeout(refresh, 60); } catch (_) { }
         }
-    } catch(_) { /* no-op */ }
+    } catch (_) { /* no-op */ }
 }
-try { window.refreshActiveModalLayout = refreshActiveModalLayout; } catch(_) {}
+try { window.refreshActiveModalLayout = refreshActiveModalLayout; } catch (_) { }
 
 async function updateAddFormLiveSnapshot(code) {
     try {
@@ -3335,8 +3342,8 @@ async function updateAddFormLiveSnapshot(code) {
             return c && String(c).toUpperCase().trim() === upper;
         }) || data[0];
         if (row && row !== data[0] && DEBUG_MODE) logDebug('Snapshot: matched exact row for', upper);
-        if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode||row.Code).toUpperCase().trim() !== upper && DEBUG_MODE) {
-            logDebug('Snapshot: exact match not found, using first row', { requested: upper, first: row.ASXCode||row.Code });
+        if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode || row.Code).toUpperCase().trim() !== upper && DEBUG_MODE) {
+            logDebug('Snapshot: exact match not found, using first row', { requested: upper, first: row.ASXCode || row.Code });
         }
         const live = parseFloat(row.LivePrice ?? row['Live Price'] ?? row.live ?? row.price ?? row.Last ?? row.LastPrice ?? row['Last Price'] ?? row.LastTrade ?? row['Last Trade']);
         const prev = parseFloat(row.PrevClose ?? row['Prev Close'] ?? row.prevClose ?? row.prev ?? row['Previous Close'] ?? row.Close ?? row['Last Close']);
@@ -3356,7 +3363,7 @@ async function updateAddFormLiveSnapshot(code) {
                 lastPrevClose: !isNaN(prev) ? prev : null,
                 ts: Date.now()
             };
-        } catch(_) {}
+        } catch (_) { }
         // Guard against user switching code mid-flight
         if (shareNameInput && shareNameInput.value.toUpperCase().trim() !== upper) {
             if (DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: shareNameInput.value });
@@ -3469,15 +3476,15 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
                     const style = window.getComputedStyle(el);
                     const overflowY = style && (style.overflowY || style.overflow);
                     if ((overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') && el.scrollHeight > el.clientHeight && el.scrollTop > 0) {
-                        try { el.scrollTop = 0; } catch(_){}
+                        try { el.scrollTop = 0; } catch (_) { }
                     }
-                } catch(_){}
+                } catch (_) { }
             });
             // also reset some known containers
-            try { const tc = document.querySelector('.table-container'); if (tc && tc.scrollTop) tc.scrollTop = 0; } catch(_){}
-            try { const mc = document.getElementById('mobileShareCards'); if (mc && mc.scrollTop) mc.scrollTop = 0; } catch(_){}
-            try { const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0; } catch(_){}
-        } catch(_){}
+            try { const tc = document.querySelector('.table-container'); if (tc && tc.scrollTop) tc.scrollTop = 0; } catch (_) { }
+            try { const mc = document.getElementById('mobileShareCards'); if (mc && mc.scrollTop) mc.scrollTop = 0; } catch (_) { }
+            try { const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0; } catch (_) { }
+        } catch (_) { }
     }
 
     console.log('[TOGGLE SETUP] About to bind click event listener');
@@ -3505,7 +3512,7 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
                 // Suppress this global click handling while Sort Picker is opening
                 return;
             }
-        } catch (_) {}
+        } catch (_) { }
 
         const toggleBtn = document.getElementById('toggleAsxButtonsBtn');
         if (toggleBtn) {
@@ -3515,7 +3522,7 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
 
             // Check if click is within 50px of the toggle button
             const isNearToggle = clickX >= rect.left - 50 && clickX <= rect.right + 50 &&
-                                clickY >= rect.top - 50 && clickY <= rect.bottom + 50;
+                clickY >= rect.top - 50 && clickY <= rect.bottom + 50;
 
             if (isNearToggle) {
                 console.log('[GLOBAL CLICK] Click near toggle button area', {
@@ -3531,7 +3538,7 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
     toggleAsxButtonsBtn.addEventListener('click', (e) => {
         console.log('[CLICK DEBUG] ASX toggle button clicked!');
         // Prevent the click from falling through to the sort select and other handlers
-        try { e.stopPropagation(); e.preventDefault(); } catch(_) {}
+        try { e.stopPropagation(); e.preventDefault(); } catch (_) { }
 
         const currentExpanded = getAsxButtonsExpanded();
         console.log('[CLICK DEBUG] Current expanded state:', currentExpanded);
@@ -3558,7 +3565,7 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
                     scrollMainToTop(false, targetPosition);
                 }
                 adjustMainContentPadding();
-            } catch(error) {
+            } catch (error) {
                 console.error('Error in immediate scroll:', error);
             }
         }, 100);
@@ -3585,14 +3592,14 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
 
                     // Clear flag
                     delete window.__asxToggleWantsScroll;
-                } catch(error) {
+                } catch (error) {
                     console.error('Fallback scroll error:', error);
                 }
             }
         }, 500);
 
         // Close native select popup if it is open
-        try { if (typeof sortSelect !== 'undefined' && sortSelect && document.activeElement === sortSelect) sortSelect.blur(); } catch(_) {}
+        try { if (typeof sortSelect !== 'undefined' && sortSelect && document.activeElement === sortSelect) sortSelect.blur(); } catch (_) { }
         // Schedule padding adjustment after the CSS transition window
         setTimeout(adjustMainContentPadding, 450);
         setTimeout(adjustMainContentPadding, 700);
@@ -3601,16 +3608,16 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
             toggleAsxButtonsBtn.setAttribute('aria-pressed', String(!!getAsxButtonsExpanded()));
             toggleAsxButtonsBtn.setAttribute('aria-expanded', String(!!getAsxButtonsExpanded()));
             const tri = toggleAsxButtonsBtn.querySelector('.asx-toggle-triangle'); if (tri) tri.classList.toggle('expanded', !!getAsxButtonsExpanded());
-        } catch(_) {}
+        } catch (_) { }
         // Set flag for transitionend handler to perform proper scrolling after transition completes
-        try { window.__asxToggleWantsScroll = true; } catch(_) {}
+        try { window.__asxToggleWantsScroll = true; } catch (_) { }
         // Note: Primary scrolling is now handled by transitionend event for precise timing
         // Simple fallback scroll after transition completes (kept as safety net)
         setTimeout(() => {
             try {
                 const targetPosition = calculateWatchlistScrollPosition();
                 if (window.scrollMainToTop) window.scrollMainToTop(false, targetPosition); else scrollMainToTop(false, targetPosition);
-            } catch(_){}
+            } catch (_) { }
         }, 600);
     });
 
@@ -3637,12 +3644,12 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
                         // Focus first
                         sortSelect.focus();
                         // Attempt to open the native select dropdown by simulating a click
-                        try { sortSelect.click(); } catch(_) {}
+                        try { sortSelect.click(); } catch (_) { }
                     }
-                } catch(_) {}
+                } catch (_) { }
             }, { passive: false });
         }
-    } catch(_) {}
+    } catch (_) { }
 
     // Also adjust precisely on transition end of the container and perform deferred scroll if needed
     // Listen for transitionend on the container and its children
@@ -3668,17 +3675,17 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
                 if (window.__asxToggleWantsScroll) {
                     console.log('[TRANSITION DEBUG] Performing scroll before padding adjustment');
                     // Reset known inner scrollers first to ensure top-of-list is reachable
-                    try { const tc = document.querySelector('.table-container'); if (tc && tc.scrollTop) tc.scrollTop = 0; } catch(_){}
-                    try { const mc = document.getElementById('mobileShareCards'); if (mc && mc.scrollTop) mc.scrollTop = 0; } catch(_){}
-                    try { const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0; } catch(_){}
+                    try { const tc = document.querySelector('.table-container'); if (tc && tc.scrollTop) tc.scrollTop = 0; } catch (_) { }
+                    try { const mc = document.getElementById('mobileShareCards'); if (mc && mc.scrollTop) mc.scrollTop = 0; } catch (_) { }
+                    try { const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0; } catch (_) { }
 
                     // Calculate target position and perform scroll
                     const targetPosition = calculateWatchlistScrollPosition();
-                    try { if (window.scrollMainToTop) window.scrollMainToTop(false, targetPosition); else scrollMainToTop(false, targetPosition); } catch(error) { console.error('Error calling scrollMainToTop:', error); }
+                    try { if (window.scrollMainToTop) window.scrollMainToTop(false, targetPosition); else scrollMainToTop(false, targetPosition); } catch (error) { console.error('Error calling scrollMainToTop:', error); }
                 } else {
                     console.log('[TRANSITION DEBUG] No scroll requested, skipping');
                 }
-            } catch(_){}
+            } catch (_) { }
 
             // Now adjust the padding to account for the new header height
             adjustMainContentPadding();
@@ -3691,14 +3698,14 @@ if (toggleAsxButtonsBtn && asxCodeButtonsContainer) {
                     setTimeout(() => {
                         console.log('[TRANSITION DEBUG] Performing final scroll adjustment');
                         const targetPosition = calculateWatchlistScrollPosition();
-                        try { if (window.scrollMainToTop) window.scrollMainToTop(false, targetPosition); else scrollMainToTop(false, targetPosition); } catch(_){}
-                        try { delete window.__asxToggleWantsScroll; } catch(_){}
+                        try { if (window.scrollMainToTop) window.scrollMainToTop(false, targetPosition); else scrollMainToTop(false, targetPosition); } catch (_) { }
+                        try { delete window.__asxToggleWantsScroll; } catch (_) { }
                         console.log('[TRANSITION DEBUG] Final scroll completed, clearing flag');
                     }, 50);
                 } else {
                     console.log('[TRANSITION DEBUG] No final scroll needed');
                 }
-            } catch(_){}
+            } catch (_) { }
         }
     };
 
@@ -3717,7 +3724,7 @@ try {
                 const expanded = getAsxButtonsExpanded();
                 asxCodeButtonsToggle.setAttribute('aria-pressed', String(!!expanded));
                 asxCodeButtonsToggle.setAttribute('aria-expanded', String(!!expanded));
-            } catch(_) {}
+            } catch (_) { }
         };
         asxCodeButtonsToggle.addEventListener('click', (e) => {
             e.preventDefault();
@@ -3738,7 +3745,7 @@ try {
         // Initial aria sync
         syncAria();
     }
-} catch(_) {}
+} catch (_) { }
 const addCommentSectionBtn = document.getElementById('addCommentSectionBtn');
 const shareTableBody = document.querySelector('#shareTable tbody');
 // Dynamic container getter to handle DOM timing issues
@@ -3873,13 +3880,13 @@ if (!shareWatchlistSelect) {
         shareWatchlistSelect.multiple = true;
         // Keep it off-DOM but accessible to scripts. Some older code queries by id; this preserves behavior.
         // Do not append to document.body to avoid duplicate UI; remain off-DOM.
-    } catch(_) {
+    } catch (_) {
         shareWatchlistSelect = null;
     }
 }
 const shareWatchlistCheckboxes = document.getElementById('shareWatchlistCheckboxes');
 const shareWatchlistDropdownBtn = document.getElementById('shareWatchlistDropdownBtn');
-const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection'); 
+const modalLivePriceDisplaySection = document.getElementById('modalLivePriceDisplaySection');
 const targetHitIconBtn = document.getElementById('targetHitIconBtn'); // NEW: Reference to the icon button
 const targetHitIconCount = document.getElementById('targetHitIconCount'); // NEW: Reference to the count span
 // NEW: Target Hit Details Modal Elements
@@ -3888,16 +3895,16 @@ const targetHitModalTitle = document.getElementById('targetHitModalTitle');
 // Removed: minimizeTargetHitModalBtn, dismissAllTargetHitsBtn (now explicit buttons at bottom)
 const targetHitSharesList = document.getElementById('targetHitSharesList');
 const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
-    // Initial load suppression flags (prevent auto reopening of Target Hit modal after hard reload)
-    window.__initialLoadPhase = true; // cleared after first interaction or timeout
-    let __userInitiatedTargetModal = false;
-    window.addEventListener('pointerdown', ()=>{ window.__initialLoadPhase=false; }, { once:true, passive:true });
-    window.addEventListener('keydown', ()=>{ window.__initialLoadPhase=false; }, { once:true });
-    setTimeout(()=>{ window.__initialLoadPhase=false; }, 6000);
+// Initial load suppression flags (prevent auto reopening of Target Hit modal after hard reload)
+window.__initialLoadPhase = true; // cleared after first interaction or timeout
+let __userInitiatedTargetModal = false;
+window.addEventListener('pointerdown', () => { window.__initialLoadPhase = false; }, { once: true, passive: true });
+window.addEventListener('keydown', () => { window.__initialLoadPhase = false; }, { once: true });
+setTimeout(() => { window.__initialLoadPhase = false; }, 6000);
 
 // Ensure initial ARIA state for hamburger
 if (hamburgerBtn && !hamburgerBtn.hasAttribute('aria-expanded')) {
-    hamburgerBtn.setAttribute('aria-expanded','false');
+    hamburgerBtn.setAttribute('aria-expanded', 'false');
 }
 
 // NEW: References for the reconfigured buttons in the Target Hit Details Modal
@@ -3916,13 +3923,13 @@ const targetDirBelowBtn = document.getElementById('targetDirBelowBtn');
 let userManuallyOverrodeDirection = false; // reset per form open
 // Debounced auto-save for target alert related inputs (intent, direction, target price)
 let _alertAutoSaveTimer = null;
-function scheduleAlertAutoSave(trigger){
+function scheduleAlertAutoSave(trigger) {
     // Only auto-save when editing an existing share (avoid accidental creation of duplicates during new entry form fills)
-    if (!selectedShareDocId) { try { logDebug('AlertAutoSave: skipped (no selectedShareDocId) trigger='+trigger); } catch(_){} return; }
-    try { logDebug('AlertAutoSave: schedule ('+trigger+') for shareId='+selectedShareDocId); } catch(_){ }
+    if (!selectedShareDocId) { try { logDebug('AlertAutoSave: skipped (no selectedShareDocId) trigger=' + trigger); } catch (_) { } return; }
+    try { logDebug('AlertAutoSave: schedule (' + trigger + ') for shareId=' + selectedShareDocId); } catch (_) { }
     if (_alertAutoSaveTimer) clearTimeout(_alertAutoSaveTimer);
-    _alertAutoSaveTimer = setTimeout(()=>{
-        try { if (typeof saveShareData === 'function') saveShareData(true); } catch(e){ console.warn('AlertAutoSave failed', e); }
+    _alertAutoSaveTimer = setTimeout(() => {
+        try { if (typeof saveShareData === 'function') saveShareData(true); } catch (e) { console.warn('AlertAutoSave failed', e); }
     }, 400);
 }
 const splashScreen = document.getElementById('splashScreen');
@@ -3944,7 +3951,7 @@ const searchModalCloseButton = document.querySelector('.search-close-button'); /
 let currentSelectedSuggestionIndex = -1; // For keyboard navigation in autocomplete
 let shareNameAutocompleteBound = false; // Prevent duplicate binding
 
-function initializeShareNameAutocomplete(force=false){
+function initializeShareNameAutocomplete(force = false) {
     if (shareNameAutocompleteBound && !force) return;
     if (!shareNameInput || !shareNameSuggestions) return;
     // If already has an input listener tagged, skip unless force
@@ -3972,30 +3979,30 @@ const stockWatchlistSection = document.getElementById('stockWatchlistSection');
 
 // Fallback for missing formatUserDecimalStrict (called in edit form population)
 if (typeof window.formatUserDecimalStrict !== 'function') {
-    window.formatUserDecimalStrict = function(v){
+    window.formatUserDecimalStrict = function (v) {
         if (v === null || v === undefined || v === '') return '';
         const num = Number(v);
         if (isNaN(num)) return '';
         // Keep up to 4 decimals if needed, trim trailing zeros
         let str = num.toFixed(4); // start with 4
-        str = str.replace(/\.0+$/,'');
-        str = str.replace(/(\.\d*[1-9])0+$/,'$1');
+        str = str.replace(/\.0+$/, '');
+        str = str.replace(/(\.\d*[1-9])0+$/, '$1');
         return str;
     };
 }
 
 // ----- Lightweight Back Stack Handling (with debug) -----
-function logBackDebug(...args){ try { console.log('[Back]', ...args); } catch(_) {} }
+function logBackDebug(...args) { try { console.log('[Back]', ...args); } catch (_) { } }
 const appBackStack = [];
 function pushAppStateEntry(type, ref) {
-    appBackStack.push({type, ref});
+    appBackStack.push({ type, ref });
     // Allow up to ten shallow steps to avoid accidental truncation in mixed flows
     if (appBackStack.length > 10) appBackStack.shift();
-    logBackDebug('PUSH', type, ref && (ref.id || ref), 'stack=', appBackStack.map(e=>e.type+':'+(e.ref && (e.ref.id||e.ref))).join(' | '));
+    logBackDebug('PUSH', type, ref && (ref.id || ref), 'stack=', appBackStack.map(e => e.type + ':' + (e.ref && (e.ref.id || e.ref))).join(' | '));
 }
-function popAppStateEntry() { const e = appBackStack.pop(); logBackDebug('POP', e && e.type, e && e.ref && (e.ref.id||e.ref), 'stack=', appBackStack.map(x=>x.type+':'+(x.ref && (x.ref.id||x.ref))).join(' | ')); return e; }
+function popAppStateEntry() { const e = appBackStack.pop(); logBackDebug('POP', e && e.type, e && e.ref && (e.ref.id || e.ref), 'stack=', appBackStack.map(x => x.type + ':' + (x.ref && (x.ref.id || x.ref))).join(' | ')); return e; }
 // Expose a safe, minimal hook so other modules (e.g., ui.js) can push into the back stack
-try { window.__appBackStackPush = function(type, ref){ pushAppStateEntry(type, ref); }; } catch(_) {}
+try { window.__appBackStackPush = function (type, ref) { pushAppStateEntry(type, ref); }; } catch (_) { }
 
 // Back/Modal Diagnostics & Auto-History for modals (helps in mobile/devtools where some open paths skip push)
 try {
@@ -4014,7 +4021,7 @@ try {
                     const cs = window.getComputedStyle(m);
                     if (cs && (cs.display === 'flex' || cs.display === 'block')) return true;
                 }
-            } catch(_){}
+            } catch (_) { }
             return false;
         };
 
@@ -4029,10 +4036,10 @@ try {
                             try {
                                 if (window.__backAutoPushModal && !stackHasModal(modal)) {
                                     pushAppStateEntry('modal', modal);
-                                    try { if (typeof pushAppState === 'function') pushAppState({ modalId: modal.id || true }, '', '#modal'); } catch(_) {}
+                                    try { if (typeof pushAppState === 'function') pushAppState({ modalId: modal.id || true }, '', '#modal'); } catch (_) { }
                                     if (window.__backDiag) logBackDebug('Auto-pushed modal history for', modal.id || modal);
                                 }
-                            } catch(e) { if (window.__backDiag) console.warn('Auto-push modal failed', e); }
+                            } catch (e) { if (window.__backDiag) console.warn('Auto-push modal failed', e); }
                         }
                     }
                     if (mut.type === 'childList' && mut.addedNodes && mut.addedNodes.length) {
@@ -4042,47 +4049,47 @@ try {
                                     const modal = n;
                                     if (modalVisibilityCheck(modal) && window.__backAutoPushModal && !stackHasModal(modal)) {
                                         pushAppStateEntry('modal', modal);
-                                        try { if (typeof pushAppState === 'function') pushAppState({ modalId: modal.id || true }, '', '#modal'); } catch(_) {}
+                                        try { if (typeof pushAppState === 'function') pushAppState({ modalId: modal.id || true }, '', '#modal'); } catch (_) { }
                                         if (window.__backDiag) logBackDebug('Auto-pushed modal history for (added node)', modal.id || modal);
                                     }
                                 }
-                            } catch(_){}
+                            } catch (_) { }
                         }
                     }
-                } catch(_){}
+                } catch (_) { }
             }
         });
 
         try {
             modalObserver.observe(document.body, { attributes: true, subtree: true, childList: true });
-        } catch(e) { if (window.__backDiag) console.warn('Modal history observer failed to start', e); }
+        } catch (e) { if (window.__backDiag) console.warn('Modal history observer failed to start', e); }
 
         // Optional runtime popstate logging when enabled
         const originalPop = window.onpopstate;
-        window.__backPopLogger = function(ev){
+        window.__backPopLogger = function (ev) {
             try {
                 if (window.__backDiag) {
-                    console.log('[BackDiag] popstate', ev && ev.state, 'appBackStack=', appBackStack.map(x=>x.type+':' + (x.ref && (x.ref.id||x.ref))).join('|'));
+                    console.log('[BackDiag] popstate', ev && ev.state, 'appBackStack=', appBackStack.map(x => x.type + ':' + (x.ref && (x.ref.id || x.ref))).join('|'));
                 }
-            } catch(_){ }
-            try { if (typeof originalPop === 'function') originalPop(ev); } catch(_){ }
+            } catch (_) { }
+            try { if (typeof originalPop === 'function') originalPop(ev); } catch (_) { }
         };
-        try { window.addEventListener('popstate', window.__backPopLogger); } catch(_){ }
+        try { window.addEventListener('popstate', window.__backPopLogger); } catch (_) { }
 
         // Provide a safe global wrapper for history.pushState used across the app.
         // This was missing in some builds, causing no history entries to be created
         // for modals/watchlists/view toggles and breaking Back semantics.
         try {
             if (typeof window.pushAppState !== 'function') {
-                window.pushAppState = function(state, title, url){
-                    try { history.pushState(state || {}, title || '', url || location.href); } catch(_) {}
+                window.pushAppState = function (state, title, url) {
+                    try { history.pushState(state || {}, title || '', url || location.href); } catch (_) { }
                 };
             }
-        } catch(_) {}
+        } catch (_) { }
 
         // Default: never exit the PWA/app via Back. You can override at runtime by setting
         // window.__preventAppExit = false to restore double-back-to-exit.
-        try { if (typeof window.__preventAppExit === 'undefined') window.__preventAppExit = true; } catch(_) {}
+        try { if (typeof window.__preventAppExit === 'undefined') window.__preventAppExit = true; } catch (_) { }
 
         // Ensure a toast container exists early so exit-toast can render even if UI module
         // hasn't initialized yet. This prevents race conditions where ToastManager is present
@@ -4105,16 +4112,16 @@ try {
                 tc.style.pointerEvents = 'none';
                 document.body.appendChild(tc);
             }
-        } catch(_) {}
+        } catch (_) { }
 
         // Helper to push a preserve entry with a unique URL hash ("jitter") so hostile webviews
         // create a distinct history entry every time. This keeps Back routed to our handler.
-        function pushPreserveHistoryEntry(){
+        function pushPreserveHistoryEntry() {
             try {
                 const base = location.href.split('#')[0];
-                const jitter = 'bk-' + Date.now().toString(36) + '-' + Math.floor(Math.random()*1e4).toString(36);
-                history.pushState({ asx_back_preserve: true, jitter }, '', base + '#'+ jitter);
-            } catch(_) {}
+                const jitter = 'bk-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1e4).toString(36);
+                history.pushState({ asx_back_preserve: true, jitter }, '', base + '#' + jitter);
+            } catch (_) { }
         }
 
         // Unified popstate handler with "bounce": immediately go forward to keep the user
@@ -4127,7 +4134,7 @@ try {
             // double-back-to-exit behaviour reliably.
             let __backBounceInProgress = false;
             let __backSkipCount = 0;
-            window.__globalPopHandler = function(ev) {
+            window.__globalPopHandler = function (ev) {
                 try {
                     if (window.logBackDebug) window.logBackDebug('[Back] popstate fired', ev && ev.state, 'skipCount=', __backSkipCount);
                     // If this popstate was induced by our forward bounce, ignore it.
@@ -4140,7 +4147,7 @@ try {
                             setTimeout(() => { try { history.go(1); } finally { __backBounceInProgress = false; } }, 0);
                             // Extra safety: clear skip if forward didn't fire
                             setTimeout(() => { __backSkipCount = 0; }, 400);
-                        } catch(_) { __backBounceInProgress = false; __backSkipCount = 0; }
+                        } catch (_) { __backBounceInProgress = false; __backSkipCount = 0; }
                     }
                     if (typeof handleGlobalBack === 'function') {
                         const result = handleGlobalBack();
@@ -4157,7 +4164,7 @@ try {
                 }
             };
             window.addEventListener('popstate', window.__globalPopHandler);
-        } catch(_) {}
+        } catch (_) { }
 
         // Install a two-entry guard ring so back always lands on one of our guards rather than
         // exiting the app. We use stable hashes so the URL bar (if present) isn't spammed.
@@ -4169,54 +4176,54 @@ try {
                     history.replaceState({ asx_guard: true, idx: 0 }, '', base + '#g0');
                     history.pushState({ asx_guard: true, idx: 1 }, '', base + '#g1');
                     history.pushState({ asx_guard: true, idx: 2 }, '', base + '#g2');
-                } catch(_) {}
+                } catch (_) { }
             };
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pushInitial, { once: true }); else pushInitial();
             // No keepalive required with bounce; the ring keeps us safe.
-        } catch(_) {}
+        } catch (_) { }
     }
-} catch(_) {}
+} catch (_) { }
 
 // Helpers: modal stack maintenance
-function stackHasModal(modalEl){
+function stackHasModal(modalEl) {
     try {
         const id = modalEl && (modalEl.id || (modalEl.ref && modalEl.ref.id));
-        return appBackStack.some(e => e.type === 'modal' && (e.ref === modalEl || (e.ref && (e.ref.id||e.ref) === id)));
-    } catch(_) { return false; }
+        return appBackStack.some(e => e.type === 'modal' && (e.ref === modalEl || (e.ref && (e.ref.id || e.ref) === id)));
+    } catch (_) { return false; }
 }
-function removeModalFromStack(modalEl){
+function removeModalFromStack(modalEl) {
     try {
         const id = modalEl && (modalEl.id || (modalEl.ref && modalEl.ref.id));
         let removed = false;
         for (let i = appBackStack.length - 1; i >= 0; i--) {
             const e = appBackStack[i];
             const eid = e && e.ref && (e.ref.id || e.ref);
-            if (e && e.type === 'modal' && (e.ref === modalEl || eid === id)) { appBackStack.splice(i,1); removed = true; }
+            if (e && e.type === 'modal' && (e.ref === modalEl || eid === id)) { appBackStack.splice(i, 1); removed = true; }
         }
-        if (removed) logBackDebug('STACK purge modal', id, 'stack=', appBackStack.map(e=>e.type+':'+(e.ref && (e.ref.id||e.ref))).join(' | '));
-    } catch(_) {}
+        if (removed) logBackDebug('STACK purge modal', id, 'stack=', appBackStack.map(e => e.type + ':' + (e.ref && (e.ref.id || e.ref))).join(' | '));
+    } catch (_) { }
 }
 
 // Removed legacy early hamburger push listener (consolidated later) – now handled in unified sidebar setup
 // Remove legacy wrapper that caused duplicate pushes; use central window.UI.showModal path only
 
-function handleGlobalBack(){
+function handleGlobalBack() {
     // Prevent duplicate handling from closely-spaced popstate events (bounce, quirky webviews)
     try {
         const now = Date.now();
-    if (now - (__lastBackHandleAt || 0) < 240) {
+        if (now - (__lastBackHandleAt || 0) < 240) {
             if (window.logBackDebug) window.logBackDebug('Back: deduped handleGlobalBack');
             return true; // consume silently to avoid double-pop and duplicate toasts
         }
         __lastBackHandleAt = now;
-    } catch(_) {}
+    } catch (_) { }
     // 1) Close the currently active/top modal if any tracked in our stack
     const last = appBackStack[appBackStack.length - 1];
     if (last && last.type === 'modal') {
         const entry = popAppStateEntry();
         const currentModal = entry && entry.ref && entry.ref.nodeType === 1 ? entry.ref : (entry && entry.ref ? document.getElementById(entry.ref.id || entry.ref) : null);
         if (currentModal && currentModal.id === 'shareFormSection') {
-            try { autoSaveShareFormOnClose(); } catch(e) { console.warn('Auto-save on back (share form) failed', e); }
+            try { autoSaveShareFormOnClose(); } catch (e) { console.warn('Auto-save on back (share form) failed', e); }
         }
         if (currentModal) {
             hideModal(currentModal);
@@ -4230,15 +4237,15 @@ function handleGlobalBack(){
                     return ds === 'flex' || hasShow || cs === 'flex';
                 });
                 if (anyOpen) closeModals();
-            } catch(_) {}
+            } catch (_) { }
         }
         // If previous is also a modal, restore it without pushing history
         const prev = appBackStack[appBackStack.length - 1];
         if (prev && prev.type === 'modal') {
             const prevModal = prev.ref && prev.ref.nodeType === 1 ? prev.ref : (prev.ref ? document.getElementById(prev.ref.id || prev.ref) : null);
-            if (prevModal) { try { showModalNoHistory(prevModal); } catch(e){ console.warn('Restore modal failed', e); } }
+            if (prevModal) { try { showModalNoHistory(prevModal); } catch (e) { console.warn('Restore modal failed', e); } }
         }
-        try { window.__lastBackAction = 'sidebar'; } catch(_) {}
+        try { window.__lastBackAction = 'sidebar'; } catch (_) { }
         return true;
     }
     // 1a) If any modal is visible but not on stack (legacy open path), close it to avoid coupling to watchlist
@@ -4250,8 +4257,8 @@ function handleGlobalBack(){
             const cs = window.getComputedStyle ? window.getComputedStyle(m).display : '';
             return ds === 'flex' || hasShow || cs === 'flex';
         });
-    if (openModal && (!last || last.type !== 'modal')) { logBackDebug('Closing visible modal (no stack)', openModal && openModal.id); hideModal(openModal); try { window.__lastBackAction = 'modal'; } catch(_) {} ; return true; }
-    } catch(_) {}
+        if (openModal && (!last || last.type !== 'modal')) { logBackDebug('Closing visible modal (no stack)', openModal && openModal.id); hideModal(openModal); try { window.__lastBackAction = 'modal'; } catch (_) { }; return true; }
+    } catch (_) { }
     // 2) Close the sidebar if open
     if (window.appSidebar && window.appSidebar.classList.contains('open')) {
         if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false);
@@ -4260,10 +4267,10 @@ function handleGlobalBack(){
                 appSidebar.classList.remove('open');
                 document.body.classList.remove('sidebar-active');
                 document.body.style.overflow = '';
-                if (sidebarOverlay){ sidebarOverlay.classList.remove('open'); sidebarOverlay.style.pointerEvents='none'; }
-            } catch(_){}
+                if (sidebarOverlay) { sidebarOverlay.classList.remove('open'); sidebarOverlay.style.pointerEvents = 'none'; }
+            } catch (_) { }
         }
-        try { window.__lastBackAction = 'watchlist'; } catch(_) {}
+        try { window.__lastBackAction = 'watchlist'; } catch (_) { }
         return true;
     }
     // 2b) Revert a watchlist change: restore the previous selection directly (no picker)
@@ -4280,17 +4287,17 @@ function handleGlobalBack(){
                 watchlistSelect.value = restoreIds[0] || '';
             }
             // Persist locally and remotely if available
-            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(restoreIds)); } catch(_) {}
-            try { if (typeof saveLastSelectedWatchlistIds === 'function') saveLastSelectedWatchlistIds(restoreIds); } catch(_) {}
+            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(restoreIds)); } catch (_) { }
+            try { if (typeof saveLastSelectedWatchlistIds === 'function') saveLastSelectedWatchlistIds(restoreIds); } catch (_) { }
             // Switch broader UI context
             if (restoreIds[0] === 'portfolio') {
-                try { showPortfolioView(); } catch(_) {}
+                try { showPortfolioView(); } catch (_) { }
             } else {
-                try { showWatchlistView(); } catch(_) {}
+                try { showWatchlistView(); } catch (_) { }
             }
             // Re-render current view
-            try { if (typeof renderWatchlist === 'function') renderWatchlist(); } catch(_) {}
-        } catch(e) { console.warn('Back: failed to restore previous watchlist selection', e); }
+            try { if (typeof renderWatchlist === 'function') renderWatchlist(); } catch (_) { }
+        } catch (e) { console.warn('Back: failed to restore previous watchlist selection', e); }
         return true;
     }
     // 2c) Revert a view mode change
@@ -4298,9 +4305,9 @@ function handleGlobalBack(){
         const entry = popAppStateEntry();
         const prevMode = entry && entry.ref;
         if (prevMode === 'compact' || prevMode === 'default') {
-            try { setMobileViewMode(prevMode, 'back_restore'); } catch(e){ console.warn('Back: view mode restore failed', e); }
-            try { showCustomAlert(prevMode === 'compact' ? 'Compact View' : 'Default View', 700); } catch(_) {}
-            try { window.__lastBackAction = 'viewMode'; } catch(_) {}
+            try { setMobileViewMode(prevMode, 'back_restore'); } catch (e) { console.warn('Back: view mode restore failed', e); }
+            try { showCustomAlert(prevMode === 'compact' ? 'Compact View' : 'Default View', 700); } catch (_) { }
+            try { window.__lastBackAction = 'viewMode'; } catch (_) { }
             return true;
         }
     }
@@ -4323,8 +4330,8 @@ function handleGlobalBack(){
                 } else {
                     if (window.logBackDebug) window.logBackDebug('Back toast deduped');
                 }
-                try { window.__lastBackAction = 'preventExit'; } catch(_) {}
-            } catch(_) {}
+                try { window.__lastBackAction = 'preventExit'; } catch (_) { }
+            } catch (_) { }
             return true; // consume
         } else {
             // Double-back-to-exit mode
@@ -4342,7 +4349,7 @@ function handleGlobalBack(){
                 } else {
                     console.log('Press back again to exit the app');
                 }
-                try { window.__lastBackAction = 'exitToast'; } catch(_) {}
+                try { window.__lastBackAction = 'exitToast'; } catch (_) { }
             } catch (e) { console.warn('Exit toast failed', e); }
             return true;
         }
@@ -4355,16 +4362,16 @@ function handleGlobalBack(){
 // NOTE: popstate handled by unified handler installed earlier to centralize logic.
 
 // Hardware / browser back key mapping (mobile)
-window.addEventListener('keydown', e=>{
+window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-        const last = appBackStack[appBackStack.length-1];
+        const last = appBackStack[appBackStack.length - 1];
         if (last) { e.preventDefault(); history.back(); }
     }
 });
 // Expose a simple in-app back function for buttons to call
-window.goBack = function(){
+window.goBack = function () {
     if (!handleGlobalBack()) {
-        try { history.back(); } catch(_){ /* no-op */ }
+        try { history.back(); } catch (_) { /* no-op */ }
     }
 };
 const cashAssetsSection = document.getElementById('cashAssetsSection'); // UPDATED ID
@@ -4408,11 +4415,11 @@ try {
         btn.id = 'forceUpdateBtn';
         btn.className = 'menu-button-item';
         btn.textContent = 'Force Update';
-        btn.setAttribute('data-action-closes-menu','true');
+        btn.setAttribute('data-action-closes-menu', 'true');
         // Insert near end
         appSidebar.appendChild(btn);
     }
-} catch(_) {}
+} catch (_) { }
 
 const formInputs = [
     shareNameInput,
@@ -4459,13 +4466,13 @@ function updateSortIcon() {
 
 
 const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwwwMEss5DIYblLNbjIbt_TAzWh54AwrfQlVwCrT_P0S9xkAoXhAUEUg7vSEPYUPOZp/exec';
-try { window.appsScriptUrl = appsScriptUrl; } catch(_) {}
+try { window.appsScriptUrl = appsScriptUrl; } catch (_) { }
 
 async function fetchLivePricesAndUpdateUI() {
     logDebug('UI: Refresh Live Prices button clicked.');
     // Show a loading state if needed
     // You may have a function like showLoadingIndicator();
-    
+
     // Call the newly updated live price fetch function
     await fetchLivePrices({ cacheBust: true });
 
@@ -4653,78 +4660,78 @@ function adjustMainContentPadding() {
         // Get the current rendered height of the fixed header, including any wrapped content.
         // offsetHeight is usually sufficient, but scrollHeight can be more robust if content overflows.
 
-// --- Mobile Keyboard Scroll Fix for Add/Edit Share Modal ---
-function enableShareFormMobileScrollFix() {
-    // If the new global keyboard-aware modal manager is present, defer to it entirely.
-    // This avoids conflicting inline height/padding between two systems.
-    if (window.ModalViewportManager && typeof window.ModalViewportManager.refresh === 'function') {
-        try { window.ModalViewportManager.refresh(); } catch(_) {}
-        return; // unified manager handles sizing and scrolling across all modals
-    }
-    if (!shareFormSection) return;
-    // Only apply on mobile devices
-    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (!isMobile) return;
-    // Better focus handling: scroll the focused input into the visible area of the modal
-    shareFormSection.addEventListener('focusin', function(e) {
-        const target = e.target;
-        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
-            // Short timeout to allow virtual keyboard to appear and visualViewport to stabilize
-            setTimeout(() => {
-                try {
-                    const modalContent = shareFormSection.querySelector('.single-scroll-modal') || shareFormSection;
-                    // Determine the visible viewport rect (prefer visualViewport when available)
-                    let vvTop = 0, vvHeight = window.innerHeight;
-                    if (window.visualViewport) { vvTop = window.visualViewport.offsetTop || 0; vvHeight = window.visualViewport.height; }
+        // --- Mobile Keyboard Scroll Fix for Add/Edit Share Modal ---
+        function enableShareFormMobileScrollFix() {
+            // If the new global keyboard-aware modal manager is present, defer to it entirely.
+            // This avoids conflicting inline height/padding between two systems.
+            if (window.ModalViewportManager && typeof window.ModalViewportManager.refresh === 'function') {
+                try { window.ModalViewportManager.refresh(); } catch (_) { }
+                return; // unified manager handles sizing and scrolling across all modals
+            }
+            if (!shareFormSection) return;
+            // Only apply on mobile devices
+            const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (!isMobile) return;
+            // Better focus handling: scroll the focused input into the visible area of the modal
+            shareFormSection.addEventListener('focusin', function (e) {
+                const target = e.target;
+                if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+                    // Short timeout to allow virtual keyboard to appear and visualViewport to stabilize
+                    setTimeout(() => {
+                        try {
+                            const modalContent = shareFormSection.querySelector('.single-scroll-modal') || shareFormSection;
+                            // Determine the visible viewport rect (prefer visualViewport when available)
+                            let vvTop = 0, vvHeight = window.innerHeight;
+                            if (window.visualViewport) { vvTop = window.visualViewport.offsetTop || 0; vvHeight = window.visualViewport.height; }
 
-                    // Compute target position relative to modal
-                    const targetRect = target.getBoundingClientRect();
-                    const modalRect = modalContent.getBoundingClientRect();
-                    const relativeTop = targetRect.top - modalRect.top;
+                            // Compute target position relative to modal
+                            const targetRect = target.getBoundingClientRect();
+                            const modalRect = modalContent.getBoundingClientRect();
+                            const relativeTop = targetRect.top - modalRect.top;
 
-                    // If target is outside the visible area (above or below), scroll it into view within modal
-                    if (relativeTop < 0 || (relativeTop + targetRect.height) > modalRect.height) {
-                        // Preferred: use modal's scrollTo with an offset so the input sits comfortably above keyboard
-                        const desiredTop = Math.max(0, relativeTop - 80);
-                        try { modalContent.scrollTo({ top: desiredTop, behavior: 'smooth' }); } catch(_) { modalContent.scrollTop = desiredTop; }
-                    }
-                } catch(_) {}
-            }, 140);
+                            // If target is outside the visible area (above or below), scroll it into view within modal
+                            if (relativeTop < 0 || (relativeTop + targetRect.height) > modalRect.height) {
+                                // Preferred: use modal's scrollTo with an offset so the input sits comfortably above keyboard
+                                const desiredTop = Math.max(0, relativeTop - 80);
+                                try { modalContent.scrollTo({ top: desiredTop, behavior: 'smooth' }); } catch (_) { modalContent.scrollTop = desiredTop; }
+                            }
+                        } catch (_) { }
+                    }, 140);
+                }
+            });
+
+            // Adjust modal container height/padding when visualViewport changes (keyboard show/hide)
+            const applyViewportSizing = () => {
+                const modalContent = shareFormSection.querySelector('.single-scroll-modal') || shareFormSection;
+                if (!modalContent) return;
+                if (window.visualViewport) {
+                    try {
+                        // Use the visualViewport height as the usable area and set padding-bottom to account for keyboard
+                        const vv = window.visualViewport;
+                        modalContent.style.height = vv.height + 'px';
+                        modalContent.style.maxHeight = vv.height + 'px';
+                        // Add padding-bottom equal to viewport offset (some browsers expose offsetTop when keyboard present)
+                        const extraBottom = Math.max(12, Math.floor((window.innerHeight - vv.height)));
+                        modalContent.style.paddingBottom = (18 + extraBottom) + 'px';
+                    } catch (_) { }
+                } else {
+                    // Fallback: ensure modal fills viewport
+                    modalContent.style.height = '100vh';
+                    modalContent.style.maxHeight = '100vh';
+                    modalContent.style.paddingBottom = '24px';
+                }
+            };
+
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', applyViewportSizing);
+                window.visualViewport.addEventListener('scroll', applyViewportSizing);
+            }
+            // Also run once to initialize sizes
+            setTimeout(applyViewportSizing, 60);
         }
-    });
 
-    // Adjust modal container height/padding when visualViewport changes (keyboard show/hide)
-    const applyViewportSizing = () => {
-        const modalContent = shareFormSection.querySelector('.single-scroll-modal') || shareFormSection;
-        if (!modalContent) return;
-        if (window.visualViewport) {
-            try {
-                // Use the visualViewport height as the usable area and set padding-bottom to account for keyboard
-                const vv = window.visualViewport;
-                modalContent.style.height = vv.height + 'px';
-                modalContent.style.maxHeight = vv.height + 'px';
-                // Add padding-bottom equal to viewport offset (some browsers expose offsetTop when keyboard present)
-                const extraBottom = Math.max(12, Math.floor((window.innerHeight - vv.height)));
-                modalContent.style.paddingBottom = (18 + extraBottom) + 'px';
-            } catch(_) {}
-        } else {
-            // Fallback: ensure modal fills viewport
-            modalContent.style.height = '100vh';
-            modalContent.style.maxHeight = '100vh';
-            modalContent.style.paddingBottom = '24px';
-        }
-    };
-
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', applyViewportSizing);
-        window.visualViewport.addEventListener('scroll', applyViewportSizing);
-    }
-    // Also run once to initialize sizes
-    setTimeout(applyViewportSizing, 60);
-}
-
-// Enable the fix on DOMContentLoaded
-document.addEventListener('DOMContentLoaded', enableShareFormMobileScrollFix);
+        // Enable the fix on DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', enableShareFormMobileScrollFix);
         // For a fixed header, offsetHeight should reflect its full rendered height.
         const headerHeight = appHeader.offsetHeight;
         const oldPadding = mainContainer.style.paddingTop;
@@ -4800,7 +4807,7 @@ async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
         const buyActive = !!(typeof targetIntentBuyBtn !== 'undefined' && targetIntentBuyBtn && targetIntentBuyBtn.classList.contains('is-active'));
         const sellActive = !!(typeof targetIntentSellBtn !== 'undefined' && targetIntentSellBtn && targetIntentSellBtn.classList.contains('is-active'));
         intent = buyActive && !sellActive ? 'buy' : (sellActive && !buyActive ? 'sell' : (direction === 'above' ? 'sell' : 'buy'));
-    } catch(_) {
+    } catch (_) {
         intent = direction === 'above' ? 'sell' : 'buy';
     }
 
@@ -4827,7 +4834,7 @@ async function upsertAlertForShare(shareId, shareCode, shareData, isNew) {
         const lp = (typeof livePrices === 'object' && livePrices) ? livePrices[codeUpper] : null;
         const latestLive = (lp && lp.live !== null && !isNaN(lp.live)) ? lp.live
             : (lp && lp.lastLivePrice !== null && !isNaN(lp.lastLivePrice)) ? lp.lastLivePrice
-            : null;
+                : null;
         const fallbackRef = (typeof shareData?.currentPrice === 'number' && !isNaN(shareData.currentPrice)) ? shareData.currentPrice : null;
         const current = (latestLive !== null) ? latestLive : (fallbackRef !== null ? fallbackRef : null);
         const tPrice = (typeof payload.targetPrice === 'number' && !isNaN(payload.targetPrice)) ? payload.targetPrice : null;
@@ -4873,7 +4880,7 @@ function closeModals() {
             // Only attempt to save if a share name was entered AND a watchlist was selected (if applicable)
             const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
             const needsWatchlistSelection = getCurrentSelectedWatchlistIds().includes(ALL_SHARES_ID);
-            
+
             if (isShareNameValid && isWatchlistSelected) { // Always require watchlist selection for new shares
                 logDebug('Auto-Save: New share detected with valid name and watchlist. Attempting silent save.');
                 saveShareData(true); // true indicates silent save
@@ -4945,33 +4952,33 @@ function closeModals() {
     try {
         if (Array.isArray(appBackStack) && appBackStack.length) {
             for (let i = appBackStack.length - 1; i >= 0; i--) {
-                if (appBackStack[i] && appBackStack[i].type === 'modal') appBackStack.splice(i,1);
+                if (appBackStack[i] && appBackStack[i].type === 'modal') appBackStack.splice(i, 1);
             }
-            logBackDebug('STACK purge all modals', 'stack=', appBackStack.map(e=>e.type+':'+(e.ref && (e.ref.id||e.ref))).join(' | '));
+            logBackDebug('STACK purge all modals', 'stack=', appBackStack.map(e => e.type + ':' + (e.ref && (e.ref.id || e.ref))).join(' | '));
         }
-    } catch(_) {}
+    } catch (_) { }
 
     // Delegate actual DOM closing/cleanup to UI module if available
     if (window.UI && typeof window.UI.closeModals === 'function') {
-        try { window.UI.closeModals(); } catch(e) { console.warn('UI.closeModals failed', e); }
+        try { window.UI.closeModals(); } catch (e) { console.warn('UI.closeModals failed', e); }
     } else {
-    document.querySelectorAll('.modal').forEach(modal => {
-        if (modal) {
-            modal.style.setProperty('display', 'none', 'important');
-        }
-    });
-        try { resetCalculator(); } catch(_) {}
-        try { deselectCurrentShare(); } catch(_) {}
-        try { deselectCurrentCashAsset(); } catch(_) {}
-    if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
-        try { hideContextMenu(); } catch(_) {}
-        if (alertPanel) try { hideModal(alertPanel); } catch(_) {}
-    logDebug('Modal: All modals closed.');
+        document.querySelectorAll('.modal').forEach(modal => {
+            if (modal) {
+                modal.style.setProperty('display', 'none', 'important');
+            }
+        });
+        try { resetCalculator(); } catch (_) { }
+        try { deselectCurrentShare(); } catch (_) { }
+        try { deselectCurrentCashAsset(); } catch (_) { }
+        if (autoDismissTimeout) { clearTimeout(autoDismissTimeout); autoDismissTimeout = null; }
+        try { hideContextMenu(); } catch (_) { }
+        if (alertPanel) try { hideModal(alertPanel); } catch (_) { }
+        logDebug('Modal: All modals closed.');
     }
 
     // Clear any lingering active highlight on ASX code buttons when closing modals
     if (asxCodeButtonsContainer) {
-        asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn.active').forEach(btn=>btn.classList.remove('active'));
+        asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn.active').forEach(btn => btn.classList.remove('active'));
     }
 
     // Restore Target Price Alerts modal if share detail was opened from it (only if a share remains selected)
@@ -5008,7 +5015,7 @@ window.closeModals = closeModals;
 function showCustomAlert(message, duration = 3000, type = 'info') {
     if (window.UI && typeof window.UI.showCustomAlert === 'function') return window.UI.showCustomAlert(message, duration, type);
     // Minimal fallback
-    try { window.alert(message); } catch(_) { console.log('ALERT:', message); }
+    try { window.alert(message); } catch (_) { console.log('ALERT:', message); }
 }
 
 // Expose globally for use in other modules
@@ -5028,11 +5035,11 @@ const ToastManager = (() => {
         toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
         const iconHTML = `<span class="icon"></span>`;
         const msgHTML = `<div class="message"></div>`;
-        const actionsHTML = actions.length ? `<div class="actions">${actions.map(a=>`<button class=\"btn ${a.variant||''}\">${a.label}</button>`).join('')}</div>` : '';
+        const actionsHTML = actions.length ? `<div class="actions">${actions.map(a => `<button class=\"btn ${a.variant || ''}\">${a.label}</button>`).join('')}</div>` : '';
         const closeHTML = ``; // REMOVED
         toast.innerHTML = `${iconHTML}${msgHTML}${actionsHTML}${closeHTML}`;
         toast.querySelector('.message').textContent = message || '';
-        const remove = () => { toast.classList.remove('show'); setTimeout(()=> toast.remove(), 200); };
+        const remove = () => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 200); };
         // Wire actions
         const actionBtns = toast.querySelectorAll('.actions .btn');
         actionBtns.forEach((btn, idx) => {
@@ -5043,15 +5050,15 @@ const ToastManager = (() => {
             });
         });
         root.appendChild(toast);
-        requestAnimationFrame(()=> toast.classList.add('show'));
+        requestAnimationFrame(() => toast.classList.add('show'));
         if (effectiveDuration && effectiveDuration > 0) setTimeout(remove, effectiveDuration);
         return { el: toast, close: remove };
     };
     return {
-    info: (message, duration=3000) => makeToast({ message, type:'info', duration }),
-    success: (message, duration=3000) => makeToast({ message, type:'success', duration }),
-    error: (message, duration=3000) => makeToast({ message, type:'error', duration }),
-        confirm: (message, { confirmText='Yes', cancelText='No', onConfirm, onCancel } = {}) => {
+        info: (message, duration = 3000) => makeToast({ message, type: 'info', duration }),
+        success: (message, duration = 3000) => makeToast({ message, type: 'success', duration }),
+        error: (message, duration = 3000) => makeToast({ message, type: 'error', duration }),
+        confirm: (message, { confirmText = 'Yes', cancelText = 'No', onConfirm, onCancel } = {}) => {
             return makeToast({
                 message,
                 type: 'info',
@@ -5069,17 +5076,17 @@ const ToastManager = (() => {
 window.ToastManager = ToastManager;
 
 // Expose showCustomConfirm globally via UI implementation
-window.showCustomConfirm = function(message, callback){
+window.showCustomConfirm = function (message, callback) {
     try {
         if (window.UI && typeof window.UI.showCustomConfirm === 'function') return window.UI.showCustomConfirm(message, callback);
-    } catch(_) {}
+    } catch (_) { }
     try {
         if (window.ToastManager && typeof window.ToastManager.confirm === 'function') {
-            const res = window.ToastManager.confirm(message, { confirmText: 'Confirm', cancelText: 'Cancel', onConfirm: ()=>callback && callback(true), onCancel: ()=>callback && callback(false) });
+            const res = window.ToastManager.confirm(message, { confirmText: 'Confirm', cancelText: 'Cancel', onConfirm: () => callback && callback(true), onCancel: () => callback && callback(false) });
             if (res) return;
         }
-    } catch(_) {}
-    try { callback && callback(false); } catch(_) {}
+    } catch (_) { }
+    try { callback && callback(false); } catch (_) { }
 };
 // Date Formatting Helper Functions (Australian Style)
 
@@ -5118,7 +5125,7 @@ function getShareDisplayData(share) {
         high52Week = livePriceData.High52 !== null && !isNaN(livePriceData.High52) && livePriceData.High52 !== 0 ? formatMoney(livePriceData.High52) : (livePriceData.High52 === 0 ? '0.00' : 'N/A');
         low52Week = livePriceData.Low52 !== null && !isNaN(livePriceData.Low52) && livePriceData.Low52 !== 0 ? formatMoney(livePriceData.Low52) : (livePriceData.Low52 === 0 ? '0.00' : 'N/A');
 
-    // (Removed legacy halving; display full change values)
+        // (Removed legacy halving; display full change values)
 
         if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
@@ -5219,14 +5226,14 @@ function getShareDisplayData(share) {
                 changeVal = livePriceData.lastLivePrice - livePriceData.lastPrevClose;
             }
         }
-        row.classList.remove('positive-change-row','negative-change-row','neutral-change-row','entry-price-change-row');
-    // Ensure unified side border helper present
-    if (!row.classList.contains('movement-sides')) row.classList.add('movement-sides');
+        row.classList.remove('positive-change-row', 'negative-change-row', 'neutral-change-row', 'entry-price-change-row');
+        // Ensure unified side border helper present
+        if (!row.classList.contains('movement-sides')) row.classList.add('movement-sides');
         if (changeVal > 0) row.classList.add('positive-change-row');
         else if (changeVal < 0) row.classList.add('negative-change-row');
         else if (priceClass === 'entry-price') row.classList.add('entry-price-change-row');
         else row.classList.add('neutral-change-row');
-    } catch(_) {}
+    } catch (_) { }
 
     // Set display for new shares without live pricing
     if (isNewShare) {
@@ -5327,9 +5334,9 @@ function initShareFormAccordion(force = false) {
     // Remove any previous handler if present to avoid duplicate bindings when the DOM is re-rendered
     try {
         if (root._accordionClickHandler) root.removeEventListener('click', root._accordionClickHandler);
-    } catch(_) {}
+    } catch (_) { }
 
-    const accordionClickHandler = function(e) {
+    const accordionClickHandler = function (e) {
         const header = e.target.closest('.accordion-toggle');
         if (!header || !root.contains(header)) return;
         e.preventDefault();
@@ -5339,7 +5346,7 @@ function initShareFormAccordion(force = false) {
     };
     root.addEventListener('click', accordionClickHandler);
     // Store the handler reference so future inits can remove it if needed
-    try { root._accordionClickHandler = accordionClickHandler; } catch(_) {}
+    try { root._accordionClickHandler = accordionClickHandler; } catch (_) { }
     root.dataset.accordionInit = 'true';
 }
 
@@ -5454,17 +5461,17 @@ function toggleAccordionSection(section) {
     // do not allow passive auto-open behavior to run. Allow closing however.
     try {
         if (opening && window.__suppressShareFormAccordionOpen) return;
-    } catch(_) {}
+    } catch (_) { }
     section.classList.toggle('open');
     toggleBtn.setAttribute('aria-expanded', String(opening));
-    
+
     // Handle scrolling adjustments for mobile and modal context
     if (opening && window.innerWidth < 650) {
         setTimeout(() => {
-            try { toggleBtn.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
+            try { toggleBtn.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { }
         }, 30);
     }
-    
+
     // Additional scroll adjustment for modal context after accordion animation
     if (opening) {
         // Wait for the CSS transition to complete (350ms from .accordion-panel transition)
@@ -5474,7 +5481,7 @@ function toggleAccordionSection(section) {
                 // Check if the toggle button is still visible in the viewport
                 const rect = toggleBtn.getBoundingClientRect();
                 const modalRect = modal.getBoundingClientRect();
-                
+
                 // If toggle button is too close to the top (less than 100px from modal top)
                 if (rect.top - modalRect.top < 100) {
                     modal.scrollBy({
@@ -5482,7 +5489,7 @@ function toggleAccordionSection(section) {
                         behavior: 'smooth'
                     });
                 }
-                
+
                 // If toggle button is below the visible area, scroll it into view
                 if (rect.bottom > modalRect.bottom) {
                     modal.scrollBy({
@@ -5505,7 +5512,7 @@ const accordionObserver = new MutationObserver(() => {
     const root = document.getElementById('shareFormAccordion');
     if (root && !root.dataset.accordionInit) initShareFormAccordion(true);
 });
-try { accordionObserver.observe(document.body, { childList: true, subtree: true }); } catch(e) {}
+try { accordionObserver.observe(document.body, { childList: true, subtree: true }); } catch (e) { }
 
 // Helper: Render unified Alert Target (Intent + Direction + Price) B/S + Arrow + $Price
 function renderAlertTargetInline(share, opts = {}) {
@@ -5524,9 +5531,9 @@ function renderAlertTargetInline(share, opts = {}) {
     const priceStr = '$' + priceNum.toFixed(2);
     const arrowClass = isAbove ? 'alert-target-arrow up' : (isBelow ? 'alert-target-arrow down' : 'alert-target-arrow');
     const parts = [];
-    if (intent) parts.push('<span class="alert-target-intent">'+intent+'</span>');
-    if (arrow) parts.push('<span class="'+arrowClass+'">'+arrow+'</span>');
-    parts.push('<span class="alert-target-price">'+priceStr+'</span>');
+    if (intent) parts.push('<span class="alert-target-intent">' + intent + '</span>');
+    if (arrow) parts.push('<span class="' + arrowClass + '">' + arrow + '</span>');
+    parts.push('<span class="alert-target-price">' + priceStr + '</span>');
     const core = parts.join(' ');
     if (opts.showLabel) return '<strong>Alert:</strong> ' + core;
     return core;
@@ -5544,10 +5551,10 @@ function isCodeInAnyWatchlist(code) {
                 if (s && s.shareName && s.shareName.toUpperCase() === target) return true;
             }
         }
-    } catch(_) {}
+    } catch (_) { }
     return false;
 }
-try { window.isCodeInAnyWatchlist = isCodeInAnyWatchlist; } catch(_) {}
+try { window.isCodeInAnyWatchlist = isCodeInAnyWatchlist; } catch (_) { }
 
 // Unified click-through for research vs existing share detail
 function openShareOrSearch(code) {
@@ -5557,18 +5564,18 @@ function openShareOrSearch(code) {
         const shares = (typeof getAllSharesData === 'function') ? getAllSharesData() : (window.allSharesData || []);
         const match = Array.isArray(shares) ? shares.find(s => s && s.shareName && s.shareName.toUpperCase() === upper) : null;
         if (match && match.id) {
-            try { selectShare(match.id); showShareDetails(); } catch(e){ console.warn('Open share details failed', e); }
+            try { selectShare(match.id); showShareDetails(); } catch (e) { console.warn('Open share details failed', e); }
             return;
         }
-    } catch(e) { /* ignore */ }
+    } catch (e) { /* ignore */ }
     // Fallback to search
-    try { if (typeof showStockSearchModal === 'function') showStockSearchModal(upper); } catch(_) {}
+    try { if (typeof showStockSearchModal === 'function') showStockSearchModal(upper); } catch (_) { }
 }
-try { window.openShareOrSearch = openShareOrSearch; } catch(_) {}
+try { window.openShareOrSearch = openShareOrSearch; } catch (_) { }
 
 // Force open Search ASX Stocks modal with a prefilled code (always research path)
-function openStockSearchForCode(code){
-    if(!code) return;
+function openStockSearchForCode(code) {
+    if (!code) return;
     const upper = code.toUpperCase();
     try {
         if (typeof stockSearchModal !== 'undefined' && stockSearchModal) {
@@ -5576,18 +5583,18 @@ function openStockSearchForCode(code){
         } else if (typeof searchStockBtn !== 'undefined' && searchStockBtn && searchStockBtn.click) {
             searchStockBtn.click();
         }
-    } catch(_) {}
+    } catch (_) { }
     try {
         if (typeof asxSearchInput !== 'undefined' && asxSearchInput) {
             asxSearchInput.value = upper;
             if (typeof displayStockDetailsInSearchModal === 'function') {
                 displayStockDetailsInSearchModal(upper);
             }
-            try { asxSearchInput.focus(); asxSearchInput.setSelectionRange(upper.length, upper.length); } catch(_) {}
+            try { asxSearchInput.focus(); asxSearchInput.setSelectionRange(upper.length, upper.length); } catch (_) { }
         }
-    } catch(_) {}
+    } catch (_) { }
 }
-try { window.openStockSearchForCode = openStockSearchForCode; } catch(_) {}
+try { window.openStockSearchForCode = openStockSearchForCode; } catch (_) { }
 
 // --- Notifications Accordion Init (Target Hit / Global) ---
 function initNotificationsAccordion() {
@@ -5611,17 +5618,17 @@ function initNotificationsAccordion() {
     });
     root.dataset.accordionInit = 'true';
 }
-document.addEventListener('DOMContentLoaded', () => { try { initNotificationsAccordion(); } catch(_) {} });
+document.addEventListener('DOMContentLoaded', () => { try { initNotificationsAccordion(); } catch (_) { } });
 // Safety net: if modal content is rebuilt dynamically, re-initialize notifications accordion
 try {
     const notifObserver = new MutationObserver(() => {
         const root = document.getElementById('notificationsAccordion');
         if (root && !root.dataset.accordionInit) {
-            try { initNotificationsAccordion(); } catch(_) {}
+            try { initNotificationsAccordion(); } catch (_) { }
         }
     });
     notifObserver.observe(document.body, { childList: true, subtree: true });
-} catch(_) {}
+} catch (_) { }
 
 /**
  * Adds a single share to the desktop table view.
@@ -5685,7 +5692,7 @@ function addShareToTable(share) {
         let d = null;
         if (marketOpen && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) d = lp.live - lp.prevClose;
         else if (!marketOpen && lp.lastLivePrice != null && lp.lastPrevClose != null && !isNaN(lp.lastLivePrice) && !isNaN(lp.lastPrevClose)) d = lp.lastLivePrice - lp.lastPrevClose;
-        const color = typeof d === 'number' ? (d>0 ? 'var(--brand-green)' : (d<0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
+        const color = typeof d === 'number' ? (d > 0 ? 'var(--brand-green)' : (d < 0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
         desktopTargetDot = `<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
     }
     row.innerHTML = `
@@ -5702,25 +5709,24 @@ function addShareToTable(share) {
             ${share.starRating > 0 ? '⭐'.repeat(share.starRating) : ''}
         </td>
         <td class="numeric-data-cell">
-            ${
-                (() => {
-                    const dividendAmount = Number(share.dividendAmount) || 0;
-                    const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
-                    const enteredPrice = Number(share.currentPrice) || 0;
-                    const priceForYield = (displayData.displayLivePrice !== 'N/A' && displayData.displayLivePrice.startsWith('$'))
-                                        ? parseFloat(displayData.displayLivePrice.substring(1))
-                                        : (enteredPrice > 0 ? enteredPrice : 0);
-                    if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
-                    const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
-                    const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
-                    if (frankingCredits > 0 && frankedYield > 0) {
-                        return formatAdaptivePercent(frankedYield) + '% (F)';
-                    } else if (unfrankedYield > 0) {
-                        return formatAdaptivePercent(unfrankedYield) + '% (U)';
-                    }
-                    return '';
-                })()
+            ${(() => {
+            const dividendAmount = Number(share.dividendAmount) || 0;
+            const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
+            const enteredPrice = Number(share.currentPrice) || 0;
+            const priceForYield = (displayData.displayLivePrice !== 'N/A' && displayData.displayLivePrice.startsWith('$'))
+                ? parseFloat(displayData.displayLivePrice.substring(1))
+                : (enteredPrice > 0 ? enteredPrice : 0);
+            if (priceForYield === 0 || (dividendAmount === 0 && frankingCredits === 0)) return '';
+            const frankedYield = calculateFrankedYield(dividendAmount, priceForYield, frankingCredits);
+            const unfrankedYield = calculateUnfrankedYield(dividendAmount, priceForYield);
+            if (frankingCredits > 0 && frankedYield > 0) {
+                return formatAdaptivePercent(frankedYield) + '% (F)';
+            } else if (unfrankedYield > 0) {
+                return formatAdaptivePercent(unfrankedYield) + '% (U)';
             }
+            return '';
+        })()
+        }
         </td>
     `;
 
@@ -5729,13 +5735,13 @@ function addShareToTable(share) {
         const lp = livePrices[share.shareName.toUpperCase()];
         let change = null;
         if (lp && lp.live != null && lp.prevClose != null && !isNaN(lp.live) && !isNaN(lp.prevClose)) change = lp.live - lp.prevClose;
-        row.classList.remove('positive-change-row','negative-change-row','neutral-change-row','entry-price-change-row');
-    if (!row.classList.contains('movement-sides')) row.classList.add('movement-sides');
+        row.classList.remove('positive-change-row', 'negative-change-row', 'neutral-change-row', 'entry-price-change-row');
+        if (!row.classList.contains('movement-sides')) row.classList.add('movement-sides');
         if (change > 0) row.classList.add('positive-change-row');
         else if (change < 0) row.classList.add('negative-change-row');
         else if (!lp && share.entryPrice && !isNaN(Number(share.entryPrice))) row.classList.add('entry-price-change-row');
         else row.classList.add('neutral-change-row');
-    } catch(_) {}
+    } catch (_) { }
 
     // Add long press / context menu for desktop
     let touchStartTime = 0;
@@ -5817,7 +5823,7 @@ function addShareToMobileCards(share) {
             else if (!marketOpen && lp.lastLivePrice != null && lp.lastPrevClose != null && !isNaN(lp.lastLivePrice) && !isNaN(lp.lastPrevClose)) d = lp.lastLivePrice - lp.lastPrevClose;
             const color = (typeof d === 'number') ? (d > 0 ? 'var(--brand-green)' : (d < 0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
             codeWithDotForAdd = `${share.shareName || ''}<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
-        } catch(_) { /* fall back to plain code */ }
+        } catch (_) { /* fall back to plain code */ }
     }
     // Ensure unified side border helper
     if (!card.classList.contains('movement-sides')) card.classList.add('movement-sides');
@@ -6025,7 +6031,7 @@ function updateOrCreateShareTableRow(share) {
         const lastFetchedLive = livePriceData.lastLivePrice;
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
-    if (isMarketOpen) {
+        if (isMarketOpen) {
             if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
                 displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
             }
@@ -6051,8 +6057,8 @@ function updateOrCreateShareTableRow(share) {
     const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
     const enteredPrice = Number(share.currentPrice) || 0;
     const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
-                            ? parseFloat(displayLivePrice.substring(1))
-                            : (enteredPrice > 0 ? enteredPrice : 0);
+        ? parseFloat(displayLivePrice.substring(1))
+        : (enteredPrice > 0 ? enteredPrice : 0);
 
     const yieldDisplay = (() => {
         // If price for yield is 0, or if both dividend and franking are 0, return empty string
@@ -6081,7 +6087,7 @@ function updateOrCreateShareTableRow(share) {
             else if (!marketOpen && lp.lastLivePrice != null && lp.lastPrevClose != null && !isNaN(lp.lastLivePrice) && !isNaN(lp.lastPrevClose)) d = lp.lastLivePrice - lp.lastPrevClose;
             const color = (typeof d === 'number') ? (d > 0 ? 'var(--brand-green)' : (d < 0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
             desktopTargetDot2 = `<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
-        } catch(_) { desktopTargetDot2 = '<span class="target-hit-dot" aria-label="Alert target hit"></span>'; }
+        } catch (_) { desktopTargetDot2 = '<span class="target-hit-dot" aria-label="Alert target hit"></span>'; }
     }
     row.innerHTML = `
         <td>
@@ -6127,10 +6133,10 @@ function updateOrCreateShareMobileCard(share) {
             showShareDetails();
         });
 
-    // Mobile long-press disabled: we intentionally do NOT attach context-menu touch handlers.
-    // Simple tap already handled by click listener above; no-op touch listeners keep scroll smooth.
-    card.addEventListener('touchstart', () => { selectedElementForTap = card; }, { passive: true });
-    card.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
+        // Mobile long-press disabled: we intentionally do NOT attach context-menu touch handlers.
+        // Simple tap already handled by click listener above; no-op touch listeners keep scroll smooth.
+        card.addEventListener('touchstart', () => { selectedElementForTap = card; }, { passive: true });
+        card.addEventListener('touchend', () => { selectedElementForTap = null; }, { passive: true });
 
         container.appendChild(card); // Append new cards at the end, sorting will reorder virtually
         logDebug('Mobile Cards: Created new card for share ' + share.shareName + '.');
@@ -6154,36 +6160,36 @@ function updateOrCreateShareMobileCard(share) {
         const lastFetchedPrevClose = livePriceData.lastPrevClose;
 
         if (isMarketOpen) {
-                if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
-                    displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
-                }
-                if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
-                    const change = currentLivePrice - previousClosePrice;
-                    const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
-                    displayPriceChange = formatDailyChange(change, percentageChange);
-                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
-                } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                    const change = lastFetchedLive - lastFetchedPrevClose;
-                    const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                    displayPriceChange = formatDailyChange(change, percentageChange);
-                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
-                }
-            } else {
-                displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
-                if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
-                    const change = lastFetchedLive - lastFetchedPrevClose;
-                    const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
-                    displayPriceChange = formatDailyChange(change, percentageChange);
-                    priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
-                    cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
-                } else {
-                    displayPriceChange = '0.00 (0.00%)';
-                    priceClass = 'neutral';
-                    cardPriceChangeClass = 'neutral-change-card';
-                }
+            if (currentLivePrice !== null && !isNaN(currentLivePrice)) {
+                displayLivePrice = '$' + formatAdaptivePrice(currentLivePrice);
             }
+            if (currentLivePrice !== null && previousClosePrice !== null && !isNaN(currentLivePrice) && !isNaN(previousClosePrice)) {
+                const change = currentLivePrice - previousClosePrice;
+                const percentageChange = (previousClosePrice !== 0 ? (change / previousClosePrice) * 100 : 0);
+                displayPriceChange = formatDailyChange(change, percentageChange);
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
+            } else if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = formatDailyChange(change, percentageChange);
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
+            }
+        } else {
+            displayLivePrice = lastFetchedLive !== null && !isNaN(lastFetchedLive) ? '$' + formatAdaptivePrice(lastFetchedLive) : 'N/A';
+            if (lastFetchedLive !== null && lastFetchedPrevClose !== null && !isNaN(lastFetchedLive) && !isNaN(lastFetchedPrevClose)) {
+                const change = lastFetchedLive - lastFetchedPrevClose;
+                const percentageChange = (lastFetchedPrevClose !== 0 ? (change / lastFetchedPrevClose) * 100 : 0);
+                displayPriceChange = formatDailyChange(change, percentageChange);
+                priceClass = change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral');
+                cardPriceChangeClass = change > 0 ? 'positive-change-card' : (change < 0 ? 'negative-change-card' : 'neutral-change-card');
+            } else {
+                displayPriceChange = '0.00 (0.00%)';
+                priceClass = 'neutral';
+                cardPriceChangeClass = 'neutral-change-card';
+            }
+        }
     }
 
     // Apply card-specific price change class
@@ -6205,8 +6211,8 @@ function updateOrCreateShareMobileCard(share) {
     const frankingCredits = Math.trunc(Number(share.frankingCredits) || 0);
     const enteredPrice = Number(share.currentPrice) || 0;
     const priceForYield = (displayLivePrice !== 'N/A' && displayLivePrice.startsWith('$'))
-                            ? parseFloat(displayLivePrice.substring(1))
-                            : (enteredPrice > 0 ? enteredPrice : 0);
+        ? parseFloat(displayLivePrice.substring(1))
+        : (enteredPrice > 0 ? enteredPrice : 0);
 
     const yieldDisplay = (() => {
         // If price for yield is 0, or if both dividend and franking are 0, return empty string
@@ -6238,7 +6244,7 @@ function updateOrCreateShareMobileCard(share) {
             else if (!marketOpen && lp.lastLivePrice != null && lp.lastPrevClose != null && !isNaN(lp.lastLivePrice) && !isNaN(lp.lastPrevClose)) d = lp.lastLivePrice - lp.lastPrevClose;
             const color = (typeof d === 'number') ? (d > 0 ? 'var(--brand-green)' : (d < 0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
             codeWithDotUpd = `${share.shareName || ''}<span class="target-hit-dot" aria-label="Alert target hit" style="background:${color}"></span>`;
-        } catch(_) { /* leave without dot */ }
+        } catch (_) { /* leave without dot */ }
     }
     // Markup: direct grid items without inner container to avoid unwanted box
     card.innerHTML = `
@@ -6247,7 +6253,7 @@ function updateOrCreateShareMobileCard(share) {
         <span class="live-price-large neutral-code-text card-live-price">${displayLivePrice}</span>
         <span class="price-change-large ${priceClass} card-price-change">${displayPriceChange}</span>
     <p class="data-row"><span class="label-text">Entered Price:</span><span class="data-value">${(val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val) : '')(Number(share.currentPrice))}</span></p>
-    ${(() => { const n=Number(share.targetPrice); return (!isNaN(n)&&n!==0)? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value">${renderAlertTargetInline(share)}</span></p>` : '' })()}
+    ${(() => { const n = Number(share.targetPrice); return (!isNaN(n) && n !== 0) ? `<p class="data-row alert-target-row"><span class="label-text">Alert Target:</span><span class="data-value">${renderAlertTargetInline(share)}</span></p>` : '' })()}
         <p class="data-row"><span class="label-text">Star Rating:</span><span class="data-value">${share.starRating > 0 ? '⭐'.repeat(share.starRating) : ''}</span></p>
         <p class="data-row"><span class="label-text">Dividend Yield:</span><span class="data-value">${yieldDisplay}</span></p>
     `;
@@ -6273,17 +6279,17 @@ function updateMainButtonsState(enable) {
         const isAnEditableWatchlistSelected = selectedValue && selectedValue !== ALL_SHARES_ID && selectedValue !== CASH_BANK_WATCHLIST_ID;
         // Remove extra conditions and only check if an editable watchlist is selected
         editWatchlistBtn.disabled = !isAnEditableWatchlistSelected;
-        logDebug('Edit Watchlist Button State: ' + (editWatchlistBtn.disabled ? 'disabled' : 'enabled') + 
-                ' (selectedValue=' + selectedValue + ', isEditable=' + isAnEditableWatchlistSelected + ')');
+        logDebug('Edit Watchlist Button State: ' + (editWatchlistBtn.disabled ? 'disabled' : 'enabled') +
+            ' (selectedValue=' + selectedValue + ', isEditable=' + isAnEditableWatchlistSelected + ')');
     }
     // addShareHeaderBtn is now contextual, its disabled state is managed by updateAddHeaderButton
-    if (logoutBtn) setIconDisabled(logoutBtn, !enable); 
+    if (logoutBtn) setIconDisabled(logoutBtn, !enable);
     if (themeToggleBtn) themeToggleBtn.disabled = !enable;
     if (colorThemeSelect) colorThemeSelect.disabled = !enable;
     if (revertToDefaultThemeBtn) revertToDefaultThemeBtn.disabled = !enable;
     // sortSelect and watchlistSelect disabled state is managed by render functions
     if (refreshLivePricesBtn) refreshLivePricesBtn.disabled = !enable;
-    
+
     // NEW: Disable/enable buttons specific to cash section
     // addCashCategoryBtn and saveCashBalancesBtn are removed from HTML/functionality is moved
     if (addCashAssetSidebarBtn) addCashAssetSidebarBtn.disabled = !enable;
@@ -6310,29 +6316,29 @@ function updateCompactViewButtonState() {
     try {
         const labelSpan = button.querySelector('span') || button;
         if (labelSpan) labelSpan.textContent = isCompact ? 'Default View' : 'Compact View';
-    } catch(_) {}
+    } catch (_) { }
     logDebug('UI State: Compact view button enabled (mode=' + currentMobileViewMode + ').');
 }
 
 function showModal(modalElement) {
-    try { console.debug && console.debug('TRACE showModal called for:', modalElement && modalElement.id); } catch(_){}
+    try { console.debug && console.debug('TRACE showModal called for:', modalElement && modalElement.id); } catch (_) { }
     // Prefer UI module if available
     if (window.UI && typeof window.UI.showModal === 'function') return window.UI.showModal(modalElement);
     // Fallback minimal implementation
     try {
         if (!modalElement) return;
-    if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id }, '', '');
-    try { pushAppStateEntry('modal', modalElement); } catch(_){}
-    // Ensure any defensive "app-hidden" class (used at load-time) is removed so
-    // the .modal.show rule can make the element visible. Some CSS places
-    // .app-hidden after .modal.show which prevents display unless we remove it here.
-    try { modalElement.classList.remove('app-hidden'); } catch(_){}
-    modalElement.classList.add('show');
+        if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id }, '', '');
+        try { pushAppStateEntry('modal', modalElement); } catch (_) { }
+        // Ensure any defensive "app-hidden" class (used at load-time) is removed so
+        // the .modal.show rule can make the element visible. Some CSS places
+        // .app-hidden after .modal.show which prevents display unless we remove it here.
+        try { modalElement.classList.remove('app-hidden'); } catch (_) { }
+        modalElement.classList.add('show');
         modalElement.scrollTop = 0;
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (scrollableContent) scrollableContent.scrollTop = 0;
         if (modalElement.id === 'shareFormSection' && typeof initializeShareNameAutocomplete === 'function') {
-            try { initializeShareNameAutocomplete(true); } catch(_) {}
+            try { initializeShareNameAutocomplete(true); } catch (_) { }
         }
         if (typeof logDebug === 'function') logDebug('Modal: Showing modal: ' + modalElement.id);
     } catch (e) { console.warn('showModal fallback failed', e); }
@@ -6340,13 +6346,13 @@ function showModal(modalElement) {
 
 // Helper: Show modal without pushing a new browser/history state (used for modal-to-modal back restore)
 function showModalNoHistory(modalElement) {
-    try { console.debug && console.debug('TRACE showModalNoHistory called for:', modalElement && modalElement.id); } catch(_){}
+    try { console.debug && console.debug('TRACE showModalNoHistory called for:', modalElement && modalElement.id); } catch (_) { }
     if (window.UI && typeof window.UI.showModalNoHistory === 'function') return window.UI.showModalNoHistory(modalElement);
     try {
         if (!modalElement) return;
-    // Remove initial hide marker before showing (see comment in showModal)
-    try { modalElement.classList.remove('app-hidden'); } catch(_){}
-    modalElement.classList.add('show');
+        // Remove initial hide marker before showing (see comment in showModal)
+        try { modalElement.classList.remove('app-hidden'); } catch (_) { }
+        modalElement.classList.add('show');
         modalElement.scrollTop = 0;
         var scrollableContent = modalElement.querySelector('.modal-body-scrollable');
         if (scrollableContent) scrollableContent.scrollTop = 0;
@@ -6355,16 +6361,16 @@ function showModalNoHistory(modalElement) {
 }
 
 function hideModal(modalElement) {
-    try { console.debug && console.debug('TRACE hideModal called for:', modalElement && modalElement.id); } catch(_){}
+    try { console.debug && console.debug('TRACE hideModal called for:', modalElement && modalElement.id); } catch (_) { }
     if (window.UI && typeof window.UI.hideModal === 'function') return window.UI.hideModal(modalElement);
     try {
         if (!modalElement) return;
 
 
-    // Hide the modal and restore the initial hidden marker so that
-    // styles relying on `.app-hidden` remain consistent when closed.
-    modalElement.classList.remove('show');
-    try { modalElement.classList.add('app-hidden'); } catch(_){}
+        // Hide the modal and restore the initial hidden marker so that
+        // styles relying on `.app-hidden` remain consistent when closed.
+        modalElement.classList.remove('show');
+        try { modalElement.classList.add('app-hidden'); } catch (_) { }
         if (typeof logDebug === 'function') logDebug('Modal: Hiding modal: ' + modalElement.id);
     } catch (e) { console.warn('hideModal fallback failed', e); }
 }
@@ -6492,10 +6498,10 @@ function addCommentSection(container, title = '', text = '', isCashAssetComment 
 
     if (titleInput) titleInput.value = title || '';
     if (textInput) textInput.value = text || '';
-    
+
     const commentTitleInput = commentSectionDiv.querySelector('.comment-title-input');
     const commentTextInput = commentSectionDiv.querySelector('.comment-text-input');
-    
+
     if (commentTitleInput) {
         commentTitleInput.addEventListener('input', isCashAssetComment ? checkCashAssetFormDirtyState : checkFormDirtyState);
     }
@@ -6535,7 +6541,7 @@ function clearForm() {
     try {
         if (autoEntryDateDisplay) { autoEntryDateDisplay.textContent = 'Auto when saved'; autoEntryDateDisplay.classList.add('ghosted-text'); }
         if (autoReferencePriceDisplay) { autoReferencePriceDisplay.textContent = 'Auto when saved'; autoReferencePriceDisplay.classList.add('ghosted-text'); }
-    } catch(_) {}
+    } catch (_) { }
     selectedShareDocId = null;
     originalShareData = null; // IMPORTANT: Reset original data to prevent auto-save of cancelled edits
     if (deleteShareBtn) {
@@ -6570,7 +6576,7 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
     }
 
     // Prepare native select (hidden) as multi-select for data binding; UI uses checkboxes
-    try { shareWatchlistSelect.multiple = true; } catch(e) {}
+    try { shareWatchlistSelect.multiple = true; } catch (e) { }
     shareWatchlistSelect.innerHTML = '<option value="" disabled>Select a Watchlist</option>';
 
     // Always include Portfolio as a special option
@@ -6701,7 +6707,7 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
     // Initialize dropdown button label/state
     if (shareWatchlistDropdownBtn) {
         updateWatchlistDropdownButton();
-        shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
+        shareWatchlistDropdownBtn.setAttribute('aria-expanded', 'false');
         shareWatchlistDropdownBtn.onclick = (e) => {
             e.stopPropagation();
             if (!shareWatchlistEnhanced) return;
@@ -6713,8 +6719,8 @@ function populateShareWatchlistSelect(currentShareWatchlistId = null, isNewShare
             if (!shareWatchlistEnhanced || shareWatchlistEnhanced.style.display !== 'block') return;
             const within = shareWatchlistEnhanced.contains(evt.target) || shareWatchlistDropdownBtn.contains(evt.target);
             if (!within) {
-                shareWatchlistEnhanced.style.display='none';
-                shareWatchlistDropdownBtn.setAttribute('aria-expanded','false');
+                shareWatchlistEnhanced.style.display = 'none';
+                shareWatchlistDropdownBtn.setAttribute('aria-expanded', 'false');
             }
         });
     }
@@ -6740,7 +6746,7 @@ function updateWatchlistDropdownButton() {
         const opt = Array.from(shareWatchlistSelect.options).find(o => o.value === id);
         return opt ? (opt.textContent || opt.innerText || id) : id;
     });
-    shareWatchlistDropdownBtn.textContent = names.length <=2 ? names.join(', ') : names.slice(0,2).join(', ') + ' +' + (names.length-2);
+    shareWatchlistDropdownBtn.textContent = names.length <= 2 ? names.join(', ') : names.slice(0, 2).join(', ') + ' +' + (names.length - 2);
 }
 
 function showEditFormForSelectedShare(shareIdToEdit = null) {
@@ -6759,7 +6765,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
         showCustomAlert('Selected share not found.');
         return;
     }
-    selectedShareDocId = targetShareId; 
+    selectedShareDocId = targetShareId;
 
     // Set the modal title to the share code and the subtitle to the company name
     formTitle.textContent = shareToEdit.shareName || 'N/A';
@@ -6773,7 +6779,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
     if (targetPriceInput) targetPriceInput.value = Number(shareToEdit.targetPrice) !== null && !isNaN(Number(shareToEdit.targetPrice)) ? formatUserDecimalStrict(shareToEdit.targetPrice) : '';
 
     // Entry data is now handled by display elements above, no input fields to populate
-    
+
     // Reset toggle state helpers
     userManuallyOverrodeDirection = false;
     // Set the correct state for the new target direction checkboxes
@@ -6791,7 +6797,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
                 targetDirBelowBtn.classList.toggle('is-active', !isAbove);
                 targetDirBelowBtn.setAttribute('aria-pressed', String(!isAbove));
             }
-        } catch(_) {}
+        } catch (_) { }
     }
 
     if (dividendAmountInput) dividendAmountInput.value = Number(shareToEdit.dividendAmount) !== null && !isNaN(Number(shareToEdit.dividendAmount)) ? formatUserDecimalStrict(shareToEdit.dividendAmount) : '';
@@ -6823,7 +6829,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
             shareToEdit.comments.forEach(comment => addCommentSection(commentsFormContainer, comment.title, comment.text));
         } else {
             // Add one empty comment section if no existing comments
-            addCommentSection(commentsFormContainer); 
+            addCommentSection(commentsFormContainer);
         }
     }
     if (deleteShareBtn) {
@@ -6857,7 +6863,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
                 autoReferencePriceDisplay.classList.add('ghosted-text');
             }
         }
-    } catch(e) { console.warn('Auto Details: Failed to populate auto fields', e); }
+    } catch (e) { console.warn('Auto Details: Failed to populate auto fields', e); }
 
     showModal(shareFormSection);
     // Always clear accordion init flag before re-initializing (fixes edit modal bug)
@@ -6866,7 +6872,7 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
         delete accordion.dataset.accordionInit;
     }
     setTimeout(() => initShareFormAccordion(true), 10);
-    try { scrollMainToTop(); } catch(_) {}
+    try { scrollMainToTop(); } catch (_) { }
     shareNameInput.focus();
     // Always show live price snapshot if code is present
     if (shareNameInput && shareNameInput.value.trim()) {
@@ -6889,10 +6895,10 @@ function selectAndOpenShareForEdit(shareId) {
         }
         selectedShareDocId = shareId;
         // ensure UI selection reflects this (some listeners read selectedShareDocId)
-        try { if (typeof highlightSelectedRow === 'function') highlightSelectedRow(shareId); } catch(_) {}
+        try { if (typeof highlightSelectedRow === 'function') highlightSelectedRow(shareId); } catch (_) { }
         // Open the edit modal
-        try { showEditFormForSelectedShare(shareId); } catch(e) { console.warn('selectAndOpenShareForEdit: showEditFormForSelectedShare failed', e); }
-    } catch(e) { console.warn('selectAndOpenShareForEdit failed', e); }
+        try { showEditFormForSelectedShare(shareId); } catch (e) { console.warn('selectAndOpenShareForEdit: showEditFormForSelectedShare failed', e); }
+    } catch (e) { console.warn('selectAndOpenShareForEdit failed', e); }
 }
 
 /**
@@ -6933,10 +6939,10 @@ function getCurrentFormData() {
             // 1. Enhanced multi-select (authoritative when present)
             try {
                 if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
-                    const enhancedVals = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(cb=>cb.value).filter(Boolean);
+                    const enhancedVals = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value).filter(Boolean);
                     if (enhancedVals.length) return enhancedVals;
                 }
-            } catch(_) {}
+            } catch (_) { }
             // 2. Legacy checkbox container
             const legacyEls = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
             const legacyVals = Array.from(legacyEls).map(x => x.value).filter(Boolean);
@@ -7009,7 +7015,7 @@ function checkFormDirtyState() {
                 const enhancedChecked = shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked');
                 if (enhancedChecked.length > 0) return true;
             }
-        } catch(_) {}
+        } catch (_) { }
         // 2. Legacy Phase 1 checkbox UI (if still present)
         const legacyChecked = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
         if (legacyChecked && legacyChecked.length > 0) return true;
@@ -7034,10 +7040,10 @@ function checkFormDirtyState() {
     if (selectedShareDocId && originalShareData) {
         const isDirty = !areShareDataEqual(originalShareData, currentData);
         try {
-            const origW = Array.isArray(originalShareData.watchlistIds)? originalShareData.watchlistIds.join(',') : 'null';
-            const currW = Array.isArray(currentData.watchlistIds)? currentData.watchlistIds.join(',') : 'null';
+            const origW = Array.isArray(originalShareData.watchlistIds) ? originalShareData.watchlistIds.join(',') : 'null';
+            const currW = Array.isArray(currentData.watchlistIds) ? currentData.watchlistIds.join(',') : 'null';
             logDebug(`[DirtyTrace] orig watchlists: [${origW}] vs current [${currW}] -> isDirty=${isDirty}`);
-        } catch(_) {}
+        } catch (_) { }
         canSave = canSave && isDirty;
         if (!isDirty) {
             logDebug('Dirty State: Existing share: No changes detected, save disabled.');
@@ -7057,14 +7063,14 @@ function checkFormDirtyState() {
 try {
     if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
         shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            if (cb.getAttribute('data-dirty-bound')==='true') return;
-            cb.addEventListener('change', ()=>{
-                try { checkFormDirtyState(); } catch(e) { console.warn('DirtyState: checkbox change failed', e); }
+            if (cb.getAttribute('data-dirty-bound') === 'true') return;
+            cb.addEventListener('change', () => {
+                try { checkFormDirtyState(); } catch (e) { console.warn('DirtyState: checkbox change failed', e); }
             });
-            cb.setAttribute('data-dirty-bound','true');
+            cb.setAttribute('data-dirty-bound', 'true');
         });
     }
-} catch(e) { /* silent */ }
+} catch (e) { /* silent */ }
 
 /**
  * Saves share data to Firestore. Can be called silently for auto-save.
@@ -7080,10 +7086,10 @@ async function saveShareData(isSilent = false) {
     }
 
     const shareName = shareNameInput.value.trim().toUpperCase();
-    if (!shareName) { 
-        if (!isSilent) showCustomAlert('Code is required!'); 
+    if (!shareName) {
+        if (!isSilent) showCustomAlert('Code is required!');
         console.warn('Save Share: Code is required. Skipping save.');
-        return; 
+        return;
     }
 
     // Source of truth: checkbox UI; keep hidden select for legacy fallback
@@ -7108,9 +7114,9 @@ async function saveShareData(isSilent = false) {
             return;
         }
     } else if (!selectedShareDocId && !selectedWatchlistIdForSave) { // New share not from All Shares, but no watchlist selected (shouldn't happen if default exists)
-         if (!isSilent) showCustomAlert('Please select a watchlist to assign the new share to.');
-         console.warn('Save Share: New share: No watchlist selected. Skipping save.');
-         return;
+        if (!isSilent) showCustomAlert('Please select a watchlist to assign the new share to.');
+        console.warn('Save Share: New share: No watchlist selected. Skipping save.');
+        return;
     }
 
 
@@ -7123,7 +7129,7 @@ async function saveShareData(isSilent = false) {
         } else if (liveData && typeof liveData.lastLivePrice === 'number' && !isNaN(liveData.lastLivePrice)) {
             currentPrice = liveData.lastLivePrice;
         }
-    } catch(_) {}
+    } catch (_) { }
     const targetPrice = parseFloat(targetPriceInput.value);
     const dividendAmount = parseFloat(dividendAmountInput.value);
     const frankingCredits = parseFloat(frankingCreditsInput.value);
@@ -7156,7 +7162,7 @@ async function saveShareData(isSilent = false) {
         // UPDATED: Save the selected target direction from the new checkboxes
         targetDirection: targetAboveCheckbox.checked ? 'above' : 'below',
         // Persist intent so Alert Target renderer can read directly without needing alert doc (B/S)
-        intent: (function(){
+        intent: (function () {
             try {
                 const dir = targetAboveCheckbox.checked ? 'above' : 'below';
                 const buyActive = targetIntentBuyBtn && targetIntentBuyBtn.classList.contains('is-active');
@@ -7164,17 +7170,17 @@ async function saveShareData(isSilent = false) {
                 if (buyActive && !sellActive) return 'buy';
                 if (sellActive && !buyActive) return 'sell';
                 return dir === 'above' ? 'sell' : 'buy';
-            } catch(_) { return targetAboveCheckbox.checked ? 'sell' : 'buy'; }
+            } catch (_) { return targetAboveCheckbox.checked ? 'sell' : 'buy'; }
         })(),
         dividendAmount: isNaN(dividendAmount) ? null : dividendAmount,
         frankingCredits: isNaN(frankingCredits) ? null : frankingCredits,
         comments: comments,
         // Use the selected watchlist from the modal dropdown
-    watchlistId: selectedWatchlistIdForSave,
-    watchlistIds: selectedWatchlistIdsForSave,
-    // Portfolio fields (optional)
-    portfolioShares: (() => { const el = document.getElementById('portfolioShares'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : Math.trunc(v); })(),
-    portfolioAvgPrice: (() => { const el = document.getElementById('portfolioAvgPrice'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : v; })(),
+        watchlistId: selectedWatchlistIdForSave,
+        watchlistIds: selectedWatchlistIdsForSave,
+        // Portfolio fields (optional)
+        portfolioShares: (() => { const el = document.getElementById('portfolioShares'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : Math.trunc(v); })(),
+        portfolioAvgPrice: (() => { const el = document.getElementById('portfolioAvgPrice'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : v; })(),
         lastPriceUpdateTime: new Date().toISOString(),
         starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0 // Ensure rating is saved as a number
     };
@@ -7186,7 +7192,7 @@ async function saveShareData(isSilent = false) {
             shareData.entryPrice = (_entryPriceCandidate === null) ? null : Number(_entryPriceCandidate);
             shareData.enteredPriceRaw = _rawEnteredPrice || '';
         }
-    } catch(_) {}
+    } catch (_) { }
 
     if (selectedShareDocId) {
         const existingShare = allSharesData.find(s => s.id === selectedShareDocId);
@@ -7222,7 +7228,7 @@ async function saveShareData(isSilent = false) {
             }
 
             logDebug('Share Update: Replacing watchlist associations for existing share. Old: [' +
-                     existingWatchlistIds.join(', ') + '], New: [' + finalWatchlistIds.join(', ') + ']');
+                existingWatchlistIds.join(', ') + '], New: [' + finalWatchlistIds.join(', ') + ']');
 
             // Debug: Verify the data is being set correctly
             console.log('Share Update Debug:', {
@@ -7251,16 +7257,16 @@ async function saveShareData(isSilent = false) {
                     const oldShareData = allSharesData[idx];
                     // Merge new values into cache immediately (non-destructive for missing fields)
                     allSharesData[idx] = Object.assign({}, allSharesData[idx], shareData);
-                    try { console.log('Optimistic cache merge for share ID:', selectedShareDocId, { before: oldShareData, after: allSharesData[idx] }); } catch(_) {}
+                    try { console.log('Optimistic cache merge for share ID:', selectedShareDocId, { before: oldShareData, after: allSharesData[idx] }); } catch (_) { }
                 } else {
                     // If not found, add a provisional entry so details render immediately
-                    try { allSharesData.push(Object.assign({}, shareData, { id: selectedShareDocId })); } catch(_) {}
+                    try { allSharesData.push(Object.assign({}, shareData, { id: selectedShareDocId })); } catch (_) { }
                 }
                 // Re-render watchlist and update banners/modal if open so user sees updates instantly
-                try { if (typeof renderWatchlist === 'function') renderWatchlist(); } catch(_) {}
-                try { updateTargetHitBanner(); } catch(_) {}
-                try { if (typeof refreshNotificationsModalIfOpen === 'function') refreshNotificationsModalIfOpen('CUSTOM_TRIGGER_HITS'); } catch(_) {}
-            } catch(e) { console.warn('Optimistic merge failed', e); }
+                try { if (typeof renderWatchlist === 'function') renderWatchlist(); } catch (_) { }
+                try { updateTargetHitBanner(); } catch (_) { }
+                try { if (typeof refreshNotificationsModalIfOpen === 'function') refreshNotificationsModalIfOpen('CUSTOM_TRIGGER_HITS'); } catch (_) { }
+            } catch (e) { console.warn('Optimistic merge failed', e); }
 
             const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
             await firestore.updateDoc(shareDocRef, shareData);
@@ -7272,16 +7278,16 @@ async function saveShareData(isSilent = false) {
             }
             if (!isSilent) showCustomAlert('Update successful', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' (ID: ' + selectedShareDocId + ') updated.');
-        originalShareData = getCurrentFormData(); // Update original data after successful save
-        setIconDisabled(saveShareBtn, true); // Disable save button after saving
-        // NEW: Explicitly hide the share form modal immediately and deselect the share
-        if (!isSilent && shareFormSection) {
-            shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
-            shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
-        }
-    // Prevent any stray observers from reopening the form immediately after save
-    if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000); }
-        deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
+            originalShareData = getCurrentFormData(); // Update original data after successful save
+            setIconDisabled(saveShareBtn, true); // Disable save button after saving
+            // NEW: Explicitly hide the share form modal immediately and deselect the share
+            if (!isSilent && shareFormSection) {
+                shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
+                shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
+            }
+            // Prevent any stray observers from reopening the form immediately after save
+            if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(() => { window.suppressShareFormReopen = false; }, 8000); }
+            deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
             // NEW: Explicitly hide the share form modal immediately and deselect the share
             if (!isSilent && shareFormSection) {
                 shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
@@ -7296,9 +7302,9 @@ async function saveShareData(isSilent = false) {
                 if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling();
                 // Small deferred second pass to cover async reapply logic elsewhere
                 setTimeout(() => {
-                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch(_) {}
+                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch (_) { }
                 }, 120);
-            } catch(_) {}
+            } catch (_) { }
             // Removed secondary toast; single confirmation already shown earlier.
         } catch (error) {
             console.error('Firestore: Error updating share:', error);
@@ -7315,7 +7321,7 @@ async function saveShareData(isSilent = false) {
                 } else if (liveDataLate && typeof liveDataLate.lastLivePrice === 'number' && !isNaN(liveDataLate.lastLivePrice)) {
                     shareData.currentPrice = liveDataLate.lastLivePrice;
                 }
-            } catch(_) {}
+            } catch (_) { }
         }
         shareData.lastFetchedPrice = shareData.currentPrice;
         shareData.previousFetchedPrice = shareData.currentPrice;
@@ -7339,11 +7345,11 @@ async function saveShareData(isSilent = false) {
                         }
                         selectedShareDocId = existingByCode.id;
                         // Phase 2: upsert alert for this share
-                        try { await upsertAlertForShare(selectedShareDocId, shareName, shareData, true); } catch(e) { console.error('Alerts: Failed to upsert after dedupe save:', e); }
+                        try { await upsertAlertForShare(selectedShareDocId, shareName, shareData, true); } catch (e) { console.error('Alerts: Failed to upsert after dedupe save:', e); }
                         if (!isSilent) showCustomAlert('Updated existing share instead of creating duplicate', 1500);
                         // Refresh prices and UI
                         await fetchLivePrices();
-                        try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch(_) {}
+                        try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch (_) { }
                     } catch (e) {
                         console.error('Firestore: Error updating existing share during dedupe save:', e);
                         if (!isSilent) showCustomAlert('Error updating existing share: ' + (e && e.message ? e.message : e));
@@ -7355,15 +7361,15 @@ async function saveShareData(isSilent = false) {
                     console.log('Save Share: Existing share found but new share includes portfolio/watchlist additions; creating a new share instead of updating existing.');
                 }
             }
-        } catch(e) { console.warn('Dedupe check failed', e); }
+        } catch (e) { console.warn('Dedupe check failed', e); }
 
         try {
             const sharesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             // DEBUG: capture save-time entry price sources to diagnose Adshare modal issue
             try {
                 // Conditional debug log (only when DEBUG_MODE enabled)
-                try { if (DEBUG_MODE) console.log('Preparing to add share. shareName=', shareName, 'formCurrentPrice=', (currentPriceInput ? currentPriceInput.value : undefined), 'livePriceObj=', livePrices && livePrices[shareName.toUpperCase()] ? livePrices[shareName.toUpperCase()] : undefined, 'shareData.entryPrice=', shareData.entryPrice, 'shareData.enteredPriceRaw=', shareData.enteredPriceRaw); } catch(_) {}
-            } catch(_) {}
+                try { if (DEBUG_MODE) console.log('Preparing to add share. shareName=', shareName, 'formCurrentPrice=', (currentPriceInput ? currentPriceInput.value : undefined), 'livePriceObj=', livePrices && livePrices[shareName.toUpperCase()] ? livePrices[shareName.toUpperCase()] : undefined, 'shareData.entryPrice=', shareData.entryPrice, 'shareData.enteredPriceRaw=', shareData.enteredPriceRaw); } catch (_) { }
+            } catch (_) { }
 
             // OPTIMISTIC UI: Insert a provisional share into in-memory list so user sees it immediately
             const provisionalId = '__pending:' + Date.now();
@@ -7378,7 +7384,7 @@ async function saveShareData(isSilent = false) {
                     try {
                         if (typeof sortShares === 'function') sortShares();
                         else if (typeof renderWatchlist === 'function') renderWatchlist();
-                    } catch(_) {}
+                    } catch (_) { }
                 }
 
                 // Also merge a provisional livePrices entry so the watchlist shows the entry price while real prices arrive
@@ -7399,12 +7405,12 @@ async function saveShareData(isSilent = false) {
                                 lastPrevClose: lastPrev,
                                 __provisional: true
                             };
-                            try { window.livePrices = Object.assign({}, (window.livePrices || {}), { [code]: provisionalLP }); } catch(_) {}
-                            try { livePrices = window.livePrices; } catch(_) {}
+                            try { window.livePrices = Object.assign({}, (window.livePrices || {}), { [code]: provisionalLP }); } catch (_) { }
+                            try { livePrices = window.livePrices; } catch (_) { }
                         }
                     }
-                } catch(_) {}
-            } catch(e) { console.warn('Optimistic UI provisional insertion failed', e); }
+                } catch (_) { }
+            } catch (e) { console.warn('Optimistic UI provisional insertion failed', e); }
 
             const newDocRef = await firestore.addDoc(sharesColRef, shareData);
             selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
@@ -7436,13 +7442,13 @@ async function saveShareData(isSilent = false) {
                     const code = (created.shareName || '').toUpperCase();
                     if (code && window.livePrices && window.livePrices[code] && window.livePrices[code].__provisional) {
                         // Remove the provisional flag but keep the value (apps will update when real prices arrive)
-                        try { delete window.livePrices[code].__provisional; } catch(_) {}
-                        try { livePrices = window.livePrices; } catch(_) {}
+                        try { delete window.livePrices[code].__provisional; } catch (_) { }
+                        try { livePrices = window.livePrices; } catch (_) { }
                     }
-                } catch(_) {}
+                } catch (_) { }
 
                 logDebug('In-memory: inserted/updated newly created share to allSharesData (id=' + newDocRef.id + ')');
-            } catch(e) { console.warn('In-memory append/replace of new share failed', e); }
+            } catch (e) { console.warn('In-memory append/replace of new share failed', e); }
             // Phase 2: Create alert document for this new share (intent + direction)
             try {
                 await upsertAlertForShare(selectedShareDocId, shareName, shareData, true);
@@ -7451,16 +7457,16 @@ async function saveShareData(isSilent = false) {
             }
             if (!isSilent) showCustomAlert('Added successfully', 1500);
             logDebug('Firestore: Share \'' + shareName + '\' added with ID: ' + newDocRef.id);
-        originalShareData = getCurrentFormData(); // Update original data after successful save
-        setIconDisabled(saveShareBtn, true); // Disable save button after saving
-        // NEW: Explicitly hide the share form modal immediately and deselect the share
-        if (!isSilent && shareFormSection) {
-            shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
-            shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
-        }
-    // Prevent any stray observers from reopening the form immediately after save
-    if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000); }
-        deselectCurrentShare(); // Deselect newly added share BEFORE fetching live prices
+            originalShareData = getCurrentFormData(); // Update original data after successful save
+            setIconDisabled(saveShareBtn, true); // Disable save button after saving
+            // NEW: Explicitly hide the share form modal immediately and deselect the share
+            if (!isSilent && shareFormSection) {
+                shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
+                shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
+            }
+            // Prevent any stray observers from reopening the form immediately after save
+            if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(() => { window.suppressShareFormReopen = false; }, 8000); }
+            deselectCurrentShare(); // Deselect newly added share BEFORE fetching live prices
             // NEW: Explicitly hide the share form modal immediately and deselect the share
             if (!isSilent && shareFormSection) {
                 shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
@@ -7475,9 +7481,9 @@ async function saveShareData(isSilent = false) {
                 if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling();
                 // Small deferred second pass to cover async reapply logic elsewhere
                 setTimeout(() => {
-                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch(_) {}
+                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch (_) { }
                 }, 120);
-            } catch(_) {}
+            } catch (_) { }
             // Removed secondary toast; single confirmation already shown earlier.
         } catch (error) {
             console.error('Firestore: Error adding share:', error);
@@ -7487,7 +7493,7 @@ async function saveShareData(isSilent = false) {
     // Clear any sticky id on details modal so nothing reopens unexpectedly
     try {
         if (shareDetailModal && shareDetailModal.dataset) delete shareDetailModal.dataset.shareId;
-    } catch(_) {}
+    } catch (_) { }
     if (!isSilent) closeModals(); // Only close if not a silent save
 }
 
@@ -7534,7 +7540,7 @@ function showShareDetails() {
 
     // Persist the selected share id on the modal so Edit can recover it if selection is cleared
     if (shareDetailModal) {
-        try { shareDetailModal.dataset.shareId = selectedShareDocId; } catch(_) {}
+        try { shareDetailModal.dataset.shareId = selectedShareDocId; } catch (_) { }
     }
 
     // Get live price data for this share to check target hit status
@@ -7568,7 +7574,7 @@ function showShareDetails() {
 
         // Determine price change class for modal live price section
         let priceChangeClass = 'neutral'; // Default to neutral
-        if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice) && 
+        if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice) &&
             prevClosePrice !== undefined && prevClosePrice !== null && !isNaN(prevClosePrice)) {
             const change = livePrice - prevClosePrice;
             if (change > 0) {
@@ -7580,12 +7586,12 @@ function showShareDetails() {
             }
         }
 
-    // Clear previous dynamic content
-    modalLivePriceDisplaySection.innerHTML = '';
+        // Clear previous dynamic content
+        modalLivePriceDisplaySection.innerHTML = '';
 
-    // 52-Week Low / High
-    const fiftyTwoWeekRow = document.createElement('div');
-    fiftyTwoWeekRow.classList.add('fifty-two-week-row');
+        // 52-Week Low / High
+        const fiftyTwoWeekRow = document.createElement('div');
+        fiftyTwoWeekRow.classList.add('fifty-two-week-row');
 
         const lowSpan = document.createElement('span');
         lowSpan.classList.add('fifty-two-week-value', 'low');
@@ -7599,13 +7605,13 @@ function showShareDetails() {
 
         modalLivePriceDisplaySection.appendChild(fiftyTwoWeekRow);
 
-    const currentModalLivePriceLarge = document.createElement('span');
-    // Force neutral color for primary live price (colour only on change element) to match Add Share snapshot styling
-    currentModalLivePriceLarge.classList.add('modal-share-name','live-price-large','neutral');
-    const currentModalPriceChangeLarge = document.createElement('span');
-    currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass);
-    modalLivePriceDisplaySection.appendChild(currentModalLivePriceLarge);
-    modalLivePriceDisplaySection.appendChild(currentModalPriceChangeLarge);
+        const currentModalLivePriceLarge = document.createElement('span');
+        // Force neutral color for primary live price (colour only on change element) to match Add Share snapshot styling
+        currentModalLivePriceLarge.classList.add('modal-share-name', 'live-price-large', 'neutral');
+        const currentModalPriceChangeLarge = document.createElement('span');
+        currentModalPriceChangeLarge.classList.add('price-change-large', priceChangeClass);
+        modalLivePriceDisplaySection.appendChild(currentModalLivePriceLarge);
+        modalLivePriceDisplaySection.appendChild(currentModalPriceChangeLarge);
 
         if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) {
             currentModalLivePriceLarge.textContent = '$' + formatAdaptivePrice(livePrice);
@@ -7627,15 +7633,15 @@ function showShareDetails() {
             currentModalPriceChangeLarge.style.display = 'none';
         }
 
-    // P/E Ratio
+        // P/E Ratio
         const peRow = document.createElement('div');
-    peRow.classList.add('pe-ratio-row');
-    const peSpan = document.createElement('span');
-    peSpan.classList.add('pe-ratio-value');
-    peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A');
-    peRow.appendChild(peSpan);
-    modalLivePriceDisplaySection.appendChild(peRow);
-    setTimeout(()=>{ try { logTypographyRatios('detail-modal'); } catch(_) {} },0);
+        peRow.classList.add('pe-ratio-row');
+        const peSpan = document.createElement('span');
+        peSpan.classList.add('pe-ratio-value');
+        peSpan.textContent = 'P/E: ' + (peRatio !== undefined && peRatio !== null && !isNaN(peRatio) ? formatAdaptivePrice(peRatio) : 'N/A');
+        peRow.appendChild(peSpan);
+        modalLivePriceDisplaySection.appendChild(peRow);
+        setTimeout(() => { try { logTypographyRatios('detail-modal'); } catch (_) { } }, 0);
     }
 
     // Entry (formerly reference) price: show 2 decimals by default; preserve up to 3 only if user originally entered >2
@@ -7676,7 +7682,7 @@ function showShareDetails() {
         const dividendsCard = document.querySelector('.detail-card[data-section="dividends"]');
         if (dividendsCard) {
             const hasHoldings = (share.portfolioShares && !isNaN(Number(share.portfolioShares)) && Number(share.portfolioShares) !== 0) ||
-                                (share.portfolioAvgPrice && !isNaN(Number(share.portfolioAvgPrice)) && Number(share.portfolioAvgPrice) !== 0);
+                (share.portfolioAvgPrice && !isNaN(Number(share.portfolioAvgPrice)) && Number(share.portfolioAvgPrice) !== 0);
             dividendsCard.style.display = hasHoldings ? '' : 'none';
 
             // Within, hide dividend rows if no dividend info
@@ -7698,7 +7704,7 @@ function showShareDetails() {
         if (starRatingRow) {
             starRatingRow.style.display = (share.starRating > 0) ? '' : 'none';
         }
-    } catch(e) { console.warn('Hide Empty Sections: issue applying visibility', e); }
+    } catch (e) { console.warn('Hide Empty Sections: issue applying visibility', e); }
 
     // If many sections are hidden (or on narrow screens), make Investment section span full width for clarity
     try {
@@ -7714,38 +7720,38 @@ function showShareDetails() {
                             if (s.classList && s.classList.contains('full-span')) return false; // ignore full-span siblings
                             const cs = window.getComputedStyle(s);
                             return !!(cs && cs.display !== 'none' && cs.visibility !== 'hidden' && s.offsetParent !== null);
-                        } catch(_) { return false; }
+                        } catch (_) { return false; }
                     }).length;
 
                     // Diagnostic: log visible sibling count to help debug cases where the investment card remains a small square
-                    try { logDebug && typeof logDebug === 'function' && logDebug('Detail modal: visibleNonFullSpanSiblings=' + visibleNonFullSpanSiblings + ', viewport=' + window.innerWidth); } catch(_) {}
+                    try { logDebug && typeof logDebug === 'function' && logDebug('Detail modal: visibleNonFullSpanSiblings=' + visibleNonFullSpanSiblings + ', viewport=' + window.innerWidth); } catch (_) { }
                     // If there are one or fewer visible non-full-span siblings OR on narrow viewport, promote investment to full-span
                     if (visibleNonFullSpanSiblings <= 1 || window.innerWidth < 680) {
                         investmentSection.classList.add('full-span');
                     } else {
                         investmentSection.classList.remove('full-span');
                     }
-                } catch(e) { console.warn('Detail modal: adjustInvestmentSpan failed', e); }
+                } catch (e) { console.warn('Detail modal: adjustInvestmentSpan failed', e); }
             };
 
             // Run adjustment immediately
             adjustInvestmentSpan();
 
             // Install a single resize handler per modal instance (avoid duplicates)
-            try { if (shareDetailModal.__investmentResizeHandler) window.removeEventListener('resize', shareDetailModal.__investmentResizeHandler); } catch(_) {}
+            try { if (shareDetailModal.__investmentResizeHandler) window.removeEventListener('resize', shareDetailModal.__investmentResizeHandler); } catch (_) { }
             const resizeHandler = () => adjustInvestmentSpan();
             shareDetailModal.__investmentResizeHandler = resizeHandler;
             window.addEventListener('resize', resizeHandler);
 
             // Also observe mutations inside the modal so when sections are shown/hidden we recompute
-            try { if (shareDetailModal.__investmentObserver) shareDetailModal.__investmentObserver.disconnect(); } catch(_) {}
+            try { if (shareDetailModal.__investmentObserver) shareDetailModal.__investmentObserver.disconnect(); } catch (_) { }
             let __invTimer = null;
-            const debouncedAdjust = () => { if (__invTimer) clearTimeout(__invTimer); __invTimer = setTimeout(() => { try { adjustInvestmentSpan(); } catch(_){}; __invTimer = null; }, 80); };
+            const debouncedAdjust = () => { if (__invTimer) clearTimeout(__invTimer); __invTimer = setTimeout(() => { try { adjustInvestmentSpan(); } catch (_) { }; __invTimer = null; }, 80); };
             const mo = new MutationObserver((mutations) => { debouncedAdjust(); });
             mo.observe(shareDetailModal, { attributes: true, childList: true, subtree: true, attributeFilter: ['style', 'class'] });
             shareDetailModal.__investmentObserver = mo;
         }
-    } catch(e) { console.warn('Detail modal: failed to adjust investment section span', e); }
+    } catch (e) { console.warn('Detail modal: failed to adjust investment section span', e); }
 
     modalTargetPrice.innerHTML = renderAlertTargetInline(share, { emptyReturn: '' });
 
@@ -7753,7 +7759,7 @@ function showShareDetails() {
     const displayDividendAmount = Number(share.dividendAmount);
     const displayFrankingCredits = Math.trunc(Number(share.frankingCredits));
 
-    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val, {force2:true}) : '')(displayDividendAmount);
+    modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val, { force2: true }) : '')(displayDividendAmount);
     modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? Math.trunc(val) + '%' : '')(displayFrankingCredits);
 
     // Populate Holdings fields
@@ -7818,7 +7824,7 @@ function showShareDetails() {
     } catch (e) { console.warn('Modal computed fields: error computing purchase/current/gain', e); }
 
     const priceForYield = (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? livePrice : enteredPriceNum;
-    const unfrankedYield = calculateUnfrankedYield(displayDividendAmount, priceForYield); 
+    const unfrankedYield = calculateUnfrankedYield(displayDividendAmount, priceForYield);
     // Display unfranked yield only if it's not null/NaN AND not 0
     modalUnfrankedYieldSpan.textContent = unfrankedYield !== null && !isNaN(unfrankedYield) && unfrankedYield !== 0 ? formatAdaptivePercent(unfrankedYield) + '%' : '';
 
@@ -7952,7 +7958,7 @@ function showShareDetails() {
             } else if (modalGoogleFinanceLink) {
                 modalGoogleFinanceLink.style.display = 'none';
             }
-        } catch(_) {}
+        } catch (_) { }
     }
 
     if (modalCommSecLink && commSecLoginMessage) {
@@ -7971,7 +7977,7 @@ function showShareDetails() {
     }
 
     showModal(shareDetailModal);
-    try { scrollMainToTop(); } catch(_) {}
+    try { scrollMainToTop(); } catch (_) { }
     logDebug('Details: Displayed details for share: ' + share.shareName + ' (ID: ' + selectedShareDocId + ')');
 
     // Inject Watchlists membership footer inside Investment section (centered, subtle)
@@ -8001,7 +8007,7 @@ function showShareDetails() {
                 investmentSection.appendChild(footer);
             }
         }
-    } catch(e) { console.warn('Watchlists footer inject failed', e); }
+    } catch (e) { console.warn('Watchlists footer inject failed', e); }
 }
 
 function sortShares() {
@@ -8014,13 +8020,13 @@ function sortShares() {
     // Lightweight runtime tracing to help QA: show active sort and a small before/after sample only when DEBUG_MODE
     try {
         if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
-            console.log('[SORT DEBUG] sortShares invoked. sortValue=', sortValue, 'allSharesData.length=', Array.isArray(allSharesData)? allSharesData.length : 0);
-            try { console.log('[SORT DEBUG] sample BEFORE sort:', Array.isArray(allSharesData) ? allSharesData.slice(0,6).map(s => (s && (s.shareName || s.id)) || s) : []); } catch(_) {}
+            console.log('[SORT DEBUG] sortShares invoked. sortValue=', sortValue, 'allSharesData.length=', Array.isArray(allSharesData) ? allSharesData.length : 0);
+            try { console.log('[SORT DEBUG] sample BEFORE sort:', Array.isArray(allSharesData) ? allSharesData.slice(0, 6).map(s => (s && (s.shareName || s.id)) || s) : []); } catch (_) { }
         }
-    } catch(_) {}
+    } catch (_) { }
     if (!sortValue || sortValue === '') {
         logDebug('Sort: Sort placeholder selected, no explicit sorting applied.');
-        renderWatchlist(); 
+        renderWatchlist();
         return;
     }
     const [field, order] = sortValue.split('-');
@@ -8058,7 +8064,7 @@ function sortShares() {
                 // Fallback for provisional/new shares without live data: use lastFetchedPrice/previousFetchedPrice/currentPrice
                 try {
                     const priceNow = (typeof a.lastFetchedPrice === 'number' && !isNaN(a.lastFetchedPrice)) ? a.lastFetchedPrice
-                                  : (typeof a.currentPrice === 'number' && !isNaN(a.currentPrice)) ? a.currentPrice : null;
+                        : (typeof a.currentPrice === 'number' && !isNaN(a.currentPrice)) ? a.currentPrice : null;
                     const prev = (typeof a.previousFetchedPrice === 'number' && !isNaN(a.previousFetchedPrice)) ? a.previousFetchedPrice : null;
                     if (priceNow !== null && prev !== null && prev !== 0) {
                         percentageChangeA = ((priceNow - prev) / prev) * 100;
@@ -8066,7 +8072,7 @@ function sortShares() {
                         // If we have a current/entry price but no valid previous, treat as 0% to position reasonably
                         percentageChangeA = 0;
                     }
-                } catch(_) {}
+                } catch (_) { }
             }
 
             let percentageChangeB = null;
@@ -8077,14 +8083,14 @@ function sortShares() {
             } else {
                 try {
                     const priceNow = (typeof b.lastFetchedPrice === 'number' && !isNaN(b.lastFetchedPrice)) ? b.lastFetchedPrice
-                                  : (typeof b.currentPrice === 'number' && !isNaN(b.currentPrice)) ? b.currentPrice : null;
+                        : (typeof b.currentPrice === 'number' && !isNaN(b.currentPrice)) ? b.currentPrice : null;
                     const prev = (typeof b.previousFetchedPrice === 'number' && !isNaN(b.previousFetchedPrice)) ? b.previousFetchedPrice : null;
                     if (priceNow !== null && prev !== null && prev !== 0) {
                         percentageChangeB = ((priceNow - prev) / prev) * 100;
                     } else if (priceNow !== null && (prev === null || prev === 0)) {
                         percentageChangeB = 0;
                     }
-                } catch(_) {}
+                } catch (_) { }
             }
 
             // Debugging log for percentage sort
@@ -8095,9 +8101,9 @@ function sortShares() {
             // If both are null, their relative order doesn't matter (return 0)
             if (percentageChangeA === null && percentageChangeB === null) return 0;
             // If A is null but B is a number, A goes to the bottom
-            if (percentageChangeA === null) return 1; 
+            if (percentageChangeA === null) return 1;
             // If B is null but A is a number, B goes to the bottom
-            if (percentageChangeB === null) return -1; 
+            if (percentageChangeB === null) return -1;
 
             // Now perform numerical comparison for non-null values
             // Use a small epsilon to treat near-equal floating values as equal, then fall back
@@ -8228,9 +8234,9 @@ function sortShares() {
             const nameB = (b.shareName || '').toUpperCase().trim();
             if (nameA === '' && nameB === '') return 0;
             // If A is empty, it comes after B (push to bottom)
-            if (nameA === '') return 1; 
+            if (nameA === '') return 1;
             // If B is empty, it comes after A (push to bottom)
-            if (nameB === '') return -1; 
+            if (nameB === '') return -1;
 
             return order === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
         } else if (field === 'starRating') {
@@ -8250,7 +8256,7 @@ function sortShares() {
             // UPDATED: Robust date parsing for sorting
             const dateA = new Date(valA);
             const dateB = new Date(valB);
-            
+
             // Handle invalid dates by pushing them to the end of the list (Infinity for asc, -Infinity for desc)
             const timeA = isNaN(dateA.getTime()) ? (order === 'asc' ? Infinity : -Infinity) : dateA.getTime();
             const timeB = isNaN(dateB.getTime()) ? (order === 'asc' ? Infinity : -Infinity) : dateB.getTime();
@@ -8269,10 +8275,10 @@ function sortShares() {
         }
     });
     logDebug('Sort: Shares sorted. Rendering watchlist.');
-    try { if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[SORT DEBUG] sample AFTER sort:', Array.isArray(allSharesData) ? allSharesData.slice(0,6).map(s => (s && (s.shareName || s.id)) || s) : []); } catch(_) {}
+    try { if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[SORT DEBUG] sample AFTER sort:', Array.isArray(allSharesData) ? allSharesData.slice(0, 6).map(s => (s && (s.shareName || s.id)) || s) : []); } catch (_) { }
     renderWatchlist();
     // Completion trace for diagnostics: indicate which sortValue was applied when sorting finished.
-    try { console.log('[SORT COMPLETE] Applied sort:', sortValue); } catch(_) {}
+    try { console.log('[SORT COMPLETE] Applied sort:', sortValue); } catch (_) { }
 }
 
 // Expose sortShares to window for use by other modules
@@ -8309,7 +8315,7 @@ function sortCashCategories(categoriesParam) {
             if (field !== 'name' && aHidden !== bHidden) {
                 return aHidden ? 1 : -1;
             }
-        } catch(_) {}
+        } catch (_) { }
 
         let valA = a[sortField];
         let valB = b[sortField];
@@ -8344,7 +8350,7 @@ function renderWatchlistSelect() {
     if (!watchlistSelect) { console.error('renderWatchlistSelect: watchlistSelect element not found.'); return; }
     // Store the currently selected value before clearing
     const currentSelectedValue = watchlistSelect.value;
-    
+
     // Set the initial placeholder text to "Watch List"
     watchlistSelect.innerHTML = '<option value="" disabled selected>Watch List</option>';
 
@@ -8394,7 +8400,7 @@ function renderWatchlistSelect() {
         // Defensive: avoid appending duplicate <option> elements with the same value
         try {
             if (watchlistSelect.querySelector(`option[value="${watchlist.id}"]`)) return;
-        } catch (_) {}
+        } catch (_) { }
         const option = document.createElement('option');
         option.value = watchlist.id;
         option.textContent = watchlist.name;
@@ -8409,13 +8415,13 @@ function renderWatchlistSelect() {
     // Highest precedence: persisted Movers intent when __forcedInitialMovers flag set
     try {
         if (__forcedInitialMovers) {
-            desiredWatchlistId='__movers';
+            desiredWatchlistId = '__movers';
         } else {
             const persisted = localStorage.getItem('lastSelectedView');
-            if (persisted === '__movers') desiredWatchlistId='__movers';
+            if (persisted === '__movers') desiredWatchlistId = '__movers';
         }
-    } catch(_) {}
-    
+    } catch (_) { }
+
     if (desiredWatchlistId && Array.from(watchlistSelect.options).some(opt => opt.value === desiredWatchlistId)) {
         watchlistSelect.value = desiredWatchlistId;
     } else {
@@ -8435,10 +8441,10 @@ function renderWatchlistSelect() {
                 setCurrentSelectedWatchlistIds([ALL_SHARES_ID]);
                 // Defer to ensure DOM elements are ready after renderSortSelect
                 setTimeout(() => updateSortPickerButtonText(), 100);
-                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch(_) {}
+                try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch (_) { }
                 logDebug('UI Update: Watchlist select defaulted to All Shares (no valid preference).');
             }
-        } catch(e) {
+        } catch (e) {
             watchlistSelect.value = ALL_SHARES_ID;
             setCurrentSelectedWatchlistIds([ALL_SHARES_ID]);
             // Defer to ensure DOM elements are ready after renderSortSelect
@@ -8463,11 +8469,11 @@ function renderSortSelect() {
     try {
         const isCashView = getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID);
         if (!isCashView) {
-        const asxToggleOption = document.createElement('option');
-        asxToggleOption.value = '__asx_toggle';
+            const asxToggleOption = document.createElement('option');
+            asxToggleOption.value = '__asx_toggle';
             asxToggleOption.textContent = (getAsxButtonsExpanded() ? 'ASX Codes — Hide' : 'ASX Codes — Show');
-        asxToggleOption.dataset.toggle = 'asx';
-        sortSelect.appendChild(asxToggleOption);
+            asxToggleOption.dataset.toggle = 'asx';
+            sortSelect.appendChild(asxToggleOption);
         }
     } catch (e) { /* ignore */ }
 
@@ -8479,9 +8485,9 @@ function renderSortSelect() {
         // Daily Change (percentage)
         { value: 'percentageChange-desc', text: 'Daily Change' },
         { value: 'percentageChange-asc', text: 'Daily Change' },
-    // Daily Change (dollar)
-    { value: 'dayDollar-desc', text: 'Daily Change' },
-    { value: 'dayDollar-asc', text: 'Daily Change' },
+        // Daily Change (dollar)
+        { value: 'dayDollar-desc', text: 'Daily Change' },
+        { value: 'dayDollar-asc', text: 'Daily Change' },
         // Star Rating
         { value: 'starRating-desc', text: 'Star Rating' },
         { value: 'starRating-asc', text: 'Star Rating' },
@@ -8525,7 +8531,7 @@ function renderSortSelect() {
     // can read the live source instead of parsing DOM options. This object is
     // refreshed each time renderSortSelect() runs so it always reflects current
     // view-specific ordering and any dynamic changes.
-    try { window.SORT_SOURCE = { stockOptions: stockOptions.slice(), portfolioOptions: portfolioOptions.slice(), cashOptions: cashOptions.slice() }; } catch(_) {}
+    try { window.SORT_SOURCE = { stockOptions: stockOptions.slice(), portfolioOptions: portfolioOptions.slice(), cashOptions: cashOptions.slice() }; } catch (_) { }
 
     let optionsToShow;
     let logMessage;
@@ -8566,12 +8572,12 @@ function renderSortSelect() {
     } else if (currentSelectedSortValue && optionValues.includes(currentSelectedSortValue)) {
         sortSelect.value = currentSelectedSortValue;
         // Only set centralized state if none exists yet (avoid stomping a saved value)
-        if (!activeSort) try { setCurrentSortOrder(currentSelectedSortValue); } catch(_) {}
+        if (!activeSort) try { setCurrentSortOrder(currentSelectedSortValue); } catch (_) { }
         logDebug('Sort: Applied previously selected sort order to UI: ' + currentSelectedSortValue);
     } else {
         // If not valid or no previous, apply the default for the current view type
         sortSelect.value = defaultSortValue;
-        if (!activeSort) try { setCurrentSortOrder(defaultSortValue); } catch(_) {}
+        if (!activeSort) try { setCurrentSortOrder(defaultSortValue); } catch (_) { }
         logDebug('Sort: No valid saved sort order or not applicable, defaulting to: ' + defaultSortValue);
     }
 
@@ -8590,11 +8596,11 @@ function openWatchlistPicker() {
         const isVisible = watchlistPickerModal.style.display === 'flex' || watchlistPickerModal.classList.contains('show');
         const alreadyOnStack = (typeof stackHasModal === 'function') ? stackHasModal(watchlistPickerModal) : false;
         if (isVisible || alreadyOnStack) {
-            try { if (window.UI && window.UI.showModalNoHistory) window.UI.showModalNoHistory(watchlistPickerModal); else showModalNoHistory(watchlistPickerModal); } catch(_) { watchlistPickerModal.style.display = 'flex'; }
+            try { if (window.UI && window.UI.showModalNoHistory) window.UI.showModalNoHistory(watchlistPickerModal); else showModalNoHistory(watchlistPickerModal); } catch (_) { watchlistPickerModal.style.display = 'flex'; }
             console.debug('[WatchlistPicker] Already open/on stack; showing without new push.');
             return;
         }
-    } catch(_) {}
+    } catch (_) { }
     console.log('[WatchlistPicker] Opening picker...');
     watchlistPickerList.innerHTML = '';
 
@@ -8609,7 +8615,7 @@ function openWatchlistPicker() {
 
     const __uw2 = getUserWatchlists();
     // Icon pool for user watchlists — will be assigned deterministically per id so icons stay stable
-    const watchlistIconPool = ['fa-list-alt','fa-folder-open','fa-bookmark','fa-star','fa-user','fa-users','fa-layer-group','fa-tags','fa-gem','fa-briefcase'];
+    const watchlistIconPool = ['fa-list-alt', 'fa-folder-open', 'fa-bookmark', 'fa-star', 'fa-user', 'fa-users', 'fa-layer-group', 'fa-tags', 'fa-gem', 'fa-briefcase'];
     const pickIconForId = (id) => {
         try {
             const s = String(id || '');
@@ -8622,7 +8628,7 @@ function openWatchlistPicker() {
         } catch (_) { return 'fa-list-alt'; }
     };
 
-    const userCreatedWatchlists = (__uw2||[])
+    const userCreatedWatchlists = (__uw2 || [])
         .filter(wl => !specialIds.includes(wl.id))
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(wl => ({ ...wl, icon: pickIconForId(wl.id) }));
@@ -8631,7 +8637,7 @@ function openWatchlistPicker() {
 
     // Conditionally remove Movers if no data
     const hasMoversData = (globalAlertSummary && globalAlertSummary.totalCount > 0) ||
-                          (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries && window.__lastMoversSnapshot.entries.length > 0);
+        (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries && window.__lastMoversSnapshot.entries.length > 0);
     if (!hasMoversData) {
         finalWatchlistItems = finalWatchlistItems.filter(it => it.id !== '__movers');
     }
@@ -8657,14 +8663,14 @@ function openWatchlistPicker() {
         div.onclick = () => {
             console.log('[WatchlistPicker] Selecting watchlist', it.id);
             // Push previous selection for shallow back
-            try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; pushAppStateEntry('watchlist', prev); } catch(_) {}
+            try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; pushAppStateEntry('watchlist', prev); } catch (_) { }
             // Normalize stored id to the canonical form used elsewhere
             const canonicalId = it.id ? String(it.id).trim() : it.id;
             setCurrentSelectedWatchlistIds([canonicalId]);
             // Create a browser history entry so hardware/back triggers our popstate handler
-            try { if (typeof pushAppState === 'function') pushAppState({ watchlist: it.id }, '', '#watchlist'); } catch(_) {}
+            try { if (typeof pushAppState === 'function') pushAppState({ watchlist: it.id }, '', '#watchlist'); } catch (_) { }
             try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch (_) { }
-            if (watchlistSelect) try { watchlistSelect.value = canonicalId; } catch(_) { watchlistSelect.value = it.id; }
+            if (watchlistSelect) try { watchlistSelect.value = canonicalId; } catch (_) { watchlistSelect.value = it.id; }
             // If the watchlist picker modal is open, update the active class on items immediately
             try {
                 const listEl = document.getElementById('watchlistPickerList');
@@ -8679,10 +8685,10 @@ function openWatchlistPicker() {
                             } else {
                                 child.classList.remove('active');
                             }
-                        } catch(_) {}
+                        } catch (_) { }
                     });
                 }
-            } catch(_) {}
+            } catch (_) { }
             try { setLastSelectedView(it.id); } catch (e) { }
             try { if (typeof saveLastSelectedWatchlistIds === 'function') { saveLastSelectedWatchlistIds(getCurrentSelectedWatchlistIds()); } } catch (e) { console.warn('Watchlist Picker: Failed to save selection to Firestore', e); }
 
@@ -8693,25 +8699,25 @@ function openWatchlistPicker() {
             }
             try {
                 // Rebuild sort options for the newly selected watchlist and apply a validated sort
-                try { renderSortSelect(); } catch(_) {}
-                try { 
+                try { renderSortSelect(); } catch (_) { }
+                try {
                     // Defer to ensure DOM elements are ready after renderSortSelect
-                    setTimeout(() => updateSortPickerButtonText(), 100); 
-                } catch(_) {}
+                    setTimeout(() => updateSortPickerButtonText(), 100);
+                } catch (_) { }
                 const availableOptionValues = Array.from(sortSelect ? sortSelect.options : []).map(o => o.value);
                 const watchlistSortOrder = getSortOrderForWatchlist(canonicalId);
                 if (watchlistSortOrder && availableOptionValues.includes(watchlistSortOrder)) {
-                    try { setCurrentSortOrder(watchlistSortOrder); if (sortSelect) sortSelect.value = watchlistSortOrder; updateSortIcon(); } catch(_) {}
+                    try { setCurrentSortOrder(watchlistSortOrder); if (sortSelect) sortSelect.value = watchlistSortOrder; updateSortIcon(); } catch (_) { }
                     logDebug('[WatchlistPicker] Applied saved per-watchlist sort for ' + canonicalId + ': ' + watchlistSortOrder);
                 } else {
                     const def = (canonicalId === CASH_BANK_WATCHLIST_ID) ? 'name-asc' : (canonicalId === 'portfolio' ? 'totalDollar-desc' : 'percentageChange-desc');
                     const chosen = availableOptionValues.includes(def) ? def : (availableOptionValues[0] || def);
-                    try { setCurrentSortOrder(chosen); if (sortSelect) sortSelect.value = chosen; updateSortIcon(); } catch(_) {}
+                    try { setCurrentSortOrder(chosen); if (sortSelect) sortSelect.value = chosen; updateSortIcon(); } catch (_) { }
                     logDebug('[WatchlistPicker] Applied fallback/default sort for ' + canonicalId + ': ' + chosen);
                     // Persist fallback so this watchlist remembers the chosen default
                     try {
                         setWatchlistSortOrder(canonicalId, chosen);
-                        try { robustSaveSortOrder(chosen); } catch(_) {}
+                        try { robustSaveSortOrder(chosen); } catch (_) { }
                         logDebug('[WatchlistPicker] Persisted fallback sort for ' + canonicalId + ': ' + chosen);
                     } catch (persistErr) {
                         console.warn('[WatchlistPicker] Failed to persist fallback sort for ' + canonicalId, persistErr);
@@ -8721,7 +8727,7 @@ function openWatchlistPicker() {
 
             try { sortShares(); } catch (e) { console.warn('WatchlistPicker: sortShares failed', e); }
             // Ensure the main view scrolls to top after programmatic watchlist selection
-            try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
+            try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch (_) { }
             try { enforceMoversVirtualView(); } catch (e) { console.warn('WatchlistPicker: enforceMoversVirtualView failed', e); }
             if (it.id === '__movers' && typeof debugMoversConsistency === 'function') {
                 try { debugMoversConsistency({ includeLists: true }); } catch (_) { }
@@ -8759,40 +8765,40 @@ if (dynamicWatchlistTitleText || dynamicWatchlistTitle) {
             return;
         }
         openWatchlistPicker();
-        if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','true');
-        setTimeout(()=>{
+        if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded', 'true');
+        setTimeout(() => {
             const listEl = document.getElementById('watchlistPickerList');
             const first = listEl && listEl.querySelector('.picker-item');
             if (first) first.focus();
-        },30);
+        }, 30);
     };
     // Bind to the narrow span to keep the click target tight
     const clickable = dynamicWatchlistTitleText || dynamicWatchlistTitle;
     if (clickable && clickable.getAttribute('data-picker-bound') !== 'true') {
         clickable.addEventListener('click', openPicker);
-        clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
-        clickable.setAttribute('role','button');
-        clickable.setAttribute('data-picker-bound','true');
+        clickable.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(); } });
+        clickable.setAttribute('role', 'button');
+        clickable.setAttribute('data-picker-bound', 'true');
     }
 }
 if (closeWatchlistPickerBtn && !closeWatchlistPickerBtn.getAttribute('data-picker-close-bound')) {
-    closeWatchlistPickerBtn.addEventListener('click', ()=>{
-        const modalEl=document.getElementById('watchlistPickerModal');
-        if (modalEl) { try { hideModal(modalEl); } catch(_) { modalEl.classList.add('app-hidden'); } }
-        if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false');
+    closeWatchlistPickerBtn.addEventListener('click', () => {
+        const modalEl = document.getElementById('watchlistPickerModal');
+        if (modalEl) { try { hideModal(modalEl); } catch (_) { modalEl.classList.add('app-hidden'); } }
+        if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded', 'false');
         if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus();
     });
-    closeWatchlistPickerBtn.setAttribute('data-picker-close-bound','true');
+    closeWatchlistPickerBtn.setAttribute('data-picker-close-bound', 'true');
 }
 if (!window.__watchlistPickerGlobalBound) {
     window.__watchlistPickerGlobalBound = true;
-    window.addEventListener('click', e=>{ if(e.target===watchlistPickerModal){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
-    window.addEventListener('keydown', e=>{ if(e.key==='Escape' && watchlistPickerModal && watchlistPickerModal.style.display!=='none' && !watchlistPickerModal.classList.contains('app-hidden')){ try { hideModal(watchlistPickerModal); } catch(_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded','false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
+    window.addEventListener('click', e => { if (e.target === watchlistPickerModal) { try { hideModal(watchlistPickerModal); } catch (_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded', 'false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
+    window.addEventListener('keydown', e => { if (e.key === 'Escape' && watchlistPickerModal && watchlistPickerModal.style.display !== 'none' && !watchlistPickerModal.classList.contains('app-hidden')) { try { hideModal(watchlistPickerModal); } catch (_) { watchlistPickerModal.classList.add('app-hidden'); } if (dynamicWatchlistTitle) dynamicWatchlistTitle.setAttribute('aria-expanded', 'false'); if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.focus(); } });
 }
 
 // Wrap loadUserWatchlistsAndSettings to refresh new UI parts after data load
 const __origLoadUserWatchlistsAndSettings = loadUserWatchlistsAndSettings;
-loadUserWatchlistsAndSettings = async function() {
+loadUserWatchlistsAndSettings = async function () {
     await __origLoadUserWatchlistsAndSettings();
     updateMainTitle();
     renderSortSelect();
@@ -8802,18 +8808,18 @@ loadUserWatchlistsAndSettings = async function() {
         const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
         const haveMovers = getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers';
         if (wantMovers && !haveMovers) {
-            try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== '__movers') pushAppStateEntry('watchlist', prev); } catch(_) {}
+            try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; if (prev[0] !== '__movers') pushAppStateEntry('watchlist', prev); } catch (_) { }
             setCurrentSelectedWatchlistIds(['__movers']);
             const sel = typeof watchlistSelect !== 'undefined' ? watchlistSelect : document.getElementById('watchlistSelect');
             if (sel) sel.value = '__movers';
             if (typeof sortShares === 'function') sortShares();
             // FIX: Update ASX button state after programmatic watchlist change
             try { toggleCodeButtonsArrow(); } catch (e) { console.warn('Movers restore: toggleCodeButtonsArrow failed', e); }
-            try { scrollMainToTop(); } catch(_) {}
+            try { scrollMainToTop(); } catch (_) { }
             enforceMoversVirtualView(true);
             console.log('[Movers restore][post-user-data] enforced after loadUserWatchlistsAndSettings');
         }
-    } catch(e) { console.warn('[Movers restore][post-user-data] failed', e); }
+    } catch (e) { console.warn('[Movers restore][post-user-data] failed', e); }
 };
 // Late-binding helper to ensure header interactions are wired when DOM is ready
 function bindHeaderInteractiveElements() {
@@ -8824,23 +8830,23 @@ function bindHeaderInteractiveElements() {
     if (clickable && clickable.getAttribute('data-picker-bound') !== 'true') {
         const openPicker = () => {
             openWatchlistPicker();
-            if (titleEl) titleEl.setAttribute('aria-expanded','true');
-            setTimeout(()=>{
+            if (titleEl) titleEl.setAttribute('aria-expanded', 'true');
+            setTimeout(() => {
                 const listEl = document.getElementById('watchlistPickerList');
                 const first = listEl && listEl.querySelector('.picker-item');
                 if (first) first.focus();
-            },30);
+            }, 30);
         };
         clickable.addEventListener('click', openPicker);
-        clickable.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openPicker(); } });
-        clickable.setAttribute('role','button');
-        clickable.setAttribute('data-picker-bound','true');
+        clickable.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(); } });
+        clickable.setAttribute('role', 'button');
+        clickable.setAttribute('data-picker-bound', 'true');
     }
     const closeBtn = document.getElementById('closeWatchlistPickerBtn');
     const pickerModal = document.getElementById('watchlistPickerModal');
     if (closeBtn && closeBtn.getAttribute('data-close-bound') !== 'true') {
-        closeBtn.addEventListener('click', ()=>{ if (pickerModal) pickerModal.classList.add('app-hidden'); if (titleEl) { titleEl.setAttribute('aria-expanded','false'); } if (textEl) textEl.focus(); });
-        closeBtn.setAttribute('data-close-bound','true');
+        closeBtn.addEventListener('click', () => { if (pickerModal) pickerModal.classList.add('app-hidden'); if (titleEl) { titleEl.setAttribute('aria-expanded', 'false'); } if (textEl) textEl.focus(); });
+        closeBtn.setAttribute('data-close-bound', 'true');
     }
 }
 
@@ -8897,9 +8903,9 @@ function renderWatchlist() {
     try {
         if (!window.__moversInitialEnforced && getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers') {
             window.__moversInitialEnforced = true;
-            setTimeout(()=>{ try { enforceMoversVirtualView(); } catch(e){ console.warn('Initial movers enforce failed', e); } }, 150);
+            setTimeout(() => { try { enforceMoversVirtualView(); } catch (e) { console.warn('Initial movers enforce failed', e); } }, 150);
         }
-    } catch(_) {}
+    } catch (_) { }
 
     // --- Compact View Display Logic ---
     const isCompactView = currentMobileViewMode === 'compact';
@@ -8961,9 +8967,9 @@ function renderWatchlist() {
         const mobileContainer = getMobileShareCardsContainer();
         if (mobileContainer) mobileContainer.style.display = 'none';
         // Update title
-    // Title handled by updateMainTitle
-    // Show sort dropdown in portfolio too
-    sortSelect.classList.remove('app-hidden');
+        // Title handled by updateMainTitle
+        // Show sort dropdown in portfolio too
+        sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
         const toggleBtn = getToggleCompactViewBtn();
         if (toggleBtn) toggleBtn.classList.add('app-hidden');
@@ -8972,9 +8978,9 @@ function renderWatchlist() {
         if (typeof renderPortfolioList === 'function') {
             renderPortfolioList();
         }
-    // Update sort options and alerts for portfolio view as well
-    try { renderSortSelect(); } catch(e) {}
-    try { updateTargetHitBanner(); } catch(e) {}
+        // Update sort options and alerts for portfolio view as well
+        try { renderSortSelect(); } catch (e) { }
+        try { updateTargetHitBanner(); } catch (e) { }
         // Also render ASX code buttons for portfolio shares
         if (typeof renderAsxCodeButtons === 'function') {
             renderAsxCodeButtons();
@@ -8982,9 +8988,9 @@ function renderWatchlist() {
         adjustMainContentPadding();
         return;
     } else if (selectedWatchlistId !== CASH_BANK_WATCHLIST_ID) {
-    // Hide portfolio section if it exists from previous view
-    const existingPortfolio = document.getElementById('portfolioSection');
-    if (existingPortfolio) existingPortfolio.style.display='none';
+        // Hide portfolio section if it exists from previous view
+        const existingPortfolio = document.getElementById('portfolioSection');
+        if (existingPortfolio) existingPortfolio.style.display = 'none';
         // Stock Watchlist Logic
         stockWatchlistSection.classList.remove('app-hidden');
         // IMPORTANT: Also clear any inline display:none applied by showPortfolioView
@@ -9017,7 +9023,7 @@ function renderWatchlist() {
         if (selectedWatchlistId === '__movers') {
             // Fresh compute of movers (preferred) with fallback to last snapshot, then all shares if still empty
             let moversEntries = [];
-            try { if (typeof applyGlobalSummaryFilter === 'function') moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || []; } catch(e){ console.warn('Render movers: compute failed', e); }
+            try { if (typeof applyGlobalSummaryFilter === 'function') moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || []; } catch (e) { console.warn('Render movers: compute failed', e); }
             if ((!moversEntries || moversEntries.length === 0) && window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
                 moversEntries = window.__lastMoversSnapshot.entries;
             }
@@ -9026,7 +9032,7 @@ function renderWatchlist() {
 
             if (moversEntries && moversEntries.length > 0) {
                 // Use computed/filtered movers
-                const codeSet = new Set(moversEntries.map(e=>e.code));
+                const codeSet = new Set(moversEntries.map(e => e.code));
                 console.log('[MOVERS DEBUG] Movers entries:', moversEntries.length, 'codes:', Array.from(codeSet));
                 console.log('[MOVERS DEBUG] Available share codes:', base.map(s => s.shareName).filter(Boolean));
 
@@ -9041,19 +9047,19 @@ function renderWatchlist() {
                 });
 
                 console.log('[MOVERS DEBUG] Filtered movers shares:', sharesToRender.length, 'from', moversEntries.length, 'entries');
-                logDebug('Render: Displaying Movers computed ('+sharesToRender.length+' items, codes='+codeSet.size+').');
+                logDebug('Render: Displaying Movers computed (' + sharesToRender.length + ' items, codes=' + codeSet.size + ').');
             } else {
                 // No movers data available, show top 10 shares by market cap or alphabetically
                 sharesToRender = base.slice(0, 10); // Show first 10 shares as fallback
-                logDebug('Render: Displaying fallback movers (top 10 shares, '+sharesToRender.length+' items) - no live data available.');
+                logDebug('Render: Displaying fallback movers (top 10 shares, ' + sharesToRender.length + ' items) - no live data available.');
             }
 
             // If still empty but we have shares, schedule a one-time re-render retry
             if (sharesToRender.length === 0 && base.length > 0 && !window.__moversRenderRetry) {
-                window.__moversRenderRetry = setTimeout(()=>{
+                window.__moversRenderRetry = setTimeout(() => {
                     window.__moversRenderRetry = null;
                     if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
-                        try { sortShares(); } catch(e){ console.warn('Movers re-render retry failed', e); }
+                        try { sortShares(); } catch (e) { console.warn('Movers re-render retry failed', e); }
                     }
                 }, 900);
             }
@@ -9115,7 +9121,7 @@ function renderWatchlist() {
             emptyWatchlistMessage.style.textAlign = 'center';
             emptyWatchlistMessage.style.padding = '20px';
             emptyWatchlistMessage.style.color = 'var(--ghosted-text)';
-            
+
             if (tableContainer && tableContainer.style.display !== 'none') {
                 const td = document.createElement('td');
                 td.colSpan = 5; // Adjusted after removing Entry Price column
@@ -9129,38 +9135,38 @@ function renderWatchlist() {
                 mobileContainer.appendChild(emptyWatchlistMessage.cloneNode(true));
             }
         }
-        
-    // Re-render ASX Code Buttons separately
-    renderAsxCodeButtons();
 
-    // Update ASX button toggle visibility based on whether buttons are available
-    // Delay slightly to ensure buttons are actually rendered to DOM before checking
-    setTimeout(() => {
-        try { applyAsxButtonsState(); } catch(e) { console.warn('ASX Button State: applyAsxButtonsState failed', e); }
-    }, 10);
+        // Re-render ASX Code Buttons separately
+        renderAsxCodeButtons();
 
-    // UX: Ensure main content is scrolled to top after rendering to keep focus on the updated content
-    try { scrollMainToTop(); } catch(_) {}
+        // Update ASX button toggle visibility based on whether buttons are available
+        // Delay slightly to ensure buttons are actually rendered to DOM before checking
+        setTimeout(() => {
+            try { applyAsxButtonsState(); } catch (e) { console.warn('ASX Button State: applyAsxButtonsState failed', e); }
+        }, 10);
+
+        // UX: Ensure main content is scrolled to top after rendering to keep focus on the updated content
+        try { scrollMainToTop(); } catch (_) { }
 
         // AFTER primary render: enforce target-hit highlight on any rows/cards that might have missed initial application
         try {
             enforceTargetHitStyling();
-        } catch(e) { console.warn('Target Alert: enforceTargetHitStyling failed post render', e); }
+        } catch (e) { console.warn('Target Alert: enforceTargetHitStyling failed post render', e); }
 
     } else {
         // Cash & Assets section Logic
         cashAssetsSection.classList.remove('app-hidden');
-    const existingPortfolio2 = document.getElementById('portfolioSection');
-    if (existingPortfolio2) existingPortfolio2.style.display='none';
-    // Title handled by updateMainTitle
+        const existingPortfolio2 = document.getElementById('portfolioSection');
+        if (existingPortfolio2) existingPortfolio2.style.display = 'none';
+        // Title handled by updateMainTitle
         renderCashCategories();
         sortSelect.classList.remove('app-hidden');
         refreshLivePricesBtn.classList.add('app-hidden');
         const toggleBtn = getToggleCompactViewBtn();
         if (toggleBtn) toggleBtn.classList.add('app-hidden');
         asxCodeButtonsContainer.classList.add('app-hidden'); // Ensure hidden in cash view
-    // Hide in cash view via inline style to avoid class conflicts
-    if (targetHitIconBtn) targetHitIconBtn.style.display = 'none';
+        // Hide in cash view via inline style to avoid class conflicts
+        if (targetHitIconBtn) targetHitIconBtn.style.display = 'none';
         exportWatchlistBtn.classList.add('app-hidden');
         stopLivePriceUpdates();
         updateAddHeaderButton();
@@ -9171,15 +9177,15 @@ function renderWatchlist() {
     }
     // Update sort dropdown options based on selected watchlist type
     renderSortSelect(); // Moved here to ensure it updates for both stock and cash views
-    try { 
+    try {
         // Defer to ensure DOM elements are ready after renderSortSelect
-        setTimeout(() => updateSortPickerButtonText(), 100); 
-    } catch(e) {}
+        setTimeout(() => updateSortPickerButtonText(), 100);
+    } catch (e) { }
     updateMainButtonsState(!!currentUserId); // Ensure button states (like Edit Watchlist) are correct for the current view
     adjustMainContentPadding();
-    try { updateMainTitle(); } catch(e) {}
-    try { ensureTitleStructure(); } catch(e) {}
-    try { updateTargetHitBanner(); } catch(e) {}
+    try { updateMainTitle(); } catch (e) { }
+    try { ensureTitleStructure(); } catch (e) { }
+    try { updateTargetHitBanner(); } catch (e) { }
 }
 
 // Expose renderWatchlist to window for use by other modules
@@ -9212,13 +9218,13 @@ function renderAsxCodeButtons() {
             if ((!moversEntries || moversEntries.length === 0) && window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
                 moversEntries = window.__lastMoversSnapshot.entries;
             }
-        } catch(e) {
+        } catch (e) {
             console.warn('renderAsxCodeButtons: Movers computation failed', e);
         }
 
         if (moversEntries && moversEntries.length > 0) {
             // Use computed/filtered movers
-            const codeSet = new Set(moversEntries.map(e=>e.code));
+            const codeSet = new Set(moversEntries.map(e => e.code));
             sharesForButtons = dedupeSharesById(__shares_asx).filter(s => s.shareName && codeSet.has(s.shareName.toUpperCase()));
             console.log('[ASX Debug] renderAsxCodeButtons - using __movers path, movers count:', moversEntries.length, 'shares count:', sharesForButtons.length);
         } else {
@@ -9241,7 +9247,7 @@ function renderAsxCodeButtons() {
     sharesForButtons.forEach(share => {
         console.log('[ASX Debug] renderAsxCodeButtons - checking share:', share.id, 'shareName:', share.shareName, 'has shareName:', !!share.shareName, 'shareName type:', typeof share.shareName, 'trimmed:', share.shareName ? share.shareName.trim() : 'N/A');
         if (share.shareName && typeof share.shareName === 'string' && share.shareName.trim() !== '') {
-                uniqueAsxCodes.add(share.shareName.trim().toUpperCase());
+            uniqueAsxCodes.add(share.shareName.trim().toUpperCase());
         }
     });
 
@@ -9294,7 +9300,7 @@ function renderAsxCodeButtons() {
         asxCodeButtonsContainer.appendChild(button);
     });
     // Remove any lingering active state on rebuild
-    asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b=>b.classList.remove('active'));
+    asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b => b.classList.remove('active'));
     // Delegated click handler (single)
     if (!asxCodeButtonsContainer.__delegated) {
         let touchStartY = 0, touchMoved = false, touchStartX = 0;
@@ -9312,7 +9318,7 @@ function renderAsxCodeButtons() {
         const activateButton = (btn) => {
             const code = btn.dataset.asxCode;
             logDebug('ASX Code Select: ' + code);
-            asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b=>b.classList.remove('active'));
+            asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             scrollToShare(code);
             try {
@@ -9325,7 +9331,7 @@ function renderAsxCodeButtons() {
                     checkFormDirtyState();
                     updateAddFormLiveSnapshot(code);
                 }
-            } catch(_) {}
+            } catch (_) { }
         };
         asxCodeButtonsContainer.addEventListener('touchend', e => {
             if (touchMoved) return; // treat as scroll end
@@ -9347,7 +9353,7 @@ function renderAsxCodeButtons() {
         if (typeof window !== 'undefined') {
             window.asxButtonsExpanded = savedState;
         }
-    } catch(e) {
+    } catch (e) {
         console.warn('renderAsxCodeButtons: State restoration failed:', e);
     }
     // Re-apply visibility state centrally and adjust padding via applyAsxButtonsState()
@@ -9378,7 +9384,7 @@ function scrollToShare(asxCode) {
         } else {
             console.warn('UI: Element for share ID: ' + targetShare.id + ' not found for scrolling.');
         }
-        showShareDetails(); 
+        showShareDetails();
     } else {
         showCustomAlert('Share \'' + asxCode + '\' not found.');
         console.warn('UI: Share \'' + asxCode + '\' not found in allSharesData.');
@@ -9403,37 +9409,37 @@ async function displayStockDetailsInSearchModal(asxCode) {
     currentSearchShareData = null; // Reset previous data
 
     try {
-    const encoded = encodeURIComponent(asxCode.trim().toUpperCase());
-    if (DEBUG_MODE) logDebug('Search Modal: Fetching', `${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encoded}`);
-    const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encoded}&_ts=${Date.now()}`);
+        const encoded = encodeURIComponent(asxCode.trim().toUpperCase());
+        if (DEBUG_MODE) logDebug('Search Modal: Fetching', `${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encoded}`);
+        const response = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encoded}&_ts=${Date.now()}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-    let data; let rawText;
-    try {
-        rawText = await response.text();
-        if (DEBUG_MODE) logDebug('Search Modal: Raw response text length', rawText.length);
+        let data; let rawText;
         try {
-            data = JSON.parse(rawText);
-        } catch(parseErr) {
-            if (DEBUG_MODE) console.warn('Search Modal: JSON parse failed, raw snippet:', rawText.slice(0,400));
-            throw new Error('Invalid JSON from data source');
+            rawText = await response.text();
+            if (DEBUG_MODE) logDebug('Search Modal: Raw response text length', rawText.length);
+            try {
+                data = JSON.parse(rawText);
+            } catch (parseErr) {
+                if (DEBUG_MODE) console.warn('Search Modal: JSON parse failed, raw snippet:', rawText.slice(0, 400));
+                throw new Error('Invalid JSON from data source');
+            }
+        } catch (streamErr) {
+            throw streamErr;
         }
-    } catch(streamErr) {
-        throw streamErr;
-    }
         logDebug(`Search: Fetched details for ${asxCode}:`, data);
 
         // Validate response contains at least one recognizable code key across any row
-        const CODE_KEYS = ['ASXCode','ASX_Code','ASX Code','Code','code'];
+        const CODE_KEYS = ['ASXCode', 'ASX_Code', 'ASX Code', 'Code', 'code'];
         const hasAnyRowWithCode = Array.isArray(data) && data.some(r => CODE_KEYS.some(k => r && r[k]));
         if (!Array.isArray(data) || data.length === 0 || !hasAnyRowWithCode) {
-            const isValidAsxCode = (allAsxCodes||[]).some(s => s.code === asxCode.toUpperCase());
+            const isValidAsxCode = (allAsxCodes || []).some(s => s.code === asxCode.toUpperCase());
             if (!isValidAsxCode) {
                 searchResultDisplay.innerHTML = `<p class="initial-message">ASX code "${asxCode}" not found in code list. Check spelling.</p>`;
             } else {
                 if (DEBUG_MODE && data && data[0]) {
-                    console.warn('Search Modal: Unrecognized data shape, sample keys:', Object.keys(data[0]||{}));
+                    console.warn('Search Modal: Unrecognized data shape, sample keys:', Object.keys(data[0] || {}));
                 }
                 searchResultDisplay.innerHTML = `<p class="initial-message">No live data available for ${asxCode} (source returned unrecognized structure).</p>`;
             }
@@ -9448,11 +9454,11 @@ async function displayStockDetailsInSearchModal(asxCode) {
         });
         if (!stockData) {
             stockData = data[0];
-            logDebug('Search Modal: No exact code match; using first row as fallback.', { requested: upperReq, firstKeys: Object.keys(data[0]||{}) });
+            logDebug('Search Modal: No exact code match; using first row as fallback.', { requested: upperReq, firstKeys: Object.keys(data[0] || {}) });
         }
         // Resolve company name robustly: treat blank / placeholder API values as missing then fall back to
         // 1) existing share's stored name, 2) allAsxCodes mapping, else empty string.
-        (function resolveCompanyName(){
+        (function resolveCompanyName() {
             try {
                 let rawName = stockData.CompanyName;
                 if (typeof rawName === 'string') rawName = rawName.trim();
@@ -9488,17 +9494,17 @@ async function displayStockDetailsInSearchModal(asxCode) {
             }
             return NaN;
         }
-        const currentLivePrice = pickNumber(stockData, ['LivePrice','Live Price','live','price','Last','LastPrice','Last Price','LastTrade','Last Trade']);
-        const previousClosePrice = pickNumber(stockData, ['PrevClose','Prev Close','prevClose','prev','Previous Close','Close','Last Close']);
-        const peRatio = pickNumber(stockData, ['PE','PE Ratio','pe']);
-        const high52Week = pickNumber(stockData, ['High52','High52','High 52','52WeekHigh','52 High']);
-        const low52Week = pickNumber(stockData, ['Low52','Low52','Low 52','52WeekLow','52 Low']);
-    const dayHigh = pickNumber(stockData, ['DayHigh','High','Day High','High Price']);
-    const dayLow = pickNumber(stockData, ['DayLow','Low','Day Low','Low Price']);
-    const volume = pickNumber(stockData, ['Volume','Vol','Turnover']);
-    const marketCap = pickNumber(stockData, ['MarketCap','Market Cap','MktCap']);
-    const dividend = pickNumber(stockData, ['Dividend','Div','DividendAmount']);
-        if (DEBUG_MODE) logDebug('Search Modal: Normalized numeric fields', { currentLivePrice, previousClosePrice, peRatio, high52Week, low52Week, rawKeys: Object.keys(stockData||{}) });
+        const currentLivePrice = pickNumber(stockData, ['LivePrice', 'Live Price', 'live', 'price', 'Last', 'LastPrice', 'Last Price', 'LastTrade', 'Last Trade']);
+        const previousClosePrice = pickNumber(stockData, ['PrevClose', 'Prev Close', 'prevClose', 'prev', 'Previous Close', 'Close', 'Last Close']);
+        const peRatio = pickNumber(stockData, ['PE', 'PE Ratio', 'pe']);
+        const high52Week = pickNumber(stockData, ['High52', 'High52', 'High 52', '52WeekHigh', '52 High']);
+        const low52Week = pickNumber(stockData, ['Low52', 'Low52', 'Low 52', '52WeekLow', '52 Low']);
+        const dayHigh = pickNumber(stockData, ['DayHigh', 'High', 'Day High', 'High Price']);
+        const dayLow = pickNumber(stockData, ['DayLow', 'Low', 'Day Low', 'Low Price']);
+        const volume = pickNumber(stockData, ['Volume', 'Vol', 'Turnover']);
+        const marketCap = pickNumber(stockData, ['MarketCap', 'Market Cap', 'MktCap']);
+        const dividend = pickNumber(stockData, ['Dividend', 'Div', 'DividendAmount']);
+        if (DEBUG_MODE) logDebug('Search Modal: Normalized numeric fields', { currentLivePrice, previousClosePrice, peRatio, high52Week, low52Week, rawKeys: Object.keys(stockData || {}) });
 
         // Determine price change class
         let priceClass = '';
@@ -9529,13 +9535,13 @@ async function displayStockDetailsInSearchModal(asxCode) {
 
         // Construct the display HTML
         const resolvedDisplayCode = (stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode || '').toUpperCase();
-    // Legacy formatting retained; movement combo removed (user requested revert)
+        // Legacy formatting retained; movement combo removed (user requested revert)
 
         searchResultDisplay.innerHTML = `
             <div class="text-center mb-4">
                 <h3 class="${searchModalTitleClasses} search-modal-code-header" data-code="${resolvedDisplayCode}" data-name="${stockData.CompanyName || ''}" data-company="${stockData.CompanyName || ''}" title="Click to populate Add Share form">${resolvedDisplayCode || 'N/A'} ${stockData.CompanyName ? '- ' + stockData.CompanyName : ''}</h3>
                 <span class="text-sm text-gray-500">${stockData.CompanyName ? '' : '(Company Name N/A)'}</span>
-                ${DEBUG_MODE ? `<div class="debug-keys">Keys: ${(Object.keys(stockData||{})).slice(0,25).join(', ')}</div>` : ''}
+                ${DEBUG_MODE ? `<div class="debug-keys">Keys: ${(Object.keys(stockData || {})).slice(0, 25).join(', ')}</div>` : ''}
             </div>
             <div class="live-price-display-section">
                 <div class="fifty-two-week-row">
@@ -9620,7 +9626,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
             searchModalRaskMediaLink.href = `https://www.raskmedia.com.au/asx/${asxCode.toLowerCase()}/`;
             searchModalRaskMediaLink.innerHTML = 'Rask Media <i class="fas fa-external-link-alt"></i>';
         }
-        
+
         if (searchModalCommSecLink) {
             searchModalCommSecLink.href = `https://www.commsec.com.au/markets/company-details.html?code=${asxCode}`;
             searchModalCommSecLink.innerHTML = 'CommSec <i class="fas fa-external-link-alt"></i>';
@@ -9629,8 +9635,8 @@ async function displayStockDetailsInSearchModal(asxCode) {
             searchModalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${asxCode.toUpperCase()}:ASX`;
             searchModalGoogleFinanceLink.innerHTML = 'Google Finance <i class="fas fa-external-link-alt"></i>';
         }
-    // Typography diagnostics for search modal
-    setTimeout(() => { try { logSearchModalTypographyRatios(); } catch(_) {} }, 0);
+        // Typography diagnostics for search modal
+        setTimeout(() => { try { logSearchModalTypographyRatios(); } catch (_) { } }, 0);
 
         // Store the fetched data for potential adding/editing (normalize code property fallbacks)
         const resolvedCode = stockData.ASXCode || stockData.ASX_Code || stockData['ASX Code'] || stockData.Code || stockData.code || asxCode;
@@ -9694,12 +9700,12 @@ async function displayStockDetailsInSearchModal(asxCode) {
                         targetDirBelowBtn.classList.add('is-active');
                         targetDirBelowBtn.setAttribute('aria-pressed', 'true');
                     }
-                } catch(_) {}
+                } catch (_) { }
                 if (commentsFormContainer && commentsFormContainer.querySelectorAll('.comment-section').length === 0) {
                     addCommentSection(commentsFormContainer); // Add initial empty comment section
                 }
                 // Fetch snapshot to prefill reference price & live view
-                try { updateAddFormLiveSnapshot(currentSearchShareData.shareCode); } catch(_) {}
+                try { updateAddFormLiveSnapshot(currentSearchShareData.shareCode); } catch (_) { }
                 showModal(shareFormSection); // Show add/edit modal
                 // Ensure accordion is properly initialized after modal is shown
                 setTimeout(() => initShareFormAccordion(true), 10);
@@ -9712,7 +9718,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
         try {
             // Remove any stray duplicate buttons previously inserted elsewhere just in case
             document.querySelectorAll('#searchModalActionButton').forEach((el) => { if (el && el.parentNode) el.parentNode.removeChild(el); });
-        } catch (_) {}
+        } catch (_) { }
 
         if (searchModalActionButtons && searchModalActionButtons.appendChild) {
             // Clear prior children then append the new button
@@ -9751,9 +9757,9 @@ async function displayStockDetailsInSearchModal(asxCode) {
         console.error('Search: Error fetching stock details:', error);
         const friendly = (
             /NetworkError|Failed to fetch/i.test(error.message) ? 'Network issue fetching data. Check connection.' :
-            /HTTP 4\d\d/.test(error.message) ? 'Request issue (client error). Try again or verify code.' :
-            /HTTP 5\d\d/.test(error.message) ? 'Data source temporarily unavailable (server error).' :
-            'Unexpected error while fetching data.'
+                /HTTP 4\d\d/.test(error.message) ? 'Request issue (client error). Try again or verify code.' :
+                    /HTTP 5\d\d/.test(error.message) ? 'Data source temporarily unavailable (server error).' :
+                        'Unexpected error while fetching data.'
         );
         searchResultDisplay.innerHTML = `<p class="initial-message">${friendly} (${asxCode}).</p>`;
         if (DEBUG_MODE) {
@@ -9942,13 +9948,13 @@ async function saveSortOrderPreference(sortOrder) {
     }
     const userProfileDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
     try {
-            // Ensure the sortOrder is not an empty string or null before saving
-            const dataToSave = sortOrder ? { lastSortOrder: sortOrder } : { lastSortOrder: firestore.deleteField() };
-            await firestore.setDoc(userProfileDocRef, dataToSave, { merge: true });
-            logDebug('Sort: Saved sort order preference to Firestore: ' + sortOrder);
-        } catch (error) {
-            console.error('Sort: Error saving sort order preference to Firestore:', error);
-        }
+        // Ensure the sortOrder is not an empty string or null before saving
+        const dataToSave = sortOrder ? { lastSortOrder: sortOrder } : { lastSortOrder: firestore.deleteField() };
+        await firestore.setDoc(userProfileDocRef, dataToSave, { merge: true });
+        logDebug('Sort: Saved sort order preference to Firestore: ' + sortOrder);
+    } catch (error) {
+        console.error('Sort: Error saving sort order preference to Firestore:', error);
+    }
 }
 
 async function loadUserWatchlistsAndSettings() {
@@ -9971,9 +9977,9 @@ async function loadUserWatchlistsAndSettings() {
                     window.__LOG_SORT_SET_CALLS = true;
                     debugLog('[Diag] __LOG_SORT_SET_CALLS enabled for startup tracing');
                 }
-            } catch(_) {}
+            } catch (_) { }
         }
-    } catch (_) {}
+    } catch (_) { }
     logDebug('loadUserWatchlistsAndSettings called.'); // Added log for function entry
 
     if (!db || !currentUserId) {
@@ -10017,7 +10023,7 @@ async function loadUserWatchlistsAndSettings() {
             await firestore.setDoc(defaultWatchlistRef, { name: DEFAULT_WATCHLIST_NAME, createdAt: new Date().toISOString() });
             userWatchlists.push({ id: defaultWatchlistId, name: DEFAULT_WATCHLIST_NAME });
             // Ensure currentSelectedWatchlistIds points to the newly created default watchlist
-            setCurrentSelectedWatchlistIds([defaultWatchlistId]); 
+            setCurrentSelectedWatchlistIds([defaultWatchlistId]);
             logDebug('User Settings: Created default watchlist and set it as current selection.');
         }
 
@@ -10030,12 +10036,12 @@ async function loadUserWatchlistsAndSettings() {
         logDebug('User Settings: Watchlists after sorting: ' + userWatchlists.map(wl => wl.name).join(', '));
 
         const userProfileSnap = await firestore.getDoc(userProfileDocRef);
-    savedSortOrder = null;
-    savedTheme = null;
+        savedSortOrder = null;
+        savedTheme = null;
 
-    // Track if user profile/settings doc exists for notification suppression logic
-    window.__userProfileExists = !!userProfileSnap.exists();
-    if (userProfileSnap.exists()) {
+        // Track if user profile/settings doc exists for notification suppression logic
+        window.__userProfileExists = !!userProfileSnap.exists();
+        if (userProfileSnap.exists()) {
             const settingsData = userProfileSnap.data();
             savedSortOrder = settingsData.lastSortOrder;
             savedTheme = settingsData.lastTheme;
@@ -10059,17 +10065,17 @@ async function loadUserWatchlistsAndSettings() {
 
         // If a pending theme save exists locally (from earlier when Firestore/Auth wasn't available), flush it now.
         try {
-            const pending = (() => { try { return localStorage.getItem('pendingThemeSave'); } catch(_) { return null; } })();
+            const pending = (() => { try { return localStorage.getItem('pendingThemeSave'); } catch (_) { return null; } })();
             if (pending && currentUserId && firestore && db) {
                 try {
                     const profRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
                     firestore.setDoc(profRef, { lastTheme: pending }, { merge: true }).then(() => {
-                        try { localStorage.removeItem('pendingThemeSave'); } catch(_) {}
+                        try { localStorage.removeItem('pendingThemeSave'); } catch (_) { }
                         console.log('[Theme Flush] Flushed pendingThemeSave to Firestore:', pending);
                     }).catch(err => console.warn('[Theme Flush] Failed to flush pending theme to Firestore:', err));
                 } catch (err) { console.warn('[Theme Flush] Error constructing Firestore doc ref:', err); }
             }
-        } catch(_) {}
+        } catch (_) { }
 
         // Prefer local device's last selected view if available and valid
         try {
@@ -10081,7 +10087,7 @@ async function loadUserWatchlistsAndSettings() {
                     logDebug('User Settings: Overriding selection with localStorage lastSelectedView: ' + lsView);
                 }
             }
-        } catch(e) { /* ignore */ }
+        } catch (e) { /* ignore */ }
 
         // Determine final currentSelectedWatchlistIds if not set or invalid after loading/filtering
         if (!currentSelectedWatchlistIds || currentSelectedWatchlistIds.length === 0) {
@@ -10126,7 +10132,7 @@ async function loadUserWatchlistsAndSettings() {
         if (candidateSort) {
             setCurrentSortOrder(candidateSort);
             // Diagnostic trace: record when we apply the candidate sort during startup
-            try { console.log('[SORT HANDSHAKE] setCurrentSortOrder ->', candidateSort); } catch(_) {}
+            try { console.log('[SORT HANDSHAKE] setCurrentSortOrder ->', candidateSort); } catch (_) { }
             logDebug('Sort: Using saved sort order: ' + currentSortOrder);
         } else {
             // Set to new default sort order: 'percentageChange-desc' for share watchlists, 'name-asc' for cash
@@ -10135,33 +10141,33 @@ async function loadUserWatchlistsAndSettings() {
             logDebug('Sort: No saved sort order found, defaulting to: ' + currentSortOrder);
         }
         renderSortSelect(); // Build options, then apply currentSortOrder
-    // Diagnostic: report authoritative sort just before resolving the handshake
+        // Diagnostic: report authoritative sort just before resolving the handshake
         try {
-        try { console.log('[SORT HANDSHAKE] resolving __userSortReady (currentSortOrder):', (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder); } catch(_) {}
-        // Mark resolved so other modules know the authoritative sort has been applied
-        try { 
-            window.__userSortReadyResolved = true;
-            // Set an initial authoritative lock so other non-user callers won't overwrite
+            try { console.log('[SORT HANDSHAKE] resolving __userSortReady (currentSortOrder):', (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder); } catch (_) { }
+            // Mark resolved so other modules know the authoritative sort has been applied
             try {
-                window.__initialSortLocked = true;
-                window.__initialAuthoritativeSort = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
-                // Auto-clear the lock after a short grace period to allow normal updates
-                setTimeout(() => { try { window.__initialSortLocked = false; delete window.__initialAuthoritativeSort; } catch(_) {} }, 500);
-            } catch(_) {}
-        } catch(_) {}
-        if (window.__userSortReadyResolve) { window.__userSortReadyResolve(); delete window.__userSortReadyResolve; }
-    } catch(_) {}
-        try { 
+                window.__userSortReadyResolved = true;
+                // Set an initial authoritative lock so other non-user callers won't overwrite
+                try {
+                    window.__initialSortLocked = true;
+                    window.__initialAuthoritativeSort = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
+                    // Auto-clear the lock after a short grace period to allow normal updates
+                    setTimeout(() => { try { window.__initialSortLocked = false; delete window.__initialAuthoritativeSort; } catch (_) { } }, 500);
+                } catch (_) { }
+            } catch (_) { }
+            if (window.__userSortReadyResolve) { window.__userSortReadyResolve(); delete window.__userSortReadyResolve; }
+        } catch (_) { }
+        try {
             // Defer the initial update to ensure DOM elements are ready
-            setTimeout(() => updateSortPickerButtonText(), 100); 
-        } catch(e) {}
+            setTimeout(() => updateSortPickerButtonText(), 100);
+        } catch (e) { }
 
         // Apply saved theme or default. Backfill user profile if missing.
         if (savedTheme) {
             applyTheme(savedTheme);
         } else {
-            const localStorageSelectedTheme = (()=>{ try { return localStorage.getItem('selectedTheme'); } catch(_) { return null; } })();
-            const localStorageTheme = (()=>{ try { return localStorage.getItem('theme'); } catch(_) { return null; } })();
+            const localStorageSelectedTheme = (() => { try { return localStorage.getItem('selectedTheme'); } catch (_) { return null; } })();
+            const localStorageTheme = (() => { try { return localStorage.getItem('theme'); } catch (_) { return null; } })();
             const candidateLocal = localStorageSelectedTheme || localStorageTheme;
             if (candidateLocal) {
                 // Apply local theme and backfill Firestore async (do not block UI)
@@ -10169,16 +10175,16 @@ async function loadUserWatchlistsAndSettings() {
                 try {
                     if (!savedTheme && currentUserId && firestore && db) {
                         const profRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-                        firestore.setDoc(profRef, { lastTheme: candidateLocal }, { merge: true }).catch(()=>{});
+                        firestore.setDoc(profRef, { lastTheme: candidateLocal }, { merge: true }).catch(() => { });
                     }
-                } catch(_) {}
+                } catch (_) { }
             } else {
                 applyTheme('system-default');
             }
         }
         updateThemeToggleAndSelector();
 
-    // Removed: manual EOD preference handling
+        // Removed: manual EOD preference handling
 
         const migratedSomething = await migrateOldSharesToWatchlist();
         if (!migratedSomething) {
@@ -10199,7 +10205,7 @@ async function loadUserWatchlistsAndSettings() {
                 showPortfolioView();
                 logDebug('User Settings: Enforced Portfolio view after initial render.');
             }
-        } catch(e) { /* ignore */ }
+        } catch (e) { /* ignore */ }
 
         window._appDataLoaded = true;
         hideSplashScreenIfReady();
@@ -10257,12 +10263,12 @@ function selectCustomTriggerHitsForUser(allHits, uid) {
         }
         // If no explicit userId matches, include portfolio-duplicates (movers/52w with null/missing userId)
         const mineByPortfolio = list.filter(h => {
-            try { return h && portfolioCodes.has(String(h.code || '').toUpperCase()); } catch(_) { return false; }
+            try { return h && portfolioCodes.has(String(h.code || '').toUpperCase()); } catch (_) { return false; }
         });
-    if (mineByPortfolio.length > 0) return mineByPortfolio;
-    // Fallback: return empty array (do not show hits for unrelated users)
-    return [];
-    } catch(_) { return []; }
+        if (mineByPortfolio.length > 0) return mineByPortfolio;
+        // Fallback: return empty array (do not show hits for unrelated users)
+        return [];
+    } catch (_) { return []; }
 }
 
 // NEW: Function to update the target hit notification icon
@@ -10285,8 +10291,8 @@ function updateTargetHitBanner() {
     const liveArr = (window.sharesAtTargetPrice && Array.isArray(window.sharesAtTargetPrice)) ? window.sharesAtTargetPrice : (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []);
     // Build a union of codes across central hits and live shares so the badge reflects both
     const unionCodes = new Set();
-    try { selectedCentralHits.forEach(h => { const c = String(h && (h.code || h.shareCode || h.shareName || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch(_) {}
-    try { liveArr.forEach(s => { const c = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch(_) {}
+    try { selectedCentralHits.forEach(h => { const c = String(h && (h.code || h.shareCode || h.shareName || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch (_) { }
+    try { liveArr.forEach(s => { const c = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch (_) { }
     const customHitsCount = unionCodes.size;
     const enabledCount = customHitsCount > 0 ? customHitsCount : (Array.isArray(liveArr) ? liveArr.length : 0);
     // Global 52-week alerts: prefer *_HITS; fall back to legacy alerts structure
@@ -10296,18 +10302,18 @@ function updateTargetHitBanner() {
     const globalLows = (window.globalHiLo52Hits && Array.isArray(window.globalHiLo52Hits.lowHits))
         ? window.globalHiLo52Hits.lowHits.length
         : ((window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts.lows.length : 0);
-    
+
     // Debug logging for 52-week low count
     console.log('[BANNER-DEBUG] global highs/lows:', { globalHighs, globalLows });
     console.log('[BANNER-DEBUG] enabledCount:', enabledCount);
     // Treat global summary counts as zero if directional thresholds are fully inactive (prevents stale badge after clearing)
     const directionalActive = isDirectionalThresholdsActive ? isDirectionalThresholdsActive() : (
-        (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ||
-        (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ||
-        (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ||
-        (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0)
+        (typeof globalPercentIncrease === 'number' && globalPercentIncrease > 0) ||
+        (typeof globalDollarIncrease === 'number' && globalDollarIncrease > 0) ||
+        (typeof globalPercentDecrease === 'number' && globalPercentDecrease > 0) ||
+        (typeof globalDollarDecrease === 'number' && globalDollarDecrease > 0)
     );
-    const centralMoversCount = (function(){
+    const centralMoversCount = (function () {
         // Prefer *_HITS lengths; else use filtered/total from legacy object
         if (window.globalMoversHits) {
             const up = Array.isArray(window.globalMoversHits.upHits) ? window.globalMoversHits.upHits.length : 0;
@@ -10327,14 +10333,14 @@ function updateTargetHitBanner() {
     // Prefer centralized movers when available to avoid double counting vs legacy GA_SUMMARY
     const effectiveMoversCount = centralMoversCount > 0 ? centralMoversCount : (legacySummaryCount > 0 ? legacySummaryCount : (directionalActive ? lastSnapshotCount : 0));
     const displayCount = enabledCount + effectiveMoversCount + globalHighs + globalLows;
-    
+
     // Debug logging for final count
     console.log('[BANNER-DEBUG] centralMoversCount:', centralMoversCount, 'legacySummaryCount:', legacySummaryCount, 'effectiveMoversCount:', effectiveMoversCount);
     console.log('[BANNER-DEBUG] displayCount:', displayCount);
     const snapshot = window.__lastTargetBannerSnapshot;
     const snapshotUnchanged = snapshot.enabledCount === enabledCount && snapshot.displayCount === displayCount && snapshot.dismissed === !!targetHitIconDismissed;
     if (!snapshotUnchanged) {
-        try { console.log('[Diag][updateTargetHitBanner] enabled:', enabledCount, 'displayCount:', displayCount, 'enabled IDs:', (sharesAtTargetPrice||[]).map(s=>s.id)); } catch(_) {}
+        try { console.log('[Diag][updateTargetHitBanner] enabled:', enabledCount, 'displayCount:', displayCount, 'enabled IDs:', (sharesAtTargetPrice || []).map(s => s.id)); } catch (_) { }
     } else {
         // If nothing changed but the icon SHOULD be visible and somehow got hidden, restore it.
         const shouldBeVisible = displayCount > 0 && !targetHitIconDismissed;
@@ -10349,7 +10355,7 @@ function updateTargetHitBanner() {
         try {
             console.log('[Diag] targetHitIconBtn element:', targetHitIconBtn);
             console.log('[Diag] BEFORE - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
-        } catch (_) {}
+        } catch (_) { }
 
         targetHitIconCount.textContent = String(displayCount);
         // Ensure visibility: drop any hidden class first, then set display
@@ -10366,21 +10372,21 @@ function updateTargetHitBanner() {
         // Diagnostics: capture state after applying changes
         try {
             console.log('[Diag] AFTER - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
-        } catch (_) {}
+        } catch (_) { }
 
-    logDebug('Target Alert: Showing icon: ' + displayCount + ' active alerts.');
+        logDebug('Target Alert: Showing icon: ' + displayCount + ' active alerts.');
     } else {
-    // Hide the icon explicitly via inline style and class
-    targetHitIconBtn.classList.add('app-hidden');
-    targetHitIconBtn.style.display = 'none';
-    targetHitIconCount.classList && targetHitIconCount.classList.add('app-hidden');
-    targetHitIconCount.style.display = 'none';
+        // Hide the icon explicitly via inline style and class
+        targetHitIconBtn.classList.add('app-hidden');
+        targetHitIconBtn.style.display = 'none';
+        targetHitIconCount.classList && targetHitIconCount.classList.add('app-hidden');
+        targetHitIconCount.style.display = 'none';
         logDebug('Target Alert: No triggered alerts or icon dismissed; hiding icon.');
     }
 
     // Persist last known count for early UI restore
     lastKnownTargetCount = displayCount;
-    try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch(e) {}
+    try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch (e) { }
 
     // Highlight dropdowns if the current view has target hits
     // Removed toolbar highlight per corrected requirement; only individual rows/cards should show target-hit styling.
@@ -10405,7 +10411,7 @@ function refreshNotificationsModalIfOpen(reason) {
                     const computed = window.getComputedStyle(modal);
                     if (computed && computed.display !== 'none' && computed.visibility !== 'hidden' && computed.opacity !== '0') return true;
                 }
-            } catch(_) {}
+            } catch (_) { }
             return false;
         })();
         if (!isVisible) return;
@@ -10422,7 +10428,7 @@ function refreshNotificationsModalIfOpen(reason) {
                             const computed = window.getComputedStyle(modal);
                             if (computed && computed.display !== 'none' && computed.visibility !== 'hidden' && computed.opacity !== '0') return true;
                         }
-                    } catch(_) {}
+                    } catch (_) { }
                     return false;
                 })();
                 if (!stillVisible) return;
@@ -10434,29 +10440,29 @@ function refreshNotificationsModalIfOpen(reason) {
                     refresh: true,
                     reason
                 });
-            } catch(_) {}
+            } catch (_) { }
         }, 250);
-    } catch(_) {}
+    } catch (_) { }
 }
 
 // Diagnostic hotkey: Alt+Shift+N dumps notification icon state
 try {
-    document.addEventListener('keydown', function(e){
+    document.addEventListener('keydown', function (e) {
         if (e.altKey && e.shiftKey && (e.key === 'N' || e.key === 'n')) {
             try {
                 const state = {
                     dismissed: targetHitIconDismissed,
                     lastKnownTargetCount,
-                    currentEnabledCount: Array.isArray(sharesAtTargetPrice)?sharesAtTargetPrice.length:0,
+                    currentEnabledCount: Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : 0,
                     globalSummaryCount: (globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0,
                     btnDisplay: targetHitIconBtn ? targetHitIconBtn.style.display : null,
                     btnClasses: targetHitIconBtn ? targetHitIconBtn.className : null
                 };
                 console.log('[NotifDiag] Notification Icon State', state);
-            } catch(err) { console.warn('[NotifDiag] Failed to dump state', err); }
+            } catch (err) { console.warn('[NotifDiag] Failed to dump state', err); }
         }
     }, true);
-} catch(_){ }
+} catch (_) { }
 // NEW (Revised): Real-time alerts listener (enabled-only notifications)
 // Muted alerts (enabled === false) must not appear as active notifications or receive styling.
 /* moved to dataService.js */
@@ -10507,7 +10513,7 @@ let globalMovers = { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0
 window.globalMovers = globalMovers;
 
 // Recompute filtered movers outside the modal so diagnostic properties are always present
-window.recomputeGlobalMoversFiltered = function recomputeGlobalMoversFiltered(options={}) {
+window.recomputeGlobalMoversFiltered = function recomputeGlobalMoversFiltered(options = {}) {
     try {
         // Suppress all global movers if user has no profile/settings
         if (window.__userProfileExists === false) {
@@ -10537,7 +10543,7 @@ window.recomputeGlobalMoversFiltered = function recomputeGlobalMoversFiltered(op
         }
         // Unified local threshold sourcing (globals, localStorage fallback, form inputs) for reliability
         const local = getCurrentDirectionalThresholds();
-        function stricter(a,b){ if (a==null) return b; if (b==null) return a; return Math.max(a,b); }
+        function stricter(a, b) { if (a == null) return b; if (b == null) return a; return Math.max(a, b); }
         const effective = {
             upPercent: stricter(local.upPercent, server && server.upPercent),
             upDollar: stricter(local.upDollar, server && server.upDollar),
@@ -10545,7 +10551,7 @@ window.recomputeGlobalMoversFiltered = function recomputeGlobalMoversFiltered(op
             downDollar: stricter(local.downDollar, server && server.downDollar),
             minimumPrice: stricter(local.minimumPrice, server && server.minimumPrice)
         };
-        const noDir = [effective.upPercent,effective.upDollar,effective.downPercent,effective.downDollar].every(v=>v==null);
+        const noDir = [effective.upPercent, effective.upDollar, effective.downPercent, effective.downDollar].every(v => v == null);
         // Only show notifications if user has shares or has set thresholds
         const hasShares = Array.isArray(window.allSharesData) && window.allSharesData.length > 0;
         if ((noDir && !hasShares)) {
@@ -10553,49 +10559,49 @@ window.recomputeGlobalMoversFiltered = function recomputeGlobalMoversFiltered(op
             gm.downFiltered = [];
             gm.filteredTotal = 0;
             if (options.log || window.DEBUG_MODE) {
-                try { console.log('[GlobalMovers][recompute] No thresholds set and no shares, no global movers shown.'); } catch(_){}
+                try { console.log('[GlobalMovers][recompute] No thresholds set and no shares, no global movers shown.'); } catch (_) { }
             }
             return;
         }
-        if (noDir && rawTotal>120) { effective.upPercent = 1; effective.downPercent = 1; }
-        const filterFn = (item)=>{
+        if (noDir && rawTotal > 120) { effective.upPercent = 1; effective.downPercent = 1; }
+        const filterFn = (item) => {
             // Prefer computed values, but fall back to provided pct/change when live/prevClose are missing.
-            const live = (item.live!=null && !isNaN(item.live)) ? Number(item.live) : null;
-            const prev = (item.prevClose!=null && !isNaN(item.prevClose)) ? Number(item.prevClose) : null;
+            const live = (item.live != null && !isNaN(item.live)) ? Number(item.live) : null;
+            const prev = (item.prevClose != null && !isNaN(item.prevClose)) ? Number(item.prevClose) : null;
             let ch = null; let pct = null; let dir = null;
-            if (live!=null && prev!=null && prev!==0) {
+            if (live != null && prev != null && prev !== 0) {
                 ch = live - prev;
-                pct = (ch/prev)*100;
-                dir = ch>0 ? 'up' : (ch<0 ? 'down' : null);
+                pct = (ch / prev) * 100;
+                dir = ch > 0 ? 'up' : (ch < 0 ? 'down' : null);
             }
             // Use provided fields as a fallback (central doc often includes pct/change)
-            if (pct==null && item.pct!=null && !isNaN(item.pct)) {
+            if (pct == null && item.pct != null && !isNaN(item.pct)) {
                 const p = Number(item.pct);
                 // Assume magnitude; use direction to sign if available
-                const isDown = (item.direction||'').toLowerCase()==='down';
+                const isDown = (item.direction || '').toLowerCase() === 'down';
                 pct = isDown ? -Math.abs(p) : Math.abs(p);
             }
-            if (ch==null && item.change!=null && !isNaN(item.change)) {
+            if (ch == null && item.change != null && !isNaN(item.change)) {
                 ch = Number(item.change);
             }
-            if (!ch && ch!==0 && pct==null) return false; // cannot evaluate at all
+            if (!ch && ch !== 0 && pct == null) return false; // cannot evaluate at all
             // Respect minimum price only when we know live; if unknown, don't exclude solely on min price
-            if (effective.minimumPrice && live!=null && live < effective.minimumPrice) return false;
+            if (effective.minimumPrice && live != null && live < effective.minimumPrice) return false;
             // Determine direction using available signals
             if (!dir) {
-                if (ch!=null) dir = ch>0?'up':(ch<0?'down':null);
-                if (!dir && typeof item.direction==='string') dir = item.direction.toLowerCase();
-                if (!dir && pct!=null) dir = pct>=0?'up':'down';
+                if (ch != null) dir = ch > 0 ? 'up' : (ch < 0 ? 'down' : null);
+                if (!dir && typeof item.direction === 'string') dir = item.direction.toLowerCase();
+                if (!dir && pct != null) dir = pct >= 0 ? 'up' : 'down';
             }
-            const pctVal = (pct!=null) ? Number(pct) : (ch!=null && prev!=null && prev!==0 ? (ch/prev)*100 : null);
-            const absCh = ch!=null ? Math.abs(ch) : (item.change!=null ? Math.abs(Number(item.change)) : null);
-            if (dir==='up') {
-                const pctOk = (effective.upPercent!=null && pctVal!=null) ? pctVal >= effective.upPercent : false;
-                const dolOk = (effective.upDollar!=null && absCh!=null) ? absCh >= effective.upDollar : false;
+            const pctVal = (pct != null) ? Number(pct) : (ch != null && prev != null && prev !== 0 ? (ch / prev) * 100 : null);
+            const absCh = ch != null ? Math.abs(ch) : (item.change != null ? Math.abs(Number(item.change)) : null);
+            if (dir === 'up') {
+                const pctOk = (effective.upPercent != null && pctVal != null) ? pctVal >= effective.upPercent : false;
+                const dolOk = (effective.upDollar != null && absCh != null) ? absCh >= effective.upDollar : false;
                 if (!(pctOk || dolOk)) return false;
-            } else if (dir==='down') {
-                const pctOk = (effective.downPercent!=null && pctVal!=null) ? Math.abs(pctVal) >= effective.downPercent : false;
-                const dolOk = (effective.downDollar!=null && absCh!=null) ? absCh >= effective.downDollar : false;
+            } else if (dir === 'down') {
+                const pctOk = (effective.downPercent != null && pctVal != null) ? Math.abs(pctVal) >= effective.downPercent : false;
+                const dolOk = (effective.downDollar != null && absCh != null) ? absCh >= effective.downDollar : false;
                 if (!(pctOk || dolOk)) return false;
             } else {
                 // Unknown direction: conservatively include (central doc already qualified it)
@@ -10612,22 +10618,22 @@ window.recomputeGlobalMoversFiltered = function recomputeGlobalMoversFiltered(op
             try {
                 const disc = {};
                 if (server) {
-                    ['upPercent','upDollar','downPercent','downDollar','minimumPrice'].forEach(k=>{
-                        if (local[k]!=null && server[k]!=null && local[k] > server[k]) disc[k] = { local: local[k], server: server[k] };
+                    ['upPercent', 'upDollar', 'downPercent', 'downDollar', 'minimumPrice'].forEach(k => {
+                        if (local[k] != null && server[k] != null && local[k] > server[k]) disc[k] = { local: local[k], server: server[k] };
                     });
                 }
                 if (Object.keys(disc).length) console.log('[GlobalMovers][threshold-discrepancy]', disc);
-            } catch(_){ }
+            } catch (_) { }
         }
         if (options.log || window.DEBUG_MODE) {
-            try { console.log('[GlobalMovers][recompute]', { rawTotal, filteredTotal: gm.filteredTotal, effective, server, local }); } catch(_){}
+            try { console.log('[GlobalMovers][recompute]', { rawTotal, filteredTotal: gm.filteredTotal, effective, server, local }); } catch (_) { }
         }
     } catch (e) { console.warn('[GlobalMovers][recompute] failed', e); }
 };
 
 // Helper returns current directional thresholds from multiple potential sources
-window.getCurrentDirectionalThresholds = function getCurrentDirectionalThresholds(){
-    function numPos(v){ return (typeof v === 'number' && isFinite(v) && v>0) ? v : null; }
+window.getCurrentDirectionalThresholds = function getCurrentDirectionalThresholds() {
+    function numPos(v) { return (typeof v === 'number' && isFinite(v) && v > 0) ? v : null; }
     // Start with globals
     let upPercent = numPos(window.globalPercentIncrease);
     let upDollar = numPos(window.globalDollarIncrease);
@@ -10636,12 +10642,12 @@ window.getCurrentDirectionalThresholds = function getCurrentDirectionalThreshold
     let minimumPrice = numPos(window.globalMinimumPrice);
     // LocalStorage fallbacks (string -> number)
     try {
-        if (upPercent==null) { const v = localStorage.getItem('globalPercentIncrease'); if (v!=null) upPercent = numPos(Number(v)); }
-        if (upDollar==null) { const v = localStorage.getItem('globalDollarIncrease'); if (v!=null) upDollar = numPos(Number(v)); }
-        if (downPercent==null) { const v = localStorage.getItem('globalPercentDecrease'); if (v!=null) downPercent = numPos(Number(v)); }
-        if (downDollar==null) { const v = localStorage.getItem('globalDollarDecrease'); if (v!=null) downDollar = numPos(Number(v)); }
-        if (minimumPrice==null) { const v = localStorage.getItem('globalMinimumPrice'); if (v!=null) minimumPrice = numPos(Number(v)); }
-    } catch(_){ }
+        if (upPercent == null) { const v = localStorage.getItem('globalPercentIncrease'); if (v != null) upPercent = numPos(Number(v)); }
+        if (upDollar == null) { const v = localStorage.getItem('globalDollarIncrease'); if (v != null) upDollar = numPos(Number(v)); }
+        if (downPercent == null) { const v = localStorage.getItem('globalPercentDecrease'); if (v != null) downPercent = numPos(Number(v)); }
+        if (downDollar == null) { const v = localStorage.getItem('globalDollarDecrease'); if (v != null) downDollar = numPos(Number(v)); }
+        if (minimumPrice == null) { const v = localStorage.getItem('globalMinimumPrice'); if (v != null) minimumPrice = numPos(Number(v)); }
+    } catch (_) { }
     // Form input overrides if user is on settings UI (ensure latest typed values apply before save)
     try {
         // Match index.html where the form id is 'globalAlertsForm' and inputs have ids (not names)
@@ -10658,7 +10664,7 @@ window.getCurrentDirectionalThresholds = function getCurrentDirectionalThreshold
             const gMin = form.querySelector('#globalMinimumPrice') || document.getElementById('globalMinimumPrice');
             if (gMin && gMin.value) minimumPrice = numPos(Number(gMin.value));
         }
-    } catch(_){ }
+    } catch (_) { }
     return { upPercent, upDollar, downPercent, downDollar, minimumPrice };
 };
 
@@ -10667,39 +10673,39 @@ window.getCurrentDirectionalThresholds = function getCurrentDirectionalThreshold
 // inspects window.globalMovers before manually opening the modal. This covers races
 // where the Firestore snapshot attaches slightly before local threshold vars are
 // hydrated or before the user triggers showGlobalAlertsModal(). Safe + idempotent.
-(function ensureEarlyGlobalMoversDiagnostics(){
+(function ensureEarlyGlobalMoversDiagnostics() {
     try {
         let attempts = 0;
         const maxAttempts = 6; // ~6 * 800ms = <5s worst case
-        function tick(){
+        function tick() {
             try {
                 const gm = window.globalMovers;
                 if (gm && (Array.isArray(gm.up) || Array.isArray(gm.down))) {
                     if (!gm.__effectiveThresholds) {
-                        try { window.recomputeGlobalMoversFiltered({ log:false }); } catch(_) {}
+                        try { window.recomputeGlobalMoversFiltered({ log: false }); } catch (_) { }
                     }
                     if (gm.__effectiveThresholds) return; // success, stop retries
                 }
-            } catch(_) {}
+            } catch (_) { }
             if (++attempts < maxAttempts) setTimeout(tick, 800);
         }
         // Slight initial delay to allow threshold globals to load
         setTimeout(tick, 400);
-    } catch(_) {}
+    } catch (_) { }
 })();
 
 // Convenience function to open the global alerts modal with defensive recompute
 window.showGlobalAlertsModal = function showGlobalAlertsModal() {
-    try { if (typeof hideModal==='function' && targetHitDetailsModal) hideModal(targetHitDetailsModal); } catch(_) {}
-    try { window.recomputeGlobalMoversFiltered({ log: window.DEBUG_MODE }); } catch(_){ }
+    try { if (typeof hideModal === 'function' && targetHitDetailsModal) hideModal(targetHitDetailsModal); } catch (_) { }
+    try { window.recomputeGlobalMoversFiltered({ log: window.DEBUG_MODE }); } catch (_) { }
     try {
-        if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+        if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch (_) { } }
         if (typeof showModal === 'function' && globalAlertsModal) {
             showModal(globalAlertsModal);
-            try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(_) {}
+            try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch (_) { }
             return true;
         }
-    } catch(e){ console.warn('[GlobalAlerts][open] failed to open modal', e); }
+    } catch (e) { console.warn('[GlobalAlerts][open] failed to open modal', e); }
     console.warn('[GlobalAlerts][open] modal not available.');
     return false;
 };
@@ -10724,17 +10730,19 @@ window.debugGlobalAlertsParity = function debugGlobalAlertsParity() {
             ? window.globalAlertSummary.totalCount : 0;
         const directionalActive = (typeof window.isDirectionalThresholdsActive === 'function')
             ? window.isDirectionalThresholdsActive()
-            : ((typeof window.globalPercentIncrease === 'number' && window.globalPercentIncrease>0) ||
-               (typeof window.globalDollarIncrease === 'number' && window.globalDollarIncrease>0) ||
-               (typeof window.globalPercentDecrease === 'number' && window.globalPercentDecrease>0) ||
-               (typeof window.globalDollarDecrease === 'number' && window.globalDollarDecrease>0));
+            : ((typeof window.globalPercentIncrease === 'number' && window.globalPercentIncrease > 0) ||
+                (typeof window.globalDollarIncrease === 'number' && window.globalDollarIncrease > 0) ||
+                (typeof window.globalPercentDecrease === 'number' && window.globalPercentDecrease > 0) ||
+                (typeof window.globalDollarDecrease === 'number' && window.globalDollarDecrease > 0));
         const lastSnapshotCount = (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) ? window.__lastMoversSnapshot.entries.length : 0;
         const effectiveMoversCount = centralMoversCount > 0 ? centralMoversCount : (legacySummaryCount > 0 ? legacySummaryCount : (directionalActive ? lastSnapshotCount : 0));
         const badgeCount = targets + effectiveMoversCount + highs + lows;
         const modalCount = targets + ups + downs + highs + lows;
-        const result = { parts: { targets, movers: { ups, downs, filteredTotal: ups+downs, effectiveMoversCount }, highs, lows },
-            sums: { badgeCount, modalCount }, meta: { centralMoversCount, legacySummaryCount, lastSnapshotCount } };
-        try { console.log('[Parity]', result); } catch(_) {}
+        const result = {
+            parts: { targets, movers: { ups, downs, filteredTotal: ups + downs, effectiveMoversCount }, highs, lows },
+            sums: { badgeCount, modalCount }, meta: { centralMoversCount, legacySummaryCount, lastSnapshotCount }
+        };
+        try { console.log('[Parity]', result); } catch (_) { }
         return result;
     } catch (e) {
         console.warn('[Parity] Failed to compute parity', e);
@@ -10743,8 +10751,8 @@ window.debugGlobalAlertsParity = function debugGlobalAlertsParity() {
 };
 
 function startGlobalSummaryListener() {
-    if (unsubscribeGlobalSummary) { try { unsubscribeGlobalSummary(); } catch(_){} unsubscribeGlobalSummary = null; }
-    if (unsubscribeGlobalSummaryComprehensive) { try { unsubscribeGlobalSummaryComprehensive(); } catch(_){} unsubscribeGlobalSummaryComprehensive = null; }
+    if (unsubscribeGlobalSummary) { try { unsubscribeGlobalSummary(); } catch (_) { } unsubscribeGlobalSummary = null; }
+    if (unsubscribeGlobalSummaryComprehensive) { try { unsubscribeGlobalSummaryComprehensive(); } catch (_) { } unsubscribeGlobalSummaryComprehensive = null; }
     if (!db || !currentUserId || !firestore) return;
 
     try {
@@ -10758,7 +10766,7 @@ function startGlobalSummaryListener() {
                 console.log('[GlobalAlerts] Listener received GA_SUMMARY:', newData);
                 if (newData && newData.nonPortfolioCodes) {
                     console.log('[GlobalAlerts] nonPortfolioCodes from Firestore:', newData.nonPortfolioCodes);
-            } else {
+                } else {
                     console.log('[GlobalAlerts] WARNING: nonPortfolioCodes missing from GA_SUMMARY!');
                 }
 
@@ -10771,11 +10779,11 @@ function startGlobalSummaryListener() {
                 console.log('[GlobalAlerts] Listener: GA_SUMMARY document does not exist');
                 // Don't set to null if we have comprehensive data
                 if (!globalAlertSummary || globalAlertSummary.comprehensiveScan !== true) {
-                globalAlertSummary = null;
+                    globalAlertSummary = null;
                 }
             }
-            try { updateTargetHitBanner(); } catch(e) {}
-            try { refreshNotificationsModalIfOpen('GA_SUMMARY'); } catch(_) {}
+            try { updateTargetHitBanner(); } catch (e) { }
+            try { refreshNotificationsModalIfOpen('GA_SUMMARY'); } catch (_) { }
         }, err => {
             console.error('[GlobalAlerts] Regular listener error:', err);
             console.error('Global Alerts: summary listener error', err);
@@ -10798,28 +10806,28 @@ function startGlobalSummaryListener() {
                 console.log('[GlobalAlerts] Listener: GA_SUMMARY_COMPREHENSIVE document does not exist');
                 // Keep existing comprehensive data if available, otherwise fall back to regular data
             }
-            try { updateTargetHitBanner(); } catch(e) {}
-            try { refreshNotificationsModalIfOpen('GA_SUMMARY_COMPREHENSIVE'); } catch(_) {}
+            try { updateTargetHitBanner(); } catch (e) { }
+            try { refreshNotificationsModalIfOpen('GA_SUMMARY_COMPREHENSIVE'); } catch (_) { }
         }, err => {
             console.error('[GlobalAlerts] Comprehensive listener error:', err);
         });
 
         logDebug('Global Alerts: Summary listeners active (regular + comprehensive).');
-    } catch(e) { console.error('Global Alerts: failed to start summary listeners', e); }
+    } catch (e) { console.error('Global Alerts: failed to start summary listeners', e); }
 }
 
 // Listener for centralized global 52-week highs/lows list stored in a shared collection
 function startGlobalHiLoListener() {
-    if (unsubscribeGlobalHiLo) { try { unsubscribeGlobalHiLo(); } catch(_){} unsubscribeGlobalHiLo = null; }
+    if (unsubscribeGlobalHiLo) { try { unsubscribeGlobalHiLo(); } catch (_) { } unsubscribeGlobalHiLo = null; }
     // Auth / env gating: ensure user and app are established
     if (!db || !firestore || !currentAppId) { console.log('[HiLo52][defer] DB/firestore/appId not ready'); return; }
     const uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
     if (!uid) { console.log('[HiLo52][defer] auth UID not ready'); return; }
-    try { verifyCentralAlertsAccess && verifyCentralAlertsAccess(); } catch(_) {}
+    try { verifyCentralAlertsAccess && verifyCentralAlertsAccess(); } catch (_) { }
     // Use persistent daily HITS document
     const path = 'artifacts/' + currentAppId + '/alerts/HI_LO_52W_HITS';
     if (!window.__centralRetry) window.__centralRetry = { hiLo: 0, movers: 0 };
-    console.log('[HiLo52][attach] path=' + path + ' appId=' + currentAppId + ' uid=' + uid + ' attempt=' + (window.__centralRetry.hiLo+1));
+    console.log('[HiLo52][attach] path=' + path + ' appId=' + currentAppId + ' uid=' + uid + ' attempt=' + (window.__centralRetry.hiLo + 1));
     try {
         const docRef = firestore.doc(db, path);
         unsubscribeGlobalHiLo = firestore.onSnapshot(docRef, (snap) => {
@@ -10828,8 +10836,8 @@ function startGlobalHiLoListener() {
                 window.globalHiLo52Hits = { updatedAt: null, highHits: [], lowHits: [] };
                 globalHiLo52Alerts = { updatedAt: null, highs: [], lows: [] };
                 window.globalHiLo52Alerts = globalHiLo52Alerts;
-                try { updateTargetHitBanner(); } catch(_) {}
-                try { refreshNotificationsModalIfOpen('HI_LO_52W_HITS'); } catch(_) {}
+                try { updateTargetHitBanner(); } catch (_) { }
+                try { refreshNotificationsModalIfOpen('HI_LO_52W_HITS'); } catch (_) { }
                 return;
             }
             if (snap.exists()) {
@@ -10848,46 +10856,46 @@ function startGlobalHiLoListener() {
                     lows: hits.lowHits
                 };
                 window.globalHiLo52Alerts = globalHiLo52Alerts;
-                try { window.__hiLoListenerError = false; } catch(_) {}
+                try { window.__hiLoListenerError = false; } catch (_) { }
                 if (window.__centralRetry) window.__centralRetry.hiLo = 0; // reset on success
             } else {
                 window.globalHiLo52Hits = { updatedAt: null, highHits: [], lowHits: [] };
                 globalHiLo52Alerts = { updatedAt: null, highs: [], lows: [] };
                 window.globalHiLo52Alerts = globalHiLo52Alerts;
             }
-            try { updateTargetHitBanner(); } catch(_) {}
-            try { refreshNotificationsModalIfOpen('HI_LO_52W_HITS'); } catch(_) {}
+            try { updateTargetHitBanner(); } catch (_) { }
+            try { refreshNotificationsModalIfOpen('HI_LO_52W_HITS'); } catch (_) { }
         }, (err) => {
             console.warn('[HiLo52] Listener error', err);
-            try { window.__hiLoListenerError = true; window.__hiLoListenerErrorMessage = (err && (err.message || err.code)) || 'Listener error'; } catch(_) {}
+            try { window.__hiLoListenerError = true; window.__hiLoListenerErrorMessage = (err && (err.message || err.code)) || 'Listener error'; } catch (_) { }
             // Retry only on permission/auth related issues and only a few times
             const code = err && (err.code || err.message || '');
             if (/permission|auth|insufficient/i.test(code) && window.__centralRetry.hiLo < 5) {
                 const attempt = ++window.__centralRetry.hiLo;
-                const delay = Math.min(8000, 500 * Math.pow(2, attempt-1));
+                const delay = Math.min(8000, 500 * Math.pow(2, attempt - 1));
                 console.log('[HiLo52][retry] Scheduling reattach attempt ' + attempt + ' in ' + delay + 'ms');
-                setTimeout(() => { try { startGlobalHiLoListener(); } catch(e2){ console.warn('[HiLo52][retry] failed reattach', e2);} }, delay);
+                setTimeout(() => { try { startGlobalHiLoListener(); } catch (e2) { console.warn('[HiLo52][retry] failed reattach', e2); } }, delay);
             }
-            try { updateTargetHitBanner(); } catch(_) {}
+            try { updateTargetHitBanner(); } catch (_) { }
         });
     } catch (e) { console.warn('[HiLo52] Failed to attach listener', e); }
 }
 
 function stopGlobalHiLoListener() {
-    if (unsubscribeGlobalHiLo) { try { unsubscribeGlobalHiLo(); } catch(_) {} unsubscribeGlobalHiLo = null; }
+    if (unsubscribeGlobalHiLo) { try { unsubscribeGlobalHiLo(); } catch (_) { } unsubscribeGlobalHiLo = null; }
 }
 
 // Listener for centralized global movers document (percent / dollar movers, cross-user)
 function startGlobalMoversListener() {
-    if (unsubscribeGlobalMovers) { try { unsubscribeGlobalMovers(); } catch(_){} unsubscribeGlobalMovers = null; }
+    if (unsubscribeGlobalMovers) { try { unsubscribeGlobalMovers(); } catch (_) { } unsubscribeGlobalMovers = null; }
     if (!db || !firestore || !currentAppId) { console.log('[Movers][defer] DB/firestore/appId not ready'); return; }
     const uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
     if (!uid) { console.log('[Movers][defer] auth UID not ready'); return; }
-    try { verifyCentralAlertsAccess && verifyCentralAlertsAccess(); } catch(_) {}
+    try { verifyCentralAlertsAccess && verifyCentralAlertsAccess(); } catch (_) { }
     if (!window.__centralRetry) window.__centralRetry = { hiLo: 0, movers: 0 };
     // Use persistent daily HITS document
     const path = 'artifacts/' + currentAppId + '/alerts/GLOBAL_MOVERS_HITS';
-    console.log('[Movers][attach] path=' + path + ' appId=' + currentAppId + ' uid=' + uid + ' attempt=' + (window.__centralRetry.movers+1));
+    console.log('[Movers][attach] path=' + path + ' appId=' + currentAppId + ' uid=' + uid + ' attempt=' + (window.__centralRetry.movers + 1));
     try {
         const docRef = firestore.doc(db, path);
         unsubscribeGlobalMovers = firestore.onSnapshot(docRef, (snap) => {
@@ -10910,43 +10918,43 @@ function startGlobalMoversListener() {
                     thresholds: null
                 };
                 window.globalMovers = globalMovers;
-                try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log:false }); } catch(_) {}
+                try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log: false }); } catch (_) { }
                 if (window.__centralRetry) window.__centralRetry.movers = 0; // reset on success
             } else {
                 window.globalMoversHits = { updatedAt: null, upHits: [], downHits: [] };
                 globalMovers = { updatedAt: null, up: [], down: [], upCount: 0, downCount: 0, totalCount: 0, thresholds: null };
                 window.globalMovers = globalMovers;
-                try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log:false }); } catch(_) {}
+                try { if (window.recomputeGlobalMoversFiltered) window.recomputeGlobalMoversFiltered({ log: false }); } catch (_) { }
             }
-                try { updateTargetHitBanner(); } catch(_) {}
-                try { refreshNotificationsModalIfOpen('GLOBAL_MOVERS_HITS'); } catch(_) {}
+            try { updateTargetHitBanner(); } catch (_) { }
+            try { refreshNotificationsModalIfOpen('GLOBAL_MOVERS_HITS'); } catch (_) { }
         }, (err) => {
             console.warn('[GlobalMovers] Listener error', err);
-            try { window.__globalMoversListenerError = true; window.__globalMoversListenerErrorMessage = (err && (err.message||err.code)) || 'Listener error'; } catch(_) {}
+            try { window.__globalMoversListenerError = true; window.__globalMoversListenerErrorMessage = (err && (err.message || err.code)) || 'Listener error'; } catch (_) { }
             const code = err && (err.code || err.message || '');
             if (/permission|auth|insufficient/i.test(code) && window.__centralRetry.movers < 5) {
                 const attempt = ++window.__centralRetry.movers;
-                const delay = Math.min(8000, 500 * Math.pow(2, attempt-1));
+                const delay = Math.min(8000, 500 * Math.pow(2, attempt - 1));
                 console.log('[Movers][retry] Scheduling reattach attempt ' + attempt + ' in ' + delay + 'ms');
-                setTimeout(() => { try { startGlobalMoversListener(); } catch(e2){ console.warn('[Movers][retry] failed reattach', e2);} }, delay);
+                setTimeout(() => { try { startGlobalMoversListener(); } catch (e2) { console.warn('[Movers][retry] failed reattach', e2); } }, delay);
             }
-            try { updateTargetHitBanner(); } catch(_) {}
+            try { updateTargetHitBanner(); } catch (_) { }
         });
-    } catch(e) { console.warn('[GlobalMovers] Failed to attach listener', e); }
+    } catch (e) { console.warn('[GlobalMovers] Failed to attach listener', e); }
 }
 
 function stopGlobalMoversListener() {
-    if (unsubscribeGlobalMovers) { try { unsubscribeGlobalMovers(); } catch(_){} unsubscribeGlobalMovers = null; }
+    if (unsubscribeGlobalMovers) { try { unsubscribeGlobalMovers(); } catch (_) { } unsubscribeGlobalMovers = null; }
 }
 
 function stopGlobalSummaryListener() {
-    if (unsubscribeGlobalSummary) { try { unsubscribeGlobalSummary(); } catch(_){} unsubscribeGlobalSummary = null; }
-    if (unsubscribeGlobalSummaryComprehensive) { try { unsubscribeGlobalSummaryComprehensive(); } catch(_){} unsubscribeGlobalSummaryComprehensive = null; }
+    if (unsubscribeGlobalSummary) { try { unsubscribeGlobalSummary(); } catch (_) { } unsubscribeGlobalSummary = null; }
+    if (unsubscribeGlobalSummaryComprehensive) { try { unsubscribeGlobalSummaryComprehensive(); } catch (_) { } unsubscribeGlobalSummaryComprehensive = null; }
 }
 
 // Listener for persistent daily custom triggers (user targets + duplicated portfolio hits)
 function startCustomTriggerHitsListener() {
-    if (unsubscribeCustomTriggerHits) { try { unsubscribeCustomTriggerHits(); } catch(_){} unsubscribeCustomTriggerHits = null; }
+    if (unsubscribeCustomTriggerHits) { try { unsubscribeCustomTriggerHits(); } catch (_) { } unsubscribeCustomTriggerHits = null; }
     if (!db || !firestore || !currentAppId) { console.log('[CustomHits][defer] DB/firestore/appId not ready'); return; }
     const uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
     if (!uid) { console.log('[CustomHits][defer] auth UID not ready'); return; }
@@ -10964,16 +10972,16 @@ function startCustomTriggerHitsListener() {
             } else {
                 window.customTriggerHits = { updatedAt: null, hits: [] };
             }
-            try { updateTargetHitBanner(); } catch(_) {}
-            try { refreshNotificationsModalIfOpen('CUSTOM_TRIGGER_HITS'); } catch(_) {}
+            try { updateTargetHitBanner(); } catch (_) { }
+            try { refreshNotificationsModalIfOpen('CUSTOM_TRIGGER_HITS'); } catch (_) { }
         }, (err) => {
             console.warn('[CustomHits] Listener error', err);
         });
-    } catch(e) { console.warn('[CustomHits] Failed to attach listener', e); }
+    } catch (e) { console.warn('[CustomHits] Failed to attach listener', e); }
 }
 
 function stopCustomTriggerHitsListener() {
-    if (unsubscribeCustomTriggerHits) { try { unsubscribeCustomTriggerHits(); } catch(_){} unsubscribeCustomTriggerHits = null; }
+    if (unsubscribeCustomTriggerHits) { try { unsubscribeCustomTriggerHits(); } catch (_) { } unsubscribeCustomTriggerHits = null; }
 }
 
 // Lightweight verification helper to differentiate between:
@@ -11004,14 +11012,14 @@ window.verifyCentralAlertsAccess = async function verifyCentralAlertsAccess() {
                 window.__centralDiag[t.key] = { exists: false, status: 'missing' };
                 console.warn('[CentralVerify] ' + t.key + ' document missing (not necessarily a permission issue)');
             }
-        } catch(e) {
+        } catch (e) {
             const msg = (e && (e.code || e.message)) || String(e);
             const perm = /permission|denied|insufficient|auth/i.test(msg);
             window.__centralDiag[t.key] = { error: msg, permissionLike: perm, status: 'error' };
             console.error('[CentralVerify] ' + t.key + ' error:', msg);
         }
     }
-    try { window.__centralDiag.lastProbe = new Date().toISOString(); } catch(_) {}
+    try { window.__centralDiag.lastProbe = new Date().toISOString(); } catch (_) { }
 };
 
 // Diagnostic helper: dumps movers listener diagnostic info and last local snapshot
@@ -11080,36 +11088,36 @@ function applyGlobalSummaryFilter(options = {}) {
     });
     if (isMovers) {
         // Safety: ensure persistence keys reflect Movers so reload restores correctly even if earlier writes were skipped
-    try { setLastSelectedView('__movers'); } catch(_) {}
-        try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(['__movers'])); } catch(_) {}
-        try { sessionStorage.setItem('preResetLastSelectedView','__movers'); } catch(_) {}
+        try { setLastSelectedView('__movers'); } catch (_) { }
+        try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(['__movers'])); } catch (_) { }
+        try { sessionStorage.setItem('preResetLastSelectedView', '__movers'); } catch (_) { }
     }
     const tableRows = document.querySelectorAll('#shareTable tbody tr');
     const mobileCards = document.querySelectorAll('.mobile-share-cards .mobile-card');
     if (!isMovers) {
         tableRows.forEach(tr => { tr.style.display = ''; });
         mobileCards.forEach(card => { card.style.display = ''; });
-    // Clear any pending retry when leaving movers view
-    try { if (window.__moversRetryTimer) { clearTimeout(window.__moversRetryTimer); window.__moversRetryTimer = null; } } catch(_) {}
+        // Clear any pending retry when leaving movers view
+        try { if (window.__moversRetryTimer) { clearTimeout(window.__moversRetryTimer); window.__moversRetryTimer = null; } } catch (_) { }
         return;
     }
     // Recompute movers (fresh live movement) – fallback to snapshot only if recompute fails. Force flag triggers unconditional recompute.
     let moversEntries = [];
     let recomputeFailed = false;
     try { moversEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || []; }
-    catch(e){ console.warn('Movers enforce: fresh compute failed', e); recomputeFailed = true; }
-    const hasActiveThresholds = (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ||
-        (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ||
-        (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ||
-        (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0);
+    catch (e) { console.warn('Movers enforce: fresh compute failed', e); recomputeFailed = true; }
+    const hasActiveThresholds = (typeof globalPercentIncrease === 'number' && globalPercentIncrease > 0) ||
+        (typeof globalDollarIncrease === 'number' && globalDollarIncrease > 0) ||
+        (typeof globalPercentDecrease === 'number' && globalPercentDecrease > 0) ||
+        (typeof globalDollarDecrease === 'number' && globalDollarDecrease > 0);
     if (!hasActiveThresholds) {
         // Purge stale snapshot so clearing thresholds empties movers immediately
-        if (window.__lastMoversSnapshot) { try { delete window.__lastMoversSnapshot; } catch(_) {} }
+        if (window.__lastMoversSnapshot) { try { delete window.__lastMoversSnapshot; } catch (_) { } }
     } else if (!moversEntries.length && window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries) {
         moversEntries = window.__lastMoversSnapshot.entries;
     }
     const codeSet = new Set(moversEntries.map(e => e.code));
-    const userCodes = new Set((allSharesData||[]).map(s => (s && s.shareName ? s.shareName.toUpperCase() : null)).filter(Boolean));
+    const userCodes = new Set((allSharesData || []).map(s => (s && s.shareName ? s.shareName.toUpperCase() : null)).filter(Boolean));
     const effectiveCodes = new Set();
     codeSet.forEach(c => { if (userCodes.has(c)) effectiveCodes.add(c); });
     tableRows.forEach(tr => {
@@ -11133,13 +11141,13 @@ function applyGlobalSummaryFilter(options = {}) {
                 const anyVisible = Array.from(document.querySelectorAll('#shareTable tbody tr,.mobile-share-cards .mobile-card'))
                     .some(el => el.style.display !== 'none');
                 if (stillMovers && !anyVisible) {
-                    try { enforceMoversVirtualView(); } catch(e){ console.warn('Movers retry failed', e); }
+                    try { enforceMoversVirtualView(); } catch (e) { console.warn('Movers retry failed', e); }
                 }
             }, 1200); // allow livePrices / snapshots to populate
         }
     }
     if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
-        try { console.debug('[Movers enforce] totalFresh=', moversEntries.length, 'portfolioMatch=', effectiveCodes.size); } catch(_) {}
+        try { console.debug('[Movers enforce] totalFresh=', moversEntries.length, 'portfolioMatch=', effectiveCodes.size); } catch (_) { }
     }
     // Always emit a lightweight periodic summary (throttled) so user logs show counts even if group/table not expanded
     try {
@@ -11148,7 +11156,7 @@ function applyGlobalSummaryFilter(options = {}) {
             window.__lastMoversEnforceSummaryTs = nowTs;
             console.log('[Movers enforce][summary] fresh=' + moversEntries.length + ' effectiveLocal=' + effectiveCodes.size + ' (visible rows/cards may differ pre-filter render)');
         }
-    } catch(_) {}
+    } catch (_) { }
 }
 
 // DEBUG: Deep consistency checker for Movers virtual watchlist
@@ -11161,13 +11169,13 @@ function debugMoversConsistency(options = {}) {
         let fresh = [];
         if (opts.recompute) {
             try { fresh = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || []; }
-            catch(e){ console.warn('[MoversDebug] recompute failed', e); }
+            catch (e) { console.warn('[MoversDebug] recompute failed', e); }
         } else if (window.__lastMoversSnapshot) {
             fresh = window.__lastMoversSnapshot.entries || [];
         }
-        const freshCodes = fresh.map(e=>e.code).sort();
+        const freshCodes = fresh.map(e => e.code).sort();
         // Snapshot codes
-        const snapCodes = (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries ? window.__lastMoversSnapshot.entries.map(e=>e.code).sort() : []);
+        const snapCodes = (window.__lastMoversSnapshot && window.__lastMoversSnapshot.entries ? window.__lastMoversSnapshot.entries.map(e => e.code).sort() : []);
         // Visible DOM codes (table + mobile) that are currently displayed
         const visibleTable = Array.from(document.querySelectorAll('#shareTable tbody tr'))
             .filter(tr => tr.style.display !== 'none')
@@ -11179,7 +11187,7 @@ function debugMoversConsistency(options = {}) {
             .filter(Boolean);
         const visibleAll = Array.from(new Set([...visibleTable, ...visibleMobile])).sort();
         // Portfolio codes universe
-        const portfolioCodes = (allSharesData||[]).map(s=> s && s.shareName ? s.shareName.toUpperCase() : null).filter(Boolean).sort();
+        const portfolioCodes = (allSharesData || []).map(s => s && s.shareName ? s.shareName.toUpperCase() : null).filter(Boolean).sort();
         // Effective local movers = intersection freshCodes ∩ portfolioCodes
         const effectiveLocal = freshCodes.filter(c => portfolioCodes.includes(c));
         // Diffs
@@ -11200,23 +11208,23 @@ function debugMoversConsistency(options = {}) {
         // Start a collapsed group for debug output
         try {
             console.groupCollapsed(`%c[MoversDebug] Consistency ${now}`, 'color:#3a7bd5;font-weight:600;');
-        } catch(_) {
+        } catch (_) {
             console.log(`[MoversDebug] Consistency ${now}`);
         }
         try {
             console.table(result);
-        } catch(_) {}
+        } catch (_) { }
         // Emit a one-line summary outside the collapsed group so copy/paste of raw console lines captures the key metrics
         try {
             console.log('[MoversDebug][summary] fresh=' + result.freshCount + ' snapshot=' + result.snapshotCount + ' effectiveLocal=' + result.effectiveLocalCount + ' visible=' + result.visibleCount + ' missing=' + result.missingVisible.length + ' extra=' + result.extraVisible.length);
-        } catch(_) {}
+        } catch (_) { }
         if (missingVisible.length || extraVisible.length) {
             console.warn('[MoversDebug] Discrepancy detected: missingVisible=', missingVisible, 'extraVisible=', extraVisible);
         } else {
             console.info('[MoversDebug] No discrepancies.');
         }
         console.groupEnd();
-    } catch(err) {
+    } catch (err) {
         console.error('[MoversDebug] Failed', err);
     }
     return result;
@@ -11224,7 +11232,7 @@ function debugMoversConsistency(options = {}) {
 window.debugMoversConsistency = debugMoversConsistency;
 
 // Hotkey: Alt+Shift+M to dump Movers consistency when in Movers view
-document.addEventListener('keydown', (e)=>{
+document.addEventListener('keydown', (e) => {
     try {
         if (e.altKey && e.shiftKey && e.code === 'KeyM') {
             if (getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers') {
@@ -11233,7 +11241,7 @@ document.addEventListener('keydown', (e)=>{
                 console.info('[MoversDebug] Hotkey pressed but not in Movers view.');
             }
         }
-    } catch(_) {}
+    } catch (_) { }
 }, true);
 
 // NEW: Helper to enable/disable a specific alert for a share
@@ -11255,20 +11263,20 @@ async function toggleAlertEnabled(shareId) {
                 await firestore.setDoc(alertDocRef, { enabled: true, createdAt: firestore.serverTimestamp(), updatedAt: firestore.serverTimestamp() }, { merge: true });
                 currentEnabled = true;
             }
-        } catch(fetchErr) {
+        } catch (fetchErr) {
             console.warn('Alerts: Could not fetch current alert doc for toggle; assuming enabled.', fetchErr);
         }
         const newEnabled = !currentEnabled; // invert
         await firestore.setDoc(alertDocRef, { enabled: newEnabled, updatedAt: firestore.serverTimestamp() }, { merge: true });
-    // Optimistic map update then recompute
-    alertsEnabledMap.set(shareId, newEnabled);
-    try { recomputeTriggeredAlerts(); } catch(e) {}
+        // Optimistic map update then recompute
+        alertsEnabledMap.set(shareId, newEnabled);
+        try { recomputeTriggeredAlerts(); } catch (e) { }
         showCustomAlert(newEnabled ? 'Alert unmuted' : 'Alert muted', 1000);
-    return newEnabled;
+        return newEnabled;
     } catch (e) {
         console.error('Alerts: Failed to toggle enabled for share ' + shareId, e);
         showCustomAlert('Failed to update alert. Please try again.', 1500);
-    throw e;
+        throw e;
     }
 }
 // NEW: Recompute triggered alerts from livePrices + alertsEnabledMap (global portfolio scope)
@@ -11280,7 +11288,7 @@ function recomputeTriggeredAlerts() {
     const lpEntries = Object.entries(livePrices || {});
     const byCode = new Map();
     // Build lookup by several possible identifier fields to be tolerant of varying shapes
-    (allSharesData||[]).forEach(s => {
+    (allSharesData || []).forEach(s => {
         if (!s) return;
         try {
             const pushKey = (k) => { if (k && typeof k === 'string') byCode.set(k.toUpperCase(), s); };
@@ -11290,26 +11298,32 @@ function recomputeTriggeredAlerts() {
             if (s.symbol) pushKey(s.symbol);
             // also accept companyName as a fallback (rare)
             if (s.companyName) pushKey(s.companyName);
-        } catch(_) {}
+        } catch (_) { }
     });
-    
-            const missingMatchCodes = [];
-            lpEntries.forEach(([code, lp]) => {
-                    if (!lp || !lp.targetHit) return; // only shares currently at target
-                    const share = byCode.get(code) || byCode.get(String(code).toUpperCase());
-                    if (!share) {
-                        missingMatchCodes.push(code);
-                        return;
-                    }
-                    const enabledState = alertsEnabledMap.has(share.id) ? alertsEnabledMap.get(share.id) : true;
-                    const clone = { ...share };
-                    if (enabledState) enabled.push(clone); else muted.push(clone);
-                });
+
+    const missingMatchCodes = [];
+    lpEntries.forEach(([code, lp]) => {
+        if (!lp || !lp.targetHit) return; // only shares currently at target
+        const share = byCode.get(code) || byCode.get(String(code).toUpperCase());
+        if (!share) {
+            missingMatchCodes.push(code);
+            return;
+        }
+        // Fix: Exclude hidden shares from alerts
+        const isHidden = (share.isHiddenInPortfolio === true) || (typeof hiddenFromTotalsShareIds !== 'undefined' && hiddenFromTotalsShareIds.has(share.id));
+        if (isHidden) {
+            console.log('[Debug] recomputeTriggeredAlerts: Skipping hidden share', share.shareName, share.id);
+            return;
+        }
+        const enabledState = alertsEnabledMap.has(share.id) ? alertsEnabledMap.get(share.id) : true;
+        const clone = { ...share };
+        if (enabledState) enabled.push(clone); else muted.push(clone);
+    });
     const newEnabled = dedupeSharesById(enabled);
     const newMuted = dedupeSharesById(muted);
     // Build signatures to detect no-op updates
-    const sigEnabled = newEnabled.map(s=>s.id).sort().join(',');
-    const sigMuted = newMuted.map(s=>s.id).sort().join(',');
+    const sigEnabled = newEnabled.map(s => s.id).sort().join(',');
+    const sigMuted = newMuted.map(s => s.id).sort().join(',');
     const prevEnabledSig = recomputeTriggeredAlerts.__lastEnabledSig;
     const prevMutedSig = recomputeTriggeredAlerts.__lastMutedSig;
     if (sigEnabled === prevEnabledSig && sigMuted === prevMutedSig) {
@@ -11320,17 +11334,17 @@ function recomputeTriggeredAlerts() {
     recomputeTriggeredAlerts.__lastMutedSig = sigMuted;
     setSharesAtTargetPrice(newEnabled); // active notifications
     sharesAtTargetPriceMuted = newMuted; // muted notifications
-    try { console.log('[Diag][recomputeTriggeredAlerts] enabledIds:', newEnabled.map(s=>s.id), 'mutedIds:', newMuted.map(s=>s.id)); } catch(_){ }
+    try { console.log('[Diag][recomputeTriggeredAlerts] enabledIds:', newEnabled.map(s => s.id), 'mutedIds:', newMuted.map(s => s.id)); } catch (_) { }
     if (missingMatchCodes.length > 0) {
-        try { console.warn('[Diag][recomputeTriggeredAlerts] livePrices had targetHit for codes with no matching allSharesData entry:', missingMatchCodes.slice(0,20)); } catch(_){}
+        try { console.warn('[Diag][recomputeTriggeredAlerts] livePrices had targetHit for codes with no matching allSharesData entry:', missingMatchCodes.slice(0, 20)); } catch (_) { }
     }
     updateTargetHitBanner();
-    try { enforceTargetHitStyling(); } catch(_) {}
+    try { enforceTargetHitStyling(); } catch (_) { }
     if (!suppressAutoOpen && targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
         const noEnabled = sharesAtTargetPrice.length === 0;
         const noMuted = !sharesAtTargetPriceMuted || sharesAtTargetPriceMuted.length === 0;
         if (noEnabled && noMuted) {
-            try { hideModal(targetHitDetailsModal); } catch(_) {}
+            try { hideModal(targetHitDetailsModal); } catch (_) { }
         } else {
             showTargetHitDetailsModal();
         }
@@ -11474,7 +11488,7 @@ function evaluateGlobalPriceAlerts() {
     let portfolioCount = 0; // number of triggered shares in user's portfolio/watchlists
     // Build quick lookup of portfolio/watchlist codes the user owns
     const userCodes = new Set();
-    (allSharesData||[]).forEach(s => { if (s && s.shareName) userCodes.add(s.shareName.toUpperCase()); });
+    (allSharesData || []).forEach(s => { if (s && s.shareName) userCodes.add(s.shareName.toUpperCase()); });
     if (DEBUG_MODE) console.log('[GlobalAlerts] Evaluating with thresholds', { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease });
     // Helper to eval a single movement
     function evaluateMovement(code, live, prev) {
@@ -11488,16 +11502,16 @@ function evaluateGlobalPriceAlerts() {
         console.log(`[GlobalAlerts] Evaluating ${code}: live=${live}, prev=${prev}, change=${change}, absChange=${absChange}, pct=${pct.toFixed(2)}%`);
         if (change > 0) {
             // OR logic: trigger if EITHER percent OR dollar increase threshold satisfied (first satisfied determines threshold label)
-            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { triggered = true; type='increase'; thresholdHit = globalPercentIncrease + '%'; }
-            else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { triggered = true; type='increase'; thresholdHit = '$' + Number(globalDollarIncrease).toFixed(2); }
+            if (globalPercentIncrease && globalPercentIncrease > 0 && pct >= globalPercentIncrease) { triggered = true; type = 'increase'; thresholdHit = globalPercentIncrease + '%'; }
+            else if (globalDollarIncrease && globalDollarIncrease > 0 && absChange >= globalDollarIncrease) { triggered = true; type = 'increase'; thresholdHit = '$' + Number(globalDollarIncrease).toFixed(2); }
             if (triggered) {
                 increaseCount++;
                 console.log(`[GlobalAlerts] INCREASE TRIGGERED for ${code}: ${thresholdHit}`);
             }
         } else { // decrease
             // OR logic: trigger if EITHER percent OR dollar decrease threshold satisfied
-            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) { triggered = true; type='decrease'; thresholdHit = globalPercentDecrease + '%'; }
-            else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { triggered = true; type='decrease'; thresholdHit = '$' + Number(globalDollarDecrease).toFixed(2); }
+            if (globalPercentDecrease && globalPercentDecrease > 0 && pct >= globalPercentDecrease) { triggered = true; type = 'decrease'; thresholdHit = globalPercentDecrease + '%'; }
+            else if (globalDollarDecrease && globalDollarDecrease > 0 && absChange >= globalDollarDecrease) { triggered = true; type = 'decrease'; thresholdHit = '$' + Number(globalDollarDecrease).toFixed(2); }
             if (triggered) {
                 decreaseCount++;
                 console.log(`[GlobalAlerts] DECREASE TRIGGERED for ${code}: ${thresholdHit}`);
@@ -11515,7 +11529,7 @@ function evaluateGlobalPriceAlerts() {
     // Evaluate user-owned codes (livePrices)
     Object.entries(livePrices || {}).forEach(([code, lp]) => { if (!lp) return; evaluateMovement(code, lp.live, lp.prevClose); });
     // Evaluate external (non-portfolio) collected rows from last fetch
-    (globalExternalPriceRows||[]).forEach(r => { if (r && r.code && !userCodes.has(r.code)) evaluateMovement(r.code, r.live, r.prevClose); });
+    (globalExternalPriceRows || []).forEach(r => { if (r && r.code && !userCodes.has(r.code)) evaluateMovement(r.code, r.live, r.prevClose); });
     const total = increaseCount + decreaseCount;
     console.log(`[GlobalAlerts] Evaluation complete: total=${total}, increase=${increaseCount}, decrease=${decreaseCount}, portfolio=${portfolioCount}, nonPortfolio=${nonPortfolioCodes.size}`);
     if (total > 0) {
@@ -11548,11 +11562,11 @@ function evaluateGlobalPriceAlerts() {
         console.log('[GlobalAlerts] Writing GA_SUMMARY to Firestore:', payload);
         console.log('[GlobalAlerts] nonPortfolioCodes array:', Array.from(nonPortfolioCodes));
         firestore.setDoc(alertDocRef, payload, { merge: true })
-            .then(()=> {
-                console.log('[GlobalAlerts] SUCCESS: Summary upserted. Total='+ total + ' portfolio=' + portfolioCount + ' discover=' + nonPortfolioCodes.size + ' inc=' + increaseCount + ' dec=' + decreaseCount + ' threshold=' + dominantThreshold);
-                logDebug('Global Alerts: Summary upserted. Total='+ total + ' portfolio=' + portfolioCount + ' discover=' + nonPortfolioCodes.size + ' inc=' + increaseCount + ' dec=' + decreaseCount + ' threshold=' + dominantThreshold);
+            .then(() => {
+                console.log('[GlobalAlerts] SUCCESS: Summary upserted. Total=' + total + ' portfolio=' + portfolioCount + ' discover=' + nonPortfolioCodes.size + ' inc=' + increaseCount + ' dec=' + decreaseCount + ' threshold=' + dominantThreshold);
+                logDebug('Global Alerts: Summary upserted. Total=' + total + ' portfolio=' + portfolioCount + ' discover=' + nonPortfolioCodes.size + ' inc=' + increaseCount + ' dec=' + decreaseCount + ' threshold=' + dominantThreshold);
             })
-            .catch(e=> {
+            .catch(e => {
                 console.error('[GlobalAlerts] ERROR: summary upsert failed', e);
                 console.error('Global Alerts: summary upsert failed', e);
             });
@@ -11579,9 +11593,10 @@ async function saveGlobalAlertSettingsDirectional(settings) {
         globalDollarAlert: del,
         globalDirectionalVersion: Date.now() // bump a version so clients can detect freshness
     };
-    try { await firestore.setDoc(userProfileDocRef, toSave, { merge: true });
+    try {
+        await firestore.setDoc(userProfileDocRef, toSave, { merge: true });
         logDebug('Global Alerts: Saved directional settings (normalized/deleteField applied) ' + JSON.stringify(toSave));
-        try { localStorage.setItem('globalDirectionalVersion', String(toSave.globalDirectionalVersion)); } catch(e){}
+        try { localStorage.setItem('globalDirectionalVersion', String(toSave.globalDirectionalVersion)); } catch (e) { }
         // Persist cleared sentinel so a hard reload before Firestore cache invalidation still respects cleared state
         try {
             const snapshotCache = {
@@ -11596,9 +11611,9 @@ async function saveGlobalAlertSettingsDirectional(settings) {
                 at: toSave.globalDirectionalVersion
             };
             localStorage.setItem('globalDirectionalSnapshot', JSON.stringify(snapshotCache));
-        } catch(e){}
+        } catch (e) { }
     }
-    catch(e){ console.error('Global Alerts: save directional failed', e); }
+    catch (e) { console.error('Global Alerts: save directional failed', e); }
 
     // Persist central settings via server-side sync only. Client-side direct writes to the
     // central document are intentionally removed because Firestore security rules prevent
@@ -11608,20 +11623,20 @@ async function saveGlobalAlertSettingsDirectional(settings) {
     try {
         const uid = currentUserId || (window.firebase && window.firebase.auth && window.firebase.auth().currentUser && window.firebase.auth().currentUser.uid);
         if (uid) {
-            window.triggerServerSideGlobalSettingsSync(uid).then((res)=>{
+            window.triggerServerSideGlobalSettingsSync(uid).then((res) => {
                 if (!res || !res.ok) {
                     // Keep non-actionable errors out of the regular console; surface only in debug mode
-                    try { debugLog && debugLog('[SyncTrigger] server-side sync response', res); } catch(_) {}
+                    try { debugLog && debugLog('[SyncTrigger] server-side sync response', res); } catch (_) { }
                 } else {
-                    try { debugLog && debugLog('[SyncTrigger] server-side sync succeeded', res); } catch(_) {}
+                    try { debugLog && debugLog('[SyncTrigger] server-side sync succeeded', res); } catch (_) { }
                 }
-            }).catch((err)=>{
-                try { debugLog && debugLog('[SyncTrigger] server-side sync failed', err); } catch(_) {}
+            }).catch((err) => {
+                try { debugLog && debugLog('[SyncTrigger] server-side sync failed', err); } catch (_) { }
             });
         } else {
-            try { debugLog && debugLog('[SyncTrigger] No user id available for server-side sync'); } catch(_) {}
+            try { debugLog && debugLog('[SyncTrigger] No user id available for server-side sync'); } catch (_) { }
         }
-    } catch(e) { /* intentionally quiet */ }
+    } catch (e) { /* intentionally quiet */ }
 }
 
 function applyLoadedGlobalAlertSettings(settings) {
@@ -11632,9 +11647,9 @@ function applyLoadedGlobalAlertSettings(settings) {
             const snapRaw = localStorage.getItem('globalDirectionalSnapshot');
             if (snapRaw) {
                 const snap = JSON.parse(snapRaw);
-                if (snap && snap.pInc==null && snap.dInc==null && snap.pDec==null && snap.dDec==null && snap.minP==null) snapshotClearedAll = true;
+                if (snap && snap.pInc == null && snap.dInc == null && snap.pDec == null && snap.dDec == null && snap.minP == null) snapshotClearedAll = true;
             }
-        } catch(_) {}
+        } catch (_) { }
         if (!snapshotClearedAll) {
             // Migrate legacy single threshold to increase (up) thresholds if new not present
             if (settings.globalPercentIncrease == null && typeof settings.globalPercentAlert === 'number') settings.globalPercentIncrease = settings.globalPercentAlert;
@@ -11662,12 +11677,12 @@ function applyLoadedGlobalAlertSettings(settings) {
                 } else {
                     hiLoMinimumMarketCapInput.value = '';
                 }
-            } catch(_) { hiLoMinimumMarketCapInput.value = hiLoMinimumMarketCap ?? ''; }
+            } catch (_) { hiLoMinimumMarketCapInput.value = hiLoMinimumMarketCap ?? ''; }
             // Also seed the live hint
             try {
                 const hint = document.getElementById('hiLoMinCapHint');
                 if (hint) hint.textContent = (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) ? ('$' + formatCompactNumber(hiLoMinimumMarketCap, { maximumFractionDigits: 1 })) : '';
-            } catch(_) {}
+            } catch (_) { }
         }
         if (emailAlertsEnabledInput) emailAlertsEnabledInput.checked = !!emailAlertsEnabled;
         // Sync segmented email toggle to loaded value
@@ -11680,9 +11695,9 @@ function applyLoadedGlobalAlertSettings(settings) {
                 onBtn.setAttribute('aria-pressed', String(!!emailAlertsEnabled));
                 offBtn.setAttribute('aria-pressed', String(!emailAlertsEnabled));
             }
-        } catch(_) {}
+        } catch (_) { }
         updateGlobalAlertsSettingsSummary();
-    } catch(e){ console.warn('Global Alerts: apply directional settings failed', e); }
+    } catch (e) { console.warn('Global Alerts: apply directional settings failed', e); }
 }
 
 // Test function to verify global alert logic
@@ -11814,7 +11829,7 @@ function testGlobalAlertsNow() {
     console.log('[TEST] Calling evaluateGlobalPriceAlerts...');
     try {
         evaluateGlobalPriceAlerts();
-    } catch(e) {
+    } catch (e) {
         console.error('[TEST] Error during evaluation:', e);
     }
 
@@ -11852,7 +11867,7 @@ function testDiscoverModal() {
 
 // Global wrapper for opening discover modal (for testing)
 if (typeof window !== 'undefined') {
-    window.openGlobalDiscoverModal = function(summaryData) {
+    window.openGlobalDiscoverModal = function (summaryData) {
         console.log('[GLOBAL] Opening discover modal with summary:', summaryData);
         // Call showTargetHitDetailsModal which contains openDiscoverModal
         if (typeof showTargetHitDetailsModal === 'function') {
@@ -11872,7 +11887,7 @@ if (typeof window !== 'undefined') {
     };
 
     // Function to load ALL ASX codes from CSV
-    window.loadAllAsxCodes = async function() {
+    window.loadAllAsxCodes = async function () {
         try {
             console.log('[GLOBAL] Loading ALL ASX codes from CSV...');
             const response = await fetch('./asx_codes.csv');
@@ -11918,7 +11933,7 @@ if (typeof window !== 'undefined') {
     };
 
     // Function to fetch prices for ALL ASX codes (for global alerts)
-    window.fetchAllAsxPrices = async function(allAsxCodes) {
+    window.fetchAllAsxPrices = async function (allAsxCodes) {
         try {
             console.log('[GLOBAL] Fetching prices for ALL ASX codes...');
 
@@ -11938,7 +11953,7 @@ if (typeof window !== 'undefined') {
 
             for (let i = 0; i < allCodes.length; i += batchSize) {
                 const batch = allCodes.slice(i, i + batchSize);
-                console.log(`[GLOBAL] Fetching batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(allCodes.length/batchSize)} (${batch.length} codes)...`);
+                console.log(`[GLOBAL] Fetching batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(allCodes.length / batchSize)} (${batch.length} codes)...`);
 
                 const qs = new URLSearchParams();
                 qs.set('_ts', Date.now().toString());
@@ -12006,7 +12021,7 @@ if (typeof window !== 'undefined') {
     window.testDiscoverModal = testDiscoverModal;
 
     // Debug function to check 52-week low alerts state
-    window.debug52WeekLowAlerts = function() {
+    window.debug52WeekLowAlerts = function () {
         console.log('[DEBUG] 52-week low alerts state:');
         console.log('- Total alerts:', window.sharesAt52WeekLow ? window.sharesAt52WeekLow.length : 0);
         console.log('- Muted map:', window.__low52MutedMap);
@@ -12024,7 +12039,7 @@ if (typeof window !== 'undefined') {
     };
 
     // Test function for 52-week low alerts
-    window.test52WeekLowAlerts = async function() {
+    window.test52WeekLowAlerts = async function () {
         console.log('[TEST] Testing 52-week low alerts...');
         window.__isTesting52WeekLowAlerts = true; // Set flag
 
@@ -12043,7 +12058,7 @@ if (typeof window !== 'undefined') {
             ['FBR', 'BOT', 'GEM'].forEach(code => {
                 delete window.__low52MutedMap[code + '_low'];
             });
-            try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch {}
+            try { sessionStorage.setItem('low52MutedMap', JSON.stringify(window.__low52MutedMap)); } catch { }
         }
 
         // Force re-evaluation of all shares for 52-week lows
@@ -12056,17 +12071,17 @@ if (typeof window !== 'undefined') {
         sharesLocal.forEach(share => {
             const code = (share.shareName || '').toUpperCase();
             const lpObj = livePricesLocal[code];
-            
+
             if (!lpObj) {
                 console.log(`[TEST] No live price data for ${code}`);
                 return;
             }
-            
+
             if (lpObj.live == null || isNaN(lpObj.live)) {
                 console.log(`[TEST] Invalid live price for ${code}: ${lpObj.live}`);
                 return;
             }
-            
+
             if (lpObj.Low52 == null || isNaN(lpObj.Low52)) {
                 console.log(`[TEST] Invalid Low52 for ${code}: ${lpObj.Low52}`);
                 return;
@@ -12109,7 +12124,7 @@ if (typeof window !== 'undefined') {
         if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner();
         if (typeof window.recomputeTriggeredAlerts === 'function') window.recomputeTriggeredAlerts();
 
-                        console.log(`[TEST] 52-week low test complete. Found ${window.sharesAt52WeekLow.length} alerts (including test card)`);
+        console.log(`[TEST] 52-week low test complete. Found ${window.sharesAt52WeekLow.length} alerts (including test card)`);
 
         // Debug: Log all alerts with their properties
         console.log('[TEST] Current alerts in sharesAt52WeekLow:');
@@ -12121,7 +12136,7 @@ if (typeof window !== 'undefined') {
         // Add a watcher to detect when the array gets modified
         const originalArray = [...window.sharesAt52WeekLow];
         console.log('[TEST] Starting array watcher with original array:', originalArray.map(a => a.code));
-        
+
         const checkArray = () => {
             if (window.sharesAt52WeekLow.length !== originalArray.length) {
                 console.log(`[TEST] ARRAY MODIFIED! Was ${originalArray.length}, now ${window.sharesAt52WeekLow.length}`);
@@ -12130,58 +12145,58 @@ if (typeof window !== 'undefined') {
                 console.log('[TEST] Stack trace:', new Error().stack);
             }
         };
-        
+
         // Check every 50ms for 5 seconds
         const interval = setInterval(checkArray, 50);
         setTimeout(() => clearInterval(interval), 5000);
 
-                    // Force open the notifications modal to show the alerts
-            if (typeof window.showTargetHitDetailsModal === 'function') {
-                console.log('[TEST] Opening notifications modal to display 52-week low alerts...');
-                console.log('[TEST] About to call showTargetHitDetailsModal with data:', {
-                    sharesAt52WeekLow: window.sharesAt52WeekLow,
-                    length: window.sharesAt52WeekLow ? window.sharesAt52WeekLow.length : 0
-                });
+        // Force open the notifications modal to show the alerts
+        if (typeof window.showTargetHitDetailsModal === 'function') {
+            console.log('[TEST] Opening notifications modal to display 52-week low alerts...');
+            console.log('[TEST] About to call showTargetHitDetailsModal with data:', {
+                sharesAt52WeekLow: window.sharesAt52WeekLow,
+                length: window.sharesAt52WeekLow ? window.sharesAt52WeekLow.length : 0
+            });
 
-                // Add a small delay to ensure the array doesn't get cleared
+            // Add a small delay to ensure the array doesn't get cleared
+            setTimeout(() => {
+                console.log('[TEST] About to call modal - sharesAt52WeekLow length:', window.sharesAt52WeekLow ? window.sharesAt52WeekLow.length : 0);
+
+                // Create a backup of the array before calling modal
+                const backupArray = [...window.sharesAt52WeekLow];
+                console.log('[TEST] Created backup array with length:', backupArray.length);
+
+                // Call the modal
+                window.showTargetHitDetailsModal({ explicit: true, userInitiated: true, allowDuringInitialLoad: true });
+
+                // Update the notification banner AFTER the modal is opened
                 setTimeout(() => {
-                    console.log('[TEST] About to call modal - sharesAt52WeekLow length:', window.sharesAt52WeekLow ? window.sharesAt52WeekLow.length : 0);
+                    try {
+                        console.log('[TEST] Updating notification banner - sharesAt52WeekLow length:', window.sharesAt52WeekLow ? window.sharesAt52WeekLow.length : 0);
+                        updateTargetHitBanner();
+                        console.log('[TEST] Updated notification banner with new count');
+                    } catch (e) {
+                        console.warn('[TEST] Failed to update notification banner:', e);
+                    }
+                }, 200);
 
-                    // Create a backup of the array before calling modal
-                    const backupArray = [...window.sharesAt52WeekLow];
-                    console.log('[TEST] Created backup array with length:', backupArray.length);
+                // Check if array was modified after modal call
+                setTimeout(() => {
+                    if (window.sharesAt52WeekLow.length !== backupArray.length) {
+                        console.log('[TEST] Array was modified after modal call! Restoring backup...');
+                        console.log('[TEST] Was:', backupArray.length, 'Now:', window.sharesAt52WeekLow.length);
+                        window.sharesAt52WeekLow = [...backupArray];
+                        console.log('[TEST] Restored array, now calling modal again...');
+                        window.showTargetHitDetailsModal({ explicit: true, userInitiated: true, allowDuringInitialLoad: true });
+                    }
+                }, 50);
+            }, 100);
 
-                    // Call the modal
-                    window.showTargetHitDetailsModal({ explicit: true, userInitiated: true, allowDuringInitialLoad: true });
-
-                    // Update the notification banner AFTER the modal is opened
-                    setTimeout(() => {
-                        try { 
-                            console.log('[TEST] Updating notification banner - sharesAt52WeekLow length:', window.sharesAt52WeekLow ? window.sharesAt52WeekLow.length : 0);
-                            updateTargetHitBanner(); 
-                            console.log('[TEST] Updated notification banner with new count');
-                        } catch(e) { 
-                            console.warn('[TEST] Failed to update notification banner:', e); 
-                        }
-                    }, 200);
-
-                    // Check if array was modified after modal call
-                    setTimeout(() => {
-                        if (window.sharesAt52WeekLow.length !== backupArray.length) {
-                            console.log('[TEST] Array was modified after modal call! Restoring backup...');
-                            console.log('[TEST] Was:', backupArray.length, 'Now:', window.sharesAt52WeekLow.length);
-                            window.sharesAt52WeekLow = [...backupArray];
-                            console.log('[TEST] Restored array, now calling modal again...');
-                            window.showTargetHitDetailsModal({ explicit: true, userInitiated: true, allowDuringInitialLoad: true });
-                        }
-                    }, 50);
-                }, 100);
-
-        // Reset flag after a short delay to ensure modal has time to render
-        setTimeout(() => {
-            window.__isTesting52WeekLowAlerts = false;
-            console.log('[TEST] Testing flag reset after modal render');
-        }, 1000);
+            // Reset flag after a short delay to ensure modal has time to render
+            setTimeout(() => {
+                window.__isTesting52WeekLowAlerts = false;
+                console.log('[TEST] Testing flag reset after modal render');
+            }, 1000);
         } else {
             console.error('[TEST] showTargetHitDetailsModal function not available!');
             window.__isTesting52WeekLowAlerts = false; // Reset flag if modal not available
@@ -12192,23 +12207,23 @@ if (typeof window !== 'undefined') {
     // Removed function to remove the CBA test card after testing
 
     // Target Hit Notifications Test Functions
-    window.testTargetHitNotifications = function() {
+    window.testTargetHitNotifications = function () {
         console.log('[TEST] Testing target hit notifications...');
-        
+
         // Check if we have shares with target prices
-        const sharesWithTargets = allSharesData.filter(share => 
+        const sharesWithTargets = allSharesData.filter(share =>
             share && share.targetPrice && !isNaN(parseFloat(share.targetPrice))
         );
-        
+
         console.log(`[TEST] Found ${sharesWithTargets.length} shares with target prices:`);
         sharesWithTargets.forEach(share => {
             console.log(`[TEST] - ${share.shareName}: Target $${share.targetPrice} (${share.targetDirection || 'below'})`);
         });
-        
+
         // Check live prices for these shares
         const livePrices = getLivePrices();
         console.log(`[TEST] Live prices available for ${Object.keys(livePrices).length} shares`);
-        
+
         // Check which shares are currently at target
         const sharesAtTarget = [];
         sharesWithTargets.forEach(share => {
@@ -12223,9 +12238,9 @@ if (typeof window !== 'undefined') {
                 console.log(`[TEST] ⚠️ ${code}: No live price data`);
             }
         });
-        
+
         console.log(`[TEST] Target hit test complete. Found ${sharesAtTarget.length} shares at target`);
-        
+
         // Force recompute and show modal
         try {
             if (typeof window.recomputeTriggeredAlerts === 'function') {
@@ -12234,22 +12249,22 @@ if (typeof window !== 'undefined') {
             } else {
                 console.error('[TEST] recomputeTriggeredAlerts function not found!');
             }
-            
+
             if (typeof window.showTargetHitDetailsModal === 'function') {
                 window.showTargetHitDetailsModal({ explicit: true, userInitiated: true, allowDuringInitialLoad: true });
                 console.log('[TEST] Opened target hit details modal');
             }
-        } catch(e) {
+        } catch (e) {
             console.error('[TEST] Error in target hit test:', e);
         }
     };
 
-    window.debugTargetHitState = function() {
+    window.debugTargetHitState = function () {
         console.log('[DEBUG] Target Hit State Debug:');
         console.log('[DEBUG] sharesAtTargetPrice:', sharesAtTargetPrice);
         console.log('[DEBUG] sharesAtTargetPriceMuted:', sharesAtTargetPriceMuted);
         console.log('[DEBUG] livePrices keys:', Object.keys(livePrices || {}));
-        console.log('[DEBUG] livePrices with targetHit:', Object.entries(livePrices || {}).filter(([k,v]) => v && v.targetHit));
+        console.log('[DEBUG] livePrices with targetHit:', Object.entries(livePrices || {}).filter(([k, v]) => v && v.targetHit));
         console.log('[DEBUG] alertsEnabledMap:', alertsEnabledMap);
         console.log('[DEBUG] allSharesData with targets:', allSharesData.filter(s => s && s.targetPrice));
     };
@@ -12258,10 +12273,10 @@ if (typeof window !== 'undefined') {
 // Helper: are any directional thresholds currently active?
 function isDirectionalThresholdsActive() {
     return !!(
-        (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ||
-        (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ||
-        (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ||
-        (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0)
+        (typeof globalPercentIncrease === 'number' && globalPercentIncrease > 0) ||
+        (typeof globalDollarIncrease === 'number' && globalDollarIncrease > 0) ||
+        (typeof globalPercentDecrease === 'number' && globalPercentDecrease > 0) ||
+        (typeof globalDollarDecrease === 'number' && globalDollarDecrease > 0)
     );
 }
 
@@ -12290,7 +12305,7 @@ function updateGlobalAlertsSettingsSummary() {
         if (elHiLoMinPrice) elHiLoMinPrice.textContent = (typeof hiLoMinimumPrice === 'number' && hiLoMinimumPrice > 0) ? ('$' + Number(hiLoMinimumPrice).toFixed(2)) : 'Off';
         if (elHiLoMinCap) elHiLoMinCap.textContent = (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) ? ('$' + formatCompactNumber(hiLoMinimumMarketCap, { maximumFractionDigits: 1 })) : 'Off';
         if (elEmail) elEmail.textContent = emailAlertsEnabled ? 'On' : 'Off';
-    } catch(_) {}
+    } catch (_) { }
 }
 
 // Modal wiring after DOMContentLoaded
@@ -12339,7 +12354,7 @@ function initGlobalAlertsUI(force) {
             if (typeof hiLoMinimumMarketCap === 'number' && hiLoMinimumMarketCap > 0) {
                 hiLoMinimumMarketCapInput.value = formatCompactCurrency(hiLoMinimumMarketCap);
             }
-        } catch(_) {}
+        } catch (_) { }
         hiLoMinimumMarketCapInput.addEventListener('focus', () => {
             // Show raw number without formatting for easy editing
             try {
@@ -12349,7 +12364,7 @@ function initGlobalAlertsUI(force) {
                     const parsed = parseCompactCurrency(hiLoMinimumMarketCapInput.value);
                     hiLoMinimumMarketCapInput.value = parsed ? String(Math.trunc(parsed)) : '';
                 }
-            } catch(_) {}
+            } catch (_) { }
         });
         hiLoMinimumMarketCapInput.addEventListener('blur', () => {
             const parsed = parseCompactCurrency(hiLoMinimumMarketCapInput.value);
@@ -12358,7 +12373,7 @@ function initGlobalAlertsUI(force) {
             try {
                 const hint = document.getElementById('hiLoMinCapHint');
                 if (hint) hint.textContent = parsed ? formatCompactCurrency(parsed) : '';
-            } catch(_) {}
+            } catch (_) { }
         });
         hiLoMinimumMarketCapInput.addEventListener('input', () => {
             const parsed = parseCompactCurrency(hiLoMinimumMarketCapInput.value);
@@ -12366,7 +12381,7 @@ function initGlobalAlertsUI(force) {
             try {
                 const hint = document.getElementById('hiLoMinCapHint');
                 if (hint) hint.textContent = parsed ? formatCompactCurrency(parsed) : '';
-            } catch(_) {}
+            } catch (_) { }
         });
     }
     function setEmailToggleUI(isOn) {
@@ -12386,10 +12401,11 @@ function initGlobalAlertsUI(force) {
     }
     if (globalAlertsBtn && globalAlertsModal) {
         globalAlertsBtn.addEventListener('click', () => {
-            try { showModal(globalAlertsModal); try { scrollMainToTop(); } catch(_) {} if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(e){ console.error('Global Alerts: failed to open modal', e);} });
+            try { showModal(globalAlertsModal); try { scrollMainToTop(); } catch (_) { } if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch (e) { console.error('Global Alerts: failed to open modal', e); }
+        });
     }
     if (closeGlobalAlertsBtn && globalAlertsModal) {
-        closeGlobalAlertsBtn.addEventListener('click', (e) => { e.preventDefault(); try { hideModal(globalAlertsModal); } catch(e){} });
+        closeGlobalAlertsBtn.addEventListener('click', (e) => { e.preventDefault(); try { hideModal(globalAlertsModal); } catch (e) { } });
     }
     if (saveGlobalAlertsBtn) {
         saveGlobalAlertsBtn.addEventListener('click', async (e) => {
@@ -12403,7 +12419,7 @@ function initGlobalAlertsUI(force) {
             const hiLoMinCapRaw = (typeof parseCompactCurrency === 'function') ? parseCompactCurrency(hiLoMinimumMarketCapInput?.value || '') : parseFloat(hiLoMinimumMarketCapInput?.value || '');
             const emailToggle = !!(emailAlertsEnabledInput && emailAlertsEnabledInput.checked);
             // Validation: disallow negative inputs; clamp to null
-            function norm(v){ return (!isNaN(v) && v > 0) ? v : null; }
+            function norm(v) { return (!isNaN(v) && v > 0) ? v : null; }
             const before = { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease };
             globalPercentIncrease = (!isNaN(pctIncRaw) && pctIncRaw > 0) ? pctIncRaw : null;
             globalDollarIncrease = (!isNaN(dolIncRaw) && dolIncRaw > 0) ? dolIncRaw : null;
@@ -12422,31 +12438,31 @@ function initGlobalAlertsUI(force) {
             if (hiLoMinimumPriceInput && hiLoMinimumPrice === null) hiLoMinimumPriceInput.value = '';
             if (hiLoMinimumMarketCapInput && hiLoMinimumMarketCap === null) hiLoMinimumMarketCapInput.value = '';
             if (emailAlertsEnabledInput) emailAlertsEnabledInput.checked = !!emailAlertsEnabled;
-            try { setEmailToggleUI(!!emailAlertsEnabled); } catch(_) {}
+            try { setEmailToggleUI(!!emailAlertsEnabled); } catch (_) { }
             const after = { globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease };
-            try { console.log('[GlobalAlerts][save] thresholds changed', { before, after, min: globalMinimumPrice }); } catch(_) {}
+            try { console.log('[GlobalAlerts][save] thresholds changed', { before, after, min: globalMinimumPrice }); } catch (_) { }
             // Edge case assist: If only decrease thresholds now exist, ensure increase ones are null (stale UI race)
             if (!globalPercentIncrease && !globalDollarIncrease && (globalPercentDecrease || globalDollarDecrease)) {
                 // Forcefully null (already) but log for clarity
-                try { console.log('[GlobalAlerts][save] Increase side cleared; operating in DECREASE-ONLY mode.'); } catch(_) {}
+                try { console.log('[GlobalAlerts][save] Increase side cleared; operating in DECREASE-ONLY mode.'); } catch (_) { }
             }
             await saveGlobalAlertSettingsDirectional({ globalPercentIncrease, globalDollarIncrease, globalPercentDecrease, globalDollarDecrease, globalMinimumPrice, hiLoMinimumPrice, hiLoMinimumMarketCap, emailAlertsEnabled });
             showCustomAlert('Global alert settings saved', 1200);
-            try { hideModal(globalAlertsModal); } catch(e){}
+            try { hideModal(globalAlertsModal); } catch (e) { }
             updateGlobalAlertsSettingsSummary();
-            
+
             // Clear cached results when thresholds change to force fresh evaluation
             try {
                 if (db && currentUserId && firestore) {
                     const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
                     const summaryRef = firestore.doc(alertsCol, 'GA_SUMMARY');
                     const comprehensiveRef = firestore.doc(alertsCol, 'GA_SUMMARY_COMPREHENSIVE');
-                    await firestore.deleteDoc(summaryRef).catch(()=>{});
-                    await firestore.deleteDoc(comprehensiveRef).catch(()=>{});
+                    await firestore.deleteDoc(summaryRef).catch(() => { });
+                    await firestore.deleteDoc(comprehensiveRef).catch(() => { });
                     globalAlertSummary = null; // local cache clear
                     console.log('[GlobalAlerts] Cleared cached results due to threshold changes');
                 }
-            } catch(delErr) { console.warn('Global Alerts: failed to clear cached results after threshold change', delErr); }
+            } catch (delErr) { console.warn('Global Alerts: failed to clear cached results after threshold change', delErr); }
             // If all thresholds cleared, also clear summary doc counts by re-evaluating (it will early return)
             // Auto-refresh evaluation after saving settings so summary & counts reflect immediately
             try {
@@ -12461,7 +12477,7 @@ function initGlobalAlertsUI(force) {
                         const freshEntries = applyGlobalSummaryFilter({ silent: true, computeOnly: true }) || [];
                         // Build a local GLOBAL_MOVERS projection so the modal can render immediately without waiting for central doc
                         try {
-                            const ups = freshEntries.filter(e => (e.direction||'').toLowerCase() === 'up').map(e => ({
+                            const ups = freshEntries.filter(e => (e.direction || '').toLowerCase() === 'up').map(e => ({
                                 code: e.code,
                                 live: e.live,
                                 prevClose: e.prev,
@@ -12469,7 +12485,7 @@ function initGlobalAlertsUI(force) {
                                 change: e.change,
                                 direction: 'up'
                             }));
-                            const downs = freshEntries.filter(e => (e.direction||'').toLowerCase() === 'down').map(e => ({
+                            const downs = freshEntries.filter(e => (e.direction || '').toLowerCase() === 'down').map(e => ({
                                 code: e.code,
                                 live: e.live,
                                 prevClose: e.prev,
@@ -12486,50 +12502,50 @@ function initGlobalAlertsUI(force) {
                                 totalCount: ups.length + downs.length,
                                 thresholds: null
                             };
-                            try { window.globalMovers = gmLocal; } catch(_) {}
-                            try { globalMovers = gmLocal; } catch(_) {}
-                        } catch(_) {}
+                            try { window.globalMovers = gmLocal; } catch (_) { }
+                            try { globalMovers = gmLocal; } catch (_) { }
+                        } catch (_) { }
                     }
-                } catch(_) {}
+                } catch (_) { }
                 // Immediately recompute centralized movers filtering with the new thresholds
-                try { if (typeof window.recomputeGlobalMoversFiltered === 'function') window.recomputeGlobalMoversFiltered({ log: false }); } catch(_) {}
+                try { if (typeof window.recomputeGlobalMoversFiltered === 'function') window.recomputeGlobalMoversFiltered({ log: false }); } catch (_) { }
                 // Refresh banner counts to reflect new effective thresholds right away
-                try { if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner(); } catch(_) {}
+                try { if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner(); } catch (_) { }
                 // If Notifications modal is currently open, re-render it so explainer text and counts update instantly
                 try {
                     const modalOpen = (typeof targetHitDetailsModal !== 'undefined' && targetHitDetailsModal && targetHitDetailsModal.style && targetHitDetailsModal.style.display !== 'none');
                     if (modalOpen && typeof showTargetHitDetailsModal === 'function') {
                         showTargetHitDetailsModal({ explicit: true, userInitiated: true });
                     }
-                } catch(_) {}
-            } catch(err) { console.warn('Global Alerts: post-save refresh failed', err); }
+                } catch (_) { }
+            } catch (err) { console.warn('Global Alerts: post-save refresh failed', err); }
             // Run directional diagnostics immediately after save for user transparency
-            try { runDirectionalThresholdDiagnostics(); } catch(diagErr){ console.warn('Global Alerts: diagnostics failed', diagErr); }
+            try { runDirectionalThresholdDiagnostics(); } catch (diagErr) { console.warn('Global Alerts: diagnostics failed', diagErr); }
             // If all thresholds cleared, clear movers snapshot & refresh movers view immediately
             const clearedAll = !globalPercentIncrease && !globalDollarIncrease && !globalPercentDecrease && !globalDollarDecrease;
             if (clearedAll) {
-                try { delete window.__lastMoversSnapshot; } catch(_) {}
+                try { delete window.__lastMoversSnapshot; } catch (_) { }
                 // Proactively delete GA_SUMMARY docs so listener emits null (prevents stale global counts)
                 try {
                     if (db && currentUserId && firestore) {
                         const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
                         const summaryRef = firestore.doc(alertsCol, 'GA_SUMMARY');
                         const comprehensiveRef = firestore.doc(alertsCol, 'GA_SUMMARY_COMPREHENSIVE');
-                        await firestore.deleteDoc(summaryRef).catch(()=>{});
-                        await firestore.deleteDoc(comprehensiveRef).catch(()=>{});
+                        await firestore.deleteDoc(summaryRef).catch(() => { });
+                        await firestore.deleteDoc(comprehensiveRef).catch(() => { });
                         globalAlertSummary = null; // local cache clear
                         console.log('[GlobalAlerts] Cleared both GA_SUMMARY and GA_SUMMARY_COMPREHENSIVE');
                     }
-                } catch(delErr) { console.warn('Global Alerts: failed to delete GA_SUMMARY docs after clear', delErr); }
+                } catch (delErr) { console.warn('Global Alerts: failed to delete GA_SUMMARY docs after clear', delErr); }
                 // Hide any open target hit modal if it only contained global summary
                 try {
                     const onlyGlobal = sharesAtTargetPrice.length === 0 && (!sharesAtTargetPriceMuted || !sharesAtTargetPriceMuted.length);
                     if (onlyGlobal && targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') hideModal(targetHitDetailsModal);
-                } catch(_) {}
+                } catch (_) { }
                 // Recompute banner (will drop globalSummaryCount to zero)
-                try { updateTargetHitBanner(); } catch(_) {}
+                try { updateTargetHitBanner(); } catch (_) { }
                 if (currentSelectedWatchlistIds && currentSelectedWatchlistIds[0] === '__movers') {
-                    try { enforceMoversVirtualView(true); } catch(e2){ console.warn('Movers refresh after clear failed', e2); }
+                    try { enforceMoversVirtualView(true); } catch (e2) { console.warn('Movers refresh after clear failed', e2); }
                     showCustomAlert('Directional thresholds cleared – Movers list & global movers reset', 1600);
                 } else {
                     showCustomAlert('Directional thresholds cleared', 1200);
@@ -12546,56 +12562,56 @@ function initGlobalAlertsUI(force) {
             };
             // set initial and sync segmented buttons with hidden checkbox
             updateEmailClass();
-            try { setEmailToggleUI(!!emailAlertsEnabledInput.checked); } catch(_) {}
+            try { setEmailToggleUI(!!emailAlertsEnabledInput.checked); } catch (_) { }
             emailAlertsEnabledInput.addEventListener('change', updateEmailClass);
         }
-    } catch(e) { console.warn('GlobalAlerts: failed to bind email toggle class', e); }
+    } catch (e) { console.warn('GlobalAlerts: failed to bind email toggle class', e); }
 
-// Diagnostics: Inspect each live price vs current directional thresholds to detect incorrect triggering
-function runDirectionalThresholdDiagnostics(options={}) {
-    if (!livePrices) { console.warn('[DiagDirectional] livePrices unavailable'); return null; }
-    const results = [];
-    const hasUp = (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) || (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0);
-    const hasDown = (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) || (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0);
-    Object.entries(livePrices).forEach(([code, lp])=>{
-        if(!lp || lp.live==null || lp.prevClose==null) return;
-        const change = lp.live - lp.prevClose;
-        if(change===0) return;
-        const pctSigned = lp.prevClose!==0 ? (change / lp.prevClose)*100 : 0;
-        const pctMag = Math.abs(pctSigned);
-        const upQualified = hasUp && ((globalPercentIncrease && pctSigned >= globalPercentIncrease) || (globalDollarIncrease && change >= globalDollarIncrease));
-        const downQualified = hasDown && ((globalPercentDecrease && pctMag >= globalPercentDecrease && change < 0) || (globalDollarDecrease && Math.abs(change) >= globalDollarDecrease && change < 0));
-        // Detect misclassification: positive change counted only by decrease side or vice versa
-        const potentialBug = (change>0 && downQualified && !upQualified) || (change<0 && upQualified && !downQualified);
-        if (upQualified || downQualified || potentialBug) {
-            results.push({ code, live: lp.live, prev: lp.prevClose, change, pctSigned: +pctSigned.toFixed(2), dir: change>0?'up':'down', upQualified, downQualified, potentialBug });
-        }
-    });
-    try {
-        const summary = {
-            thresholds: { upPct: globalPercentIncrease, upDol: globalDollarIncrease, downPct: globalPercentDecrease, downDol: globalDollarDecrease },
-            upCount: results.filter(r=>r.upQualified && r.dir==='up').length,
-            downCount: results.filter(r=>r.downQualified && r.dir==='down').length,
-            potentialBugCount: results.filter(r=>r.potentialBug).length
-        };
-        console.groupCollapsed('%c[DiagDirectional] Threshold evaluation','color:#2d6cdf;font-weight:600;');
-        console.table(results);
-        console.log('[DiagDirectional][summary]', summary);
-        if (summary.potentialBugCount>0) console.warn('[DiagDirectional] Potential misclassification detected.');
-        console.groupEnd();
-    } catch(_) {}
-    return results;
-}
-window.runDirectionalThresholdDiagnostics = runDirectionalThresholdDiagnostics;
+    // Diagnostics: Inspect each live price vs current directional thresholds to detect incorrect triggering
+    function runDirectionalThresholdDiagnostics(options = {}) {
+        if (!livePrices) { console.warn('[DiagDirectional] livePrices unavailable'); return null; }
+        const results = [];
+        const hasUp = (typeof globalPercentIncrease === 'number' && globalPercentIncrease > 0) || (typeof globalDollarIncrease === 'number' && globalDollarIncrease > 0);
+        const hasDown = (typeof globalPercentDecrease === 'number' && globalPercentDecrease > 0) || (typeof globalDollarDecrease === 'number' && globalDollarDecrease > 0);
+        Object.entries(livePrices).forEach(([code, lp]) => {
+            if (!lp || lp.live == null || lp.prevClose == null) return;
+            const change = lp.live - lp.prevClose;
+            if (change === 0) return;
+            const pctSigned = lp.prevClose !== 0 ? (change / lp.prevClose) * 100 : 0;
+            const pctMag = Math.abs(pctSigned);
+            const upQualified = hasUp && ((globalPercentIncrease && pctSigned >= globalPercentIncrease) || (globalDollarIncrease && change >= globalDollarIncrease));
+            const downQualified = hasDown && ((globalPercentDecrease && pctMag >= globalPercentDecrease && change < 0) || (globalDollarDecrease && Math.abs(change) >= globalDollarDecrease && change < 0));
+            // Detect misclassification: positive change counted only by decrease side or vice versa
+            const potentialBug = (change > 0 && downQualified && !upQualified) || (change < 0 && upQualified && !downQualified);
+            if (upQualified || downQualified || potentialBug) {
+                results.push({ code, live: lp.live, prev: lp.prevClose, change, pctSigned: +pctSigned.toFixed(2), dir: change > 0 ? 'up' : 'down', upQualified, downQualified, potentialBug });
+            }
+        });
+        try {
+            const summary = {
+                thresholds: { upPct: globalPercentIncrease, upDol: globalDollarIncrease, downPct: globalPercentDecrease, downDol: globalDollarDecrease },
+                upCount: results.filter(r => r.upQualified && r.dir === 'up').length,
+                downCount: results.filter(r => r.downQualified && r.dir === 'down').length,
+                potentialBugCount: results.filter(r => r.potentialBug).length
+            };
+            console.groupCollapsed('%c[DiagDirectional] Threshold evaluation', 'color:#2d6cdf;font-weight:600;');
+            console.table(results);
+            console.log('[DiagDirectional][summary]', summary);
+            if (summary.potentialBugCount > 0) console.warn('[DiagDirectional] Potential misclassification detected.');
+            console.groupEnd();
+        } catch (_) { }
+        return results;
+    }
+    window.runDirectionalThresholdDiagnostics = runDirectionalThresholdDiagnostics;
     if (!window.__globalAlertsEscBound) {
         window.__globalAlertsEscBound = true;
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && globalAlertsModal && globalAlertsModal.style.display !== 'none') { try { hideModal(globalAlertsModal); } catch(_) {} }
+            if (e.key === 'Escape' && globalAlertsModal && globalAlertsModal.style.display !== 'none') { try { hideModal(globalAlertsModal); } catch (_) { } }
         });
     }
     if (globalAlertsModal && !globalAlertsModal.__outsideClickBound) {
         globalAlertsModal.__outsideClickBound = true;
-        globalAlertsModal.addEventListener('mousedown', (e) => { if (e.target === globalAlertsModal) { try { hideModal(globalAlertsModal); } catch(_) {} } });
+        globalAlertsModal.addEventListener('mousedown', (e) => { if (e.target === globalAlertsModal) { try { hideModal(globalAlertsModal); } catch (_) { } } });
     }
 }
 
@@ -12604,20 +12620,20 @@ if (!window.__globalAlertsDomReadyBound) {
     document.addEventListener('DOMContentLoaded', () => initGlobalAlertsUI());
     // Safety: if script loaded after DOMContentLoaded already fired
     if (document.readyState === 'interactive' || document.readyState === 'complete') {
-        try { initGlobalAlertsUI(); } catch(_){}
+        try { initGlobalAlertsUI(); } catch (_) { }
     }
 }
 
 // (Deprecated) Previous alerts settings listener retained for reference
 async function loadAlertsSettingsListener() {
-    if (unsubscribeAlerts) { try { unsubscribeAlerts(); } catch(_){} unsubscribeAlerts=null; }
+    if (unsubscribeAlerts) { try { unsubscribeAlerts(); } catch (_) { } unsubscribeAlerts = null; }
     if (!db || !currentUserId || !firestore) { console.warn('Alerts: Firestore unavailable for settings listener'); return; }
     try {
         const alertsCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/alerts');
         unsubscribeAlerts = firestore.onSnapshot(alertsCol, (qs) => {
             alertsEnabledMap = new Map();
-            qs.forEach(doc => { const d = doc.data()||{}; alertsEnabledMap.set(doc.id, (d.enabled !== false)); });
-            try { console.log('[Diag][alertsSettingsListener] map size:', alertsEnabledMap.size); } catch(_){}
+            qs.forEach(doc => { const d = doc.data() || {}; alertsEnabledMap.set(doc.id, (d.enabled !== false)); });
+            try { console.log('[Diag][alertsSettingsListener] map size:', alertsEnabledMap.size); } catch (_) { }
             recomputeTriggeredAlerts();
         }, err => console.error('Alerts: settings listener error', err));
         logDebug('Alerts: Settings listener active.');
@@ -12655,7 +12671,7 @@ let globalViewModeWatcher = null;
 // Function to ensure compact view consistency throughout the session
 function startViewModeConsistencyChecker() {
     // Ensure only one consistency checker interval runs
-    try { if (window.__viewModeConsistencyActive && viewModeConsistencyChecker) clearInterval(viewModeConsistencyChecker); } catch(_) {}
+    try { if (window.__viewModeConsistencyActive && viewModeConsistencyChecker) clearInterval(viewModeConsistencyChecker); } catch (_) { }
     window.__viewModeConsistencyActive = true;
 
     viewModeConsistencyChecker = setInterval(() => {
@@ -12743,7 +12759,7 @@ function startViewModeWatcher() {
 // Global view mode enforcer - runs periodically to ensure view mode is maintained
 function startGlobalViewModeEnforcer() {
     // Ensure only one global enforcer interval runs
-    try { if (window.__globalViewModeEnforcerActive && globalViewModeWatcher) clearInterval(globalViewModeWatcher); } catch(_) {}
+    try { if (window.__globalViewModeEnforcerActive && globalViewModeWatcher) clearInterval(globalViewModeWatcher); } catch (_) { }
     window.__globalViewModeEnforcerActive = true;
 
     logDebug('View Mode: Starting global enforcer');
@@ -12777,9 +12793,9 @@ function startGlobalViewModeEnforcer() {
 async function toggleMobileViewMode() {
     const newMode = (currentMobileViewMode === 'default') ? 'compact' : 'default';
     // Push previous mode for shallow back restore
-    try { pushAppStateEntry('viewMode', currentMobileViewMode); } catch(_) {}
+    try { pushAppStateEntry('viewMode', currentMobileViewMode); } catch (_) { }
     // Also push a browser history entry so popstate fires on Back
-    try { if (typeof pushAppState === 'function') pushAppState({ viewMode: newMode }, '', '#view'); } catch(_) {}
+    try { if (typeof pushAppState === 'function') pushAppState({ viewMode: newMode }, '', '#view'); } catch (_) { }
 
     // Use the centralized view mode manager
     const success = setMobileViewMode(newMode, 'toggle_button');
@@ -12940,13 +12956,13 @@ async function robustRestoreLastView() {
             if (lastView === 'portfolio') {
                 if (typeof showPortfolioView === 'function') {
                     showPortfolioView();
-                    try { scrollMainToTop(true); } catch(_) {}
+                    try { scrollMainToTop(true); } catch (_) { }
                     logDebug('Preferences: Restored portfolio view');
                 }
             } else if (typeof watchlistSelect !== 'undefined' && watchlistSelect) {
                 // Check if it's a movers virtual view
                 if (lastView === '__movers') {
-                    try { watchlistSelect.value = ALL_SHARES_ID; } catch(_) {}
+                    try { watchlistSelect.value = ALL_SHARES_ID; } catch (_) { }
                     setCurrentSelectedWatchlistIds(['__movers']);
                     if (typeof sortShares === 'function') sortShares();
                     if (typeof enforceMoversVirtualView === 'function') enforceMoversVirtualView();
@@ -12960,7 +12976,7 @@ async function robustRestoreLastView() {
                         watchlistSelect.value = lastView;
                         setCurrentSelectedWatchlistIds([lastView]);
                         if (typeof sortShares === 'function') sortShares();
-                        try { scrollMainToTop(); } catch(_) {}
+                        try { scrollMainToTop(); } catch (_) { }
                         if (typeof updateMainTitle === 'function') updateMainTitle();
                         logDebug('Preferences: Restored watchlist: ' + lastView);
                     } else {
@@ -13181,7 +13197,7 @@ function hideSplashScreen() {
 
         }
         // Temporarily remove overflow hidden from body
-        document.body.style.overflow = ''; 
+        document.body.style.overflow = '';
 
         // REMOVED: splashScreen.addEventListener('transitionend', () => { if (splashScreen.parentNode) { splashScreen.parentNode.removeChild(splashScreen); } }, { once: true });
         logDebug('Splash Screen: Hiding.');
@@ -13201,14 +13217,14 @@ function hideSplashScreenIfReady() {
         splashReady: splashScreenReady
     });
     // Only hide if Firebase is initialized, user is authenticated, and all data flags are true
-    const authGraceOk = (function(){
-        try { return window.__authReadyAt && (Date.now() - window.__authReadyAt) > 9000; } catch(_) { return false; }
+    const authGraceOk = (function () {
+        try { return window.__authReadyAt && (Date.now() - window.__authReadyAt) > 9000; } catch (_) { return false; }
     })();
     // New ultra-conservative failsafe: if the user has been authenticated for a while
     // but some flag hasn’t flipped yet (e.g., a Firestore listener hiccup), force-hide
     // the splash after a longer grace. Normal behavior remains unchanged when flags are fine.
-    const extendedAuthGraceOk = (function(){
-        try { return window.__authReadyAt && (Date.now() - window.__authReadyAt) > 12000; } catch(_) { return false; }
+    const extendedAuthGraceOk = (function () {
+        try { return window.__authReadyAt && (Date.now() - window.__authReadyAt) > 12000; } catch (_) { return false; }
     })();
     if (window._firebaseInitialized && window._userAuthenticated && window._appDataLoaded && (window._livePricesLoaded || authGraceOk)) {
         if (splashScreenReady) { // Ensure splash screen itself is ready to be hidden
@@ -13220,7 +13236,7 @@ function hideSplashScreenIfReady() {
                 if (lastView === 'portfolio' && typeof showPortfolioView === 'function') {
                     showPortfolioView();
                 }
-            } catch(e) {}
+            } catch (e) { }
         } else {
             logDebug('Splash Screen: Data loaded, but splash screen not yet marked as ready. Will hide when ready.');
         }
@@ -13390,7 +13406,7 @@ function addCashCategoryUI() {
         // If suppression is active for cash modal reopens, avoid programmatic opens for the just-saved ID
         const shouldOpen = !(window.__suppressCashModalReopen && window.__justSavedCashAssetId);
         if (shouldOpen) showAddEditCashCategoryModal(null); else { window.logDebug && window.logDebug('Suppressed programmatic open of Add Cash modal due to recent save'); }
-    } catch(_) { try { showAddEditCashCategoryModal(null); } catch(__) {} }
+    } catch (_) { try { showAddEditCashCategoryModal(null); } catch (__) { } }
 }
 
 /**
@@ -13417,7 +13433,7 @@ async function deleteCashCategory(categoryId) {
         const list = (typeof getUserCashCategories === 'function') ? (getUserCashCategories() || []) : [];
         const item = list.find(x => x && (x.id === categoryId || x.docId === categoryId));
         if (item && item.name) assetName = item.name;
-    } catch (_) {}
+    } catch (_) { }
 
     // Show confirmation modal; perform deletion only if confirmed
     return await new Promise((resolve) => {
@@ -13471,7 +13487,7 @@ function areCashAssetDataEqual(data1, data2) {
     if (!data1 || !data2) return false;
     let balance1 = typeof data1.balance === 'number' && !isNaN(data1.balance) ? data1.balance : null;
     let balance2 = typeof data2.balance === 'number' && !isNaN(data2.balance) ? data2.balance : null;
-    
+
     // NEW: Compare isHidden state
     if (data1.name !== data2.name || balance1 !== balance2 || data1.isHidden !== data2.isHidden) {
         return false;
@@ -13519,28 +13535,28 @@ async function saveCashAsset(isSilent = false) {
     if (!window.AppService || typeof window.AppService.saveCashAsset !== 'function') {
         console.error('saveCashAsset: AppService.saveCashAsset not available — cannot complete save.');
         if (!isSilent) {
-            try { window.showCustomAlert && window.showCustomAlert('Internal error: Save service unavailable. Please refresh the page.', 4000); } catch(_) {}
+            try { window.showCustomAlert && window.showCustomAlert('Internal error: Save service unavailable. Please refresh the page.', 4000); } catch (_) { }
         }
         return;
     }
 
     // Delegate to canonical service and mirror minimal local UI sync after it returns.
     try {
-        try { window.logDebug && window.logDebug('saveCashAsset: Delegating to AppService.saveCashAsset'); } catch(_) {}
+        try { window.logDebug && window.logDebug('saveCashAsset: Delegating to AppService.saveCashAsset'); } catch (_) { }
         await window.AppService.saveCashAsset(isSilent);
 
         // Sync local selected ID/state from AppService (AppService sets window.selectedCashAssetDocId)
-        try { selectedCashAssetDocId = window.selectedCashAssetDocId; } catch(_) {}
-        try { originalCashAssetData = getCurrentCashAssetFormData(); } catch(_) { originalCashAssetData = null; }
-        try { setIconDisabled(saveCashAssetBtn, true); } catch(_) {}
+        try { selectedCashAssetDocId = window.selectedCashAssetDocId; } catch (_) { }
+        try { originalCashAssetData = getCurrentCashAssetFormData(); } catch (_) { originalCashAssetData = null; }
+        try { setIconDisabled(saveCashAssetBtn, true); } catch (_) { }
     } catch (error) {
         console.error('saveCashAsset: Delegated save failed:', error);
         if (!isSilent) {
-            try { window.showCustomAlert && window.showCustomAlert('Error saving cash asset: ' + (error && error.message ? error.message : 'Unknown error')); } catch(_) {}
+            try { window.showCustomAlert && window.showCustomAlert('Error saving cash asset: ' + (error && error.message ? error.message : 'Unknown error')); } catch (_) { }
         }
     } finally {
-        try { window.__modalSaveInProgress = false; } catch(_) { window.__modalSaveInProgress = false; }
-        try { checkCashAssetFormDirtyState(); } catch(_) {}
+        try { window.__modalSaveInProgress = false; } catch (_) { window.__modalSaveInProgress = false; }
+        try { checkCashAssetFormDirtyState(); } catch (_) { }
     }
 }
 
@@ -13570,14 +13586,14 @@ function showCashCategoryDetailsModal(assetId) {
                 if (comment.title || comment.text) {
                     const commentDiv = document.createElement('div');
                     commentDiv.className = 'modal-comment-item';
-                    
+
                     if (comment.title && comment.title.trim() !== '') {
                         const titleBar = document.createElement('div');
                         titleBar.classList.add('comment-title-bar');
                         titleBar.textContent = comment.title;
                         commentDiv.appendChild(titleBar);
                     }
-                    
+
                     const commentTextP = document.createElement('p');
                     commentTextP.textContent = comment.text || '';
                     commentDiv.appendChild(commentTextP);
@@ -13591,7 +13607,7 @@ function showCashCategoryDetailsModal(assetId) {
     }
 
     showModal(cashAssetDetailModal);
-    try { scrollMainToTop(); } catch(_) {}
+    try { scrollMainToTop(); } catch (_) { }
     logDebug('Details: Displayed details for cash asset: ' + asset.name + ' (ID: ' + assetId + ')');
 }
 // (Removed legacy modal-based showCustomConfirm; migrated to toast confirm above)
@@ -13602,12 +13618,12 @@ function showCashCategoryDetailsModal(assetId) {
 function updateMainTitle(overrideTitle) {
     // Explicit override path (e.g., when entering virtual Movers view)
     if (overrideTitle && typeof overrideTitle === 'string') {
-        try { ensureTitleStructure(); } catch(_) {}
+        try { ensureTitleStructure(); } catch (_) { }
         if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = overrideTitle; else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = overrideTitle;
         logDebug('UI: Dynamic title force-overridden to: ' + overrideTitle);
         // If overriding to Movers, persist selection cross-device
         if (overrideTitle === 'Movers') {
-            try { setLastSelectedView('__movers'); } catch(_) {}
+            try { setLastSelectedView('__movers'); } catch (_) { }
         }
         return;
     }
@@ -13615,19 +13631,19 @@ function updateMainTitle(overrideTitle) {
     const activeId = getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0];
 
     // Ensure an ephemeral Movers option exists if Movers is active but missing from select (prevents fallback to generic label)
-    function ensureEphemeralMoversOption(){
+    function ensureEphemeralMoversOption() {
         if (!watchlistSelect) return;
         const existing = watchlistSelect.querySelector('option[value="__movers"]');
         if (activeId === '__movers') {
             if (!existing) {
                 const opt = document.createElement('option');
-                opt.value='__movers'; opt.textContent='Movers'; opt.dataset.ephemeral='1';
+                opt.value = '__movers'; opt.textContent = 'Movers'; opt.dataset.ephemeral = '1';
                 // Insert after All Shares if present
-                const allOpt = watchlistSelect.querySelector('option[value="'+ALL_SHARES_ID+'"]');
+                const allOpt = watchlistSelect.querySelector('option[value="' + ALL_SHARES_ID + '"]');
                 if (allOpt && allOpt.nextSibling) allOpt.parentNode.insertBefore(opt, allOpt.nextSibling); else watchlistSelect.appendChild(opt);
                 logDebug('UI: Injected ephemeral Movers option into select.');
             }
-        } else if (existing && existing.dataset.ephemeral==='1') {
+        } else if (existing && existing.dataset.ephemeral === '1') {
             existing.remove();
             logDebug('UI: Removed ephemeral Movers option (inactive).');
         }
@@ -13642,38 +13658,38 @@ function updateMainTitle(overrideTitle) {
         else if (activeId === 'portfolio') text = 'Portfolio';
         else if (activeId === '__movers') text = 'Movers';
         else if (activeId) {
-            const wl = (userWatchlists||[]).find(w=>w.id===activeId); if (wl) text = wl.name;
+            const wl = (userWatchlists || []).find(w => w.id === activeId); if (wl) text = wl.name;
         }
-        try { ensureTitleStructure(); } catch(_) {}
+        try { ensureTitleStructure(); } catch (_) { }
         if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = text; else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = text;
         logDebug('UI: Dynamic title updated (no select) to: ' + text);
         return;
     }
 
     const selValue = watchlistSelect.value;
-    const selTextRaw = watchlistSelect.selectedIndex >=0 ? (watchlistSelect.options[watchlistSelect.selectedIndex]?.textContent || '') : '';
+    const selTextRaw = watchlistSelect.selectedIndex >= 0 ? (watchlistSelect.options[watchlistSelect.selectedIndex]?.textContent || '') : '';
     let resolved;
     if (activeId === ALL_SHARES_ID) resolved = 'All Shares';
     else if (activeId === CASH_BANK_WATCHLIST_ID) resolved = 'Cash & Assets';
     else if (activeId === 'portfolio') resolved = 'Portfolio';
     else if (activeId === '__movers') resolved = 'Movers';
     else {
-        const wl = (userWatchlists||[]).find(w=>w.id===activeId);
+        const wl = (userWatchlists || []).find(w => w.id === activeId);
         resolved = (wl && wl.name) ? wl.name : 'Share Watchlist';
     }
 
-    try { ensureTitleStructure(); } catch(_) {}
+    try { ensureTitleStructure(); } catch (_) { }
     if (dynamicWatchlistTitleText) dynamicWatchlistTitleText.textContent = resolved; else if (dynamicWatchlistTitle) dynamicWatchlistTitle.textContent = resolved;
     // Defensive: avoid blank
-    try { if (dynamicWatchlistTitleText && !dynamicWatchlistTitleText.textContent.trim()) dynamicWatchlistTitleText.textContent = resolved || 'Share Watchlist'; } catch(_) {}
+    try { if (dynamicWatchlistTitleText && !dynamicWatchlistTitleText.textContent.trim()) dynamicWatchlistTitleText.textContent = resolved || 'Share Watchlist'; } catch (_) { }
     logDebug('UI: Dynamic title updated to: ' + resolved + ' (activeId=' + activeId + ')');
     // Persist resolved selection if it maps to a concrete logical view (avoid noisy writes during early boot with undefined)
-    if (resolved === 'Movers') { try { setLastSelectedView('__movers'); } catch(_) {} }
-    else if (resolved === 'Portfolio') { try { setLastSelectedView('portfolio'); } catch(_) {} }
-    else if (resolved === 'All Shares') { try { setLastSelectedView(ALL_SHARES_ID); } catch(_) {} }
+    if (resolved === 'Movers') { try { setLastSelectedView('__movers'); } catch (_) { } }
+    else if (resolved === 'Portfolio') { try { setLastSelectedView('portfolio'); } catch (_) { } }
+    else if (resolved === 'All Shares') { try { setLastSelectedView(ALL_SHARES_ID); } catch (_) { } }
     else if (activeId && activeId !== '__movers' && activeId !== 'portfolio' && activeId !== ALL_SHARES_ID && activeId !== CASH_BANK_WATCHLIST_ID) {
         // Persist actual watchlist id
-        try { setLastSelectedView(activeId); } catch(_) {}
+        try { setLastSelectedView(activeId); } catch (_) { }
     }
 }
 
@@ -13696,8 +13712,8 @@ function ensureTitleStructure() {
     try {
         titleEl.style.pointerEvents = 'none';
         textEl.style.pointerEvents = 'auto';
-        textEl.setAttribute('role','button');
-    } catch(e) {}
+        textEl.setAttribute('role', 'button');
+    } catch (e) { }
 }
 
 /**
@@ -13725,7 +13741,7 @@ function updateAddHeaderButton() {
         logDebug('DEBUG: Header Plus Button (addShareHeaderBtn) now opens Add Share modal.');
     }
     // Ensure the button is enabled as its functionality is now contextual
-    addShareHeaderBtn.disabled = false; 
+    addShareHeaderBtn.disabled = false;
 
     // Also update the sidebar's "Add New Share" button context
     updateSidebarAddButtonContext();
@@ -13758,13 +13774,13 @@ function handleAddShareClick() {
             targetDirBelowBtn.classList.add('is-active');
             targetDirBelowBtn.setAttribute('aria-pressed', 'true');
         }
-    } catch(_) {}
+    } catch (_) { }
     if (deleteShareBtn) { deleteShareBtn.classList.add('hidden'); }
     populateShareWatchlistSelect(null, true); // true indicates new share
     showModal(shareFormSection);
     // Ensure accordion is properly initialized after modal is shown
     setTimeout(() => initShareFormAccordion(true), 10);
-    try { scrollMainToTop(); } catch(_) {}
+    try { scrollMainToTop(); } catch (_) { }
     shareNameInput.focus();
     // Always show live price snapshot if code is present
     if (shareNameInput && shareNameInput.value.trim()) {
@@ -13923,7 +13939,7 @@ async function migrateOldSharesToWatchlist() {
                 }
             });
             const effectiveCurrentPrice = (typeof updatePayload.currentPrice === 'number' && !isNaN(updatePayload.currentPrice)) ? updatePayload.currentPrice :
-                                           ((typeof shareData.currentPrice === 'string' ? parseFloat(shareData.currentPrice) : shareData.currentPrice) || null);
+                ((typeof shareData.currentPrice === 'string' ? parseFloat(shareData.currentPrice) : shareData.currentPrice) || null);
             if (!shareData.hasOwnProperty('lastFetchedPrice') || (typeof shareData.lastFetchedPrice === 'string' && isNaN(parseFloat(shareData.lastFetchedPrice)))) {
                 needsUpdate = true;
                 updatePayload.lastFetchedPrice = effectiveCurrentPrice;
@@ -13962,9 +13978,9 @@ async function migrateOldSharesToWatchlist() {
 }
 function showContextMenu(event, shareId) {
     if (!shareContextMenu) return;
-    
+
     currentContextMenuShareId = shareId;
-    
+
     let x = event.clientX;
     let y = event.clientY;
 
@@ -14010,7 +14026,7 @@ function toggleAppSidebar(forceState = null) {
         const wasOpen = appSidebar && appSidebar.classList.contains('open');
         const result = window.UI.toggleAppSidebar(forceState);
         const isOpen = appSidebar && appSidebar.classList.contains('open');
-        if (!wasOpen && isOpen) { try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch(_){} }
+        if (!wasOpen && isOpen) { try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch (_) { } }
         return result;
     }
 
@@ -14019,7 +14035,7 @@ function toggleAppSidebar(forceState = null) {
         const isDesktop = window.innerWidth > 768;
         const isOpen = appSidebar && appSidebar.classList.contains('open');
         if (forceState === true || (forceState === null && !isOpen)) {
-            try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch(_){}
+            try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch (_) { }
             document.body.style.overflow = 'hidden';
             if (appSidebar) appSidebar.classList.add('open');
             if (sidebarOverlay) sidebarOverlay.classList.add('open');
@@ -14049,7 +14065,7 @@ function exportWatchlistToCSV() {
         showCustomAlert('Please sign in and select watchlists to export.');
         return;
     }
-    
+
     // Do not export cash data via this function
     if (getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID)) {
         showCustomAlert('Cash & Assets data cannot be exported via this function. Please switch to a stock watchlist.', 3000); // UPDATED TEXT
@@ -14100,7 +14116,7 @@ function exportWatchlistToCSV() {
         const prevClosePrice = livePriceData ? livePriceData.prevClose : undefined;
 
         let priceChange = '';
-        if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice) && 
+        if (livePrice !== undefined && livePrice !== null && !isNaN(livePrice) &&
             prevClosePrice !== undefined && prevClosePrice !== null && !isNaN(prevClosePrice)) {
             const change = livePrice - prevClosePrice;
             const percentageChange = (prevClosePrice !== 0 && !isNaN(prevClosePrice)) ? (change / prevClosePrice) * 100 : 0;
@@ -14118,7 +14134,7 @@ function exportWatchlistToCSV() {
             (livePrice !== undefined && livePrice !== null && !isNaN(livePrice)) ? formatAdaptivePrice(livePrice) : '',
             priceChange, // Now includes the calculated price change
             (!isNaN(targetPriceNum) && targetPriceNum !== null) ? formatAdaptivePrice(targetPriceNum) : '',
-            (!isNaN(dividendAmountNum) && dividendAmountNum !== null) ? dividendAmountNum.toFixed( (String(share.dividendAmount||'').match(/\.\d{3,}$/) ? 3 : 2) ) : '',
+            (!isNaN(dividendAmountNum) && dividendAmountNum !== null) ? dividendAmountNum.toFixed((String(share.dividendAmount || '').match(/\.\d{3,}$/) ? 3 : 2)) : '',
             (!isNaN(frankingCreditsNum) && frankingCreditsNum !== null) ? Math.trunc(frankingCreditsNum).toString() : '',
             unfrankedYield !== null && !isNaN(unfrankedYield) ? formatAdaptivePercent(unfrankedYield) : '0.00', // Ensure numerical output
             frankedYield !== null && !isNaN(frankedYield) ? formatAdaptivePercent(frankedYield) : '0.00', // Ensure numerical output
@@ -14130,18 +14146,18 @@ function exportWatchlistToCSV() {
     const csvString = csvRows.join('\n');
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    
+
     const formattedDate = new Date().toISOString().slice(0, 10);
     const safeFileNamePrefix = exportFileNamePrefix.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     link.download = safeFileNamePrefix + '_watchlist_' + formattedDate + '.csv';
-    
+
     link.href = URL.createObjectURL(blob);
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
-    
+
     showCustomAlert('Exported shares to CSV!', 2000);
     logDebug('Export: Shares exported to CSV with prefix: \'' + exportFileNamePrefix + '\'.');
 }
@@ -14250,13 +14266,13 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             if (!isSilent) showCustomAlert('Watchlist renamed to \'' + newName + '\'!', 1500);
             // --- IMPORTANT FIX: Reload all settings to refresh UI after renaming ---
             await loadUserWatchlistsAndSettings();
-                        // Load Firestore-backed UI preferences (compact view etc.)
-                        await loadUserPreferences();
-                // Bootstrap defaults if empty
-                if (Object.keys(userPreferences||{}).length === 0) {
-                    if (DEBUG_MODE) console.log('[Prefs] Bootstrapping default preferences');
-                    try { await persistUserPreference('compactViewMode', localStorage.getItem('currentMobileViewMode') || currentMobileViewMode); } catch(_) {}
-                }
+            // Load Firestore-backed UI preferences (compact view etc.)
+            await loadUserPreferences();
+            // Bootstrap defaults if empty
+            if (Object.keys(userPreferences || {}).length === 0) {
+                if (DEBUG_MODE) console.log('[Prefs] Bootstrapping default preferences');
+                try { await persistUserPreference('compactViewMode', localStorage.getItem('currentMobileViewMode') || currentMobileViewMode); } catch (_) { }
+            }
             // --- END IMPORTANT FIX ---
             logDebug('Firestore: Watchlist (ID: ' + watchlistId + ') renamed to \'' + newName + '\'.');
         } else { // Adding new watchlist
@@ -14301,13 +14317,13 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
             try {
                 console.log('[WATCHLIST NAV] Setting currentSelectedWatchlistIds to new watchlist:', newDocRef.id);
                 setCurrentSelectedWatchlistIds([newDocRef.id]);
-                
+
                 // Update the dropdown selection
                 if (watchlistSelect) {
                     watchlistSelect.value = newDocRef.id;
                     console.log('[WATCHLIST NAV] Set dropdown value to:', newDocRef.id);
                 }
-                
+
                 // Save the selection to localStorage
                 try {
                     localStorage.setItem('lastWatchlistSelection', JSON.stringify([newDocRef.id]));
@@ -14315,13 +14331,13 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
                 } catch (e) {
                     console.warn('[WATCHLIST NAV] Error saving to localStorage:', e);
                 }
-                
+
                 // Render the watchlist immediately
                 console.log('[WATCHLIST NAV] Rendering watchlist for new watchlist');
                 if (typeof renderWatchlist === 'function') {
                     renderWatchlist();
                 }
-                
+
                 // Update UI elements
                 if (typeof updateMainTitle === 'function') {
                     updateMainTitle();
@@ -14329,12 +14345,12 @@ async function saveWatchlistChanges(isSilent = false, newName, watchlistId = nul
                 if (typeof updateAddHeaderButton === 'function') {
                     updateAddHeaderButton();
                 }
-                
+
             } catch (error) {
                 console.error('[WATCHLIST NAV] Error navigating to new watchlist:', error);
             }
         }
-        
+
         // This block now handles both new and edited watchlists.
         // loadUserWatchlistsAndSettings() is responsible for all subsequent UI updates.
         // The 'if (watchlistId)' condition around loadUserWatchlistsAndSettings is removed
@@ -14527,7 +14543,7 @@ async function initializeAppLogic() {
     // Share Name Input to uppercase + live suggestions
     if (shareNameInput) {
         let shareNameSelectedSuggestionIndex = -1;
-        shareNameInput.addEventListener('input', function() {
+        shareNameInput.addEventListener('input', function () {
             this.value = this.value.toUpperCase();
             checkFormDirtyState();
 
@@ -14541,7 +14557,7 @@ async function initializeAppLogic() {
                     if (shareNameInput.value.trim() === query) {
                         renderShareNameSuggestions(query);
                     }
-                }).catch(() => {/* ignore */});
+                }).catch(() => {/* ignore */ });
             }
             shareNameSuggestions.innerHTML = '';
             shareNameSelectedSuggestionIndex = -1;
@@ -14596,48 +14612,48 @@ async function initializeAppLogic() {
         }
 
         async function applyShareCodeSelection(code, name) {
-                // Mark selection in progress to prevent blur handlers from hiding UI incorrectly
-                try { window.__shareFormSelectionInProgress = true; } catch(_){}
+            // Mark selection in progress to prevent blur handlers from hiding UI incorrectly
+            try { window.__shareFormSelectionInProgress = true; } catch (_) { }
 
-                shareNameInput.value = code;
-                if (formCompanyName) formCompanyName.textContent = name || '';
-                if (shareNameSuggestions) shareNameSuggestions.classList.remove('active');
+            shareNameInput.value = code;
+            if (formCompanyName) formCompanyName.textContent = name || '';
+            if (shareNameSuggestions) shareNameSuggestions.classList.remove('active');
 
-                // On touch devices, avoid forcing focus to the next input to prevent visualViewport/keyboard
-                // changes that can cause mobile layout jumps (which were opening the "Other Details" accordion)
-                const next = targetPriceInput;
-                try {
-                    if (!('ontouchstart' in window) && next) next.focus();
-                } catch(_) {}
+            // On touch devices, avoid forcing focus to the next input to prevent visualViewport/keyboard
+            // changes that can cause mobile layout jumps (which were opening the "Other Details" accordion)
+            const next = targetPriceInput;
+            try {
+                if (!('ontouchstart' in window) && next) next.focus();
+            } catch (_) { }
 
-                checkFormDirtyState();
+            checkFormDirtyState();
 
-                // Temporarily suppress any passive auto-open behavior for the share form accordion
-                try { window.__suppressShareFormAccordionOpen = true; } catch(_) {}
+            // Temporarily suppress any passive auto-open behavior for the share form accordion
+            try { window.__suppressShareFormAccordionOpen = true; } catch (_) { }
 
-                // Fetch live snapshot for the selected code to show context in the form and prefill price
-                try {
-                    if (typeof window.updateAddFormLiveSnapshot === 'function') window.updateAddFormLiveSnapshot(code);
-                    else if (typeof updateAddFormLiveSnapshot === 'function') updateAddFormLiveSnapshot(code);
-                } catch (err) {
-                    try { if (typeof updateAddFormLiveSnapshot === 'function') updateAddFormLiveSnapshot(code); } catch(_){ }
+            // Fetch live snapshot for the selected code to show context in the form and prefill price
+            try {
+                if (typeof window.updateAddFormLiveSnapshot === 'function') window.updateAddFormLiveSnapshot(code);
+                else if (typeof updateAddFormLiveSnapshot === 'function') updateAddFormLiveSnapshot(code);
+            } catch (err) {
+                try { if (typeof updateAddFormLiveSnapshot === 'function') updateAddFormLiveSnapshot(code); } catch (_) { }
+            }
+
+            // Ensure the "Other Details" accordion section remains closed after selection (defensive)
+            try {
+                const other = document.querySelector('#shareFormAccordion .accordion-section[data-section="other"]');
+                if (other) {
+                    other.classList.remove('open');
+                    const toggleBtn = other.querySelector('.accordion-toggle');
+                    if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
                 }
+            } catch (_) { }
 
-                // Ensure the "Other Details" accordion section remains closed after selection (defensive)
-                try {
-                    const other = document.querySelector('#shareFormAccordion .accordion-section[data-section="other"]');
-                    if (other) {
-                        other.classList.remove('open');
-                        const toggleBtn = other.querySelector('.accordion-toggle');
-                        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
-                    }
-                } catch(_){}
-
-                // Clear suppression/selection flags shortly after to restore normal behavior
-                setTimeout(() => {
-                    try { delete window.__suppressShareFormAccordionOpen; } catch(_){}
-                    try { delete window.__shareFormSelectionInProgress; } catch(_){}
-                }, 400);
+            // Clear suppression/selection flags shortly after to restore normal behavior
+            setTimeout(() => {
+                try { delete window.__suppressShareFormAccordionOpen; } catch (_) { }
+                try { delete window.__shareFormSelectionInProgress; } catch (_) { }
+            }, 400);
         }
 
         function renderShareNameSuggestions(query) {
@@ -14659,14 +14675,14 @@ async function initializeAppLogic() {
                 // Use pointerup or click for selection to avoid blocking touch scroll; keep pointerdown passive
                 const handler = (e) => {
                     // Mark that a selection is happening so blur handlers don't immediately hide suggestions
-                    try { if (shareNameSuggestions) shareNameSuggestions.dataset.selectionInProgress = '1'; } catch(_){}
+                    try { if (shareNameSuggestions) shareNameSuggestions.dataset.selectionInProgress = '1'; } catch (_) { }
                     // Selection handler; do not call preventDefault here to allow scrolling on touch devices
                     applyShareCodeSelection(s.code, s.name);
                 };
                 // Use pointerdown to capture touch/click early, prevent blur-before-click issues
-                div.addEventListener('pointerdown', function(e){
+                div.addEventListener('pointerdown', function (e) {
                     // prevent default to stop input blur race on some browsers
-                    try { e.preventDefault(); } catch(_){}
+                    try { e.preventDefault(); } catch (_) { }
                 }, { passive: false });
                 // pointerup triggers the selection
                 div.addEventListener('pointerup', handler, { once: true });
@@ -14688,12 +14704,12 @@ async function initializeAppLogic() {
                     const fallback = String(window.lastSelectedSearchCode).toUpperCase();
                     if (fallback.length >= 2) {
                         shareNameInput.value = fallback;
-                        const match = (allAsxCodes||[]).find(s=>s.code===fallback);
+                        const match = (allAsxCodes || []).find(s => s.code === fallback);
                         if (match && formCompanyName) formCompanyName.textContent = match.name || '';
                     }
                 }
                 // clear transient flag
-                try { delete shareNameSuggestions.dataset.selectionInProgress; } catch(_){}
+                try { delete shareNameSuggestions.dataset.selectionInProgress; } catch (_) { }
             }, 250);
         });
     }
@@ -14730,7 +14746,7 @@ async function initializeAppLogic() {
             }
 
             // Filter suggestions by code or company name
-            currentSuggestions = allAsxCodes.filter(stock => 
+            currentSuggestions = allAsxCodes.filter(stock =>
                 stock.code.includes(query) || stock.name.toUpperCase().includes(query)
             ).slice(0, 10); // Limit to top 10 suggestions
 
@@ -14855,7 +14871,7 @@ async function initializeAppLogic() {
         if (input) {
             input.addEventListener('input', checkFormDirtyState);
             input.addEventListener('change', checkFormDirtyState);
-            input.addEventListener('focus', function() {
+            input.addEventListener('focus', function () {
                 // Removed: The 'this.select()' call, as it was causing a TypeError on SELECT elements (dropdowns) on focus.
                 // The automatic text selection on focus is now bypassed for stability.
             });
@@ -14928,7 +14944,7 @@ async function initializeAppLogic() {
             targetIntentSellBtn.classList.toggle('is-active', !isBuy);
             targetIntentSellBtn.setAttribute('aria-pressed', String(!isBuy));
             const tp = parseFloat(targetPriceInput ? targetPriceInput.value : '');
-            if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('intent-'+intent);
+            if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('intent-' + intent);
         };
         targetIntentBuyBtn.addEventListener('click', () => {
             setIntentUI('buy');
@@ -14958,27 +14974,29 @@ async function initializeAppLogic() {
         setIntentUI('buy');
     }
 
-// Target price auto-save on blur / Enter (only when non-zero)
-if (targetPriceInput) {
-    targetPriceInput.addEventListener('blur', () => {
-        const tp = parseFloat(targetPriceInput.value);
-        if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('tp-blur');
-    });
-    targetPriceInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+    // Target price auto-save on blur / Enter (only when non-zero)
+    if (targetPriceInput) {
+        targetPriceInput.addEventListener('blur', () => {
             const tp = parseFloat(targetPriceInput.value);
-            if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('tp-enter');
-        }
-    });
-}
-    
+            if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('tp-blur');
+        });
+        targetPriceInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const tp = parseFloat(targetPriceInput.value);
+                if (!isNaN(tp) && tp !== 0) scheduleAlertAutoSave('tp-enter');
+            }
+        });
+        // Fix: Ensure save button activates when target price changes
+        targetPriceInput.addEventListener('input', checkFormDirtyState);
+    }
+
     // NEW: Add event listeners for cash asset form inputs for dirty state checking (2.1)
     if (cashAssetNameInput) cashAssetNameInput.addEventListener('input', checkCashAssetFormDirtyState);
     if (cashAssetBalanceInput) cashAssetBalanceInput.addEventListener('input', checkCashAssetFormDirtyState);
 
     formInputs.forEach((inputElement, index) => { // Renamed 'input' to 'inputElement' for clarity
         if (inputElement) {
-            inputElement.addEventListener('keydown', function(event) { // 'this' refers to 'inputElement'
+            inputElement.addEventListener('keydown', function (event) { // 'this' refers to 'inputElement'
                 if (event.key === 'Enter') {
                     event.preventDefault();
 
@@ -15084,13 +15102,13 @@ if (targetPriceInput) {
     // Global click listener to close modals/context menu if clicked outside
     window.addEventListener('click', (event) => {
         // If we're in a brief modal-to-modal transition, skip global close logic
-        try { if (window.__modalTransitioning && (Date.now() - window.__modalTransitioning) < 250) return; } catch(_) {}
+        try { if (window.__modalTransitioning && (Date.now() - window.__modalTransitioning) < 250) return; } catch (_) { }
         // Handle targetHitDetailsModal minimization specifically.
         // This ensures clicks *outside* the modal content and *not* on the trigger button minimize it.
         if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') {
             const clickedInsideModalContent = targetHitDetailsModal.querySelector('.modal-content').contains(event.target);
             const clickedOnTargetIconButton = (event.target === targetHitIconBtn || targetHitIconBtn.contains(event.target));
-            
+
             if (!clickedInsideModalContent && !clickedOnTargetIconButton) {
                 logDebug('Global Click: Clicked outside targetHitDetailsModal (and not on icon). Minimizing it.');
                 hideModal(targetHitDetailsModal); // Directly hide the modal
@@ -15157,12 +15175,12 @@ if (targetPriceInput) {
             showCustomAlert("Mobile sign-in can't run from a file:// URL. Please serve this app over http(s) (e.g., VS Code Live Server) and retry.");
             console.warn('Auth Precheck: Blocking sign-in on mobile file:// context.');
         }
-    } catch(_) {}
+    } catch (_) { }
 
     if (splashSignInBtn && splashSignInBtn.getAttribute('data-bound') !== 'true') {
         let splashSignInRetryTimer = null;
         let splashSignInInProgress = false;
-        splashSignInBtn.setAttribute('data-bound','true');
+        splashSignInBtn.setAttribute('data-bound', 'true');
         splashSignInBtn.addEventListener('click', async () => {
             logDebug('Auth: Splash Screen Sign-In Button Clicked.');
             const currentAuth = auth;
@@ -15190,7 +15208,7 @@ if (targetPriceInput) {
                     splashSignInInProgress = false;
                     return;
                 }
-                try { provider.addScope('email'); provider.addScope('profile'); } catch(_) {}
+                try { provider.addScope('email'); provider.addScope('profile'); } catch (_) { }
                 // Ensure persistence is set to local before performing the sign-in so the session remains after app restarts.
                 try {
                     if (authFunctions.setPersistence && authFunctions.browserLocalPersistence) {
@@ -15253,18 +15271,18 @@ if (targetPriceInput) {
     // Optionally resolve pending redirect results (no-op when not applicable)
     try {
         if (auth && authFunctions && typeof authFunctions.getRedirectResult === 'function') {
-            authFunctions.getRedirectResult(auth).then((res)=>{
+            authFunctions.getRedirectResult(auth).then((res) => {
                 if (res && res.user) {
                     logDebug('Auth: Redirect result received; user signed in.');
                 }
-            }).catch((e)=>{
+            }).catch((e) => {
                 const msg = String(e && e.message || '');
                 if (/Cross-Origin-Opener-Policy|COOP|COEP/i.test(msg)) {
                     console.warn('Auth: COOP/COEP error encountered post-redirect. This is non-fatal; user may already be signed in.');
                 }
             });
         }
-    } catch(_) {}
+    } catch (_) { }
 
     // NEW: Event listener for the top 'X' close button in the Target Hit Details Modal
     if (targetHitModalCloseTopBtn) {
@@ -15288,13 +15306,13 @@ if (targetPriceInput) {
         alertModalDismissAllBtn.addEventListener('click', () => {
             targetHitIconDismissed = true; // Mark as dismissed for the session
             localStorage.setItem('targetHitIconDismissed', 'true'); // Save dismissal preference
-            try { localStorage.setItem('lastKnownTargetCount', '0'); } catch(e) {}
+            try { localStorage.setItem('lastKnownTargetCount', '0'); } catch (e) { }
             // No need to explicitly hide the bubble here, updateTargetHitBanner will handle it.
             updateTargetHitBanner(); // Update the bubble (will hide it if no alerts and dismissed)
             hideModal(targetHitDetailsModal); // Close the modal
             showCustomAlert('Alert Targets dismissed until next login.', 2000); // User feedback
             renderWatchlist(); // Re-render the watchlist to remove all borders/highlights
-            try { enforceMoversVirtualView(); } catch(_) {}
+            try { enforceMoversVirtualView(); } catch (_) { }
             logDebug('Target Alert Modal: Dismiss All button clicked. Alerts dismissed, modal and bubble hidden. Watchlist re-rendered.');
         });
     }
@@ -15380,10 +15398,10 @@ if (targetPriceInput) {
                     console.warn('Splash Screen: User signed out, but splash screen element not found. App content might be visible.');
                 }
                 // NEW: Reset targetHitIconDismissed and clear localStorage entry on logout for a fresh start on next login
-                targetHitIconDismissed = false; 
+                targetHitIconDismissed = false;
                 localStorage.removeItem('targetHitIconDismissed');
-                try { localStorage.removeItem('forcedLiveFetchOnce'); } catch(e) {}
-                try { localStorage.setItem('lastKnownTargetCount', '0'); } catch(e) {}
+                try { localStorage.removeItem('forcedLiveFetchOnce'); } catch (e) { }
+                try { localStorage.setItem('lastKnownTargetCount', '0'); } catch (e) { }
 
             }
             catch (error) {
@@ -15393,22 +15411,22 @@ if (targetPriceInput) {
         });
     }
 
-// Delete All User Data Button
-if (deleteAllUserDataBtn) {
-    deleteAllUserDataBtn.addEventListener('click', () => {
-        logDebug('UI: Delete All User Data button clicked.');
-        deleteAllUserData();
-        toggleAppSidebar(false); // Close sidebar after action
-    });
-}
+    // Delete All User Data Button
+    if (deleteAllUserDataBtn) {
+        deleteAllUserDataBtn.addEventListener('click', () => {
+            logDebug('UI: Delete All User Data button clicked.');
+            deleteAllUserData();
+            toggleAppSidebar(false); // Close sidebar after action
+        });
+    }
 
     // Watchlist Select Change Listener
     if (watchlistSelect) {
         watchlistSelect.addEventListener('change', async (event) => {
             logDebug('Watchlist Select: Change event fired. New value: ' + event.target.value);
             setCurrentSelectedWatchlistIds([event.target.value]);
-            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch(_) {}
-                    try { setLastSelectedView(event.target.value); } catch(_) {}
+            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch (_) { }
+            try { setLastSelectedView(event.target.value); } catch (_) { }
 
             // Robust watchlist selection persistence
             try {
@@ -15428,14 +15446,14 @@ if (deleteAllUserDataBtn) {
             // Restore per-watchlist sort order if available, but validate it's applicable for the newly-selected view.
             try {
                 // Rebuild the sort select options for the new view so we can validate restored values
-                try { renderSortSelect(); } catch(_) {}
+                try { renderSortSelect(); } catch (_) { }
                 const availableOptionValues = Array.from(sortSelect ? sortSelect.options : []).map(o => o.value);
 
                 let watchlistSortOrder = getSortOrderForWatchlist(event.target.value);
                 if (watchlistSortOrder && availableOptionValues.includes(watchlistSortOrder)) {
                     setCurrentSortOrder(watchlistSortOrder);
                     logDebug('Watchlist Select: Restored valid per-watchlist sort for ' + event.target.value + ': ' + watchlistSortOrder);
-                    try { if (sortSelect) sortSelect.value = watchlistSortOrder; updateSortIcon(); } catch(_) {}
+                    try { if (sortSelect) sortSelect.value = watchlistSortOrder; updateSortIcon(); } catch (_) { }
                 } else {
                     // If saved order is invalid or missing, pick a sensible default for this view
                     const sensibleDefault = (event.target.value === CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'percentageChange-desc';
@@ -15444,12 +15462,12 @@ if (deleteAllUserDataBtn) {
                     const chosenDefault = availableOptionValues.includes(portfolioDefault) ? portfolioDefault : (availableOptionValues[0] || sensibleDefault);
                     setCurrentSortOrder(chosenDefault);
                     logDebug('Watchlist Select: Applied fallback/default sort for ' + event.target.value + ': ' + chosenDefault);
-                    try { if (sortSelect) sortSelect.value = chosenDefault; updateSortIcon(); } catch(_) {}
+                    try { if (sortSelect) sortSelect.value = chosenDefault; updateSortIcon(); } catch (_) { }
                     // Persist this fallback back to per-watchlist preferences so subsequent switches remember it
                     try {
                         setWatchlistSortOrder(event.target.value, chosenDefault);
                         // Use robust persistence helper (debounced and resilient)
-                        try { robustSaveSortOrder(chosenDefault); } catch(_) {}
+                        try { robustSaveSortOrder(chosenDefault); } catch (_) { }
                         logDebug('Watchlist Select: Persisted fallback sort for ' + event.target.value + ': ' + chosenDefault);
                     } catch (persistErr) {
                         console.warn('Watchlist Select: Failed to persist fallback sort for ' + event.target.value, persistErr);
@@ -15459,136 +15477,136 @@ if (deleteAllUserDataBtn) {
                 console.warn('Watchlist Select: Error restoring/validating per-watchlist sort, falling back to global/defaults', err);
                 // As a last resort, apply a safe default
                 const safeDefault = (event.target.value === CASH_BANK_WATCHLIST_ID) ? 'name-asc' : 'percentageChange-desc';
-                try { setCurrentSortOrder(safeDefault); if (sortSelect) sortSelect.value = safeDefault; updateSortIcon(); } catch(_) {}
+                try { setCurrentSortOrder(safeDefault); if (sortSelect) sortSelect.value = safeDefault; updateSortIcon(); } catch (_) { }
             }
 
             // Just render the watchlist. The listeners for shares/cash are already active.
             sortShares();
-            try { enforceMoversVirtualView(); } catch(_) {}
+            try { enforceMoversVirtualView(); } catch (_) { }
             // FIX: Update ASX button state when switching watchlists via dropdown
             // This was missing and caused the ASX button visibility bug
             try { toggleCodeButtonsArrow(); } catch (e) { console.warn('Watchlist Select: toggleCodeButtonsArrow failed', e); }
             // Also update add header button context (consistency with watchlist picker)
             try { updateAddHeaderButton(); updateSidebarAddButtonContext(); } catch (e) { console.warn('Watchlist Select: header button update failed', e); }
-        // UX: scroll to top after changing watchlist so users see top content
-        try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
+            // UX: scroll to top after changing watchlist so users see top content
+            try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch (_) { }
         });
     }
 
     // Sort Select Change Listener
-if (sortSelect) {
-    sortSelect.addEventListener('change', async (event) => {
-        logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
-        // If the ASX toggle pseudo-option was chosen, toggle ASX buttons and restore the current sort selection.
-        if (event.target.value === '__asx_toggle') {
-            try {
-                console.log('[SORT SELECT DEBUG] ASX toggle option selected');
-                const currentExpanded = getAsxButtonsExpanded();
-                console.log('[SORT SELECT DEBUG] Current expanded state:', currentExpanded);
+    if (sortSelect) {
+        sortSelect.addEventListener('change', async (event) => {
+            logDebug('Sort Select: Change event fired. New value: ' + event.target.value);
+            // If the ASX toggle pseudo-option was chosen, toggle ASX buttons and restore the current sort selection.
+            if (event.target.value === '__asx_toggle') {
+                try {
+                    console.log('[SORT SELECT DEBUG] ASX toggle option selected');
+                    const currentExpanded = getAsxButtonsExpanded();
+                    console.log('[SORT SELECT DEBUG] Current expanded state:', currentExpanded);
 
-                setAsxButtonsExpanded(!currentExpanded);
-                applyAsxButtonsState();
+                    setAsxButtonsExpanded(!currentExpanded);
+                    applyAsxButtonsState();
 
-                // Update the ASX option label to reflect new state
-                const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
-                if (asxOpt) asxOpt.textContent = (getAsxButtonsExpanded() ? 'ASX Codes — Hide' : 'ASX Codes — Show');
+                    // Update the ASX option label to reflect new state
+                    const asxOpt = Array.from(sortSelect.options).find(o => o.value === '__asx_toggle');
+                    if (asxOpt) asxOpt.textContent = (getAsxButtonsExpanded() ? 'ASX Codes — Hide' : 'ASX Codes — Show');
 
-                // Trigger scroll logic for ASX toggle
-                console.log('[SORT SELECT DEBUG] Setting __asxToggleWantsScroll = true');
-                window.__asxToggleWantsScroll = true;
+                    // Trigger scroll logic for ASX toggle
+                    console.log('[SORT SELECT DEBUG] Setting __asxToggleWantsScroll = true');
+                    window.__asxToggleWantsScroll = true;
 
-                // Trigger scroll with delay to allow DOM to update
-                setTimeout(() => {
-                    try {
-                        const targetPosition = calculateWatchlistScrollPosition();
-                        console.log('[SORT SELECT DEBUG] Scrolling to position:', targetPosition);
-                        if (window.scrollMainToTop) {
-                            window.scrollMainToTop(false, targetPosition);
-                        } else {
-                            scrollMainToTop(false, targetPosition);
-                        }
-                        adjustMainContentPadding();
-                    } catch(error) {
-                        console.error('Error in sort select scroll:', error);
-                    }
-                }, 100);
-
-                // Fallback scroll
-                setTimeout(() => {
-                    if (window.__asxToggleWantsScroll) {
+                    // Trigger scroll with delay to allow DOM to update
+                    setTimeout(() => {
                         try {
-                            // Reset known inner scrollers first
-                            const tc = document.querySelector('.table-container'); if (tc && tc.scrollTop) tc.scrollTop = 0;
-                            const mc = document.getElementById('mobileShareCards'); if (mc && mc.scrollTop) mc.scrollTop = 0;
-                            const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0;
-
                             const targetPosition = calculateWatchlistScrollPosition();
+                            console.log('[SORT SELECT DEBUG] Scrolling to position:', targetPosition);
                             if (window.scrollMainToTop) {
                                 window.scrollMainToTop(false, targetPosition);
                             } else {
                                 scrollMainToTop(false, targetPosition);
                             }
                             adjustMainContentPadding();
-                            delete window.__asxToggleWantsScroll;
-                        } catch(error) {
-                            console.error('Fallback scroll error:', error);
+                        } catch (error) {
+                            console.error('Error in sort select scroll:', error);
                         }
-                    }
-                }, 500);
+                    }, 100);
 
-            } catch (e) { console.warn('ASX toggle option handler failed', e); }
-            // Restore the visible selection back to the active sort (do not trigger a sort)
-            try { sortSelect.value = currentSortOrder || (getCurrentSelectedWatchlistIds().includes('portfolio') ? 'totalDollar-desc' : 'entryDate-desc'); } catch(_) {}
-            try { updateSortIcon(); } catch(_) {}
-            return; // do not apply sorting when toggling ASX codes
-        }
+                    // Fallback scroll
+                    setTimeout(() => {
+                        if (window.__asxToggleWantsScroll) {
+                            try {
+                                // Reset known inner scrollers first
+                                const tc = document.querySelector('.table-container'); if (tc && tc.scrollTop) tc.scrollTop = 0;
+                                const mc = document.getElementById('mobileShareCards'); if (mc && mc.scrollTop) mc.scrollTop = 0;
+                                const pf = document.querySelector('.portfolio-scroll-wrapper'); if (pf && pf.scrollTop) pf.scrollTop = 0;
 
-        setCurrentSortOrder(sortSelect.value);
-        // Immediately reflect this choice in the in-memory per-watchlist mapping so subsequent view switches see it
-        try {
-            const curIds = getCurrentSelectedWatchlistIds();
-            if (Array.isArray(curIds) && curIds.length > 0) {
-                const wid = curIds[0];
-                if (wid) try { setWatchlistSortOrder(wid, sortSelect.value); } catch(_) {}
+                                const targetPosition = calculateWatchlistScrollPosition();
+                                if (window.scrollMainToTop) {
+                                    window.scrollMainToTop(false, targetPosition);
+                                } else {
+                                    scrollMainToTop(false, targetPosition);
+                                }
+                                adjustMainContentPadding();
+                                delete window.__asxToggleWantsScroll;
+                            } catch (error) {
+                                console.error('Fallback scroll error:', error);
+                            }
+                        }
+                    }, 500);
+
+                } catch (e) { console.warn('ASX toggle option handler failed', e); }
+                // Restore the visible selection back to the active sort (do not trigger a sort)
+                try { sortSelect.value = currentSortOrder || (getCurrentSelectedWatchlistIds().includes('portfolio') ? 'totalDollar-desc' : 'entryDate-desc'); } catch (_) { }
+                try { updateSortIcon(); } catch (_) { }
+                return; // do not apply sorting when toggling ASX codes
             }
-        } catch(_) {}
+
+            setCurrentSortOrder(sortSelect.value);
+            // Immediately reflect this choice in the in-memory per-watchlist mapping so subsequent view switches see it
+            try {
+                const curIds = getCurrentSelectedWatchlistIds();
+                if (Array.isArray(curIds) && curIds.length > 0) {
+                    const wid = curIds[0];
+                    if (wid) try { setWatchlistSortOrder(wid, sortSelect.value); } catch (_) { }
+                }
+            } catch (_) { }
+            updateSortIcon();
+
+            // AGGRESSIVE FIX: Force apply sort immediately for percentage change sorts
+            const __selectedSortNow = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
+            if (__selectedSortNow === 'percentageChange-desc' || __selectedSortNow === 'percentageChange-asc') {
+                logDebug('AGGRESSIVE SORT: Percentage change sort selected, forcing immediate application');
+                forceApplyCurrentSort();
+            }
+
+            // Determine whether to sort shares or cash assets
+            if (getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID)) {
+                renderCashCategories(); // Re-render cash categories with new sort order
+            } else {
+                sortShares(); // Sorts allSharesData and calls renderWatchlist
+            }
+
+            // Robust sort order persistence with error recovery - save the authoritative value
+            const __toPersistSort = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
+            try {
+                // Avoid redundant persist calls if we've already persisted this exact sort recently
+                if (window.__lastPersistedSort && window.__lastPersistedSort === __toPersistSort) {
+                    logDebug('Sort: Persist skipped (no change): ' + __toPersistSort);
+                } else {
+                    robustSaveSortOrder(__toPersistSort);
+                    // Record the last persisted value so subsequent identical changes are skipped
+                    try { window.__lastPersistedSort = __toPersistSort; } catch (_) { }
+                }
+            } catch (persistErr) {
+                console.warn('Sort: Error while attempting to persist sort order (non-fatal):', persistErr);
+            }
+
+            // NEW: Scroll to the top of the main content after sorting/rendering
+            try { scrollMainToTop(); } catch (_) { }
+            logDebug('Sort: Scrolled to top after sorting.');
+        });
         updateSortIcon();
-
-        // AGGRESSIVE FIX: Force apply sort immediately for percentage change sorts
-        const __selectedSortNow = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
-        if (__selectedSortNow === 'percentageChange-desc' || __selectedSortNow === 'percentageChange-asc') {
-            logDebug('AGGRESSIVE SORT: Percentage change sort selected, forcing immediate application');
-            forceApplyCurrentSort();
-        }
-        
-        // Determine whether to sort shares or cash assets
-        if (getCurrentSelectedWatchlistIds().includes(CASH_BANK_WATCHLIST_ID)) {
-            renderCashCategories(); // Re-render cash categories with new sort order
-        } else {
-            sortShares(); // Sorts allSharesData and calls renderWatchlist
-        }
-
-    // Robust sort order persistence with error recovery - save the authoritative value
-    const __toPersistSort = (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder;
-    try {
-        // Avoid redundant persist calls if we've already persisted this exact sort recently
-        if (window.__lastPersistedSort && window.__lastPersistedSort === __toPersistSort) {
-            logDebug('Sort: Persist skipped (no change): ' + __toPersistSort);
-        } else {
-            robustSaveSortOrder(__toPersistSort);
-            // Record the last persisted value so subsequent identical changes are skipped
-            try { window.__lastPersistedSort = __toPersistSort; } catch(_) {}
-        }
-    } catch (persistErr) {
-        console.warn('Sort: Error while attempting to persist sort order (non-fatal):', persistErr);
     }
-
-    // NEW: Scroll to the top of the main content after sorting/rendering
-    try { scrollMainToTop(); } catch(_) {}
-    logDebug('Sort: Scrolled to top after sorting.');
-    });
-    updateSortIcon();
-}
     // New Share Button (from sidebar) - Now contextual, handled by updateSidebarAddButtonContext
     // The event listener will be set dynamically by updateSidebarAddButtonContext()
     // No direct event listener here anymore.
@@ -15619,13 +15637,13 @@ if (sortSelect) {
                     // Keep DOM minimal: remove any previous inline hint to avoid encouraging open-edit flow
                     const h = document.getElementById(duplicateHintElId); if (h) h.remove();
                     // Optionally set aria-describedby for accessibility (not visible text)
-                    try { shareNameInput.setAttribute('aria-describedby', duplicateHintElId); } catch(_) {}
+                    try { shareNameInput.setAttribute('aria-describedby', duplicateHintElId); } catch (_) { }
                 } else {
                     setIconDisabled(saveShareBtn, false);
                     const h = document.getElementById(duplicateHintElId); if (h) h.remove();
-                    try { shareNameInput.removeAttribute('aria-describedby'); } catch(_) {}
+                    try { shareNameInput.removeAttribute('aria-describedby'); } catch (_) { }
                 }
-            } catch(_) {}
+            } catch (_) { }
         }
 
         shareNameInput.addEventListener('input', () => {
@@ -15633,31 +15651,31 @@ if (sortSelect) {
             try {
                 const val = (shareNameInput.value || '').trim().toUpperCase();
                 if (val) {
-                    const exists = Array.isArray(allSharesData) && allSharesData.some(s => s && (s.shareName||'').toUpperCase() === val);
+                    const exists = Array.isArray(allSharesData) && allSharesData.some(s => s && (s.shareName || '').toUpperCase() === val);
                     // Consider it a duplicate only if there exists another share with the same code
                     // whose id is different from the currently edited share (if any).
                     let isDup = false;
                     if (exists) {
-                        const other = (Array.isArray(allSharesData) ? allSharesData.find(s => s && (s.shareName||'').toUpperCase() === val && s.id !== (selectedShareDocId || null)) : null);
+                        const other = (Array.isArray(allSharesData) ? allSharesData.find(s => s && (s.shareName || '').toUpperCase() === val && s.id !== (selectedShareDocId || null)) : null);
                         isDup = !!other;
                     }
                     setDuplicateState(isDup);
                 } else {
                     setDuplicateState(false);
                 }
-            } catch(e) { console.warn('Duplicate code check failed', e); }
+            } catch (e) { console.warn('Duplicate code check failed', e); }
         });
 
         // Evaluate initial state once in case the input is prefilled when opening the modal for edit
         try {
             const initialVal = (shareNameInput.value || '').trim().toUpperCase();
             if (initialVal) {
-                const other = (Array.isArray(allSharesData) ? allSharesData.find(s => s && (s.shareName||'').toUpperCase() === initialVal && s.id !== (selectedShareDocId || null)) : null);
+                const other = (Array.isArray(allSharesData) ? allSharesData.find(s => s && (s.shareName || '').toUpperCase() === initialVal && s.id !== (selectedShareDocId || null)) : null);
                 setDuplicateState(!!other);
             } else {
                 setDuplicateState(false);
             }
-        } catch(_) {}
+        } catch (_) { }
 
         // Intercept Save click to show friendly message if duplicate flag present
         const _origSaveHandler = saveShareBtn.onclick || null;
@@ -15676,7 +15694,7 @@ if (sortSelect) {
                         } else if (typeof window.showCustomAlert === 'function') {
                             window.showCustomAlert(msg);
                         } else {
-                            try { alert(msg); } catch(_) {}
+                            try { alert(msg); } catch (_) { }
                         }
                     } else {
                         const dupMsg = 'A share with this code already exists. Save blocked.';
@@ -15685,22 +15703,22 @@ if (sortSelect) {
                         } else if (typeof window.showCustomAlert === 'function') {
                             window.showCustomAlert(dupMsg, 2500);
                         } else {
-                            try { alert(dupMsg); } catch(_) {}
+                            try { alert(dupMsg); } catch (_) { }
                         }
                     }
 
                     // Prevent any other click handlers (including the AppService save handler)
                     // from running on this event.
                     if (ev && typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
-                    try { if (ev && typeof ev.preventDefault === 'function') ev.preventDefault(); } catch(_) {}
+                    try { if (ev && typeof ev.preventDefault === 'function') ev.preventDefault(); } catch (_) { }
                     return; // prevent original save path
                 }
-            } catch(e) {
+            } catch (e) {
                 console.warn('Duplicate intercept failed', e);
             }
 
             // otherwise proceed with original click handlers (if any were wired via onclick)
-            if (_origSaveHandler) try { _origSaveHandler.call(saveShareBtn, ev); } catch(_) {}
+            if (_origSaveHandler) try { _origSaveHandler.call(saveShareBtn, ev); } catch (_) { }
         });
     }
 
@@ -15718,7 +15736,7 @@ if (sortSelect) {
             // Prevent duplicate rapid clicks by disabling immediately and awaiting the service
             try {
                 window.setIconDisabled && window.setIconDisabled(saveShareBtn, true);
-            } catch(_) {}
+            } catch (_) { }
 
             try {
                 // Await the AppService save so modal close behavior and state is consistent
@@ -15756,7 +15774,7 @@ if (sortSelect) {
             } catch (err) {
                 console.error('Share Form: Error saving share via service:', err);
                 // Re-enable on error so user can retry
-                try { window.setIconDisabled && window.setIconDisabled(saveShareBtn, false); } catch(_) {}
+                try { window.setIconDisabled && window.setIconDisabled(saveShareBtn, false); } catch (_) { }
             }
         });
     }
@@ -15807,13 +15825,13 @@ if (sortSelect) {
                     hideModalKeepStack(shareDetailModal);
                 } else if (window.UI && window.UI.hideModal) {
                     // UI.hideModal will purge; instead do a visual hide to preserve stack
-                    shareDetailModal.style.setProperty('display','none','important');
+                    shareDetailModal.style.setProperty('display', 'none', 'important');
                     shareDetailModal.classList.remove('show');
                 } else {
-                    shareDetailModal.style.setProperty('display','none','important');
+                    shareDetailModal.style.setProperty('display', 'none', 'important');
                     shareDetailModal.classList.remove('show');
                 }
-            } catch(_) {}
+            } catch (_) { }
             if (typeof showEditFormForSelectedShare === 'function') {
                 showEditFormForSelectedShare();
             }
@@ -15884,7 +15902,7 @@ if (sortSelect) {
             logDebug('Add Watchlist: saveWatchlistBtn disabled initially.');
             originalWatchlistData = getCurrentWatchlistFormData(true); // Store initial state for dirty check
             showModal(addWatchlistModal);
-            try { scrollMainToTop(); } catch(_) {}
+            try { scrollMainToTop(); } catch (_) { }
             newWatchlistNameInput.focus();
             toggleAppSidebar(false);
             checkWatchlistFormDirtyState(true); // Check dirty state immediately after opening
@@ -15939,14 +15957,14 @@ if (sortSelect) {
             editWatchlistNameInput.value = watchlistToEditName;
             // Keep at least one real watchlist + Cash & Assets
             const actualWatchlists = userWatchlists.filter(wl => wl.id !== ALL_SHARES_ID && wl.id !== CASH_BANK_WATCHLIST_ID);
-            const isDisabledDelete = actualWatchlists.length <= 1; 
-            setIconDisabled(deleteWatchlistInModalBtn, isDisabledDelete); 
+            const isDisabledDelete = actualWatchlists.length <= 1;
+            setIconDisabled(deleteWatchlistInModalBtn, isDisabledDelete);
             logDebug('Edit Watchlist: deleteWatchlistInModalBtn disabled: ' + isDisabledDelete);
             setIconDisabled(saveWatchlistNameBtn, true); // Disable save button initially
             logDebug('Edit Watchlist: saveWatchlistNameBtn disabled initially.');
             originalWatchlistData = getCurrentWatchlistFormData(false); // Store initial state for dirty check
             showModal(manageWatchlistModal);
-            try { scrollMainToTop(); } catch(_) {}
+            try { scrollMainToTop(); } catch (_) { }
             editWatchlistNameInput.focus();
             toggleAppSidebar(false);
             checkWatchlistFormDirtyState(false); // Check dirty state immediately after opening
@@ -16022,13 +16040,13 @@ if (sortSelect) {
     try {
         if (window.UI && typeof window.UI.initCalculators === 'function') {
             window.UI.initCalculators();
-            } else {
+        } else {
             // If UI isn't ready yet, schedule a short retry once so dynamic load order doesn't break functionality
             setTimeout(() => {
                 try {
                     if (window.UI && typeof window.UI.initCalculators === 'function') {
                         window.UI.initCalculators();
-            } else {
+                    } else {
                         console.warn('Calculator Setup: window.UI.initCalculators() still not found after retry.');
                     }
                 } catch (e) { console.warn('Calculator Setup: retry failed', e); }
@@ -16077,7 +16095,7 @@ if (sortSelect) {
             closeMenuBtn: !!closeMenuBtn,
             sidebarOverlay: !!sidebarOverlay
         });
-        
+
         // Ensure initial state is correct: always start CLOSED after reload
         if (window.innerWidth > 768) {
             document.body.classList.remove('sidebar-active'); // Do not shift body on load
@@ -16106,7 +16124,7 @@ if (sortSelect) {
             logDebug('UI: Close Menu button CLICKED.');
             toggleAppSidebar(false);
         });
-        
+
         // Unified overlay handler (single authoritative listener) - prevents race/double fire
         if (sidebarOverlay._unifiedHandler) {
             sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);
@@ -16116,7 +16134,7 @@ if (sortSelect) {
         const unifiedHandler = (e) => {
             if (e.target !== sidebarOverlay) return; // Only backdrop clicks
             if (!appSidebar.classList.contains('open')) return;
-            try { toggleAppSidebar(false); } catch(err){ console.warn('Sidebar close failed', err); }
+            try { toggleAppSidebar(false); } catch (err) { console.warn('Sidebar close failed', err); }
             // Suppress any further processing or bubbling to avoid click-throughs
             if (e.stopImmediatePropagation) e.stopImmediatePropagation();
             e.stopPropagation();
@@ -16128,12 +16146,12 @@ if (sortSelect) {
         // Accessibility & focus trap for sidebar when open
         const mainContent = document.getElementById('mainContent') || document.querySelector('main');
         const firstFocusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-        function trapFocus(e){
+        function trapFocus(e) {
             if (!appSidebar.classList.contains('open')) return;
-            const focusables = Array.from(appSidebar.querySelectorAll(firstFocusableSelector)).filter(el=>!el.disabled && el.offsetParent!==null);
+            const focusables = Array.from(appSidebar.querySelectorAll(firstFocusableSelector)).filter(el => !el.disabled && el.offsetParent !== null);
             if (!focusables.length) return;
             const first = focusables[0];
-            const last = focusables[focusables.length-1];
+            const last = focusables[focusables.length - 1];
             if (e.key === 'Tab') {
                 if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
                 else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
@@ -16143,16 +16161,16 @@ if (sortSelect) {
 
         // Hook into toggleAppSidebar to set aria-hidden
         const __origToggle = toggleAppSidebar;
-        window.toggleAppSidebar = function(force){
+        window.toggleAppSidebar = function (force) {
             __origToggle(force);
             const isOpen = appSidebar.classList.contains('open');
-            if (mainContent) mainContent.setAttribute('aria-hidden', isOpen ? 'true':'false');
+            if (mainContent) mainContent.setAttribute('aria-hidden', isOpen ? 'true' : 'false');
             if (isOpen) {
                 // Move initial focus
-                setTimeout(()=>{
+                setTimeout(() => {
                     const first = appSidebar.querySelector(firstFocusableSelector);
                     if (first) first.focus();
-                },30);
+                }, 30);
             } else {
                 if (mainContent) mainContent.removeAttribute('inert');
             }
@@ -16224,7 +16242,7 @@ if (sortSelect) {
                 closeMenuBtn: !!closeMenuBtn,
                 sidebarOverlay: !!sidebarOverlay
             });
-            
+
             // Ensure initial state is correct: always start CLOSED after reload
             if (window.innerWidth > 768) {
                 document.body.classList.remove('sidebar-active'); // Do not shift body on load
@@ -16253,7 +16271,7 @@ if (sortSelect) {
                 logDebug('UI: Close Menu button CLICKED.');
                 toggleAppSidebar(false);
             });
-            
+
             // Unified overlay handler (single authoritative listener) - prevents race/double fire
             if (sidebarOverlay._unifiedHandler) {
                 sidebarOverlay.removeEventListener('mousedown', sidebarOverlay._unifiedHandler, true);
@@ -16263,7 +16281,7 @@ if (sortSelect) {
             const unifiedHandler = (e) => {
                 if (e.target !== sidebarOverlay) return; // Only backdrop clicks
                 if (!appSidebar.classList.contains('open')) return;
-                try { toggleAppSidebar(false); } catch(err){ console.warn('Sidebar close failed', err); }
+                try { toggleAppSidebar(false); } catch (err) { console.warn('Sidebar close failed', err); }
                 // Suppress any further processing or bubbling to avoid click-throughs
                 if (e.stopImmediatePropagation) e.stopImmediatePropagation();
                 e.stopPropagation();
@@ -16275,12 +16293,12 @@ if (sortSelect) {
             // Accessibility & focus trap for sidebar when open
             const mainContent = document.getElementById('mainContent') || document.querySelector('main');
             const firstFocusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-            function trapFocus(e){
+            function trapFocus(e) {
                 if (!appSidebar.classList.contains('open')) return;
-                const focusables = Array.from(appSidebar.querySelectorAll(firstFocusableSelector)).filter(el=>!el.disabled && el.offsetParent!==null);
+                const focusables = Array.from(appSidebar.querySelectorAll(firstFocusableSelector)).filter(el => !el.disabled && el.offsetParent !== null);
                 if (!focusables.length) return;
                 const first = focusables[0];
-                const last = focusables[focusables.length-1];
+                const last = focusables[focusables.length - 1];
                 if (e.key === 'Tab') {
                     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
                     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
@@ -16290,16 +16308,16 @@ if (sortSelect) {
 
             // Hook into toggleAppSidebar to set aria-hidden
             const __origToggle = toggleAppSidebar;
-            window.toggleAppSidebar = function(force){
+            window.toggleAppSidebar = function (force) {
                 __origToggle(force);
                 const isOpen = appSidebar.classList.contains('open');
-                if (mainContent) mainContent.setAttribute('aria-hidden', isOpen ? 'true':'false');
+                if (mainContent) mainContent.setAttribute('aria-hidden', isOpen ? 'true' : 'false');
                 if (isOpen) {
                     // Move initial focus
-                    setTimeout(()=>{
+                    setTimeout(() => {
                         const first = appSidebar.querySelector(firstFocusableSelector);
                         if (first) first.focus();
-                    },30);
+                    }, 30);
                 } else {
                     if (mainContent) mainContent.removeAttribute('inert');
                 }
@@ -16382,7 +16400,7 @@ if (sortSelect) {
             fetchLivePrices();
             showCustomAlert('Refreshing live prices...', 1000);
             toggleAppSidebar(false); // NEW: Close sidebar on refresh
-            try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch(_) {}
+            try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch (_) { }
         });
     }
 
@@ -16398,12 +16416,12 @@ if (sortSelect) {
             currentSelectedSuggestionIndex = -1;
             currentSearchShareData = null;
             showModal(stockSearchModal);
-            try { scrollMainToTop(); } catch(_) {}
+            try { scrollMainToTop(); } catch (_) { }
             asxSearchInput.focus();
             toggleAppSidebar(false); // Close sidebar
         });
     }
-    
+
     // Removed: Show Last Live Price toggle listener (automatic behavior now)
 
     // NEW: Cash Asset Form Modal Save/Delete/Edit Buttons (2.1, 2.2)
@@ -16416,22 +16434,22 @@ if (sortSelect) {
                 return;
             }
             // Prevent duplicate clicks
-            try { window.setIconDisabled && window.setIconDisabled(saveCashAssetBtn, true); } catch(_) {}
+            try { window.setIconDisabled && window.setIconDisabled(saveCashAssetBtn, true); } catch (_) { }
             try {
                 if (window.AppService && typeof window.AppService.saveCashAsset === 'function') {
                     await window.AppService.saveCashAsset(false);
                 } else {
                     // Enforce canonical save path: refuse to fall back to legacy code.
                     console.error('Save Cash Asset: AppService.saveCashAsset not available — aborting save to avoid legacy fallback.');
-                    try { window.showCustomAlert && window.showCustomAlert('Internal error: Save service unavailable. Please refresh the page.'); } catch(_) {}
+                    try { window.showCustomAlert && window.showCustomAlert('Internal error: Save service unavailable. Please refresh the page.'); } catch (_) { }
                     throw new Error('AppService.saveCashAsset not available');
                 }
                 // Ensure modal is closed after successful save - AppService attempts this but be defensive
-                try { if (typeof closeModals === 'function') closeModals(); else if (window.closeModals) window.closeModals(); } catch(_) {}
-            } catch(e) {
+                try { if (typeof closeModals === 'function') closeModals(); else if (window.closeModals) window.closeModals(); } catch (_) { }
+            } catch (e) {
                 console.error('Save Cash Asset failed', e);
                 // Re-enable on error so user can retry
-                try { window.setIconDisabled && window.setIconDisabled(saveCashAssetBtn, false); } catch(_) {}
+                try { window.setIconDisabled && window.setIconDisabled(saveCashAssetBtn, false); } catch (_) { }
             }
         });
     }
@@ -16446,13 +16464,13 @@ if (sortSelect) {
                 try {
                     // Defensive guard: if we just saved this asset very recently, suppress immediate reopen
                     if (window.__suppressCashModalReopen && window.__justSavedCashAssetId && window.__justSavedCashAssetId === selectedCashAssetDocId) {
-                        try { window.logDebug && window.logDebug('Cash Details: Suppressed immediate reopen for just-saved asset ID=' + selectedCashAssetDocId); } catch(_) {}
+                        try { window.logDebug && window.logDebug('Cash Details: Suppressed immediate reopen for just-saved asset ID=' + selectedCashAssetDocId); } catch (_) { }
                     } else {
                         try {
                             const shouldOpen = !(window.__suppressCashModalReopen && window.__justSavedCashAssetId && window.__justSavedCashAssetId === selectedCashAssetDocId);
                             if (shouldOpen) showAddEditCashCategoryModal(selectedCashAssetDocId);
                             else window.logDebug && window.logDebug('Suppressed reopening cash modal for just-saved asset ID: ' + selectedCashAssetDocId);
-                        } catch(e) { try { showAddEditCashCategoryModal(selectedCashAssetDocId); } catch(_) {} }
+                        } catch (e) { try { showAddEditCashCategoryModal(selectedCashAssetDocId); } catch (_) { } }
                     }
                 } catch (e) {
                     console.warn('Cash Details: Failed to open edit modal defensively', e);
@@ -16460,7 +16478,7 @@ if (sortSelect) {
                         const shouldOpen = !(window.__suppressCashModalReopen && window.__justSavedCashAssetId && window.__justSavedCashAssetId === selectedCashAssetDocId);
                         if (shouldOpen) showAddEditCashCategoryModal(selectedCashAssetDocId);
                         else window.logDebug && window.logDebug('Suppressed reopening cash modal for just-saved asset ID: ' + selectedCashAssetDocId);
-                    } catch(e) { try { showAddEditCashCategoryModal(selectedCashAssetDocId); } catch(_) {} }
+                    } catch (e) { try { showAddEditCashCategoryModal(selectedCashAssetDocId); } catch (_) { } }
                 }
             } else {
                 showCustomAlert('No cash asset selected for editing.');
@@ -16473,7 +16491,7 @@ if (sortSelect) {
             logDebug('Cash Details: Delete Cash Asset button clicked.');
             if (selectedCashAssetDocId) {
                 const didDelete = await deleteCashCategory(selectedCashAssetDocId);
-                if (didDelete) { try { closeModals(); } catch(_) {} }
+                if (didDelete) { try { closeModals(); } catch (_) { } }
             } else {
                 showCustomAlert('No cash asset selected for deletion.');
             }
@@ -16488,7 +16506,7 @@ if (sortSelect) {
     // NEW: Set initial state for the compact view button
     updateCompactViewButtonState();
     // applyCompactViewMode(); // Disabled - conflicts with robust restoration
-} 
+}
 // This closing brace correctly ends the `initializeAppLogic` function here.
 // Build Marker: v0.1.13 (Network-first CSS/JS, cache bust deploy)
 // Also expose as a runtime variable for lightweight diagnostics
@@ -16500,15 +16518,15 @@ window.BUILD_MARKER = 'v0.1.13';
 if (typeof window.renderHiLoEntry !== 'function') {
     function renderHiLoEntry(e, kind) {
         const code = String(e.code || e.shareCode || '').toUpperCase();
-    const name = sanitizeCompanyName(e.name || e.companyName || code, code);
-        const liveVal = (e.live!=null && !isNaN(Number(e.live))) ? Number(e.live) : null;
-        const liveDisplay = (liveVal!=null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
+        const name = sanitizeCompanyName(e.name || e.companyName || code, code);
+        const liveVal = (e.live != null && !isNaN(Number(e.live))) ? Number(e.live) : null;
+        const liveDisplay = (liveVal != null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
         // Pull both 52W High and Low from entry or livePrices fallback
-        let lp = null; try { lp = (window.livePrices && window.livePrices[code]) ? window.livePrices[code] : null; } catch(_) {}
+        let lp = null; try { lp = (window.livePrices && window.livePrices[code]) ? window.livePrices[code] : null; } catch (_) { }
         const hiRaw = (e.high52 ?? e.High52 ?? e.hi52 ?? e.high ?? (lp ? (lp.high52 ?? lp.High52 ?? lp.hi52 ?? lp.high) : null) ?? null);
         const loRaw = (e.low52 ?? e.Low52 ?? e.lo52 ?? e.low ?? (lp ? (lp.low52 ?? lp.Low52 ?? lp.lo52 ?? lp.low) : null) ?? null);
-        const hiDisplay = (hiRaw!=null && !isNaN(Number(hiRaw))) ? ('$' + formatAdaptivePrice(Number(hiRaw))) : '?';
-        const loDisplay = (loRaw!=null && !isNaN(Number(loRaw))) ? ('$' + formatAdaptivePrice(Number(loRaw))) : '?';
+        const hiDisplay = (hiRaw != null && !isNaN(Number(hiRaw))) ? ('$' + formatAdaptivePrice(Number(hiRaw))) : '?';
+        const loDisplay = (loRaw != null && !isNaN(Number(loRaw))) ? ('$' + formatAdaptivePrice(Number(loRaw))) : '?';
         const card = document.createElement('div');
         card.className = 'notification-card hilo-card ' + kind;
         card.innerHTML = `
@@ -16525,28 +16543,28 @@ if (typeof window.renderHiLoEntry !== 'function') {
                 <div class="hilo-low"><span class="label">Low:</span> ${loDisplay}</div>
                 <div class="hilo-high"><span class="label">High:</span> ${hiDisplay}</div>
             </div>`;
-        card.addEventListener('click', ()=>{
-            try { hideModal(targetHitDetailsModal); } catch(_) {}
+        card.addEventListener('click', () => {
+            try { hideModal(targetHitDetailsModal); } catch (_) { }
             try {
                 const list = (window.allSharesData || []);
                 const share = list.find(s => s && s.shareName && String(s.shareName).toUpperCase() === code);
                 if (share && typeof selectShare === 'function') {
-                    try { wasShareDetailOpenedFromTargetAlerts = true; } catch(_) {}
+                    try { wasShareDetailOpenedFromTargetAlerts = true; } catch (_) { }
                     selectShare(share.id);
                     if (typeof showShareDetails === 'function') showShareDetails();
                     return;
                 }
-            } catch(_) {}
-            try { if (typeof openStockSearchForCode === 'function') openStockSearchForCode(code); } catch(_) {}
+            } catch (_) { }
+            try { if (typeof openStockSearchForCode === 'function') openStockSearchForCode(code); } catch (_) { }
         });
         return card;
     }
     // Expose on window for explicit usage as well
-    try { window.renderHiLoEntry = renderHiLoEntry; } catch(_) {}
+    try { window.renderHiLoEntry = renderHiLoEntry; } catch (_) { }
 }
 
 // Function to show the target hit details modal (moved to global scope)
-function showTargetHitDetailsModal(options={}) {
+function showTargetHitDetailsModal(options = {}) {
     const explicit = options.explicit === true;
     const userInitiated = options.userInitiated === true;
     const allowDuringInitialLoad = options.allowDuringInitialLoad === true || userInitiated;
@@ -16555,10 +16573,10 @@ function showTargetHitDetailsModal(options={}) {
             window.__targetHitModalInitLogCount = (window.__targetHitModalInitLogCount || 0) + 1;
             if (window.__targetHitModalInitLogCount <= 4) {
                 console.warn('[TargetHitModal][InitPhase] open requested during initial load', { options, explicit, userInitiated, allowDuringInitialLoad, alreadyUserInitiated: __userInitiatedTargetModal });
-                try { console.trace('[TargetHitModal][InitPhase] trace'); } catch(_) {}
+                try { console.trace('[TargetHitModal][InitPhase] trace'); } catch (_) { }
             }
         }
-    } catch(_) {}
+    } catch (_) { }
     if (window.__initialLoadPhase && !allowDuringInitialLoad && !__userInitiatedTargetModal) {
         if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[TargetHitModal] Suppressed auto-open during initial load phase', { explicit, userInitiated, allowDuringInitialLoad });
         return;
@@ -16576,22 +16594,22 @@ function showTargetHitDetailsModal(options={}) {
         const hasDisplayableGlobal = hasGlobalActive && globalAlertSummary && globalAlertSummary.totalCount > 0;
         // Consider custom trigger hits as a source of displayable alerts for auto-open
         const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
-        const customHitsCount = (function(){ try { const arr = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits : []; return selectCustomTriggerHitsForUser(arr, __uid).length; } catch(_) { return 0; } })();
+        const customHitsCount = (function () { try { const arr = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits : []; return selectCustomTriggerHitsForUser(arr, __uid).length; } catch (_) { return 0; } })();
         if (!explicit && noLocalEnabled && noLocalMuted && !hasDisplayableGlobal && customHitsCount === 0) {
             if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.log('[TargetHitModal] Auto-open suppressed: no alerts, no custom triggers, or global summary to display.');
             return;
         }
-    } catch(_err) { /* ignore */ }
+    } catch (_err) { /* ignore */ }
     targetHitSharesList.innerHTML = ''; // Clear previous content (target hit section only)
     // Clear new global containers if present
     try {
-        const gm = document.getElementById('globalMoversContainer'); if (gm) gm.innerHTML='';
-        const gh = document.getElementById('globalHigh52Container'); if (gh) gh.innerHTML='';
-        const gl = document.getElementById('globalLow52Container'); if (gl) gl.innerHTML='';
-    } catch(_) {}
+        const gm = document.getElementById('globalMoversContainer'); if (gm) gm.innerHTML = '';
+        const gh = document.getElementById('globalHigh52Container'); if (gh) gh.innerHTML = '';
+        const gl = document.getElementById('globalLow52Container'); if (gl) gl.innerHTML = '';
+    } catch (_) { }
 
     // Delegate rendering of centralized global sections to the impl (populates movers/highs/lows)
-    try { if (typeof window.__renderTargetHitDetailsModalImpl === 'function') { window.__renderTargetHitDetailsModalImpl(options); } } catch(_) {}
+    try { if (typeof window.__renderTargetHitDetailsModalImpl === 'function') { window.__renderTargetHitDetailsModalImpl(options); } } catch (_) { }
 
     // Update Notifications Summary counts and clicks
     try {
@@ -16608,9 +16626,9 @@ function showTargetHitDetailsModal(options={}) {
             const liveArrForCount = (window.sharesAtTargetPrice && Array.isArray(window.sharesAtTargetPrice)) ? window.sharesAtTargetPrice : (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []);
             const low52ArrForCount = (Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.filter(i => !i.muted) : []);
             const unionCodes = new Set();
-            try { selectedCentralHits.forEach(h => { const c = String(h && (h.code || h.shareCode || h.shareName || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch(_) {}
-            try { liveArrForCount.forEach(s => { const c = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch(_) {}
-            try { low52ArrForCount.forEach(s => { const c = String(s && (s.code || s.shareName || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch(_) {}
+            try { selectedCentralHits.forEach(h => { const c = String(h && (h.code || h.shareCode || h.shareName || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch (_) { }
+            try { liveArrForCount.forEach(s => { const c = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch (_) { }
+            try { low52ArrForCount.forEach(s => { const c = String(s && (s.code || s.shareName || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch (_) { }
             const customCount = unionCodes.size;
             const targetCount = customCount;
             // Prefer centralized filtered movers, then raw, then snapshot fallback
@@ -16626,14 +16644,14 @@ function showTargetHitDetailsModal(options={}) {
                         losersCount = Array.isArray(gm.downFiltered) ? gm.downFiltered.length : (Array.isArray(gm.down) ? gm.down.length : 0);
                     } else if (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) {
                         const entries = window.__lastMoversSnapshot.entries;
-                        gainersCount = entries.filter(e => (e.direction||'').toLowerCase() === 'up').length;
-                        losersCount = entries.filter(e => (e.direction||'').toLowerCase() === 'down').length;
+                        gainersCount = entries.filter(e => (e.direction || '').toLowerCase() === 'up').length;
+                        losersCount = entries.filter(e => (e.direction || '').toLowerCase() === 'down').length;
                     } else if (window.__lastMoversComputed && typeof window.__lastMoversComputed === 'object') {
                         gainersCount = Array.isArray(window.__lastMoversComputed.ups) ? window.__lastMoversComputed.ups.length : 0;
                         losersCount = Array.isArray(window.__lastMoversComputed.downs) ? window.__lastMoversComputed.downs.length : 0;
                     }
                 }
-            } catch(_) {}
+            } catch (_) { }
             // 52-week highs/lows counts from centralized alerts if present
             let high52Count = 0, low52Count = 0;
             try {
@@ -16647,9 +16665,9 @@ function showTargetHitDetailsModal(options={}) {
                         low52Count = Array.isArray(hiLo.lows) ? hiLo.lows.length : 0;
                     }
                 }
-            } catch(_) {}
+            } catch (_) { }
 
-            const setText = (id, val) => { const el=document.getElementById(id); if (el) el.textContent = String(val||0); };
+            const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = String(val || 0); };
             setText('summaryTargetCount', targetCount);
             setText('summaryGainersCount', gainersCount);
             setText('summaryLosersCount', losersCount);
@@ -16688,72 +16706,72 @@ function showTargetHitDetailsModal(options={}) {
                         // Open target section
                         targetSection.classList.add('open');
                         header.setAttribute('aria-expanded', 'true');
-                        try { header.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(_) {}
+                        try { header.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) { }
                     }
                 });
                 summaryHost.__chipsBound = true;
             }
         }
-    } catch(err) { console.warn('[NotificationsSummary] Failed to update summary', err); }
+    } catch (err) { console.warn('[NotificationsSummary] Failed to update summary', err); }
 
     // --- Custom Triggers section: prefer live in-memory triggered alerts (sharesAtTargetPrice), then merge central CUSTOM_TRIGGER_HITS ---
     try {
-    const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
-    // Normalize live-triggered shares into a hit-like shape so the existing renderer can consume them
-    // Include per-user 52-week low/high alerts so they appear in the Custom Triggers section
-    const liveShares = [];
-    try {
-        if (Array.isArray(sharesAtTargetPrice)) liveShares.push(...sharesAtTargetPrice.slice());
-        if (Array.isArray(window.sharesAt52WeekLow)) {
-            // Only include non-muted 52w entries
-            window.sharesAt52WeekLow.forEach(s => { try { if (s && !s.muted) liveShares.push(s); } catch(_) {} });
-        }
-    } catch(_) { /* defensive */ }
-    const hitsFromLive = liveShares.map(s => {
+        const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
+        // Normalize live-triggered shares into a hit-like shape so the existing renderer can consume them
+        // Include per-user 52-week low/high alerts so they appear in the Custom Triggers section
+        const liveShares = [];
         try {
-            const code = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase();
-            const name = sanitizeCompanyName(s && (s.name || s.companyName || ''), code);
-            // live value: prefer explicit live on the share, else global livePrices
-            let liveVal = (s && s.live != null && !isNaN(Number(s.live))) ? Number(s.live) : null;
-            if (liveVal == null) {
-                try { if (window.livePrices && window.livePrices[code] && window.livePrices[code].live != null) liveVal = Number(window.livePrices[code].live); } catch(_) {}
+            if (Array.isArray(sharesAtTargetPrice)) liveShares.push(...sharesAtTargetPrice.slice());
+            if (Array.isArray(window.sharesAt52WeekLow)) {
+                // Only include non-muted 52w entries
+                window.sharesAt52WeekLow.forEach(s => { try { if (s && !s.muted) liveShares.push(s); } catch (_) { } });
             }
-            // target value: prefer targetPrice, fallback to target
-            const targetVal = (s && s.targetPrice != null && !isNaN(Number(s.targetPrice))) ? Number(s.targetPrice) : ((s && s.target != null && !isNaN(Number(s.target))) ? Number(s.target) : null);
-            const dir = (s && s.targetDirection) ? s.targetDirection : ((targetVal != null && liveVal != null) ? (liveVal >= targetVal ? 'above' : 'below') : '');
-            const userIntent = (s && s.intent) ? s.intent : (s && s.userIntent ? s.userIntent : '');
-            return { code, name, intent: 'target-hit', direction: dir, live: liveVal, target: targetVal, userIntent: userIntent, id: s && s.id };
-        } catch(_) { return null; }
-    }).filter(Boolean);
+        } catch (_) { /* defensive */ }
+        const hitsFromLive = liveShares.map(s => {
+            try {
+                const code = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase();
+                const name = sanitizeCompanyName(s && (s.name || s.companyName || ''), code);
+                // live value: prefer explicit live on the share, else global livePrices
+                let liveVal = (s && s.live != null && !isNaN(Number(s.live))) ? Number(s.live) : null;
+                if (liveVal == null) {
+                    try { if (window.livePrices && window.livePrices[code] && window.livePrices[code].live != null) liveVal = Number(window.livePrices[code].live); } catch (_) { }
+                }
+                // target value: prefer targetPrice, fallback to target
+                const targetVal = (s && s.targetPrice != null && !isNaN(Number(s.targetPrice))) ? Number(s.targetPrice) : ((s && s.target != null && !isNaN(Number(s.target))) ? Number(s.target) : null);
+                const dir = (s && s.targetDirection) ? s.targetDirection : ((targetVal != null && liveVal != null) ? (liveVal >= targetVal ? 'above' : 'below') : '');
+                const userIntent = (s && s.intent) ? s.intent : (s && s.userIntent ? s.userIntent : '');
+                return { code, name, intent: 'target-hit', direction: dir, live: liveVal, target: targetVal, userIntent: userIntent, id: s && s.id };
+            } catch (_) { return null; }
+        }).filter(Boolean);
 
-    // Pull central customTriggerHits for the user and slice to avoid mutating original
-    let centralHits = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits.slice() : [];
-    centralHits = selectCustomTriggerHitsForUser(centralHits, __uid);
+        // Pull central customTriggerHits for the user and slice to avoid mutating original
+        let centralHits = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits.slice() : [];
+        centralHits = selectCustomTriggerHitsForUser(centralHits, __uid);
 
-    // Deduplicate by code: prefer live-derived hits (already triggered from runtime) over central doc duplicates
-    const seenCodes = new Set(hitsFromLive.map(h => String(h.code || '').toUpperCase()));
-    const mergedCentral = centralHits.filter(h => {
-        try { const c = String(h && (h.code || h.shareCode || '')).toUpperCase(); return !seenCodes.has(c); } catch(_) { return true; }
-    });
+        // Deduplicate by code: prefer live-derived hits (already triggered from runtime) over central doc duplicates
+        const seenCodes = new Set(hitsFromLive.map(h => String(h.code || '').toUpperCase()));
+        const mergedCentral = centralHits.filter(h => {
+            try { const c = String(h && (h.code || h.shareCode || '')).toUpperCase(); return !seenCodes.has(c); } catch (_) { return true; }
+        });
 
-    // Combine live-first then central fallback entries
-    let hitsArr = hitsFromLive.concat(mergedCentral);
+        // Combine live-first then central fallback entries
+        let hitsArr = hitsFromLive.concat(mergedCentral);
 
-    // Accept multiple intent variants produced by different producers/legacy shapes
-    const isTargetHitIntent = (h) => {
-        try {
-            const intent = String(h && (h.intent || h.userIntent || '')).toLowerCase().trim();
-            if (!intent) return false;
-            if (intent === 'target-hit' || intent === 'target_hit' || intent === 'targethit' || intent === 'target hit') return true;
-            if (/target[-_ ]?hit/.test(intent)) return true;
-            if (intent.indexOf('target') !== -1 && intent.indexOf('hit') !== -1) return true;
-            if (intent === 'target' && (h && (h.target != null))) return true;
-            return false;
-        } catch(_) { return false; }
-    };
-    const targetHits = hitsArr.filter(h => isTargetHitIntent(h));
-    const otherHits = hitsArr.filter(h => !isTargetHitIntent(h));
-    hitsArr = targetHits.concat(otherHits);
+        // Accept multiple intent variants produced by different producers/legacy shapes
+        const isTargetHitIntent = (h) => {
+            try {
+                const intent = String(h && (h.intent || h.userIntent || '')).toLowerCase().trim();
+                if (!intent) return false;
+                if (intent === 'target-hit' || intent === 'target_hit' || intent === 'targethit' || intent === 'target hit') return true;
+                if (/target[-_ ]?hit/.test(intent)) return true;
+                if (intent.indexOf('target') !== -1 && intent.indexOf('hit') !== -1) return true;
+                if (intent === 'target' && (h && (h.target != null))) return true;
+                return false;
+            } catch (_) { return false; }
+        };
+        const targetHits = hitsArr.filter(h => isTargetHitIntent(h));
+        const otherHits = hitsArr.filter(h => !isTargetHitIntent(h));
+        hitsArr = targetHits.concat(otherHits);
         // targetHitSharesList already cleared above
         if (!hitsArr.length) {
             const p = document.createElement('p'); p.className = 'no-alerts-message'; p.textContent = 'No custom triggers currently triggered.'; targetHitSharesList.appendChild(p);
@@ -16765,12 +16783,12 @@ function showTargetHitDetailsModal(options={}) {
                     const name = sanitizeCompanyName(h.name || h.companyName || code, code);
                     const intent = (h.intent || '').toLowerCase();
                     const dir = (h.direction || '').toLowerCase();
-                    let liveVal = (h.live!=null && !isNaN(Number(h.live))) ? Number(h.live) : null;
-                    const targetVal = (h.target!=null && !isNaN(Number(h.target))) ? Number(h.target) : null;
+                    let liveVal = (h.live != null && !isNaN(Number(h.live))) ? Number(h.live) : null;
+                    const targetVal = (h.target != null && !isNaN(Number(h.target))) ? Number(h.target) : null;
 
                     // Prefer known live price; fallback to global caches
                     if (liveVal == null && window.livePrices && window.livePrices[code] && window.livePrices[code].live != null) {
-                        try { liveVal = Number(window.livePrices[code].live); } catch(_) {}
+                        try { liveVal = Number(window.livePrices[code].live); } catch (_) { }
                     }
 
                     // For duplicated 52-week entries, render using the compact notification card layout
@@ -16788,7 +16806,7 @@ function showTargetHitDetailsModal(options={}) {
                             if (src) {
                                 const pickNum = (obj, ...keys) => {
                                     for (const k of keys) {
-                                        try { if (obj && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch(_) {}
+                                        try { if (obj && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch (_) { }
                                     }
                                     return null;
                                 };
@@ -16805,7 +16823,7 @@ function showTargetHitDetailsModal(options={}) {
                                 const lp = window.livePrices[code];
                                 const pickNum = (obj, ...keys) => {
                                     for (const k of keys) {
-                                        try { if (obj && typeof obj === 'object' && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch(_) {}
+                                        try { if (obj && typeof obj === 'object' && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch (_) { }
                                     }
                                     return null;
                                 };
@@ -16825,37 +16843,37 @@ function showTargetHitDetailsModal(options={}) {
                                     const foundHigh2 = highs.find(e => String(e.code || e.shareCode || '').toUpperCase() === code);
                                     const src2 = (intent === '52w-low') ? (foundLow2 || foundHigh2) : (foundHigh2 || foundLow2);
                                     if (src2) {
-                                        const pickNum = (obj, ...keys) => { for (const k of keys) { try { if (obj && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch(_){} } return null; };
+                                        const pickNum = (obj, ...keys) => { for (const k of keys) { try { if (obj && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch (_) { } } return null; };
                                         if (hi == null) hi = pickNum(src2, 'high52', 'High52', 'hi52', 'high', 'High');
                                         if (lo == null) lo = pickNum(src2, 'low52', 'Low52', 'lo52', 'low', 'Low');
                                     }
-                                } catch(_) {}
+                                } catch (_) { }
                             }
 
                             // 4) Final fallback: check allSharesData for stored hi/lo fields
                             if ((hi == null || lo == null) && Array.isArray(allSharesData)) {
                                 try {
-                                    const found = allSharesData.find(s => String((s && (s.shareName || s.code || '') )).toUpperCase() === code);
+                                    const found = allSharesData.find(s => String((s && (s.shareName || s.code || ''))).toUpperCase() === code);
                                     if (found) {
-                                        const pickNum = (obj, ...keys) => { for (const k of keys) { try { if (obj && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch(_){} } return null; };
+                                        const pickNum = (obj, ...keys) => { for (const k of keys) { try { if (obj && obj[k] != null && !isNaN(Number(obj[k]))) return Number(obj[k]); } catch (_) { } } return null; };
                                         if (hi == null) hi = pickNum(found, 'high52', 'High52', 'hi52', 'high', 'High');
                                         if (lo == null) lo = pickNum(found, 'low52', 'Low52', 'lo52', 'low', 'Low');
                                     }
-                                } catch(_) {}
+                                } catch (_) { }
                             }
 
                             if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
-                                try { console.debug('[52W-DEBUG] code=', code, 'hi=', hi, 'lo=', lo, 'liveVal=', liveVal, 'srcCentral=', src, 'lp=', window.livePrices && window.livePrices[code]); } catch(_) {}
+                                try { console.debug('[52W-DEBUG] code=', code, 'hi=', hi, 'lo=', lo, 'liveVal=', liveVal, 'srcCentral=', src, 'lp=', window.livePrices && window.livePrices[code]); } catch (_) { }
                             }
-                        } catch(_) {}
+                        } catch (_) { }
 
                         const card = document.createElement('div');
                         // Use notification-card for consistent compact layout; add hilo-card + low/high accent
                         const hiloClass = (intent === '52w-low') ? 'low' : 'high';
                         card.className = 'notification-card custom-trigger-card hilo-card ' + hiloClass;
-                        const liveDisp = (liveVal!=null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
-                        const loHtml = (lo!=null) ? ('$' + formatAdaptivePrice(lo)) : '?';
-                        const hiHtml = (hi!=null) ? ('$' + formatAdaptivePrice(hi)) : '?';
+                        const liveDisp = (liveVal != null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
+                        const loHtml = (lo != null) ? ('$' + formatAdaptivePrice(lo)) : '?';
+                        const hiHtml = (hi != null) ? ('$' + formatAdaptivePrice(hi)) : '?';
                         card.innerHTML = `
                             <div class="notification-card-row">
                                 <div class="notification-card-left">
@@ -16869,7 +16887,7 @@ function showTargetHitDetailsModal(options={}) {
                             <div class="notification-card-bottom">
                                 <div class="hilo-details"><strong>52W Low:</strong> ${loHtml} &nbsp; <strong>High:</strong> ${hiHtml}</div>
                             </div>`;
-                        card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openShareOrSearch(code); });
+                        card.addEventListener('click', () => { try { hideModal(targetHitDetailsModal); } catch (_) { } openShareOrSearch(code); });
                         frag.appendChild(card);
                         return; // done with 52w card
                     }
@@ -16877,7 +16895,7 @@ function showTargetHitDetailsModal(options={}) {
                     // Default rendering for other custom triggers (e.g., target-hit, mover duplicates)
                     const card = document.createElement('div');
                     // Base compact card
-                    let classNames = ['notification-card','custom-trigger-card'];
+                    let classNames = ['notification-card', 'custom-trigger-card'];
                     // Add left-accent for mover duplicates
                     if (intent === 'mover') {
                         classNames.push('mover-card');
@@ -16905,14 +16923,14 @@ function showTargetHitDetailsModal(options={}) {
                                 // If userIntent missing, fall back to direction semantics
                                 card.style.setProperty('--target-hit-border-color', dir === 'below' ? 'var(--negative,#d9534f)' : 'var(--positive,#0a8a00)');
                             }
-                        } catch(_) {}
+                        } catch (_) { }
                     }
                     card.className = classNames.join(' ');
-                    const liveDisp = (liveVal!=null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
-                    const tgtDisp = (targetVal!=null) ? ('$' + formatAdaptivePrice(targetVal)) : '';
+                    const liveDisp = (liveVal != null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
+                    const tgtDisp = (targetVal != null) ? ('$' + formatAdaptivePrice(targetVal)) : '';
                     const userIntent = (h.userIntent || '').toString().trim();
                     // Build a human-friendly, de-emphasized meta line
-                    const prettyUserIntent = (function(){
+                    const prettyUserIntent = (function () {
                         if (!userIntent) return '';
                         const ui = userIntent.toLowerCase();
                         if (ui.includes('buy') && ui.includes('below')) return 'Buy below';
@@ -16920,11 +16938,11 @@ function showTargetHitDetailsModal(options={}) {
                         if (ui.includes('buy') && ui.includes('above')) return 'Buy above';
                         if (ui.includes('sell') && ui.includes('below')) return 'Sell below';
                         // Fallback: title case raw
-                        return ui.replace(/[-_]+/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+                        return ui.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                     })();
                     const meta = (intent === 'target-hit')
                         ? ['Target hit', prettyUserIntent].filter(Boolean).join(' · ')
-                        : [intent?intent.toUpperCase():'', dir?dir.toUpperCase():'', userIntent?userIntent.toUpperCase():''].filter(Boolean).join(' · ');
+                        : [intent ? intent.toUpperCase() : '', dir ? dir.toUpperCase() : '', userIntent ? userIntent.toUpperCase() : ''].filter(Boolean).join(' · ');
                     card.innerHTML = `
                         <div class="notification-card-row">
                             <div class="notification-card-left">
@@ -16936,21 +16954,21 @@ function showTargetHitDetailsModal(options={}) {
                             </div>
                         </div>
                         <div class="notification-card-bottom">
-                            ${tgtDisp?`<div class="target-line"><span class="label">Target:</span> ${tgtDisp}</div>`:''}
-                            ${meta?`<div class="meta-line">${meta}</div>`:''}
+                            ${tgtDisp ? `<div class="target-line"><span class="label">Target:</span> ${tgtDisp}</div>` : ''}
+                            ${meta ? `<div class="meta-line">${meta}</div>` : ''}
                         </div>`;
-                    card.addEventListener('click', ()=>{ try{ hideModal(targetHitDetailsModal); }catch(_){} openShareOrSearch(code); });
+                    card.addEventListener('click', () => { try { hideModal(targetHitDetailsModal); } catch (_) { } openShareOrSearch(code); });
                     frag.appendChild(card);
-                } catch(e) { /* skip malformed hit */ }
+                } catch (e) { /* skip malformed hit */ }
             });
             targetHitSharesList.appendChild(frag);
         }
-    } catch(e) { console.warn('[CustomTriggers] render failed', e); }
+    } catch (e) { console.warn('[CustomTriggers] render failed', e); }
 
     // Show the modal now and exit. Legacy local target list UI has been removed in favor of persistent CUSTOM_TRIGGER_HITS.
-    try { showModal(targetHitDetailsModal); } catch(_) {}
-    try { __userInitiatedTargetModal = true; } catch(_) {}
-    try { logDebug('Notifications modal displayed (Custom Triggers + centralized sections).'); } catch(_) {}
+    try { showModal(targetHitDetailsModal); } catch (_) { }
+    try { __userInitiatedTargetModal = true; } catch (_) { }
+    try { logDebug('Notifications modal displayed (Custom Triggers + centralized sections).'); } catch (_) { }
     return;
 
     // Inject explainer headers for each notifications section
@@ -16972,127 +16990,127 @@ function showTargetHitDetailsModal(options={}) {
                 expl.textContent = textBuilder();
                 expl.title = 'Click to configure related settings';
                 if (!expl.__bound) {
-                    expl.addEventListener('click', (e)=>{ try { if (typeof onClick === 'function') onClick(e); } catch(_) {} });
-                    expl.addEventListener('keydown', (e)=>{
+                    expl.addEventListener('click', (e) => { try { if (typeof onClick === 'function') onClick(e); } catch (_) { } });
+                    expl.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            try { if (typeof onClick === 'function') onClick(e); } catch(_) {}
+                            try { if (typeof onClick === 'function') onClick(e); } catch (_) { }
                         }
                     });
                     expl.__bound = true;
                 }
             }
-            const toNum = (v)=>{ const n = Number(v); return (v!=null && isFinite(n) && n>0) ? n : null; };
-            const fmtMoney = (n)=>{
-                const v = toNum(n); if (v==null) return 'Not set';
-                if (v>=1e9) return '$'+(v/1e9).toFixed(1)+'B';
-                if (v>=1e6) return '$'+(v/1e6).toFixed(1)+'M';
-                if (v>=1e3) return '$'+(v/1e3).toFixed(1)+'K';
-                return '$'+v.toFixed(2);
+            const toNum = (v) => { const n = Number(v); return (v != null && isFinite(n) && n > 0) ? n : null; };
+            const fmtMoney = (n) => {
+                const v = toNum(n); if (v == null) return 'Not set';
+                if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
+                if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+                if (v >= 1e3) return '$' + (v / 1e3).toFixed(1) + 'K';
+                return '$' + v.toFixed(2);
             };
-            const pctPart = (v)=>{ const n = toNum(v); return (n!=null) ? (n.toFixed(0)+'%') : 'Not set'; };
-            const dolPart = (v)=>{ const n = toNum(v); return (n!=null) ? ('$'+n.toFixed(2)) : 'Not set'; };
-            const minPricePart = (v)=>{ const n = toNum(v); return (n!=null) ? ('$'+n.toFixed(2)) : 'Not set'; };
+            const pctPart = (v) => { const n = toNum(v); return (n != null) ? (n.toFixed(0) + '%') : 'Not set'; };
+            const dolPart = (v) => { const n = toNum(v); return (n != null) ? ('$' + n.toFixed(2)) : 'Not set'; };
+            const minPricePart = (v) => { const n = toNum(v); return (n != null) ? ('$' + n.toFixed(2)) : 'Not set'; };
 
             // Target Hits (local alerts use user per-share targets)
-            ensureExplainer('target-hits', ()=>'Your per-share alert targets (Buy/Sell, Above/Below).', ()=>{
-                try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
+            ensureExplainer('target-hits', () => 'Your per-share alert targets (Buy/Sell, Above/Below).', () => {
+                try { if (typeof hideModal === 'function') hideModal(targetHitDetailsModal); } catch (_) { }
                 // Open the Global Alerts modal directly
                 try {
                     if (typeof showModal === 'function') {
-                        if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+                        if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch (_) { } }
                         if (globalAlertsModal) {
                             showModal(globalAlertsModal);
-                            try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(_) {}
+                            try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch (_) { }
                         }
                     }
-                } catch(_){ }
+                } catch (_) { }
             });
 
             // Global gainers/losers based on directional thresholds
-            ensureExplainer('global-gainers', ()=>{
-                const base = (typeof window.getCurrentDirectionalThresholds==='function') ? window.getCurrentDirectionalThresholds() : {
+            ensureExplainer('global-gainers', () => {
+                const base = (typeof window.getCurrentDirectionalThresholds === 'function') ? window.getCurrentDirectionalThresholds() : {
                     upPercent: window.globalPercentIncrease, upDollar: window.globalDollarIncrease, minimumPrice: window.globalMinimumPrice
                 };
                 const eff = (window.globalMovers && (window.globalMovers.__effectiveThresholds || window.globalMovers.thresholds)) || null;
-                const upPct = (toNum(base.upPercent)!=null) ? toNum(base.upPercent) : (eff ? toNum(eff.upPercent) : null);
-                const upDol = (toNum(base.upDollar)!=null) ? toNum(base.upDollar) : (eff ? toNum(eff.upDollar) : null);
-                const minP = (toNum(base.minimumPrice)!=null) ? toNum(base.minimumPrice) : (eff ? toNum(eff.minimumPrice) : null);
+                const upPct = (toNum(base.upPercent) != null) ? toNum(base.upPercent) : (eff ? toNum(eff.upPercent) : null);
+                const upDol = (toNum(base.upDollar) != null) ? toNum(base.upDollar) : (eff ? toNum(eff.upDollar) : null);
+                const minP = (toNum(base.minimumPrice) != null) ? toNum(base.minimumPrice) : (eff ? toNum(eff.minimumPrice) : null);
                 const parts = [];
-                if (upPct!=null) parts.push(upPct.toFixed(0) + '%');
-                if (upDol!=null) parts.push('$' + upDol.toFixed(2));
+                if (upPct != null) parts.push(upPct.toFixed(0) + '%');
+                if (upDol != null) parts.push('$' + upDol.toFixed(2));
                 const incStr = parts.length ? parts.join(' or ') : 'Not set';
                 return `Increase ≥ ${incStr} | Min Price: ${minPricePart(minP)}`;
-            }, ()=>{
-                try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
+            }, () => {
+                try { if (typeof hideModal === 'function') hideModal(targetHitDetailsModal); } catch (_) { }
                 try {
-                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch (_) { } }
                     if (typeof showModal === 'function' && globalAlertsModal) {
                         showModal(globalAlertsModal);
-                        try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch(_) {}
+                        try { if (globalPercentIncreaseInput) globalPercentIncreaseInput.focus(); } catch (_) { }
                     }
-                } catch(_){ }
+                } catch (_) { }
             });
-            ensureExplainer('global-losers', ()=>{
-                const base = (typeof window.getCurrentDirectionalThresholds==='function') ? window.getCurrentDirectionalThresholds() : {
+            ensureExplainer('global-losers', () => {
+                const base = (typeof window.getCurrentDirectionalThresholds === 'function') ? window.getCurrentDirectionalThresholds() : {
                     downPercent: window.globalPercentDecrease, downDollar: window.globalDollarDecrease, minimumPrice: window.globalMinimumPrice
                 };
                 const eff = (window.globalMovers && (window.globalMovers.__effectiveThresholds || window.globalMovers.thresholds)) || null;
-                const downPct = (toNum(base.downPercent)!=null) ? toNum(base.downPercent) : (eff ? toNum(eff.downPercent) : null);
-                const downDol = (toNum(base.downDollar)!=null) ? toNum(base.downDollar) : (eff ? toNum(eff.downDollar) : null);
-                const minP = (toNum(base.minimumPrice)!=null) ? toNum(base.minimumPrice) : (eff ? toNum(eff.minimumPrice) : null);
+                const downPct = (toNum(base.downPercent) != null) ? toNum(base.downPercent) : (eff ? toNum(eff.downPercent) : null);
+                const downDol = (toNum(base.downDollar) != null) ? toNum(base.downDollar) : (eff ? toNum(eff.downDollar) : null);
+                const minP = (toNum(base.minimumPrice) != null) ? toNum(base.minimumPrice) : (eff ? toNum(eff.minimumPrice) : null);
                 const parts = [];
-                if (downPct!=null) parts.push(downPct.toFixed(0) + '%');
-                if (downDol!=null) parts.push('$' + downDol.toFixed(2));
+                if (downPct != null) parts.push(downPct.toFixed(0) + '%');
+                if (downDol != null) parts.push('$' + downDol.toFixed(2));
                 const decStr = parts.length ? parts.join(' or ') : 'Not set';
                 return `Decrease ≥ ${decStr} | Min Price: ${minPricePart(minP)}`;
-            }, ()=>{
-                try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
+            }, () => {
+                try { if (typeof hideModal === 'function') hideModal(targetHitDetailsModal); } catch (_) { }
                 try {
-                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch (_) { } }
                     if (typeof showModal === 'function' && globalAlertsModal) {
                         showModal(globalAlertsModal);
-                        try { const el = document.getElementById('globalPercentDecrease'); if (el) el.focus(); } catch(_) {}
+                        try { const el = document.getElementById('globalPercentDecrease'); if (el) el.focus(); } catch (_) { }
                     }
-                } catch(_){ }
+                } catch (_) { }
             });
 
             // 52W High/Low: include Min Price and Min Market Cap
-            ensureExplainer('high52', ()=>{
+            ensureExplainer('high52', () => {
                 const mp = hiLoMinimumPrice; const mc = hiLoMinimumMarketCap;
                 // List thresholds only; remove any 'Scope All ASX' wording
                 const parts = [];
                 parts.push(`Min Price: ${minPricePart(mp)}`);
                 parts.push(`Min Mkt Cap: ${fmtMoney(mc)}`);
                 return parts.join(' | ');
-            }, ()=>{ 
-                try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
+            }, () => {
+                try { if (typeof hideModal === 'function') hideModal(targetHitDetailsModal); } catch (_) { }
                 try {
-                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch (_) { } }
                     if (typeof showModal === 'function' && globalAlertsModal) {
                         showModal(globalAlertsModal);
-                        try { const el = document.getElementById('hiLoMinimumPrice'); if (el) el.focus(); } catch(_) {}
+                        try { const el = document.getElementById('hiLoMinimumPrice'); if (el) el.focus(); } catch (_) { }
                     }
-                } catch(_){ }
+                } catch (_) { }
             });
-            ensureExplainer('low52', ()=>{
+            ensureExplainer('low52', () => {
                 const mp = hiLoMinimumPrice; const mc = hiLoMinimumMarketCap;
                 const parts = [];
                 parts.push(`Min Price: ${minPricePart(mp)}`);
                 parts.push(`Min Mkt Cap: ${fmtMoney(mc)}`);
                 return parts.join(' | ');
-            }, ()=>{ 
-                try { if (typeof hideModal==='function') hideModal(targetHitDetailsModal); } catch(_) {}
+            }, () => {
+                try { if (typeof hideModal === 'function') hideModal(targetHitDetailsModal); } catch (_) { }
                 try {
-                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch(_) {} }
+                    if (!globalAlertsModal) { try { globalAlertsModal = document.getElementById('globalAlertsModal'); } catch (_) { } }
                     if (typeof showModal === 'function' && globalAlertsModal) {
                         showModal(globalAlertsModal);
-                        try { const el = document.getElementById('hiLoMinimumPrice'); if (el) el.focus(); } catch(_) {}
+                        try { const el = document.getElementById('hiLoMinimumPrice'); if (el) el.focus(); } catch (_) { }
                     }
-                } catch(_){ }
+                } catch (_) { }
             });
         }
-    } catch(e) { console.warn('[Notifications] Failed to add explainer headers', e); }
+    } catch (e) { console.warn('[Notifications] Failed to add explainer headers', e); }
 
     // Add Global 52-Week sections (legacy fallback) — SKIPPED when modern renderer already populated containers
     try {
@@ -17101,27 +17119,27 @@ function showTargetHitDetailsModal(options={}) {
             const hiLo = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts : null;
             const lows = hiLo ? hiLo.lows : [];
             if (lows && lows.length) {
-                const list = document.getElementById('globalLow52Container') || (function(){ const el=document.createElement('div'); el.id='globalLow52Container'; return el; })();
+                const list = document.getElementById('globalLow52Container') || (function () { const el = document.createElement('div'); el.id = 'globalLow52Container'; return el; })();
                 lows.forEach(entry => {
                     const card = document.createElement('div');
                     card.className = 'low52-alert-card low52-low';
                     const code = String(entry.code || entry.shareCode || '').toUpperCase();
                     const name = entry.name || entry.companyName || code;
-                    const live = (entry.live!=null? Number(entry.live) : (livePrices && livePrices[code] ? Number(livePrices[code].live) : null));
-                    const hi = (entry.high52!=null? Number(entry.high52) : (entry.High52!=null? Number(entry.High52) : null));
-                    const lo = (entry.low52!=null? Number(entry.low52) : (entry.Low52!=null? Number(entry.Low52) : null));
+                    const live = (entry.live != null ? Number(entry.live) : (livePrices && livePrices[code] ? Number(livePrices[code].live) : null));
+                    const hi = (entry.high52 != null ? Number(entry.high52) : (entry.High52 != null ? Number(entry.High52) : null));
+                    const lo = (entry.low52 != null ? Number(entry.low52) : (entry.Low52 != null ? Number(entry.Low52) : null));
                     card.innerHTML = `
                         <div class="low52-card-row low52-header-row">
                             <span class="low52-code">${code}</span>
                             <span class="low52-name">${sanitizeCompanyName(name, code)}</span>
-                            <span class="low52-price">${live!=null?('$'+formatAdaptivePrice(live)):'<span class="low52-price-na">N/A</span>'}</span>
+                            <span class="low52-price">${live != null ? ('$' + formatAdaptivePrice(live)) : '<span class="low52-price-na">N/A</span>'}</span>
                         </div>
                         <div class="low52-thresh-row">
-                            <span class="low52-thresh"><strong>52W Low:</strong> ${lo!=null?'$'+formatAdaptivePrice(lo):'?'} &nbsp; <strong>High:</strong> ${hi!=null?'$'+formatAdaptivePrice(hi):'?'} </span>
+                            <span class="low52-thresh"><strong>52W Low:</strong> ${lo != null ? '$' + formatAdaptivePrice(lo) : '?'} &nbsp; <strong>High:</strong> ${hi != null ? '$' + formatAdaptivePrice(hi) : '?'} </span>
                         </div>`;
                     // Click opens search modal for the code
-                    card.addEventListener('click', ()=>{
-                        try { hideModal(targetHitDetailsModal); } catch(_) {}
+                    card.addEventListener('click', () => {
+                        try { hideModal(targetHitDetailsModal); } catch (_) { }
                         openStockSearchForCode(code);
                     });
                     list.appendChild(card);
@@ -17130,37 +17148,37 @@ function showTargetHitDetailsModal(options={}) {
             // Add Global 52-Week Highs section (centralized)
             const highs = (window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.highs)) ? window.globalHiLo52Alerts.highs : [];
             if (highs && highs.length) {
-                const list2 = document.getElementById('globalHigh52Container') || (function(){ const el=document.createElement('div'); el.id='globalHigh52Container'; return el; })();
+                const list2 = document.getElementById('globalHigh52Container') || (function () { const el = document.createElement('div'); el.id = 'globalHigh52Container'; return el; })();
                 highs.forEach(entry => {
                     const card = document.createElement('div');
                     card.className = 'low52-alert-card low52-high';
                     const code = String(entry.code || entry.shareCode || '').toUpperCase();
                     const name = entry.name || entry.companyName || code;
-                    const live = (entry.live!=null? Number(entry.live) : (livePrices && livePrices[code] ? Number(livePrices[code].live) : null));
-                    const hi = (entry.high52!=null? Number(entry.high52) : (entry.High52!=null? Number(entry.High52) : null));
-                    const lo = (entry.low52!=null? Number(entry.low52) : (entry.Low52!=null? Number(entry.Low52) : null));
+                    const live = (entry.live != null ? Number(entry.live) : (livePrices && livePrices[code] ? Number(livePrices[code].live) : null));
+                    const hi = (entry.high52 != null ? Number(entry.high52) : (entry.High52 != null ? Number(entry.High52) : null));
+                    const lo = (entry.low52 != null ? Number(entry.low52) : (entry.Low52 != null ? Number(entry.Low52) : null));
                     card.innerHTML = `
                         <div class="low52-card-row low52-header-row">
                             <span class="low52-code">${code}</span>
                             <span class="low52-name">${sanitizeCompanyName(name, code)}</span>
-                            <span class="low52-price">${live!=null?('$'+formatAdaptivePrice(live)):'<span class="low52-price-na">N/A</span>'}</span>
+                            <span class="low52-price">${live != null ? ('$' + formatAdaptivePrice(live)) : '<span class="low52-price-na">N/A</span>'}</span>
                         </div>
                         <div class="low52-thresh-row">
-                            <span class="low52-thresh"><strong>52W Low:</strong> ${lo!=null?'$'+formatAdaptivePrice(lo):'?'} &nbsp; <strong>High:</strong> ${hi!=null?'$'+formatAdaptivePrice(hi):'?'} </span>
+                            <span class="low52-thresh"><strong>52W Low:</strong> ${lo != null ? '$' + formatAdaptivePrice(lo) : '?'} &nbsp; <strong>High:</strong> ${hi != null ? '$' + formatAdaptivePrice(hi) : '?'} </span>
                         </div>`;
                     // Click opens search modal for the code
-                    card.addEventListener('click', ()=>{
-                        try { hideModal(targetHitDetailsModal); } catch(_) {}
+                    card.addEventListener('click', () => {
+                        try { hideModal(targetHitDetailsModal); } catch (_) { }
                         openStockSearchForCode(code);
                     });
                     list2.appendChild(card);
                 });
             }
         }
-    } catch(e) { console.warn('[HiLo52] Failed to render global section', e); }
+    } catch (e) { console.warn('[HiLo52] Failed to render global section', e); }
 
     // Inject headings + global summary card (legacy fallback) — SKIPPED when modern renderer already populated movers UI
-    (function(){
+    (function () {
         const skipLegacyGlobalSummary = !!(targetHitDetailsModal && targetHitDetailsModal.__newGlobalRendered);
         if (skipLegacyGlobalSummary) return;
         // Only show global summary if thresholds still active to avoid displaying stale counts after clear
@@ -17196,7 +17214,7 @@ function showTargetHitDetailsModal(options={}) {
             const enabled = (data.enabled !== false);
             const containerHost = document.getElementById('globalMoversContainer') || targetHitSharesList; // fallback
             const container = document.createElement('div');
-            container.classList.add('target-hit-item','global-summary-alert');
+            container.classList.add('target-hit-item', 'global-summary-alert');
             const minText = (data.appliedMinimumPrice && data.appliedMinimumPrice > 0) ? `Ignoring < $${Number(data.appliedMinimumPrice).toFixed(2)}` : '';
             const arrowsRow = `<div class=\"global-summary-arrows-row\"><span class=\"up\"><span class=\"arrow\">&#9650;</span> <span class=\"arrow-count\">${inc}</span></span><span class=\"down\"><span class=\"arrow\">&#9660;</span> <span class=\"arrow-count\">${dec}</span></span></div>`;
             container.innerHTML = `
@@ -17207,20 +17225,20 @@ function showTargetHitDetailsModal(options={}) {
                     ${minText ? ('<div class=\"global-summary-detail ignoring-line\">' + minText + '</div>') : ''}
                 </div>
                 <div class=\"global-summary-actions\">
-                    <button data-action=\"discover\" ${discoverCount?'':'disabled'}>${discoverCount?`Global (${discoverCount})`:'View All'}</button>
-                    <button data-action=\"view-portfolio\" ${portfolioCount?'':'disabled'}>${portfolioCount?`Local (${portfolioCount})`:'Local'}</button>
+                    <button data-action=\"discover\" ${discoverCount ? '' : 'disabled'}>${discoverCount ? `Global (${discoverCount})` : 'View All'}</button>
+                    <button data-action=\"view-portfolio\" ${portfolioCount ? '' : 'disabled'}>${portfolioCount ? `Local (${portfolioCount})` : 'Local'}</button>
                     <button data-action=\"mute-global\" title=\"${enabled ? 'Mute Global Alert' : 'Unmute Global Alert'}\">${enabled ? 'Mute' : 'Unmute'}</button>
                 </div>`;
             const actions = container.querySelector('.global-summary-actions');
             if (actions) {
-                actions.addEventListener('click', (e)=>{
+                actions.addEventListener('click', (e) => {
                     const btn = e.target.closest('button'); if (!btn) return;
                     const act = btn.getAttribute('data-action');
                     if (act === 'view-portfolio') {
                         try {
                             // Show local/portfolio shares that met global criteria
                             openLocalSharesModal(data);
-                        } catch(e){ console.warn('Local shares modal open failed', e); }
+                        } catch (e) { console.warn('Local shares modal open failed', e); }
                     } else if (act === 'discover') {
                         try {
                             // Ensure we have the latest movers data before opening the modal
@@ -17228,7 +17246,7 @@ function showTargetHitDetailsModal(options={}) {
                             setTimeout(() => {
                                 openDiscoverModal(data);
                             }, 100); // Small delay to allow snapshot to be created
-                        } catch(e){ console.warn('Discover modal open failed', e); }
+                        } catch (e) { console.warn('Discover modal open failed', e); }
                     } else if (act === 'mute-global') {
                         e.preventDefault();
                         toggleGlobalSummaryEnabled();
@@ -17242,12 +17260,12 @@ function showTargetHitDetailsModal(options={}) {
     async function openDiscoverModal(summaryData) {
         let modal = document.getElementById('discoverGlobalModal');
         if (!modal) { console.warn('Discover modal element missing.'); return; }
-        
+
         // Fetch live prices for global shares if not already available
         console.log('[DiscoverModal] Checking if we need to fetch live prices for global shares...');
         const globalCodes = summaryData?.nonPortfolioCodes || [];
         const missingCodes = globalCodes.filter(code => !livePrices[code]);
-        
+
         if (missingCodes.length > 0) {
             console.log(`[DiscoverModal] Fetching live prices for ${missingCodes.length} global shares:`, missingCodes.slice(0, 10));
             try {
@@ -17271,7 +17289,7 @@ function showTargetHitDetailsModal(options={}) {
                 titleEl.textContent = 'Global Movers (All ASX)';
             }
             // Persist last summary for re-sorts
-            try { window.__lastDiscoverSummaryData = summary; } catch(_) {}
+            try { window.__lastDiscoverSummaryData = summary; } catch (_) { }
             console.log('[DiscoverModal] Opening global shares modal');
             const nonPortfolioCodes = Array.isArray(summary.nonPortfolioCodes) ? summary.nonPortfolioCodes : [];
             const threshold = (typeof summary.threshold === 'number') ? summary.threshold : null;
@@ -17286,19 +17304,19 @@ function showTargetHitDetailsModal(options={}) {
                 const badges = [];
                 // Prefer server thresholds when client-side values are absent so the UI still shows what's applied
                 const serverThresholds = (gm && gm.__serverThresholds) ? gm.__serverThresholds : null;
-                const upPct = (typeof globalPercentIncrease === 'number' && globalPercentIncrease>0) ? globalPercentIncrease : (serverThresholds && serverThresholds.upPercent) ? serverThresholds.upPercent : null;
-                const upDol = (typeof globalDollarIncrease === 'number' && globalDollarIncrease>0) ? globalDollarIncrease : (serverThresholds && serverThresholds.upDollar) ? serverThresholds.upDollar : null;
-                const dnPct = (typeof globalPercentDecrease === 'number' && globalPercentDecrease>0) ? globalPercentDecrease : (serverThresholds && serverThresholds.downPercent) ? serverThresholds.downPercent : null;
-                const dnDol = (typeof globalDollarDecrease === 'number' && globalDollarDecrease>0) ? globalDollarDecrease : (serverThresholds && serverThresholds.downDollar) ? serverThresholds.downDollar : null;
-                if (upPct) badges.push({ cls:'up', text:'▲ ≥ '+upPct+'%' });
-                if (upDol) badges.push({ cls:'up', text:'▲ ≥ $'+upDol });
-                if (dnPct) badges.push({ cls:'down', text:'▼ ≥ '+dnPct+'%' });
-                if (dnDol) badges.push({ cls:'down', text:'▼ ≥ $'+dnDol });
-                if (appliedMinimumPrice) badges.push({ cls:'min', text:'Min $'+Number(appliedMinimumPrice).toFixed(2) });
+                const upPct = (typeof globalPercentIncrease === 'number' && globalPercentIncrease > 0) ? globalPercentIncrease : (serverThresholds && serverThresholds.upPercent) ? serverThresholds.upPercent : null;
+                const upDol = (typeof globalDollarIncrease === 'number' && globalDollarIncrease > 0) ? globalDollarIncrease : (serverThresholds && serverThresholds.upDollar) ? serverThresholds.upDollar : null;
+                const dnPct = (typeof globalPercentDecrease === 'number' && globalPercentDecrease > 0) ? globalPercentDecrease : (serverThresholds && serverThresholds.downPercent) ? serverThresholds.downPercent : null;
+                const dnDol = (typeof globalDollarDecrease === 'number' && globalDollarDecrease > 0) ? globalDollarDecrease : (serverThresholds && serverThresholds.downDollar) ? serverThresholds.downDollar : null;
+                if (upPct) badges.push({ cls: 'up', text: '▲ ≥ ' + upPct + '%' });
+                if (upDol) badges.push({ cls: 'up', text: '▲ ≥ $' + upDol });
+                if (dnPct) badges.push({ cls: 'down', text: '▼ ≥ ' + dnPct + '%' });
+                if (dnDol) badges.push({ cls: 'down', text: '▼ ≥ $' + dnDol });
+                if (appliedMinimumPrice) badges.push({ cls: 'min', text: 'Min $' + Number(appliedMinimumPrice).toFixed(2) });
                 return badges;
             }
             const criteriaBadges = buildCriteriaBadges();
-            const lastUpdatedTs = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+            const lastUpdatedTs = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
             let entries = [];
             console.log('[DiscoverModal] Building entries from snapshot and codeSet...');
@@ -17357,9 +17375,9 @@ function showTargetHitDetailsModal(options={}) {
                 }).filter(Boolean);
                 console.log('[DiscoverModal] Created entries from final fallback:', entries.length);
             }
-            entries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
+            entries.sort((a, b) => (Math.abs(b.pct || 0)) - (Math.abs(a.pct || 0)));
 
-            listEl.innerHTML='';
+            listEl.innerHTML = '';
             // Header / criteria bar
             const criteriaBar = document.createElement('div');
             criteriaBar.className = 'discover-criteria-bar';
@@ -17371,12 +17389,12 @@ function showTargetHitDetailsModal(options={}) {
             const badgeContainer = document.createElement('div');
             badgeContainer.className = 'criteria-badges';
             if (criteriaBadges.length) {
-                criteriaBadges.forEach(b => { const s=document.createElement('span'); s.className='criteria-badge '+b.cls; s.textContent=b.text; badgeContainer.appendChild(s); });
+                criteriaBadges.forEach(b => { const s = document.createElement('span'); s.className = 'criteria-badge ' + b.cls; s.textContent = b.text; badgeContainer.appendChild(s); });
             } else {
-                const none=document.createElement('span'); none.className='criteria-badge none'; none.textContent='No active thresholds'; badgeContainer.appendChild(none);
+                const none = document.createElement('span'); none.className = 'criteria-badge none'; none.textContent = 'No active thresholds'; badgeContainer.appendChild(none);
             }
             // Summary line (mirror sidebar Global Alerts summary)
-            function buildGlobalAlertsSummaryInline(){
+            function buildGlobalAlertsSummaryInline() {
                 try {
                     // Reuse formatting helper if present
                     const incPartLocal = (typeof formatGlobalAlertPart === 'function') ? formatGlobalAlertPart(globalPercentIncrease, globalDollarIncrease) : '';
@@ -17385,14 +17403,14 @@ function showTargetHitDetailsModal(options={}) {
                     const server = (window.globalMovers && window.globalMovers.__serverThresholds) ? window.globalMovers.__serverThresholds : null;
                     const incPart = (incPartLocal && incPartLocal !== 'Off') ? incPartLocal : (server ? (formatGlobalAlertPart(server.upPercent, server.upDollar) || '') : incPartLocal);
                     const decPart = (decPartLocal && decPartLocal !== 'Off') ? decPartLocal : (server ? (formatGlobalAlertPart(server.downPercent, server.downDollar) || '') : decPartLocal);
-                    const anyActive = (incPart && incPart !== 'Off') || (decPart && decPart !== 'Off') || (typeof globalMinimumPrice === 'number' && globalMinimumPrice>0);
+                    const anyActive = (incPart && incPart !== 'Off') || (decPart && decPart !== 'Off') || (typeof globalMinimumPrice === 'number' && globalMinimumPrice > 0);
                     if (!anyActive) return '';
-                    const minPart = (typeof globalMinimumPrice === 'number' && globalMinimumPrice>0) ? ('Min: $' + Number(globalMinimumPrice).toFixed(2) + ' | ') : '';
+                    const minPart = (typeof globalMinimumPrice === 'number' && globalMinimumPrice > 0) ? ('Min: $' + Number(globalMinimumPrice).toFixed(2) + ' | ') : '';
                     return minPart + 'Increase: ' + incPart + ' | Decrease: ' + decPart;
-                } catch(err){ console.warn('Global alerts inline summary build failed', err); return ''; }
+                } catch (err) { console.warn('Global alerts inline summary build failed', err); return ''; }
             }
             const inlineSummary = buildGlobalAlertsSummaryInline();
-            const tsSpan = document.createElement('span'); tsSpan.className='criteria-timestamp'; tsSpan.textContent = lastUpdatedTs;
+            const tsSpan = document.createElement('span'); tsSpan.className = 'criteria-timestamp'; tsSpan.textContent = lastUpdatedTs;
             criteriaBar.appendChild(titleSpan);
             criteriaBar.appendChild(badgeContainer);
 
@@ -17422,24 +17440,24 @@ function showTargetHitDetailsModal(options={}) {
             const sortSelect = document.createElement('select');
             sortSelect.id = 'discoverSortSelect';
             const SORT_OPTIONS = [
-                { value:'code_asc', label:'A → Z' },
-                { value:'price_desc', label:'Price ↓' },
-                { value:'pct_asc', label:'Biggest Losers (% ↓)' },
-                { value:'chg_asc', label:'Biggest Losers ($ ↓)' }
+                { value: 'code_asc', label: 'A → Z' },
+                { value: 'price_desc', label: 'Price ↓' },
+                { value: 'pct_asc', label: 'Biggest Losers (% ↓)' },
+                { value: 'chg_asc', label: 'Biggest Losers ($ ↓)' }
             ];
             const storedSort = (localStorage.getItem('discoverSort') || 'pct_desc');
             // Migrate old sort keys if present
             let initialSort = storedSort;
             if (initialSort === 'pct_desc') initialSort = 'pct_asc';
             if (initialSort === 'chg_desc') initialSort = 'chg_asc';
-            SORT_OPTIONS.forEach(opt=>{
-                const o = document.createElement('option'); o.value = opt.value; o.textContent = opt.label; if (opt.value===initialSort) o.selected = true; sortSelect.appendChild(o);
+            SORT_OPTIONS.forEach(opt => {
+                const o = document.createElement('option'); o.value = opt.value; o.textContent = opt.label; if (opt.value === initialSort) o.selected = true; sortSelect.appendChild(o);
             });
             sortWrapper.appendChild(sortSelect);
             const sortDesc = document.createElement('div');
             sortDesc.className = 'discover-sort-desc';
-            function sortModeDescription(v){
-                switch(v){
+            function sortModeDescription(v) {
+                switch (v) {
                     case 'code_asc': return 'Alphabetical (A → Z)';
                     case 'price_desc': return 'Highest live price first';
                     case 'pct_asc': return 'Biggest losers by % (lowest to highest)';
@@ -17454,25 +17472,25 @@ function showTargetHitDetailsModal(options={}) {
             function applySort(list) {
                 const mode = sortSelect.value;
                 if (mode === 'code_asc') {
-                    list.sort((a,b)=> (a.code||'').localeCompare(b.code||''));
+                    list.sort((a, b) => (a.code || '').localeCompare(b.code || ''));
                 } else if (mode === 'price_desc') {
-                    list.sort((a,b)=> ( (b._priceForSort ?? -Infinity) - (a._priceForSort ?? -Infinity) ) );
+                    list.sort((a, b) => ((b._priceForSort ?? -Infinity) - (a._priceForSort ?? -Infinity)));
                 } else if (mode === 'pct_asc') {
-                    list.sort((a,b)=> ((a._pctForSort ?? 0) - (b._pctForSort ?? 0)) );
+                    list.sort((a, b) => ((a._pctForSort ?? 0) - (b._pctForSort ?? 0)));
                 } else if (mode === 'chg_asc') {
-                    list.sort((a,b)=> ((a._chForSort ?? 0) - (b._chForSort ?? 0)) );
+                    list.sort((a, b) => ((a._chForSort ?? 0) - (b._chForSort ?? 0)));
                 }
             }
             const ul = document.createElement('ul');
-            ul.className='discover-code-list enriched global-only card-layout';
+            ul.className = 'discover-code-list enriched global-only card-layout';
 
             const contextLine = document.createElement('div');
             contextLine.className = 'discover-context-line discover-context-line-spaced';
-            contextLine.innerHTML = `<strong>${nonPortfolioCodes.length}</strong> global ${nonPortfolioCodes.length===1?'share':'shares'} matched thresholds`;
+            contextLine.innerHTML = `<strong>${nonPortfolioCodes.length}</strong> global ${nonPortfolioCodes.length === 1 ? 'share' : 'shares'} matched thresholds`;
             listEl.appendChild(contextLine);
 
             if (!entries.length) {
-                const li=document.createElement('li'); li.className='ghosted-text'; li.textContent='No current global movers meeting threshold.'; ul.appendChild(li);
+                const li = document.createElement('li'); li.className = 'ghosted-text'; li.textContent = 'No current global movers meeting threshold.'; ul.appendChild(li);
             } else {
                 const missingCodes = [];
                 entries.forEach(en => {
@@ -17483,7 +17501,7 @@ function showTargetHitDetailsModal(options={}) {
                     if ((!lpData || lpData.live == null) && externalRows.length) {
                         ext = externalRows.find(r => r.code === code);
                     }
-                    
+
                     // Debug logging for first few entries (temporarily enabled)
                     if (entries.indexOf(en) < 3) {
                         console.log(`[DiscoverModal] Entry ${entries.indexOf(en)}: ${code}`, {
@@ -17492,9 +17510,9 @@ function showTargetHitDetailsModal(options={}) {
                         });
                     }
                     // Map snapshot & external fields: live -> price fallback, change->ch
-                    function num(v){ if (v===null||v===undefined||v==='') return null; const n=Number(v); return isNaN(n)?null:n; }
-                    const price = num(en.price) ?? num(en.live) ?? num(lpData.live) ?? (ext?num(ext.live):null);
-                    const prevClose = num(en.prevClose) ?? num(lpData.prevClose) ?? (ext?num(ext.prevClose):null);
+                    function num(v) { if (v === null || v === undefined || v === '') return null; const n = Number(v); return isNaN(n) ? null : n; }
+                    const price = num(en.price) ?? num(en.live) ?? num(lpData.live) ?? (ext ? num(ext.live) : null);
+                    const prevClose = num(en.prevClose) ?? num(lpData.prevClose) ?? (ext ? num(ext.prevClose) : null);
                     let ch = num(en.ch) ?? num(en.change) ?? num(lpData.change);
                     // If change missing, derive from price/prev
                     if ((ch === null || ch === undefined) && price !== null && prevClose !== null) ch = price - prevClose;
@@ -17507,11 +17525,11 @@ function showTargetHitDetailsModal(options={}) {
                     li.dataset.code = code;
                     let comboLine = 'No movement data yet';
                     if (ch != null && pct != null) {
-                        comboLine = `${ch>0?'+':''}$${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%`;
+                        comboLine = `${ch > 0 ? '+' : ''}$${ch.toFixed(2)} / ${pct > 0 ? '+' : ''}${pct.toFixed(2)}%`;
                     } else if (ch != null) {
-                        comboLine = `${ch>0?'+':''}$${ch.toFixed(2)}`;
+                        comboLine = `${ch > 0 ? '+' : ''}$${ch.toFixed(2)}`;
                     } else if (pct != null) {
-                        comboLine = `${pct>0?'+':''}${pct.toFixed(2)}%`;
+                        comboLine = `${pct > 0 ? '+' : ''}${pct.toFixed(2)}%`;
                     } else {
                         missingCodes.push(code);
                     }
@@ -17524,11 +17542,11 @@ function showTargetHitDetailsModal(options={}) {
                     en._priceForSort = price; en._pctForSort = pct; en._chForSort = ch;
                     // Company name (from allAsxCodes cache) & 52w range
                     let companyName = '';
-                    try { if (Array.isArray(allAsxCodes)) { const m = allAsxCodes.find(c=>c.code===code); if (m && m.name) companyName = m.name; } } catch(_) {}
-                    const hi52 = (lpData && lpData.High52!=null && !isNaN(lpData.High52)) ? '$'+formatAdaptivePrice(lpData.High52) : '';
-                    const lo52 = (lpData && lpData.Low52!=null && !isNaN(lpData.Low52)) ? '$'+formatAdaptivePrice(lpData.Low52) : '';
-                    const rangeLine = (hi52||lo52) ? `<div class=\"range-line\">${lo52||'?'}<span class=\"sep\">→</span>${hi52||'?'} 52w</div>` : '';
-                    const priceLine = `<div class=\"price-line\">${price!=null?('$'+Number(price).toFixed(2)):'-'} ${comboLine?`<span class=\"movement-combo ${colorClass}\">${comboLine}</span>`:''}</div>`;
+                    try { if (Array.isArray(allAsxCodes)) { const m = allAsxCodes.find(c => c.code === code); if (m && m.name) companyName = m.name; } } catch (_) { }
+                    const hi52 = (lpData && lpData.High52 != null && !isNaN(lpData.High52)) ? '$' + formatAdaptivePrice(lpData.High52) : '';
+                    const lo52 = (lpData && lpData.Low52 != null && !isNaN(lpData.Low52)) ? '$' + formatAdaptivePrice(lpData.Low52) : '';
+                    const rangeLine = (hi52 || lo52) ? `<div class=\"range-line\">${lo52 || '?'}<span class=\"sep\">→</span>${hi52 || '?'} 52w</div>` : '';
+                    const priceLine = `<div class=\"price-line\">${price != null ? ('$' + Number(price).toFixed(2)) : '-'} ${comboLine ? `<span class=\"movement-combo ${colorClass}\">${comboLine}</span>` : ''}</div>`;
 
                     // Create a more structured layout with proper containers
                     li.innerHTML = `
@@ -17547,7 +17565,7 @@ function showTargetHitDetailsModal(options={}) {
                             </div>
                         </div>
                     `;
-                    
+
                     // Debug logging for first few entries (temporarily enabled)
                     if (entries.indexOf(en) < 3) {
                         console.log(`[DiscoverModal] Rendered HTML for ${code}:`, {
@@ -17556,8 +17574,8 @@ function showTargetHitDetailsModal(options={}) {
                             hasLivePrice: !!(lpData && lpData.live != null)
                         });
                     }
-                    li.addEventListener('click',()=>{
-                        try { hideModal(modal); } catch(_) {}
+                    li.addEventListener('click', () => {
+                        try { hideModal(modal); } catch (_) { }
                         openShareOrSearch(code);
                     });
                     ul.appendChild(li);
@@ -17568,13 +17586,13 @@ function showTargetHitDetailsModal(options={}) {
                     const now = Date.now();
                     if (!window.__discoverEnrichTs || (now - window.__discoverEnrichTs) > 4000) {
                         window.__discoverEnrichTs = now;
-                        setTimeout(async ()=>{
+                        setTimeout(async () => {
                             try {
                                 await fetchLivePrices({ cacheBust: true });
                                 if (modal && modal.style.display !== 'none') {
-                                    try { openDiscoverModal(summaryData); } catch(e){ console.warn('Discover enrichment refresh failed', e); }
+                                    try { openDiscoverModal(summaryData); } catch (e) { console.warn('Discover enrichment refresh failed', e); }
                                 }
-                            } catch(e) { console.warn('Discover enrichment fetch error', e); }
+                            } catch (e) { console.warn('Discover enrichment fetch error', e); }
                         }, 350);
                     }
                 }
@@ -17583,15 +17601,15 @@ function showTargetHitDetailsModal(options={}) {
             try {
                 applySort(entries);
                 // Re-append in new order
-                const ordered = entries.map(en => ul.querySelector('li.discover-mover[data-code="'+en.code+'"]')).filter(Boolean);
+                const ordered = entries.map(en => ul.querySelector('li.discover-mover[data-code="' + en.code + '"]')).filter(Boolean);
                 ordered.forEach(li => ul.appendChild(li));
-            } catch(e){ if (DEBUG_MODE) console.warn('Discover sort apply failed', e); }
+            } catch (e) { if (DEBUG_MODE) console.warn('Discover sort apply failed', e); }
             // Listen for sort changes
             sortSelect.addEventListener('change', () => {
-                try { localStorage.setItem('discoverSort', sortSelect.value); } catch(_) {}
+                try { localStorage.setItem('discoverSort', sortSelect.value); } catch (_) { }
                 // Re-sort using existing in-memory entries (with helper values)
                 applySort(entries);
-                const ordered = entries.map(en => ul.querySelector('li.discover-mover[data-code="'+en.code+'"]')).filter(Boolean);
+                const ordered = entries.map(en => ul.querySelector('li.discover-mover[data-code="' + en.code + '"]')).filter(Boolean);
                 ordered.forEach(li => ul.appendChild(li));
                 sortDesc.textContent = sortModeDescription(sortSelect.value);
             });
@@ -17600,7 +17618,7 @@ function showTargetHitDetailsModal(options={}) {
         showModal(modal);
     }
     // Expose openDiscoverModal globally so other click handlers can call it safely
-    try { window.openDiscoverModal = openDiscoverModal; } catch(_) {}
+    try { window.openDiscoverModal = openDiscoverModal; } catch (_) { }
 
     // Function to show local/portfolio shares that met global criteria
     function openLocalSharesModal(summaryData) {
@@ -17613,7 +17631,7 @@ function showTargetHitDetailsModal(options={}) {
 
             // Build portfolio codes set (recreate userCodes logic)
             const portfolioCodes = new Set();
-            (allSharesData||[]).forEach(s => { if (s && s.shareName) portfolioCodes.add(s.shareName.toUpperCase()); });
+            (allSharesData || []).forEach(s => { if (s && s.shareName) portfolioCodes.add(s.shareName.toUpperCase()); });
 
             // Build local entries from live prices - only portfolio shares that met global criteria
             let entries = Object.entries(livePrices || {}).map(([code, lp]) => ({
@@ -17634,7 +17652,7 @@ function showTargetHitDetailsModal(options={}) {
                 const change = entry.live - entry.prevClose;
                 const absChange = Math.abs(change);
                 const triggered = (change > 0 && globalDollarIncrease && absChange >= globalDollarIncrease) ||
-                                (change < 0 && globalDollarDecrease && absChange >= globalDollarDecrease);
+                    (change < 0 && globalDollarDecrease && absChange >= globalDollarDecrease);
 
                 return triggered;
             });
@@ -17659,12 +17677,12 @@ function showTargetHitDetailsModal(options={}) {
             }
 
             // Sort by absolute percentage change
-            entries.sort((a,b)=> (Math.abs(b.pct||0)) - (Math.abs(a.pct||0)));
+            entries.sort((a, b) => (Math.abs(b.pct || 0)) - (Math.abs(a.pct || 0)));
 
             // Add context line showing count
             const contextLine = document.createElement('div');
             contextLine.className = 'discover-context-line discover-context-line-spaced';
-            contextLine.innerHTML = `<strong>${entries.length}</strong> portfolio ${entries.length===1?'share':'shares'} matched global thresholds`;
+            contextLine.innerHTML = `<strong>${entries.length}</strong> portfolio ${entries.length === 1 ? 'share' : 'shares'} matched global thresholds`;
             listEl.appendChild(contextLine);
 
             const ul = document.createElement('ul');
@@ -17682,9 +17700,9 @@ function showTargetHitDetailsModal(options={}) {
 
                 // Get 52-week range data if available
                 const lpData = (livePrices && livePrices[entry.code]) ? livePrices[entry.code] : {};
-                const hi52 = (lpData && lpData.High52!=null && !isNaN(lpData.High52)) ? '$'+formatAdaptivePrice(lpData.High52) : '';
-                const lo52 = (lpData && lpData.Low52!=null && !isNaN(lpData.Low52)) ? '$'+formatAdaptivePrice(lpData.Low52) : '';
-                const rangeLine = (hi52||lo52) ? `<div class="range-line">${lo52||'?'}<span class="sep">→</span>${hi52||'?'} 52w</div>` : '';
+                const hi52 = (lpData && lpData.High52 != null && !isNaN(lpData.High52)) ? '$' + formatAdaptivePrice(lpData.High52) : '';
+                const lo52 = (lpData && lpData.Low52 != null && !isNaN(lpData.Low52)) ? '$' + formatAdaptivePrice(lpData.Low52) : '';
+                const rangeLine = (hi52 || lo52) ? `<div class="range-line">${lo52 || '?'}<span class="sep">→</span>${hi52 || '?'} 52w</div>` : '';
                 const priceLine = `<div class="price-line">$${entry.live.toFixed(2)} <span class="movement-combo ${isPositive ? 'positive' : isNegative ? 'negative' : 'neutral'}">${change > 0 ? '+' : ''}$${change.toFixed(2)} (${pct > 0 ? '+' : ''}${pct.toFixed(2)}%)</span></div>`;
 
                 // Use the same structured layout as Global modal
@@ -17740,7 +17758,7 @@ function showTargetHitDetailsModal(options={}) {
             const ch = currentLivePrice - prevClose;
             const pct = (ch / prevClose) * 100;
             const dirClass = ch === 0 ? 'neutral' : (ch > 0 ? 'positive' : 'negative');
-            const combo = `${ch>0?'+':''}${ch.toFixed(2)} / ${pct>0?'+':''}${pct.toFixed(2)}%`;
+            const combo = `${ch > 0 ? '+' : ''}${ch.toFixed(2)} / ${pct > 0 ? '+' : ''}${pct.toFixed(2)}%`;
             movementDeltaHtml = `<span class=\"movement-combo ${dirClass}\">${combo}</span>`;
             // pick border color by movement
             if (ch > 0) movementBorderColor = 'var(--brand-green)'; else if (ch < 0) movementBorderColor = 'var(--brand-red)';
@@ -17752,7 +17770,7 @@ function showTargetHitDetailsModal(options={}) {
         try {
             const color = movementBorderColor || (direction === 'above' ? 'var(--brand-green)' : 'var(--brand-red)');
             item.style.setProperty('--target-hit-border-color', color);
-        } catch(_) {}
+        } catch (_) { }
         if (isMuted) item.classList.add('muted');
         item.dataset.shareId = share.id;
         if (share.shareName) item.dataset.asxCode = share.shareName.toUpperCase();
@@ -17760,8 +17778,8 @@ function showTargetHitDetailsModal(options={}) {
             <div class="target-hit-item-grid">
                 <div class="col-left">
                     <span class="share-name-code ${priceClass}">${share.shareName}</span>
-                    <span class="target-price-line alert-target-line">${renderAlertTargetInline(share,{showLabel:true})}</span>
-                    ${movementDeltaHtml?`<div class=\"movement-line\">${movementDeltaHtml}</div>`:''}
+                    <span class="target-price-line alert-target-line">${renderAlertTargetInline(share, { showLabel: true })}</span>
+                    ${movementDeltaHtml ? `<div class=\"movement-line\">${movementDeltaHtml}</div>` : ''}
                 </div>
                 <div class="col-right">
                     <span class="live-price-display ${priceClass}">${currentLivePrice !== null ? ('$' + formatAdaptivePrice(currentLivePrice)) : ''}</span>
@@ -17790,7 +17808,7 @@ function showTargetHitDetailsModal(options={}) {
                     }
                     if (DEBUG_MODE) console.log('[ClickPopulate] Triggering snapshot fetch for', code);
                     updateAddFormLiveSnapshot(code);
-                } catch(err) { if (DEBUG_MODE) console.warn('Click-to-populate snapshot failed', err); }
+                } catch (err) { if (DEBUG_MODE) console.warn('Click-to-populate snapshot failed', err); }
             }
         });
         // Mute/unmute button
@@ -17801,7 +17819,7 @@ function showTargetHitDetailsModal(options={}) {
                 try {
                     await toggleAlertEnabled(share.id); // internal handles optimistic update + banner refresh
                     showTargetHitDetailsModal(); // rebuild list to reflect new grouping/button text
-                } catch(err) {
+                } catch (err) {
                     console.warn('Toggle alert failed', err);
                 }
             });
@@ -17814,7 +17832,7 @@ function showTargetHitDetailsModal(options={}) {
     if (!hasEnabled && !hasMuted) {
         const p = document.createElement('p');
         p.className = 'no-alerts-message';
-    p.textContent = 'No shares currently at alert target.';
+        p.textContent = 'No shares currently at alert target.';
         targetHitSharesList.appendChild(p);
     } else {
         if (hasEnabled) {
@@ -17836,7 +17854,7 @@ function showTargetHitDetailsModal(options={}) {
 
     showModal(targetHitDetailsModal);
     __userInitiatedTargetModal = true; // mark that user has seen modal this session
-    logDebug('Target Hit Modal: Displayed details. Enabled=' + sharesAtTargetPrice.length + ' Muted=' + (sharesAtTargetPriceMuted?sharesAtTargetPriceMuted.length:0));
+    logDebug('Target Hit Modal: Displayed details. Enabled=' + sharesAtTargetPrice.length + ' Muted=' + (sharesAtTargetPriceMuted ? sharesAtTargetPriceMuted.length : 0));
 }
 
 // Expose the function to window object for global access
@@ -17845,7 +17863,7 @@ window.recomputeTriggeredAlerts = recomputeTriggeredAlerts;
 
 // Debug helper: dumps current trigger state for inspection in browser console
 if (typeof window !== 'undefined') {
-    window.dumpTriggerState = function() {
+    window.dumpTriggerState = function () {
         try {
             const sampleLive = {};
             (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []).forEach(s => {
@@ -17854,8 +17872,8 @@ if (typeof window !== 'undefined') {
             });
             const out = {
                 timestamp: new Date().toISOString(),
-                sharesAtTargetPrice: (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.map(s => ({ id: s.id, code: (s.shareName||s.code||s.shareCode||'').toUpperCase(), name: s.companyName || s.shareName || s.name || '' })) : []),
-                sharesAtTargetPriceMuted: (Array.isArray(sharesAtTargetPriceMuted) ? sharesAtTargetPriceMuted.map(s => ({ id: s.id, code: (s.shareName||s.code||s.shareCode||'').toUpperCase(), name: s.companyName || s.shareName || s.name || '' })) : []),
+                sharesAtTargetPrice: (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.map(s => ({ id: s.id, code: (s.shareName || s.code || s.shareCode || '').toUpperCase(), name: s.companyName || s.shareName || s.name || '' })) : []),
+                sharesAtTargetPriceMuted: (Array.isArray(sharesAtTargetPriceMuted) ? sharesAtTargetPriceMuted.map(s => ({ id: s.id, code: (s.shareName || s.code || s.shareCode || '').toUpperCase(), name: s.companyName || s.shareName || s.name || '' })) : []),
                 alertsEnabledMapSize: (alertsEnabledMap && typeof alertsEnabledMap.size !== 'undefined') ? alertsEnabledMap.size : null,
                 liveSamples: sampleLive,
                 liveKeysCount: Object.keys(window.livePrices || {}).length,
@@ -17865,7 +17883,7 @@ if (typeof window !== 'undefined') {
             console.log(out);
             console.groupEnd();
             return out;
-        } catch(e) { console.error('dumpTriggerState failed', e); return null; }
+        } catch (e) { console.error('dumpTriggerState failed', e); return null; }
     };
 }
 
@@ -17887,7 +17905,7 @@ async function toggleGlobalSummaryEnabled() {
         updateTargetHitBanner();
         if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none') showTargetHitDetailsModal();
         showCustomAlert((!currentEnabled ? 'Global Alert unmuted' : 'Global Alert muted'), 1200);
-    } catch(e) { console.warn('Global Alert mute toggle failed', e); }
+    } catch (e) { console.warn('Global Alert mute toggle failed', e); }
 }
 
 // Force Update: fully clears caches, unregisters service workers, clears storage, reloads fresh
@@ -17897,13 +17915,13 @@ async function forceHardUpdate() {
         // Unregister all service workers
         if (navigator.serviceWorker) {
             const regs = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(regs.map(r=>r.unregister().catch(()=>{})));
+            await Promise.all(regs.map(r => r.unregister().catch(() => { })));
             if (DEBUG_MODE) console.log('[ForceUpdate] Service workers unregistered:', regs.length);
         }
         // Clear caches
         if (window.caches && caches.keys) {
             const keys = await caches.keys();
-            await Promise.all(keys.map(k=>caches.delete(k).catch(()=>{})));
+            await Promise.all(keys.map(k => caches.delete(k).catch(() => { })));
             if (DEBUG_MODE) console.log('[ForceUpdate] Caches cleared:', keys);
         }
         // Clear IndexedDB databases (best-effort; some browsers may not support indexedDB.databases)
@@ -17911,17 +17929,17 @@ async function forceHardUpdate() {
             if (window.indexedDB && indexedDB.databases) {
                 const dbs = await indexedDB.databases();
                 if (Array.isArray(dbs)) {
-                    await Promise.all(dbs.map(db => db && db.name ? new Promise(res=>{ const req = indexedDB.deleteDatabase(db.name); req.onsuccess=req.onerror=req.onblocked=()=>res(); }) : Promise.resolve()));
-                    if (DEBUG_MODE) console.log('[ForceUpdate] IndexedDB databases cleared:', dbs.map(d=>d && d.name));
+                    await Promise.all(dbs.map(db => db && db.name ? new Promise(res => { const req = indexedDB.deleteDatabase(db.name); req.onsuccess = req.onerror = req.onblocked = () => res(); }) : Promise.resolve()));
+                    if (DEBUG_MODE) console.log('[ForceUpdate] IndexedDB databases cleared:', dbs.map(d => d && d.name));
                 }
             }
-        } catch(idbErr) { if (DEBUG_MODE) console.warn('[ForceUpdate] IndexedDB clear not fully supported', idbErr); }
+        } catch (idbErr) { if (DEBUG_MODE) console.warn('[ForceUpdate] IndexedDB clear not fully supported', idbErr); }
         // Clear local/session storage (preserve maybe user theme? currently wiping everything for guaranteed fresh load)
-        try { localStorage.clear(); } catch(_) {}
-        try { sessionStorage.clear(); } catch(_) {}
+        try { localStorage.clear(); } catch (_) { }
+        try { sessionStorage.clear(); } catch (_) { }
         // Small delay to allow SW unregister & cache deletion to settle
-        setTimeout(()=>{ window.location.reload(true); }, 300);
-    } catch(err) {
+        setTimeout(() => { window.location.reload(true); }, 300);
+    } catch (err) {
         console.warn('[ForceUpdate] Failed, manual hard reload may be required.', err);
         showCustomAlert('Force update failed. Please hard reload manually.', 2500);
     }
@@ -17931,18 +17949,18 @@ if (targetHitIconBtn) {
         logDebug('Target Alert: Icon button clicked. Opening details modal.');
         __userInitiatedTargetModal = true;
         ALLOW_ALERT_MODAL_AUTO_OPEN = true; // enable future passive opens this session
-        showTargetHitDetailsModal({ explicit:true, userInitiated:true, allowDuringInitialLoad:true });
+        showTargetHitDetailsModal({ explicit: true, userInitiated: true, allowDuringInitialLoad: true });
     });
 }
 let firebaseServices;
 
-document.addEventListener('DOMContentLoaded', async function() {
-    if (window.__appDomBootstrapped) { try { console.debug('Init: DOMContentLoaded bootstrap already run; skipping'); } catch(_){} return; }
+document.addEventListener('DOMContentLoaded', async function () {
+    if (window.__appDomBootstrapped) { try { console.debug('Init: DOMContentLoaded bootstrap already run; skipping'); } catch (_) { } return; }
     window.__appDomBootstrapped = true;
     // Prefer hub singletons
     db = hubDb; auth = hubAuth; currentAppId = hubAppId; firestore = hubFs; authFunctions = hubAuthFx;
-    try { window._firebaseInitialized = !!hubInit; } catch(_) {}
-    initializeAppEventListeners(()=>{});
+    try { window._firebaseInitialized = !!hubInit; } catch (_) { }
+    initializeAppEventListeners(() => { });
     // Initialize theme management with a delay to ensure DOM is ready
     setTimeout(() => {
         initializeTheme();
@@ -17977,7 +17995,7 @@ function initializeApp() {
                         setLastSelectedView('__movers');
                         sessionStorage.removeItem('preResetLastSelectedView');
                     }
-                } catch(_) {}
+                } catch (_) { }
                 currentUserId = user.uid;
                 window.currentUserId = user.uid; // Set on window object for global access
                 logDebug('AuthState: User signed in: ' + user.uid);
@@ -17987,13 +18005,13 @@ function initializeApp() {
 
                 // Snapshot restore happens synchronously on module load; UI shows unified loader until live data arrives.
                 logDebug && logDebug('AuthState: User email: ' + user.email);
-                try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch(_) {}
+                try { localStorage.removeItem('authRedirectAttempted'); localStorage.removeItem('authRedirectReturnedNoUser'); } catch (_) { }
                 // Use dynamic update instead of hard-coded label so it reflects current selection
                 updateMainTitle();
                 logDebug('AuthState: Dynamic title initialized via updateMainTitle().');
                 updateMainButtonsState(true);
                 window._userAuthenticated = true; // Mark user as authenticated
-                try { window.__authReadyAt = Date.now(); } catch(_) {}
+                try { window.__authReadyAt = Date.now(); } catch (_) { }
 
                 if (mainContainer) {
                     mainContainer.classList.remove('app-hidden');
@@ -18003,8 +18021,8 @@ function initializeApp() {
                 }
                 adjustMainContentPadding();
 
-                        // Ensure header click bindings are attached after header becomes visible
-                        try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind after auth show', e); }
+                // Ensure header click bindings are attached after header becomes visible
+                try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch (e) { console.warn('Header binding: failed to bind after auth show', e); }
 
                 if (splashKangarooIcon) {
                     splashKangarooIcon.classList.add('pulsing');
@@ -18013,7 +18031,7 @@ function initializeApp() {
 
                 targetHitIconDismissed = localStorage.getItem('targetHitIconDismissed') === 'true';
                 // Immediately reflect any persisted target count before live data loads
-                try { updateTargetHitBanner(); } catch(e) { console.warn('Auth early Target Alert restore failed', e); }
+                try { updateTargetHitBanner(); } catch (e) { console.warn('Auth early Target Alert restore failed', e); }
 
                 // Robust preference loading with proper sequencing
                 logDebug('Auth: Starting robust preference loading sequence...');
@@ -18057,8 +18075,8 @@ function initializeApp() {
                             }
                         });
                     });
-                } catch(_) {}
-                    // Continue with fallback preferences
+                } catch (_) { }
+                // Continue with fallback preferences
 
                 try {
                     // Step 3: Restore view and mode with error recovery
@@ -18068,7 +18086,7 @@ function initializeApp() {
                     console.warn('Auth: Failed to restore view and mode preferences:', error);
                     // Continue with default settings
                 }
-                try { ensureTitleStructure(); } catch(e) {}
+                try { ensureTitleStructure(); } catch (e) { }
 
                 // Start global view mode enforcer for continuous monitoring
                 try {
@@ -18089,24 +18107,24 @@ function initializeApp() {
                 // On first auth load, force one live fetch even if starting in Cash view to restore alerts
                 const forcedOnce = localStorage.getItem('forcedLiveFetchOnce') === 'true';
                 // Unblock UI immediately; prices can finish in background
-                try { window._livePricesLoaded = true; hideSplashScreenIfReady(); } catch(_) {}
-                try { console.log('[Live Price] Invoking initial fetch...'); } catch(_) {}
+                try { window._livePricesLoaded = true; hideSplashScreenIfReady(); } catch (_) { }
+                try { console.log('[Live Price] Invoking initial fetch...'); } catch (_) { }
                 const __livePriceSafetyTimer = setTimeout(() => {
                     try {
                         console.warn('Live Price: safety timeout reached; marking as loaded to unblock UI');
                         window._livePricesLoaded = true;
                         hideSplashScreenIfReady();
-                    } catch(_) {}
+                    } catch (_) { }
                 }, 8000);
                 try {
-                await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
+                    await fetchLivePrices({ forceLiveFetch: !forcedOnce, cacheBust: true });
                 } finally {
-                    try { clearTimeout(__livePriceSafetyTimer); } catch(_) {}
+                    try { clearTimeout(__livePriceSafetyTimer); } catch (_) { }
                 }
-                try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce','true'); } catch(e) {}
+                try { if (!forcedOnce) localStorage.setItem('forcedLiveFetchOnce', 'true'); } catch (e) { }
                 startLivePriceUpdates();
                 // Extra safety: ensure target modal not left open from cached state on fresh auth
-                try { if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none' && window.__initialLoadPhase) hideModal(targetHitDetailsModal); } catch(_){ }
+                try { if (targetHitDetailsModal && targetHitDetailsModal.style.display !== 'none' && window.__initialLoadPhase) hideModal(targetHitDetailsModal); } catch (_) { }
 
                 setAllAsxCodes(await loadAsxCodesFromCSV());
                 logDebug(`ASX Autocomplete: Loaded ${allAsxCodes.length} codes for search.`);
@@ -18120,7 +18138,7 @@ function initializeApp() {
                 // Clear all notification state to prevent leakage between users
                 clearAllNotificationState();
                 // Reset title safely using the inner span, do not expand click target
-                try { ensureTitleStructure(); const t = document.getElementById('dynamicWatchlistTitleText'); if (t) t.textContent = 'Share Watchlist'; } catch(e) {}
+                try { ensureTitleStructure(); const t = document.getElementById('dynamicWatchlistTitleText'); if (t) t.textContent = 'Share Watchlist'; } catch (e) { }
                 logDebug('AuthState: User signed out.');
                 updateMainButtonsState(false);
                 clearShareList();
@@ -18141,7 +18159,7 @@ function initializeApp() {
                     logDebug('Firestore Listener: Unsubscribed from cash categories listener on logout.');
                 }
                 if (unsubscribeAlerts) { // NEW: Unsubscribe from alerts
-                    try { unsubscribeAlerts(); } catch(_) {}
+                    try { unsubscribeAlerts(); } catch (_) { }
                     unsubscribeAlerts = null;
                     logDebug('Firestore Listener: Unsubscribed from alerts listener on logout.');
                 }
@@ -18206,7 +18224,7 @@ function initializeApp() {
             }
             // Call renderWatchlist here to ensure correct mobile card rendering after auth state is set
             renderWatchlist();
-            try { ensureTitleStructure(); } catch(e) {}
+            try { ensureTitleStructure(); } catch (e) { }
             // Removed: adjustMainContentPadding(); // Removed duplicate call, now handled inside if (user) block
         };
         // Prevent duplicate auth listener registration
@@ -18214,13 +18232,13 @@ function initializeApp() {
             window.__authListenerSetup = true;
             setupAuthListener(auth, authFunctions);
         } else {
-            try { console.debug('Auth: setupAuthListener already registered; skipping duplicate'); } catch(_) {}
+            try { console.debug('Auth: setupAuthListener already registered; skipping duplicate'); } catch (_) { }
         }
     } else {
-    console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
+        console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
         const errorDiv = document.getElementById('firebaseInitError');
         if (errorDiv) {
-                errorDiv.style.display = 'block';
+            errorDiv.style.display = 'block';
         }
         updateMainButtonsState(false);
         if (loadingIndicator) loadingIndicator.style.display = 'none';
@@ -18233,15 +18251,15 @@ function initializeApp() {
 
     // Test card removed - 52-week low detection is now working properly
     // Ensure header interactive bindings are attached even on first load
-    try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch(e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
+    try { ensureTitleStructure(); bindHeaderInteractiveElements(); } catch (e) { console.warn('Header binding: failed to bind on DOMContentLoaded', e); }
     // Early notification restore from persisted count
-    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch(e) { console.warn('Early Target Alert restore failed', e); }
+    try { if (typeof updateTargetHitBanner === 'function') updateTargetHitBanner(); } catch (e) { console.warn('Early Target Alert restore failed', e); }
 
     // Ensure Edit Current Watchlist button updates when watchlist selection changes
     if (watchlistSelect) {
-        watchlistSelect.addEventListener('change', function() {
+        watchlistSelect.addEventListener('change', function () {
             updateMainButtonsState(true);
-            try { updateMainTitle(); } catch(e) {}
+            try { updateMainTitle(); } catch (e) { }
         });
     }
 
@@ -18255,7 +18273,7 @@ function initializeApp() {
             versionEl.className = 'app-version-splash';
             splashScreenEl.prepend(versionEl);
         }
-    versionEl.textContent = 'v' + APP_VERSION;
+        versionEl.textContent = 'v' + APP_VERSION;
     }
     // Splash flags are managed by auth/data/price flows and Firebase hub; do not reset here
 
@@ -18271,7 +18289,7 @@ function initializeApp() {
             if (localStorage.getItem('authRedirectAttempted') === '1' && typeof updateSplashSignInButtonState === 'function') {
                 updateSplashSignInButtonState('loading', 'Completing sign-in…');
             }
-        } catch(_) {}
+        } catch (_) { }
     } else {
         console.warn('Splash Screen: Splash screen element not found. App will start without it.');
         // If splash screen not found, set flags to true and hide the splash screen logic.
@@ -18292,15 +18310,15 @@ function initializeApp() {
     if (discoverModal && !discoverModal.__boundClose) {
         discoverModal.__boundClose = true;
         const cls = discoverModal.querySelector('.close-button');
-        if (cls) cls.addEventListener('click', ()=> hideModal(discoverModal));
-        discoverModal.addEventListener('mousedown', (e)=>{ if (e.target === discoverModal) hideModal(discoverModal); });
+        if (cls) cls.addEventListener('click', () => hideModal(discoverModal));
+        discoverModal.addEventListener('mousedown', (e) => { if (e.target === discoverModal) hideModal(discoverModal); });
     }
     if (appHeader) {
         appHeader.classList.add('app-hidden');
     }
 
     // Fallback Movers restore: if persisted as last view but not applied yet (e.g., due to early race), re-apply after short delay
-    setTimeout(()=>{
+    setTimeout(() => {
         try {
             const wantMovers = localStorage.getItem('lastSelectedView') === '__movers';
             const haveMovers = (getCurrentSelectedWatchlistIds() && getCurrentSelectedWatchlistIds()[0] === '__movers');
@@ -18311,7 +18329,7 @@ function initializeApp() {
                 enforceMoversVirtualView(true);
                 console.log('[Movers restore][fallback DOMContentLoaded] applied');
             }
-        } catch(e){ console.warn('[Movers restore][fallback DOMContentLoaded] failed', e); }
+        } catch (e) { console.warn('[Movers restore][fallback DOMContentLoaded] failed', e); }
     }, 1300);
     // already set from hub
 
@@ -18340,13 +18358,13 @@ function initializeApp() {
             window.__authListenerSetup = true;
             setupAuthListener(auth, authFunctions);
         } else {
-            try { console.debug('Auth: setupAuthListener already registered (late path); skipping'); } catch(_) {}
+            try { console.debug('Auth: setupAuthListener already registered (late path); skipping'); } catch (_) { }
         }
     } else {
-    console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
+        console.error('Firebase: Firebase objects (db, auth, appId, firestore, authFunctions) are not available on DOMContentLoaded. Firebase initialization likely failed in index.html.');
         const errorDiv = document.getElementById('firebaseInitError');
         if (errorDiv) {
-                errorDiv.style.display = 'block';
+            errorDiv.style.display = 'block';
         }
         updateMainButtonsState(false);
         if (loadingIndicator) loadingIndicator.style.display = 'none';
@@ -18360,112 +18378,112 @@ function initializeApp() {
 
 // Simple Diagnostics helper for non-coders (adds click on Diagnostics menu button to copy key info)
 try {
-    (function initSimpleDiagnostics(){
+    (function initSimpleDiagnostics() {
         const attemptBind = () => {
             const btn = document.getElementById('diagnosticsBtn');
-            if(!btn) return false;
-            if(btn.__diagBound) return true; btn.__diagBound = true;
+            if (!btn) return false;
+            if (btn.__diagBound) return true; btn.__diagBound = true;
             btn.addEventListener('click', async () => {
                 try {
                     const diag = {};
                     // Keep this in sync with the Build Marker comment near initializeAppLogic end
                     diag.buildMarker = 'v0.1.13';
                     diag.time = new Date().toISOString();
-                    diag.userId = (typeof currentUserId!=='undefined')? currentUserId : null;
-                    diag.activeWatchlistId = (typeof activeWatchlistId!=='undefined')? activeWatchlistId : null;
-                    diag.selectedWatchlists = (typeof currentSelectedWatchlistIds!=='undefined')? currentSelectedWatchlistIds : [];
+                    diag.userId = (typeof currentUserId !== 'undefined') ? currentUserId : null;
+                    diag.activeWatchlistId = (typeof activeWatchlistId !== 'undefined') ? activeWatchlistId : null;
+                    diag.selectedWatchlists = (typeof currentSelectedWatchlistIds !== 'undefined') ? currentSelectedWatchlistIds : [];
                     diag.alertCounts = {
-                        enabled: Array.isArray(sharesAtTargetPrice)? sharesAtTargetPrice.length : null,
-                        muted: Array.isArray(sharesAtTargetPriceMuted)? sharesAtTargetPriceMuted.length : null,
+                        enabled: Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : null,
+                        muted: Array.isArray(sharesAtTargetPriceMuted) ? sharesAtTargetPriceMuted.length : null,
                         globalSummary: (globalAlertSummary && globalAlertSummary.totalCount) || 0
                     };
-                        diag.globalSummary = globalAlertSummary || null;
-                    diag.lastLivePriceSample = Object.entries(livePrices||{}).slice(0,10);
+                    diag.globalSummary = globalAlertSummary || null;
+                    diag.lastLivePriceSample = Object.entries(livePrices || {}).slice(0, 10);
 
-            // === SUPER DEBUG TOOL (Environment Snapshot) ===
-            // Invoke manually: window.superDebugDump(); or press Alt+Shift+D
-            // Auto-enable if URL has ?superdebug
-            (function installSuperDebug(){
-                if (window.superDebugDump) return; // idempotent
-                function superDebugDump(){
-                    const data = { ts: new Date().toISOString() };
-                    try {
-                        data.location = location.href;
-                        // Scripts inventory
-                        data.scripts = Array.from(document.scripts).map(s=>({
-                            src: s.src || null,
-                            inlineHead: (!s.src && s.textContent) ? s.textContent.slice(0,120) : null
-                        }));
-                        // Build marker attempt (inline variable not guaranteed)
-                        try {
-                            const markerMatch = /Build Marker:[^\n]+/.exec(document.documentElement.innerHTML);
-                            data.buildMarkerFound = markerMatch ? markerMatch[0] : null;
-                        } catch(err){ data.buildMarkerError = ''+err; }
-                        // Overlay state
-                        const overlay = document.querySelector('.sidebar-overlay');
-                        if (overlay) {
-                            data.overlay = {
-                                classes: Array.from(overlay.classList),
-                                    dataset: { ...overlay.dataset },
-                                hasUnifiedHandler: !!overlay._unifiedHandler
-                            };
-                        }
-                        // Target Hit Modal structure
-                        const targetList = document.getElementById('targetHitSharesList');
-                        const gmTitle = document.getElementById('globalMoversTitle');
-                        if (targetList) {
-                            data.targetHitModal = {
-                                hasGlobalMoversTitle: !!gmTitle,
-                                firstFiveChildIdsOrClasses: Array.from(targetList.children).slice(0,5).map(el=>el.id||el.className||el.tagName),
-                                movementDeltaCount: targetList.querySelectorAll('.movement-combo').length
-                            };
-                        }
-                        // Ignoring line style
-                        const ignoreEl = document.querySelector('.global-summary-detail.ignoring-line');
-                        if (ignoreEl) {
-                            const cs = getComputedStyle(ignoreEl);
-                            data.ignoringLineComputed = { fontSize: cs.fontSize, fontWeight: cs.fontWeight, textTransform: cs.textTransform };
-                        }
-                        // Live prices sample
-                        try { data.livePricesSample = Object.entries(livePrices||{}).slice(0,5); } catch(_){ data.livePricesSampleError = true; }
-                        data.globalAlertSummary = (globalAlertSummary ? {
-                            total: globalAlertSummary.totalCount,
-                            inc: globalAlertSummary.increaseCount,
-                            dec: globalAlertSummary.decreaseCount,
-                            enabled: globalAlertSummary.enabled,
-                            min: globalAlertSummary.appliedMinimumPrice
-                        } : null);
-                        data.targetHitCounts = {
-                            enabled: Array.isArray(sharesAtTargetPrice)? sharesAtTargetPrice.length : null,
-                            muted: Array.isArray(sharesAtTargetPriceMuted)? sharesAtTargetPriceMuted.length : null
-                        };
-                        data.currentUserId = (typeof currentUserId!=='undefined')? currentUserId : null;
-                        data.selectedWatchlists = (typeof currentSelectedWatchlistIds!=='undefined')? currentSelectedWatchlistIds : [];
-                        // Resource timing for script/style
-                        try {
-                            data.resourceEntries = performance.getEntriesByType('resource').filter(r=>/script\.js|style\.css/.test(r.name)).map(r=>({ name:r.name, transferSize:r.transferSize, encodedBodySize:r.encodedBodySize, initiator:r.initiatorType }));
-                        } catch(_){ }
-                        // Caches & SW (async portion)
-                        const asyncs = [];
-                        if (window.caches && caches.keys) {
-                            asyncs.push((async()=>{ const keys = await caches.keys(); data.caches = {}; for (const k of keys){ try { const c = await caches.open(k); const reqs = await c.keys(); data.caches[k] = reqs.length; } catch(e){ data.caches[k]='ERR'; } } })());
-                        }
-                        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
-                            asyncs.push((async()=>{ const regs = await navigator.serviceWorker.getRegistrations(); data.serviceWorkers = regs.map(r=>({ scope:r.scope, active:r.active?.scriptURL, waiting:r.waiting?.scriptURL, installing:r.installing?.scriptURL })); data.swController = (navigator.serviceWorker.controller && navigator.serviceWorker.controller.state)||null; })());
-                        }
-                        Promise.all(asyncs).finally(()=>{
-                            const json = JSON.stringify(data, null, 2);
-                            console.groupCollapsed('%cSUPER DEBUG SNAPSHOT','color:#a49393;font-weight:bold;');
-                            console.log(json);
-                            console.groupEnd();
-                            // Ensure on-page panel ("notepad") exists for user-friendly copying
+                    // === SUPER DEBUG TOOL (Environment Snapshot) ===
+                    // Invoke manually: window.superDebugDump(); or press Alt+Shift+D
+                    // Auto-enable if URL has ?superdebug
+                    (function installSuperDebug() {
+                        if (window.superDebugDump) return; // idempotent
+                        function superDebugDump() {
+                            const data = { ts: new Date().toISOString() };
                             try {
-                                let panel = document.getElementById('superDebugPanel');
-                                if (!panel) {
-                                    panel = document.createElement('div');
-                                    panel.id = 'superDebugPanel';
-                                    panel.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:99999;width:360px;max-width:90vw;background:#1e1e1e;color:#eee;font:12px/1.3 monospace;border:1px solid #555;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;flex-direction:column;';
-                                    panel.innerHTML = `
+                                data.location = location.href;
+                                // Scripts inventory
+                                data.scripts = Array.from(document.scripts).map(s => ({
+                                    src: s.src || null,
+                                    inlineHead: (!s.src && s.textContent) ? s.textContent.slice(0, 120) : null
+                                }));
+                                // Build marker attempt (inline variable not guaranteed)
+                                try {
+                                    const markerMatch = /Build Marker:[^\n]+/.exec(document.documentElement.innerHTML);
+                                    data.buildMarkerFound = markerMatch ? markerMatch[0] : null;
+                                } catch (err) { data.buildMarkerError = '' + err; }
+                                // Overlay state
+                                const overlay = document.querySelector('.sidebar-overlay');
+                                if (overlay) {
+                                    data.overlay = {
+                                        classes: Array.from(overlay.classList),
+                                        dataset: { ...overlay.dataset },
+                                        hasUnifiedHandler: !!overlay._unifiedHandler
+                                    };
+                                }
+                                // Target Hit Modal structure
+                                const targetList = document.getElementById('targetHitSharesList');
+                                const gmTitle = document.getElementById('globalMoversTitle');
+                                if (targetList) {
+                                    data.targetHitModal = {
+                                        hasGlobalMoversTitle: !!gmTitle,
+                                        firstFiveChildIdsOrClasses: Array.from(targetList.children).slice(0, 5).map(el => el.id || el.className || el.tagName),
+                                        movementDeltaCount: targetList.querySelectorAll('.movement-combo').length
+                                    };
+                                }
+                                // Ignoring line style
+                                const ignoreEl = document.querySelector('.global-summary-detail.ignoring-line');
+                                if (ignoreEl) {
+                                    const cs = getComputedStyle(ignoreEl);
+                                    data.ignoringLineComputed = { fontSize: cs.fontSize, fontWeight: cs.fontWeight, textTransform: cs.textTransform };
+                                }
+                                // Live prices sample
+                                try { data.livePricesSample = Object.entries(livePrices || {}).slice(0, 5); } catch (_) { data.livePricesSampleError = true; }
+                                data.globalAlertSummary = (globalAlertSummary ? {
+                                    total: globalAlertSummary.totalCount,
+                                    inc: globalAlertSummary.increaseCount,
+                                    dec: globalAlertSummary.decreaseCount,
+                                    enabled: globalAlertSummary.enabled,
+                                    min: globalAlertSummary.appliedMinimumPrice
+                                } : null);
+                                data.targetHitCounts = {
+                                    enabled: Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice.length : null,
+                                    muted: Array.isArray(sharesAtTargetPriceMuted) ? sharesAtTargetPriceMuted.length : null
+                                };
+                                data.currentUserId = (typeof currentUserId !== 'undefined') ? currentUserId : null;
+                                data.selectedWatchlists = (typeof currentSelectedWatchlistIds !== 'undefined') ? currentSelectedWatchlistIds : [];
+                                // Resource timing for script/style
+                                try {
+                                    data.resourceEntries = performance.getEntriesByType('resource').filter(r => /script\.js|style\.css/.test(r.name)).map(r => ({ name: r.name, transferSize: r.transferSize, encodedBodySize: r.encodedBodySize, initiator: r.initiatorType }));
+                                } catch (_) { }
+                                // Caches & SW (async portion)
+                                const asyncs = [];
+                                if (window.caches && caches.keys) {
+                                    asyncs.push((async () => { const keys = await caches.keys(); data.caches = {}; for (const k of keys) { try { const c = await caches.open(k); const reqs = await c.keys(); data.caches[k] = reqs.length; } catch (e) { data.caches[k] = 'ERR'; } } })());
+                                }
+                                if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+                                    asyncs.push((async () => { const regs = await navigator.serviceWorker.getRegistrations(); data.serviceWorkers = regs.map(r => ({ scope: r.scope, active: r.active?.scriptURL, waiting: r.waiting?.scriptURL, installing: r.installing?.scriptURL })); data.swController = (navigator.serviceWorker.controller && navigator.serviceWorker.controller.state) || null; })());
+                                }
+                                Promise.all(asyncs).finally(() => {
+                                    const json = JSON.stringify(data, null, 2);
+                                    console.groupCollapsed('%cSUPER DEBUG SNAPSHOT', 'color:#a49393;font-weight:bold;');
+                                    console.log(json);
+                                    console.groupEnd();
+                                    // Ensure on-page panel ("notepad") exists for user-friendly copying
+                                    try {
+                                        let panel = document.getElementById('superDebugPanel');
+                                        if (!panel) {
+                                            panel = document.createElement('div');
+                                            panel.id = 'superDebugPanel';
+                                            panel.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:99999;width:360px;max-width:90vw;background:#1e1e1e;color:#eee;font:12px/1.3 monospace;border:1px solid #555;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.4);display:flex;flex-direction:column;';
+                                            panel.innerHTML = `
                                         <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:#2c2c2c;border-bottom:1px solid #444;border-radius:6px 6px 0 0;cursor:move;user-select:none;">
                                             <strong style="font:600 12px system-ui,Segoe UI,Arial;">Super Debug Snapshot</strong>
                                             <div style="display:flex;gap:6px;align-items:center;">
@@ -18479,101 +18497,101 @@ try {
                                             <button id="superDebugDownloadBtn" style="background:#27ae60;color:#fff;border:0;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;">Download</button>
                                             <button id="superDebugClearBtn" style="background:#555;color:#eee;border:0;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;">Clear</button>
                                         </div>`;
-                                    document.body.appendChild(panel);
+                                            document.body.appendChild(panel);
 
-                                    // Drag to move functionality (simple implementation)
-                                    (function enableDrag(el){
-                                        const header = el.firstElementChild; if(!header) return; let sx=0, sy=0, ox=0, oy=0, dragging=false;
-                                        header.addEventListener('mousedown', (e)=>{ dragging=true; sx=e.clientX; sy=e.clientY; const r=el.getBoundingClientRect(); ox=r.left; oy=r.top; document.addEventListener('mousemove', move, true); document.addEventListener('mouseup', up, true); });
-                                        function move(e){ if(!dragging) return; const dx=e.clientX-sx; const dy=e.clientY-sy; el.style.left=(ox+dx)+'px'; el.style.top=(oy+dy)+'px'; el.style.right='auto'; el.style.bottom='auto'; }
-                                        function up(){ dragging=false; document.removeEventListener('mousemove', move, true); document.removeEventListener('mouseup', up, true); }
-                                    })(panel);
+                                            // Drag to move functionality (simple implementation)
+                                            (function enableDrag(el) {
+                                                const header = el.firstElementChild; if (!header) return; let sx = 0, sy = 0, ox = 0, oy = 0, dragging = false;
+                                                header.addEventListener('mousedown', (e) => { dragging = true; sx = e.clientX; sy = e.clientY; const r = el.getBoundingClientRect(); ox = r.left; oy = r.top; document.addEventListener('mousemove', move, true); document.addEventListener('mouseup', up, true); });
+                                                function move(e) { if (!dragging) return; const dx = e.clientX - sx; const dy = e.clientY - sy; el.style.left = (ox + dx) + 'px'; el.style.top = (oy + dy) + 'px'; el.style.right = 'auto'; el.style.bottom = 'auto'; }
+                                                function up() { dragging = false; document.removeEventListener('mousemove', move, true); document.removeEventListener('mouseup', up, true); }
+                                            })(panel);
 
-                                    // Button handlers
-                                    panel.querySelector('#superDebugCloseBtn').addEventListener('click', ()=> panel.remove());
-                                    panel.querySelector('#superDebugMinBtn').addEventListener('click', ()=> {
+                                            // Button handlers
+                                            panel.querySelector('#superDebugCloseBtn').addEventListener('click', () => panel.remove());
+                                            panel.querySelector('#superDebugMinBtn').addEventListener('click', () => {
+                                                const ta = panel.querySelector('#superDebugTextArea');
+                                                if (!ta) return; const hidden = ta.style.display === 'none';
+                                                ta.style.display = hidden ? 'block' : 'none';
+                                            });
+                                            panel.querySelector('#superDebugCopyBtn').addEventListener('click', () => {
+                                                const ta = panel.querySelector('#superDebugTextArea');
+                                                ta.select(); try { document.execCommand('copy'); showCustomAlert && showCustomAlert('Copied snapshot'); } catch (_) { }
+                                            });
+                                            panel.querySelector('#superDebugDownloadBtn').addEventListener('click', () => {
+                                                try { const blob = new Blob([panel.querySelector('#superDebugTextArea').value], { type: 'application/json' }); const a = document.createElement('a'); a.download = 'superdebug-' + Date.now() + '.json'; a.href = URL.createObjectURL(blob); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1500); } catch (_) { }
+                                            });
+                                            panel.querySelector('#superDebugClearBtn').addEventListener('click', () => {
+                                                const ta = panel.querySelector('#superDebugTextArea'); if (ta) ta.value = '';
+                                            });
+                                        }
                                         const ta = panel.querySelector('#superDebugTextArea');
-                                        if (!ta) return; const hidden = ta.style.display==='none';
-                                        ta.style.display = hidden ? 'block':'none';
-                                    });
-                                    panel.querySelector('#superDebugCopyBtn').addEventListener('click', ()=> {
-                                        const ta = panel.querySelector('#superDebugTextArea');
-                                        ta.select(); try { document.execCommand('copy'); showCustomAlert && showCustomAlert('Copied snapshot'); } catch(_) {}
-                                    });
-                                    panel.querySelector('#superDebugDownloadBtn').addEventListener('click', ()=> {
-                                        try { const blob = new Blob([panel.querySelector('#superDebugTextArea').value], {type:'application/json'}); const a=document.createElement('a'); a.download='superdebug-'+Date.now()+'.json'; a.href=URL.createObjectURL(blob); a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 1500);} catch(_) {}
-                                    });
-                                    panel.querySelector('#superDebugClearBtn').addEventListener('click', ()=> {
-                                        const ta = panel.querySelector('#superDebugTextArea'); if(ta) ta.value='';
-                                    });
-                                }
-                                const ta = panel.querySelector('#superDebugTextArea');
-                                if (ta) { ta.value = json; ta.scrollTop = 0; }
-                            } catch(panelErr) { console.warn('SuperDebug: Panel creation failed', panelErr); }
+                                        if (ta) { ta.value = json; ta.scrollTop = 0; }
+                                    } catch (panelErr) { console.warn('SuperDebug: Panel creation failed', panelErr); }
 
-                            // Clipboard attempt (non-fatal)
-                            if (navigator.clipboard && navigator.clipboard.writeText) {
-                                navigator.clipboard.writeText(json).then(()=>console.log('SuperDebug: Snapshot copied to clipboard.')).catch(()=>console.warn('SuperDebug: Clipboard write failed.'));
+                                    // Clipboard attempt (non-fatal)
+                                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                                        navigator.clipboard.writeText(json).then(() => console.log('SuperDebug: Snapshot copied to clipboard.')).catch(() => console.warn('SuperDebug: Clipboard write failed.'));
+                                    }
+                                    try { showCustomAlert && showCustomAlert('Super-Debug snapshot captured', 2200); } catch (_) { }
+                                });
+                            } catch (err) {
+                                console.error('SuperDebug error', err);
                             }
-                            try { showCustomAlert && showCustomAlert('Super-Debug snapshot captured', 2200); } catch(_) {}
-                        });
-                    } catch(err){
-                        console.error('SuperDebug error', err);
-                    }
-                    return data;
-                }
-                window.superDebugDump = superDebugDump;
-                document.addEventListener('keydown', (e)=>{ if (e.altKey && e.shiftKey && e.code==='KeyD'){ superDebugDump(); } }, true);
-                if (window.location.search.includes('superdebug')) {
-                    setTimeout(superDebugDump, 1500);
-                }
-            })();
-            // === END SUPER DEBUG TOOL ===
+                            return data;
+                        }
+                        window.superDebugDump = superDebugDump;
+                        document.addEventListener('keydown', (e) => { if (e.altKey && e.shiftKey && e.code === 'KeyD') { superDebugDump(); } }, true);
+                        if (window.location.search.includes('superdebug')) {
+                            setTimeout(superDebugDump, 1500);
+                        }
+                    })();
+                    // === END SUPER DEBUG TOOL ===
                     diag.targetDismissed = !!targetHitIconDismissed;
-                    diag.cacheKeys = (await caches.keys()).slice(0,10);
-                    diag.serviceWorkers = (await navigator.serviceWorker.getRegistrations()).map(r=>({scope:r.scope, active:!!r.active}));
+                    diag.cacheKeys = (await caches.keys()).slice(0, 10);
+                    diag.serviceWorkers = (await navigator.serviceWorker.getRegistrations()).map(r => ({ scope: r.scope, active: !!r.active }));
                     diag.swController = (navigator.serviceWorker.controller && navigator.serviceWorker.controller.state) || null;
                     diag.windowLocation = window.location.href;
                     diag.docHidden = document.hidden;
                     const text = JSON.stringify(diag, null, 2);
                     try { await navigator.clipboard.writeText(text); showCustomAlert('Diagnostics copied'); }
-                    catch(_) { alert(text); }
+                    catch (_) { alert(text); }
                     console.log('[DiagnosticsDump]', diag);
-                } catch(err){
-                    console.warn('Diagnostics failed', err); alert('Diagnostics failed: '+err.message);
+                } catch (err) {
+                    console.warn('Diagnostics failed', err); alert('Diagnostics failed: ' + err.message);
                 }
             });
             return true;
         };
-        if(!attemptBind()) {
+        if (!attemptBind()) {
             // Retry a few times in case sidebar not yet rendered
-            let tries = 0; const intv = setInterval(()=>{ if(attemptBind()|| ++tries>10) clearInterval(intv); }, 500);
+            let tries = 0; const intv = setInterval(() => { if (attemptBind() || ++tries > 10) clearInterval(intv); }, 500);
         }
     })();
-} catch(_){ }
+} catch (_) { }
 // --- Auto SuperDebug Fallback Trigger ---
 // Ensures the ?superdebug URL parameter always triggers a snapshot even if
 // superDebugDump is registered slightly later (e.g., waiting on other UI pieces).
-(function autoSuperDebugFromParam(){
+(function autoSuperDebugFromParam() {
     try {
         const qs = window.location.search;
         if (!qs || !/(^|[?&])superdebug(=|&|$)/i.test(qs)) return; // parameter not present
         let attempts = 0;
         const maxAttempts = 24; // ~12s (24 * 500ms)
-        function tryRun(){
+        function tryRun() {
             attempts++;
             if (typeof window.superDebugDump === 'function') {
                 console.log('[SuperDebug] Auto-run via ?superdebug (attempt ' + attempts + ')');
-                try { window.superDebugDump(); } catch(err){ console.warn('[SuperDebug] Auto-run failed', err); }
+                try { window.superDebugDump(); } catch (err) { console.warn('[SuperDebug] Auto-run failed', err); }
             } else if (attempts < maxAttempts) {
                 setTimeout(tryRun, 500);
             } else {
                 console.warn('[SuperDebug] Gave up waiting for superDebugDump after ' + attempts + ' attempts.');
-                try { showCustomAlert && showCustomAlert('Super Debug tool not ready'); } catch(_) {}
+                try { showCustomAlert && showCustomAlert('Super Debug tool not ready'); } catch (_) { }
             }
         }
         setTimeout(tryRun, 400); // slight delay to allow other scripts to attach
-    } catch(err) {
+    } catch (err) {
         console.warn('[SuperDebug] Fallback init error', err);
     }
 })();
@@ -18582,20 +18600,20 @@ try {
 // --- Super Debug Always-Install (resiliency) ---
 // Some users reported the panel not appearing with ?superdebug. This independent
 // installer guarantees superDebugDump exists early, without waiting for other UI.
-(function ensureSuperDebugAlwaysInstalled(){
+(function ensureSuperDebugAlwaysInstalled() {
     if (window.superDebugDump) return; // already installed by main diagnostics block
     try {
-        window.superDebugDump = function(){
+        window.superDebugDump = function () {
             const data = { ts: new Date().toISOString(), href: location.href };
-            try { data.BUILD_MARKER = (typeof window.BUILD_MARKER!=='undefined')? window.BUILD_MARKER : null; } catch(_){ }
-            try { data.buildMarkerInline = (/Build Marker:[^\n]+/.exec(document.documentElement.innerHTML)||[])[0]||null; } catch(_){ }
+            try { data.BUILD_MARKER = (typeof window.BUILD_MARKER !== 'undefined') ? window.BUILD_MARKER : null; } catch (_) { }
+            try { data.buildMarkerInline = (/Build Marker:[^\n]+/.exec(document.documentElement.innerHTML) || [])[0] || null; } catch (_) { }
             if (!data.buildMarkerInline && data.BUILD_MARKER) data.buildMarkerInline = '(inline marker not found, using BUILD_MARKER variable)';
-            try { data.userId = (typeof currentUserId!=='undefined')? currentUserId : null; } catch(_){ }
-            try { data.alertCounts = { enabled: (sharesAtTargetPrice||[]).length, muted: (sharesAtTargetPriceMuted||[]).length }; } catch(_){ }
-            try { data.globalSummary = globalAlertSummary? { total: globalAlertSummary.totalCount, inc: globalAlertSummary.increaseCount, dec: globalAlertSummary.decreaseCount } : null; } catch(_){ }
+            try { data.userId = (typeof currentUserId !== 'undefined') ? currentUserId : null; } catch (_) { }
+            try { data.alertCounts = { enabled: (sharesAtTargetPrice || []).length, muted: (sharesAtTargetPriceMuted || []).length }; } catch (_) { }
+            try { data.globalSummary = globalAlertSummary ? { total: globalAlertSummary.totalCount, inc: globalAlertSummary.increaseCount, dec: globalAlertSummary.decreaseCount } : null; } catch (_) { }
             const json = JSON.stringify(data, null, 2);
             // Console output (always)
-            console.groupCollapsed('%cSUPER DEBUG (minimal)','color:#7bd5ff');
+            console.groupCollapsed('%cSUPER DEBUG (minimal)', 'color:#7bd5ff');
             console.log(json); console.groupEnd();
             // Panel creation (idempotent)
             let panel = document.getElementById('superDebugPanel');
@@ -18603,29 +18621,29 @@ try {
                 panel = document.createElement('div');
                 panel.id = 'superDebugPanel';
                 panel.style.cssText = 'position:fixed;bottom:14px;right:14px;z-index:99999;width:340px;max-width:92vw;background:#1b1f23;color:#eef;font:12px monospace;border:1px solid #444;border-radius:6px;display:flex;flex-direction:column;box-shadow:0 6px 18px rgba(0,0,0,.5);';
-                panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:#24292e;border-bottom:1px solid #444;border-radius:6px 6px 0 0;">'+
-                    '<strong style="font:600 12px system-ui">Super Debug</strong>'+
-                    '<div style="display:flex;gap:6px;">'+
-                        '<button id="sdCopyBtn" style="background:#0366d6;color:#fff;border:0;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px;">Copy</button>'+
-                        '<button id="sdCloseBtn" style="background:#d62828;color:#fff;border:0;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px;">×</button>'+
-                    '</div></div>'+
+                panel.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:#24292e;border-bottom:1px solid #444;border-radius:6px 6px 0 0;">' +
+                    '<strong style="font:600 12px system-ui">Super Debug</strong>' +
+                    '<div style="display:flex;gap:6px;">' +
+                    '<button id="sdCopyBtn" style="background:#0366d6;color:#fff;border:0;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px;">Copy</button>' +
+                    '<button id="sdCloseBtn" style="background:#d62828;color:#fff;border:0;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px;">×</button>' +
+                    '</div></div>' +
                     '<textarea id="sdText" spellcheck="false" style="flex:1;min-height:160px;margin:0;padding:6px 8px;background:#0d1117;color:#8fdaff;border:0;outline:none;resize:vertical;border-radius:0 0 6px 6px;font:11px/1.4 monospace;white-space:pre;overflow:auto;"></textarea>';
                 document.body.appendChild(panel);
-                panel.querySelector('#sdCloseBtn').addEventListener('click', ()=> panel.remove());
-                panel.querySelector('#sdCopyBtn').addEventListener('click', ()=>{ const ta=panel.querySelector('#sdText'); ta.select(); try { document.execCommand('copy'); showCustomAlert && showCustomAlert('Copied'); } catch(_){} });
+                panel.querySelector('#sdCloseBtn').addEventListener('click', () => panel.remove());
+                panel.querySelector('#sdCopyBtn').addEventListener('click', () => { const ta = panel.querySelector('#sdText'); ta.select(); try { document.execCommand('copy'); showCustomAlert && showCustomAlert('Copied'); } catch (_) { } });
             }
             const ta = panel.querySelector('#sdText');
             if (ta) { ta.value = json; ta.scrollTop = 0; }
-            if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(json).catch(()=>{}); }
+            if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(json).catch(() => { }); }
             return data;
         };
         // Hotkey (duplicate-safe)
-        document.addEventListener('keydown', function __sdKey(e){ if (e.altKey && e.shiftKey && e.code==='KeyD'){ try { window.superDebugDump(); } catch(_){} } }, true);
+        document.addEventListener('keydown', function __sdKey(e) { if (e.altKey && e.shiftKey && e.code === 'KeyD') { try { window.superDebugDump(); } catch (_) { } } }, true);
         // Auto-run if param present (quick attempt; the fallback poller above will also assist)
         if (window.location.search.includes('superdebug')) {
-            setTimeout(()=>{ try { window.superDebugDump(); } catch(_){} }, 800);
+            setTimeout(() => { try { window.superDebugDump(); } catch (_) { } }, 800);
         }
-    } catch(err) { console.warn('[SuperDebug] minimal installer failed', err); }
+    } catch (err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
 // --- End Super Debug Always-Install ---
 
