@@ -15687,16 +15687,19 @@ async function initializeAppLogic() {
                     const isEditing = !!selectedShareDocId;
                     const hasWatchlistSelection = (form && ((Array.isArray(form.watchlistIds) && form.watchlistIds.length > 0) || (form.watchlistId && form.watchlistId !== '')));
 
-                    if (isEditing && !hasWatchlistSelection) {
-                        const msg = 'Save canceled — please assign this share to at least one watchlist before saving.';
-                        if (window.ToastManager && typeof window.ToastManager.info === 'function') {
-                            window.ToastManager.info(msg, 3500);
-                        } else if (typeof window.showCustomAlert === 'function') {
-                            window.showCustomAlert(msg);
-                        } else {
-                            try { alert(msg); } catch (_) { }
-                        }
-                    } else {
+                    // Check if the share code has actually changed during edit
+                    const currentCode = (shareNameInput.value || '').trim().toUpperCase();
+                    const originalShare = isEditing ? allSharesData.find(s => s.id === selectedShareDocId) : null;
+                    const originalCode = originalShare ? (originalShare.shareName || '').toUpperCase() : '';
+                    const codeHasChanged = isEditing && (currentCode !== originalCode);
+
+                    console.log('[Duplicate Check] isEditing:', isEditing, 'codeHasChanged:', codeHasChanged, 'currentCode:', currentCode, 'originalCode:', originalCode);
+
+                    // Only block for duplicate if:
+                    // 1. Creating new share (not editing), OR
+                    // 2. Editing and the code has changed to match an existing share
+                    if (!isEditing || codeHasChanged) {
+                        // This is a true duplicate conflict
                         const dupMsg = 'A share with this code already exists. Save blocked.';
                         if (window.ToastManager && typeof window.ToastManager.info === 'function') {
                             window.ToastManager.info(dupMsg, 3000);
@@ -15705,13 +15708,31 @@ async function initializeAppLogic() {
                         } else {
                             try { alert(dupMsg); } catch (_) { }
                         }
-                    }
 
-                    // Prevent any other click handlers (including the AppService save handler)
-                    // from running on this event.
-                    if (ev && typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
-                    try { if (ev && typeof ev.preventDefault === 'function') ev.preventDefault(); } catch (_) { }
-                    return; // prevent original save path
+                        // Prevent save
+                        if (ev && typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+                        try { if (ev && typeof ev.preventDefault === 'function') ev.preventDefault(); } catch (_) { }
+                        return;
+                    } else if (isEditing && !hasWatchlistSelection) {
+                        // Editing but no watchlist selected
+                        const msg = 'Save canceled — please assign this share to at least one watchlist before saving.';
+                        if (window.ToastManager && typeof window.ToastManager.info === 'function') {
+                            window.ToastManager.info(msg, 3500);
+                        } else if (typeof window.showCustomAlert === 'function') {
+                            window.showCustomAlert(msg);
+                        } else {
+                            try { alert(msg); } catch (_) { }
+                        }
+
+                        // Prevent save
+                        if (ev && typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+                        try { if (ev && typeof ev.preventDefault === 'function') ev.preventDefault(); } catch (_) { }
+                        return;
+                    } else {
+                        // This is an edit where code hasn't changed - allow save to proceed
+                        console.log('[Duplicate Check] Edit with unchanged code - allowing save to proceed');
+                        // Don't block the save, let it continue to the AppService handler
+                    }
                 }
             } catch (e) {
                 console.warn('Duplicate intercept failed', e);
