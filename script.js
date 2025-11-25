@@ -1422,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 try {
                     const msg = type === 'gain' ? 'No gainers found' : type === 'loss' ? 'No losses found' : 'No data available';
                     if (window.ToastManager && typeof window.ToastManager.info === 'function') {
-                        window.ToastManager.info(msg, { duration: 1400 });
+                        window.ToastManager.info(msg, 1400);
                     } else if (typeof window.showCustomAlert === 'function') {
                         window.showCustomAlert(msg, 1400);
                     } else {
@@ -5028,8 +5028,8 @@ const ToastManager = (() => {
         const root = container();
         if (!root) return null;
         const { message, type = 'info', duration = 2000, actions = [] } = opts || {};
-        // Enforce minimum 3000ms for auto-dismiss unless explicitly sticky (0)
-        const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 3000);
+        // Enforce minimum 1000ms for auto-dismiss unless explicitly sticky (0)
+        const effectiveDuration = (duration === 0) ? 0 : Math.max(duration || 3000, 1000);
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
@@ -6544,6 +6544,8 @@ function clearForm() {
     } catch (_) { }
     selectedShareDocId = null;
     originalShareData = null; // IMPORTANT: Reset original data to prevent auto-save of cancelled edits
+    // Reset duplicate state to prevent stale state from blocking save
+    try { if (window.setDuplicateState) window.setDuplicateState(false); } catch (_) { }
     if (deleteShareBtn) {
         deleteShareBtn.classList.add('hidden');
         logDebug('clearForm: deleteShareBtn hidden.');
@@ -6766,6 +6768,8 @@ function showEditFormForSelectedShare(shareIdToEdit = null) {
         return;
     }
     selectedShareDocId = targetShareId;
+    // Reset duplicate state when opening edit form to prevent stale state from blocking save
+    try { if (window.setDuplicateState) window.setDuplicateState(false); } catch (_) { }
 
     // Set the modal title to the share code and the subtitle to the company name
     formTitle.textContent = shareToEdit.shareName || 'N/A';
@@ -15661,6 +15665,8 @@ async function initializeAppLogic() {
                 }
             } catch (_) { }
         }
+        // Expose for external reset (e.g. when opening modal)
+        window.setDuplicateState = setDuplicateState;
 
         shareNameInput.addEventListener('input', () => {
             checkFormDirtyState();
