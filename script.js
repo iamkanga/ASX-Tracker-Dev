@@ -1021,11 +1021,41 @@ document.addEventListener('DOMContentLoaded', function () {
                 watchlistSelect.value = 'portfolio';
             }
         }
+
         // Persist user intent
         try { setLastSelectedView('portfolio'); } catch (e) { }
+
         let portfolioSection = document.getElementById('portfolioSection');
         portfolioSection.style.display = 'block';
         renderPortfolioList();
+
+        // RESTORE SNAPSHOT VIEW IF SAVED
+        try {
+            const lastMode = localStorage.getItem('portfolio_last_view_mode');
+            console.log('[showPortfolioView] Checking saved view mode:', lastMode);
+            if (lastMode === 'snapshot') {
+                // Use a small timeout to allow DOM to settle
+                setTimeout(() => {
+                    if (typeof window.toggleSnapshotView === 'function') {
+                        console.log('[showPortfolioView] Restoring Snapshot View');
+                        window.toggleSnapshotView(true);
+                    }
+                }, 50);
+            } else {
+                // Ensure we are in default view if not snapshot
+                setTimeout(() => {
+                    if (typeof window.toggleSnapshotView === 'function') {
+                        const container = document.getElementById('snapshot-view-container');
+                        if (container && container.style.display === 'block') {
+                            window.toggleSnapshotView(false);
+                        }
+                    }
+                }, 50);
+            }
+        } catch (e) {
+            console.warn('[showPortfolioView] Failed to restore view mode:', e);
+        }
+
         try { scrollMainToTop(); } catch (_) { }
         // Keep header text in sync
         try { updateMainTitle(); } catch (e) { }
