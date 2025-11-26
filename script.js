@@ -955,6 +955,14 @@ document.addEventListener('DOMContentLoaded', function () {
         watchlistSelect.addEventListener('change', function () {
             // Capture previous selection for shallow back
             try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; pushAppStateEntry('watchlist', prev); logBackDebug('WATCHLIST change push prev=', prev); } catch (_) { }
+
+            // SAVE current snapshot state before switching if we are leaving portfolio
+            if (getCurrentSelectedWatchlistIds().includes('portfolio')) {
+                const snapshotContainer = document.getElementById('snapshot-view-container');
+                const isSnapshotActive = snapshotContainer && snapshotContainer.style.display === 'block';
+                console.log('[MobileWatchlistSelect] Leaving portfolio. Snapshot active:', isSnapshotActive);
+                localStorage.setItem('portfolio_last_view_mode', isSnapshotActive ? 'snapshot' : 'default');
+            }
             // If Portfolio is selected, show portfolio view
             if (watchlistSelect.value === 'portfolio') {
                 showPortfolioView();
