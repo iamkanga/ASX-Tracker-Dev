@@ -15,9 +15,9 @@ function callOrWarn(fnName, args) {
 }
 
 export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
-    try { window.logDebug && window.logDebug('Share Form: saveShareData called.'); } catch(_) {}
+    try { window.logDebug && window.logDebug('Share Form: saveShareData called.'); } catch (_) { }
     const saveShareBtn = window.saveShareBtn;
-    if (saveShareBtn && saveShareBtn.classList && saveShareBtn.classList.contains('is-disabled-icon') && isSilent) { try { window.logDebug && window.logDebug('Auto-Save: Save button is disabled (no changes or no valid name). Skipping silent save.'); } catch(_) {} return; }
+    if (saveShareBtn && saveShareBtn.classList && saveShareBtn.classList.contains('is-disabled-icon') && isSilent) { try { window.logDebug && window.logDebug('Auto-Save: Save button is disabled (no changes or no valid name). Skipping silent save.'); } catch (_) { } return; }
 
     // For new shares, ensure live price is available before collecting form data
     if (!window.selectedShareDocId) {
@@ -29,8 +29,8 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             const currentPriceInput = document.getElementById('currentPrice');
 
             // If we don't have live price data and the modal input is empty, wait briefly for live price
-                if (!livePriceData && (!currentPriceInput || !currentPriceInput.value || parseFloat(currentPriceInput.value) <= 0)) {
-                    try { window.logDebug && window.logDebug('[SAVE DEBUG] Waiting for live price data for new share: ' + shareName); } catch(_) {}
+            if (!livePriceData && (!currentPriceInput || !currentPriceInput.value || parseFloat(currentPriceInput.value) <= 0)) {
+                try { window.logDebug && window.logDebug('[SAVE DEBUG] Waiting for live price data for new share: ' + shareName); } catch (_) { }
 
                 // Wait up to 2 seconds for live price to become available
                 let attempts = 0;
@@ -42,10 +42,10 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                     const updatedLivePriceData = (window.livePrices || {})[shareName];
                     const updatedCurrentPriceInput = document.getElementById('currentPrice');
                     const hasPrice = updatedLivePriceData ||
-                                   (updatedCurrentPriceInput && updatedCurrentPriceInput.value && parseFloat(updatedCurrentPriceInput.value) > 0);
+                        (updatedCurrentPriceInput && updatedCurrentPriceInput.value && parseFloat(updatedCurrentPriceInput.value) > 0);
 
                     if (hasPrice) {
-                        try { window.logDebug && window.logDebug('[SAVE DEBUG] Live price now available for: ' + shareName); } catch(_) {}
+                        try { window.logDebug && window.logDebug('[SAVE DEBUG] Live price now available for: ' + shareName); } catch (_) { }
                         break;
                     }
 
@@ -54,7 +54,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
 
                 if (attempts >= maxAttempts) {
                     // If we timed out waiting for live price, proceed with save (best-effort)
-                    try { window.logDebug && window.logDebug('[SAVE DEBUG] Timeout waiting for live price, proceeding with save anyway'); } catch(_) {}
+                    try { window.logDebug && window.logDebug('[SAVE DEBUG] Timeout waiting for live price, proceeding with save anyway'); } catch (_) { }
                 }
             }
         }
@@ -63,20 +63,20 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
     // Now collect form data after ensuring live price is available
     const form = getCurrentFormData();
     const shareName = (form && form.shareName ? form.shareName : '').trim().toUpperCase();
-    if (!shareName) { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Code is required!'); } catch(_) {} console.warn('Save Share: Code is required. Skipping save.'); return; }
+    if (!shareName) { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Code is required!'); } catch (_) { } console.warn('Save Share: Code is required. Skipping save.'); return; }
     const selectedWatchlistIdsForSave = form ? form.watchlistIds : null;
     let selectedWatchlistIdForSave = form ? form.watchlistId : null;
     if (!selectedWatchlistIdForSave && Array.isArray(selectedWatchlistIdsForSave) && selectedWatchlistIdsForSave.length > 0) {
         selectedWatchlistIdForSave = selectedWatchlistIdsForSave[0];
     }
     if (!window.selectedShareDocId && Array.isArray(window.currentSelectedWatchlistIds) && window.currentSelectedWatchlistIds.includes(window.ALL_SHARES_ID)) {
-        if (!selectedWatchlistIdForSave || selectedWatchlistIdForSave === '') { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Please select a watchlist to assign the new share to.'); } catch(_) {} console.warn('Save Share: New share from All Shares: Watchlist not selected. Skipping save.'); return; }
-    } else if (!window.selectedShareDocId && !selectedWatchlistIdForSave && !(Array.isArray(selectedWatchlistIdsForSave) && selectedWatchlistIdsForSave.length > 0)) { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Please select a watchlist to assign the new share to.'); } catch(_) {} console.warn('Save Share: New share: No watchlist selected. Skipping save.'); return; }
-    let currentPrice = NaN; try { const lp = (window.livePrices||{})[shareName.toUpperCase()]; if (lp && typeof lp.live === 'number' && !isNaN(lp.live)) currentPrice = lp.live; else if (lp && typeof lp.lastLivePrice === 'number' && !isNaN(lp.lastLivePrice)) currentPrice = lp.lastLivePrice; } catch(_) {}
+        if (!selectedWatchlistIdForSave || selectedWatchlistIdForSave === '') { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Please select a watchlist to assign the new share to.'); } catch (_) { } console.warn('Save Share: New share from All Shares: Watchlist not selected. Skipping save.'); return; }
+    } else if (!window.selectedShareDocId && !selectedWatchlistIdForSave && !(Array.isArray(selectedWatchlistIdsForSave) && selectedWatchlistIdsForSave.length > 0)) { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Please select a watchlist to assign the new share to.'); } catch (_) { } console.warn('Save Share: New share: No watchlist selected. Skipping save.'); return; }
+    let currentPrice = NaN; try { const lp = (window.livePrices || {})[shareName.toUpperCase()]; if (lp && typeof lp.live === 'number' && !isNaN(lp.live)) currentPrice = lp.live; else if (lp && typeof lp.lastLivePrice === 'number' && !isNaN(lp.lastLivePrice)) currentPrice = lp.lastLivePrice; } catch (_) { }
     const targetPrice = form ? form.targetPrice : NaN; const dividendAmount = form ? form.dividendAmount : NaN; const frankingCredits = form ? form.frankingCredits : NaN;
     const comments = form ? (form.comments || []) : [];
-    const currentUserId = (function(){ try { return window.currentUserId || (auth && auth.currentUser && auth.currentUser.uid) || null; } catch(_) { return null; } })();
-    if (!currentUserId) { console.error('Save Share: Missing currentUserId; user not authenticated.'); try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('You must be signed in to save.'); } catch(_) {} return; }
+    const currentUserId = (function () { try { return window.currentUserId || (auth && auth.currentUser && auth.currentUser.uid) || null; } catch (_) { return null; } })();
+    if (!currentUserId) { console.error('Save Share: Missing currentUserId; user not authenticated.'); try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('You must be signed in to save.'); } catch (_) { } return; }
     // Check if this is an existing share that we're updating
     let existingWatchlistIds = null;
     if (window.selectedShareDocId) {
@@ -122,10 +122,10 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                     } else if (window.ToastManager && typeof window.ToastManager.info === 'function') {
                         window.ToastManager.info(msg, 3500);
                     } else {
-                        try { alert(msg); } catch(_) {}
+                        try { alert(msg); } catch (_) { }
                     }
                 }
-            } catch(_) {}
+            } catch (_) { }
             console.warn('Save Share: Attempted to save existing share without any watchlist assignment - aborting save.');
             return;
         }
@@ -137,7 +137,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
         currentPrice: isNaN(currentPrice) ? null : currentPrice,
         targetPrice: isNaN(targetPrice) ? null : targetPrice,
         targetDirection: (form && form.targetDirection) ? form.targetDirection : ((window.targetAboveCheckbox && window.targetAboveCheckbox.checked) ? 'above' : 'below'),
-        intent: (function(){
+        intent: (function () {
             try {
                 const dir = (form && form.targetDirection) ? form.targetDirection : ((window.targetAboveCheckbox && window.targetAboveCheckbox.checked) ? 'above' : 'below');
                 const buyActive = !!(window.targetIntentBuyBtn && window.targetIntentBuyBtn.classList.contains('is-active'));
@@ -145,7 +145,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 if (buyActive && !sellActive) return 'buy';
                 if (sellActive && !buyActive) return 'sell';
                 return dir === 'above' ? 'sell' : 'buy';
-            } catch(_) {
+            } catch (_) {
                 return (window.targetAboveCheckbox && window.targetAboveCheckbox.checked) ? 'sell' : 'buy';
             }
         })(),
@@ -177,7 +177,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                     } else {
                         console.warn('Save blocked: duplicate share', codeUpper);
                     }
-                } catch(_) {}
+                } catch (_) { }
                 return; // Abort save to prevent duplicates and data loss
             }
         } catch (e) {
@@ -200,10 +200,10 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                         } else if (typeof window.showCustomAlert === 'function') {
                             window.showCustomAlert(msg);
                         } else {
-                            try { alert(msg); } catch(_) {}
+                            try { alert(msg); } catch (_) { }
                         }
                     }
-                } catch(_) {}
+                } catch (_) { }
                 console.warn('Save Share: Duplicate code detected on update, aborting save:', codeUpper);
                 return;
             }
@@ -218,12 +218,19 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
         const existingShare = getAllSharesData().find(s => s.id === window.selectedShareDocId);
         if (existingShare && existingShare.entryPrice !== undefined) {
             shareData.entryPrice = existingShare.entryPrice;
+            shareData.enteredPriceRaw = existingShare.enteredPriceRaw || String(existingShare.entryPrice || '');
             shareData.lastFetchedPrice = existingShare.lastFetchedPrice || existingShare.entryPrice;
             shareData.previousFetchedPrice = existingShare.previousFetchedPrice || existingShare.entryPrice;
             console.log('[ENTRY PRICE] Preserved original entry price for edit:', shareData.entryPrice);
         } else {
             // Fallback: if for some reason the share is missing, do not set entryPrice at all
             console.warn('[ENTRY PRICE] Could not find existing share to preserve entry price.');
+        }
+
+        // Preserve entry date for existing shares
+        if (existingShare && existingShare.entryDate) {
+            shareData.entryDate = existingShare.entryDate;
+            console.log('[ENTRY DATE] Preserved original entry date for edit:', shareData.entryDate);
         }
     } else {
         // Creating new share: set entryPrice from current price only
@@ -336,24 +343,25 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 shareData.previousFetchedPrice = ep;
                 console.log('[ENTRY PRICE] previousFetchedPrice set from entryPrice for 0% provisional change:', shareData.previousFetchedPrice);
             }
-        } catch(_) {}
+        } catch (_) { }
+
+        // Set entry date for new shares only
+        if (form && form.entryDate) {
+            // Convert date string to ISO format
+            const entryDate = new Date(form.entryDate);
+            if (!isNaN(entryDate.getTime())) {
+                shareData.entryDate = entryDate.toISOString();
+                console.log('[ENTRY DATE] Using entry date from form:', shareData.entryDate);
+            } else {
+                console.log('[ENTRY DATE] Invalid entry date provided:', form.entryDate);
+            }
+        } else {
+            // For new shares, use current date as entry date
+            shareData.entryDate = new Date().toISOString();
+            console.log('[ENTRY DATE] Using current date as entry date:', shareData.entryDate);
+        }
     }
 
-    // Set entry date to current date for new shares
-    if (form && form.entryDate) {
-        // Convert date string to ISO format
-        const entryDate = new Date(form.entryDate);
-        if (!isNaN(entryDate.getTime())) {
-            shareData.entryDate = entryDate.toISOString();
-            console.log('[ENTRY DATE] Using entry date from form:', shareData.entryDate);
-        } else {
-            console.log('[ENTRY DATE] Invalid entry date provided:', form.entryDate);
-        }
-    } else {
-        // For new shares, use current date as entry date
-        shareData.entryDate = new Date().toISOString();
-        console.log('[ENTRY DATE] Using current date as entry date:', shareData.entryDate);
-    }
 
 
     // Check if we're trying to update an existing share
@@ -379,7 +387,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
 
                 try {
                     await window.upsertAlertForShare && window.upsertAlertForShare(originalShareDocId, shareName, shareData, false);
-                } catch(_) {}
+                } catch (_) { }
 
                 try {
                     const currentShares = getAllSharesData();
@@ -389,10 +397,10 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                         updatedShares[idx] = { ...updatedShares[idx], ...shareData, userId: currentUserId };
                         setAllSharesData(updatedShares);
                         // Immediately recompute triggered alerts and refresh the target-hit banner
-                        try { if (typeof window.recomputeTriggeredAlerts === 'function') window.recomputeTriggeredAlerts(); } catch(_) {}
-                        try { if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner(); } catch(_) {}
+                        try { if (typeof window.recomputeTriggeredAlerts === 'function') window.recomputeTriggeredAlerts(); } catch (_) { }
+                        try { if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner(); } catch (_) { }
                     }
-                } catch(_) {}
+                } catch (_) { }
 
                 try {
                     if (!isSilent) {
@@ -404,7 +412,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                                 window.shareFormSection.classList.add('app-hidden');
                             }
                             if (typeof window.closeModals === 'function') window.closeModals();
-                        } catch(_) {}
+                        } catch (_) { }
 
                         // Try ToastManager first (top-right toast will now be visible)
                         if (window.ToastManager && typeof window.ToastManager.success === 'function') {
@@ -417,7 +425,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                             console.warn('[SHARE UPDATED] No toast system available');
                         }
                     }
-                } catch(error) {
+                } catch (error) {
                     console.error('[SHARE UPDATED] Error showing notification:', error);
                 }
 
@@ -432,66 +440,66 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                     const originalDebugMode = window.DEBUG_MODE;
                     window.DEBUG_MODE = true;
 
-                                    await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true });
+                    await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true });
 
-                // Restore original debug mode
-                window.DEBUG_MODE = originalDebugMode;
+                    // Restore original debug mode
+                    window.DEBUG_MODE = originalDebugMode;
 
-                // Check if we got prices for the updated share
-                const shareCode = shareName.toUpperCase();
-                const livePrices = window.livePrices || {};
-                if (!livePrices[shareCode] || !livePrices[shareCode].live) {
-                    console.log('[UI UPDATE] No live price found for updated share', shareCode, '- retrying in 2 seconds...');
+                    // Check if we got prices for the updated share
+                    const shareCode = shareName.toUpperCase();
+                    const livePrices = window.livePrices || {};
+                    if (!livePrices[shareCode] || !livePrices[shareCode].live) {
+                        console.log('[UI UPDATE] No live price found for updated share', shareCode, '- retrying in 2 seconds...');
 
-                    // Try again after a delay
-                    setTimeout(async () => {
-                        try {
-                            console.log('[UI UPDATE] Retrying live price fetch for', shareCode);
-                            const retryDebugMode = window.DEBUG_MODE;
-                            window.DEBUG_MODE = true;
+                        // Try again after a delay
+                        setTimeout(async () => {
+                            try {
+                                console.log('[UI UPDATE] Retrying live price fetch for', shareCode);
+                                const retryDebugMode = window.DEBUG_MODE;
+                                window.DEBUG_MODE = true;
 
-                            await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true, stockCode: shareCode });
+                                await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true, stockCode: shareCode });
 
-                            window.DEBUG_MODE = retryDebugMode;
+                                window.DEBUG_MODE = retryDebugMode;
 
-                            // Check if we got the price on retry
-                            const livePricesAfterRetry = window.livePrices || {};
-                            if (livePricesAfterRetry[shareCode] && livePricesAfterRetry[shareCode].live) {
-                                console.log('[UI UPDATE] SUCCESS: Live price found for', shareCode, 'on retry');
-                            } else {
-                                console.log('[UI UPDATE] No live price available for', shareCode, '- this may be normal for new shares');
-                                console.log('[UI UPDATE] Apps Script may need time to initialize data for', shareCode);
+                                // Check if we got the price on retry
+                                const livePricesAfterRetry = window.livePrices || {};
+                                if (livePricesAfterRetry[shareCode] && livePricesAfterRetry[shareCode].live) {
+                                    console.log('[UI UPDATE] SUCCESS: Live price found for', shareCode, 'on retry');
+                                } else {
+                                    console.log('[UI UPDATE] No live price available for', shareCode, '- this may be normal for new shares');
+                                    console.log('[UI UPDATE] Apps Script may need time to initialize data for', shareCode);
 
-                                // Schedule additional retries for shares without pricing
-                                setTimeout(async () => {
-                                    console.log('[UI UPDATE] Final attempt for share', shareCode);
-                                    try {
-                                        await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true, stockCode: shareCode });
-                                        const finalPrices = window.livePrices || {};
-                                        if (finalPrices[shareCode] && finalPrices[shareCode].live) {
-                                            console.log('[UI UPDATE] SUCCESS: Live price finally available for', shareCode);
-                                            if (window.renderWatchlist) window.renderWatchlist();
-                                            if (window.renderAsxCodeButtons) window.renderAsxCodeButtons();
-                                        } else {
-                                            console.log('[UI UPDATE] Live price still unavailable for', shareCode, '- user may need to refresh or try later');
+                                    // Schedule additional retries for shares without pricing
+                                    setTimeout(async () => {
+                                        console.log('[UI UPDATE] Final attempt for share', shareCode);
+                                        try {
+                                            await window.fetchLivePrices && window.fetchLivePrices({ cacheBust: true, stockCode: shareCode });
+                                            const finalPrices = window.livePrices || {};
+                                            if (finalPrices[shareCode] && finalPrices[shareCode].live) {
+                                                console.log('[UI UPDATE] SUCCESS: Live price finally available for', shareCode);
+                                                if (window.renderWatchlist) window.renderWatchlist();
+                                                if (window.renderAsxCodeButtons) window.renderAsxCodeButtons();
+                                            } else {
+                                                console.log('[UI UPDATE] Live price still unavailable for', shareCode, '- user may need to refresh or try later');
+                                            }
+                                        } catch (error) {
+                                            console.error('[UI UPDATE] Final retry failed for', shareCode, error);
                                         }
-                                    } catch(error) {
-                                        console.error('[UI UPDATE] Final retry failed for', shareCode, error);
-                                    }
-                                }, 5000); // 5 second final attempt
+                                    }, 5000); // 5 second final attempt
+                                }
+
+                                // Force UI update again
+                                if (window.renderWatchlist) window.renderWatchlist();
+                                if (window.renderAsxCodeButtons) window.renderAsxCodeButtons();
+                            } catch (error) {
+                                console.error('[UI UPDATE] Retry fetch failed:', error);
                             }
+                        }, 2000);
+                    }
 
-                            // Force UI update again
-                            if (window.renderWatchlist) window.renderWatchlist();
-                            if (window.renderAsxCodeButtons) window.renderAsxCodeButtons();
-                        } catch(error) {
-                            console.error('[UI UPDATE] Retry fetch failed:', error);
-                        }
-                    }, 2000);
-                }
-
-                console.log('[UI UPDATE] Live prices fetched, now updating UI');
-                } catch(error) {
+                    console.log('[UI UPDATE] Live prices fetched, now updating UI');
+                } catch (error) {
                     console.error('[UI UPDATE] Error fetching live prices:', error);
                 }
 
@@ -511,7 +519,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                         window.renderAsxCodeButtons();
                     }
                     console.log('[UI UPDATE] UI update completed');
-                } catch(error) {
+                } catch (error) {
                     console.error('[UI UPDATE] Error during UI update:', error);
                 }
 
@@ -525,23 +533,23 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
 
                 if (!isSilent) {
                     window.suppressShareFormReopen = true;
-                    setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000);
+                    setTimeout(() => { window.suppressShareFormReopen = false; }, 8000);
                 }
 
                 try {
                     window.deselectCurrentShare && window.deselectCurrentShare();
-                } catch(_) {}
+                } catch (_) { }
 
                 // Ensure modal is closed and cleaned up before returning
                 try {
                     const frm = (typeof document !== 'undefined') ? document.getElementById('shareFormSection') : null;
                     if (frm && frm.style) {
-                        try { frm.style.setProperty('display', 'none', 'important'); } catch(_) {}
-                        try { frm.classList.add('app-hidden'); } catch(_) {}
+                        try { frm.style.setProperty('display', 'none', 'important'); } catch (_) { }
+                        try { frm.classList.add('app-hidden'); } catch (_) { }
                     }
-                    try { if (window.shareDetailModal && window.shareDetailModal.dataset) delete window.shareDetailModal.dataset.shareId; } catch(_) {}
-                    try { if (typeof window.closeModals === 'function') window.closeModals(); } catch(_) {}
-                } catch(_) {}
+                    try { if (window.shareDetailModal && window.shareDetailModal.dataset) delete window.shareDetailModal.dataset.shareId; } catch (_) { }
+                    try { if (typeof window.closeModals === 'function') window.closeModals(); } catch (_) { }
+                } catch (_) { }
 
                 return;
             }
@@ -550,7 +558,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             if (!isSilent) {
                 try {
                     window.showCustomAlert && window.showCustomAlert('Error updating share: ' + error.message);
-                } catch(_) {}
+                } catch (_) { }
             }
             return;
         }
@@ -577,7 +585,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 if (!isSilent) {
                     try {
                         window.showCustomAlert && window.showCustomAlert(`Share "${shareName}" already exists. You cannot create duplicate shares.`);
-                    } catch(_) {}
+                    } catch (_) { }
                 }
                 console.log('[DUPLICATE CHECK] Local duplicate found - returning early to prevent creation');
                 return;
@@ -607,7 +615,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 if (!isSilent) {
                     try {
                         window.showCustomAlert && window.showCustomAlert(`Share "${shareName}" already exists. You cannot create duplicate shares.`);
-                    } catch(_) {}
+                    } catch (_) { }
                 }
                 console.log('[DUPLICATE CHECK] Firestore duplicate found - returning early to prevent creation');
                 return;
@@ -620,7 +628,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             if (!isSilent) {
                 try {
                     window.showCustomAlert && window.showCustomAlert('Unable to verify share uniqueness. Please check your connection and try again.');
-                } catch(_) {}
+                } catch (_) { }
             }
             console.log('[DUPLICATE CHECK] Firestore check failed - preventing creation to avoid duplicates');
             return;
@@ -631,7 +639,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
         try {
             const sharesCollection = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
             // DEBUG: log entry price sources for diagnose
-            try { window.logDebug && window.logDebug('[SAVE DEBUG][appService] Creating share:', { shareName: shareName, formCurrentPrice: form ? form.currentPrice : undefined, shareDataEntryPrice: shareData.entryPrice, shareDataEnteredPriceRaw: shareData.enteredPriceRaw, livePricesForCode: (window.livePrices || {})[shareName.toUpperCase()] }); } catch(_) {}
+            try { window.logDebug && window.logDebug('[SAVE DEBUG][appService] Creating share:', { shareName: shareName, formCurrentPrice: form ? form.currentPrice : undefined, shareDataEntryPrice: shareData.entryPrice, shareDataEnteredPriceRaw: shareData.enteredPriceRaw, livePricesForCode: (window.livePrices || {})[shareName.toUpperCase()] }); } catch (_) { }
 
             // Prevent rapid duplicate creates for the same shareName by using a transient guard
             try {
@@ -640,15 +648,15 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 const now = Date.now();
                 const last = window.__shareAddInProgress[key] || 0;
                 if (now - last < 2000) {
-                    try { window.logDebug && window.logDebug('AppService.saveShareData: Suppressing rapid duplicate add for ' + key); } catch(_) {}
+                    try { window.logDebug && window.logDebug('AppService.saveShareData: Suppressing rapid duplicate add for ' + key); } catch (_) { }
                     return;
                 }
                 window.__shareAddInProgress[key] = now;
-                setTimeout(() => { try { if (window.__shareAddInProgress) delete window.__shareAddInProgress[key]; } catch(_) {} }, 3500);
-            } catch(_) {}
+                setTimeout(() => { try { if (window.__shareAddInProgress) delete window.__shareAddInProgress[key]; } catch (_) { } }, 3500);
+            } catch (_) { }
 
             // OPTIMISTIC UI: Insert a provisional share into local state so user sees it immediately
-            provisionalId = '__pending:' + Date.now() + ':' + Math.random().toString(36).slice(2,8);
+            provisionalId = '__pending:' + Date.now() + ':' + Math.random().toString(36).slice(2, 8);
             try {
                 const provisionalShare = Object.assign({}, shareData, { id: provisionalId, __provisional: true, userId: currentUserId });
                 const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
@@ -665,16 +673,16 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                                 const code = (share.shareName || '').toUpperCase();
                                 const lp = prices[code];
                                 const live = (lp && typeof lp.live === 'number' && !isNaN(lp.live)) ? lp.live
-                                            : (lp && typeof lp.lastLivePrice === 'number' && !isNaN(lp.lastLivePrice)) ? lp.lastLivePrice
-                                            : (typeof share.lastFetchedPrice === 'number' && !isNaN(share.lastFetchedPrice)) ? share.lastFetchedPrice
+                                    : (lp && typeof lp.lastLivePrice === 'number' && !isNaN(lp.lastLivePrice)) ? lp.lastLivePrice
+                                        : (typeof share.lastFetchedPrice === 'number' && !isNaN(share.lastFetchedPrice)) ? share.lastFetchedPrice
                                             : (typeof share.currentPrice === 'number' && !isNaN(share.currentPrice)) ? share.currentPrice
-                                            : (typeof share.entryPrice === 'number' && !isNaN(share.entryPrice)) ? share.entryPrice
-                                            : null;
+                                                : (typeof share.entryPrice === 'number' && !isNaN(share.entryPrice)) ? share.entryPrice
+                                                    : null;
                                 const prev = (lp && (typeof lp.prevClose === 'number' || typeof lp.lastPrevClose === 'number'))
-                                             ? (isNaN(lp.prevClose) ? lp.lastPrevClose : lp.prevClose)
-                                             : (typeof share.previousFetchedPrice === 'number' && !isNaN(share.previousFetchedPrice)) ? share.previousFetchedPrice
-                                             : (typeof share.entryPrice === 'number' && !isNaN(share.entryPrice)) ? share.entryPrice
-                                             : null;
+                                    ? (isNaN(lp.prevClose) ? lp.lastPrevClose : lp.prevClose)
+                                    : (typeof share.previousFetchedPrice === 'number' && !isNaN(share.previousFetchedPrice)) ? share.previousFetchedPrice
+                                        : (typeof share.entryPrice === 'number' && !isNaN(share.entryPrice)) ? share.entryPrice
+                                            : null;
                                 if (live !== null && prev !== null && prev !== 0) return ((live - prev) / prev) * 100;
                                 if (live !== null && (prev === null || prev === 0)) return 0; // reasonable default
                                 return null;
@@ -719,18 +727,18 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                     // Prefer add-form snapshot for the active code to ensure correct immediate placement
                     const snap = (typeof window !== 'undefined' && window.__addFormSnapshot && window.__addFormSnapshot.code === code) ? window.__addFormSnapshot : null;
                     const live = (snap && typeof snap.live === 'number' && !isNaN(snap.live)) ? snap.live
-                               : (typeof provisionalShare.lastFetchedPrice === 'number' && !isNaN(provisionalShare.lastFetchedPrice)) ? provisionalShare.lastFetchedPrice
-                               : (typeof provisionalShare.currentPrice === 'number' && !isNaN(provisionalShare.currentPrice)) ? provisionalShare.currentPrice : null;
+                        : (typeof provisionalShare.lastFetchedPrice === 'number' && !isNaN(provisionalShare.lastFetchedPrice)) ? provisionalShare.lastFetchedPrice
+                            : (typeof provisionalShare.currentPrice === 'number' && !isNaN(provisionalShare.currentPrice)) ? provisionalShare.currentPrice : null;
                     const prev = (snap && typeof snap.prev === 'number' && !isNaN(snap.prev)) ? snap.prev
-                               : (typeof provisionalShare.previousFetchedPrice === 'number' && !isNaN(provisionalShare.previousFetchedPrice)) ? provisionalShare.previousFetchedPrice : null;
+                        : (typeof provisionalShare.previousFetchedPrice === 'number' && !isNaN(provisionalShare.previousFetchedPrice)) ? provisionalShare.previousFetchedPrice : null;
                     if (code && live !== null && prev !== null) {
                         setLivePrices({ [code]: { live, prevClose: prev, lastLivePrice: live, lastPrevClose: prev } });
                     }
-                } catch(_) {}
+                } catch (_) { }
                 // Immediately re-apply sort so the provisional appears in the correct position
-                try { if (typeof window !== 'undefined' && typeof window.sortShares === 'function') window.sortShares(); } catch(_) {}
+                try { if (typeof window !== 'undefined' && typeof window.sortShares === 'function') window.sortShares(); } catch (_) { }
             } catch (e) {
-                try { window.logDebug && window.logDebug('AppService: provisional insert failed', e); } catch(_) {}
+                try { window.logDebug && window.logDebug('AppService: provisional insert failed', e); } catch (_) { }
             }
 
             // Attempt to create the Firestore document
@@ -754,7 +762,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                     const currentShares = Array.isArray(getAllSharesData()) ? getAllSharesData() : [];
                     const cleaned = currentShares.filter(s => !(s && s.__provisional && s.id === provisionalId));
                     setAllSharesData(cleaned);
-                } catch(_) {}
+                } catch (_) { }
                 console.error('Error creating share:', error);
                 if (!isSilent) {
                     try {
@@ -765,7 +773,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                         } else {
                             alert('Failed to save share: ' + (error && error.message ? error.message : 'Unknown error'));
                         }
-                    } catch(_) {}
+                    } catch (_) { }
                 }
                 // Close modal on failure
                 try {
@@ -782,7 +790,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
 
             try {
                 await window.upsertAlertForShare && window.upsertAlertForShare(newShareId, shareName, shareData, true);
-            } catch(_) {}
+            } catch (_) { }
 
             // Replace provisional entry (if present) or dedupe and append the created share to local state
             try {
@@ -801,9 +809,9 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                     setAllSharesData(next);
                 }
                 // Immediately re-apply current sort so the new share appears in the correct position
-                try { if (typeof window !== 'undefined' && typeof window.sortShares === 'function') window.sortShares(); } catch(_) {}
+                try { if (typeof window !== 'undefined' && typeof window.sortShares === 'function') window.sortShares(); } catch (_) { }
             } catch (e) {
-                try { window.logDebug && window.logDebug('AppService: failed to replace provisional with created share', e); } catch(_) {}
+                try { window.logDebug && window.logDebug('AppService: failed to replace provisional with created share', e); } catch (_) { }
             }
 
             try {
@@ -815,7 +823,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                         window.showCustomAlert(`Share ${displayName} added successfully`, 2000);
                     }
                 }
-            } catch(error) {
+            } catch (error) {
                 console.error('[SHARE ADDED] Error showing notification:', error);
             }
 
@@ -858,17 +866,17 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                                         } else {
                                             console.log('[UI UPDATE] Live price still unavailable for', newShareCode);
                                         }
-                                    } catch(error) { console.error('[UI UPDATE] Final retry failed for', newShareCode, error); }
+                                    } catch (error) { console.error('[UI UPDATE] Final retry failed for', newShareCode, error); }
                                 }, 5000);
                             }
                             if (window.renderWatchlist) window.renderWatchlist();
                             if (window.renderAsxCodeButtons) window.renderAsxCodeButtons();
-                        } catch(error) { console.error('[UI UPDATE] Retry fetch failed:', error); }
+                        } catch (error) { console.error('[UI UPDATE] Retry fetch failed:', error); }
                     }, 2000);
                 }
 
                 console.log('[UI UPDATE] Live prices fetched, now updating UI');
-            } catch(error) {
+            } catch (error) {
                 console.error('[UI UPDATE] Error fetching live prices:', error);
             }
 
@@ -879,7 +887,7 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                 if (window.renderWatchlist) { console.log('[UI UPDATE] Calling renderWatchlist()'); window.renderWatchlist(); }
                 if (window.renderAsxCodeButtons) { console.log('[UI UPDATE] Calling renderAsxCodeButtons()'); window.renderAsxCodeButtons(); }
                 console.log('[UI UPDATE] UI update completed');
-            } catch(error) { console.error('[UI UPDATE] Error during UI update:', error); }
+            } catch (error) { console.error('[UI UPDATE] Error during UI update:', error); }
 
             window.originalShareData = getCurrentFormData ? getCurrentFormData() : null;
             window.setIconDisabled && window.setIconDisabled(window.saveShareBtn, true);
@@ -891,10 +899,10 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
 
             if (!isSilent) {
                 window.suppressShareFormReopen = true;
-                setTimeout(()=>{ window.suppressShareFormReopen = false; }, 8000);
+                setTimeout(() => { window.suppressShareFormReopen = false; }, 8000);
             }
 
-            try { window.deselectCurrentShare && window.deselectCurrentShare(); } catch(_) {}
+            try { window.deselectCurrentShare && window.deselectCurrentShare(); } catch (_) { }
 
             return;
         } catch (error) {
@@ -905,12 +913,12 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
                     const cleaned = currentShares.filter(s => !(s && s.__provisional && s.id === provisionalId));
                     setAllSharesData(cleaned);
                     console.log('Rolled back provisional share on outer catch:', provisionalId);
-                } catch(cleanupError) {
+                } catch (cleanupError) {
                     console.error('Failed to cleanup provisional share on outer catch:', cleanupError);
                 }
             }
             if (!isSilent) {
-                try { window.showCustomAlert && window.showCustomAlert('Error creating share: ' + (error && error.message ? error.message : error)); } catch(_) {}
+                try { window.showCustomAlert && window.showCustomAlert('Error creating share: ' + (error && error.message ? error.message : error)); } catch (_) { }
             }
             // Close modal on failure
             try {
@@ -924,8 +932,8 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
         }
     }
 
-    try { if (window.shareDetailModal && window.shareDetailModal.dataset) delete window.shareDetailModal.dataset.shareId; } catch(_) {}
-    try { if (!isSilent && window.closeModals) window.closeModals(); } catch(_) {}
+    try { if (window.shareDetailModal && window.shareDetailModal.dataset) delete window.shareDetailModal.dataset.shareId; } catch (_) { }
+    try { if (!isSilent && window.closeModals) window.closeModals(); } catch (_) { }
 
     // Additional safeguard to prevent share detail modal from reopening after save
     try {
@@ -946,26 +954,26 @@ export async function saveShareData(isSilent = false, capturedPriceRaw = null) {
             window.wasEditOpenedFromShareDetail = false;
         }
 
-    } catch(error) {
+    } catch (error) {
         console.error('[DEBUG] Error in modal cleanup:', error);
     }
 }
 
 export async function deleteShare(shareId) {
-    if (!shareId) { try { window.showCustomAlert && window.showCustomAlert('No share selected for deletion.'); } catch(_) {} return; }
+    if (!shareId) { try { window.showCustomAlert && window.showCustomAlert('No share selected for deletion.'); } catch (_) { } return; }
     try {
         const { db, firestore, currentAppId, currentUserId } = window;
         if (!db || !firestore || !currentAppId || !currentUserId) throw new Error('Firestore not available');
         const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', shareId);
         await firestore.deleteDoc(shareDocRef);
-        try { window.logDebug && window.logDebug('Firestore: Share (ID: ' + shareId + ') deleted.'); } catch(_) {}
+        try { window.logDebug && window.logDebug('Firestore: Share (ID: ' + shareId + ') deleted.'); } catch (_) { }
 
         // Remove from local data immediately
         try {
             const currentShares = getAllSharesData();
             const updatedShares = currentShares.filter(s => s.id !== shareId);
             setAllSharesData(updatedShares);
-        } catch(_) {}
+        } catch (_) { }
 
         try {
             console.log('[SHARE DELETED] Success notification');
@@ -980,24 +988,24 @@ export async function deleteShare(shareId) {
             } else {
                 console.warn('[SHARE DELETED] No toast system available');
             }
-        } catch(error) {
+        } catch (error) {
             console.error('[SHARE DELETED] Error showing notification:', error);
         }
-        try { window.updateTargetHitBanner && window.updateTargetHitBanner(); } catch(_) {}
+        try { window.updateTargetHitBanner && window.updateTargetHitBanner(); } catch (_) { }
         try {
             // Clear selection & modal restore hints so closing modals can't be re-opened by restore logic
-            try { if (window.selectedShareDocId) window.selectedShareDocId = null; } catch(_) {}
-            try { if (window.shareDetailModal && window.shareDetailModal.dataset) delete window.shareDetailModal.dataset.shareId; } catch(_) {}
-            try { window.wasEditOpenedFromShareDetail = false; } catch(_) {}
-            try { window.wasShareDetailOpenedFromTargetAlerts = false; } catch(_) {}
-            try { if (window.shareFormSection) { window.shareFormSection.style.setProperty('display','none','important'); window.shareFormSection.classList.remove('show'); } } catch(_) {}
-            try { if (window.shareDetailModal) { window.shareDetailModal.style.setProperty('display','none','important'); window.shareDetailModal.classList.remove('show'); } } catch(_) {}
+            try { if (window.selectedShareDocId) window.selectedShareDocId = null; } catch (_) { }
+            try { if (window.shareDetailModal && window.shareDetailModal.dataset) delete window.shareDetailModal.dataset.shareId; } catch (_) { }
+            try { window.wasEditOpenedFromShareDetail = false; } catch (_) { }
+            try { window.wasShareDetailOpenedFromTargetAlerts = false; } catch (_) { }
+            try { if (window.shareFormSection) { window.shareFormSection.style.setProperty('display', 'none', 'important'); window.shareFormSection.classList.remove('show'); } } catch (_) { }
+            try { if (window.shareDetailModal) { window.shareDetailModal.style.setProperty('display', 'none', 'important'); window.shareDetailModal.classList.remove('show'); } } catch (_) { }
 
             // Prevent closeModals from triggering auto-save while we intentionally close the modal after deletion
-            try { window.__suppressAutoSaveOnClose = true; } catch(_) {}
-            try { window.closeModals && window.closeModals(); } catch(_) {}
-            try { window.__suppressAutoSaveOnClose = false; } catch(_) {}
-        } catch(_) {}
+            try { window.__suppressAutoSaveOnClose = true; } catch (_) { }
+            try { window.closeModals && window.closeModals(); } catch (_) { }
+            try { window.__suppressAutoSaveOnClose = false; } catch (_) { }
+        } catch (_) { }
 
         // Update UI immediately after successful share deletion
         // Note: For deletions, we don't need to fetch live prices as the deleted share won't have prices anyway
@@ -1016,40 +1024,40 @@ export async function deleteShare(shareId) {
                 window.renderAsxCodeButtons();
             }
             console.log('[UI UPDATE] UI update completed');
-        } catch(error) {
+        } catch (error) {
             console.error('[UI UPDATE] Error during UI update:', error);
         }
     } catch (error) {
         console.error('Firestore: Error deleting share:', error);
-        try { window.showCustomAlert && window.showCustomAlert('Error deleting share: ' + error.message); } catch(_) {}
+        try { window.showCustomAlert && window.showCustomAlert('Error deleting share: ' + error.message); } catch (_) { }
     }
 }
 
 export async function saveWatchlistChanges(isSilent = false, newName, watchlistId = null) {
-    try { window.logDebug && window.logDebug('Watchlist Form: saveWatchlistChanges called.'); } catch(_) {}
-    if (!newName || newName.trim() === '') { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Watchlist name is required!'); } catch(_) {} console.warn('Save Watchlist: empty name.'); return; }
+    try { window.logDebug && window.logDebug('Watchlist Form: saveWatchlistChanges called.'); } catch (_) { }
+    if (!newName || newName.trim() === '') { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Watchlist name is required!'); } catch (_) { } console.warn('Save Watchlist: empty name.'); return; }
     const isDuplicate = getUserWatchlists().some(w => w.name.toLowerCase() === newName.toLowerCase() && w.id !== watchlistId);
-    if (isDuplicate) { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('A watchlist with this name already exists!'); } catch(_) {} console.warn('Save Watchlist: duplicate name.'); return; }
+    if (isDuplicate) { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('A watchlist with this name already exists!'); } catch (_) { } console.warn('Save Watchlist: duplicate name.'); return; }
     const currentUserId = window.currentUserId;
     try {
         if (watchlistId) {
             const watchlistDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists', watchlistId);
             await firestore.updateDoc(watchlistDocRef, { name: newName });
-            try { if (!isSilent) window.showCustomAlert && window.showCustomAlert("Watchlist renamed to '" + newName + "'!", 1500); } catch(_) {}
+            try { if (!isSilent) window.showCustomAlert && window.showCustomAlert("Watchlist renamed to '" + newName + "'!", 1500); } catch (_) { }
             try {
                 await window.loadUserWatchlistsAndSettings();
                 await window.loadUserPreferences();
-                if (Object.keys(window.userPreferences||{}).length === 0) {
-                    try { await window.persistUserPreference && window.persistUserPreference('compactViewMode', localStorage.getItem('currentMobileViewMode') || window.currentMobileViewMode); } catch(_) {}
+                if (Object.keys(window.userPreferences || {}).length === 0) {
+                    try { await window.persistUserPreference && window.persistUserPreference('compactViewMode', localStorage.getItem('currentMobileViewMode') || window.currentMobileViewMode); } catch (_) { }
                 }
-            } catch(_) {}
-            try { window.logDebug && window.logDebug("Firestore: Watchlist (ID: " + watchlistId + ") renamed to '" + newName + "'."); } catch(_) {}
+            } catch (_) { }
+            try { window.logDebug && window.logDebug("Firestore: Watchlist (ID: " + watchlistId + ") renamed to '" + newName + "'."); } catch (_) { }
         } else {
             const watchlistsColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/watchlists');
             const newDocRef = await firestore.addDoc(watchlistsColRef, { name: newName, createdAt: new Date().toISOString(), userId: currentUserId });
-            try { if (!isSilent) window.showCustomAlert && window.showCustomAlert("Watchlist '" + newName + "' added!", 1500); } catch(_) {}
-            try { window.logDebug && window.logDebug("Firestore: Watchlist '" + newName + "' added with ID: " + newDocRef.id); } catch(_) {}
-            try { setCurrentSelectedWatchlistIds([newDocRef.id]); await window.saveLastSelectedWatchlistIds(getCurrentSelectedWatchlistIds()); } catch(_) {}
+            try { if (!isSilent) window.showCustomAlert && window.showCustomAlert("Watchlist '" + newName + "' added!", 1500); } catch (_) { }
+            try { window.logDebug && window.logDebug("Firestore: Watchlist '" + newName + "' added with ID: " + newDocRef.id); } catch (_) { }
+            try { setCurrentSelectedWatchlistIds([newDocRef.id]); await window.saveLastSelectedWatchlistIds(getCurrentSelectedWatchlistIds()); } catch (_) { }
             try {
                 const uw = getUserWatchlists();
                 if (!uw.some(w => w.id === newDocRef.id)) {
@@ -1057,22 +1065,22 @@ export async function saveWatchlistChanges(isSilent = false, newName, watchlistI
                     next.sort((a, b) => a.name.localeCompare(b.name));
                     setUserWatchlists(next);
                 }
-            } catch(_) {}
-            try { await window.loadUserWatchlistsAndSettings(); } catch(_) {}
-            
+            } catch (_) { }
+            try { await window.loadUserWatchlistsAndSettings(); } catch (_) { }
+
             // After loadUserWatchlistsAndSettings completes, ensure the newly created watchlist is selected
             // and navigate to it immediately
             try {
                 console.log('[WATCHLIST NAV] Setting currentSelectedWatchlistIds to new watchlist:', newDocRef.id);
                 setCurrentSelectedWatchlistIds([newDocRef.id]);
-                
+
                 // Update the dropdown selection
                 const watchlistSelect = document.getElementById('watchlistSelect');
                 if (watchlistSelect) {
                     watchlistSelect.value = newDocRef.id;
                     console.log('[WATCHLIST NAV] Set dropdown value to:', newDocRef.id);
                 }
-                
+
                 // Save the selection to localStorage
                 try {
                     localStorage.setItem('lastWatchlistSelection', JSON.stringify([newDocRef.id]));
@@ -1080,13 +1088,13 @@ export async function saveWatchlistChanges(isSilent = false, newName, watchlistI
                 } catch (e) {
                     console.warn('[WATCHLIST NAV] Error saving to localStorage:', e);
                 }
-                
+
                 // Render the watchlist immediately
                 console.log('[WATCHLIST NAV] Rendering watchlist for new watchlist');
                 if (window.renderWatchlist) {
                     window.renderWatchlist();
                 }
-                
+
                 // Update UI elements
                 if (window.updateMainTitle) {
                     window.updateMainTitle();
@@ -1094,27 +1102,27 @@ export async function saveWatchlistChanges(isSilent = false, newName, watchlistI
                 if (window.updateAddHeaderButton) {
                     window.updateAddHeaderButton();
                 }
-                
+
             } catch (error) {
                 console.error('[WATCHLIST NAV] Error navigating to new watchlist:', error);
             }
         }
-        try { if (!isSilent) window.closeModals && window.closeModals(); } catch(_) {}
+        try { if (!isSilent) window.closeModals && window.closeModals(); } catch (_) { }
 
-                // If watchlist picker is currently open, refresh it
-                const pickerModal = document.getElementById('watchlistPickerModal');
-                if (pickerModal && !pickerModal.classList.contains('app-hidden')) {
-                    console.log('[WATCHLIST NAV] Refreshing watchlist picker');
-                    // Close and reopen to refresh the list
-                    setTimeout(() => {
-                        if (window.openWatchlistPicker) window.openWatchlistPicker();
-                    }, 100);
-                }
+        // If watchlist picker is currently open, refresh it
+        const pickerModal = document.getElementById('watchlistPickerModal');
+        if (pickerModal && !pickerModal.classList.contains('app-hidden')) {
+            console.log('[WATCHLIST NAV] Refreshing watchlist picker');
+            // Close and reopen to refresh the list
+            setTimeout(() => {
+                if (window.openWatchlistPicker) window.openWatchlistPicker();
+            }, 100);
+        }
 
-        try { window.originalWatchlistData = window.getCurrentWatchlistFormData ? window.getCurrentWatchlistFormData(watchlistId === null) : null; window.checkWatchlistFormDirtyState && window.checkWatchlistFormDirtyState(watchlistId === null); } catch(_) {}
+        try { window.originalWatchlistData = window.getCurrentWatchlistFormData ? window.getCurrentWatchlistFormData(watchlistId === null) : null; window.checkWatchlistFormDirtyState && window.checkWatchlistFormDirtyState(watchlistId === null); } catch (_) { }
     } catch (error) {
         console.error('Firestore: Error saving watchlist:', error);
-        try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Error saving watchlist: ' + error.message); } catch(_) {}
+        try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Error saving watchlist: ' + error.message); } catch (_) { }
     }
 }
 
@@ -1122,7 +1130,7 @@ export async function saveWatchlistChanges(isSilent = false, newName, watchlistI
 export async function updateCashCategoryVisibility(categoryId, isHidden) {
     if (!categoryId) throw new Error('Missing categoryId');
     try {
-        const currentUserId = (function(){ try { return window.currentUserId || (auth && auth.currentUser && auth.currentUser.uid) || null; } catch(_) { return null; } })();
+        const currentUserId = (function () { try { return window.currentUserId || (auth && auth.currentUser && auth.currentUser.uid) || null; } catch (_) { return null; } })();
         if (!currentUserId) { throw new Error('User not authenticated'); }
         const categoryDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories', categoryId);
         await firestore.updateDoc(categoryDocRef, { isHidden: !!isHidden, lastUpdated: new Date().toISOString() });
@@ -1130,8 +1138,8 @@ export async function updateCashCategoryVisibility(categoryId, isHidden) {
             const current = getUserCashCategories() || [];
             const idx = current.findIndex(c => c && c.id === categoryId);
             if (idx !== -1) { const next = current.slice(); next[idx] = { ...current[idx], isHidden: !!isHidden }; setUserCashCategories(next); }
-        } catch(_) {}
-        try { window.logDebug && window.logDebug('Firestore: Cash category visibility updated for ' + categoryId + ' -> ' + isHidden); } catch(_) {}
+        } catch (_) { }
+        try { window.logDebug && window.logDebug('Firestore: Cash category visibility updated for ' + categoryId + ' -> ' + isHidden); } catch (_) { }
         return true;
     } catch (error) {
         console.error('Error updating cash category visibility:', error);
@@ -1143,11 +1151,11 @@ export async function deleteWatchlist(watchlistId) {
     const currentUserId = window.currentUserId;
 
     if (!watchlistId) {
-        try { window.showCustomAlert && window.showCustomAlert('Error: Cannot delete watchlist. ID is missing or invalid.', 2000); } catch(_) {}
+        try { window.showCustomAlert && window.showCustomAlert('Error: Cannot delete watchlist. ID is missing or invalid.', 2000); } catch (_) { }
         return;
     }
     if (watchlistId === window.ALL_SHARES_ID || watchlistId === window.CASH_BANK_WATCHLIST_ID) {
-        try { window.showCustomAlert && window.showCustomAlert('Cannot delete this special watchlist.', 2000); } catch(_) {}
+        try { window.showCustomAlert && window.showCustomAlert('Cannot delete this special watchlist.', 2000); } catch (_) { }
         return;
     }
 
@@ -1161,7 +1169,7 @@ export async function deleteWatchlist(watchlistId) {
                     `Are you sure you want to delete "${watchlistName}" shares in this watchlist will be deleted if they are not in other watch lists?`,
                     async (confirmed) => {
                         if (!confirmed) {
-                            try { window.showCustomAlert && window.showCustomAlert('Watchlist deletion cancelled.', 1000); } catch(_) {}
+                            try { window.showCustomAlert && window.showCustomAlert('Watchlist deletion cancelled.', 1000); } catch (_) { }
                             resolve(false);
                             return;
                         }
@@ -1171,19 +1179,19 @@ export async function deleteWatchlist(watchlistId) {
                             resolve(true);
                         } catch (error) {
                             console.error('Error in safe watchlist deletion:', error);
-                            try { window.showCustomAlert && window.showCustomAlert('Error deleting watchlist: ' + error.message); } catch(_) {}
+                            try { window.showCustomAlert && window.showCustomAlert('Error deleting watchlist: ' + error.message); } catch (_) { }
                             reject(error);
                         }
                     }
                 );
             } else {
                 // No confirm UI available; cancel by default to avoid accidental deletion
-                try { window.showCustomAlert && window.showCustomAlert('Unable to confirm deletion at this time.', 1500); } catch(_) {}
+                try { window.showCustomAlert && window.showCustomAlert('Unable to confirm deletion at this time.', 1500); } catch (_) { }
                 resolve(false);
             }
         } catch (confirmError) {
             console.warn('Confirmation dialog not available, falling back to native confirm:', confirmError);
-            try { window.showCustomAlert && window.showCustomAlert('Unable to confirm deletion at this time.', 1500); } catch(_) {}
+            try { window.showCustomAlert && window.showCustomAlert('Unable to confirm deletion at this time.', 1500); } catch (_) { }
             resolve(false);
         }
     });
@@ -1256,15 +1264,15 @@ async function performSafeWatchlistDeletion(watchlistId, watchlistName) {
 
         try {
             window.logDebug && window.logDebug(`Firestore: Watchlist "${watchlistName}" deleted. Deleted ${sharesToDelete.length} exclusive shares, updated ${sharesToUpdate.length} shared shares.`);
-        } catch(_) {}
+        } catch (_) { }
 
         try {
             window.showCustomAlert && window.showCustomAlert(`Watchlist "${watchlistName}" deleted successfully`, 2000);
-        } catch(_) {}
+        } catch (_) { }
 
-        try { window.closeModals && window.closeModals(); } catch(_) {}
-        try { setCurrentSelectedWatchlistIds([window.ALL_SHARES_ID]); await window.saveLastSelectedWatchlistIds(getCurrentSelectedWatchlistIds()); } catch(_) {}
-        try { await window.loadUserWatchlistsAndSettings(); } catch(_) {}
+        try { window.closeModals && window.closeModals(); } catch (_) { }
+        try { setCurrentSelectedWatchlistIds([window.ALL_SHARES_ID]); await window.saveLastSelectedWatchlistIds(getCurrentSelectedWatchlistIds()); } catch (_) { }
+        try { await window.loadUserWatchlistsAndSettings(); } catch (_) { }
 
     } catch (error) {
         console.error('Firestore: Error in safe watchlist deletion:', error);
@@ -1273,36 +1281,36 @@ async function performSafeWatchlistDeletion(watchlistId, watchlistName) {
 }
 
 export async function saveCashAsset(isSilent = false) {
-    try { window.logDebug && window.logDebug('Cash Form: saveCashAsset called.'); } catch(_) {}
+    try { window.logDebug && window.logDebug('Cash Form: saveCashAsset called.'); } catch (_) { }
 
     // Prevent duplicate saves when a modal save is already in progress
     if (window.__modalSaveInProgress) {
-        try { window.logDebug && window.logDebug('AppService.saveCashAsset: Skipping because another modal save is in progress.'); } catch(_) {}
+        try { window.logDebug && window.logDebug('AppService.saveCashAsset: Skipping because another modal save is in progress.'); } catch (_) { }
         return;
     }
-    try { window.__modalSaveInProgress = true; } catch(_) { window.__modalSaveInProgress = true; }
+    try { window.__modalSaveInProgress = true; } catch (_) { window.__modalSaveInProgress = true; }
 
 
 
-    const saveCashAssetBtn = window.saveCashAssetBtn; if (saveCashAssetBtn && saveCashAssetBtn.classList && saveCashAssetBtn.classList.contains('is-disabled-icon') && isSilent) { try { window.logDebug && window.logDebug('Auto-Save: Save button is disabled (no changes or no valid name). Skipping silent save.'); } catch(_) {} return; }
+    const saveCashAssetBtn = window.saveCashAssetBtn; if (saveCashAssetBtn && saveCashAssetBtn.classList && saveCashAssetBtn.classList.contains('is-disabled-icon') && isSilent) { try { window.logDebug && window.logDebug('Auto-Save: Save button is disabled (no changes or no valid name). Skipping silent save.'); } catch (_) { } return; }
     const cashForm = getCurrentCashAssetFormData();
-    const assetName = (cashForm && cashForm.name ? cashForm.name : '').trim(); if (!assetName) { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Asset name is required!'); } catch(_) {} console.warn('Save Cash Asset: Asset name is required. Skipping save.'); return; }
+    const assetName = (cashForm && cashForm.name ? cashForm.name : '').trim(); if (!assetName) { try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Asset name is required!'); } catch (_) { } console.warn('Save Cash Asset: Asset name is required. Skipping save.'); return; }
     const assetBalance = cashForm ? cashForm.balance : NaN; const comments = cashForm ? (cashForm.comments || []) : [];
-    const currentUserId = (function(){ try { return window.currentUserId || (auth && auth.currentUser && auth.currentUser.uid) || null; } catch(_) { return null; } })();
-    if (!currentUserId) { console.error('Save Cash Asset: Missing currentUserId; user not authenticated.'); try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('You must be signed in to save.'); } catch(_) {} return; }
+    const currentUserId = (function () { try { return window.currentUserId || (auth && auth.currentUser && auth.currentUser.uid) || null; } catch (_) { return null; } })();
+    if (!currentUserId) { console.error('Save Cash Asset: Missing currentUserId; user not authenticated.'); try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('You must be signed in to save.'); } catch (_) { } return; }
     const cashAssetData = { name: assetName, balance: isNaN(assetBalance) ? 0 : assetBalance, comments: comments, userId: currentUserId, lastUpdated: new Date().toISOString(), isHidden: !!(cashForm && cashForm.isHidden) };
     try {
         if (window.selectedCashAssetDocId) {
             const assetDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories', window.selectedCashAssetDocId);
             await firestore.updateDoc(assetDocRef, cashAssetData);
-            try { if (!isSilent) window.showCustomAlert && window.showCustomAlert(`Cash asset "${assetName}" updated successfully`, 1500); } catch(_) {}
-            try { window.logDebug && window.logDebug("Firestore: Cash asset '" + assetName + "' (ID: " + window.selectedCashAssetDocId + ") updated."); } catch(_) {}
+            try { if (!isSilent) window.showCustomAlert && window.showCustomAlert(`Cash asset "${assetName}" updated successfully`, 1500); } catch (_) { }
+            try { window.logDebug && window.logDebug("Firestore: Cash asset '" + assetName + "' (ID: " + window.selectedCashAssetDocId + ") updated."); } catch (_) { }
             try {
                 // Update state array to reflect change immediately
                 const current = getUserCashCategories() || [];
                 const idx = current.findIndex(c => c && c.id === window.selectedCashAssetDocId);
                 if (idx !== -1) { const next = current.slice(); next[idx] = { ...current[idx], ...cashAssetData, id: window.selectedCashAssetDocId }; setUserCashCategories(next); }
-            } catch(_) {}
+            } catch (_) { }
         } else {
             // Prevent rapid duplicate creates for the same asset name by doing a quick local duplicate check
             try {
@@ -1311,8 +1319,8 @@ export async function saveCashAsset(isSilent = false) {
                 const localDuplicate = current.find(c => c && c.name && String(c.name).trim().toLowerCase() === normalizedName);
                 if (localDuplicate) {
                     // Found a local duplicate, avoid creating another document
-                    try { window.logDebug && window.logDebug('AppService.saveCashAsset: Local duplicate detected for cash asset: ' + assetName); } catch(_) {}
-                    if (!isSilent) try { window.showCustomAlert && window.showCustomAlert(`Cash asset "${assetName}" already exists.`, 2000); } catch(_) {}
+                    try { window.logDebug && window.logDebug('AppService.saveCashAsset: Local duplicate detected for cash asset: ' + assetName); } catch (_) { }
+                    if (!isSilent) try { window.showCustomAlert && window.showCustomAlert(`Cash asset "${assetName}" already exists.`, 2000); } catch (_) { }
                     return;
                 }
 
@@ -1321,23 +1329,23 @@ export async function saveCashAsset(isSilent = false) {
                 const last = window.__cashAddInProgress[normalizedName] || 0;
                 const now = Date.now();
                 if (now - last < 3000) {
-                    try { window.logDebug && window.logDebug('AppService.saveCashAsset: Suppressing rapid duplicate add for ' + assetName); } catch(_) {}
+                    try { window.logDebug && window.logDebug('AppService.saveCashAsset: Suppressing rapid duplicate add for ' + assetName); } catch (_) { }
                     return;
                 }
                 window.__cashAddInProgress[normalizedName] = now;
                 // Ensure the transient guard is cleared after a short window
-                setTimeout(() => { try { if (window.__cashAddInProgress) delete window.__cashAddInProgress[normalizedName]; } catch(_) {} }, 3500);
+                setTimeout(() => { try { if (window.__cashAddInProgress) delete window.__cashAddInProgress[normalizedName]; } catch (_) { } }, 3500);
 
                 const cashCategoriesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories');
                 const newDocRef = await firestore.addDoc(cashCategoriesColRef, cashAssetData);
                 window.selectedCashAssetDocId = newDocRef.id;
-                try { if (!isSilent) window.showCustomAlert && window.showCustomAlert("Cash asset '" + assetName + "' added successfully!", 1500); } catch(_) {}
-                try { window.logDebug && window.logDebug("Firestore: Cash asset '" + assetName + "' added with ID: " + newDocRef.id); } catch(_) {}
+                try { if (!isSilent) window.showCustomAlert && window.showCustomAlert("Cash asset '" + assetName + "' added successfully!", 1500); } catch (_) { }
+                try { window.logDebug && window.logDebug("Firestore: Cash asset '" + assetName + "' added with ID: " + newDocRef.id); } catch (_) { }
                 try {
                     // Optimistically update state so UI reflects immediately
                     const current = getUserCashCategories() || [];
                     setUserCashCategories([...current, { id: newDocRef.id, ...cashAssetData }]);
-                } catch(_) {}
+                } catch (_) { }
             } catch (innerError) {
                 // If inner duplicate check or addDoc failed unexpectedly, rethrow to be caught by outer catch
                 throw innerError;
@@ -1346,17 +1354,17 @@ export async function saveCashAsset(isSilent = false) {
         // Clear original data to prevent auto-save on modal close
         window.originalCashAssetData = null;
         window.setIconDisabled && window.setIconDisabled(window.saveCashAssetBtn, true);
-                try { if (typeof window.renderCashCategories === 'function') window.renderCashCategories(); } catch(_) {}
-        try { if (typeof window.calculateTotalCash === 'function') window.calculateTotalCash(); } catch(_) {}
+        try { if (typeof window.renderCashCategories === 'function') window.renderCashCategories(); } catch (_) { }
+        try { if (typeof window.calculateTotalCash === 'function') window.calculateTotalCash(); } catch (_) { }
         // Suppress immediate modal re-open triggered by onSnapshot or UI re-renders
         try {
             if (!isSilent) {
                 window.__suppressCashModalReopen = Date.now();
                 window.__justSavedCashAssetId = window.selectedCashAssetDocId || null;
-                try { window.logDebug && window.logDebug('AppService: Set __suppressCashModalReopen for saved asset ID=' + (window.__justSavedCashAssetId || 'null')); } catch(_) {}
-                setTimeout(() => { try { window.__suppressCashModalReopen = 0; window.__justSavedCashAssetId = null; try { window.logDebug && window.logDebug('AppService: Cleared __suppressCashModalReopen'); } catch(_) {} } catch(_) {} }, 1500);
+                try { window.logDebug && window.logDebug('AppService: Set __suppressCashModalReopen for saved asset ID=' + (window.__justSavedCashAssetId || 'null')); } catch (_) { }
+                setTimeout(() => { try { window.__suppressCashModalReopen = 0; window.__justSavedCashAssetId = null; try { window.logDebug && window.logDebug('AppService: Cleared __suppressCashModalReopen'); } catch (_) { } } catch (_) { } }, 1500);
             }
-        } catch(_) {}
+        } catch (_) { }
         if (!isSilent) {
             // Small delay to ensure UI updates are complete before closing modal
             setTimeout(() => {
@@ -1366,7 +1374,7 @@ export async function saveCashAsset(isSilent = false) {
                         window.UI.closeModals();
                         return;
                     }
-                } catch(e) { console.error('Error calling window.UI.closeModals:', e); }
+                } catch (e) { console.error('Error calling window.UI.closeModals:', e); }
 
                 // Fallbacks: try window.closeModals, then global closeModals
                 try {
@@ -1377,7 +1385,7 @@ export async function saveCashAsset(isSilent = false) {
                         closeModals();
                         return;
                     }
-                } catch(e) { console.error('Error calling closeModals fallback:', e); }
+                } catch (e) { console.error('Error calling closeModals fallback:', e); }
 
                 // Try using UI.hideModal if available for targeted close
                 try {
@@ -1385,21 +1393,21 @@ export async function saveCashAsset(isSilent = false) {
                         const el = document.getElementById('cashAssetFormModal');
                         if (el) window.UI.hideModal(el);
                     }
-                } catch(e) { console.error('Error calling UI.hideModal fallback:', e); }
+                } catch (e) { console.error('Error calling UI.hideModal fallback:', e); }
 
                 // Last resort: directly hide elements with .modal selector
                 try {
                     document.querySelectorAll('.modal').forEach(modal => {
                         if (modal) modal.style.setProperty('display', 'none', 'important');
                     });
-                } catch(e) { console.error('Error hiding modal elements directly:', e); }
+                } catch (e) { console.error('Error hiding modal elements directly:', e); }
 
             }, 100);
         }
     } catch (error) {
         console.error('Firestore: Error saving cash asset:', error);
         console.error('Error details:', { message: error.message, code: error.code, stack: error.stack });
-        try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Error saving cash asset: ' + (error.message || 'Unknown error')); } catch(_) {}
+        try { if (!isSilent) window.showCustomAlert && window.showCustomAlert('Error saving cash asset: ' + (error.message || 'Unknown error')); } catch (_) { }
         // Close modal on failure
         try {
             if (!isSilent && typeof window.closeModals === 'function') {
@@ -1410,7 +1418,7 @@ export async function saveCashAsset(isSilent = false) {
         }
     }
     finally {
-        try { window.__modalSaveInProgress = false; } catch(_) { window.__modalSaveInProgress = false; }
+        try { window.__modalSaveInProgress = false; } catch (_) { window.__modalSaveInProgress = false; }
     }
 }
 
@@ -1422,7 +1430,7 @@ export async function deleteCashCategory(categoryId) {
     const db = window.db || db;
     const firestore = window.firestore || firestore;
     const currentAppId = window.currentAppId || currentAppId;
-    const currentUserId = (function(){
+    const currentUserId = (function () {
         try {
             // Try window object first
             if (window.currentUserId) return window.currentUserId;
@@ -1430,7 +1438,7 @@ export async function deleteCashCategory(categoryId) {
             if (auth && auth.currentUser && auth.currentUser.uid) return auth.currentUser.uid;
             // Finally return null
             return null;
-        } catch(e) {
+        } catch (e) {
             console.error('Error getting currentUserId:', e);
             return null;
         }
@@ -1438,7 +1446,7 @@ export async function deleteCashCategory(categoryId) {
 
     if (!db || !currentUserId || !firestore) {
         console.error('Delete failed: Missing required variables');
-        try { window.showCustomAlert && window.showCustomAlert('Firestore not available. Cannot delete cash category.'); } catch(_) {} return;
+        try { window.showCustomAlert && window.showCustomAlert('Firestore not available. Cannot delete cash category.'); } catch (_) { } return;
     }
 
     try {
@@ -1446,31 +1454,31 @@ export async function deleteCashCategory(categoryId) {
         await firestore.deleteDoc(categoryDocRef);
 
         // Don't show the default success message here since the UI handler shows a custom one with the asset name
-        try { window.logDebug && window.logDebug('Firestore: Cash category (ID: ' + categoryId + ') deleted.'); } catch(_) {}
+        try { window.logDebug && window.logDebug('Firestore: Cash category (ID: ' + categoryId + ') deleted.'); } catch (_) { }
         try {
             // Optimistically remove from state
             const current = getUserCashCategories() || [];
             const next = current.filter(c => c && c.id !== categoryId);
             setUserCashCategories(next);
-        } catch(e) {
+        } catch (e) {
             console.error('Error updating local state:', e);
         }
-        try { window.selectedCashAssetDocId = null; } catch(_) {}
+        try { window.selectedCashAssetDocId = null; } catch (_) { }
     } catch (error) {
         console.error('Firestore: Error deleting cash category:', error);
-        try { window.showCustomAlert && window.showCustomAlert('Error deleting cash category: ' + error.message); } catch(_) {}
+        try { window.showCustomAlert && window.showCustomAlert('Error deleting cash category: ' + error.message); } catch (_) { }
     }
 }
 
 export async function deleteAllUserData() {
-    return await (async()=>{ return window.deleteAllUserData(); })();
+    return await (async () => { return window.deleteAllUserData(); })();
 }
 
 // Update a single share's visibility in portfolio totals (isHiddenInPortfolio)
 export async function updateShareHiddenInPortfolio(shareId, isHidden) {
     if (!shareId) throw new Error('Missing shareId');
     try {
-        const currentUserId = (function(){ try { return window.currentUserId || (auth && auth.currentUser && auth.currentUser.uid) || null; } catch(_) { return null; } })();
+        const currentUserId = (function () { try { return window.currentUserId || (auth && auth.currentUser && auth.currentUser.uid) || null; } catch (_) { return null; } })();
         if (!currentUserId) { throw new Error('User not authenticated'); }
         const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', shareId);
         await firestore.updateDoc(shareDocRef, { isHiddenInPortfolio: !!isHidden, lastUpdated: new Date().toISOString() });
@@ -1484,9 +1492,9 @@ export async function updateShareHiddenInPortfolio(shareId, isHidden) {
                 next[idx] = { ...next[idx], isHiddenInPortfolio: !!isHidden };
                 setAllSharesData(next);
             }
-        } catch(_) {}
+        } catch (_) { }
 
-        try { window.logDebug && window.logDebug('Firestore: Share visibility updated for ' + shareId + ' -> ' + isHidden); } catch(_) {}
+        try { window.logDebug && window.logDebug('Firestore: Share visibility updated for ' + shareId + ' -> ' + isHidden); } catch (_) { }
         return true;
     } catch (error) {
         console.error('Error updating share visibility:', error);
@@ -1494,7 +1502,7 @@ export async function updateShareHiddenInPortfolio(shareId, isHidden) {
     }
 }
 
-try { window.AppService = { saveShareData, deleteShare, saveWatchlistChanges, deleteWatchlist, saveCashAsset, deleteCashCategory, deleteAllUserData, updateCashCategoryVisibility, updateShareHiddenInPortfolio }; } catch(_) {}
+try { window.AppService = { saveShareData, deleteShare, saveWatchlistChanges, deleteWatchlist, saveCashAsset, deleteCashCategory, deleteAllUserData, updateCashCategoryVisibility, updateShareHiddenInPortfolio }; } catch (_) { }
 
 
 

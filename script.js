@@ -3978,7 +3978,7 @@ function scheduleAlertAutoSave(trigger) {
     try { logDebug('AlertAutoSave: schedule (' + trigger + ') for shareId=' + selectedShareDocId); } catch (_) { }
     if (_alertAutoSaveTimer) clearTimeout(_alertAutoSaveTimer);
     _alertAutoSaveTimer = setTimeout(() => {
-        try { if (typeof saveShareData === 'function') saveShareData(true); } catch (e) { console.warn('AlertAutoSave failed', e); }
+        try { if (typeof saveShareDataSvc === 'function') saveShareDataSvc(true); } catch (e) { console.warn('AlertAutoSave failed', e); }
     }, 400);
 }
 const splashScreen = document.getElementById('splashScreen');
@@ -4921,7 +4921,7 @@ function closeModals() {
         if (selectedShareDocId) { // Existing share
             if (originalShareData && !areShareDataEqual(originalShareData, currentData)) { // Check if originalShareData exists and if form is dirty
                 logDebug('Auto-Save: Unsaved changes detected for existing share. Attempting silent save.');
-                saveShareData(true); // true indicates silent save
+                saveShareDataSvc(true); // true indicates silent save
             } else {
                 logDebug('Auto-Save: No changes detected for existing share.');
             }
@@ -6462,13 +6462,13 @@ function autoSaveShareFormOnClose() {
     if (selectedShareDocId) {
         if (originalShareData && !areShareDataEqual(originalShareData, currentData)) {
             logDebug('Auto-Save: Unsaved changes detected for existing share (back). Attempting silent save.');
-            saveShareData(true);
+            saveShareDataSvc(true);
         }
     } else {
         const isWatchlistSelected = shareWatchlistSelect && shareWatchlistSelect.value !== '';
         if (isShareNameValid && isWatchlistSelected) {
             logDebug('Auto-Save: New share with valid fields (back). Attempting silent save.');
-            saveShareData(true);
+            saveShareDataSvc(true);
         }
     }
 }
@@ -7155,432 +7155,6 @@ try {
     }
 } catch (e) { /* silent */ }
 
-/**
- * Saves share data to Firestore. Can be called silently for auto-save.
- * @param {boolean} isSilent If true, no alert messages are shown on success.
- */
-async function saveShareData(isSilent = false) {
-    logDebug('Share Form: saveShareData called.');
-    // Check if the save button would normally be disabled (no valid name or no changes)
-    // This prevents saving blank new shares or unchanged existing shares on auto-save.
-    if (saveShareBtn.classList.contains('is-disabled-icon') && isSilent) {
-        logDebug('Auto-Save: Save button is disabled (no changes or no valid name). Skipping silent save.');
-        return;
-    }
-
-    const shareName = shareNameInput.value.trim().toUpperCase();
-    if (!shareName) {
-        if (!isSilent) showCustomAlert('Code is required!');
-        console.warn('Save Share: Code is required. Skipping save.');
-        return;
-    }
-
-    // Source of truth: checkbox UI; keep hidden select for legacy fallback
-    const selectedWatchlistIdForSave = shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null;
-    const selectedWatchlistIdsForSave = (() => {
-        // Prefer enhanced toggle list
-        if (typeof shareWatchlistEnhanced !== 'undefined' && shareWatchlistEnhanced) {
-            const toggled = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(x => x.value).filter(Boolean);
-            if (toggled.length > 0) return toggled;
-        }
-        // Fallback legacy checkbox container
-        const cbs = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
-        const vals = Array.from(cbs).map(cb => cb.value).filter(Boolean);
-        if (vals.length > 0) return vals;
-        return selectedWatchlistIdForSave ? [selectedWatchlistIdForSave] : null;
-    })();
-    // For new shares from 'All Shares' view, force watchlist selection
-    if (!selectedShareDocId && getCurrentSelectedWatchlistIds().includes(ALL_SHARES_ID)) {
-        if (!selectedWatchlistIdForSave || selectedWatchlistIdForSave === '') { // Check for empty string too
-            if (!isSilent) showCustomAlert('Please select a watchlist to assign the new share to.');
-            console.warn('Save Share: New share from All Shares: Watchlist not selected. Skipping save.');
-            return;
-        }
-    } else if (!selectedShareDocId && !selectedWatchlistIdForSave) { // New share not from All Shares, but no watchlist selected (shouldn't happen if default exists)
-        if (!isSilent) showCustomAlert('Please select a watchlist to assign the new share to.');
-        console.warn('Save Share: New share: No watchlist selected. Skipping save.');
-        return;
-    }
-
-
-    // Auto-capture live or fallback current price (no manual input)
-    let currentPrice = NaN;
-    try {
-        const liveData = livePrices[shareName.toUpperCase()];
-        if (liveData && typeof liveData.live === 'number' && !isNaN(liveData.live)) {
-            currentPrice = liveData.live;
-        } else if (liveData && typeof liveData.lastLivePrice === 'number' && !isNaN(liveData.lastLivePrice)) {
-            currentPrice = liveData.lastLivePrice;
-        }
-    } catch (_) { }
-    const targetPrice = parseFloat(targetPriceInput.value);
-    const dividendAmount = parseFloat(dividendAmountInput.value);
-    const frankingCredits = parseFloat(frankingCreditsInput.value);
-
-    const comments = [];
-    if (commentsFormContainer) { // This now refers to #dynamicCommentsArea
-        commentsFormContainer.querySelectorAll('.comment-section').forEach(section => {
-            const titleInput = section.querySelector('.comment-title-input');
-            const textInput = section.querySelector('.comment-text-input');
-            const title = titleInput ? titleInput.value.trim() : '';
-            const text = textInput ? textInput.value.trim() : '';
-            if (title || text) {
-                comments.push({ title: title, text: text });
-            }
-        });
-    }
-
-    // Determine the entry price value based on the modal's displayed/reference price.
-    // Prefer the currentPriceInput value (this is populated by updateAddFormLiveSnapshot),
-    // fall back to the auto-captured live price. Only set entryPrice for new shares to
-    // preserve original entryPrice on edits.
-    const _rawEnteredPrice = (currentPriceInput && typeof currentPriceInput.value === 'string') ? currentPriceInput.value.trim() : '';
-    const _parsedEnteredPrice = parseFloat(_rawEnteredPrice);
-    const _entryPriceCandidate = (!isNaN(_parsedEnteredPrice)) ? _parsedEnteredPrice : (isNaN(currentPrice) ? null : currentPrice);
-
-    const shareData = {
-        shareName: shareName,
-        currentPrice: isNaN(currentPrice) ? null : currentPrice, // auto derived above
-        targetPrice: isNaN(targetPrice) ? null : targetPrice,
-        // UPDATED: Save the selected target direction from the new checkboxes
-        targetDirection: targetAboveCheckbox.checked ? 'above' : 'below',
-        // Persist intent so Alert Target renderer can read directly without needing alert doc (B/S)
-        intent: (function () {
-            try {
-                const dir = targetAboveCheckbox.checked ? 'above' : 'below';
-                const buyActive = targetIntentBuyBtn && targetIntentBuyBtn.classList.contains('is-active');
-                const sellActive = targetIntentSellBtn && targetIntentSellBtn.classList.contains('is-active');
-                if (buyActive && !sellActive) return 'buy';
-                if (sellActive && !buyActive) return 'sell';
-                return dir === 'above' ? 'sell' : 'buy';
-            } catch (_) { return targetAboveCheckbox.checked ? 'sell' : 'buy'; }
-        })(),
-        dividendAmount: isNaN(dividendAmount) ? null : dividendAmount,
-        frankingCredits: isNaN(frankingCredits) ? null : frankingCredits,
-        comments: comments,
-        // Use the selected watchlist from the modal dropdown
-        watchlistId: selectedWatchlistIdForSave,
-        watchlistIds: selectedWatchlistIdsForSave,
-        // Portfolio fields (optional)
-        portfolioShares: (() => { const el = document.getElementById('portfolioShares'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : Math.trunc(v); })(),
-        portfolioAvgPrice: (() => { const el = document.getElementById('portfolioAvgPrice'); const v = el ? parseFloat(el.value) : NaN; return isNaN(v) ? null : v; })(),
-        lastPriceUpdateTime: new Date().toISOString(),
-        starRating: shareRatingSelect ? parseInt(shareRatingSelect.value) : 0 // Ensure rating is saved as a number
-    };
-
-    // Only set entryPrice/enteredPriceRaw when creating a new share. For updates, preserve
-    // the existing entryPrice unless an explicit UX path to change it is implemented.
-    try {
-        if (!selectedShareDocId) {
-            shareData.entryPrice = (_entryPriceCandidate === null) ? null : Number(_entryPriceCandidate);
-            shareData.enteredPriceRaw = _rawEnteredPrice || '';
-        }
-    } catch (_) { }
-
-    if (selectedShareDocId) {
-        const existingShare = allSharesData.find(s => s.id === selectedShareDocId);
-
-        // For existing shares, merge watchlist associations
-        if (existingShare) {
-            // Get existing watchlist IDs
-            const existingWatchlistIds = [];
-            if (existingShare.watchlistId) {
-                existingWatchlistIds.push(existingShare.watchlistId);
-            }
-            if (Array.isArray(existingShare.watchlistIds)) {
-                existingWatchlistIds.push(...existingShare.watchlistIds);
-            }
-
-            // Get new watchlist associations
-            const newWatchlistIds = selectedWatchlistIdsForSave || [selectedWatchlistIdForSave];
-
-            // Replace watchlist associations with the new selection (not merge)
-            const finalWatchlistIds = [...new Set(newWatchlistIds)]; // Remove duplicates from new selection
-
-            // Update shareData with the new watchlist associations
-            if (finalWatchlistIds.length > 1) {
-                shareData.watchlistIds = finalWatchlistIds;
-                shareData.watchlistId = finalWatchlistIds[0]; // Keep legacy field for backward compatibility
-            } else if (finalWatchlistIds.length === 1) {
-                shareData.watchlistId = finalWatchlistIds[0];
-                shareData.watchlistIds = finalWatchlistIds;
-            } else {
-                // No watchlists selected - this shouldn't happen, but handle gracefully
-                shareData.watchlistId = null;
-                shareData.watchlistIds = [];
-            }
-
-            logDebug('Share Update: Replacing watchlist associations for existing share. Old: [' +
-                existingWatchlistIds.join(', ') + '], New: [' + finalWatchlistIds.join(', ') + ']');
-
-            // Debug: Verify the data is being set correctly
-            console.log('Share Update Debug:', {
-                shareId: selectedShareDocId,
-                oldWatchlists: existingWatchlistIds,
-                newWatchlists: finalWatchlistIds
-            });
-        }
-
-        if (shareData.currentPrice !== null && existingShare && existingShare.currentPrice !== shareData.currentPrice) {
-            shareData.previousFetchedPrice = existingShare.lastFetchedPrice;
-            shareData.lastFetchedPrice = shareData.currentPrice;
-        } else if (!existingShare || existingShare.lastFetchedPrice === undefined) {
-            shareData.previousFetchedPrice = shareData.currentPrice;
-            shareData.lastFetchedPrice = shareData.currentPrice;
-        } else {
-            shareData.previousFetchedPrice = existingShare.previousFetchedPrice;
-            shareData.lastFetchedPrice = existingShare.lastFetchedPrice;
-        }
-
-        try {
-            // OPTIMISTIC MERGE: update in-memory cache immediately so UI reflects changes
-            try {
-                const idx = allSharesData.findIndex(s => s && s.id === selectedShareDocId);
-                if (idx !== -1) {
-                    const oldShareData = allSharesData[idx];
-                    // Merge new values into cache immediately (non-destructive for missing fields)
-                    allSharesData[idx] = Object.assign({}, allSharesData[idx], shareData);
-                    try { console.log('Optimistic cache merge for share ID:', selectedShareDocId, { before: oldShareData, after: allSharesData[idx] }); } catch (_) { }
-                } else {
-                    // If not found, add a provisional entry so details render immediately
-                    try { allSharesData.push(Object.assign({}, shareData, { id: selectedShareDocId })); } catch (_) { }
-                }
-                // Re-render watchlist and update banners/modal if open so user sees updates instantly
-                try { if (typeof renderWatchlist === 'function') renderWatchlist(); } catch (_) { }
-                try { updateTargetHitBanner(); } catch (_) { }
-                try { if (typeof refreshNotificationsModalIfOpen === 'function') refreshNotificationsModalIfOpen('CUSTOM_TRIGGER_HITS'); } catch (_) { }
-            } catch (e) { console.warn('Optimistic merge failed', e); }
-
-            const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', selectedShareDocId);
-            await firestore.updateDoc(shareDocRef, shareData);
-            // Phase 2: Upsert alert document for this share (intent + direction)
-            try {
-                await upsertAlertForShare(selectedShareDocId, shareName, shareData, false);
-            } catch (e) {
-                console.error('Alerts: Failed to upsert alert for share update:', e);
-            }
-            if (!isSilent) showCustomAlert('Update successful', 1500);
-            logDebug('Firestore: Share \'' + shareName + '\' (ID: ' + selectedShareDocId + ') updated.');
-            originalShareData = getCurrentFormData(); // Update original data after successful save
-            setIconDisabled(saveShareBtn, true); // Disable save button after saving
-            // NEW: Explicitly hide the share form modal immediately and deselect the share
-            if (!isSilent && shareFormSection) {
-                shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
-                shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
-            }
-            // Prevent any stray observers from reopening the form immediately after save
-            if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(() => { window.suppressShareFormReopen = false; }, 8000); }
-            deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
-            // NEW: Explicitly hide the share form modal immediately and deselect the share
-            if (!isSilent && shareFormSection) {
-                shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
-                shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
-            }
-            deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
-            // NEW: Trigger a fresh fetch of live prices and re-render to reflect new target hit status
-            await fetchLivePrices(); // fetch and merge live price data
-            // Explicitly re-render to ensure newly-added/updated rows receive movement/target-hit classes immediately
-            try {
-                if (typeof renderWatchlist === 'function') renderWatchlist();
-                if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling();
-                // Small deferred second pass to cover async reapply logic elsewhere
-                setTimeout(() => {
-                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch (_) { }
-                }, 120);
-            } catch (_) { }
-            // Removed secondary toast; single confirmation already shown earlier.
-        } catch (error) {
-            console.error('Firestore: Error updating share:', error);
-            if (!isSilent) showCustomAlert('Error updating share: ' + error.message);
-        }
-    } else {
-        shareData.entryDate = new Date().toISOString();
-        // If currentPrice still null attempt a late grab (race with live fetch)
-        if (shareData.currentPrice === null) {
-            try {
-                const liveDataLate = livePrices[shareName.toUpperCase()];
-                if (liveDataLate && typeof liveDataLate.live === 'number' && !isNaN(liveDataLate.live)) {
-                    shareData.currentPrice = liveDataLate.live;
-                } else if (liveDataLate && typeof liveDataLate.lastLivePrice === 'number' && !isNaN(liveDataLate.lastLivePrice)) {
-                    shareData.currentPrice = liveDataLate.lastLivePrice;
-                }
-            } catch (_) { }
-        }
-        shareData.lastFetchedPrice = shareData.currentPrice;
-        shareData.previousFetchedPrice = shareData.currentPrice;
-
-        // DEDUPLICATION: prevent creating a duplicate share if one already exists with same ASX code
-        try {
-            const existingByCode = Array.isArray(allSharesData) ? allSharesData.find(s => s && (s.shareName || '').toUpperCase() === shareName) : null;
-            if (existingByCode && existingByCode.id) {
-                // If the new share includes portfolio holdings or explicitly targets Portfolio, prefer creating a new share
-                const hasPortfolioAdd = (shareData && ((shareData.portfolioShares && Number(shareData.portfolioShares) > 0) || (Array.isArray(shareData.watchlistIds) && shareData.watchlistIds.includes('portfolio')) || (shareData.watchlistId === 'portfolio')));
-                if (!hasPortfolioAdd) {
-                    console.warn('Save Share: Duplicate code detected. Switching to update for id:', existingByCode.id);
-                    // Update existing share instead of creating a new one
-                    try {
-                        const shareDocRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares', existingByCode.id);
-                        await firestore.updateDoc(shareDocRef, Object.assign({}, shareData, { lastModifiedFromDupSave: new Date().toISOString() }));
-                        // Update local cache
-                        const idx = allSharesData.findIndex(s => s && s.id === existingByCode.id);
-                        if (idx !== -1) {
-                            allSharesData[idx] = Object.assign({}, allSharesData[idx], shareData);
-                        }
-                        selectedShareDocId = existingByCode.id;
-                        // Phase 2: upsert alert for this share
-                        try { await upsertAlertForShare(selectedShareDocId, shareName, shareData, true); } catch (e) { console.error('Alerts: Failed to upsert after dedupe save:', e); }
-                        if (!isSilent) showCustomAlert('Updated existing share instead of creating duplicate', 1500);
-                        // Refresh prices and UI
-                        await fetchLivePrices();
-                        try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch (_) { }
-                    } catch (e) {
-                        console.error('Firestore: Error updating existing share during dedupe save:', e);
-                        if (!isSilent) showCustomAlert('Error updating existing share: ' + (e && e.message ? e.message : e));
-                    }
-                    if (!isSilent) closeModals();
-                    return;
-                } else {
-                    // Found an existing share but the new data includes portfolio/watchlist additions - create a new share instead
-                    console.log('Save Share: Existing share found but new share includes portfolio/watchlist additions; creating a new share instead of updating existing.');
-                }
-            }
-        } catch (e) { console.warn('Dedupe check failed', e); }
-
-        try {
-            const sharesColRef = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
-            // DEBUG: capture save-time entry price sources to diagnose Adshare modal issue
-            try {
-                // Conditional debug log (only when DEBUG_MODE enabled)
-                try { if (DEBUG_MODE) console.log('Preparing to add share. shareName=', shareName, 'formCurrentPrice=', (currentPriceInput ? currentPriceInput.value : undefined), 'livePriceObj=', livePrices && livePrices[shareName.toUpperCase()] ? livePrices[shareName.toUpperCase()] : undefined, 'shareData.entryPrice=', shareData.entryPrice, 'shareData.enteredPriceRaw=', shareData.enteredPriceRaw); } catch (_) { }
-            } catch (_) { }
-
-            // OPTIMISTIC UI: Insert a provisional share into in-memory list so user sees it immediately
-            const provisionalId = '__pending:' + Date.now();
-            try {
-                const provisionalShare = Object.assign({}, shareData, { id: provisionalId, __provisional: true });
-                if (!Array.isArray(allSharesData)) allSharesData = [];
-                // Ensure we don't duplicate an existing provisional with same code
-                const exists = allSharesData.some(s => s && s.id === provisionalId);
-                if (!exists) {
-                    allSharesData.push(provisionalShare);
-                    // Immediately re-apply current sort so the provisional row lands in the correct position
-                    try {
-                        if (typeof sortShares === 'function') sortShares();
-                        else if (typeof renderWatchlist === 'function') renderWatchlist();
-                    } catch (_) { }
-                }
-
-                // Also merge a provisional livePrices entry so the watchlist shows the entry price while real prices arrive
-                try {
-                    const code = (shareName || '').toUpperCase();
-                    if (code) {
-                        // If no live price exists yet for this code, create a provisional one based on entryPrice
-                        const existingLP = (typeof livePrices !== 'undefined' && livePrices && livePrices[code]) ? livePrices[code] : null;
-                        if (!existingLP || !existingLP.live) {
-                            const entry = (shareData.entryPrice !== null && shareData.entryPrice !== undefined) ? Number(shareData.entryPrice) : null;
-                            const prev = (existingLP && (typeof existingLP.prevClose === 'number' && !isNaN(existingLP.prevClose))) ? existingLP.prevClose : entry;
-                            const lastPrev = (existingLP && (typeof existingLP.lastPrevClose === 'number' && !isNaN(existingLP.lastPrevClose))) ? existingLP.lastPrevClose : prev;
-                            const lastLive = (existingLP && (typeof existingLP.lastLivePrice === 'number' && !isNaN(existingLP.lastLivePrice))) ? existingLP.lastLivePrice : entry;
-                            const provisionalLP = {
-                                live: entry,
-                                prevClose: prev,
-                                lastLivePrice: lastLive,
-                                lastPrevClose: lastPrev,
-                                __provisional: true
-                            };
-                            try { window.livePrices = Object.assign({}, (window.livePrices || {}), { [code]: provisionalLP }); } catch (_) { }
-                            try { livePrices = window.livePrices; } catch (_) { }
-                        }
-                    }
-                } catch (_) { }
-            } catch (e) { console.warn('Optimistic UI provisional insertion failed', e); }
-
-            const newDocRef = await firestore.addDoc(sharesColRef, shareData);
-            selectedShareDocId = newDocRef.id; // Set selectedShareDocId for the newly added share
-            // Ensure the in-memory allSharesData is updated: replace provisional entry if present
-            try {
-                const created = Object.assign({}, shareData, { id: newDocRef.id });
-                if (!Array.isArray(allSharesData)) allSharesData = [];
-
-                // Replace provisional entry if it exists (match by the exact provisional id)
-                let replaced = false;
-                for (let i = 0; i < allSharesData.length; i++) {
-                    const s = allSharesData[i];
-                    // Use the provisionalId generated at save-time so we only replace the exact optimistic entry
-                    if (s && s.__provisional && s.id === provisionalId) {
-                        allSharesData[i] = created;
-                        replaced = true;
-                        break;
-                    }
-                }
-
-                // If no provisional found, append the created share (listener might not add it)
-                if (!replaced) {
-                    const exists = allSharesData.some(s => s && s.id === newDocRef.id);
-                    if (!exists) allSharesData.push(created);
-                }
-
-                // Cleanup provisional markers from livePrices for this code
-                try {
-                    const code = (created.shareName || '').toUpperCase();
-                    if (code && window.livePrices && window.livePrices[code] && window.livePrices[code].__provisional) {
-                        // Remove the provisional flag but keep the value (apps will update when real prices arrive)
-                        try { delete window.livePrices[code].__provisional; } catch (_) { }
-                        try { livePrices = window.livePrices; } catch (_) { }
-                    }
-                } catch (_) { }
-
-                logDebug('In-memory: inserted/updated newly created share to allSharesData (id=' + newDocRef.id + ')');
-            } catch (e) { console.warn('In-memory append/replace of new share failed', e); }
-            // Phase 2: Create alert document for this new share (intent + direction)
-            try {
-                await upsertAlertForShare(selectedShareDocId, shareName, shareData, true);
-            } catch (e) {
-                console.error('Alerts: Failed to create alert for new share:', e);
-            }
-            if (!isSilent) showCustomAlert('Added successfully', 1500);
-            logDebug('Firestore: Share \'' + shareName + '\' added with ID: ' + newDocRef.id);
-            originalShareData = getCurrentFormData(); // Update original data after successful save
-            setIconDisabled(saveShareBtn, true); // Disable save button after saving
-            // NEW: Explicitly hide the share form modal immediately and deselect the share
-            if (!isSilent && shareFormSection) {
-                shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
-                shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
-            }
-            // Prevent any stray observers from reopening the form immediately after save
-            if (!isSilent) { window.suppressShareFormReopen = true; setTimeout(() => { window.suppressShareFormReopen = false; }, 8000); }
-            deselectCurrentShare(); // Deselect newly added share BEFORE fetching live prices
-            // NEW: Explicitly hide the share form modal immediately and deselect the share
-            if (!isSilent && shareFormSection) {
-                shareFormSection.style.setProperty('display', 'none', 'important'); // Instant hide
-                shareFormSection.classList.add('app-hidden'); // Ensure it stays hidden with !important class
-            }
-            deselectCurrentShare(); // Deselect share BEFORE fetching live prices to avoid re-opening details modal implicitly
-            // NEW: Trigger a fresh fetch of live prices and re-render to reflect new target hit status
-            await fetchLivePrices(); // fetch and merge live price data
-            // Explicitly re-render to ensure newly-added/updated rows receive movement/target-hit classes immediately
-            try {
-                if (typeof renderWatchlist === 'function') renderWatchlist();
-                if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling();
-                // Small deferred second pass to cover async reapply logic elsewhere
-                setTimeout(() => {
-                    try { if (typeof renderWatchlist === 'function') renderWatchlist(); if (typeof enforceTargetHitStyling === 'function') enforceTargetHitStyling(); } catch (_) { }
-                }, 120);
-            } catch (_) { }
-            // Removed secondary toast; single confirmation already shown earlier.
-        } catch (error) {
-            console.error('Firestore: Error adding share:', error);
-            if (!isSilent) showCustomAlert('Error adding share: ' + error.message);
-        }
-    }
-    // Clear any sticky id on details modal so nothing reopens unexpectedly
-    try {
-        if (shareDetailModal && shareDetailModal.dataset) delete shareDetailModal.dataset.shareId;
-    } catch (_) { }
-    if (!isSilent) closeModals(); // Only close if not a silent save
-}
-
-
 function showShareDetails() {
     if (!selectedShareDocId) {
         showCustomAlert('Please select a share to view details.');
@@ -7591,6 +7165,7 @@ function showShareDetails() {
         showCustomAlert('Selected share not found.');
         return;
     }
+
     // Determine price change class for modalShareName
     let modalShareNamePriceChangeClass = 'neutral';
     const livePriceDataForName = livePrices[share.shareName.toUpperCase()];
@@ -13963,8 +13538,14 @@ function handleAddShareClick() {
             console.log('[MODAL INIT] Set entry date display to:', dateString);
         }
 
-        // Function to update entry price when live price becomes available
+        // Function to update entry price display when live price becomes available
+        // Only updates for NEW shares - existing shares should show their original entry price
         const updateEntryPriceDisplay = () => {
+            // Don't update if editing an existing share - preserve the original entry price display
+            if (selectedShareDocId) {
+                return;
+            }
+
             const currentPriceInput = document.getElementById('currentPrice');
 
             if (currentPriceInput && currentPriceInput.value && autoReferencePriceDisplay) {
