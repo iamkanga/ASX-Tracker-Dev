@@ -2296,8 +2296,10 @@ body.dark-theme .portfolio-card.neutral  { background: linear-gradient(145deg, #
 }
 
 #portfolio-summary-modal .summary-item-price {
-    font-size: 0.9rem;
-    color: var(--muted-color, #666);
+    font-size: 1.15rem;
+    color: var(--text-color);
+    font-weight: 600;
+    opacity: 1;
 }
 
 #portfolio-summary-modal .summary-item-right {
