@@ -6346,6 +6346,36 @@ function updateMainButtonsState(enable) {
     logDebug('UI State: Sort Select Disabled: ' + (sortSelect ? sortSelect.disabled : 'N/A'));
     logDebug('UI State: Watchlist Select Disabled: ' + (watchlistSelect ? watchlistSelect.disabled : 'N/A'));
     updateSortIcon();
+
+    // NEW: Update sidebar view toggle buttons visibility based on context
+    try { updateSidebarViewToggleButtons(); } catch (e) { console.warn('Failed to update sidebar toggle buttons', e); }
+}
+
+// NEW: Helper to toggle sidebar view buttons based on watchlist context
+function updateSidebarViewToggleButtons() {
+    const snapshotBtn = document.getElementById('snapshotViewBtn');
+    const compactBtn = document.getElementById('toggleCompactViewBtn');
+
+    // If elements don't exist, nothing to do
+    if (!snapshotBtn || !compactBtn) return;
+
+    const isPortfolio = getCurrentSelectedWatchlistIds().includes('portfolio');
+
+    if (isPortfolio) {
+        // Show Snapshot, Hide Compact
+        snapshotBtn.style.display = '';
+        snapshotBtn.classList.remove('app-hidden');
+
+        compactBtn.style.display = 'none';
+        compactBtn.classList.add('app-hidden');
+    } else {
+        // Hide Snapshot, Show Compact
+        snapshotBtn.style.display = 'none';
+        snapshotBtn.classList.add('app-hidden');
+
+        compactBtn.style.display = '';
+        compactBtn.classList.remove('app-hidden');
+    }
 }
 
 /**
@@ -14128,6 +14158,7 @@ function toggleAppSidebar(forceState = null) {
         const result = window.UI.toggleAppSidebar(forceState);
         const isOpen = appSidebar && appSidebar.classList.contains('open');
         if (!wasOpen && isOpen) { try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch (_) { } }
+        try { updateSidebarViewToggleButtons(); } catch (_) { }
         return result;
     }
 
@@ -14135,6 +14166,7 @@ function toggleAppSidebar(forceState = null) {
     try {
         const isDesktop = window.innerWidth > 768;
         const isOpen = appSidebar && appSidebar.classList.contains('open');
+
         if (forceState === true || (forceState === null && !isOpen)) {
             try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch (_) { }
             document.body.style.overflow = 'hidden';
@@ -14142,6 +14174,7 @@ function toggleAppSidebar(forceState = null) {
             if (sidebarOverlay) sidebarOverlay.classList.add('open');
             if (isDesktop) document.body.classList.add('sidebar-active');
             if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'true');
+            try { updateSidebarViewToggleButtons(); } catch (_) { }
         } else {
             if (appSidebar) appSidebar.classList.remove('open');
             if (sidebarOverlay) sidebarOverlay.classList.remove('open');
@@ -14151,12 +14184,6 @@ function toggleAppSidebar(forceState = null) {
         }
     } catch (e) { console.warn('toggleAppSidebar fallback failed', e); }
 }
-
-/**
- * Escapes a string for CSV by enclosing it in double quotes and doubling any existing double quotes.
- * @param {any} value The value to escape.
- * @returns {string} The CSV-escaped string.
- */
 
 /**
  * Exports the current watchlist data to a CSV file.
