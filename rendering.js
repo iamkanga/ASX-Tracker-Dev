@@ -298,10 +298,31 @@
                 try { if (typeof window.__applyStaleUIIndicators === 'function') window.__applyStaleUIIndicators(); } catch (_) { }
             }
         } catch (_) { }
+
+        // Check if Snapshot View is active and prevent overwrite
+        const snapshotContainer = document.getElementById('snapshot-view-container');
+        const isSnapshotActive = snapshotContainer && snapshotContainer.style.display === 'block';
+
         // Use a safe local copy of currentSelectedWatchlistIds to avoid ReferenceError if the
         // bare identifier isn't defined due to script load order. Prefer the in-scope variable
         // when available, otherwise fall back to window.
         const currentSelectedWatchlistIdsLocal = (typeof currentSelectedWatchlistIds !== 'undefined' && Array.isArray(currentSelectedWatchlistIds)) ? currentSelectedWatchlistIds : ((typeof window !== 'undefined' && Array.isArray(window.currentSelectedWatchlistIds)) ? window.currentSelectedWatchlistIds : []);
+
+        if (isSnapshotActive) {
+            // Only intervene if we are in portfolio context (snapshot view is only for portfolio)
+            const isPortfolioContext = currentSelectedWatchlistIdsLocal.includes('portfolio');
+            console.log('[RenderWatchlist] Snapshot active. Context:', currentSelectedWatchlistIdsLocal, 'isPortfolio:', isPortfolioContext);
+            if (isPortfolioContext) {
+                if (typeof window.renderSnapshotView === 'function') {
+                    console.log('[RenderWatchlist] Delegating to renderSnapshotView');
+                    window.renderSnapshotView();
+                }
+                return; // EXIT EARLY to prevent standard render from hiding snapshot view
+            }
+        } else {
+            // console.log('[RenderWatchlist] Snapshot NOT active. Container:', snapshotContainer, 'Display:', snapshotContainer ? snapshotContainer.style.display : 'N/A');
+        }
+
         try {
             logDebug('DEBUG: renderWatchlist called. Current selected watchlist ID: ' + (currentSelectedWatchlistIdsLocal[0] || null));
         } catch (_) { }
@@ -311,9 +332,6 @@
                 setTimeout(() => { try { if (typeof enforceMoversVirtualView === 'function') enforceMoversVirtualView(); } catch (e) { console.warn('Initial movers enforce failed', e); } }, 150);
             }
         } catch (_) { }
-
-        const isCompactView = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
-        const isMobileView = window.innerWidth <= 768;
 
         // Resolve allSharesData safely: prefer a bare variable if present, otherwise fallback to window
         const allSharesDataLocal = (typeof allSharesData !== 'undefined' && Array.isArray(allSharesData)) ? allSharesData : (typeof window !== 'undefined' && Array.isArray(window.allSharesData) ? window.allSharesData : []);

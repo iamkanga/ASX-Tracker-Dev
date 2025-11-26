@@ -12,31 +12,31 @@ export async function loadTriggeredAlertsListener(dbArg, firestoreArg, currentUs
     const dbLocal = dbArg || db;
     const fsLocal = firestoreArg || firestore;
     const appIdLocal = currentAppIdArg || currentAppId;
-    if (window.unsubscribeAlerts) { try { window.unsubscribeAlerts(); } catch(_){} window.unsubscribeAlerts = null; }
+    if (window.unsubscribeAlerts) { try { window.unsubscribeAlerts(); } catch (_) { } window.unsubscribeAlerts = null; }
     if (!dbLocal || !currentUserId || !fsLocal) { console.warn('Alerts: Firestore unavailable for triggered alerts listener'); return; }
     try {
         const alertsCol = fsLocal.collection(dbLocal, 'artifacts/' + appIdLocal + '/users/' + currentUserId + '/alerts');
-        window.unsubscribeAlerts = fsLocal.onSnapshot(alertsCol, (qs) => { 
+        window.unsubscribeAlerts = fsLocal.onSnapshot(alertsCol, (qs) => {
             const newMap = new Map();
             const alertMetaById = new Map();
-            qs.forEach(doc => { 
-                const d = doc.data() || {}; 
-                newMap.set(doc.id, (d.enabled !== false)); 
+            qs.forEach(doc => {
+                const d = doc.data() || {};
+                newMap.set(doc.id, (d.enabled !== false));
                 alertMetaById.set(doc.id, { intent: d.intent, direction: d.direction });
             });
             window.alertsEnabledMap = newMap;
             try {
-                (allSharesData||[]).forEach(s => {
+                (allSharesData || []).forEach(s => {
                     const meta = alertMetaById.get(s.id);
                     if (meta) {
                         if (!s.intent && meta.intent) s.intent = meta.intent;
                         if (!s.targetDirection && meta.direction) s.targetDirection = meta.direction;
                     }
                 });
-            } catch(_) {}
-            try { console.log('[Diag][loadTriggeredAlertsListener] map size:', window.alertsEnabledMap.size); } catch(_){ }
-            try { window.recomputeTriggeredAlerts && window.recomputeTriggeredAlerts(); } catch(_) {}
-            try { window.renderWatchlist && window.renderWatchlist(); } catch(_) {}
+            } catch (_) { }
+            try { console.log('[Diag][loadTriggeredAlertsListener] map size:', window.alertsEnabledMap.size); } catch (_) { }
+            try { window.recomputeTriggeredAlerts && window.recomputeTriggeredAlerts(); } catch (_) { }
+            try { window.renderWatchlist && window.renderWatchlist(); } catch (_) { }
         }, err => console.error('Alerts: triggered alerts listener error', err));
         window.logDebug && window.logDebug('Alerts: Triggered alerts listener active (enabled-state driven).');
     } catch (e) { console.error('Alerts: failed to init triggered alerts listener', e); }
@@ -56,7 +56,7 @@ export async function loadShares(dbArg, firestoreArg, currentUserId, currentAppI
         console.warn('Shares: Firestore DB, User ID, or Firestore functions not available for loading shares. Clearing list.');
         setAllSharesData([]);
         window._appDataLoaded = false;
-        try { window.hideSplashScreen && window.hideSplashScreen(); } catch(_) {}
+        try { window.hideSplashScreen && window.hideSplashScreen(); } catch (_) { }
         return;
     }
     try {
@@ -73,13 +73,13 @@ export async function loadShares(dbArg, firestoreArg, currentUserId, currentAppI
                     new Promise(res => setTimeout(res, 1000))
                 ]);
                 window.logDebug && window.logDebug('dataService: Waited for __userSortReady before attaching shares listener');
-                try { console.log('[dataService] After wait, currentSortOrder=', (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder); } catch(_) {}
+                try { console.log('[dataService] After wait, currentSortOrder=', (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder); } catch (_) { }
             }
-        } catch(_) {}
+        } catch (_) { }
 
         window.unsubscribeShares = fsLocal.onSnapshot(q, async (querySnapshot) => {
             window.logDebug && window.logDebug('Firestore Listener: Shares snapshot received. Processing changes.');
-            try { console.log('[SHARES SNAPSHOT] snapshot handler start. currentSortOrder=', (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder); } catch(_) {}
+            try { console.log('[SHARES SNAPSHOT] snapshot handler start. currentSortOrder=', (typeof getCurrentSortOrder === 'function') ? getCurrentSortOrder() : window.currentSortOrder); } catch (_) { }
             let fetchedShares = [];
             querySnapshot.forEach((doc) => {
                 const share = { id: doc.id, ...doc.data() };
@@ -91,27 +91,27 @@ export async function loadShares(dbArg, firestoreArg, currentUserId, currentAppI
                 const hiddenIds = (Array.isArray(fetchedShares) ? fetchedShares.filter(s => s && s.isHiddenInPortfolio).map(s => s.id) : []);
                 // Prefer to call the module-level API so the local Set instance is updated in script.js
                 if (typeof window.applyHiddenFromTotalsIds === 'function') {
-                    try { window.applyHiddenFromTotalsIds(hiddenIds); } catch(_) { }
+                    try { window.applyHiddenFromTotalsIds(hiddenIds); } catch (_) { }
                 } else {
                     // Fallback: set on window and persist locally
-                    try { window.hiddenFromTotalsShareIds = new Set(hiddenIds || []); } catch(_) {}
-                    try { localStorage.setItem('hiddenFromTotalsShareIds', JSON.stringify(Array.from(window.hiddenFromTotalsShareIds || []))); } catch(_) {}
+                    try { window.hiddenFromTotalsShareIds = new Set(hiddenIds || []); } catch (_) { }
+                    try { localStorage.setItem('hiddenFromTotalsShareIds', JSON.stringify(Array.from(window.hiddenFromTotalsShareIds || []))); } catch (_) { }
                 }
             } catch (e) {
                 console.warn('Failed to initialize hiddenFromTotalsShareIds from Firestore', e);
             }
 
             setAllSharesData((Array.isArray(fetchedShares) ? fetchedShares : []).filter(Boolean));
-            window.logDebug && window.logDebug('Shares: Shares data updated from snapshot. Total shares: ' + (Array.isArray(allSharesData)? allSharesData.length : 0));
+            window.logDebug && window.logDebug('Shares: Shares data updated from snapshot. Total shares: ' + (Array.isArray(allSharesData) ? allSharesData.length : 0));
 
             // If a save just happened we may be suppressing reopen of the share form.
             // Defer potentially modal-triggering UI updates until suppression clears to avoid
             // snapshot-driven reopen/selection races. We still update state immediately above.
             const runUiUpdates = () => {
-                try { window.renderWatchlist && window.renderWatchlist(); } catch(_) {}
-                try { window.forceApplyCurrentSort && window.forceApplyCurrentSort(); } catch(_) {}
-                try { window.sortShares && window.sortShares(); } catch(_) {}
-                try { window.renderAsxCodeButtons && window.renderAsxCodeButtons(); } catch(_) {}
+                try { window.renderWatchlist && window.renderWatchlist(); } catch (_) { }
+                try { window.forceApplyCurrentSort && window.forceApplyCurrentSort(); } catch (_) { }
+                try { window.sortShares && window.sortShares(); } catch (_) { }
+                try { window.renderAsxCodeButtons && window.renderAsxCodeButtons(); } catch (_) { }
             };
 
             if (window.suppressShareFormReopen) {
@@ -122,27 +122,27 @@ export async function loadShares(dbArg, firestoreArg, currentUserId, currentAppI
                 const waiter = setInterval(() => {
                     attempts++;
                     if (!window.suppressShareFormReopen || attempts >= maxAttempts) {
-                        try { runUiUpdates(); } catch(_) {}
-                        try { clearInterval(waiter); } catch(_) {}
+                        try { runUiUpdates(); } catch (_) { }
+                        try { clearInterval(waiter); } catch (_) { }
                     }
                 }, 250);
             } else {
-                try { window.renderWatchlist && window.renderWatchlist(); } catch(_) {}
+                try { window.renderWatchlist && window.renderWatchlist(); } catch (_) { }
             }
 
             try {
                 if (Array.isArray(allSharesData) && window.alertsEnabledMap && typeof window.alertsEnabledMap === 'object') {
                     allSharesData.forEach(s => {
                         if (s && (s.intent === undefined || s.intent === null || s.intent === '')) {
-                            const alertMatch = ((window.sharesAtTargetPrice||[])).concat(window.sharesAtTargetPriceMuted||[]).find(a=>a && a.id===s.id);
+                            const alertMatch = ((window.sharesAtTargetPrice || [])).concat(window.sharesAtTargetPriceMuted || []).find(a => a && a.id === s.id);
                             if (alertMatch && alertMatch.intent) s.intent = alertMatch.intent;
                         }
                     });
                 }
-            } catch(e){ console.warn('Intent backfill failed', e); }
+            } catch (e) { console.warn('Intent backfill failed', e); }
 
-            try { window.forceApplyCurrentSort && window.forceApplyCurrentSort(); } catch(_) {}
-            try { window.sortShares && window.sortShares(); } catch(_) {}
+            try { window.forceApplyCurrentSort && window.forceApplyCurrentSort(); } catch (_) { }
+            try { window.sortShares && window.sortShares(); } catch (_) { }
 
             // Ensure the authoritative saved sort is applied after the first data snapshot
             // Some environments may restore persisted sort order slightly after initial
@@ -162,26 +162,26 @@ export async function loadShares(dbArg, firestoreArg, currentUserId, currentAppI
                     }, 40);
                 }
             } catch (e) { /* noop */ }
-            try { window.renderAsxCodeButtons && window.renderAsxCodeButtons(); } catch(_) {}
+            try { window.renderAsxCodeButtons && window.renderAsxCodeButtons(); } catch (_) { }
 
             if (window.loadingIndicator) window.loadingIndicator.style.display = 'none';
             window._appDataLoaded = true;
-            try { window.hideSplashScreenIfReady && window.hideSplashScreenIfReady(); } catch(_) {}
+            try { window.hideSplashScreenIfReady && window.hideSplashScreenIfReady(); } catch (_) { }
 
         }, (error) => {
             console.error('Firestore Listener: Error listening to shares:', error);
-            try { window.showCustomAlert && window.showCustomAlert('Error loading shares in real-time: ' + error.message); } catch(_) {}
+            try { window.showCustomAlert && window.showCustomAlert('Error loading shares in real-time: ' + error.message); } catch (_) { }
             if (window.loadingIndicator) window.loadingIndicator.style.display = 'none';
             window._appDataLoaded = false;
-            try { window.hideSplashScreen && window.hideSplashScreen(); } catch(_) {}
+            try { window.hideSplashScreen && window.hideSplashScreen(); } catch (_) { }
         });
 
     } catch (error) {
         console.error('Shares: Error setting up shares listener:', error);
-        try { window.showCustomAlert && window.showCustomAlert('Error setting up real-time share updates: ' + error.message); } catch(_) {}
+        try { window.showCustomAlert && window.showCustomAlert('Error setting up real-time share updates: ' + error.message); } catch (_) { }
         if (window.loadingIndicator) window.loadingIndicator.style.display = 'none';
         window._appDataLoaded = false;
-        try { window.hideSplashScreen && window.hideSplashScreen(); } catch(_) {}
+        try { window.hideSplashScreen && window.hideSplashScreen(); } catch (_) { }
     }
 }
 
@@ -198,7 +198,7 @@ export async function loadCashCategories(dbArg, firestoreArg, currentUserId, cur
     if (!dbLocal || !currentUserId || !fsLocal) {
         console.warn('Cash Categories: Firestore DB, User ID, or Firestore functions not available for loading cash categories. Clearing list.');
         window.userCashCategories = [];
-        try { window.renderCashCategories && window.renderCashCategories(); } catch(_) {}
+        try { window.renderCashCategories && window.renderCashCategories(); } catch (_) { }
         return;
     }
 
@@ -215,20 +215,20 @@ export async function loadCashCategories(dbArg, firestoreArg, currentUserId, cur
             });
 
             window.userCashCategories = fetchedCategories;
-            try { setUserCashCategories(fetchedCategories); } catch(_) {}
-            window.logDebug && window.logDebug('Cash Categories: Data updated from snapshot. Total categories: ' + (Array.isArray(window.userCashCategories)? window.userCashCategories.length : 0));
-            try { window.renderWatchlist && window.renderWatchlist(); } catch(_) {}
-            try { window.calculateTotalCash && window.calculateTotalCash(); } catch(_) {}
-            try { console.log('[Diag][Cash] render invoked. Categories:', JSON.stringify(window.userCashCategories)); } catch(_) {}
+            try { setUserCashCategories(fetchedCategories); } catch (_) { }
+            window.logDebug && window.logDebug('Cash Categories: Data updated from snapshot. Total categories: ' + (Array.isArray(window.userCashCategories) ? window.userCashCategories.length : 0));
+            try { window.renderWatchlist && window.renderWatchlist(); } catch (_) { }
+            try { window.calculateTotalCash && window.calculateTotalCash(); } catch (_) { }
+            try { console.log('[Diag][Cash] render invoked. Categories:', JSON.stringify(window.userCashCategories)); } catch (_) { }
 
         }, (error) => {
             console.error('Firestore Listener: Error listening to cash categories:', error);
-            try { window.showCustomAlert && window.showCustomAlert('Error loading cash categories in real-time: ' + error.message); } catch(_) {}
+            try { window.showCustomAlert && window.showCustomAlert('Error loading cash categories in real-time: ' + error.message); } catch (_) { }
         });
 
     } catch (error) {
         console.error('Cash Categories: Error setting up cash categories listener:', error);
-        try { window.showCustomAlert && window.showCustomAlert('Error setting up real-time cash category updates: ' + error.message); } catch(_) {}
+        try { window.showCustomAlert && window.showCustomAlert('Error setting up real-time cash category updates: ' + error.message); } catch (_) { }
     }
 }
 
@@ -334,7 +334,7 @@ export async function loadViewModePreference(dbArg, firestoreArg, currentUserId,
         if (docSnap.exists()) {
             const data = docSnap.data();
             const mode = data?.mode;
-            if (mode === 'compact' || mode === 'default') {
+            if (mode === 'compact' || mode === 'default' || mode === 'snapshot') {
                 return mode;
             }
         }

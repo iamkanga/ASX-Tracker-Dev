@@ -1054,6 +1054,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // Render portfolio list (uses live prices when available)
     window.renderPortfolioList = function () {
         console.log('[Debug] window.renderPortfolioList CALLED');
+
+        // Check for Snapshot View and prevent overwrite
+        const snapshotContainer = document.getElementById('snapshot-view-container');
+        if (snapshotContainer && snapshotContainer.style.display === 'block') {
+            console.log('[renderPortfolioList] Snapshot View active, delegating...');
+            if (typeof window.renderSnapshotView === 'function') {
+                window.renderSnapshotView();
+            }
+            return; // EXIT EARLY
+        }
+
         // ... (rest of function)
         const portfolioListContainer = document.getElementById('portfolioListContainer');
         if (!portfolioListContainer) return;
@@ -8660,17 +8671,39 @@ function openWatchlistPicker() {
                 <span>${it.name}</span>
             </div>
         `;
-        div.tabIndex = 0;
-        div.setAttribute('role', 'button');
-        div.setAttribute('aria-label', it.name);
-
         div.onclick = () => {
             console.log('[WatchlistPicker] Selecting watchlist', it.id);
+
+            // SAVE current snapshot state before switching if we are leaving portfolio
+            if (getCurrentSelectedWatchlistIds().includes('portfolio')) {
+                const snapshotContainer = document.getElementById('snapshot-view-container');
+                const isSnapshotActive = snapshotContainer && snapshotContainer.style.display === 'block';
+                console.log('[WatchlistPicker] Leaving portfolio. Snapshot active:', isSnapshotActive);
+                localStorage.setItem('portfolio_last_view_mode', isSnapshotActive ? 'snapshot' : 'default');
+            }
+
             // Push previous selection for shallow back
             try { const prev = Array.isArray(getCurrentSelectedWatchlistIds()) ? getCurrentSelectedWatchlistIds().slice(0) : []; pushAppStateEntry('watchlist', prev); } catch (_) { }
             // Normalize stored id to the canonical form used elsewhere
             const canonicalId = it.id ? String(it.id).trim() : it.id;
             setCurrentSelectedWatchlistIds([canonicalId]);
+
+            // RESTORE snapshot state if entering portfolio
+            if (canonicalId === 'portfolio') {
+                const lastMode = localStorage.getItem('portfolio_last_view_mode');
+                console.log('[WatchlistPicker] Entering portfolio. Last mode:', lastMode);
+                if (lastMode === 'snapshot') {
+                    setTimeout(() => {
+                        if (typeof window.toggleSnapshotView === 'function') {
+                            console.log('[WatchlistPicker] Restoring Snapshot View via toggleSnapshotView');
+                            window.toggleSnapshotView(true);
+                        } else {
+                            console.error('[WatchlistPicker] toggleSnapshotView function not found!');
+                        }
+                    }, 100); // Increased timeout slightly to 100ms
+                }
+            }
+
             // Create a browser history entry so hardware/back triggers our popstate handler
             try { if (typeof pushAppState === 'function') pushAppState({ watchlist: it.id }, '', '#watchlist'); } catch (_) { }
             try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(getCurrentSelectedWatchlistIds())); } catch (_) { }
@@ -13039,15 +13072,25 @@ async function robustRestoreViewMode() {
     }
 
     // Validate and apply the mode
-    if (storedMode !== 'compact' && storedMode !== 'default') {
+    if (storedMode !== 'compact' && storedMode !== 'default' && storedMode !== 'snapshot') {
         storedMode = 'default';
         logDebug('Preferences: Invalid view mode, defaulting to: ' + storedMode);
     }
 
     try {
-        // Use the centralized view mode manager
-        setMobileViewMode(storedMode, 'robust_restore');
-        logDebug('Preferences: Successfully restored view mode using centralized manager: ' + storedMode);
+        // Special handling for snapshot mode
+        if (storedMode === 'snapshot') {
+            if (typeof window.toggleSnapshotView === 'function') {
+                window.toggleSnapshotView(true);
+                logDebug('Preferences: Successfully restored SNAPSHOT view mode');
+            } else {
+                console.warn('Preferences: toggleSnapshotView not available, falling back to default');
+            }
+        } else {
+            // Use the centralized view mode manager for compact/default
+            setMobileViewMode(storedMode, 'robust_restore');
+            logDebug('Preferences: Successfully restored view mode using centralized manager: ' + storedMode);
+        }
     } catch (error) {
         console.warn('Preferences: Failed to restore view mode with centralized manager:', error);
         // Try recovery as last resort
@@ -15443,11 +15486,6 @@ async function initializeAppLogic() {
     // Watchlist Select Change Listener
     if (watchlistSelect) {
         watchlistSelect.addEventListener('change', async (event) => {
-            logDebug('Watchlist Select: Change event fired. New value: ' + event.target.value);
-            setCurrentSelectedWatchlistIds([event.target.value]);
-            try { localStorage.setItem('lastWatchlistSelection', JSON.stringify(currentSelectedWatchlistIds)); } catch (_) { }
-            try { setLastSelectedView(event.target.value); } catch (_) { }
-
             // Robust watchlist selection persistence
             try {
                 await saveLastSelectedWatchlistIds(currentSelectedWatchlistIds);
@@ -15512,6 +15550,7 @@ async function initializeAppLogic() {
             try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch (_) { }
         });
     }
+
 
     // Sort Select Change Listener
     if (sortSelect) {
@@ -16542,6 +16581,14 @@ async function initializeAppLogic() {
     }
 
 
+    // Expose selectShare and showShareDetails globally for snapshot.js
+    if (typeof window.selectShare !== 'function' && typeof selectShare === 'function') {
+        window.selectShare = selectShare;
+    }
+    if (typeof window.showShareDetails !== 'function' && typeof showShareDetails === 'function') {
+        window.showShareDetails = showShareDetails;
+    }
+
     // Call adjustMainContentPadding initially and on window load/resize
     // Removed: window.addEventListener('load', adjustMainContentPadding); // Removed, handled by onAuthStateChanged
     // Already added to window.addEventListener('resize') in sidebar section
@@ -16559,20 +16606,30 @@ window.BUILD_MARKER = 'v0.1.13';
 // Safe to call from both the modern modal renderer and legacy/local paths.
 // If later overridden, keep signature stable: (entry, kind) where kind is 'high' | 'low'
 if (typeof window.renderHiLoEntry !== 'function') {
-    function renderHiLoEntry(e, kind) {
-        const code = String(e.code || e.shareCode || '').toUpperCase();
-        const name = sanitizeCompanyName(e.name || e.companyName || code, code);
-        const liveVal = (e.live != null && !isNaN(Number(e.live))) ? Number(e.live) : null;
-        const liveDisplay = (liveVal != null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
-        // Pull both 52W High and Low from entry or livePrices fallback
-        let lp = null; try { lp = (window.livePrices && window.livePrices[code]) ? window.livePrices[code] : null; } catch (_) { }
-        const hiRaw = (e.high52 ?? e.High52 ?? e.hi52 ?? e.high ?? (lp ? (lp.high52 ?? lp.High52 ?? lp.hi52 ?? lp.high) : null) ?? null);
-        const loRaw = (e.low52 ?? e.Low52 ?? e.lo52 ?? e.low ?? (lp ? (lp.low52 ?? lp.Low52 ?? lp.lo52 ?? lp.low) : null) ?? null);
-        const hiDisplay = (hiRaw != null && !isNaN(Number(hiRaw))) ? ('$' + formatAdaptivePrice(Number(hiRaw))) : '?';
-        const loDisplay = (loRaw != null && !isNaN(Number(loRaw))) ? ('$' + formatAdaptivePrice(Number(loRaw))) : '?';
-        const card = document.createElement('div');
-        card.className = 'notification-card hilo-card ' + kind;
-        card.innerHTML = `
+    window.renderHiLoEntry = renderHiLoEntry;
+}
+
+// Ensure enforceMoversVirtualView exists to prevent ReferenceErrors
+if (typeof window.enforceMoversVirtualView !== 'function') {
+    window.enforceMoversVirtualView = function () {
+        // Placeholder to prevent crash
+        // console.log('enforceMoversVirtualView placeholder called');
+    };
+}
+function renderHiLoEntry(e, kind) {
+    const code = String(e.code || e.shareCode || '').toUpperCase();
+    const name = sanitizeCompanyName(e.name || e.companyName || code, code);
+    const liveVal = (e.live != null && !isNaN(Number(e.live))) ? Number(e.live) : null;
+    const liveDisplay = (liveVal != null) ? ('$' + formatAdaptivePrice(liveVal)) : '<span class="na">N/A</span>';
+    // Pull both 52W High and Low from entry or livePrices fallback
+    let lp = null; try { lp = (window.livePrices && window.livePrices[code]) ? window.livePrices[code] : null; } catch (_) { }
+    const hiRaw = (e.high52 ?? e.High52 ?? e.hi52 ?? e.high ?? (lp ? (lp.high52 ?? lp.High52 ?? lp.hi52 ?? lp.high) : null) ?? null);
+    const loRaw = (e.low52 ?? e.Low52 ?? e.lo52 ?? e.low ?? (lp ? (lp.low52 ?? lp.Low52 ?? lp.lo52 ?? lp.low) : null) ?? null);
+    const hiDisplay = (hiRaw != null && !isNaN(Number(hiRaw))) ? ('$' + formatAdaptivePrice(Number(hiRaw))) : '?';
+    const loDisplay = (loRaw != null && !isNaN(Number(loRaw))) ? ('$' + formatAdaptivePrice(Number(loRaw))) : '?';
+    const card = document.createElement('div');
+    card.className = 'notification-card hilo-card ' + kind;
+    card.innerHTML = `
             <div class="notification-card-row">
                 <div class="notification-card-left">
                     <div class="notification-code">${code}</div>
@@ -16586,25 +16643,25 @@ if (typeof window.renderHiLoEntry !== 'function') {
                 <div class="hilo-low"><span class="label">Low:</span> ${loDisplay}</div>
                 <div class="hilo-high"><span class="label">High:</span> ${hiDisplay}</div>
             </div>`;
-        card.addEventListener('click', () => {
-            try { hideModal(targetHitDetailsModal); } catch (_) { }
-            try {
-                const list = (window.allSharesData || []);
-                const share = list.find(s => s && s.shareName && String(s.shareName).toUpperCase() === code);
-                if (share && typeof selectShare === 'function') {
-                    try { wasShareDetailOpenedFromTargetAlerts = true; } catch (_) { }
-                    selectShare(share.id);
-                    if (typeof showShareDetails === 'function') showShareDetails();
-                    return;
-                }
-            } catch (_) { }
-            try { if (typeof openStockSearchForCode === 'function') openStockSearchForCode(code); } catch (_) { }
-        });
-        return card;
-    }
-    // Expose on window for explicit usage as well
-    try { window.renderHiLoEntry = renderHiLoEntry; } catch (_) { }
+    card.addEventListener('click', () => {
+        try { hideModal(targetHitDetailsModal); } catch (_) { }
+        try {
+            const list = (window.allSharesData || []);
+            const share = list.find(s => s && s.shareName && String(s.shareName).toUpperCase() === code);
+            if (share && typeof selectShare === 'function') {
+                try { wasShareDetailOpenedFromTargetAlerts = true; } catch (_) { }
+                selectShare(share.id);
+                if (typeof showShareDetails === 'function') showShareDetails();
+                return;
+            }
+        } catch (_) { }
+        try { if (typeof openStockSearchForCode === 'function') openStockSearchForCode(code); } catch (_) { }
+    });
+    return card;
 }
+// Expose on window for explicit usage as well
+try { window.renderHiLoEntry = renderHiLoEntry; } catch (_) { }
+
 
 // Function to show the target hit details modal (moved to global scope)
 function showTargetHitDetailsModal(options = {}) {

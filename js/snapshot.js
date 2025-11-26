@@ -176,9 +176,28 @@ function renderSnapshotView() {
             </div>
         `;
 
+        // Add Click Handler
+        card.addEventListener('click', () => {
+            console.log('[Snapshot] Card clicked:', share.id);
+            if (typeof selectShare === 'function') {
+                console.log('[Snapshot] calling selectShare');
+                selectShare(share.id);
+                if (typeof showShareDetails === 'function') {
+                    console.log('[Snapshot] calling showShareDetails');
+                    showShareDetails();
+                } else {
+                    console.warn('[Snapshot] showShareDetails not found');
+                }
+            } else {
+                console.warn('[Snapshot] selectShare not found');
+            }
+        });
+
         grid.appendChild(card);
     });
 }
+// Expose for external updates (e.g. live prices)
+window.renderSnapshotView = renderSnapshotView;
 
 // Sort Button Management
 let sortObserver = null;
@@ -262,10 +281,27 @@ window.toggleSnapshotView = function (show) {
         if (container) container.style.display = 'none';
 
         // Restore other sections
-        ['#stockWatchlistSection', '#portfolioSection', '#cashAssetsSection'].forEach(sel => {
-            const el = document.querySelector(sel);
-            if (el) el.style.display = '';
-        });
+        // Restore other sections INTELLIGENTLY based on current context
+        const currentIds = (typeof getCurrentSelectedWatchlistIds === 'function')
+            ? getCurrentSelectedWatchlistIds()
+            : (window.currentSelectedWatchlistIds || []);
+
+        const isPortfolio = currentIds.includes('portfolio');
+        // Use global constant or fallback to known ID 'cashBank'
+        const CASH_BANK_ID = (typeof CASH_BANK_WATCHLIST_ID !== 'undefined') ? CASH_BANK_WATCHLIST_ID : 'cashBank';
+        const isCash = currentIds.includes(CASH_BANK_ID);
+
+        // Always restore stock watchlist section unless it's portfolio or cash
+        const stockSection = document.querySelector('#stockWatchlistSection');
+        if (stockSection) stockSection.style.display = (!isPortfolio && !isCash) ? '' : 'none';
+
+        // Only restore portfolio section if we are actually IN portfolio mode
+        const portfolioSection = document.querySelector('#portfolioSection');
+        if (portfolioSection) portfolioSection.style.display = (isPortfolio) ? '' : 'none';
+
+        // Only restore cash section if we are IN cash mode
+        const cashSection = document.querySelector('#cashAssetsSection');
+        if (cashSection) cashSection.style.display = (isCash) ? '' : 'none';
 
         disconnectSortObserver();
         restoreSortButton();
@@ -302,6 +338,10 @@ document.addEventListener('click', (e) => {
 });
 
 // View Manager & Persistence
+// View Manager Logic - DEPRECATED/DISABLED to avoid conflict with script.js centralized logic
+// The logic for switching views is now handled in script.js via watchlistSelect listeners and setMobileViewMode.
+
+/*
 function initializeViewManager() {
     const SNAPSHOT_BTN_ID = 'snapshotViewBtn';
     const COMPACT_BTN_ID = 'toggleCompactViewBtn';
@@ -388,6 +428,11 @@ function initializeViewManager() {
 
         // 2. Handle Context Switch Persistence
         if (context !== lastContext) {
+            // If we are LEAVING portfolio context, force close snapshot view
+            if (lastContext === 'portfolio' && context !== 'portfolio') {
+                window.toggleSnapshotView(false);
+            }
+
             const savedMode = loadState(context);
             // Enforce valid modes per context
             let targetMode = savedMode;
@@ -432,12 +477,13 @@ function initializeViewManager() {
     // Initial run
     updateUI();
 }
+*/
 
 // Auto-inject styles on load just in case
 injectSnapshotStyles();
-// Initialize View Manager
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeViewManager);
-} else {
-    initializeViewManager();
-}
+// No longer auto-initializing view manager.
+// if (document.readyState === 'loading') {
+//     document.addEventListener('DOMContentLoaded', initializeViewManager);
+// } else {
+//     initializeViewManager();
+// }
