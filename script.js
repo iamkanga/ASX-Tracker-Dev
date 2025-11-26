@@ -8216,14 +8216,36 @@ function sortShares() {
 
                     const sharesRaw = share.portfolioShares;
                     const shares = safeNum(sharesRaw);
-                    if (shares === null || shares === 0) return null;
 
+                    // For dayDollar: allow sorting by per-share change when portfolioShares is not set
+                    // This enables non-portfolio watchlists to sort by dollar movement
                     if (field === 'dayDollar') {
-                        const prevCloseRaw = lp ? (lp.prevClose ?? lp.lastPrevClose) : null;
+                        let prevCloseRaw = lp ? (lp.prevClose ?? lp.lastPrevClose) : null;
+                        // Fallback to share's previousFetchedPrice if live prevClose is not available
+                        if (prevCloseRaw === null || prevCloseRaw === undefined) {
+                            prevCloseRaw = share.previousFetchedPrice;
+                        }
                         const prevClose = safeNum(prevCloseRaw);
-                        if (prevClose === null) return null;
-                        return (priceNow - prevClose) * shares;
+                        if (prevClose === null || prevClose === 0) return null;
+                        const perShareChange = priceNow - prevClose;
+
+                        // Check if we're in Portfolio view
+                        const isPortfolioView = (typeof getCurrentSelectedWatchlistIds === 'function') &&
+                            getCurrentSelectedWatchlistIds().includes('portfolio');
+
+                        // Only multiply by shares if we're in Portfolio view AND shares are available
+                        // For Stock Watchlists, always use per-share change regardless of ownership
+                        const result = (isPortfolioView && shares !== null && shares !== 0)
+                            ? (perShareChange * shares)
+                            : perShareChange;
+
+                        // Debug logging
+                        console.log(`[SORT DEBUG] ${share.shareName}: priceNow=${priceNow}, prevClose=${prevClose}, perShareChange=${perShareChange}, shares=${shares}, isPortfolio=${isPortfolioView}, result=${result}`);
+                        return result;
                     }
+
+                    // For capitalGain and totalDollar, we need portfolioShares to be meaningful
+                    if (shares === null || shares === 0) return null;
 
                     if (field === 'capitalGain') {
                         const avgPrice = safeNum(share.portfolioAvgPrice);
@@ -8242,6 +8264,11 @@ function sortShares() {
             const valBraw = getPortfolioMetric(b);
             const valA = safeNum(valAraw);
             const valB = safeNum(valBraw);
+
+            // Debug logging for comparison
+            if (field === 'dayDollar') {
+                console.log(`[SORT DEBUG] Comparing ${a.shareName} (${valA}) vs ${b.shareName} (${valB}), order=${order}`);
+            }
 
             // deterministic null handling: push nulls to the end for both asc/desc
             if (valA === null && valB === null) return 0;
@@ -8566,11 +8593,11 @@ function renderSortSelect() {
         { value: 'shareName-asc', text: 'ASX Code' },
         { value: 'shareName-desc', text: 'ASX Code' },
         // Daily Change (percentage)
-        { value: 'percentageChange-desc', text: 'Daily Change' },
-        { value: 'percentageChange-asc', text: 'Daily Change' },
+        { value: 'percentageChange-desc', text: 'Daily Change %' },
+        { value: 'percentageChange-asc', text: 'Daily Change %' },
         // Daily Change (dollar)
-        { value: 'dayDollar-desc', text: 'Daily Change' },
-        { value: 'dayDollar-asc', text: 'Daily Change' },
+        { value: 'dayDollar-desc', text: 'Daily Change $' },
+        { value: 'dayDollar-asc', text: 'Daily Change $' },
         // Star Rating
         { value: 'starRating-desc', text: 'Star Rating' },
         { value: 'starRating-asc', text: 'Star Rating' },
