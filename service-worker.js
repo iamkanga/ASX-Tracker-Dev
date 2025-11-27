@@ -1,7 +1,7 @@
 // Service Worker Version: 1.0.17
 
 // Unified App / Asset Version (bump this when deploying front-end changes to force fresh fetch of CSS/JS)
-const APP_VERSION = '2.15.8';
+const APP_VERSION = '2.16.7';
 
 // Cache name for the current version (auto-derived from APP_VERSION so we don't forget to bump both)
 const CACHE_NAME = `share-watchlist-${APP_VERSION}`;
@@ -24,7 +24,7 @@ const CACHED_ASSETS = [
 // Install event: cache assets individually so one failure doesn't abort install
 self.addEventListener('install', (event) => {
     console.log('[SW] Installing… version', APP_VERSION, 'cache', CACHE_NAME);
-    event.waitUntil((async ()=>{
+    event.waitUntil((async () => {
         const cache = await caches.open(CACHE_NAME);
         const results = await Promise.all(CACHED_ASSETS.map(async (url) => {
             const req = new Request(url, { cache: 'no-cache' });
@@ -33,15 +33,15 @@ self.addEventListener('install', (event) => {
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 await cache.put(req, res.clone());
                 console.log('[SW] Cached:', url);
-                return { url, ok:true };
-            } catch(err) {
+                return { url, ok: true };
+            } catch (err) {
                 console.warn('[SW] Cache miss (skipped):', url, err.message || err);
-                return { url, ok:false, err:err.message||String(err) };
+                return { url, ok: false, err: err.message || String(err) };
             }
         }));
-        const failed = results.filter(r=>!r.ok);
+        const failed = results.filter(r => !r.ok);
         if (failed.length) {
-            console.warn('[SW] Some assets failed to cache (install continues):', failed.map(f=>f.url));
+            console.warn('[SW] Some assets failed to cache (install continues):', failed.map(f => f.url));
         } else {
             console.log('[SW] All listed assets cached.');
         }
@@ -85,7 +85,7 @@ self.addEventListener('fetch', (event) => {
         // Pre-compute whether this is a cross-origin request so we can avoid noisy logging for CDN failures
         let requestUrl;
         let isCrossOrigin = false;
-        try { requestUrl = new URL(event.request.url); isCrossOrigin = requestUrl.origin !== self.location.origin; } catch(_) { /* ignore */ }
+        try { requestUrl = new URL(event.request.url); isCrossOrigin = requestUrl.origin !== self.location.origin; } catch (_) { /* ignore */ }
         // IMPORTANT: Do NOT cache Firestore API calls (or any dynamic API calls).
         // These are real-time data streams or dynamic queries and should always go to the network.
         if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('script.google.com/macros')) {
@@ -97,7 +97,7 @@ self.addEventListener('fetch', (event) => {
         }
 
         // Network-first strategy for core versioned assets (CSS / JS) so updates propagate immediately
-    try {
+        try {
             const url = new URL(event.request.url);
             const isSameOrigin = url.origin === self.location.origin;
             const isCoreAsset = isSameOrigin && (url.pathname.endsWith('/style.css') || url.pathname.endsWith('/script.js'));
@@ -108,7 +108,7 @@ self.addEventListener('fetch', (event) => {
                             // On success, update cache copy asynchronously
                             if (resp && resp.status === 200) {
                                 const clone = resp.clone();
-                                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(()=>{});
+                                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(() => { });
                             }
                             return resp;
                         })
@@ -116,22 +116,22 @@ self.addEventListener('fetch', (event) => {
                 );
                 return; // Prevent falling through to cache-first path
             }
-        } catch(_e) { /* noop */ }
+        } catch (_e) { /* noop */ }
 
-    // Helper to safely return a cached response or a harmless offline Response
-    async function safeMatchOrFallback(request) {
-        try {
-            const match = await caches.match(request);
-            if (match) return match;
-            const root = await caches.match('./');
-            if (root) return root;
-        } catch (e) {
-            // ignore
+        // Helper to safely return a cached response or a harmless offline Response
+        async function safeMatchOrFallback(request) {
+            try {
+                const match = await caches.match(request);
+                if (match) return match;
+                const root = await caches.match('./');
+                if (root) return root;
+            } catch (e) {
+                // ignore
+            }
+            return new Response('Service Unavailable', { status: 503, statusText: 'Service Unavailable', headers: { 'Content-Type': 'text/plain' } });
         }
-        return new Response('Service Unavailable', { status: 503, statusText: 'Service Unavailable', headers: { 'Content-Type': 'text/plain' } });
-    }
 
-    event.respondWith(
+        event.respondWith(
             caches.match(event.request).then((cachedResponse) => {
                 // If cached response is found, return it
                 if (cachedResponse) {

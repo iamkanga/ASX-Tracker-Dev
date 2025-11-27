@@ -5443,8 +5443,7 @@ table td .share-code-display { /* This class exists, just ensure its emphasis */
 .share-detail-sections .detail-card.full-span { grid-column:1 / -1; }
 .detail-card-title { margin:0 0 4px; font-size:0.95rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--ghosted-text); }
 
-/* Remove separation lines from specific detail card sections */
-.share-detail-sections .detail-card[data-section="alerts"],
+/* Remove separation lines from comments detail card section only */
 .share-detail-sections .detail-card[data-section="comments"] {
     border: none;
     box-shadow: none;

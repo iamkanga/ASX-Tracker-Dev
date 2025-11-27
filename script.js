@@ -7156,6 +7156,7 @@ try {
 } catch (e) { /* silent */ }
 
 function showShareDetails() {
+    logDebug('showShareDetails called');
     if (!selectedShareDocId) {
         showCustomAlert('Please select a share to view details.');
         return;
@@ -7336,25 +7337,40 @@ function showShareDetails() {
             commentsCard.style.display = hasComments ? '' : 'none';
         }
 
-        // Hide holdings & dividends section if no holdings
+        // Show holdings & dividends section if there are holdings OR dividend data
         const dividendsCard = document.querySelector('.detail-card[data-section="dividends"]');
         if (dividendsCard) {
             const hasHoldings = (share.portfolioShares && !isNaN(Number(share.portfolioShares)) && Number(share.portfolioShares) !== 0) ||
                 (share.portfolioAvgPrice && !isNaN(Number(share.portfolioAvgPrice)) && Number(share.portfolioAvgPrice) !== 0);
-            dividendsCard.style.display = hasHoldings ? '' : 'none';
+            const hasDividend = share.dividendAmount && !isNaN(Number(share.dividendAmount)) && Number(share.dividendAmount) !== 0;
+            
+            // Show card if holdings exist OR if dividend data exists
+            const shouldShowCard = hasHoldings || hasDividend;
+            dividendsCard.style.display = shouldShowCard ? '' : 'none';
 
-            // Within, hide dividend rows if no dividend info
-            if (hasHoldings) {
-                const hasDividend = share.dividendAmount && !isNaN(Number(share.dividendAmount)) && Number(share.dividendAmount) !== 0;
-                const hasFranking = share.frankingCredits && !isNaN(Number(share.frankingCredits)) && Number(share.frankingCredits) !== 0;
-                const dividendRows = dividendsCard.querySelectorAll('.detail-row');
-                dividendRows.forEach(row => {
-                    const label = row.querySelector('.detail-label');
-                    if (label && (label.textContent.includes('Dividend') || label.textContent.includes('Franking') || label.textContent.includes('Yield'))) {
-                        row.style.display = (hasDividend || hasFranking) ? '' : 'none';
-                    }
-                });
-            }
+            // Hide holding-related rows if no holdings
+            const dividendRows = dividendsCard.querySelectorAll('.detail-row');
+            dividendRows.forEach(row => {
+                const label = row.querySelector('.detail-label');
+                if (!label) return;
+                
+                const labelText = label.textContent;
+                
+                // Hide holding-related fields if no holdings
+                if (labelText.includes('Number of Shares') || 
+                    labelText.includes('Average Purchase Price') ||
+                    labelText.includes('Purchase Cost') ||
+                    labelText.includes('Capital Gain') ||
+                    labelText.includes('Current Value')) {
+                    row.style.display = hasHoldings ? '' : 'none';
+                }
+                // Hide ALL dividend-related rows if no dividend data
+                else if (labelText.includes('Dividend') || 
+                         labelText.includes('Franking') || 
+                         labelText.includes('Yield')) {
+                    row.style.display = hasDividend ? '' : 'none';
+                }
+            });
         }
 
         // Hide star rating row if rating 0
@@ -7418,7 +7434,7 @@ function showShareDetails() {
     const displayFrankingCredits = Math.trunc(Number(share.frankingCredits));
 
     modalDividendAmount.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? '$' + formatAdaptivePrice(val, { force2: true }) : '')(displayDividendAmount);
-    modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val) && val !== 0) ? Math.trunc(val) + '%' : '')(displayFrankingCredits);
+    modalFrankingCredits.textContent = (val => (val !== null && !isNaN(val)) ? Math.trunc(val) + '%' : '0%')(displayFrankingCredits);
 
     // Populate Holdings fields
     modalPortfolioShares.textContent = (share.portfolioShares ? share.portfolioShares : '');
