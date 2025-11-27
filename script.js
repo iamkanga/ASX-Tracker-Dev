@@ -13542,7 +13542,9 @@ function handleAddShareClick() {
     checkFormDirtyState(); // Check dirty state immediately after opening for new share
 
     // Pre-populate entry price and entry date displays for new shares
-    if (!selectedShareDocId) {
+    // Use window.selectedShareDocId explicitly to avoid edge cases where other modules
+    // reference the global directly before module-level copies are synced.
+    if (!window.selectedShareDocId) {
         console.log('[MODAL INIT] Pre-populating entry data displays for new share');
 
         // Set current date in entry date display
@@ -13555,36 +13557,70 @@ function handleAddShareClick() {
         }
 
         // Function to update entry price display when live price becomes available
-        // Only updates for NEW shares - existing shares should show their original entry price
+        // Prefer authoritative sources tied to the code being added (livePrices or __addFormSnapshot)
+        // and fall back to the DOM input value only if nothing else is available.
         const updateEntryPriceDisplay = () => {
             // Don't update if editing an existing share - preserve the original entry price display
-            if (selectedShareDocId) {
-                return;
-            }
+            if (window.selectedShareDocId) return;
 
-            const currentPriceInput = document.getElementById('currentPrice');
+            const shareNameInputNode = document.getElementById('shareName');
+            const currentPriceInputNode = document.getElementById('currentPrice');
+            const code = shareNameInputNode && shareNameInputNode.value ? String(shareNameInputNode.value).trim().toUpperCase() : null;
 
-            if (currentPriceInput && currentPriceInput.value && autoReferencePriceDisplay) {
-                const currentPrice = parseFloat(currentPriceInput.value);
-                if (!isNaN(currentPrice) && currentPrice > 0) {
-                    autoReferencePriceDisplay.textContent = formatMoney(currentPrice);
-                    autoReferencePriceDisplay.classList.remove('ghosted-text');
-                    console.log('[MODAL INIT] Auto-populated entry price display to:', formatMoney(currentPrice));
+            let chosenPrice = null;
+
+            try {
+                if (code && window.livePrices && window.livePrices[code] && typeof window.livePrices[code].live === 'number' && !isNaN(window.livePrices[code].live)) {
+                    chosenPrice = Number(window.livePrices[code].live);
+                    console.log('[MODAL INIT] Using livePrices for auto entry price for', code, chosenPrice);
                 }
+
+                // If no livePrices, check add-form snapshot that UI may have set
+                if (chosenPrice == null && window.__addFormSnapshot && window.__addFormSnapshot.code === code && typeof window.__addFormSnapshot.live === 'number') {
+                    chosenPrice = Number(window.__addFormSnapshot.live);
+                    console.log('[MODAL INIT] Using __addFormSnapshot for auto entry price for', code, chosenPrice);
+                }
+
+                // Fallback: use currentPrice input value if present and numeric
+                if (chosenPrice == null && currentPriceInputNode && currentPriceInputNode.value) {
+                    const parsed = parseFloat(currentPriceInputNode.value);
+                    if (!isNaN(parsed) && parsed > 0) {
+                        chosenPrice = parsed;
+                        console.log('[MODAL INIT] Falling back to DOM currentPrice for auto entry price:', chosenPrice);
+                    }
+                }
+
+                if (chosenPrice != null && autoReferencePriceDisplay) {
+                    autoReferencePriceDisplay.textContent = formatMoney(chosenPrice);
+                    autoReferencePriceDisplay.classList.remove('ghosted-text');
+                    console.log('[MODAL INIT] Auto-populated entry price display to:', formatMoney(chosenPrice));
+                }
+            } catch (e) {
+                console.warn('[MODAL INIT] updateEntryPriceDisplay failed', e);
             }
         };
 
-        // Set up a mutation observer to watch for live price changes
+        // Listen for relevant events rather than only attribute mutations. Some code updates
+        // the input.value property without changing the attribute; listening to 'input' is more reliable.
         const currentPriceInput = document.getElementById('currentPrice');
         if (currentPriceInput) {
-            const observer = new MutationObserver(updateEntryPriceDisplay);
-            observer.observe(currentPriceInput, { attributes: true, attributeFilter: ['value'] });
-
-            // Also update immediately and after a short delay
-            setTimeout(updateEntryPriceDisplay, 100);
-            setTimeout(updateEntryPriceDisplay, 500);
-            setTimeout(updateEntryPriceDisplay, 1000);
+            currentPriceInput.addEventListener('input', updateEntryPriceDisplay, { passive: true });
+            currentPriceInput.addEventListener('change', updateEntryPriceDisplay, { passive: true });
         }
+
+        // Also update when the share code/name changes (user typed or auto-complete selected)
+        const shareNameInputNode = document.getElementById('shareName');
+        if (shareNameInputNode) {
+            shareNameInputNode.addEventListener('input', () => {
+                // small debounce: schedule a quick update shortly after typing stops
+                try { setTimeout(updateEntryPriceDisplay, 60); } catch (_) { updateEntryPriceDisplay(); }
+            }, { passive: true });
+        }
+
+        // Also update immediately and after a short delay to handle timing races
+        setTimeout(updateEntryPriceDisplay, 50);
+        setTimeout(updateEntryPriceDisplay, 250);
+        setTimeout(updateEntryPriceDisplay, 700);
 
         console.log('[MODAL INIT] Entry data displays populated');
     }
