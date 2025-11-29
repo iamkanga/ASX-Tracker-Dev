@@ -1,4 +1,4 @@
-import { initializeFirebaseAndAuth, db as hubDb, auth as hubAuth, firestore as hubFs, authFunctions as hubAuthFx, currentAppId as hubAppId, firebaseInitialized as hubInit } from './firebase.js';
+﻿import { initializeFirebaseAndAuth, db as hubDb, auth as hubAuth, firestore as hubFs, authFunctions as hubAuthFx, currentAppId as hubAppId, firebaseInitialized as hubInit } from './firebase.js';
 import { initializeAppEventListeners } from './js/init.js';
 import { setupAuthListener } from './js/auth.js';
 import { loadShares, loadCashCategories, loadTriggeredAlertsListener, saveWatchlistSortOrder, loadWatchlistSortOrders, getSortOrderForWatchlist, saveViewModePreference, loadViewModePreference } from './js/dataService.js';
@@ -403,6 +403,23 @@ window.__renderTargetHitDetailsModalImpl = function (options = {}) {
         }
 
         // Build sections from filtered arrays
+        // Fix: Filter out hidden shares from Global Movers
+        const hiddenCodes = new Set();
+        try {
+            console.log('[FilterDebug] hiddenFromTotalsShareIds:', hiddenFromTotalsShareIds ? Array.from(hiddenFromTotalsShareIds) : 'undefined');
+            console.log('[FilterDebug] allSharesData length:', window.allSharesData ? window.allSharesData.length : 'undefined');
+
+            if (typeof hiddenFromTotalsShareIds !== 'undefined' && window.allSharesData) {
+                window.allSharesData.forEach(s => {
+                    if (s && (s.isHiddenInPortfolio === true || hiddenFromTotalsShareIds.has(s.id))) {
+                        if (s.shareName) hiddenCodes.add(s.shareName.toUpperCase());
+                        if (s.code) hiddenCodes.add(s.code.toUpperCase());
+                    }
+                });
+            }
+            console.log('[FilterDebug] hiddenCodes:', Array.from(hiddenCodes));
+        } catch (e) { console.error('[FilterDebug] Error building hiddenCodes:', e); }
+
         let upArr = (gm && Array.isArray(gm.upFiltered)) ? gm.upFiltered : (Array.isArray(gm.up) ? gm.up : []);
         let downArr = (gm && Array.isArray(gm.downFiltered)) ? gm.downFiltered : (Array.isArray(gm.down) ? gm.down : []);
         // Fallback: if filtering produced empty results but raw arrays are populated, use raw arrays to avoid blank UI
@@ -411,6 +428,16 @@ window.__renderTargetHitDetailsModalImpl = function (options = {}) {
         // EXTRA: If both filtered and raw are empty, but the original data exists, try to use the original data
         if ((!Array.isArray(upArr) || upArr.length === 0) && Array.isArray(gm.up) && gm.up.length > 0) upArr = gm.up;
         if ((!Array.isArray(downArr) || downArr.length === 0) && Array.isArray(gm.down) && gm.down.length > 0) downArr = gm.down;
+
+        // Apply hidden filter
+        if (hiddenCodes.size > 0) {
+            const initialUp = upArr.length;
+            const initialDown = downArr.length;
+            upArr = upArr.filter(x => !hiddenCodes.has((x.code || x.shareCode || '').toUpperCase()));
+            downArr = downArr.filter(x => !hiddenCodes.has((x.code || x.shareCode || '').toUpperCase()));
+            console.log(`[FilterDebug] Filtered Movers: Up ${initialUp}->${upArr.length}, Down ${initialDown}->${downArr.length}`);
+        }
+
         // Add thresholds hint to headers via title attribute
         const eff = gm && gm.__effectiveThresholds ? gm.__effectiveThresholds : (gm && gm.thresholds ? gm.thresholds : null);
         function thresholdsLabel(eff) {
@@ -487,6 +514,12 @@ window.__renderTargetHitDetailsModalImpl = function (options = {}) {
             lows: (hiloSource && Array.isArray(hiloSource.lows)) ? [...hiloSource.lows] : []
         };
 
+        // Apply hidden filter to 52-week alerts
+        if (hiddenCodes.size > 0) {
+            hilo.highs = hilo.highs.filter(x => !hiddenCodes.has((x.code || x.shareCode || '').toUpperCase()));
+            hilo.lows = hilo.lows.filter(x => !hiddenCodes.has((x.code || x.shareCode || '').toUpperCase()));
+        }
+
         // Local fallback: compute 52-week highs/lows from available livePrices if either list is empty
         try {
             const needHighs = !Array.isArray(hilo.highs) || hilo.highs.length === 0;
@@ -500,6 +533,7 @@ window.__renderTargetHitDetailsModalImpl = function (options = {}) {
                         const entries = (livePrices && typeof livePrices === 'object') ? Object.entries(livePrices) : [];
                         for (const [code, lp] of entries) {
                             if (!lp || lp.live == null || isNaN(lp.live)) continue;
+                            if (hiddenCodes.has(code.toUpperCase())) continue; // Skip hidden
                             if (minPrice != null && lp.live < minPrice) continue; // respect Min Price if set
                             const hi = (lp.High52 != null && !isNaN(lp.High52)) ? lp.High52 : null;
                             const lo = (lp.Low52 != null && !isNaN(lp.Low52)) ? lp.Low52 : null;
@@ -4555,7 +4589,7 @@ async function fetchLivePricesAndUpdateUI() {
             window._livePricesLoaded = true; hideSplashScreenIfReady(); return;
         }
         if (DEBUG_MODE && data[0]) console.log('Live Price: Sample keys', Object.keys(data[0]));
-
+ 
         const haveShares = Array.isArray(allSharesData) && allSharesData.length > 0;
         const needed = haveShares ? new Set(allSharesData.filter(s => s && s.shareName).map(s => s.shareName.toUpperCase())) : null;
         const LOG_LIMIT = 30;
@@ -4563,7 +4597,7 @@ async function fetchLivePricesAndUpdateUI() {
     const newLivePrices = {};
     // Reset external rows container for this cycle
     globalExternalPriceRows = [];
-
+ 
         // Helper: normalize numeric fields; treat null / undefined / '' / '#N/A' as zero
         const numOrNull = v => {
             if (v === null || v === undefined) return 0;
@@ -4576,7 +4610,7 @@ async function fetchLivePricesAndUpdateUI() {
             if (typeof v === 'number') return isNaN(v) ? 0 : v;
             return 0;
         };
-
+ 
     data.forEach(item => {
             if (!item) return;
             const codeRaw = item.ASXCode || item.ASX_Code || item['ASX Code'] || item.Code || item.code;
@@ -4601,7 +4635,7 @@ async function fetchLivePricesAndUpdateUI() {
             const peParsed = numOrNull(item.PE || item['PE Ratio'] || item.pe);
             const high52Parsed = numOrNull(item.High52 || item['High52'] || item['High 52'] || item['52WeekHigh'] || item['52 High']);
             const low52Parsed = numOrNull(item.Low52 || item['Low52'] || item['Low 52'] || item['52WeekLow'] || item['52 Low']);
-
+ 
             const hasLive = liveParsed !== null;
             const hasPrev = prevParsed !== null;
             const effectiveLive = hasLive ? liveParsed : (hasPrev ? prevParsed : NaN);
@@ -4611,7 +4645,7 @@ async function fetchLivePricesAndUpdateUI() {
             }
             if (!hasLive && hasPrev) surrogate++;
             accepted++;
-
+ 
             // Target evaluation
             const shareData = haveShares ? allSharesData.find(s => s && s.shareName && s.shareName.toUpperCase() === code) : null;
             const targetPrice = shareData && !isNaN(parseFloat(shareData.targetPrice)) ? parseFloat(shareData.targetPrice) : undefined;
@@ -4620,12 +4654,12 @@ async function fetchLivePricesAndUpdateUI() {
             if (targetPrice !== undefined) {
                 hit = dir === 'above' ? (effectiveLive >= targetPrice) : (effectiveLive <= targetPrice);
             }
-
+ 
             const companyName = (item.CompanyName || item['Company Name'] || item.Name || item.name || '').toString().trim() || null;
             if (companyName && Array.isArray(allAsxCodes) && !allAsxCodes.some(c => c.code === code)) {
                 allAsxCodes.push({ code, name: companyName });
             }
-
+ 
             newLivePrices[code] = {
                 live: effectiveLive,
                 prevClose: hasPrev ? prevParsed : null,
@@ -4639,7 +4673,7 @@ async function fetchLivePricesAndUpdateUI() {
                 companyName: companyName || undefined
             };
         });
-
+ 
         setLivePrices(newLivePrices);
     // After updating livePrices but before recomputeTriggeredAlerts, evaluate global alert thresholds
     console.log('[GlobalAlerts] About to call evaluateGlobalPriceAlerts from script.js fetchLivePrices');
@@ -7343,7 +7377,7 @@ function showShareDetails() {
             const hasHoldings = (share.portfolioShares && !isNaN(Number(share.portfolioShares)) && Number(share.portfolioShares) !== 0) ||
                 (share.portfolioAvgPrice && !isNaN(Number(share.portfolioAvgPrice)) && Number(share.portfolioAvgPrice) !== 0);
             const hasDividend = share.dividendAmount && !isNaN(Number(share.dividendAmount)) && Number(share.dividendAmount) !== 0;
-            
+
             // Show card if holdings exist OR if dividend data exists
             const shouldShowCard = hasHoldings || hasDividend;
             dividendsCard.style.display = shouldShowCard ? '' : 'none';
@@ -7353,11 +7387,11 @@ function showShareDetails() {
             dividendRows.forEach(row => {
                 const label = row.querySelector('.detail-label');
                 if (!label) return;
-                
+
                 const labelText = label.textContent;
-                
+
                 // Hide holding-related fields if no holdings
-                if (labelText.includes('Number of Shares') || 
+                if (labelText.includes('Number of Shares') ||
                     labelText.includes('Average Purchase Price') ||
                     labelText.includes('Purchase Cost') ||
                     labelText.includes('Capital Gain') ||
@@ -7365,9 +7399,9 @@ function showShareDetails() {
                     row.style.display = hasHoldings ? '' : 'none';
                 }
                 // Hide ALL dividend-related rows if no dividend data
-                else if (labelText.includes('Dividend') || 
-                         labelText.includes('Franking') || 
-                         labelText.includes('Yield')) {
+                else if (labelText.includes('Dividend') ||
+                    labelText.includes('Franking') ||
+                    labelText.includes('Yield')) {
                     row.style.display = hasDividend ? '' : 'none';
                 }
             });
@@ -13005,7 +13039,7 @@ function hideSplashScreenIfReady() {
         unsubscribeShares = null;
         logDebug('Firestore Listener: Unsubscribed from previous shares listener.');
     }
-
+ 
     if (!db || !currentUserId || !firestore) {
         console.warn('Shares: Firestore DB, User ID, or Firestore functions not available for loading shares. Clearing list.');
         setAllSharesData([]); // Clear data if services aren't available
@@ -13018,7 +13052,7 @@ function hideSplashScreenIfReady() {
     try {
         const sharesCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/shares');
         let q = firestore.query(sharesCol); // Listener for all shares, filtering for display done in renderWatchlist
-
+ 
         unsubscribeShares = firestore.onSnapshot(q, async (querySnapshot) => {
             logDebug('Firestore Listener: Shares snapshot received. Processing changes.');
             let fetchedShares = [];
@@ -13026,10 +13060,10 @@ function hideSplashScreenIfReady() {
                 const share = { id: doc.id, ...doc.data() };
                 fetchedShares.push(share);
             });
-
+ 
             setAllSharesData(dedupeSharesById(fetchedShares));
             logDebug('Shares: Shares data updated from snapshot. Total shares: ' + allSharesData.length);
-
+ 
             // Backfill intent field from alertsEnabledMap / alerts collection if missing
             try {
                 if (Array.isArray(allSharesData) && alertsEnabledMap && typeof alertsEnabledMap === 'object') {
@@ -13055,7 +13089,7 @@ function hideSplashScreenIfReady() {
             if (loadingIndicator) loadingIndicator.style.display = 'none';
             window._appDataLoaded = true;
             hideSplashScreenIfReady();
-
+ 
         }, (error) => {
             console.error('Firestore Listener: Error listening to shares:', error);
             showCustomAlert('Error loading shares in real-time: ' + error.message);
@@ -13063,7 +13097,7 @@ function hideSplashScreenIfReady() {
             window._appDataLoaded = false;
             hideSplashScreen(); 
         });
-
+ 
     } catch (error) {
         console.error('Shares: Error setting up shares listener:', error);
         showCustomAlert('Error setting up real-time share updates: ' + error.message);
@@ -13086,18 +13120,18 @@ function hideSplashScreenIfReady() {
         unsubscribeCashCategories = null;
         logDebug('Firestore Listener: Unsubscribed from previous cash categories listener.');
     }
-
+ 
     if (!db || !currentUserId || !firestore) {
         console.warn('Cash Categories: Firestore DB, User ID, or Firestore functions not available for loading cash categories. Clearing list.');
         userCashCategories = [];
         renderCashCategories(); // Render with empty data
         return;
     }
-
+ 
     try {
         const cashCategoriesCol = firestore.collection(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/cashCategories');
         const q = firestore.query(cashCategoriesCol);
-
+ 
         unsubscribeCashCategories = firestore.onSnapshot(q, (querySnapshot) => {
             logDebug('Firestore Listener: Cash categories snapshot received. Processing changes.');
             let fetchedCategories = [];
@@ -13105,19 +13139,19 @@ function hideSplashScreenIfReady() {
                 const category = { id: doc.id, ...doc.data() };
                 fetchedCategories.push(category);
             });
-
+ 
             userCashCategories = fetchedCategories; // Sort will be applied in renderCashCategories
             logDebug('Cash Categories: Data updated from snapshot. Total categories: ' + userCashCategories.length);
             
             // Trigger a re-render of the overall watchlist, which will then call renderCashCategories if needed
             renderWatchlist(); 
             calculateTotalCash(); // Ensure total is updated whenever categories change
-
+ 
         }, (error) => {
             console.error('Firestore Listener: Error listening to cash categories:', error);
             showCustomAlert('Error loading cash categories in real-time: ' + error.message);
         });
-
+ 
     } catch (error) {
         console.error('Cash Categories: Error setting up cash categories listener:', error);
         showCustomAlert('Error setting up real-time cash category updates: ' + error.message);
@@ -16581,6 +16615,26 @@ function showTargetHitDetailsModal(options = {}) {
 
         // Combine live-first then central fallback entries
         let hitsArr = hitsFromLive.concat(mergedCentral);
+
+        // Fix: Filter out hidden shares from Custom Triggers
+        try {
+            const hiddenCodes = new Set();
+            if (typeof hiddenFromTotalsShareIds !== 'undefined' && window.allSharesData) {
+                window.allSharesData.forEach(s => {
+                    if (s && (s.isHiddenInPortfolio === true || hiddenFromTotalsShareIds.has(s.id))) {
+                        if (s.shareName) hiddenCodes.add(s.shareName.toUpperCase());
+                        if (s.code) hiddenCodes.add(s.code.toUpperCase());
+                    }
+                });
+            }
+            if (hiddenCodes.size > 0) {
+                const initialCount = hitsArr.length;
+                hitsArr = hitsArr.filter(h => !hiddenCodes.has((h.code || h.shareCode || '').toUpperCase()));
+                if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
+                    console.log(`[CustomTriggers] Filtered hidden shares: ${initialCount} -> ${hitsArr.length}`);
+                }
+            }
+        } catch (e) { console.warn('[CustomTriggers] Hidden filter failed', e); }
 
         // Accept multiple intent variants produced by different producers/legacy shapes
         const isTargetHitIntent = (h) => {
