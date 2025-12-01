@@ -6598,27 +6598,40 @@ function deselectCurrentCashAsset() {
 
 function addCommentSection(container, title = '', text = '', isCashAssetComment = false) {
     if (!container) { console.error('addCommentSection: comments container not found.'); return; }
-    const commentSectionDiv = document.createElement('div');
-    commentSectionDiv.className = 'comment-section';
-    commentSectionDiv.innerHTML = `
-        <div class="comment-section-header">
-            <input type="text" class="comment-title-input" placeholder="Comment Title" value="">
-            <button type="button" class="comment-delete-btn" title="Delete Comment"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>
-        </div>
-        <textarea class="comment-text-input" placeholder="Your comments here..."></textarea>
-    `;
-    container.appendChild(commentSectionDiv);
 
-    // Set values after creating elements to avoid HTML injection
-    const titleInput = commentSectionDiv.querySelector('.comment-title-input');
-    const textInput = commentSectionDiv.querySelector('.comment-text-input');
+    // Create a wrapper div for title and delete button (for flex layout)
+    const titleRow = document.createElement('div');
+    titleRow.className = 'comment-title-row';
 
-    if (titleInput) titleInput.value = title || '';
-    if (textInput) textInput.value = text || '';
+    // Create title input
+    const commentTitleInput = document.createElement('input');
+    commentTitleInput.type = 'text';
+    commentTitleInput.className = 'comment-title-input';
+    commentTitleInput.placeholder = 'Comment Title';
+    commentTitleInput.value = title || '';
 
-    const commentTitleInput = commentSectionDiv.querySelector('.comment-title-input');
-    const commentTextInput = commentSectionDiv.querySelector('.comment-text-input');
+    // Create delete button
+    const commentDeleteBtn = document.createElement('button');
+    commentDeleteBtn.type = 'button';
+    commentDeleteBtn.className = 'comment-delete-btn';
+    commentDeleteBtn.title = 'Delete Comment';
+    commentDeleteBtn.innerHTML = '<i class="fas fa-trash-alt" aria-hidden="true"></i>';
 
+    // Create textarea
+    const commentTextInput = document.createElement('textarea');
+    commentTextInput.className = 'comment-text-input';
+    commentTextInput.placeholder = 'Your comments here...';
+    commentTextInput.value = text || '';
+
+    // Append title and button to the row
+    titleRow.appendChild(commentTitleInput);
+    titleRow.appendChild(commentDeleteBtn);
+
+    // Append row and textarea to container
+    container.appendChild(titleRow);
+    container.appendChild(commentTextInput);
+
+    // Add event listeners
     if (commentTitleInput) {
         commentTitleInput.addEventListener('input', isCashAssetComment ? checkCashAssetFormDirtyState : checkFormDirtyState);
     }
@@ -6626,9 +6639,12 @@ function addCommentSection(container, title = '', text = '', isCashAssetComment 
         commentTextInput.addEventListener('input', isCashAssetComment ? checkCashAssetFormDirtyState : checkFormDirtyState);
     }
 
-    commentSectionDiv.querySelector('.comment-delete-btn').addEventListener('click', (event) => {
+    commentDeleteBtn.addEventListener('click', (event) => {
         logDebug('Comments: Delete comment button clicked.');
-        event.target.closest('.comment-section').remove();
+        // Remove the title row and textarea
+        titleRow.remove();
+        commentTextInput.remove();
+
         isCashAssetComment ? checkCashAssetFormDirtyState() : checkFormDirtyState();
     });
     logDebug('Comments: Added new comment section.');
@@ -7553,22 +7569,19 @@ function showShareDetails() {
         if (share.comments && Array.isArray(share.comments) && share.comments.length > 0) {
             share.comments.forEach(comment => {
                 if (comment.title || comment.text) {
-                    const commentDiv = document.createElement('div');
-                    commentDiv.className = 'modal-comment-item';
-
-                    // Conditional Title Bar
+                    // Display title directly (if present)
                     if (comment.title && comment.title.trim() !== '') {
-                        const titleBar = document.createElement('div');
-                        titleBar.classList.add('comment-title-bar'); // New class for styling
-                        titleBar.textContent = comment.title;
-                        commentDiv.appendChild(titleBar);
+                        const titleSpan = document.createElement('span');
+                        titleSpan.className = 'comment-title-display';
+                        titleSpan.textContent = comment.title;
+                        modalCommentsContainer.appendChild(titleSpan);
                     }
 
+                    // Display comment text directly
                     const commentTextP = document.createElement('p');
+                    commentTextP.className = 'comment-text-display';
                     commentTextP.textContent = comment.text || '';
-                    commentDiv.appendChild(commentTextP);
-
-                    modalCommentsContainer.appendChild(commentDiv);
+                    modalCommentsContainer.appendChild(commentTextP);
                 }
             });
         } else {
@@ -9395,6 +9408,7 @@ async function displayStockDetailsInSearchModal(asxCode) {
         if (searchModalGoogleFinanceLink) {
             searchModalGoogleFinanceLink.href = `https://www.google.com/finance/quote/${asxCode.toUpperCase()}:ASX`;
             searchModalGoogleFinanceLink.innerHTML = 'Google Finance <i class="fas fa-external-link-alt"></i>';
+            searchModalGoogleFinanceLink.style.display = 'inline-flex';
         }
         // Typography diagnostics for search modal
         setTimeout(() => { try { logSearchModalTypographyRatios(); } catch (_) { } }, 0);
