@@ -6595,7 +6595,6 @@ function deselectCurrentCashAsset() {
     logDebug('Selection: Cash asset deselected. selectedCashAssetDocId is now null.');
 }
 
-
 function addCommentSection(container, title = '', text = '', isCashAssetComment = false) {
     if (!container) { console.error('addCommentSection: comments container not found.'); return; }
 
@@ -7045,13 +7044,18 @@ function selectAndOpenShareForEdit(shareId) {
 function getCurrentFormData() {
     const comments = [];
     if (commentsFormContainer) { // This now refers to #dynamicCommentsArea
-        commentsFormContainer.querySelectorAll('.comment-section').forEach(section => {
-            const titleInput = section.querySelector('.comment-title-input');
-            const textInput = section.querySelector('.comment-text-input');
-            const title = titleInput ? titleInput.value.trim() : '';
-            const text = textInput ? textInput.value.trim() : '';
-            if (title || text) {
-                comments.push({ title: title, text: text });
+        // Updated to match new structure: .comment-title-row followed by .comment-text-input
+        const titleRows = commentsFormContainer.querySelectorAll('.comment-title-row');
+        titleRows.forEach(row => {
+            const titleInput = row.querySelector('.comment-title-input');
+            const textInput = row.nextElementSibling; // Textarea is the next sibling
+
+            // Verify the next sibling is indeed the textarea we expect
+            const textVal = (textInput && textInput.classList.contains('comment-text-input')) ? textInput.value.trim() : '';
+            const titleVal = titleInput ? titleInput.value.trim() : '';
+
+            if (titleVal || textVal) {
+                comments.push({ title: titleVal, text: textVal });
             }
         });
     }
@@ -7176,11 +7180,7 @@ function checkFormDirtyState() {
 
     if (selectedShareDocId && originalShareData) {
         const isDirty = !areShareDataEqual(originalShareData, currentData);
-        try {
-            const origW = Array.isArray(originalShareData.watchlistIds) ? originalShareData.watchlistIds.join(',') : 'null';
-            const currW = Array.isArray(currentData.watchlistIds) ? currentData.watchlistIds.join(',') : 'null';
-            logDebug(`[DirtyTrace] orig watchlists: [${origW}] vs current [${currW}] -> isDirty=${isDirty}`);
-        } catch (_) { }
+
         canSave = canSave && isDirty;
         if (!isDirty) {
             logDebug('Dirty State: Existing share: No changes detected, save disabled.');
