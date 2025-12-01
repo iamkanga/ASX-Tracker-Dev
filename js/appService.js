@@ -1491,6 +1491,9 @@ export async function updateShareHiddenInPortfolio(shareId, isHidden) {
                 const next = current.slice();
                 next[idx] = { ...next[idx], isHiddenInPortfolio: !!isHidden };
                 setAllSharesData(next);
+                // Immediately recompute triggered alerts and refresh the target-hit banner
+                try { if (typeof window.recomputeTriggeredAlerts === 'function') window.recomputeTriggeredAlerts(); } catch (_) { }
+                try { if (typeof window.updateTargetHitBanner === 'function') window.updateTargetHitBanner(); } catch (_) { }
             }
         } catch (_) { }
 

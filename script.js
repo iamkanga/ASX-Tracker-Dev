@@ -402,39 +402,23 @@ window.__renderTargetHitDetailsModalImpl = function (options = {}) {
             return card;
         }
 
-        // Build sections from filtered arrays
-        // Fix: Filter out hidden shares from Global Movers
-        const hiddenCodes = new Set();
-        try {
-            console.log('[FilterDebug] hiddenFromTotalsShareIds:', hiddenFromTotalsShareIds ? Array.from(hiddenFromTotalsShareIds) : 'undefined');
-            console.log('[FilterDebug] allSharesData length:', window.allSharesData ? window.allSharesData.length : 'undefined');
-
-            if (typeof hiddenFromTotalsShareIds !== 'undefined' && window.allSharesData) {
-                window.allSharesData.forEach(s => {
-                    if (s && (s.isHiddenInPortfolio === true || hiddenFromTotalsShareIds.has(s.id))) {
-                        if (s.shareName) hiddenCodes.add(s.shareName.toUpperCase());
-                        if (s.code) hiddenCodes.add(s.code.toUpperCase());
-                    }
-                });
-            }
-            console.log('[FilterDebug] hiddenCodes:', Array.from(hiddenCodes));
-        } catch (e) { console.error('[FilterDebug] Error building hiddenCodes:', e); }
+        // Apply hidden filter using isCodeHiddenGlobal
+        const isHidden = (c) => (typeof isCodeHiddenGlobal === 'function' ? isCodeHiddenGlobal(c) : false);
 
         let upArr = (gm && Array.isArray(gm.upFiltered)) ? gm.upFiltered : (Array.isArray(gm.up) ? gm.up : []);
         let downArr = (gm && Array.isArray(gm.downFiltered)) ? gm.downFiltered : (Array.isArray(gm.down) ? gm.down : []);
-        // Fallback: if filtering produced empty results but raw arrays are populated, use raw arrays to avoid blank UI
+
+        // Fallback: if filtering produced empty results but raw arrays are populated, use raw arrays
         if (Array.isArray(gm.up) && upArr.length === 0 && gm.up.length > 0) upArr = gm.up;
         if (Array.isArray(gm.down) && downArr.length === 0 && gm.down.length > 0) downArr = gm.down;
-        // EXTRA: If both filtered and raw are empty, but the original data exists, try to use the original data
         if ((!Array.isArray(upArr) || upArr.length === 0) && Array.isArray(gm.up) && gm.up.length > 0) upArr = gm.up;
         if ((!Array.isArray(downArr) || downArr.length === 0) && Array.isArray(gm.down) && gm.down.length > 0) downArr = gm.down;
 
-        // Apply hidden filter
-        if (hiddenCodes.size > 0) {
-            const initialUp = upArr.length;
-            const initialDown = downArr.length;
-            upArr = upArr.filter(x => !hiddenCodes.has((x.code || x.shareCode || '').toUpperCase()));
-            downArr = downArr.filter(x => !hiddenCodes.has((x.code || x.shareCode || '').toUpperCase()));
+        const initialUp = upArr.length;
+        const initialDown = downArr.length;
+        upArr = upArr.filter(x => !isHidden((x.code || x.shareCode || '').toUpperCase()));
+        downArr = downArr.filter(x => !isHidden((x.code || x.shareCode || '').toUpperCase()));
+        if (upArr.length !== initialUp || downArr.length !== initialDown) {
             console.log(`[FilterDebug] Filtered Movers: Up ${initialUp}->${upArr.length}, Down ${initialDown}->${downArr.length}`);
         }
 
@@ -515,10 +499,8 @@ window.__renderTargetHitDetailsModalImpl = function (options = {}) {
         };
 
         // Apply hidden filter to 52-week alerts
-        if (hiddenCodes.size > 0) {
-            hilo.highs = hilo.highs.filter(x => !hiddenCodes.has((x.code || x.shareCode || '').toUpperCase()));
-            hilo.lows = hilo.lows.filter(x => !hiddenCodes.has((x.code || x.shareCode || '').toUpperCase()));
-        }
+        hilo.highs = hilo.highs.filter(x => !isHidden((x.code || x.shareCode || '').toUpperCase()));
+        hilo.lows = hilo.lows.filter(x => !isHidden((x.code || x.shareCode || '').toUpperCase()));
 
         // Local fallback: compute 52-week highs/lows from available livePrices if either list is empty
         try {
@@ -533,7 +515,7 @@ window.__renderTargetHitDetailsModalImpl = function (options = {}) {
                         const entries = (livePrices && typeof livePrices === 'object') ? Object.entries(livePrices) : [];
                         for (const [code, lp] of entries) {
                             if (!lp || lp.live == null || isNaN(lp.live)) continue;
-                            if (hiddenCodes.has(code.toUpperCase())) continue; // Skip hidden
+                            if (isHidden(code.toUpperCase())) continue; // Skip hidden
                             if (minPrice != null && lp.live < minPrice) continue; // respect Min Price if set
                             const hi = (lp.High52 != null && !isNaN(lp.High52)) ? lp.High52 : null;
                             const lo = (lp.Low52 != null && !isNaN(lp.Low52)) ? lp.Low52 : null;
@@ -683,6 +665,26 @@ function debugDebug() {
     if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) {
         try { console.debug.apply(console, arguments); } catch (_) { }
     }
+}
+
+// Helper: Check if a code is globally hidden (e.g. via eye icon in portfolio)
+// Helper: Check if a code is globally hidden (e.g. via eye icon in portfolio)
+function isCodeHiddenGlobal(code) {
+    if (!code) return false;
+    // allSharesData is the global source of truth for user's shares
+    if (typeof allSharesData === 'undefined' || !Array.isArray(allSharesData)) return false;
+
+    const clean = (s) => String(s || '').toUpperCase().replace(/\.AX$/, '').trim();
+    const c = clean(code);
+
+    const share = allSharesData.find(s => clean(s.shareName) === c || clean(s.code) === c);
+    if (!share) return false;
+
+    // Check both the property and the local set for maximum robustness
+    if (share.isHiddenInPortfolio) return true;
+    if (typeof hiddenFromTotalsShareIds !== 'undefined' && share.id && hiddenFromTotalsShareIds.has(share.id)) return true;
+
+    return false;
 }
 
 // Remove duplicate code fragments from company names since the code is already displayed separately.
@@ -1698,6 +1700,7 @@ html body .portfolio-card.no-tap-ephemeral:active, html body .portfolio-card.no-
                 }
 
                 eyeBtn.addEventListener('click', async function (e) {
+                    console.log('[BadgeDebug] Eye Icon Clicked for:', share.shareName, 'ID:', share.id);
                     e.stopPropagation();
                     // If user held Ctrl/Meta or Shift while clicking, treat as 'open details' to preserve previous flow
                     if (e.ctrlKey || e.metaKey || e.shiftKey) {
@@ -2159,6 +2162,7 @@ try {
 }
 
 function persistHiddenFromTotals() {
+    console.log('[BadgeDebug] Persisting hiddenFromTotalsShareIds. Size:', hiddenFromTotalsShareIds.size, 'IDs:', Array.from(hiddenFromTotalsShareIds));
     try { localStorage.setItem('hiddenFromTotalsShareIds', JSON.stringify(Array.from(hiddenFromTotalsShareIds))); } catch (_) { }
     try { window.hiddenFromTotalsShareIds = hiddenFromTotalsShareIds; } catch (_) { }
 }
@@ -10010,149 +10014,42 @@ function stopLivePriceUpdates() {
 //  3) Else, return all hits as a conservative fallback (prevents empty UI if metadata is incomplete temporarily).
 function selectCustomTriggerHitsForUser(allHits, uid) {
     try {
+        console.log('[SelectHitsDebug] CALLED with:', allHits ? allHits.length : 'null', 'UID:', uid);
         const list = Array.isArray(allHits) ? allHits : [];
-        if (list.length === 0) return [];
+        if (list.length === 0) {
+            console.log('[SelectHitsDebug] Returning empty because input list is empty.');
+            return [];
+        }
         const portfolioCodes = new Set((window.allSharesData || []).map(s => s && s.shareName ? String(s.shareName).toUpperCase() : null).filter(Boolean));
+
+        console.log('[SelectHitsDebug] Portfolio Codes:', Array.from(portfolioCodes));
+        console.log('[SelectHitsDebug] Checking Hits:', list.map(h => ({ code: h.code, userId: h.userId })));
+
         // Exact userId match takes precedence
         if (uid) {
             const mine = list.filter(h => h && h.userId === uid);
-            if (mine.length > 0) return mine;
+            if (mine.length > 0) {
+                console.log('[SelectHitsDebug] Found by UID:', mine.length);
+                return mine;
+            }
         }
         // If no explicit userId matches, include portfolio-duplicates (movers/52w with null/missing userId)
         const mineByPortfolio = list.filter(h => {
-            try { return h && portfolioCodes.has(String(h.code || '').toUpperCase()); } catch (_) { return false; }
+            try {
+                const c = String(h.code || '').toUpperCase();
+                const match = h && portfolioCodes.has(c);
+                if (c === 'FBR') console.log('[SelectHitsDebug] Checking FBR against portfolio:', match);
+                return match;
+            } catch (_) { return false; }
         });
-        if (mineByPortfolio.length > 0) return mineByPortfolio;
+        if (mineByPortfolio.length > 0) {
+            console.log('[SelectHitsDebug] Found by Portfolio:', mineByPortfolio.length);
+            return mineByPortfolio;
+        }
         // Fallback: return empty array (do not show hits for unrelated users)
+        console.log('[SelectHitsDebug] No matches found.');
         return [];
-    } catch (_) { return []; }
-}
-
-// NEW: Function to update the target hit notification icon
-function updateTargetHitBanner() {
-    if (!targetHitIconBtn || !targetHitIconCount || !watchlistSelect || !sortSelect) {
-        console.warn('Target Alert: UI elements missing. Cannot update banner/highlights.');
-        return;
-    }
-    // Lightweight change-detection snapshot to suppress redundant DOM/log churn
-    if (!window.__lastTargetBannerSnapshot) {
-        window.__lastTargetBannerSnapshot = { enabledCount: null, displayCount: null, dismissed: null };
-    }
-    // Only enabled alerts are surfaced; muted are excluded from count & styling.
-    // Prefer CUSTOM_TRIGGER_HITS for "Custom" notifications; select using userId with a portfolio-based fallback
-    const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : currentUserId;
-    // Get central hits safely
-    const centralHitsRaw = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits.slice() : [];
-    const selectedCentralHits = selectCustomTriggerHitsForUser(centralHitsRaw, __uid) || [];
-    // Use live in-memory shares too (ensure we reference the window mirror explicitly)
-    const liveArr = (window.sharesAtTargetPrice && Array.isArray(window.sharesAtTargetPrice)) ? window.sharesAtTargetPrice : (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []);
-    // Build a union of codes across central hits and live shares so the badge reflects both
-    const unionCodes = new Set();
-    try { selectedCentralHits.forEach(h => { const c = String(h && (h.code || h.shareCode || h.shareName || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch (_) { }
-    try { liveArr.forEach(s => { const c = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch (_) { }
-    const customHitsCount = unionCodes.size;
-    const enabledCount = customHitsCount > 0 ? customHitsCount : (Array.isArray(liveArr) ? liveArr.length : 0);
-    // Global 52-week alerts: prefer *_HITS; fall back to legacy alerts structure
-    const globalHighs = (window.globalHiLo52Hits && Array.isArray(window.globalHiLo52Hits.highHits))
-        ? window.globalHiLo52Hits.highHits.length
-        : ((window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.highs)) ? window.globalHiLo52Alerts.highs.length : 0);
-    const globalLows = (window.globalHiLo52Hits && Array.isArray(window.globalHiLo52Hits.lowHits))
-        ? window.globalHiLo52Hits.lowHits.length
-        : ((window.globalHiLo52Alerts && Array.isArray(window.globalHiLo52Alerts.lows)) ? window.globalHiLo52Alerts.lows.length : 0);
-
-    // Debug logging for 52-week low count
-    console.log('[BANNER-DEBUG] global highs/lows:', { globalHighs, globalLows });
-    console.log('[BANNER-DEBUG] enabledCount:', enabledCount);
-    // Treat global summary counts as zero if directional thresholds are fully inactive (prevents stale badge after clearing)
-    const directionalActive = isDirectionalThresholdsActive ? isDirectionalThresholdsActive() : (
-        (typeof globalPercentIncrease === 'number' && globalPercentIncrease > 0) ||
-        (typeof globalDollarIncrease === 'number' && globalDollarIncrease > 0) ||
-        (typeof globalPercentDecrease === 'number' && globalPercentDecrease > 0) ||
-        (typeof globalDollarDecrease === 'number' && globalDollarDecrease > 0)
-    );
-    const centralMoversCount = (function () {
-        // Prefer *_HITS lengths; else use filtered/total from legacy object
-        if (window.globalMoversHits) {
-            const up = Array.isArray(window.globalMoversHits.upHits) ? window.globalMoversHits.upHits.length : 0;
-            const down = Array.isArray(window.globalMoversHits.downHits) ? window.globalMoversHits.downHits.length : 0;
-            return up + down;
-        }
-        if (window.globalMovers) {
-            if (typeof window.globalMovers.filteredTotal === 'number') return window.globalMovers.filteredTotal;
-            if (typeof window.globalMovers.totalCount === 'number') return window.globalMovers.totalCount;
-        }
-        return 0;
-    })();
-    const legacySummaryCount = (directionalActive && globalAlertSummary && globalAlertSummary.totalCount && (globalAlertSummary.enabled !== false)) ? globalAlertSummary.totalCount : 0;
-    // If central doc is unavailable or zero, fall back to the last locally-computed movers snapshot
-    const lastSnapshotCount = (window.__lastMoversSnapshot && Array.isArray(window.__lastMoversSnapshot.entries)) ? window.__lastMoversSnapshot.entries.length : 0;
-    if (typeof DEBUG_MODE !== 'undefined' && DEBUG_MODE) console.debug('[BANNER-DEBUG] lastSnapshotCount:', lastSnapshotCount);
-    // Prefer centralized movers when available to avoid double counting vs legacy GA_SUMMARY
-    const effectiveMoversCount = centralMoversCount > 0 ? centralMoversCount : (legacySummaryCount > 0 ? legacySummaryCount : (directionalActive ? lastSnapshotCount : 0));
-    const displayCount = enabledCount + effectiveMoversCount + globalHighs + globalLows;
-
-    // Debug logging for final count
-    console.log('[BANNER-DEBUG] centralMoversCount:', centralMoversCount, 'legacySummaryCount:', legacySummaryCount, 'effectiveMoversCount:', effectiveMoversCount);
-    console.log('[BANNER-DEBUG] displayCount:', displayCount);
-    const snapshot = window.__lastTargetBannerSnapshot;
-    const snapshotUnchanged = snapshot.enabledCount === enabledCount && snapshot.displayCount === displayCount && snapshot.dismissed === !!targetHitIconDismissed;
-    if (!snapshotUnchanged) {
-        try { console.log('[Diag][updateTargetHitBanner] enabled:', enabledCount, 'displayCount:', displayCount, 'enabled IDs:', (sharesAtTargetPrice || []).map(s => s.id)); } catch (_) { }
-    } else {
-        // If nothing changed but the icon SHOULD be visible and somehow got hidden, restore it.
-        const shouldBeVisible = displayCount > 0 && !targetHitIconDismissed;
-        const actuallyHidden = targetHitIconBtn.style.display === 'none' || targetHitIconBtn.classList.contains('app-hidden');
-        if (!(shouldBeVisible && actuallyHidden)) {
-            return; // truly nothing to do
-        }
-        logDebug('Target Alert: Snapshot unchanged but icon hidden unexpectedly; restoring visibility.');
-    }
-    if (displayCount > 0 && !targetHitIconDismissed) {
-        // Diagnostics: capture state before applying changes
-        try {
-            console.log('[Diag] targetHitIconBtn element:', targetHitIconBtn);
-            console.log('[Diag] BEFORE - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
-        } catch (_) { }
-
-        targetHitIconCount.textContent = String(displayCount);
-        // Ensure visibility: drop any hidden class first, then set display
-        targetHitIconBtn.classList.remove('app-hidden');
-        targetHitIconCount.classList && targetHitIconCount.classList.remove('app-hidden');
-        targetHitIconBtn.style.display = 'inline-flex';
-        targetHitIconCount.style.display = 'flex';
-        // Double-ensure after layout settles (guards against another late add)
-        requestAnimationFrame(() => {
-            targetHitIconBtn.classList.remove('app-hidden');
-            targetHitIconCount.classList && targetHitIconCount.classList.remove('app-hidden');
-        });
-
-        // Diagnostics: capture state after applying changes
-        try {
-            console.log('[Diag] AFTER - className:', targetHitIconBtn.className, 'style.display:', targetHitIconBtn.style.display);
-        } catch (_) { }
-
-        logDebug('Target Alert: Showing icon: ' + displayCount + ' active alerts.');
-    } else {
-        // Hide the icon explicitly via inline style and class
-        targetHitIconBtn.classList.add('app-hidden');
-        targetHitIconBtn.style.display = 'none';
-        targetHitIconCount.classList && targetHitIconCount.classList.add('app-hidden');
-        targetHitIconCount.style.display = 'none';
-        logDebug('Target Alert: No triggered alerts or icon dismissed; hiding icon.');
-    }
-
-    // Persist last known count for early UI restore
-    lastKnownTargetCount = displayCount;
-    try { localStorage.setItem('lastKnownTargetCount', String(lastKnownTargetCount)); } catch (e) { }
-
-    // Highlight dropdowns if the current view has target hits
-    // Removed toolbar highlight per corrected requirement; only individual rows/cards should show target-hit styling.
-    // (Styling enforcement intentionally removed here to prevent duplicate calls; recomputeTriggeredAlerts will invoke it when underlying state changes.)
-
-    // Update snapshot after successful DOM mutation
-    snapshot.enabledCount = enabledCount;
-    snapshot.displayCount = displayCount;
-    snapshot.dismissed = !!targetHitIconDismissed;
+    } catch (e) { console.warn('[SelectHitsDebug] Error:', e); return []; }
 }
 
 // Debounced refresh for Notifications modal when it's already open
@@ -11000,7 +10897,6 @@ document.addEventListener('keydown', (e) => {
         }
     } catch (_) { }
 }, true);
-
 // NEW: Helper to enable/disable a specific alert for a share
 // Toggle alert enabled flag (if currently enabled -> disable; if disabled -> enable)
 async function toggleAlertEnabled(shareId) {
@@ -11036,6 +10932,7 @@ async function toggleAlertEnabled(shareId) {
         throw e;
     }
 }
+
 // NEW: Recompute triggered alerts from livePrices + alertsEnabledMap (global portfolio scope)
 function recomputeTriggeredAlerts() {
     // Guard: during initial load phase never auto-open the target modal (even if shares already at target)
@@ -12264,6 +12161,7 @@ function initGlobalAlertsUI(force) {
                         } catch (_) { }
                     }
                 } catch (_) { }
+
                 // Immediately recompute centralized movers filtering with the new thresholds
                 try { if (typeof window.recomputeGlobalMoversFiltered === 'function') window.recomputeGlobalMoversFiltered({ log: false }); } catch (_) { }
                 // Refresh banner counts to reflect new effective thresholds right away
@@ -16485,9 +16383,13 @@ function showTargetHitDetailsModal(options = {}) {
             const liveArrForCount = (window.sharesAtTargetPrice && Array.isArray(window.sharesAtTargetPrice)) ? window.sharesAtTargetPrice : (Array.isArray(sharesAtTargetPrice) ? sharesAtTargetPrice : []);
             const low52ArrForCount = (Array.isArray(window.sharesAt52WeekLow) ? window.sharesAt52WeekLow.filter(i => !i.muted) : []);
             const unionCodes = new Set();
-            try { selectedCentralHits.forEach(h => { const c = String(h && (h.code || h.shareCode || h.shareName || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch (_) { }
-            try { liveArrForCount.forEach(s => { const c = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch (_) { }
-            try { low52ArrForCount.forEach(s => { const c = String(s && (s.code || s.shareName || s.shareCode || '')).toUpperCase(); if (c) unionCodes.add(c); }); } catch (_) { }
+
+            // Filter out hidden shares from all sources
+            const isHidden = (c) => (typeof isCodeHiddenGlobal === 'function' ? isCodeHiddenGlobal(c) : false);
+
+            try { selectedCentralHits.forEach(h => { const c = String(h && (h.code || h.shareCode || h.shareName || '')).toUpperCase(); if (c && !isHidden(c)) unionCodes.add(c); }); } catch (_) { }
+            try { liveArrForCount.forEach(s => { const c = String(s && (s.shareName || s.code || s.shareCode || '')).toUpperCase(); if (c && !isHidden(c)) unionCodes.add(c); }); } catch (_) { }
+            try { low52ArrForCount.forEach(s => { const c = String(s && (s.code || s.shareName || s.shareCode || '')).toUpperCase(); if (c && !isHidden(c)) unionCodes.add(c); }); } catch (_) { }
             const customCount = unionCodes.size;
             const targetCount = customCount;
             // Prefer centralized filtered movers, then raw, then snapshot fallback
@@ -17766,6 +17668,73 @@ if (typeof window !== 'undefined') {
     };
 }
 
+// Update the target hit banner (notification badge) count
+window.updateTargetHitBanner = function () {
+    try {
+        const btn = document.getElementById('targetHitIconBtn');
+        if (!btn) return;
+
+        // 1. Gather all alert sources
+        // Live alerts
+        const liveAlerts = (window.sharesAtTargetPrice && Array.isArray(window.sharesAtTargetPrice)) ? window.sharesAtTargetPrice : [];
+
+        // Global alerts (52-week high/low)
+        const globalHighs = (window.sharesAt52WeekHigh && Array.isArray(window.sharesAt52WeekHigh)) ? window.sharesAt52WeekHigh : [];
+        const globalLows = (window.sharesAt52WeekLow && Array.isArray(window.sharesAt52WeekLow)) ? window.sharesAt52WeekLow : [];
+
+        // Custom trigger hits
+        const __uid = (window.firebase && window.firebase.auth && window.firebase.auth().currentUser) ? window.firebase.auth().currentUser.uid : (window.currentUserId || null);
+        const customHitsRaw = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits : [];
+        const customHits = selectCustomTriggerHitsForUser(customHitsRaw, __uid) || [];
+
+        // 2. Build a set of unique codes that are triggered AND NOT HIDDEN
+        const uniqueTriggeredCodes = new Set();
+        const isHidden = (c) => (typeof isCodeHiddenGlobal === 'function' ? isCodeHiddenGlobal(c) : false);
+
+        // Helper to add if not hidden
+        const addIfNotHidden = (item) => {
+            const code = String(item.code || item.shareCode || item.shareName || '').toUpperCase();
+            const hidden = isHidden(code);
+            if (window.DEBUG_MODE) console.log(`[TargetHitBanner] Checking ${code}: hidden=${hidden}`);
+            if (code && !hidden) {
+                uniqueTriggeredCodes.add(code);
+            }
+        };
+
+        if (window.DEBUG_MODE) console.log('[TargetHitBanner] Live Alerts:', liveAlerts.length);
+        liveAlerts.forEach(addIfNotHidden);
+
+        if (window.DEBUG_MODE) console.log('[TargetHitBanner] Global Highs:', globalHighs.length);
+        globalHighs.forEach(addIfNotHidden);
+
+        if (window.DEBUG_MODE) console.log('[TargetHitBanner] Global Lows:', globalLows.length);
+        globalLows.forEach(addIfNotHidden);
+
+        if (window.DEBUG_MODE) console.log('[TargetHitBanner] Custom Hits:', customHits.length);
+        customHits.forEach(addIfNotHidden);
+
+        const count = uniqueTriggeredCodes.size;
+        if (window.DEBUG_MODE) console.log('[TargetHitBanner] Final Count:', count);
+
+        // 3. Update the badge
+        // Use the existing badge element defined in HTML
+        const badge = document.getElementById('targetHitIconCount');
+
+        if (badge) {
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'flex'; // Ensure it's visible (CSS usually handles layout)
+                // Also ensure the parent button is visible if it was hidden
+                if (btn.style.display === 'none') btn.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+    } catch (e) {
+        console.warn('updateTargetHitBanner failed', e);
+    }
+};
 // Toggle GA_SUMMARY enabled flag (mute/unmute for session)
 async function toggleGlobalSummaryEnabled() {
     try {
@@ -18333,4 +18302,104 @@ function initializeApp() {
     } catch (err) { console.warn('[SuperDebug] minimal installer failed', err); }
 })();
 // --- End Super Debug Always-Install ---
+
+// Corrected updateTargetHitBanner with hidden share filtering
+window.updateTargetHitBanner = function () {
+    // console.log('[BadgeDebug] updateTargetHitBanner RUNNING');
+    if (!targetHitIconBtn || !targetHitIconCount) return;
+
+    // 1. Get Custom Hits (filtered by user and hidden status)
+    const __uid = (typeof currentUserId !== 'undefined') ? currentUserId : null;
+    const centralHitsRaw = (window.customTriggerHits && Array.isArray(window.customTriggerHits.hits)) ? window.customTriggerHits.hits.slice() : [];
+    const selectedCentralHits = (typeof selectCustomTriggerHitsForUser === 'function') ? selectCustomTriggerHitsForUser(centralHitsRaw, __uid) : [];
+
+    // 2. Get Live Price Hits (sharesAtTargetPrice)
+    const liveArr = (Array.isArray(window.sharesAtTargetPrice)) ? window.sharesAtTargetPrice : [];
+
+    // 3. Get Local 52-Week Hits (sharesAt52WeekLow only) - matching modal logic
+    const low52Arr = (Array.isArray(window.sharesAt52WeekLow)) ? window.sharesAt52WeekLow.filter(s => !s.muted) : [];
+    // Note: Modal only includes Lows in this section, so we exclude Highs to match parity
+    // const high52Arr = (Array.isArray(window.sharesAt52WeekHigh)) ? window.sharesAt52WeekHigh.filter(s => !s.muted) : [];
+
+    // 4. Union and Filter
+    const unionCodes = new Set();
+
+    // Helper to check if code is hidden
+    const isHidden = (c) => {
+        if (typeof isCodeHiddenGlobal === 'function') {
+            return isCodeHiddenGlobal(c);
+        }
+        return false;
+    };
+
+    const addIfNotHidden = (item) => {
+        const c = String(item && (item.code || item.shareCode || item.shareName || '')).toUpperCase();
+        if (c && !isHidden(c)) {
+            unionCodes.add(c);
+        }
+    };
+
+    selectedCentralHits.forEach(addIfNotHidden);
+    liveArr.forEach(addIfNotHidden);
+    low52Arr.forEach(addIfNotHidden);
+    // high52Arr.forEach(addIfNotHidden);
+
+    const customHitsCount = unionCodes.size;
+
+    // 5. Global Alerts (52-week High/Low) - Apply filtering
+    let globalHighs = 0;
+    if (window.globalHiLo52Hits && Array.isArray(window.globalHiLo52Hits.highHits)) {
+        globalHighs = window.globalHiLo52Hits.highHits.filter(h => {
+            const c = String(h.code || h.symbol || '').toUpperCase();
+            return c && !isHidden(c);
+        }).length;
+    }
+
+    let globalLows = 0;
+    if (window.globalHiLo52Hits && Array.isArray(window.globalHiLo52Hits.lowHits)) {
+        globalLows = window.globalHiLo52Hits.lowHits.filter(h => {
+            const c = String(h.code || h.symbol || '').toUpperCase();
+            return c && !isHidden(c);
+        }).length;
+    }
+
+    // 6. Global Movers
+    let centralMoversCount = 0;
+    if (window.globalMoversHits) {
+        const up = Array.isArray(window.globalMoversHits.upHits) ? window.globalMoversHits.upHits : [];
+        const down = Array.isArray(window.globalMoversHits.downHits) ? window.globalMoversHits.downHits : [];
+
+        const filteredUp = up.filter(h => {
+            const c = String(h.code || h.symbol || '').toUpperCase();
+            return c && !isHidden(c);
+        }).length;
+
+        const filteredDown = down.filter(h => {
+            const c = String(h.code || h.symbol || '').toUpperCase();
+            return c && !isHidden(c);
+        }).length;
+
+        centralMoversCount = filteredUp + filteredDown;
+    }
+
+    const displayCount = customHitsCount + globalHighs + globalLows + centralMoversCount;
+
+    // Update UI
+    if (displayCount > 0 && !window.targetHitIconDismissed) {
+        targetHitIconCount.textContent = String(displayCount);
+        targetHitIconBtn.classList.remove('app-hidden');
+        if (targetHitIconCount.classList) targetHitIconCount.classList.remove('app-hidden');
+        targetHitIconBtn.style.display = 'inline-flex';
+        targetHitIconCount.style.display = 'flex';
+    } else {
+        targetHitIconBtn.classList.add('app-hidden');
+        targetHitIconBtn.style.display = 'none';
+        if (targetHitIconCount.classList) targetHitIconCount.classList.add('app-hidden');
+        targetHitIconCount.style.display = 'none';
+    }
+
+    // Update snapshot
+    if (!window.__lastTargetBannerSnapshot) window.__lastTargetBannerSnapshot = {};
+    window.__lastTargetBannerSnapshot.displayCount = displayCount;
+};
 
