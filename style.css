@@ -8698,7 +8698,7 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
     background: none;
     border: none;
     color: var(--icon-danger-color);
-    font-size: 1.5em;
+    font-size: 1rem;
     cursor: pointer;
     transition: color 0.2s ease;
     line-height: 1;
@@ -8715,6 +8715,11 @@ body #cashAssetFormModal.modal .modal-content h2#cashFormTitle {
 .comment-section .comment-delete-btn:hover {
     color: var(--icon-danger-hover-color);
     transform: scale(1.1);
+}
+
+.comment-section .comment-delete-btn i {
+    font-size: 1.2rem; /* Make icon slightly larger */
+    line-height: 1; /* Ensure vertical centering */
 }
 
 /* REMOVED: Action Buttons in Modals (Save, Delete, etc.) - These are now in the header */

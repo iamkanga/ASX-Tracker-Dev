@@ -6598,9 +6598,12 @@ function deselectCurrentCashAsset() {
 function addCommentSection(container, title = '', text = '', isCashAssetComment = false) {
     if (!container) { console.error('addCommentSection: comments container not found.'); return; }
 
+    const commentSection = document.createElement('div');
+    commentSection.className = 'comment-section';
+
     // Create a wrapper div for title and delete button (for flex layout)
     const titleRow = document.createElement('div');
-    titleRow.className = 'comment-title-row';
+    titleRow.className = 'comment-section-header';
 
     // Create title input
     const commentTitleInput = document.createElement('input');
@@ -6626,9 +6629,12 @@ function addCommentSection(container, title = '', text = '', isCashAssetComment 
     titleRow.appendChild(commentTitleInput);
     titleRow.appendChild(commentDeleteBtn);
 
-    // Append row and textarea to container
-    container.appendChild(titleRow);
-    container.appendChild(commentTextInput);
+    // Append row and textarea to the new comment-section wrapper
+    commentSection.appendChild(titleRow);
+    commentSection.appendChild(commentTextInput);
+
+    // Append the whole section to the main container
+    container.appendChild(commentSection);
 
     // Add event listeners
     if (commentTitleInput) {
@@ -6640,9 +6646,8 @@ function addCommentSection(container, title = '', text = '', isCashAssetComment 
 
     commentDeleteBtn.addEventListener('click', (event) => {
         logDebug('Comments: Delete comment button clicked.');
-        // Remove the title row and textarea
-        titleRow.remove();
-        commentTextInput.remove();
+        // Remove the entire comment section
+        commentSection.remove();
 
         isCashAssetComment ? checkCashAssetFormDirtyState() : checkFormDirtyState();
     });
