@@ -200,7 +200,7 @@ export function getCurrentFormData() {
     const commentsFormContainer = document.getElementById('dynamicCommentsArea');
     if (commentsFormContainer) {
         // Comments now use .comment-title-row wrapper for title input and delete button
-        const titleRows = commentsFormContainer.querySelectorAll('.comment-title-row');
+        const titleRows = commentsFormContainer.querySelectorAll('.comment-section-header');
         titleRows.forEach(row => {
             const titleInput = row.querySelector('.comment-title-input');
             // Textarea follows the title row as the next sibling
@@ -260,7 +260,7 @@ export function getCurrentCashAssetFormData() {
     const cashAssetCommentsContainer = document.getElementById('cashAssetCommentsContainer') || document.getElementById('cashAssetCommentsArea');
     if (cashAssetCommentsContainer) {
         // Comments now use .comment-title-row wrapper for title input and delete button
-        const titleRows = cashAssetCommentsContainer.querySelectorAll('.comment-title-row');
+        const titleRows = cashAssetCommentsContainer.querySelectorAll('.comment-section-header');
         titleRows.forEach(row => {
             const titleInput = row.querySelector('.comment-title-input');
             // Textarea follows the title row as the next sibling
@@ -538,9 +538,12 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
     function addCommentSection(container, title, text, focus) {
         if (!container) return;
 
+        const commentSection = document.createElement('div');
+        commentSection.className = 'comment-section';
+
         // Create a wrapper div for title and delete button (for flex layout)
         const titleRow = document.createElement('div');
-        titleRow.className = 'comment-title-row';
+        titleRow.className = 'comment-section-header';
 
         const titleInput = document.createElement('input');
         titleInput.className = 'comment-title-input';
@@ -562,9 +565,13 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
         titleRow.appendChild(titleInput);
         titleRow.appendChild(deleteBtn);
 
-        // Append row and textarea to container
-        container.appendChild(titleRow);
-        container.appendChild(textArea);
+        // Append row and textarea to the new comment-section wrapper
+        commentSection.appendChild(titleRow);
+        commentSection.appendChild(textArea);
+
+        // Append the whole section to the main container
+        container.appendChild(commentSection);
+
 
         if (focus) {
             try { if (window.safeFocus) window.safeFocus(titleInput); else try { titleInput.focus({ preventScroll: true }); } catch (_) { titleInput.focus(); } } catch (_) { }
@@ -576,9 +583,8 @@ export function showAddEditCashCategoryModal(assetIdToEdit = null) {
         try {
             deleteBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                // Remove the title row and textarea
-                try { titleRow.remove(); } catch (_) { if (titleRow && titleRow.parentNode) titleRow.parentNode.removeChild(titleRow); }
-                try { textArea.remove(); } catch (_) { if (textArea && textArea.parentNode) textArea.parentNode.removeChild(textArea); }
+                // Remove the entire comment section
+                commentSection.remove();
                 try { checkCashAssetFormDirtyState(); } catch (_) { }
             });
         } catch (_) { }

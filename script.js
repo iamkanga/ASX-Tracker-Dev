@@ -7050,7 +7050,7 @@ function getCurrentFormData() {
     const comments = [];
     if (commentsFormContainer) { // This now refers to #dynamicCommentsArea
         // Updated to match new structure: .comment-title-row followed by .comment-text-input
-        const titleRows = commentsFormContainer.querySelectorAll('.comment-title-row');
+        const titleRows = commentsFormContainer.querySelectorAll('.comment-section-header');
         titleRows.forEach(row => {
             const titleInput = row.querySelector('.comment-title-input');
             const textInput = row.nextElementSibling; // Textarea is the next sibling
@@ -15414,29 +15414,25 @@ async function initializeAppLogic() {
             }
         } catch (_) { }
 
-        // Intercept Save click to show friendly message if duplicate flag present
-        const _origSaveHandler = saveShareBtn.onclick || null;
+    // Save Share Button
+    if (saveShareBtn) {
         saveShareBtn.addEventListener('click', async (ev) => {
+            logDebug('Share Form: Save Share button clicked.');
+
+            // --- Start of Duplicate Check Logic ---
             try {
+                const shareNameInput = document.getElementById('shareName');
+                const __isDuplicateCode = (Array.isArray(allSharesData) && allSharesData.some(s => s && s.shareName && shareNameInput && s.shareName.toUpperCase() === shareNameInput.value.trim().toUpperCase() && s.id !== (selectedShareDocId || null)));
+
                 if (__isDuplicateCode) {
-                    // Block save and show an appropriate message depending on context
                     const form = (typeof getCurrentFormData === 'function') ? getCurrentFormData() : null;
                     const isEditing = !!selectedShareDocId;
-                    const hasWatchlistSelection = (form && ((Array.isArray(form.watchlistIds) && form.watchlistIds.length > 0) || (form.watchlistId && form.watchlistId !== '')));
-
-                    // Check if the share code has actually changed during edit
                     const currentCode = (shareNameInput.value || '').trim().toUpperCase();
                     const originalShare = isEditing ? allSharesData.find(s => s.id === selectedShareDocId) : null;
                     const originalCode = originalShare ? (originalShare.shareName || '').toUpperCase() : '';
                     const codeHasChanged = isEditing && (currentCode !== originalCode);
 
-                    console.log('[Duplicate Check] isEditing:', isEditing, 'codeHasChanged:', codeHasChanged, 'currentCode:', currentCode, 'originalCode:', originalCode);
-
-                    // Only block for duplicate if:
-                    // 1. Creating new share (not editing), OR
-                    // 2. Editing and the code has changed to match an existing share
                     if (!isEditing || codeHasChanged) {
-                        // This is a true duplicate conflict
                         const dupMsg = 'A share with this code already exists. Save blocked.';
                         if (window.ToastManager && typeof window.ToastManager.info === 'function') {
                             window.ToastManager.info(dupMsg, 3000);
@@ -15445,45 +15441,13 @@ async function initializeAppLogic() {
                         } else {
                             try { alert(dupMsg); } catch (_) { }
                         }
-
-                        // Prevent save
-                        if (ev && typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
-                        try { if (ev && typeof ev.preventDefault === 'function') ev.preventDefault(); } catch (_) { }
-                        return;
-                    } else if (isEditing && !hasWatchlistSelection) {
-                        // Editing but no watchlist selected
-                        const msg = 'Save canceled — please assign this share to at least one watchlist before saving.';
-                        if (window.ToastManager && typeof window.ToastManager.info === 'function') {
-                            window.ToastManager.info(msg, 3500);
-                        } else if (typeof window.showCustomAlert === 'function') {
-                            window.showCustomAlert(msg);
-                        } else {
-                            try { alert(msg); } catch (_) { }
-                        }
-
-                        // Prevent save
-                        if (ev && typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
-                        try { if (ev && typeof ev.preventDefault === 'function') ev.preventDefault(); } catch (_) { }
-                        return;
-                    } else {
-                        // This is an edit where code hasn't changed - allow save to proceed
-                        console.log('[Duplicate Check] Edit with unchanged code - allowing save to proceed');
-                        // Don't block the save, let it continue to the AppService handler
+                        return; // Prevent save
                     }
                 }
             } catch (e) {
                 console.warn('Duplicate intercept failed', e);
             }
-
-            // otherwise proceed with original click handlers (if any were wired via onclick)
-            if (_origSaveHandler) try { _origSaveHandler.call(saveShareBtn, ev); } catch (_) { }
-        });
-    }
-
-    // Save Share Button
-    if (saveShareBtn) {
-        saveShareBtn.addEventListener('click', async () => {
-            logDebug('Share Form: Save Share button clicked.');
+            // --- End of Duplicate Check Logic ---
 
             // Restore selectedShareDocId from modal dataset if not set
             if (!selectedShareDocId && shareDetailModal && shareDetailModal.dataset && shareDetailModal.dataset.shareId) {
@@ -15498,8 +15462,6 @@ async function initializeAppLogic() {
 
             try {
                 // Await the AppService save so modal close behavior and state is consistent
-                // Capture the visible modal current price at click-time. Use a tiny retry/backoff
-                // if the element is populated asynchronously to reduce the race window.
                 let capturedPriceBeforeSave = '';
                 try {
                     const readCurrentPrice = () => {
@@ -15507,34 +15469,29 @@ async function initializeAppLogic() {
                         return (cpEl && typeof cpEl.value === 'string') ? cpEl.value.trim() : '';
                     };
 
-                    // Try immediate read, then short backoffs if empty (conservative: 3 attempts)
                     capturedPriceBeforeSave = readCurrentPrice();
                     if (!capturedPriceBeforeSave) {
-                        // small delay/polling values chosen to be short but helpful (ms)
                         const backoffs = [120, 300];
                         for (let i = 0; i < backoffs.length && !capturedPriceBeforeSave; i++) {
-                            // eslint-disable-next-line no-await-in-loop
                             await new Promise(res => setTimeout(res, backoffs[i]));
                             capturedPriceBeforeSave = readCurrentPrice();
                         }
                     }
                 } catch (_) { capturedPriceBeforeSave = ''; }
 
-                // Pass the captured price explicitly to the AppService save method so it doesn't rely on a window-global
                 if (typeof saveShareDataSvc === 'function') {
                     await saveShareDataSvc(false, capturedPriceBeforeSave);
                 } else if (window.AppService && typeof window.AppService.saveShareData === 'function') {
                     await window.AppService.saveShareData(false, capturedPriceBeforeSave);
                 } else {
-                    // Fallback to old call if function reference not available
                     saveShareDataSvc(false, capturedPriceBeforeSave);
                 }
             } catch (err) {
                 console.error('Share Form: Error saving share via service:', err);
-                // Re-enable on error so user can retry
                 try { window.setIconDisabled && window.setIconDisabled(saveShareBtn, false); } catch (_) { }
             }
         });
+    }
     }
 
     // Delete Share Button (with confirmation)
