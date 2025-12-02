@@ -7392,7 +7392,7 @@ function showShareDetails() {
         // Hide comments section if no comments
         const commentsCard = document.querySelector('.detail-card[data-section="comments"]');
         if (commentsCard) {
-            const hasComments = Array.isArray(share.comments) && share.comments.some(c => c && (c.text || c.comment));
+            const hasComments = Array.isArray(share.comments) && share.comments.some(c => c && (c.text || c.comment || c.title));
             commentsCard.style.display = hasComments ? '' : 'none';
         }
 

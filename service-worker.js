@@ -12,6 +12,7 @@ const CACHED_ASSETS = [
     './index.html',
     `./script.js?v=${APP_VERSION}`,
     `./style.css?v=${APP_VERSION}`,
+    './asx_codes.csv',
     'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap',
     // Font Awesome served from CDN removed from precache because cross-origin fetches can time out.
     // Firebase SDKs are loaded as modules, so they might not be directly in the cache list
