@@ -7,6 +7,16 @@
     // Diagnostic marker
     try { if (typeof window !== 'undefined') window.__renderingModuleLoaded = true; } catch (_) { }
 
+    // Shim for adjustMainContentPadding
+    function adjustMainContentPadding() {
+        if (window.UI && typeof window.UI.adjustMainContentPadding === 'function') {
+            return window.UI.adjustMainContentPadding();
+        }
+        if (typeof window.adjustMainContentPadding === 'function') {
+            return window.adjustMainContentPadding();
+        }
+    }
+
     window.Rendering.addShareToTable = function addShareToTable(share) {
         const shareTableBodyLocal = (typeof window !== 'undefined' && window.shareTableBody) || document.querySelector('#shareTable tbody');
         // Diagnostic log removed
@@ -28,13 +38,13 @@
         const livePriceData = livePrices[share.shareName.toUpperCase()];
         const isTargetHit = livePriceData ? livePriceData.targetHit : false;
 
-        const displayData = getShareDisplayData(share);
+        const displayData = window.getShareDisplayData(share);
         const companyInfo = allAsxCodes.find(c => c.code === (share.shareName || '').toUpperCase());
         const companyName = companyInfo ? companyInfo.name : '';
 
         // Build pulsing dot with direction color
         let desktopTargetDot = '';
-        if (isTargetHit && !targetHitIconDismissed) {
+        if (isTargetHit && !window.targetHitIconDismissed) {
             let delta = 0; let haveDelta = false;
             if (livePriceData && livePriceData.live != null && livePriceData.prevClose != null && !isNaN(livePriceData.live) && !isNaN(livePriceData.prevClose)) { delta = Number(livePriceData.live) - Number(livePriceData.prevClose); haveDelta = true; }
             else if (livePriceData && livePriceData.lastLivePrice != null && livePriceData.lastPrevClose != null && !isNaN(livePriceData.lastLivePrice) && !isNaN(livePriceData.lastPrevClose)) { delta = Number(livePriceData.lastLivePrice) - Number(livePriceData.lastPrevClose); haveDelta = true; }
@@ -50,7 +60,7 @@
                 <span class="live-price-value ${displayData.priceClass}">${displayData.displayLivePrice}</span>
                 <span class="price-change ${displayData.priceClass}">${displayData.displayPriceChange}</span>
             </td>
-            <td class="numeric-data-cell alert-target-cell">${renderAlertTargetInline(share)}</td>
+            <td class="numeric-data-cell alert-target-cell">${window.renderAlertTargetInline(share)}</td>
             <td class="star-rating-cell numeric-data-cell">
                 ${share.starRating > 0 ? '⭐'.repeat(share.starRating) : ''}
             </td>
@@ -98,7 +108,7 @@
         if (!template) { console.error('addShareToMobileCards: template not found.'); return; }
         const card = template.content.cloneNode(true).querySelector('.mobile-card');
         card.dataset.docId = share.id;
-        const displayData = getShareDisplayData(share);
+        const displayData = window.getShareDisplayData(share);
         const { displayLivePrice, displayPriceChange, priceClass, peRatio, high52Week, low52Week } = displayData;
         const livePriceData = livePrices[share.shareName.toUpperCase()];
         const isTargetHit = livePriceData ? livePriceData.targetHit : false;
@@ -113,7 +123,7 @@
         codeEl.textContent = '';
         // Append text first, then dot on the right if target is hit
         codeEl.appendChild(document.createTextNode(share.shareName || ''));
-        if (isTargetHit && !targetHitIconDismissed) {
+        if (isTargetHit && !window.targetHitIconDismissed) {
             // compute color from movement
             let delta = 0; let haveDelta = false;
             if (livePriceData && livePriceData.live != null && livePriceData.prevClose != null && !isNaN(livePriceData.live) && !isNaN(livePriceData.prevClose)) { delta = Number(livePriceData.live) - Number(livePriceData.prevClose); haveDelta = true; }
@@ -129,7 +139,7 @@
         card.querySelector('.card-price-change').className = `price-change-large card-price-change ${priceClass}`;
         // Removed 52-week and P/E ratio elements for compact design
         const alertTargetRow = card.querySelector('[data-template-conditional="alertTarget"]');
-        const alertTargetValue = renderAlertTargetInline(share);
+        const alertTargetValue = window.renderAlertTargetInline(share);
         if (alertTargetValue) { alertTargetRow.querySelector('.data-value').innerHTML = alertTargetValue; alertTargetRow.style.display = ''; } else { alertTargetRow.style.display = 'none'; }
 
         // Populate bottom info row with comments title and star rating
@@ -138,7 +148,7 @@
         const starRatingEl = bottomInfoRow.querySelector('.star-rating');
 
         // Don't inject comments or star rating into compact view cards - keep DOM minimal
-        const isCompactRender = (mobileShareCardsContainer && mobileShareCardsContainer.classList && mobileShareCardsContainer.classList.contains('compact-view')) || currentMobileViewMode === 'compact';
+        const isCompactRender = (mobileShareCardsLocal && mobileShareCardsLocal.classList && mobileShareCardsLocal.classList.contains('compact-view')) || currentMobileViewMode === 'compact';
         if (isCompactRender) {
             // Ensure they're empty/hidden for compact layout
             try { commentsTitleEl.textContent = ''; commentsTitleEl.style.display = 'none'; } catch (_) { }
@@ -339,8 +349,8 @@
 
         // Resolve commonly used container globals safely so code doesn't throw if script.js
         // hasn't yet declared them (test environments can load rendering.js early).
-        const mobileShareCardsContainerLocalTop = (typeof mobileShareCardsContainer !== 'undefined' && mobileShareCardsContainer) || document.getElementById('mobileShareCards');
-        const tableContainerLocalTop = (typeof tableContainer !== 'undefined' && tableContainer) || document.querySelector('.table-container') || document.getElementById('shareTable')?.closest('.table-container');
+        const mobileShareCardsContainer = (typeof window !== 'undefined' && window.mobileShareCardsContainer) || document.getElementById('mobileShareCards');
+        const tableContainer = (typeof window !== 'undefined' && window.tableContainer) || document.querySelector('.table-container') || document.getElementById('shareTable')?.closest('.table-container');
         const stockWatchlistSectionLocal = (typeof stockWatchlistSection !== 'undefined' && stockWatchlistSection) || document.getElementById('stockWatchlistSection') || document.querySelector('.share-list-section');
         const cashAssetsSectionLocal = (typeof cashAssetsSection !== 'undefined' && cashAssetsSection) || document.getElementById('cashAssetsSection');
         const sortSelectLocal = (typeof sortSelect !== 'undefined' && sortSelect) || document.getElementById('sortSelect');
@@ -351,35 +361,48 @@
         const asxCodeButtonsContainerLocal = (typeof asxCodeButtonsContainer !== 'undefined' && asxCodeButtonsContainer) || document.getElementById('asxCodeButtonsContainer');
         const targetHitIconBtnLocal = (typeof targetHitIconBtn !== 'undefined' && targetHitIconBtn) || document.getElementById('targetHitIconBtn');
 
+        // Fix: Ensure isCompactView is defined
+        const isCompactView = localStorage.getItem('viewMode') === 'compact';
+        const isMobileView = window.innerWidth <= 640;
+
+        const shareTable = document.getElementById('shareTable');
         if (isCompactView) {
-            if (mobileShareCardsContainerLocalTop) mobileShareCardsContainerLocalTop.style.display = 'grid';
-            if (tableContainerLocalTop) tableContainerLocalTop.style.display = 'none';
+            if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'grid';
+            if (tableContainer) tableContainer.style.setProperty('display', 'none', 'important');
+            if (shareTable) shareTable.style.setProperty('display', 'none', 'important');
         } else if (isMobileView) {
-            if (mobileShareCardsContainerLocalTop) mobileShareCardsContainerLocalTop.style.display = 'flex';
-            if (tableContainerLocalTop) tableContainerLocalTop.style.display = 'none';
+            if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'flex';
+            if (tableContainer) tableContainer.style.setProperty('display', 'none', 'important');
+            if (shareTable) shareTable.style.setProperty('display', 'none', 'important');
         } else {
-            if (mobileShareCardsContainerLocalTop) mobileShareCardsContainerLocalTop.style.display = 'none';
-            if (tableContainerLocalTop) tableContainerLocalTop.style.display = '';
+            if (mobileShareCardsContainer) mobileShareCardsContainer.style.setProperty('display', 'none', 'important');
+            if (tableContainer) tableContainer.style.display = '';
+            if (shareTable) shareTable.style.display = '';
         }
 
         const selectedWatchlistId = (currentSelectedWatchlistIdsLocal && currentSelectedWatchlistIdsLocal.length > 0) ? currentSelectedWatchlistIdsLocal[0] : null;
         // Some environments load rendering.js before script.js which defines ALL_SHARES_ID.
         // Use a safe local fallback so the 'All Shares' rendering path still works.
         const ALL_SHARES_ID_LOCAL = (typeof window !== 'undefined' && window.ALL_SHARES_ID) ? window.ALL_SHARES_ID : 'all_shares_option';
+        const CASH_BANK_WATCHLIST_ID = 'cashBank';
 
         if (stockWatchlistSectionLocal) stockWatchlistSectionLocal.classList.add('app-hidden');
         if (cashAssetsSectionLocal) cashAssetsSectionLocal.classList.add('app-hidden');
 
         if (selectedWatchlistId === 'portfolio') {
-            if (stockWatchlistSection) stockWatchlistSection.classList.add('app-hidden');
-            if (cashAssetsSection) cashAssetsSection.classList.add('app-hidden');
+            if (stockWatchlistSectionLocal) stockWatchlistSectionLocal.classList.add('app-hidden');
+            if (cashAssetsSectionLocal) cashAssetsSectionLocal.classList.add('app-hidden');
+            // Explicitly hide them via style to be sure, as app-hidden might be overridden
+            if (stockWatchlistSectionLocal) stockWatchlistSectionLocal.style.display = 'none';
+            if (cashAssetsSectionLocal) cashAssetsSectionLocal.style.display = 'none';
+
             let portfolioSection = document.getElementById('portfolioSection');
             if (!portfolioSection) {
                 portfolioSection = document.createElement('div');
                 portfolioSection.id = 'portfolioSection';
                 portfolioSection.className = 'portfolio-section';
                 portfolioSection.innerHTML = '<div id="portfolioListContainer">Loading portfolio...</div>';
-                if (mainContainer) mainContainer.appendChild(portfolioSection);
+                if (mainContainerLocal) mainContainerLocal.appendChild(portfolioSection);
             }
             portfolioSection.style.display = 'block';
             if (sortSelectLocal) sortSelectLocal.classList.remove('app-hidden');
@@ -387,7 +410,7 @@
             if (toggleCompactViewBtnLocal) toggleCompactViewBtnLocal.classList.add('app-hidden');
             if (exportWatchlistBtnLocal) exportWatchlistBtnLocal.classList.remove('app-hidden');
             if (typeof window.renderPortfolioList === 'function') window.renderPortfolioList();
-            try { renderSortSelect(); } catch (e) { }
+            try { window.renderSortSelect(); } catch (e) { }
             try { updateTargetHitBanner(); } catch (e) { }
             if (typeof renderAsxCodeButtons === 'function') renderAsxCodeButtons();
             adjustMainContentPadding();
@@ -541,11 +564,21 @@
             try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch (_) { }
             try { enforceTargetHitStyling(); } catch (e) { console.warn('Target Alert: enforceTargetHitStyling failed post render', e); }
         } else {
-            cashAssetsSection.classList.remove('app-hidden');
+            if (cashAssetsSectionLocal) cashAssetsSectionLocal.classList.remove('app-hidden');
             const existingPortfolio2 = document.getElementById('portfolioSection'); if (existingPortfolio2) existingPortfolio2.style.display = 'none';
-            renderCashCategories(); sortSelect.classList.remove('app-hidden'); refreshLivePricesBtn.classList.add('app-hidden'); toggleCompactViewBtn.classList.add('app-hidden'); asxCodeButtonsContainer.classList.add('app-hidden'); if (targetHitIconBtn) targetHitIconBtn.style.display = 'none'; exportWatchlistBtn.classList.add('app-hidden'); stopLivePriceUpdates(); updateAddHeaderButton(); if (tableContainer) tableContainer.style.display = 'none'; if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
+            if (typeof window.renderCashCategories === 'function') window.renderCashCategories();
+            if (sortSelectLocal) sortSelectLocal.classList.remove('app-hidden');
+            if (refreshLivePricesBtnLocal) refreshLivePricesBtnLocal.classList.add('app-hidden');
+            if (toggleCompactViewBtnLocal) toggleCompactViewBtnLocal.classList.add('app-hidden');
+            if (asxCodeButtonsContainerLocal) asxCodeButtonsContainerLocal.classList.add('app-hidden');
+            if (targetHitIconBtnLocal) targetHitIconBtnLocal.style.display = 'none';
+            if (exportWatchlistBtnLocal) exportWatchlistBtnLocal.classList.add('app-hidden');
+            if (typeof window.stopLivePriceUpdates === 'function') window.stopLivePriceUpdates();
+            if (typeof window.updateAddHeaderButton === 'function') window.updateAddHeaderButton();
+            if (tableContainer) tableContainer.style.display = 'none';
+            if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
         }
-        renderSortSelect(); updateMainButtonsState(!!currentUserId); adjustMainContentPadding(); try { updateMainTitle(); } catch (e) { } try { ensureTitleStructure(); } catch (e) { } try { updateTargetHitBanner(); } catch (e) { }
+        window.renderSortSelect(); window.updateMainButtonsState(!!currentUserId); adjustMainContentPadding(); try { updateMainTitle(); } catch (e) { } try { ensureTitleStructure(); } catch (e) { } try { updateTargetHitBanner(); } catch (e) { }
         try { /* final render complete */ } catch (_) { }
     };
 
@@ -699,7 +732,7 @@
         } catch (_) { }
         const companyInfo = allAsxCodes.find(c => c.code === share.shareName.toUpperCase()); const companyName = companyInfo ? companyInfo.name : '';
         let desktopTargetDot2 = '';
-        if (isTargetHit && !targetHitIconDismissed) {
+        if (isTargetHit && !window.targetHitIconDismissed) {
             let delta = 0, haveDelta = false;
             if (livePriceData && livePriceData.live != null && livePriceData.prevClose != null && !isNaN(livePriceData.live) && !isNaN(livePriceData.prevClose)) { delta = Number(livePriceData.live) - Number(livePriceData.prevClose); haveDelta = true; }
             else if (livePriceData && livePriceData.lastLivePrice != null && livePriceData.lastPrevClose != null && !isNaN(livePriceData.lastLivePrice) && !isNaN(livePriceData.lastPrevClose)) { delta = Number(livePriceData.lastLivePrice) - Number(livePriceData.lastPrevClose); haveDelta = true; }
@@ -764,14 +797,14 @@
             else card.classList.add('neutral-change-card');
             // no border pulse anymore
         } catch (_) { }
-        const displayData = getShareDisplayData(share);
+        const displayData = window.getShareDisplayData(share);
         const { peRatio, high52Week, low52Week } = displayData;
         if (displayData.cardPriceChangeClass) card.classList.add(displayData.cardPriceChangeClass);
         let arrowSymbol = '';
         if (priceClass === 'positive') arrowSymbol = '▲'; else if (priceClass === 'negative') arrowSymbol = '▼';
         // Build card top with pulsing dot next to code when target is hit
         let codeWithDot = '';
-        if (isTargetHit && !targetHitIconDismissed) {
+        if (isTargetHit && !window.targetHitIconDismissed) {
             let d = 0, have = false; if (livePriceData && livePriceData.live != null && livePriceData.prevClose != null && !isNaN(livePriceData.live) && !isNaN(livePriceData.prevClose)) { d = Number(livePriceData.live) - Number(livePriceData.prevClose); have = true; }
             else if (livePriceData && livePriceData.lastLivePrice != null && livePriceData.lastPrevClose != null && !isNaN(livePriceData.lastLivePrice) && !isNaN(livePriceData.lastPrevClose)) { d = Number(livePriceData.lastLivePrice) - Number(livePriceData.lastPrevClose); have = true; }
             const color = have ? (d > 0 ? 'var(--brand-green)' : (d < 0 ? 'var(--brand-red)' : 'var(--accent-color)')) : 'var(--accent-color)';
@@ -784,7 +817,7 @@
 
     window.Rendering.enforceTargetHitStyling = function enforceTargetHitStyling() {
         try {
-            const dismissed = !!(typeof window !== 'undefined' && window.targetHitIconDismissed);
+            const dismissed = !!(typeof window !== 'undefined' && window.window.targetHitIconDismissed);
             if (dismissed) return;
 
             const satp = (typeof window !== 'undefined' && Array.isArray(window.sharesAtTargetPrice)) ? window.sharesAtTargetPrice : [];
@@ -886,7 +919,7 @@
         if (currentSelectedWatchlistIdsLocal.includes(ALL_SHARES_ID_LOCAL)) sharesForButtons = (typeof dedupeSharesById === 'function' ? dedupeSharesById(allSharesData) : (Array.isArray(allSharesData) ? allSharesData.slice() : [])); else sharesForButtons = (typeof dedupeSharesById === 'function' ? dedupeSharesById(allSharesData) : (Array.isArray(allSharesData) ? allSharesData.slice() : [])).filter(share => currentSelectedWatchlistIdsLocal.some(id => (typeof shareBelongsTo === 'function' ? shareBelongsTo(share, id) : (share && (share.watchlistId === id || (Array.isArray(share.watchlistIds) && share.watchlistIds.includes(id)))))));
         sharesForButtons.forEach(share => { if (share.shareName && typeof share.shareName === 'string' && share.shareName.trim() !== '') uniqueAsxCodes.add(share.shareName.trim().toUpperCase()); });
         if (uniqueAsxCodes.size === 0) { applyAsxButtonsState(); return; }
-        const sortedAsxCodes = Array.from(uniqueAsxCodes).sort(); sortedAsxCodes.forEach(asxCode => { const button = document.createElement('button'); button.className = 'asx-code-btn'; button.textContent = asxCode; button.dataset.asxCode = asxCode; let buttonPriceChangeClass = ''; const livePriceData = livePrices[asxCode.toUpperCase()]; if (livePriceData) { const latestLive = (livePriceData.live !== null && !isNaN(livePriceData.live)) ? livePriceData.live : (livePriceData.lastLivePrice ?? null); const latestPrev = (livePriceData.prevClose !== null && !isNaN(livePriceData.prevClose)) ? livePriceData.prevClose : (livePriceData.lastPrevClose ?? null); if (latestLive !== null && latestPrev !== null && !isNaN(latestLive) && !isNaN(latestPrev)) { const change = latestLive - latestPrev; if (change > 0) buttonPriceChangeClass = 'positive'; else if (change < 0) buttonPriceChangeClass = 'negative'; else buttonPriceChangeClass = 'neutral'; } } if (buttonPriceChangeClass) button.classList.add(buttonPriceChangeClass); if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] === 'portfolio') button.classList.add('portfolio-context'); const livePriceDataForButton = livePrices[asxCode.toUpperCase()]; if (livePriceDataForButton && livePriceDataForButton.targetHit && !targetHitIconDismissed) button.classList.add('target-hit-alert'); else button.classList.remove('target-hit-alert'); asxCodeButtonsContainer.appendChild(button); });
+        const sortedAsxCodes = Array.from(uniqueAsxCodes).sort(); sortedAsxCodes.forEach(asxCode => { const button = document.createElement('button'); button.className = 'asx-code-btn'; button.textContent = asxCode; button.dataset.asxCode = asxCode; let buttonPriceChangeClass = ''; const livePriceData = livePrices[asxCode.toUpperCase()]; if (livePriceData) { const latestLive = (livePriceData.live !== null && !isNaN(livePriceData.live)) ? livePriceData.live : (livePriceData.lastLivePrice ?? null); const latestPrev = (livePriceData.prevClose !== null && !isNaN(livePriceData.prevClose)) ? livePriceData.prevClose : (livePriceData.lastPrevClose ?? null); if (latestLive !== null && latestPrev !== null && !isNaN(latestLive) && !isNaN(latestPrev)) { const change = latestLive - latestPrev; if (change > 0) buttonPriceChangeClass = 'positive'; else if (change < 0) buttonPriceChangeClass = 'negative'; else buttonPriceChangeClass = 'neutral'; } } if (buttonPriceChangeClass) button.classList.add(buttonPriceChangeClass); if (currentSelectedWatchlistIds.length === 1 && currentSelectedWatchlistIds[0] === 'portfolio') button.classList.add('portfolio-context'); const livePriceDataForButton = livePrices[asxCode.toUpperCase()]; if (livePriceDataForButton && livePriceDataForButton.targetHit && !window.targetHitIconDismissed) button.classList.add('target-hit-alert'); else button.classList.remove('target-hit-alert'); asxCodeButtonsContainer.appendChild(button); });
         asxCodeButtonsContainer.querySelectorAll('button.asx-code-btn').forEach(b => b.classList.remove('active'));
         if (!asxCodeButtonsContainer.__delegated) {
             let touchStartY = 0, touchMoved = false, touchStartX = 0; const MOVE_THRESHOLD = 8; asxCodeButtonsContainer.addEventListener('touchstart', e => { const t = e.touches[0]; touchStartY = t.clientY; touchStartX = t.clientX; touchMoved = false; }, { passive: true }); asxCodeButtonsContainer.addEventListener('touchmove', e => { const t = e.touches[0]; if (Math.abs(t.clientY - touchStartY) > MOVE_THRESHOLD || Math.abs(t.clientX - touchStartX) > MOVE_THRESHOLD) touchMoved = true; }, { passive: true }); asxCodeButtonsContainer.__delegated = true;

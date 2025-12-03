@@ -302,6 +302,13 @@ export function renderCashCategories() {
     try { console.log('[Diag][Cash] renderCashCategories called. Count=', Array.isArray(categories) ? categories.length : 'n/a'); } catch (_) { }
     cashCategoriesContainer.innerHTML = '';
 
+    // Create and prepend the total display
+    const totalDisplay = document.createElement('div');
+    totalDisplay.className = 'total-cash-display';
+    totalDisplay.style.gridColumn = '1 / -1';
+    totalDisplay.innerHTML = `<h3>Total: <span id="totalCashDisplay">$0.00</span></h3>`;
+    cashCategoriesContainer.appendChild(totalDisplay);
+
     const sortValue = getCurrentSortOrder();
     const [field, order] = (sortValue || '').split('-');
     // Prefer centralized sort function if available (keeps behavior consistent across modules)
@@ -335,6 +342,8 @@ export function renderCashCategories() {
         emptyMessage.classList.add('empty-message');
         emptyMessage.textContent = 'No cash categories added yet. Click "Add Category" to get started!';
         cashCategoriesContainer.appendChild(emptyMessage);
+        // Still calculate total even if there are no categories
+        try { calculateTotalCash(); } catch (_) { }
         return;
     }
 

@@ -69,9 +69,13 @@
                 </button>
             </div>
             <!-- Single dynamic clickable title acts as the only title bar -->
-            <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false">
-                <span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span>
-            </h1>
+            <div class="watchlist-header-row">
+                <button id="prevWatchlistBtn" class="carousel-arrow" aria-label="Previous Watchlist">&lt;</button>
+                <h1 id="dynamicWatchlistTitle" class="watchlist-dynamic-title" aria-haspopup="dialog" aria-expanded="false">
+                    <span id="dynamicWatchlistTitleText" tabindex="0">Share Watchlist</span>
+                </h1>
+                <button id="nextWatchlistBtn" class="carousel-arrow" aria-label="Next Watchlist">&gt;</button>
+            </div>
             <button id="addShareHeaderBtn" class="header-action-btn header-action-btn-right icon-button"
                 aria-label="Add Share">
                 <i class="fas fa-plus"></i>
@@ -453,9 +457,6 @@
                 <p class="empty-message">No cash categories added yet. Click "Add Category" to get started!</p>
             </div>
             <div class="cash-actions">
-            </div>
-            <div class="total-cash-display">
-                <h3>Total Cash: <span id="totalCashDisplay">$0.00</span></h3>
             </div>
         </div>
     </main>
