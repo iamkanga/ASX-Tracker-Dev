@@ -15114,7 +15114,7 @@ try {
         // NEW: Event listener for the "Dismiss All" button at the bottom of the modal
         if (alertModalDismissAllBtn) {
             alertModalDismissAllBtn.addEventListener('click', () => {
-                targetHitIconDismissed = true; // Mark as dismissed for the session
+                window.targetHitIconDismissed = true; // Mark as dismissed for the session
                 localStorage.setItem('targetHitIconDismissed', 'true'); // Save dismissal preference
                 try { localStorage.setItem('lastKnownTargetCount', '0'); } catch (e) { }
                 // No need to explicitly hide the bubble here, updateTargetHitBanner will handle it.
