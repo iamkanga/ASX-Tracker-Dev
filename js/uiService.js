@@ -320,18 +320,32 @@ export function renderCashCategories() {
                 sorted = maybe;
             }
         } else {
-            // Map UI logical fields to actual model properties
-            const sortField = (field === 'totalDollar') ? 'balance' : field;
-            if (sortField === 'balance') {
-                sorted.sort((a, b) => {
+            sorted.sort((a, b) => {
+                // 1. Hidden items always last
+                if (a.isHidden && !b.isHidden) return 1;
+                if (!a.isHidden && b.isHidden) return -1;
+
+                // 2. For non-hidden items, separate positive and negative balances
+                const aIsPositive = a.balance >= 0;
+                const bIsPositive = b.balance >= 0;
+
+                if (aIsPositive && !bIsPositive) return -1;
+                if (!aIsPositive && bIsPositive) return 1;
+
+                // 3. Within each group (all positive or all negative or all hidden), apply the user's selected sort
+                const sortField = (field === 'totalDollar') ? 'balance' : field;
+                if (sortField === 'balance') {
                     const aN = (typeof a.balance === 'number' && !isNaN(a.balance)) ? a.balance : (order === 'asc' ? Infinity : -Infinity);
                     const bN = (typeof b.balance === 'number' && !isNaN(b.balance)) ? b.balance : (order === 'asc' ? Infinity : -Infinity);
                     return order === 'asc' ? aN - bN : bN - aN;
-                });
-            } else if (sortField === 'name') {
-                sorted.sort((a, b) => (a.name || '').toUpperCase().localeCompare((b.name || '').toUpperCase()));
-                if (order === 'desc') sorted.reverse();
-            }
+                } else if (sortField === 'name') {
+                    const aName = a.name || '';
+                    const bName = b.name || '';
+                    const comparison = aName.toUpperCase().localeCompare(bName.toUpperCase());
+                    return order === 'asc' ? comparison : -comparison;
+                }
+                return 0;
+            });
         }
     } catch (e) {
         console.warn('renderCashCategories: error using centralized sorter, falling back to local sort.', e);
