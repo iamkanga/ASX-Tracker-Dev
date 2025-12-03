@@ -30,6 +30,7 @@ if (typeof window !== 'undefined') {
 // LocalStorage keys for stale-while-revalidate snapshots
 const LS_KEY_LIVE_PRICES = 'asx_last_livePrices_v1';
 const LS_KEY_ALL_SHARES = 'asx_last_allSharesData_v1';
+const LS_KEY_WATCHLIST_SORT_ORDERS = 'asx_last_watchlistSortOrders_v1';
 
 // On module load attempt to restore last-known snapshots so the app can render from stale data immediately.
 try {
@@ -54,6 +55,16 @@ try {
                     allSharesData = parsed;
                     window.allSharesData = allSharesData;
                     window.__usedStaleData = true;
+                }
+            } catch (e) { /* ignore JSON errors */ }
+        }
+        const wsRaw = localStorage.getItem(LS_KEY_WATCHLIST_SORT_ORDERS);
+        if (wsRaw) {
+            try {
+                const parsed = JSON.parse(wsRaw);
+                if (parsed && typeof parsed === 'object') {
+                    watchlistSortOrders = parsed;
+                    window.watchlistSortOrders = watchlistSortOrders;
                 }
             } catch (e) { /* ignore JSON errors */ }
         }
@@ -337,6 +348,12 @@ export function setAllAsxCodes(codes) {
 export function setWatchlistSortOrders(orders) {
     watchlistSortOrders = (orders && typeof orders === 'object') ? orders : {};
     if (typeof window !== 'undefined') window.watchlistSortOrders = watchlistSortOrders;
+    // Persist to localStorage
+    try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            try { localStorage.setItem(LS_KEY_WATCHLIST_SORT_ORDERS, JSON.stringify(watchlistSortOrders)); } catch (_) { }
+        }
+    } catch (_) { }
 }
 
 // Set a single watchlist's sort order in-memory
@@ -346,6 +363,12 @@ export function setWatchlistSortOrder(watchlistId, sortOrder) {
         watchlistSortOrders = watchlistSortOrders || {};
         watchlistSortOrders[watchlistId] = sortOrder;
         if (typeof window !== 'undefined') window.watchlistSortOrders = watchlistSortOrders;
+        // Persist to localStorage
+        try {
+            if (typeof window !== 'undefined' && window.localStorage) {
+                try { localStorage.setItem(LS_KEY_WATCHLIST_SORT_ORDERS, JSON.stringify(watchlistSortOrders)); } catch (_) { }
+            }
+        } catch (_) { }
     } catch(_) {}
 }
 
