@@ -1,5 +1,6 @@
 
-import { getUserWatchlists, getCurrentSelectedWatchlistIds, setCurrentSelectedWatchlistIds } from './state.js';
+import { getUserWatchlists, getCurrentSelectedWatchlistIds, setCurrentSelectedWatchlistIds, setCurrentSortOrder, setWatchlistSortOrder } from './state.js';
+import { getSortOrderForWatchlist, saveWatchlistSortOrder } from './dataService.js';
 import { toggleCodeButtonsArrow } from './uiService.js';
 
 /**
@@ -31,7 +32,8 @@ function getOrderedWatchlistIds() {
         .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
         .map(list => list.id);
 
-    return ['portfolio', 'all_shares_option', ...sortedUserIds];
+    const CASH_BANK_WATCHLIST_ID = window.CASH_BANK_WATCHLIST_ID || 'cashBank';
+    return ['portfolio', 'all_shares_option', ...sortedUserIds, CASH_BANK_WATCHLIST_ID];
 }
 
 /**
@@ -63,6 +65,51 @@ function navigateWatchlist(direction) {
 
     // Update State
     setCurrentSelectedWatchlistIds([nextId]);
+    
+    // Restore per-watchlist sort order
+    try {
+        if (typeof window.renderSortSelect === 'function') {
+            window.renderSortSelect();
+        }
+
+        if (typeof window.updateSortPickerButtonText === 'function') {
+            setTimeout(() => window.updateSortPickerButtonText(), 100);
+        }
+
+        const sortSelect = document.getElementById('sortSelect');
+        const availableOptionValues = Array.from(sortSelect ? sortSelect.options : []).map(o => o.value);
+        const watchlistSortOrder = getSortOrderForWatchlist(nextId);
+
+        if (watchlistSortOrder && availableOptionValues.includes(watchlistSortOrder)) {
+            setCurrentSortOrder(watchlistSortOrder);
+            if (sortSelect) {
+                sortSelect.value = watchlistSortOrder;
+            }
+            if (typeof window.updateSortIcon === 'function') {
+                window.updateSortIcon();
+            }
+        } else {
+            const CASH_BANK_WATCHLIST_ID = window.CASH_BANK_WATCHLIST_ID || 'cashBank';
+            const def = (nextId === CASH_BANK_WATCHLIST_ID) ? 'name-asc' : (nextId === 'portfolio' ? 'totalDollar-desc' : 'percentageChange-desc');
+            const chosen = availableOptionValues.includes(def) ? def : (availableOptionValues[0] || def);
+            
+            setCurrentSortOrder(chosen);
+            if (sortSelect) {
+                sortSelect.value = chosen;
+            }
+            if (typeof window.updateSortIcon === 'function') {
+                window.updateSortIcon();
+            }
+
+            // Persist fallback so this watchlist remembers the chosen default
+            setWatchlistSortOrder(nextId, chosen);
+            if (typeof saveWatchlistSortOrder === 'function') {
+                saveWatchlistSortOrder(null, null, window.currentUserId, window.currentAppId, nextId, chosen);
+            }
+        }
+    } catch (e) {
+        console.warn('[WatchlistCarousel] Error restoring sort order:', e);
+    }
 
     // Update UI based on selection
     if (nextId === 'portfolio') {
