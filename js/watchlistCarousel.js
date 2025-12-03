@@ -33,7 +33,14 @@ function getOrderedWatchlistIds() {
         .map(list => list.id);
 
     const CASH_BANK_WATCHLIST_ID = window.CASH_BANK_WATCHLIST_ID || 'cashBank';
-    return ['portfolio', 'all_shares_option', ...sortedUserIds, CASH_BANK_WATCHLIST_ID];
+    const ALL_SHARES_ID = window.ALL_SHARES_ID || 'all_shares_option';
+
+    // Exclude 'portfolio', 'all_shares_option', and 'cashBank' from carousel navigation
+    const filteredIds = [
+        ...sortedUserIds
+    ].filter(id => id !== 'portfolio' && id !== ALL_SHARES_ID && id !== CASH_BANK_WATCHLIST_ID);
+
+    return filteredIds;
 }
 
 /**
@@ -42,6 +49,12 @@ function getOrderedWatchlistIds() {
  */
 function navigateWatchlist(direction) {
     const orderedIds = getOrderedWatchlistIds();
+
+    if (orderedIds.length === 0) {
+        console.warn('[WatchlistCarousel] No watchlists available for navigation.');
+        return;
+    }
+
     const currentIds = getCurrentSelectedWatchlistIds();
     const currentId = (currentIds && currentIds.length > 0) ? currentIds[0] : 'portfolio';
 

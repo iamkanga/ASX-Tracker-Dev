@@ -8,7 +8,7 @@ import { formatMoney, formatPercent, formatAdaptivePrice, formatAdaptivePercent,
 import { getAllSharesData, getLivePrices, getUserWatchlists, getUserCashCategories, getCurrentSelectedWatchlistIds, getSharesAtTargetPrice, getCurrentSortOrder, getAllAsxCodes, setAllSharesData, setLivePrices, setUserWatchlists, setCurrentSelectedWatchlistIds, setSharesAtTargetPrice, setCurrentSortOrder, setAllAsxCodes, setWatchlistSortOrder } from './js/state.js';
 import { applyAsxButtonsState, setAsxButtonsExpanded, getAsxButtonsExpanded, toggleCodeButtonsArrow, renderCashCategories as uiRenderCashCategories, calculateTotalCash as uiCalculateTotalCash, updateAddHeaderButton as uiUpdateAddHeaderButton, updateSidebarAddButtonContext as uiUpdateSidebarAddButtonContext, handleAddShareClick as uiHandleAddShareClick, handleAddCashAssetClick as uiHandleAddCashAssetClick } from './js/uiService.js';
 // Import the centralized theme apply function and helpers so script.js delegates theme changes to a single source of truth
-import { initializeTheme, applyLow52AlertTheme, applyTheme as moduleApplyTheme, updateThemeToggleAndSelector as moduleUpdateThemeToggle } from './js/theme.js';
+
 import { init as initWatchlistCarousel } from './js/watchlistCarousel.js';
 
 // Expose state functions to window for rendering.js
@@ -3977,9 +3977,7 @@ try {
     // ...rest of the code...
 
     // Removed legacy currentSortDisplay element (text summary of sort) now that dropdown itself is visible
-    const themeToggleBtn = document.getElementById('themeToggleBtn');
-    const colorThemeSelect = document.getElementById('colorThemeSelect');
-    const revertToDefaultThemeBtn = document.getElementById('revertToDefaultThemeBtn');
+
     const scrollToTopBtn = document.getElementById('scrollToTopBtn');
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     const appSidebar = document.getElementById('appSidebar');
@@ -6414,9 +6412,7 @@ try {
         }
         // addShareHeaderBtn is now contextual, its disabled state is managed by updateAddHeaderButton
         if (logoutBtn) setIconDisabled(logoutBtn, !enable);
-        if (themeToggleBtn) themeToggleBtn.disabled = !enable;
-        if (colorThemeSelect) colorThemeSelect.disabled = !enable;
-        if (revertToDefaultThemeBtn) revertToDefaultThemeBtn.disabled = !enable;
+
         // sortSelect and watchlistSelect disabled state is managed by render functions
         if (refreshLivePricesBtn) refreshLivePricesBtn.disabled = !enable;
 
@@ -9703,27 +9699,56 @@ try {
         logDebug('Calculator: Calculator state reset.');
     }
 
-    async function applyTheme(themeName) {
-        // Delegate theme application to the centralized theme module to ensure a single source of truth.
-        try {
-            return await moduleApplyTheme(themeName);
-        } catch (e) {
-            console.warn('applyTheme delegation to moduleApplyTheme failed, falling back to no-op. Error:', e);
-            return;
+    function applyTheme(mode) {
+        let actualMode = mode;
+        if (mode === 'system-default') {
+            actualMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
+
+        if (actualMode === 'dark') {
+            document.body.classList.add('dark-theme');
+        } else {
+            document.body.classList.remove('dark-theme');
+        }
+
+        localStorage.setItem('theme', mode); // Persist the user's choice
+
+        // Listen for changes in system theme preference
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (localStorage.getItem('theme') === 'system-default') {
+                if (e.matches) {
+                    document.body.classList.add('dark-theme');
+                } else {
+                    document.body.classList.remove('dark-theme');
+                }
+            }
+        });
     }
 
-    function updateThemeToggleAndSelector() {
-        try {
-            moduleUpdateThemeToggle();
-        } catch (e) {
-            console.warn('updateThemeToggleAndSelector: moduleUpdateThemeToggle failed, error:', e);
-            // Fallback: perform minimal local update
-            if (colorThemeSelect) {
-                if (CUSTOM_THEMES.includes(currentActiveTheme)) colorThemeSelect.value = currentActiveTheme;
-                else colorThemeSelect.value = 'none';
-            }
+    function applyTheme(mode) {
+        let actualMode = mode;
+        if (mode === 'system-default') {
+            actualMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
+
+        if (actualMode === 'dark') {
+            document.body.classList.add('dark-theme');
+        } else {
+            document.body.classList.remove('dark-theme');
+        }
+
+        localStorage.setItem('theme', mode); // Persist the user's choice
+
+        // Listen for changes in system theme preference
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (localStorage.getItem('theme') === 'system-default') {
+                if (e.matches) {
+                    document.body.classList.add('dark-theme');
+                } else {
+                    document.body.classList.remove('dark-theme');
+                }
+            }
+        });
     }
 
     // expose for other scripts that use a global accessor
@@ -9892,7 +9917,15 @@ try {
             if (userProfileSnap.exists()) {
                 const settingsData = userProfileSnap.data();
                 savedSortOrder = settingsData.lastSortOrder;
-                savedTheme = settingsData.lastTheme;
+                const fetchedTheme = settingsData.lastTheme;
+
+                // Handle legacy or invalid theme strings
+                const validThemes = ['light', 'dark', 'system-default'];
+                if (validThemes.includes(fetchedTheme)) {
+                    savedTheme = fetchedTheme;
+                } else {
+                    savedTheme = 'system-default'; // Fallback for legacy or invalid themes
+                }
                 applyLoadedGlobalAlertSettings(settingsData);
                 const loadedSelectedWatchlistIds = settingsData.lastSelectedWatchlistIds;
                 // Manual EOD preference removed; behavior is now automatic
@@ -9912,9 +9945,11 @@ try {
             }
 
             // If a pending theme save exists locally (from earlier when Firestore/Auth wasn't available), flush it now.
+            // Ensure only valid theme strings ('light', 'dark', 'system-default') are flushed.
             try {
                 const pending = (() => { try { return localStorage.getItem('pendingThemeSave'); } catch (_) { return null; } })();
-                if (pending && currentUserId && firestore && db) {
+                const validThemes = ['light', 'dark', 'system-default'];
+                if (pending && validThemes.includes(pending) && currentUserId && firestore && db) {
                     try {
                         const profRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
                         firestore.setDoc(profRef, { lastTheme: pending }, { merge: true }).then(() => {
@@ -9924,6 +9959,8 @@ try {
                     } catch (err) { console.warn('[Theme Flush] Error constructing Firestore doc ref:', err); }
                 }
             } catch (_) { }
+            // Expose savedTheme globally so the main init logic can use it
+            window.savedThemePreference = savedTheme;
 
             // Prefer local device's last selected view if available and valid
             try {
@@ -10010,27 +10047,8 @@ try {
                 setTimeout(() => updateSortPickerButtonText(), 100);
             } catch (e) { }
 
-            // Apply saved theme or default. Backfill user profile if missing.
-            if (savedTheme) {
-                applyTheme(savedTheme);
-            } else {
-                const localStorageSelectedTheme = (() => { try { return localStorage.getItem('selectedTheme'); } catch (_) { return null; } })();
-                const localStorageTheme = (() => { try { return localStorage.getItem('theme'); } catch (_) { return null; } })();
-                const candidateLocal = localStorageSelectedTheme || localStorageTheme;
-                if (candidateLocal) {
-                    // Apply local theme and backfill Firestore async (do not block UI)
-                    applyTheme(candidateLocal);
-                    try {
-                        if (!savedTheme && currentUserId && firestore && db) {
-                            const profRef = firestore.doc(db, 'artifacts/' + currentAppId + '/users/' + currentUserId + '/profile/settings');
-                            firestore.setDoc(profRef, { lastTheme: candidateLocal }, { merge: true }).catch(() => { });
-                        }
-                    } catch (_) { }
-                } else {
-                    applyTheme('system-default');
-                }
-            }
-            updateThemeToggleAndSelector();
+            // Apply the saved theme preference. The logic to determine 'savedThemePreference' now handles legacy values.
+            applyTheme(window.savedThemePreference);
 
             // Removed: manual EOD preference handling
 
@@ -17858,7 +17876,7 @@ try {
         initializeAppEventListeners(() => { });
         // Initialize theme management with a delay to ensure DOM is ready
         setTimeout(() => {
-            initializeTheme();
+            applyTheme(localStorage.getItem('theme') || 'system-default');
         }, 100);
         if (!window.__initializeAppCalled) { window.__initializeAppCalled = true; initializeApp(); }
     });
