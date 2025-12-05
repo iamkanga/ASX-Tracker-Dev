@@ -564,7 +564,11 @@
             try { if (window.scrollMainToTop) window.scrollMainToTop(); else scrollMainToTop(); } catch (_) { }
             try { enforceTargetHitStyling(); } catch (e) { console.warn('Target Alert: enforceTargetHitStyling failed post render', e); }
         } else {
-            if (cashAssetsSectionLocal) cashAssetsSectionLocal.classList.remove('app-hidden');
+            if (stockWatchlistSectionLocal) stockWatchlistSectionLocal.style.display = 'none';
+            if (cashAssetsSectionLocal) {
+                cashAssetsSectionLocal.classList.remove('app-hidden');
+                cashAssetsSectionLocal.style.display = 'block';
+            }
             const existingPortfolio2 = document.getElementById('portfolioSection'); if (existingPortfolio2) existingPortfolio2.style.display = 'none';
             if (typeof window.renderCashCategories === 'function') window.renderCashCategories();
             if (sortSelectLocal) sortSelectLocal.classList.remove('app-hidden');
