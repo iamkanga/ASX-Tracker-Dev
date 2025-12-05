@@ -419,6 +419,11 @@
             const existingPortfolio = document.getElementById('portfolioSection'); if (existingPortfolio) existingPortfolio.style.display = 'none';
             if (stockWatchlistSectionLocal) stockWatchlistSectionLocal.classList.remove('app-hidden');
             if (stockWatchlistSectionLocal && typeof stockWatchlistSectionLocal.style !== 'undefined') stockWatchlistSectionLocal.style.display = '';
+            // Ensure compact view toggle is visible in stock views (if it exists)
+            if (toggleCompactViewBtnLocal) {
+                toggleCompactViewBtnLocal.classList.remove('app-hidden');
+                toggleCompactViewBtnLocal.style.display = '';
+            }
             const isMobile = window.innerWidth <= 768;
             let sharesToRender = [];
             // Safe helper fallbacks in case script.js helpers haven't been loaded yet
@@ -568,17 +573,29 @@
             if (cashAssetsSectionLocal) {
                 cashAssetsSectionLocal.classList.remove('app-hidden');
                 cashAssetsSectionLocal.style.display = 'block';
+                // CRITICAL FIX: Ensure inner container is visible and grid-layout, overriding potential compact-view global hides
+                if (cashCategoriesContainerLocal) {
+                    cashCategoriesContainerLocal.classList.remove('app-hidden');
+                    cashCategoriesContainerLocal.style.display = 'grid';
+                }
             }
             const existingPortfolio2 = document.getElementById('portfolioSection'); if (existingPortfolio2) existingPortfolio2.style.display = 'none';
             if (typeof window.renderCashCategories === 'function') window.renderCashCategories();
             if (sortSelectLocal) sortSelectLocal.classList.remove('app-hidden');
             if (refreshLivePricesBtnLocal) refreshLivePricesBtnLocal.classList.add('app-hidden');
-            if (toggleCompactViewBtnLocal) toggleCompactViewBtnLocal.classList.add('app-hidden');
+            if (refreshLivePricesBtnLocal) refreshLivePricesBtnLocal.classList.add('app-hidden');
+            // Explicitly hide the compact view toggle in Cash view
+            if (toggleCompactViewBtnLocal) {
+                toggleCompactViewBtnLocal.classList.add('app-hidden');
+                toggleCompactViewBtnLocal.style.setProperty('display', 'none', 'important');
+            }
             if (asxCodeButtonsContainerLocal) asxCodeButtonsContainerLocal.classList.add('app-hidden');
             if (targetHitIconBtnLocal) targetHitIconBtnLocal.style.display = 'none';
             if (exportWatchlistBtnLocal) exportWatchlistBtnLocal.classList.add('app-hidden');
             if (typeof window.stopLivePriceUpdates === 'function') window.stopLivePriceUpdates();
             if (typeof window.updateAddHeaderButton === 'function') window.updateAddHeaderButton();
+            if (typeof window.updateAddHeaderButton === 'function') window.updateAddHeaderButton();
+            // Ensure stock containers are strictly hidden to prevent overlap/ghosting
             if (tableContainer) tableContainer.style.display = 'none';
             if (mobileShareCardsContainer) mobileShareCardsContainer.style.display = 'none';
         }

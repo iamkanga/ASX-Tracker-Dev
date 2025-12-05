@@ -8651,6 +8651,14 @@ try {
                     try { debugMoversConsistency({ includeLists: true }); } catch (_) { }
                 }
 
+                // FIX: Ensure the correct view logic (Cash vs Stock vs Portfolio) is triggered
+                // The carousel does this in navigateWatchlist(); the picker was missing it.
+                if (canonicalId === 'portfolio') {
+                    if (typeof window.showPortfolioView === 'function') window.showPortfolioView();
+                } else {
+                    if (typeof window.showWatchlistView === 'function') window.showWatchlistView();
+                }
+
                 try { updateAddHeaderButton(); updateSidebarAddButtonContext(); } catch (e) { }
                 toggleCodeButtonsArrow();
                 try { hideModal(watchlistPickerModal); } catch (_) { watchlistPickerModal.classList.add('app-hidden'); watchlistPickerModal.style.display = 'none'; }
@@ -12540,6 +12548,13 @@ try {
         viewModeConsistencyChecker = setInterval(() => {
             if (!viewModeInitialized) return;
 
+            // FIX: If in Cash view, abort consistency checks to prevent overriding Cash display logic
+            try {
+                const selIds = getCurrentSelectedWatchlistIds();
+                const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
+                if (Array.isArray(selIds) && selIds.includes(CASH_ID)) return;
+            } catch (_) { }
+
             const container = getMobileShareCardsContainer();
             if (container) {
                 const hasCompactClass = container.classList.contains('compact-view');
@@ -12576,6 +12591,15 @@ try {
         const maxAttempts = 50; // 5 seconds max
 
         const checkAndApply = async () => {
+            // FIX: If in Cash view, abort watcher to prevent overriding Cash display logic
+            try {
+                const selIds = getCurrentSelectedWatchlistIds();
+                const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
+                if (Array.isArray(selIds) && selIds.includes(CASH_ID)) {
+                    viewModeWatcherActive = false;
+                    return;
+                }
+            } catch (_) { }
             attempts++;
 
             try {
@@ -12628,6 +12652,13 @@ try {
         logDebug('View Mode: Starting global enforcer');
 
         globalViewModeWatcher = setInterval(() => {
+            // FIX: If in Cash view, abort global enforcement to prevent overriding Cash display logic
+            try {
+                const selIds = getCurrentSelectedWatchlistIds();
+                const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
+                if (Array.isArray(selIds) && selIds.includes(CASH_ID)) return;
+            } catch (_) { }
+
             try {
                 // Check if DOM matches the expected state
                 const container = getMobileShareCardsContainer();
@@ -13959,6 +13990,18 @@ try {
             const isOpen = appSidebar && appSidebar.classList.contains('open');
             if (!wasOpen && isOpen) { try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch (_) { } }
             try { updateSidebarViewToggleButtons(); } catch (_) { }
+            // FIX: Ensure toggleCompactViewBtn is hidden in Cash view (overrides updateSidebarViewToggleButtons)
+            try {
+                const selIds = getCurrentSelectedWatchlistIds();
+                const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
+                if (Array.isArray(selIds) && selIds.includes(CASH_ID)) {
+                    const btn = document.getElementById('toggleCompactViewBtn');
+                    if (btn) {
+                        btn.classList.add('app-hidden');
+                        btn.style.setProperty('display', 'none', 'important');
+                    }
+                }
+            } catch (_) { }
             return result;
         }
 
@@ -13975,6 +14018,18 @@ try {
                 if (isDesktop) document.body.classList.add('sidebar-active');
                 if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'true');
                 try { updateSidebarViewToggleButtons(); } catch (_) { }
+                // FIX: Ensure toggleCompactViewBtn is hidden in Cash view (overrides updateSidebarViewToggleButtons)
+                try {
+                    const selIds = getCurrentSelectedWatchlistIds();
+                    const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
+                    if (Array.isArray(selIds) && selIds.includes(CASH_ID)) {
+                        const btn = document.getElementById('toggleCompactViewBtn');
+                        if (btn) {
+                            btn.classList.add('app-hidden');
+                            btn.style.setProperty('display', 'none', 'important');
+                        }
+                    }
+                } catch (_) { }
             } else {
                 if (appSidebar) appSidebar.classList.remove('open');
                 if (sidebarOverlay) sidebarOverlay.classList.remove('open');

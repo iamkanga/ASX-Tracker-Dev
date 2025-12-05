@@ -78,7 +78,7 @@ function navigateWatchlist(direction) {
 
     // Update State
     setCurrentSelectedWatchlistIds([nextId]);
-    
+
     // Restore per-watchlist sort order
     try {
         if (typeof window.renderSortSelect === 'function') {
@@ -105,7 +105,7 @@ function navigateWatchlist(direction) {
             const CASH_BANK_WATCHLIST_ID = window.CASH_BANK_WATCHLIST_ID || 'cashBank';
             const def = (nextId === CASH_BANK_WATCHLIST_ID) ? 'name-asc' : (nextId === 'portfolio' ? 'totalDollar-desc' : 'percentageChange-desc');
             const chosen = availableOptionValues.includes(def) ? def : (availableOptionValues[0] || def);
-            
+
             setCurrentSortOrder(chosen);
             if (sortSelect) {
                 sortSelect.value = chosen;
