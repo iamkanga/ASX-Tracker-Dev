@@ -1125,7 +1125,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let portfolioSection = document.getElementById('portfolioSection');
         if (portfolioSection) portfolioSection.style.display = 'none';
-        
+
         const cashAssetsSection = document.getElementById('cashAssetsSection');
         const stockWatchlistSection = document.getElementById('stockWatchlistSection');
 
@@ -1152,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const mobileContainer = getMobileShareCardsContainer();
             if (mobileContainer) mobileContainer.style.display = '';
         }
-        
+
         try { updateSortPickerButtonText(); } catch (e) { }
     };
     // Render portfolio list (uses live prices when available)
@@ -3458,22 +3458,35 @@ try {
             if (!code || !GOOGLE_APPS_SCRIPT_URL || !addShareLivePriceDisplay) return;
             const reqId = ++_latestAddFormSnapshotReq;
             const upper = String(code).toUpperCase();
+            console.log('[Snapshot Debug] Starting fetch for:', upper);
             addShareLivePriceDisplay.dataset.loading = 'true';
             // Lightweight loading indicator (optional)
             addShareLivePriceDisplay.style.display = 'block';
             addShareLivePriceDisplay.innerHTML = '<div class="mini-loading">Loading...</div>';
-            const resp = await fetch(`${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`);
+            const fetchUrl = `${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`;
+            console.log('[Snapshot Debug] Fetching URL:', fetchUrl);
+            const resp = await fetch(fetchUrl);
+            console.log('[Snapshot Debug] Response status:', resp.status);
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const data = await resp.json();
-            if (reqId !== _latestAddFormSnapshotReq) return; // stale
-            if (!Array.isArray(data) || data.length === 0) { addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">No price data.</p>'; return; }
+            console.log('[Snapshot Debug] Data received:', data);
+
+            if (reqId !== _latestAddFormSnapshotReq) {
+                console.log('[Snapshot Debug] Request stale, ignoring.');
+                return; // stale
+            }
+            if (!Array.isArray(data) || data.length === 0) {
+                console.warn('[Snapshot Debug] No data array or empty.');
+                addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">No price data.</p>';
+                return;
+            }
             let row = data.find(r => {
                 const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
                 return c && String(c).toUpperCase().trim() === upper;
             }) || data[0];
-            if (row && row !== data[0] && DEBUG_MODE) logDebug('Snapshot: matched exact row for', upper);
-            if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode || row.Code).toUpperCase().trim() !== upper && DEBUG_MODE) {
-                logDebug('Snapshot: exact match not found, using first row', { requested: upper, first: row.ASXCode || row.Code });
+            if (row && row !== data[0]) console.log('[Snapshot Debug] matched exact row for', upper);
+            if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode || row.Code).toUpperCase().trim() !== upper) {
+                console.log('[Snapshot Debug] exact match not found, using first row', { requested: upper, first: row.ASXCode || row.Code });
             }
             const live = parseFloat(row.LivePrice ?? row['Live Price'] ?? row.live ?? row.price ?? row.Last ?? row.LastPrice ?? row['Last Price'] ?? row.LastTrade ?? row['Last Trade']);
             const prev = parseFloat(row.PrevClose ?? row['Prev Close'] ?? row.prevClose ?? row.prev ?? row['Previous Close'] ?? row.Close ?? row['Last Close']);
@@ -3562,6 +3575,28 @@ try {
             }
         });
     });
+
+    // FIX: Add live snapshot update listener for share name input (with debounce)
+    let _shareNameInputDebounceTimer;
+    if (shareNameInput) {
+        shareNameInput.addEventListener('input', () => {
+            const code = shareNameInput.value.trim();
+            // Simple debounce
+            if (_shareNameInputDebounceTimer) clearTimeout(_shareNameInputDebounceTimer);
+            _shareNameInputDebounceTimer = setTimeout(() => {
+                if (code) {
+                    // Update the live snapshot only if we have a code
+                    if (typeof updateAddFormLiveSnapshot === 'function') {
+                        updateAddFormLiveSnapshot(code);
+                    }
+                } else if (addShareLivePriceDisplay) {
+                    // Clear display if input is empty
+                    addShareLivePriceDisplay.style.display = 'none';
+                    addShareLivePriceDisplay.innerHTML = '';
+                }
+            }, 500); // 500ms debounce
+        });
+    }
     // --- ASX Code Toggle Button Functionality (moved to uiService) ---
 
     console.log('[ELEMENT CHECK] toggleAsxButtonsBtn exists:', !!document.getElementById('toggleAsxButtonsBtn'));
@@ -4087,7 +4122,71 @@ try {
         if (shareNameInput.dataset.autocompleteBound && !force) return;
         shareNameInput.dataset.autocompleteBound = '1';
         shareNameAutocompleteBound = true;
-        // Listeners are already defined further below (conditional block). This function can serve as a future hook.
+
+        // Helper to render suggestions inside the suggestions container
+        function renderSuggestions(matches) {
+            shareNameSuggestions.innerHTML = '';
+            if (matches.length > 0) {
+                matches.forEach(match => {
+                    const item = document.createElement('div');
+                    item.className = 'suggestion-item';
+                    item.textContent = `${match.code} - ${match.name}`;
+                    // Apply inline style for cursor pointer just in case CSS is missing
+                    item.style.cursor = 'pointer';
+                    item.style.padding = '8px';
+
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation(); // prevent document click from closing immediately
+                        shareNameInput.value = match.code;
+                        shareNameSuggestions.innerHTML = '';
+                        shareNameSuggestions.style.display = 'none';
+                        // Trigger live snapshot update
+                        if (typeof updateAddFormLiveSnapshot === 'function') {
+                            updateAddFormLiveSnapshot(match.code);
+                        }
+                    });
+                    shareNameSuggestions.appendChild(item);
+                });
+                shareNameSuggestions.style.display = 'block';
+            } else {
+                shareNameSuggestions.style.display = 'none';
+            }
+        }
+
+        // Input listener for filtering
+        shareNameInput.addEventListener('input', (e) => {
+            const val = e.target.value.trim().toUpperCase();
+            if (val.length < 1) {
+                shareNameSuggestions.style.display = 'none';
+                shareNameSuggestions.innerHTML = '';
+                return;
+            }
+
+            // Filter from allAsxCodes (global array available via state.js export or window global)
+            // Note: getAllAsxCodes() is exposed on window if imported from state.js
+            let codes = [];
+            if (typeof allAsxCodes !== 'undefined' && Array.isArray(allAsxCodes)) {
+                codes = allAsxCodes;
+            } else if (typeof getAllAsxCodes === 'function') {
+                codes = getAllAsxCodes();
+            } else if (window.allAsxCodes && Array.isArray(window.allAsxCodes)) {
+                codes = window.allAsxCodes;
+            }
+
+            if (codes && codes.length) {
+                const matches = codes.filter(item => {
+                    return item.code.startsWith(val) || item.name.toUpperCase().includes(val);
+                }).slice(0, 10); // limit to 10
+                renderSuggestions(matches);
+            }
+        });
+
+        // Close suggestions on click outside
+        document.addEventListener('click', (e) => {
+            if (shareNameSuggestions && !shareNameSuggestions.contains(e.target) && e.target !== shareNameInput) {
+                shareNameSuggestions.style.display = 'none';
+            }
+        });
     }
     let currentSearchShareData = null; // Stores data of the currently displayed stock in search modal
     const splashKangarooIcon = document.getElementById('splashKangarooIcon');
