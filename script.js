@@ -1990,6 +1990,7 @@ let currentAppId;
 let firestore;
 let authFunctions;
 let selectedShareDocId = null;
+let originalShareData = null;
 
 // Keep window.selectedShareDocId in sync for compatibility with other modules
 Object.defineProperty(window, 'selectedShareDocId', {
@@ -15446,6 +15447,22 @@ try {
 
         // Add Share Header Button (from header) - now contextual, handled by updateAddHeaderButton
         // Its click listener is set dynamically in updateAddHeaderButton()
+
+        function getCurrentShareFormWatchlistIds() {
+            const shareWatchlistEnhanced = document.getElementById('shareWatchlistEnhanced');
+            const shareWatchlistSelect = document.getElementById('shareWatchlistSelect');
+            try {
+                if (shareWatchlistEnhanced) {
+                    const enhancedVals = Array.from(shareWatchlistEnhanced.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value).filter(Boolean);
+                    if (enhancedVals.length) return enhancedVals;
+                }
+            } catch (_) { }
+            const legacyEls = document.querySelectorAll('#shareWatchlistCheckboxes input.watchlist-checkbox:checked');
+            const legacyVals = Array.from(legacyEls).map(x => x.value).filter(Boolean);
+            if (legacyVals.length) return legacyVals;
+            const single = shareWatchlistSelect ? (shareWatchlistSelect.value || null) : null;
+            return single ? [single] : null;
+        }
 
         // Event listener for shareNameInput to toggle saveShareBtn
         if (shareNameInput && saveShareBtn) {

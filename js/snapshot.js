@@ -45,6 +45,16 @@ function injectSnapshotStyles() {
             border-left-color: var(--negative, #FF3131);
         }
 
+        body.dark-theme .snapshot-card {
+            background: linear-gradient(145deg, #282828, #181818);
+        }
+        body.dark-theme .snapshot-card.gain {
+            background: linear-gradient(145deg, hsl(120, 100%, 8%), hsl(120, 100%, 4%));
+        }
+        body.dark-theme .snapshot-card.loss {
+            background: linear-gradient(145deg, hsl(353, 70%, 10%), hsl(353, 70%, 6%));
+        }
+
         .snapshot-code {
             font-size: 0.95rem;
             font-weight: 700;
