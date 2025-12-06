@@ -3454,40 +3454,75 @@ try {
     try { window.refreshActiveModalLayout = refreshActiveModalLayout; } catch (_) { }
 
     async function updateAddFormLiveSnapshot(code) {
-        try {
-            if (!code || !GOOGLE_APPS_SCRIPT_URL || !addShareLivePriceDisplay) return;
-            const reqId = ++_latestAddFormSnapshotReq;
-            const upper = String(code).toUpperCase();
-            console.log('[Snapshot Debug] Starting fetch for:', upper);
-            addShareLivePriceDisplay.dataset.loading = 'true';
-            // Lightweight loading indicator (optional)
-            addShareLivePriceDisplay.style.display = 'block';
-            addShareLivePriceDisplay.innerHTML = '<div class="mini-loading">Loading...</div>';
-            const fetchUrl = `${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`;
-            console.log('[Snapshot Debug] Fetching URL:', fetchUrl);
-            const resp = await fetch(fetchUrl);
-            console.log('[Snapshot Debug] Response status:', resp.status);
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            const data = await resp.json();
-            console.log('[Snapshot Debug] Data received:', data);
+        // [DEBUG] Explicitly fetching elements to avoid stale global references
+        const displayEl = document.getElementById('addShareLivePriceDisplay');
+        const shareNameInp = document.getElementById('shareName');
+        const priceInp = document.getElementById('currentPrice');
 
-            if (reqId !== _latestAddFormSnapshotReq) {
-                console.log('[Snapshot Debug] Request stale, ignoring.');
-                return; // stale
+        const codeValid = code && typeof code === 'string';
+        const len = codeValid ? code.trim().length : 0;
+
+        console.log('[Snapshot Debug] updateAddFormLiveSnapshot called', {
+            code,
+            valid: codeValid,
+            len,
+            hasElement: !!displayEl,
+            hasUrl: !!GOOGLE_APPS_SCRIPT_URL
+        });
+
+        // Anti-spam + Element check
+        if (!codeValid || !GOOGLE_APPS_SCRIPT_URL || !displayEl || len < 3) {
+            console.log('[Snapshot Debug] Aborting early:', {
+                noCode: !codeValid,
+                noUrl: !GOOGLE_APPS_SCRIPT_URL,
+                noEl: !displayEl,
+                short: len < 3
+            });
+            // If code is short but element exists, hide it (user backspaced?)
+            if (displayEl && len < 3) {
+                displayEl.style.display = 'none';
+                displayEl.innerHTML = '';
             }
-            if (!Array.isArray(data) || data.length === 0) {
-                console.warn('[Snapshot Debug] No data array or empty.');
-                addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">No price data.</p>';
+            return;
+        }
+
+        try {
+            const reqId = ++_latestAddFormSnapshotReq;
+            const upper = String(code).toUpperCase().trim();
+
+            console.log('[Snapshot Debug] Starting fetch for:', upper);
+            displayEl.dataset.loading = 'true';
+            displayEl.style.display = 'block';
+            displayEl.innerHTML = '<span class="loading-spinner-small"></span> Fetching...';
+
+            const fetchUrl = `${GOOGLE_APPS_SCRIPT_URL}?stockCode=${encodeURIComponent(upper)}&_ts=${Date.now()}`;
+            const resp = await fetch(fetchUrl);
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+            const text = await resp.text();
+            let data;
+            try { data = JSON.parse(text); } catch (e) { throw new Error('Invalid JSON'); }
+
+            // Race check
+            if (reqId !== _latestAddFormSnapshotReq) {
+                console.log('[Snapshot Debug] Stale request ignored');
                 return;
             }
+
+            if (!Array.isArray(data) || data.length === 0) {
+                console.warn('[Snapshot Debug] No data received');
+                displayEl.innerHTML = '<p class="ghosted-text">No price data.</p>';
+                window.__addFormSnapshot = null;
+                return;
+            }
+
             let row = data.find(r => {
                 const c = r.ASXCode || r.ASX_Code || r['ASX Code'] || r.Code || r.code;
                 return c && String(c).toUpperCase().trim() === upper;
             }) || data[0];
+
             if (row && row !== data[0]) console.log('[Snapshot Debug] matched exact row for', upper);
-            if (row === data[0] && (row.ASXCode || row.Code) && String(row.ASXCode || row.Code).toUpperCase().trim() !== upper) {
-                console.log('[Snapshot Debug] exact match not found, using first row', { requested: upper, first: row.ASXCode || row.Code });
-            }
+
             const live = parseFloat(row.LivePrice ?? row['Live Price'] ?? row.live ?? row.price ?? row.Last ?? row.LastPrice ?? row['Last Price'] ?? row.LastTrade ?? row['Last Trade']);
             const prev = parseFloat(row.PrevClose ?? row['Prev Close'] ?? row.prevClose ?? row.prev ?? row['Previous Close'] ?? row.Close ?? row['Last Close']);
             const pe = parseFloat(row.PE ?? row['PE Ratio'] ?? row.pe);
@@ -3496,7 +3531,8 @@ try {
             const change = (!isNaN(live) && !isNaN(prev)) ? (live - prev) : null;
             const pct = (!isNaN(live) && !isNaN(prev) && prev !== 0) ? ((live - prev) / prev) * 100 : null;
             const priceClass = change === null ? '' : (change > 0 ? 'positive' : (change < 0 ? 'negative' : 'neutral'));
-            // Stash snapshot so saveShareData can use prevClose/live immediately for sorting
+
+            // Stash snapshot
             try {
                 window.__addFormSnapshot = {
                     code: upper,
@@ -3507,16 +3543,19 @@ try {
                     ts: Date.now()
                 };
             } catch (_) { }
+
             // Guard against user switching code mid-flight
-            if (shareNameInput && shareNameInput.value.toUpperCase().trim() !== upper) {
-                if (DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: shareNameInput.value });
+            if (shareNameInp && shareNameInp.value.toUpperCase().trim() !== upper) {
+                if (DEBUG_MODE) logDebug('Snapshot: Discarding stale update; input changed.', { requested: upper, current: shareNameInp.value });
                 return;
             }
-            // Prefill reference price field with latest live price (always override for accuracy)
-            if (!isNaN(live) && currentPriceInput) {
-                currentPriceInput.value = Number(live).toFixed(2);
+
+            // Prefill reference price
+            if (!isNaN(live) && priceInp) {
+                priceInp.value = Number(live).toFixed(2);
             }
-            addShareLivePriceDisplay.innerHTML = `
+
+            displayEl.innerHTML = `
             <div class="fifty-two-week-row">
                 <span class="fifty-two-week-value low">Low: ${!isNaN(lo) ? formatMoney(lo) : 'N/A'}</span>
                 <span class="fifty-two-week-value high">High: ${!isNaN(hi) ? formatMoney(hi) : 'N/A'}</span>
@@ -3528,17 +3567,16 @@ try {
             <div class="pe-ratio-row">
                 <span class="pe-ratio-value">P/E: ${!isNaN(pe) ? formatAdaptivePrice(pe) : 'N/A'}</span>
             </div>`;
-            addShareLivePriceDisplay.style.display = 'block';
-            addShareLivePriceDisplay.removeAttribute('data-loading');
-            // Ensure modal scroll area recalculates after content injection (esp. with keyboard visible)
+            displayEl.style.display = 'block';
+            displayEl.removeAttribute('data-loading');
             refreshActiveModalLayout('after live snapshot render');
+
         } catch (e) {
-            if (DEBUG_MODE) console.warn('Snapshot: failed for', code, e);
-            if (addShareLivePriceDisplay) {
-                addShareLivePriceDisplay.innerHTML = '<p class="ghosted-text">Price unavailable.</p>';
-                addShareLivePriceDisplay.style.display = 'block';
-                addShareLivePriceDisplay.removeAttribute('data-loading');
-                // Also refresh layout after error-state content update
+            console.warn('[Snapshot Debug] Error:', e);
+            if (displayEl) {
+                displayEl.innerHTML = '<p class="ghosted-text">Price unavailable.</p>';
+                displayEl.style.display = 'block';
+                displayEl.removeAttribute('data-loading');
                 refreshActiveModalLayout('after live snapshot error render');
             }
         }
@@ -3577,25 +3615,41 @@ try {
     });
 
     // FIX: Add live snapshot update listener for share name input (with debounce)
+    // FIX: Add live snapshot update listener for share name input (with debounce)
     let _shareNameInputDebounceTimer;
-    if (shareNameInput) {
-        shareNameInput.addEventListener('input', () => {
-            const code = shareNameInput.value.trim();
-            // Simple debounce
-            if (_shareNameInputDebounceTimer) clearTimeout(_shareNameInputDebounceTimer);
-            _shareNameInputDebounceTimer = setTimeout(() => {
-                if (code) {
-                    // Update the live snapshot only if we have a code
-                    if (typeof updateAddFormLiveSnapshot === 'function') {
-                        updateAddFormLiveSnapshot(code);
-                    }
-                } else if (addShareLivePriceDisplay) {
-                    // Clear display if input is empty
-                    addShareLivePriceDisplay.style.display = 'none';
-                    addShareLivePriceDisplay.innerHTML = '';
+    const handleShareInputUpdate = () => {
+        const raw = shareNameInput.value.trim();
+        // Intelligent parsing: handle "CODE - Company Name" format from autocomplete
+        // Logic: Split by hyphen or space, take the first part, ensure it's clean.
+        // Valid ASX codes are typically 3-6 alphanumeric characters without spaces.
+        let code = raw;
+        if (code.includes('-')) {
+            code = code.split('-')[0].trim();
+        }
+        // Further safety: if it still has spaces, take the first word (e.g. "BHP Group" -> "BHP")
+        if (code.includes(' ')) {
+            code = code.split(' ')[0].trim();
+        }
+
+        // Simple debounce
+        if (_shareNameInputDebounceTimer) clearTimeout(_shareNameInputDebounceTimer);
+        _shareNameInputDebounceTimer = setTimeout(() => {
+            if (code && code.length > 0) {
+                // Update the live snapshot only if we have a code
+                if (typeof updateAddFormLiveSnapshot === 'function') {
+                    updateAddFormLiveSnapshot(code);
                 }
-            }, 500); // 500ms debounce
-        });
+            } else if (addShareLivePriceDisplay) {
+                // Clear display if input is empty
+                addShareLivePriceDisplay.style.display = 'none';
+                addShareLivePriceDisplay.innerHTML = '';
+            }
+        }, 500); // 500ms debounce
+    };
+
+    if (shareNameInput) {
+        shareNameInput.addEventListener('input', handleShareInputUpdate);
+        shareNameInput.addEventListener('change', handleShareInputUpdate); // Catch autocomplete/dropdown selections
     }
     // --- ASX Code Toggle Button Functionality (moved to uiService) ---
 
