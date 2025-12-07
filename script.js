@@ -2865,7 +2865,7 @@ try {
 
     // CENTRALIZED VIEW MODE MANAGER - Single point of control
     function setMobileViewMode(newMode, source = 'unknown') {
-        if (newMode !== 'compact' && newMode !== 'default') {
+        if (newMode !== 'compact' && newMode !== 'default' && newMode !== 'snapshot') {
             console.warn('View Mode: Invalid mode requested:', newMode, 'from:', source);
             return false;
         }
@@ -2889,9 +2889,23 @@ try {
                 if (newMode === 'compact') {
                     container.classList.add('compact-view');
                 }
-            } else {
-                console.warn('❌ View Mode: mobileShareCardsContainer not available for immediate application');
             }
+
+            // Handle Snapshot Visibility
+            if (typeof window.toggleSnapshotView === 'function') {
+                if (newMode === 'snapshot') {
+                    window.toggleSnapshotView(true);
+                } else {
+                    // Only hide snapshot if we are explicitly switching AWAY from it
+                    // But be careful not to create loops. toggleSnapshotView check display style internally.
+                    window.toggleSnapshotView(false);
+                }
+            }
+
+            if (typeof updateViewToggleUI === 'function') {
+                setTimeout(updateViewToggleUI, 0);
+            }
+
         } catch (error) {
             console.error('❌ View Mode: Failed to apply mode to DOM:', error);
         }
@@ -2994,7 +3008,7 @@ try {
         for (const source of syncSources) {
             try {
                 const mode = source.getter();
-                if (mode === 'compact' || mode === 'default') {
+                if (mode === 'compact' || mode === 'default' || mode === 'snapshot') {
                     recoveredMode = mode;
                     break;
                 }
@@ -4112,7 +4126,10 @@ try {
     const targetHitModalTitle = document.getElementById('targetHitModalTitle');
     // Removed: minimizeTargetHitModalBtn, dismissAllTargetHitsBtn (now explicit buttons at bottom)
     const targetHitSharesList = document.getElementById('targetHitSharesList');
-    const toggleCompactViewBtn = document.getElementById('toggleCompactViewBtn');
+    const viewToggleBtn = document.getElementById('viewToggleBtn');
+    // Deprecated: Consolidated into viewToggleBtn
+    const toggleCompactViewBtn = null;
+    const snapshotViewBtn = null;
     // Initial load suppression flags (prevent auto reopening of Target Hit modal after hard reload)
     window.__initialLoadPhase = true; // cleared after first interaction or timeout
     let __userInitiatedTargetModal = false;
@@ -8856,6 +8873,20 @@ try {
             return;
         }
 
+        // Snapshot Mode Handling
+        if (currentMobileViewMode === 'snapshot') {
+            logDebug('Render: In Snapshot Mode. Delegating to renderSnapshotView.');
+            if (typeof window.renderSnapshotView === 'function') {
+                window.renderSnapshotView();
+            }
+            if (typeof window.toggleSnapshotView === 'function') {
+                window.toggleSnapshotView(true); // Ensure container is visible
+            }
+            // Ensure UI is updated
+            if (typeof updateViewToggleUI === 'function') setTimeout(updateViewToggleUI, 0);
+            return; // EXIT EARLY to prevent unhiding stock/portfolio sections
+        }
+
         // Ensure view mode is correct before rendering - use centralized manager
         try {
             // If view mode is not initialized or seems wrong, try recovery
@@ -8968,6 +8999,10 @@ try {
             // Render the portfolio list
             if (typeof renderPortfolioList === 'function') {
                 renderPortfolioList();
+            } else if (window.Rendering && typeof window.Rendering.renderPortfolioList === 'function') {
+                window.Rendering.renderPortfolioList();
+            } else {
+                console.warn('renderPortfolioList not found');
             }
             // Update sort options and alerts for portfolio view as well
             try { renderSortSelect(); } catch (e) { }
@@ -14054,13 +14089,13 @@ try {
             const result = window.UI.toggleAppSidebar(forceState);
             const isOpen = appSidebar && appSidebar.classList.contains('open');
             if (!wasOpen && isOpen) { try { if (typeof pushAppState === 'function') pushAppState({ sidebarOpen: true }, '', '#sidebar'); } catch (_) { } }
-            try { updateSidebarViewToggleButtons(); } catch (_) { }
-            // FIX: Ensure toggleCompactViewBtn is hidden in Cash view (overrides updateSidebarViewToggleButtons)
+            try { updateViewToggleUI(); } catch (_) { }
+            // FIX: Ensure viewToggleBtn is hidden in Cash view (overrides updateViewToggleUI)
             try {
                 const selIds = getCurrentSelectedWatchlistIds();
                 const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
                 if (Array.isArray(selIds) && selIds.includes(CASH_ID)) {
-                    const btn = document.getElementById('toggleCompactViewBtn');
+                    const btn = document.getElementById('viewToggleBtn');
                     if (btn) {
                         btn.classList.add('app-hidden');
                         btn.style.setProperty('display', 'none', 'important');
@@ -14082,13 +14117,13 @@ try {
                 if (sidebarOverlay) sidebarOverlay.classList.add('open');
                 if (isDesktop) document.body.classList.add('sidebar-active');
                 if (hamburgerBtn) hamburgerBtn.setAttribute('aria-expanded', 'true');
-                try { updateSidebarViewToggleButtons(); } catch (_) { }
-                // FIX: Ensure toggleCompactViewBtn is hidden in Cash view (overrides updateSidebarViewToggleButtons)
+                try { updateViewToggleUI(); } catch (_) { }
+                // FIX: Ensure viewToggleBtn is hidden in Cash view (overrides updateViewToggleUI)
                 try {
                     const selIds = getCurrentSelectedWatchlistIds();
                     const CASH_ID = (typeof window !== 'undefined' && window.CASH_BANK_WATCHLIST_ID) ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
                     if (Array.isArray(selIds) && selIds.includes(CASH_ID)) {
-                        const btn = document.getElementById('toggleCompactViewBtn');
+                        const btn = document.getElementById('viewToggleBtn');
                         if (btn) {
                             btn.classList.add('app-hidden');
                             btn.style.setProperty('display', 'none', 'important');
@@ -18739,4 +18774,69 @@ try {
             console.warn('updateMainTitle failed', e);
         }
     };
+    // --- Unified View Toggle Logic ---
+    window.updateViewToggleUI = function () {
+        const btn = document.getElementById('viewToggleBtn');
+        if (!btn) return;
+        const selIds = (typeof getCurrentSelectedWatchlistIds === 'function') ? getCurrentSelectedWatchlistIds() : [];
+        const CASH_ID = (typeof window.CASH_BANK_WATCHLIST_ID !== 'undefined') ? window.CASH_BANK_WATCHLIST_ID : 'cashBank';
+        if (Array.isArray(selIds) && selIds.includes(CASH_ID)) {
+            btn.classList.add('app-hidden');
+            btn.style.setProperty('display', 'none', 'important');
+            return;
+        }
+        btn.classList.remove('app-hidden');
+        btn.style.display = '';
+        const icon = btn.querySelector('i');
+        const text = document.getElementById('viewToggleBtnText');
+        const isSnapshot = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'snapshot');
+        const isCompact = (typeof currentMobileViewMode !== 'undefined' && currentMobileViewMode === 'compact');
+
+        // Cycle: Table -> Compact -> Snapshot -> Table
+        if (isSnapshot) {
+            if (icon) icon.className = 'fas fa-list';
+            if (text) text.textContent = 'Switch to List View';
+        } else if (isCompact) {
+            if (icon) icon.className = 'fas fa-camera';
+            if (text) text.textContent = 'Switch to Snapshot View';
+        } else {
+            // Default (Table)
+            if (icon) icon.className = 'fas fa-th-large';
+            if (text) text.textContent = 'Switch to Compact View';
+        }
+    };
+    window.updateSidebarViewToggleButtons = window.updateViewToggleUI;
+
+    window.cycleGlobalViewMode = function () {
+        const current = (typeof currentMobileViewMode !== 'undefined') ? currentMobileViewMode : 'default';
+        const isSnapshot = current === 'snapshot';
+        const isCompact = current === 'compact';
+
+        // Cycle: Table -> Compact -> Snapshot -> Table
+        if (isSnapshot) {
+            // Snapshot -> Table (Default)
+            if (typeof setMobileViewMode === 'function') setMobileViewMode('default', 'cycle_toggle');
+        } else if (isCompact) {
+            // Compact -> Snapshot
+            if (typeof setMobileViewMode === 'function') setMobileViewMode('snapshot', 'cycle_toggle');
+        } else {
+            // Table (Default) -> Compact
+            if (typeof setMobileViewMode === 'function') setMobileViewMode('compact', 'cycle_toggle');
+        }
+    };
+
+    // Bind listener
+    (function () {
+        const btn = document.getElementById('viewToggleBtn');
+        if (btn) {
+            // Remove old listeners by cloning (if needed, or just rely on new logic)
+            // But here we just add the listener.
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.cycleGlobalViewMode();
+                if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false);
+            });
+        }
+    })();
+
 })();

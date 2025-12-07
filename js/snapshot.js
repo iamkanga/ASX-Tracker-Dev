@@ -133,9 +133,21 @@ function renderSnapshotView() {
     const prices = getLivePrices() || {};
 
     // Filter for 'portfolio' watchlist
+    // Filter for currently selected watchlists
+    const currentIds = (typeof window.getCurrentSelectedWatchlistIds === 'function')
+        ? window.getCurrentSelectedWatchlistIds()
+        : (window.currentSelectedWatchlistIds || ['portfolio']); // fallback
+
     const portfolioShares = allShares.filter(share => {
-        if (share.watchlistId === 'portfolio') return true;
-        if (Array.isArray(share.watchlistIds) && share.watchlistIds.includes('portfolio')) return true;
+        // If "All Shares" is selected, include everything
+        if (currentIds.includes('all') || currentIds.includes('all_shares_option')) return true;
+
+        // Otherwise check intersection
+        // Primary 'watchlistId'
+        if (currentIds.includes(share.watchlistId)) return true;
+        // Array 'watchlistIds'
+        if (Array.isArray(share.watchlistIds) && share.watchlistIds.some(id => currentIds.includes(id))) return true;
+
         return false;
     });
 
@@ -317,35 +329,17 @@ window.toggleSnapshotView = function (show) {
         restoreSortButton();
     }
 
-    // Update Button Text
-    const btnText = document.getElementById('snapshotViewBtnText');
-    if (btnText) {
-        btnText.textContent = shouldShow ? 'Default View' : 'Snapshot View';
-    }
-
-    // Update Button Icon
-    const btnIcon = document.querySelector('#snapshotViewBtn i');
-    if (btnIcon) {
-        btnIcon.className = shouldShow ? 'fas fa-list' : 'fas fa-camera';
-    }
+    // Update Unified Button UI if available
+    try {
+        if (typeof window.updateViewToggleUI === 'function') {
+            window.updateViewToggleUI();
+        }
+    } catch (_) { }
 };
 
-// Initialize Button Listener (Event Delegation for robustness)
-document.addEventListener('click', (e) => {
-    const btn = e.target.closest('#snapshotViewBtn');
-    if (btn) {
-        e.preventDefault(); // Prevent any default behavior
-        window.toggleSnapshotView();
+// Listener handled by script.js via viewToggleBtn
 
-        // Close sidebar if open (mimic app behavior)
-        const sidebar = document.getElementById('appSidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        if (sidebar && sidebar.classList.contains('open')) {
-            sidebar.classList.remove('open');
-            if (overlay) overlay.classList.remove('open');
-        }
-    }
-});
+
 
 // View Manager & Persistence
 // View Manager Logic - DEPRECATED/DISABLED to avoid conflict with script.js centralized logic
