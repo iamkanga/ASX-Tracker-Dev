@@ -4189,16 +4189,27 @@ try {
                     item.style.cursor = 'pointer';
                     item.style.padding = '8px';
 
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation(); // prevent document click from closing immediately
+                    const handler = (e) => {
+                        // prevent default to stop input blur race on some browsers
+                        try {
+                            if (e.type === 'pointerdown') e.preventDefault();
+                        } catch (_) { }
+
+                        console.log('[Autocomplete] Selected:', match.code);
                         shareNameInput.value = match.code;
                         shareNameSuggestions.innerHTML = '';
                         shareNameSuggestions.style.display = 'none';
-                        // Trigger live snapshot update
+
+                        // Trigger live snapshot update explicitly with the selected code
                         if (typeof updateAddFormLiveSnapshot === 'function') {
                             updateAddFormLiveSnapshot(match.code);
                         }
-                    });
+                    };
+
+                    // Use touch-friendly events
+                    item.addEventListener('pointerdown', handler, { passive: false });
+                    item.addEventListener('click', handler);
+
                     shareNameSuggestions.appendChild(item);
                 });
                 shareNameSuggestions.style.display = 'block';
