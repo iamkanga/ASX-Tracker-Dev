@@ -6653,7 +6653,7 @@ try {
         // If button has data-label span or similar, update text without blowing away icon
         try {
             const labelSpan = button.querySelector('span') || button;
-            if (labelSpan) labelSpan.textContent = isCompact ? 'Default View' : 'Compact View';
+            if (labelSpan) labelSpan.textContent = isCompact ? 'Switch to Default' : 'Switch to Compact';
         } catch (_) { }
         logDebug('UI State: Compact view button enabled (mode=' + currentMobileViewMode + ').');
     }
@@ -16440,9 +16440,18 @@ try {
                         const clickedButton = event.currentTarget;
                         logDebug('Sidebar Menu Item Click: Button \'' + clickedButton.textContent.trim() + '\' clicked.');
 
+                        // Handle specific action for the view toggle button - don't close sidebar
+                        if (clickedButton.id === 'viewToggleBtn') {
+                            window.cycleGlobalViewMode();
+                            // Don't close sidebar when toggling view
+                            return;
+                        }
+
                         // Handle specific action for the toggle compact view button
                         if (clickedButton.id === 'toggleCompactViewBtn') {
                             toggleMobileViewMode();
+                            // Don't close sidebar when toggling compact view
+                            return;
                         }
 
                         const closesMenu = clickedButton.dataset.actionClosesMenu !== 'false';
@@ -18795,14 +18804,14 @@ try {
         // Cycle: Table -> Compact -> Snapshot -> Table
         if (isSnapshot) {
             if (icon) icon.className = 'fas fa-list';
-            if (text) text.textContent = 'Switch to List View';
+            if (text) text.textContent = 'Switch to List';
         } else if (isCompact) {
             if (icon) icon.className = 'fas fa-camera';
-            if (text) text.textContent = 'Switch to Snapshot View';
+            if (text) text.textContent = 'Switch to Snapshot';
         } else {
             // Default (Table)
             if (icon) icon.className = 'fas fa-th-large';
-            if (text) text.textContent = 'Switch to Compact View';
+            if (text) text.textContent = 'Switch to Compact';
         }
     };
     window.updateSidebarViewToggleButtons = window.updateViewToggleUI;
@@ -18834,7 +18843,7 @@ try {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 window.cycleGlobalViewMode();
-                if (typeof toggleAppSidebar === 'function') toggleAppSidebar(false);
+                // Don't close sidebar - let user close it manually
             });
         }
     })();

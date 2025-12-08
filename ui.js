@@ -299,7 +299,8 @@
         }
     } catch(_) {}
     try { if (typeof pushAppState === 'function') pushAppState({ modalId: modalElement.id || true }, '', '#modal'); } catch(_) {}
-    try { if (window.toggleAppSidebar && window.appSidebar && window.appSidebar.classList.contains('open')) window.toggleAppSidebar(false); } catch(_) {}
+    // Don't close sidebar on modal open - let the individual UI elements control sidebar behavior
+    // This allows the compact view toggle to keep the sidebar open
         // Unhide any hidden ancestor modals so nested modals are not blocked by parent's app-hidden
         try {
             let anc = modalElement.parentElement;
