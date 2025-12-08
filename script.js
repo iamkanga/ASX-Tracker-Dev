@@ -1078,14 +1078,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let portfolioSection = document.getElementById('portfolioSection');
         portfolioSection.style.display = 'block';
+
+        // FIX: Race condition where renderPortfolioList bails if snapshot view is visible.
+        // Synchronously determine intended view mode and set DOM state BEFORE rendering.
+        const lastMode = localStorage.getItem('portfolio_last_view_mode');
+        const snapshotContainer = document.getElementById('snapshot-view-container');
+
+        console.log('[showPortfolioView] Preparing to render. Last mode:', lastMode);
+
+        if (lastMode === 'snapshot') {
+            // If we expect snapshot, standard renderPortfolioList() might bail.
+            // We should ensure toggleSnapshotView(true) is called.
+            // We can defer this slightly or do it now. 
+            // Existing logic did it via timeout. We'll keep the timeout pattern for 'snapshot' 
+            // to ensure other inits are done, but we don't need to force hide it here.
+        } else {
+            // CRITICAL: If we expect Default List View, we MUST hide snapshot container NOW.
+            // Otherwise renderPortfolioList() sees it distinct 'block' and bails.
+            if (snapshotContainer) {
+                snapshotContainer.style.display = 'none';
+            }
+        }
+
         renderPortfolioList();
 
-        // RESTORE SNAPSHOT VIEW IF SAVED
+        // RESTORE SNAPSHOT VIEW IF SAVED (Secondary cleanup / activation)
         try {
-            const lastMode = localStorage.getItem('portfolio_last_view_mode');
-            console.log('[showPortfolioView] Checking saved view mode:', lastMode);
             if (lastMode === 'snapshot') {
-                // Use a small timeout to allow DOM to settle
+                // Use a small timeout to allow DOM to settle and modules to load
                 setTimeout(() => {
                     if (typeof window.toggleSnapshotView === 'function') {
                         console.log('[showPortfolioView] Restoring Snapshot View');
@@ -1093,13 +1113,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }, 50);
             } else {
-                // Ensure we are in default view if not snapshot
+                // Already forced hidden above, but ensuring toggleSnapshotView(false) 
+                // is called is good practice to sync any other internal state it has.
                 setTimeout(() => {
                     if (typeof window.toggleSnapshotView === 'function') {
-                        const container = document.getElementById('snapshot-view-container');
-                        if (container && container.style.display === 'block') {
-                            window.toggleSnapshotView(false);
-                        }
+                        // Only call if it thinks it's active or just to be safe
+                        window.toggleSnapshotView(false);
                     }
                 }, 50);
             }
